@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate rustc_apfloat;
 
+use rustc_apfloat::ieee::{Double, Half, Quad, Single, X87DoubleExtended};
 use rustc_apfloat::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use rustc_apfloat::{Float, FloatConvert, ParseError, Round, Status};
-use rustc_apfloat::ieee::{Half, Single, Double, Quad, X87DoubleExtended};
 
 trait SingleExt {
     fn from_f32(input: f32) -> Self;
@@ -707,7 +707,6 @@ fn decimal_strings_without_null_terminators() {
     assert_eq!(val.to_f64(), 0.00);
     let val = "0e+3"[..4].parse::<Double>().unwrap();
     assert_eq!(val.to_f64(), 0.00);
-
 }
 
 #[test]
@@ -755,7 +754,6 @@ fn from_zero_decimal_single_exponent_string() {
     assert_eq!(0.0, "+0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0e-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0.e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0.e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0.e1".parse::<Double>().unwrap().to_f64());
@@ -780,7 +778,6 @@ fn from_zero_decimal_single_exponent_string() {
     assert_eq!(0.0, "+.0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-.0e-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0.0e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0.0e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0.0e1".parse::<Double>().unwrap().to_f64());
@@ -792,7 +789,6 @@ fn from_zero_decimal_single_exponent_string() {
     assert_eq!(0.0, "0.0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0.0e-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0.0e-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(0.0, "000.0000e1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+000.0000e+1".parse::<Double>().unwrap().to_f64());
@@ -831,7 +827,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "+0x0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0p-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0x0.p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.p1".parse::<Double>().unwrap().to_f64());
@@ -843,7 +838,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "0x0.p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(0.0, "0x.0p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x.0p1".parse::<Double>().unwrap().to_f64());
@@ -857,7 +851,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "+0x.0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x.0p-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(0.0, "0x0.0p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.0p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.0p1".parse::<Double>().unwrap().to_f64());
@@ -869,7 +862,6 @@ fn from_zero_hexadecimal_string() {
     assert_eq!(0.0, "0x0.0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "+0x0.0p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.0, "-0x0.0p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(0.0, "0x00000.p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.0, "0x0000.00000p1".parse::<Double>().unwrap().to_f64());
@@ -940,7 +932,6 @@ fn from_hexadecimal_string() {
     assert_eq!(1.0, "+0x1p-0".parse::<Double>().unwrap().to_f64());
     assert_eq!(-1.0, "-0x1p-0".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(2.0, "0x1p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(2.0, "+0x1p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-2.0, "-0x1p1".parse::<Double>().unwrap().to_f64());
@@ -953,7 +944,6 @@ fn from_hexadecimal_string() {
     assert_eq!(0.5, "+0x1p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.5, "-0x1p-1".parse::<Double>().unwrap().to_f64());
 
-
     assert_eq!(3.0, "0x1.8p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(3.0, "+0x1.8p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-3.0, "-0x1.8p1".parse::<Double>().unwrap().to_f64());
@@ -965,7 +955,6 @@ fn from_hexadecimal_string() {
     assert_eq!(0.75, "0x1.8p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(0.75, "+0x1.8p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-0.75, "-0x1.8p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(8192.0, "0x1000.000p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(8192.0, "+0x1000.000p1".parse::<Double>().unwrap().to_f64());
@@ -985,7 +974,6 @@ fn from_hexadecimal_string() {
         "-0x1000.000p-1".parse::<Double>().unwrap().to_f64()
     );
 
-
     assert_eq!(8192.0, "0x1000p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(8192.0, "+0x1000p1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-8192.0, "-0x1000p1".parse::<Double>().unwrap().to_f64());
@@ -997,7 +985,6 @@ fn from_hexadecimal_string() {
     assert_eq!(2048.0, "0x1000p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(2048.0, "+0x1000p-1".parse::<Double>().unwrap().to_f64());
     assert_eq!(-2048.0, "-0x1000p-1".parse::<Double>().unwrap().to_f64());
-
 
     assert_eq!(16384.0, "0x10p10".parse::<Double>().unwrap().to_f64());
     assert_eq!(16384.0, "+0x10p10".parse::<Double>().unwrap().to_f64());
@@ -1101,71 +1088,61 @@ fn to_integer() {
 
     assert_eq!(
         Status::OK.and(10),
-        "10".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "10".parse::<Double>()
+            .unwrap()
+            .to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(0),
-        "-10".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "-10"
+            .parse::<Double>()
+            .unwrap()
+            .to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(31),
-        "32".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "32".parse::<Double>()
+            .unwrap()
+            .to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::INEXACT.and(7),
-        "7.9".parse::<Double>().unwrap().to_u128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "7.9"
+            .parse::<Double>()
+            .unwrap()
+            .to_u128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::OK.and(-10),
-        "-10".parse::<Double>().unwrap().to_i128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "-10"
+            .parse::<Double>()
+            .unwrap()
+            .to_i128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(-16),
-        "-17".parse::<Double>().unwrap().to_i128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "-17"
+            .parse::<Double>()
+            .unwrap()
+            .to_i128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 
     assert_eq!(
         Status::INVALID_OP.and(15),
-        "16".parse::<Double>().unwrap().to_i128_r(
-            5,
-            Round::TowardZero,
-            &mut is_exact,
-        )
+        "16".parse::<Double>()
+            .unwrap()
+            .to_i128_r(5, Round::TowardZero, &mut is_exact,)
     );
     assert!(!is_exact);
 }
@@ -1288,7 +1265,6 @@ fn string_decimal_significand_death() {
         Err(ParseError("Significand has no digits"))
     );
 
-
     assert_eq!(
         "e".parse::<Double>(),
         Err(ParseError("Significand has no digits"))
@@ -1327,7 +1303,6 @@ fn string_decimal_significand_death() {
         "-.e1".parse::<Double>(),
         Err(ParseError("Significand has no digits"))
     );
-
 
     assert_eq!(
         ".e".parse::<Double>(),
@@ -1396,7 +1371,6 @@ fn string_decimal_exponent_death() {
         "-1.1e".parse::<Double>(),
         Err(ParseError("Exponent has no digits"))
     );
-
 
     assert_eq!(
         "1e+".parse::<Double>(),
@@ -1594,7 +1568,6 @@ fn string_hexadecimal_significand_death() {
         Err(ParseError("Significand has no digits"))
     );
 
-
     assert_eq!(
         "0x.p".parse::<Double>(),
         Err(ParseError("Significand has no digits"))
@@ -1676,7 +1649,6 @@ fn string_hexadecimal_exponent_death() {
         Err(ParseError("Exponent has no digits"))
     );
 
-
     assert_eq!(
         "0x1.p".parse::<Double>(),
         Err(ParseError("Exponent has no digits"))
@@ -1716,7 +1688,6 @@ fn string_hexadecimal_exponent_death() {
         Err(ParseError("Exponent has no digits"))
     );
 
-
     assert_eq!(
         "0x.1p".parse::<Double>(),
         Err(ParseError("Exponent has no digits"))
@@ -1755,7 +1726,6 @@ fn string_hexadecimal_exponent_death() {
         "-0x.1p-".parse::<Double>(),
         Err(ParseError("Exponent has no digits"))
     );
-
 
     assert_eq!(
         "0x1.1p".parse::<Double>(),
@@ -1800,53 +1770,41 @@ fn string_hexadecimal_exponent_death() {
 #[test]
 fn exact_inverse() {
     // Trivial operation.
-    assert!(
-        Double::from_f64(2.0)
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq(Double::from_f64(0.5))
-    );
-    assert!(
-        Single::from_f32(2.0)
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq(Single::from_f32(0.5))
-    );
-    assert!(
-        "2.0"
-            .parse::<Quad>()
-            .unwrap()
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq("0.5".parse::<Quad>().unwrap())
-    );
-    assert!(
-        "2.0"
-            .parse::<X87DoubleExtended>()
-            .unwrap()
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq("0.5".parse::<X87DoubleExtended>().unwrap())
-    );
+    assert!(Double::from_f64(2.0)
+        .get_exact_inverse()
+        .unwrap()
+        .bitwise_eq(Double::from_f64(0.5)));
+    assert!(Single::from_f32(2.0)
+        .get_exact_inverse()
+        .unwrap()
+        .bitwise_eq(Single::from_f32(0.5)));
+    assert!("2.0"
+        .parse::<Quad>()
+        .unwrap()
+        .get_exact_inverse()
+        .unwrap()
+        .bitwise_eq("0.5".parse::<Quad>().unwrap()));
+    assert!("2.0"
+        .parse::<X87DoubleExtended>()
+        .unwrap()
+        .get_exact_inverse()
+        .unwrap()
+        .bitwise_eq("0.5".parse::<X87DoubleExtended>().unwrap()));
 
     // FLT_MIN
-    assert!(
-        Single::from_f32(1.17549435e-38)
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq(Single::from_f32(8.5070592e+37))
-    );
+    assert!(Single::from_f32(1.17549435e-38)
+        .get_exact_inverse()
+        .unwrap()
+        .bitwise_eq(Single::from_f32(8.5070592e+37)));
 
     // Large float, inverse is a denormal.
     assert!(Single::from_f32(1.7014118e38).get_exact_inverse().is_none());
     // Zero
     assert!(Double::from_f64(0.0).get_exact_inverse().is_none());
     // Denormalized float
-    assert!(
-        Single::from_f32(1.40129846e-45)
-            .get_exact_inverse()
-            .is_none()
-    );
+    assert!(Single::from_f32(1.40129846e-45)
+        .get_exact_inverse()
+        .is_none());
 }
 
 #[test]
@@ -2034,26 +1992,14 @@ fn zero() {
 
 #[test]
 fn copy_sign() {
-    assert!(Double::from_f64(-42.0).bitwise_eq(
-        Double::from_f64(42.0).copy_sign(
-            Double::from_f64(-1.0),
-        ),
-    ));
-    assert!(Double::from_f64(42.0).bitwise_eq(
-        Double::from_f64(-42.0).copy_sign(
-            Double::from_f64(1.0),
-        ),
-    ));
-    assert!(Double::from_f64(-42.0).bitwise_eq(
-        Double::from_f64(-42.0).copy_sign(
-            Double::from_f64(-1.0),
-        ),
-    ));
-    assert!(Double::from_f64(42.0).bitwise_eq(
-        Double::from_f64(42.0).copy_sign(
-            Double::from_f64(1.0),
-        ),
-    ));
+    assert!(Double::from_f64(-42.0)
+        .bitwise_eq(Double::from_f64(42.0).copy_sign(Double::from_f64(-1.0),),));
+    assert!(Double::from_f64(42.0)
+        .bitwise_eq(Double::from_f64(-42.0).copy_sign(Double::from_f64(1.0),),));
+    assert!(Double::from_f64(-42.0)
+        .bitwise_eq(Double::from_f64(-42.0).copy_sign(Double::from_f64(-1.0),),));
+    assert!(Double::from_f64(42.0)
+        .bitwise_eq(Double::from_f64(42.0).copy_sign(Double::from_f64(1.0),),));
 }
 
 #[test]
@@ -2232,9 +2178,9 @@ fn add() {
         (p_inf, m_zero, "inf", Status::OK, Category::Infinity),
         (p_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
         (p_inf, m_normal_value, "inf", Status::OK, Category::Infinity),
         (
@@ -2285,9 +2231,9 @@ fn add() {
         (m_inf, m_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_inf,
             p_normal_value,
@@ -2350,9 +2296,9 @@ fn add() {
         (p_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_zero,
             p_normal_value,
@@ -2415,9 +2361,9 @@ fn add() {
         (m_zero, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (m_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_zero,
             p_normal_value,
@@ -2480,9 +2426,9 @@ fn add() {
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
@@ -2504,22 +2450,22 @@ fn add() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_normal_value, p_inf, "inf", Status::OK, Category::Infinity),
         (
             p_normal_value,
@@ -2544,9 +2490,9 @@ fn add() {
         ),
         (p_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_normal_value,
             p_normal_value,
@@ -2627,9 +2573,9 @@ fn add() {
         ),
         (m_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_normal_value,
             p_normal_value,
@@ -2716,9 +2662,9 @@ fn add() {
         ),
         (p_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_largest_value,
             p_normal_value,
@@ -2805,9 +2751,9 @@ fn add() {
         ),
         (m_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_largest_value,
             p_normal_value,
@@ -2894,9 +2840,9 @@ fn add() {
         ),
         (p_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_value,
             p_normal_value,
@@ -2983,9 +2929,9 @@ fn add() {
         ),
         (m_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_value,
             p_normal_value,
@@ -3078,9 +3024,9 @@ fn add() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_normalized,
             p_normal_value,
@@ -3173,9 +3119,9 @@ fn add() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_normalized,
             p_normal_value,
@@ -3275,9 +3221,9 @@ fn subtract() {
         (p_inf, m_zero, "inf", Status::OK, Category::Infinity),
         (p_inf, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
         (p_inf, m_normal_value, "inf", Status::OK, Category::Infinity),
         (
@@ -3328,9 +3274,9 @@ fn subtract() {
         (m_inf, m_zero, "-inf", Status::OK, Category::Infinity),
         (m_inf, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_inf, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_inf,
             p_normal_value,
@@ -3393,9 +3339,9 @@ fn subtract() {
         (p_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (p_zero, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_zero,
             p_normal_value,
@@ -3458,9 +3404,9 @@ fn subtract() {
         (m_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_zero, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_zero, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_zero,
             p_normal_value,
@@ -3523,9 +3469,9 @@ fn subtract() {
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
@@ -3547,22 +3493,22 @@ fn subtract() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_normal_value,
             p_inf,
@@ -3587,9 +3533,9 @@ fn subtract() {
         ),
         (p_normal_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_normal_value,
             p_normal_value,
@@ -3670,9 +3616,9 @@ fn subtract() {
         ),
         (m_normal_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_normal_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_normal_value,
             p_normal_value,
@@ -3759,9 +3705,9 @@ fn subtract() {
         ),
         (p_largest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_largest_value,
             p_normal_value,
@@ -3848,9 +3794,9 @@ fn subtract() {
         ),
         (m_largest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_largest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_largest_value,
             p_normal_value,
@@ -3937,9 +3883,9 @@ fn subtract() {
         ),
         (p_smallest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_value,
             p_normal_value,
@@ -4026,9 +3972,9 @@ fn subtract() {
         ),
         (m_smallest_value, qnan, "-nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_value, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_value,
             p_normal_value,
@@ -4121,9 +4067,9 @@ fn subtract() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_normalized,
             p_normal_value,
@@ -4216,9 +4162,9 @@ fn subtract() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_normalized, snan, "-nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_normalized,
             p_normal_value,
@@ -4319,9 +4265,9 @@ fn multiply() {
         (p_inf, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (p_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
         (
             p_inf,
@@ -4378,9 +4324,9 @@ fn multiply() {
         (m_inf, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (m_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_inf,
             p_normal_value,
@@ -4437,9 +4383,9 @@ fn multiply() {
         (p_zero, m_zero, "-0x0p+0", Status::OK, Category::Zero),
         (p_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_zero, p_normal_value, "0x0p+0", Status::OK, Category::Zero),
         (
             p_zero,
@@ -4496,9 +4442,9 @@ fn multiply() {
         (m_zero, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_zero,
             p_normal_value,
@@ -4555,9 +4501,9 @@ fn multiply() {
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
@@ -4579,22 +4525,22 @@ fn multiply() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_normal_value, p_inf, "inf", Status::OK, Category::Infinity),
         (
             p_normal_value,
@@ -4613,9 +4559,9 @@ fn multiply() {
         ),
         (p_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_normal_value,
             p_normal_value,
@@ -4690,9 +4636,9 @@ fn multiply() {
         (m_normal_value, m_zero, "0x0p+0", Status::OK, Category::Zero),
         (m_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_normal_value,
             p_normal_value,
@@ -4779,9 +4725,9 @@ fn multiply() {
         ),
         (p_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_largest_value,
             p_normal_value,
@@ -4868,9 +4814,9 @@ fn multiply() {
         ),
         (m_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_largest_value,
             p_normal_value,
@@ -4957,9 +4903,9 @@ fn multiply() {
         ),
         (p_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_value,
             p_normal_value,
@@ -5046,9 +4992,9 @@ fn multiply() {
         ),
         (m_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_value,
             p_normal_value,
@@ -5141,9 +5087,9 @@ fn multiply() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_normalized,
             p_normal_value,
@@ -5236,9 +5182,9 @@ fn multiply() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_normalized,
             p_normal_value,
@@ -5339,9 +5285,9 @@ fn divide() {
         (p_inf, m_zero, "-inf", Status::OK, Category::Infinity),
         (p_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_inf, p_normal_value, "inf", Status::OK, Category::Infinity),
         (
             p_inf,
@@ -5398,9 +5344,9 @@ fn divide() {
         (m_inf, m_zero, "inf", Status::OK, Category::Infinity),
         (m_inf, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_inf, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_inf,
             p_normal_value,
@@ -5457,9 +5403,9 @@ fn divide() {
         (p_zero, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (p_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_zero, p_normal_value, "0x0p+0", Status::OK, Category::Zero),
         (
             p_zero,
@@ -5516,9 +5462,9 @@ fn divide() {
         (m_zero, m_zero, "nan", Status::INVALID_OP, Category::NaN),
         (m_zero, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_zero, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_zero,
             p_normal_value,
@@ -5575,9 +5521,9 @@ fn divide() {
         (qnan, m_zero, "nan", Status::OK, Category::NaN),
         (qnan, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (qnan, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (qnan, p_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, m_normal_value, "nan", Status::OK, Category::NaN),
         (qnan, p_largest_value, "nan", Status::OK, Category::NaN),
@@ -5599,22 +5545,22 @@ fn divide() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
-(snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, snan, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
-(snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-(snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (snan, p_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_inf, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_zero, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, qnan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, snan, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_normal_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_largest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_value, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, p_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+        (snan, m_smallest_normalized, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (p_normal_value, p_inf, "0x0p+0", Status::OK, Category::Zero),
         (p_normal_value, m_inf, "-0x0p+0", Status::OK, Category::Zero),
         (
@@ -5633,9 +5579,9 @@ fn divide() {
         ),
         (p_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_normal_value,
             p_normal_value,
@@ -5710,9 +5656,9 @@ fn divide() {
         ),
         (m_normal_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_normal_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_normal_value,
             p_normal_value,
@@ -5793,9 +5739,9 @@ fn divide() {
         ),
         (p_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_largest_value,
             p_normal_value,
@@ -5876,9 +5822,9 @@ fn divide() {
         ),
         (m_largest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_largest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_largest_value,
             p_normal_value,
@@ -5965,9 +5911,9 @@ fn divide() {
         ),
         (p_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_value,
             p_normal_value,
@@ -6054,9 +6000,9 @@ fn divide() {
         ),
         (m_smallest_value, qnan, "nan", Status::OK, Category::NaN),
         /*
-// See Note 1.
-(m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_value, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_value,
             p_normal_value,
@@ -6149,9 +6095,9 @@ fn divide() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (p_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             p_smallest_normalized,
             p_normal_value,
@@ -6244,9 +6190,9 @@ fn divide() {
             Category::NaN,
         ),
         /*
-// See Note 1.
-(m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
-        */
+        // See Note 1.
+        (m_smallest_normalized, snan, "nan", Status::INVALID_OP, Category::NaN),
+                */
         (
             m_smallest_normalized,
             p_normal_value,
@@ -6358,12 +6304,8 @@ fn abs() {
     assert!(p_largest_value.bitwise_eq(m_largest_value.abs()));
     assert!(p_smallest_value.bitwise_eq(p_smallest_value.abs()));
     assert!(p_smallest_value.bitwise_eq(m_smallest_value.abs()));
-    assert!(p_smallest_normalized.bitwise_eq(
-        p_smallest_normalized.abs(),
-    ));
-    assert!(p_smallest_normalized.bitwise_eq(
-        m_smallest_normalized.abs(),
-    ));
+    assert!(p_smallest_normalized.bitwise_eq(p_smallest_normalized.abs(),));
+    assert!(p_smallest_normalized.bitwise_eq(m_smallest_normalized.abs(),));
 }
 
 #[test]
@@ -6418,7 +6360,6 @@ fn ilogb() {
     assert_eq!(1023, Double::largest().ilogb());
     assert_eq!(1023, (-Double::largest()).ilogb());
 
-
     assert_eq!(0, "0x1p+0".parse::<Single>().unwrap().ilogb());
     assert_eq!(0, "-0x1p+0".parse::<Single>().unwrap().ilogb());
     assert_eq!(42, "0x1p+42".parse::<Single>().unwrap().ilogb());
@@ -6442,15 +6383,18 @@ fn ilogb() {
 
 #[test]
 fn scalbn() {
-    assert!("0x1p+0".parse::<Single>().unwrap().bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(0),
-    ));
-    assert!("0x1p+42".parse::<Single>().unwrap().bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(42),
-    ));
-    assert!("0x1p-42".parse::<Single>().unwrap().bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(-42),
-    ));
+    assert!("0x1p+0"
+        .parse::<Single>()
+        .unwrap()
+        .bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(0),));
+    assert!("0x1p+42"
+        .parse::<Single>()
+        .unwrap()
+        .bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(42),));
+    assert!("0x1p-42"
+        .parse::<Single>()
+        .unwrap()
+        .bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(-42),));
 
     let p_inf = Single::INFINITY;
     let m_inf = -Single::INFINITY;
@@ -6479,28 +6423,16 @@ fn scalbn() {
     assert!(quiet_payload.is_nan() && !quiet_payload.is_signaling());
     assert_eq!(payload, quiet_payload.to_bits() & ((1 << 51) - 1));
 
-    assert!(p_inf.bitwise_eq(
-        "0x1p+0".parse::<Single>().unwrap().scalbn(128),
-    ));
-    assert!(m_inf.bitwise_eq(
-        "-0x1p+0".parse::<Single>().unwrap().scalbn(128),
-    ));
-    assert!(p_inf.bitwise_eq(
-        "0x1p+127".parse::<Single>().unwrap().scalbn(1),
-    ));
-    assert!(p_zero.bitwise_eq(
-        "0x1p-127".parse::<Single>().unwrap().scalbn(-127),
-    ));
-    assert!(m_zero.bitwise_eq(
-        "-0x1p-127".parse::<Single>().unwrap().scalbn(-127),
-    ));
-    assert!("-0x1p-149".parse::<Single>().unwrap().bitwise_eq(
-        "-0x1p-127".parse::<Single>().unwrap().scalbn(-22),
-    ));
-    assert!(p_zero.bitwise_eq(
-        "0x1p-126".parse::<Single>().unwrap().scalbn(-24),
-    ));
-
+    assert!(p_inf.bitwise_eq("0x1p+0".parse::<Single>().unwrap().scalbn(128),));
+    assert!(m_inf.bitwise_eq("-0x1p+0".parse::<Single>().unwrap().scalbn(128),));
+    assert!(p_inf.bitwise_eq("0x1p+127".parse::<Single>().unwrap().scalbn(1),));
+    assert!(p_zero.bitwise_eq("0x1p-127".parse::<Single>().unwrap().scalbn(-127),));
+    assert!(m_zero.bitwise_eq("-0x1p-127".parse::<Single>().unwrap().scalbn(-127),));
+    assert!("-0x1p-149"
+        .parse::<Single>()
+        .unwrap()
+        .bitwise_eq("-0x1p-127".parse::<Single>().unwrap().scalbn(-22),));
+    assert!(p_zero.bitwise_eq("0x1p-126".parse::<Single>().unwrap().scalbn(-24),));
 
     let smallest_f64 = Double::SMALLEST;
     let neg_smallest_f64 = -Double::SMALLEST;
@@ -6511,33 +6443,25 @@ fn scalbn() {
     let largest_denormal_f64 = "0x1.ffffffffffffep-1023".parse::<Double>().unwrap();
     let neg_largest_denormal_f64 = "-0x1.ffffffffffffep-1023".parse::<Double>().unwrap();
 
+    assert!(smallest_f64.bitwise_eq("0x1p-1074".parse::<Double>().unwrap().scalbn(0),));
+    assert!(neg_smallest_f64.bitwise_eq("-0x1p-1074".parse::<Double>().unwrap().scalbn(0),));
 
-    assert!(smallest_f64.bitwise_eq(
-        "0x1p-1074".parse::<Double>().unwrap().scalbn(0),
-    ));
-    assert!(neg_smallest_f64.bitwise_eq(
-        "-0x1p-1074".parse::<Double>().unwrap().scalbn(0),
-    ));
-
-    assert!("0x1p+1023".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2097,
-        ),
-    ));
+    assert!("0x1p+1023"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(smallest_f64.scalbn(2097,),));
 
     assert!(smallest_f64.scalbn(-2097).is_pos_zero());
     assert!(smallest_f64.scalbn(-2098).is_pos_zero());
     assert!(smallest_f64.scalbn(-2099).is_pos_zero());
-    assert!("0x1p+1022".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2096,
-        ),
-    ));
-    assert!("0x1p+1023".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2097,
-        ),
-    ));
+    assert!("0x1p+1022"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(smallest_f64.scalbn(2096,),));
+    assert!("0x1p+1023"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(smallest_f64.scalbn(2097,),));
     assert!(smallest_f64.scalbn(2098).is_infinite());
     assert!(smallest_f64.scalbn(2099).is_infinite());
 
@@ -6545,32 +6469,22 @@ fn scalbn() {
     assert!(smallest_f64.scalbn(-ExpInt::max_value()).is_pos_zero());
     assert!(largest_f64.scalbn(ExpInt::max_value()).is_infinite());
 
-    assert!(largest_denormal_f64.bitwise_eq(
-        largest_denormal_f64.scalbn(0),
-    ));
-    assert!(neg_largest_denormal_f64.bitwise_eq(
-        neg_largest_denormal_f64.scalbn(0),
-    ));
+    assert!(largest_denormal_f64.bitwise_eq(largest_denormal_f64.scalbn(0),));
+    assert!(neg_largest_denormal_f64.bitwise_eq(neg_largest_denormal_f64.scalbn(0),));
 
-    assert!(
-        "0x1.ffffffffffffep-1022"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(largest_denormal_f64.scalbn(1))
-    );
-    assert!(
-        "-0x1.ffffffffffffep-1021"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(neg_largest_denormal_f64.scalbn(2))
-    );
+    assert!("0x1.ffffffffffffep-1022"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_denormal_f64.scalbn(1)));
+    assert!("-0x1.ffffffffffffep-1021"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(neg_largest_denormal_f64.scalbn(2)));
 
-    assert!(
-        "0x1.ffffffffffffep+1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(largest_denormal_f64.scalbn(1024))
-    );
+    assert!("0x1.ffffffffffffep+1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_denormal_f64.scalbn(1024)));
     assert!(largest_denormal_f64.scalbn(-1023).is_pos_zero());
     assert!(largest_denormal_f64.scalbn(-1024).is_pos_zero());
     assert!(largest_denormal_f64.scalbn(-2048).is_pos_zero());
@@ -6578,99 +6492,83 @@ fn scalbn() {
     assert!(largest_denormal_f64.scalbn(2098).is_infinite());
     assert!(largest_denormal_f64.scalbn(2099).is_infinite());
 
-    assert!(
-        "0x1.ffffffffffffep-2"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(largest_denormal_f64.scalbn(1021))
-    );
-    assert!(
-        "0x1.ffffffffffffep-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(largest_denormal_f64.scalbn(1022))
-    );
-    assert!(
-        "0x1.ffffffffffffep+0"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(largest_denormal_f64.scalbn(1023))
-    );
-    assert!(
-        "0x1.ffffffffffffep+1023"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(largest_denormal_f64.scalbn(2046))
-    );
-    assert!("0x1p+974".parse::<Double>().unwrap().bitwise_eq(
-        smallest_f64.scalbn(
-            2048,
-        ),
-    ));
+    assert!("0x1.ffffffffffffep-2"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_denormal_f64.scalbn(1021)));
+    assert!("0x1.ffffffffffffep-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_denormal_f64.scalbn(1022)));
+    assert!("0x1.ffffffffffffep+0"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_denormal_f64.scalbn(1023)));
+    assert!("0x1.ffffffffffffep+1023"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_denormal_f64.scalbn(2046)));
+    assert!("0x1p+974"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(smallest_f64.scalbn(2048,),));
 
     let random_denormal_f64 = "0x1.c60f120d9f87cp+51".parse::<Double>().unwrap();
-    assert!(
-        "0x1.c60f120d9f87cp-972"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(random_denormal_f64.scalbn(-1023))
-    );
-    assert!(
-        "0x1.c60f120d9f87cp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(random_denormal_f64.scalbn(-52))
-    );
-    assert!(
-        "0x1.c60f120d9f87cp-2"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(random_denormal_f64.scalbn(-53))
-    );
-    assert!(
-        "0x1.c60f120d9f87cp+0"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(random_denormal_f64.scalbn(-51))
-    );
+    assert!("0x1.c60f120d9f87cp-972"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(random_denormal_f64.scalbn(-1023)));
+    assert!("0x1.c60f120d9f87cp-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(random_denormal_f64.scalbn(-52)));
+    assert!("0x1.c60f120d9f87cp-2"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(random_denormal_f64.scalbn(-53)));
+    assert!("0x1.c60f120d9f87cp+0"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(random_denormal_f64.scalbn(-51)));
 
     assert!(random_denormal_f64.scalbn(-2097).is_pos_zero());
     assert!(random_denormal_f64.scalbn(-2090).is_pos_zero());
 
+    assert!("-0x1p-1073"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(neg_largest_f64.scalbn(-2097),));
 
-    assert!("-0x1p-1073".parse::<Double>().unwrap().bitwise_eq(
-        neg_largest_f64.scalbn(-2097),
-    ));
+    assert!("-0x1p-1024"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(neg_largest_f64.scalbn(-2048),));
 
-    assert!("-0x1p-1024".parse::<Double>().unwrap().bitwise_eq(
-        neg_largest_f64.scalbn(-2048),
-    ));
+    assert!("0x1p-1073"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_f64.scalbn(-2097,),));
 
-    assert!("0x1p-1073".parse::<Double>().unwrap().bitwise_eq(
-        largest_f64.scalbn(
-            -2097,
-        ),
-    ));
-
-    assert!("0x1p-1074".parse::<Double>().unwrap().bitwise_eq(
-        largest_f64.scalbn(
-            -2098,
-        ),
-    ));
-    assert!("-0x1p-1074".parse::<Double>().unwrap().bitwise_eq(
-        neg_largest_f64.scalbn(-2098),
-    ));
+    assert!("0x1p-1074"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(largest_f64.scalbn(-2098,),));
+    assert!("-0x1p-1074"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(neg_largest_f64.scalbn(-2098),));
     assert!(neg_largest_f64.scalbn(-2099).is_neg_zero());
     assert!(largest_f64.scalbn(1).is_infinite());
 
+    assert!("0x1p+0"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq("0x1p+52".parse::<Double>().unwrap().scalbn(-52),));
 
-    assert!("0x1p+0".parse::<Double>().unwrap().bitwise_eq(
-        "0x1p+52".parse::<Double>().unwrap().scalbn(-52),
-    ));
-
-    assert!("0x1p-103".parse::<Double>().unwrap().bitwise_eq(
-        "0x1p-51".parse::<Double>().unwrap().scalbn(-52),
-    ));
+    assert!("0x1p-103"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq("0x1p-51".parse::<Double>().unwrap().scalbn(-52),));
 }
 
 #[test]
@@ -6711,7 +6609,6 @@ fn frexp() {
     assert_eq!(0, exp);
     assert!(frac.is_neg_zero());
 
-
     let frac = one.frexp(&mut exp);
     assert_eq!(1, exp);
     assert!("0x1p-1".parse::<Double>().unwrap().bitwise_eq(frac));
@@ -6722,22 +6619,17 @@ fn frexp() {
 
     let frac = largest_denormal.frexp(&mut exp);
     assert_eq!(-1022, exp);
-    assert!(
-        "0x1.ffffffffffffep-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
+    assert!("0x1.ffffffffffffep-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(frac));
 
     let frac = neg_largest_denormal.frexp(&mut exp);
     assert_eq!(-1022, exp);
-    assert!(
-        "-0x1.ffffffffffffep-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
-
+    assert!("-0x1.ffffffffffffep-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(frac));
 
     let frac = smallest.frexp(&mut exp);
     assert_eq!(-1073, exp);
@@ -6747,25 +6639,19 @@ fn frexp() {
     assert_eq!(-1073, exp);
     assert!("-0x1p-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
-
     let frac = largest.frexp(&mut exp);
     assert_eq!(1024, exp);
-    assert!(
-        "0x1.fffffffffffffp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
+    assert!("0x1.fffffffffffffp-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(frac));
 
     let frac = neg_largest.frexp(&mut exp);
     assert_eq!(1024, exp);
-    assert!(
-        "-0x1.fffffffffffffp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
-
+    assert!("-0x1.fffffffffffffp-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(frac));
 
     let frac = p_inf.frexp(&mut exp);
     assert_eq!(IEK_INF, exp);
@@ -6800,16 +6686,15 @@ fn frexp() {
     assert_eq!(-50, exp);
     assert!("0x1p-1".parse::<Double>().unwrap().bitwise_eq(frac));
 
-    let frac = "0x1.c60f120d9f87cp+51".parse::<Double>().unwrap().frexp(
-        &mut exp,
-    );
+    let frac = "0x1.c60f120d9f87cp+51"
+        .parse::<Double>()
+        .unwrap()
+        .frexp(&mut exp);
     assert_eq!(52, exp);
-    assert!(
-        "0x1.c60f120d9f87cp-1"
-            .parse::<Double>()
-            .unwrap()
-            .bitwise_eq(frac)
-    );
+    assert!("0x1.c60f120d9f87cp-1"
+        .parse::<Double>()
+        .unwrap()
+        .bitwise_eq(frac));
 }
 
 #[test]
@@ -6832,7 +6717,7 @@ fn modulo() {
     {
         let f1 = "0x1.3333333333333p-2".parse::<Double>().unwrap(); // 0.3
         let f2 = "0x1.47ae147ae147bp-7".parse::<Double>().unwrap(); // 0.01
-        // 0.009999999999999983
+                                                                    // 0.009999999999999983
         let expected = "0x1.47ae147ae1471p-7".parse::<Double>().unwrap();
         assert!(unpack!(status=, f1 % f2).bitwise_eq(expected));
         assert_eq!(status, Status::OK);

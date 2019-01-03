@@ -1,9 +1,9 @@
-use attr::HasAttrs;
 use ast;
-use source_map::{hygiene, ExpnInfo, ExpnFormat};
+use attr::HasAttrs;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use parse::parser::PathStyle;
+use source_map::{hygiene, ExpnFormat, ExpnInfo};
 use symbol::Symbol;
 use syntax_pos::Span;
 
@@ -16,8 +16,9 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
             return true;
         }
 
-        match attr.parse_list(cx.parse_sess,
-                              |parser| parser.parse_path_allowing_meta(PathStyle::Mod)) {
+        match attr.parse_list(cx.parse_sess, |parser| {
+            parser.parse_path_allowing_meta(PathStyle::Mod)
+        }) {
             Ok(ref traits) if traits.is_empty() => {
                 cx.span_warn(attr.span, "empty trait list in `derive`");
                 false
@@ -36,7 +37,8 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
 }
 
 pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: T) -> T
-    where T: HasAttrs,
+where
+    T: HasAttrs,
 {
     let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
     for (i, path) in traits.iter().enumerate() {

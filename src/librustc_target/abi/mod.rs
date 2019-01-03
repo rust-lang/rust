@@ -4,7 +4,7 @@ pub use self::Primitive::*;
 use spec::Target;
 
 use std::fmt;
-use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
+use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
@@ -42,13 +42,22 @@ impl Default for TargetDataLayout {
             i8_align: AbiAndPrefAlign::new(align(8)),
             i16_align: AbiAndPrefAlign::new(align(16)),
             i32_align: AbiAndPrefAlign::new(align(32)),
-            i64_align: AbiAndPrefAlign { abi: align(32), pref: align(64) },
-            i128_align: AbiAndPrefAlign { abi: align(32), pref: align(64) },
+            i64_align: AbiAndPrefAlign {
+                abi: align(32),
+                pref: align(64),
+            },
+            i128_align: AbiAndPrefAlign {
+                abi: align(32),
+                pref: align(64),
+            },
             f32_align: AbiAndPrefAlign::new(align(32)),
             f64_align: AbiAndPrefAlign::new(align(64)),
             pointer_size: Size::from_bits(64),
             pointer_align: AbiAndPrefAlign::new(align(64)),
-            aggregate_align: AbiAndPrefAlign { abi: align(0), pref: align(64) },
+            aggregate_align: AbiAndPrefAlign {
+                abi: align(0),
+                pref: align(64),
+            },
             vector_align: vec![
                 (Size::from_bits(64), AbiAndPrefAlign::new(align(64))),
                 (Size::from_bits(128), AbiAndPrefAlign::new(align(128))),
@@ -63,37 +72,46 @@ impl TargetDataLayout {
         // Parse an address space index from a string.
         let parse_address_space = |s: &str, cause: &str| {
             s.parse::<u32>().map_err(|err| {
-                format!("invalid address space `{}` for `{}` in \"data-layout\": {}",
-                        s, cause, err)
+                format!(
+                    "invalid address space `{}` for `{}` in \"data-layout\": {}",
+                    s, cause, err
+                )
             })
         };
 
         // Parse a bit count from a string.
         let parse_bits = |s: &str, kind: &str, cause: &str| {
             s.parse::<u64>().map_err(|err| {
-                format!("invalid {} `{}` for `{}` in \"data-layout\": {}",
-                        kind, s, cause, err)
+                format!(
+                    "invalid {} `{}` for `{}` in \"data-layout\": {}",
+                    kind, s, cause, err
+                )
             })
         };
 
         // Parse a size string.
-        let size = |s: &str, cause: &str| {
-            parse_bits(s, "size", cause).map(Size::from_bits)
-        };
+        let size = |s: &str, cause: &str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
         let align = |s: &[&str], cause: &str| {
             if s.is_empty() {
-                return Err(format!("missing alignment for `{}` in \"data-layout\"", cause));
+                return Err(format!(
+                    "missing alignment for `{}` in \"data-layout\"",
+                    cause
+                ));
             }
             let align_from_bits = |bits| {
                 Align::from_bits(bits).map_err(|err| {
-                    format!("invalid alignment for `{}` in \"data-layout\": {}",
-                            cause, err)
+                    format!(
+                        "invalid alignment for `{}` in \"data-layout\": {}",
+                        cause, err
+                    )
                 })
             };
             let abi = parse_bits(s[0], "alignment", cause)?;
-            let pref = s.get(1).map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
+            let pref = s
+                .get(1)
+                .map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
             Ok(AbiAndPrefAlign {
                 abi: align_from_bits(abi)?,
                 pref: align_from_bits(pref)?,
@@ -157,18 +175,23 @@ impl TargetDataLayout {
         // Perform consistency checks against the Target information.
         let endian_str = match dl.endian {
             Endian::Little => "little",
-            Endian::Big => "big"
+            Endian::Big => "big",
         };
         if endian_str != target.target_endian {
-            return Err(format!("inconsistent target specification: \"data-layout\" claims \
-                                architecture is {}-endian, while \"target-endian\" is `{}`",
-                               endian_str, target.target_endian));
+            return Err(format!(
+                "inconsistent target specification: \"data-layout\" claims \
+                 architecture is {}-endian, while \"target-endian\" is `{}`",
+                endian_str, target.target_endian
+            ));
         }
 
         if dl.pointer_size.bits().to_string() != target.target_pointer_width {
-            return Err(format!("inconsistent target specification: \"data-layout\" claims \
-                                pointers are {}-bit, while \"target-pointer-width\" is `{}`",
-                               dl.pointer_size.bits(), target.target_pointer_width));
+            return Err(format!(
+                "inconsistent target specification: \"data-layout\" claims \
+                 pointers are {}-bit, while \"target-pointer-width\" is `{}`",
+                dl.pointer_size.bits(),
+                target.target_pointer_width
+            ));
         }
 
         Ok(dl)
@@ -190,7 +213,7 @@ impl TargetDataLayout {
             16 => 1 << 15,
             32 => 1 << 31,
             64 => 1 << 47,
-            bits => panic!("obj_size_bound: unknown pointer bit size {}", bits)
+            bits => panic!("obj_size_bound: unknown pointer bit size {}", bits),
         }
     }
 
@@ -199,7 +222,7 @@ impl TargetDataLayout {
             16 => I16,
             32 => I32,
             64 => I64,
-            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits)
+            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits),
         }
     }
 
@@ -229,13 +252,15 @@ impl HasDataLayout for TargetDataLayout {
 #[derive(Copy, Clone, PartialEq)]
 pub enum Endian {
     Little,
-    Big
+    Big,
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable,
+)]
 pub struct Size {
-    raw: u64
+    raw: u64,
 }
 
 impl Size {
@@ -249,9 +274,7 @@ impl Size {
 
     #[inline]
     pub const fn from_bytes(bytes: u64) -> Size {
-        Size {
-            raw: bytes
-        }
+        Size { raw: bytes }
     }
 
     #[inline]
@@ -262,7 +285,10 @@ impl Size {
     #[inline]
     pub fn bits(self) -> u64 {
         self.bytes().checked_mul(8).unwrap_or_else(|| {
-            panic!("Size::bits: {} bytes in bits doesn't fit in u64", self.bytes())
+            panic!(
+                "Size::bits: {} bytes in bits doesn't fit in u64",
+                self.bytes()
+            )
         })
     }
 
@@ -312,7 +338,11 @@ impl Add for Size {
     #[inline]
     fn add(self, other: Size) -> Size {
         Size::from_bytes(self.bytes().checked_add(other.bytes()).unwrap_or_else(|| {
-            panic!("Size::add: {} + {} doesn't fit in u64", self.bytes(), other.bytes())
+            panic!(
+                "Size::add: {} + {} doesn't fit in u64",
+                self.bytes(),
+                other.bytes()
+            )
         }))
     }
 }
@@ -322,7 +352,11 @@ impl Sub for Size {
     #[inline]
     fn sub(self, other: Size) -> Size {
         Size::from_bytes(self.bytes().checked_sub(other.bytes()).unwrap_or_else(|| {
-            panic!("Size::sub: {} - {} would result in negative size", self.bytes(), other.bytes())
+            panic!(
+                "Size::sub: {} - {} would result in negative size",
+                self.bytes(),
+                other.bytes()
+            )
         }))
     }
 }
@@ -341,9 +375,7 @@ impl Mul<u64> for Size {
     fn mul(self, count: u64) -> Size {
         match self.bytes().checked_mul(count) {
             Some(bytes) => Size::from_bytes(bytes),
-            None => {
-                panic!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count)
-            }
+            None => panic!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count),
         }
     }
 }
@@ -356,7 +388,9 @@ impl AddAssign for Size {
 }
 
 /// Alignment of a type in bytes (always a power of two).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable,
+)]
 pub struct Align {
     pow2: u8,
 }
@@ -459,8 +493,8 @@ impl Integer {
             I8 => Size::from_bytes(1),
             I16 => Size::from_bytes(2),
             I32 => Size::from_bytes(4),
-            I64  => Size::from_bytes(8),
-            I128  => Size::from_bytes(16),
+            I64 => Size::from_bytes(8),
+            I128 => Size::from_bytes(16),
         }
     }
 
@@ -483,7 +517,7 @@ impl Integer {
             -0x0000_0000_0000_8000..=0x0000_0000_0000_7fff => I16,
             -0x0000_0000_8000_0000..=0x0000_0000_7fff_ffff => I32,
             -0x8000_0000_0000_0000..=0x7fff_ffff_ffff_ffff => I64,
-            _ => I128
+            _ => I128,
         }
     }
 
@@ -524,9 +558,7 @@ impl Integer {
     }
 }
 
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
-         PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy, PartialOrd, Ord)]
 pub enum FloatTy {
     F32,
     F64,
@@ -572,7 +604,7 @@ pub enum Primitive {
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
     Float(FloatTy),
-    Pointer
+    Pointer,
 }
 
 impl<'a, 'tcx> Primitive {
@@ -583,7 +615,7 @@ impl<'a, 'tcx> Primitive {
             Int(i, _) => i.size(),
             Float(FloatTy::F32) => Size::from_bits(32),
             Float(FloatTy::F64) => Size::from_bits(64),
-            Pointer => dl.pointer_size
+            Pointer => dl.pointer_size,
         }
     }
 
@@ -594,14 +626,14 @@ impl<'a, 'tcx> Primitive {
             Int(i, _) => i.align(dl),
             Float(FloatTy::F32) => dl.f32_align,
             Float(FloatTy::F64) => dl.f64_align,
-            Pointer => dl.pointer_align
+            Pointer => dl.pointer_align,
         }
     }
 
     pub fn is_float(self) -> bool {
         match self {
             Float(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -671,10 +703,7 @@ pub enum FieldPlacement {
     Union(usize),
 
     /// Array/vector-like placement, with all fields of identical types.
-    Array {
-        stride: Size,
-        count: u64
-    },
+    Array { stride: Size, count: u64 },
 
     /// Struct-like placement, with precomputed offsets.
     ///
@@ -693,8 +722,8 @@ pub enum FieldPlacement {
         /// Maps source order field indices to memory order indices,
         /// depending how fields were permuted.
         // FIXME(camlorn) also consider small vector  optimization here.
-        memory_index: Vec<u32>
-    }
+        memory_index: Vec<u32>,
+    },
 }
 
 impl FieldPlacement {
@@ -706,7 +735,7 @@ impl FieldPlacement {
                 assert_eq!(usize_count as u64, count);
                 usize_count
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len()
+            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len(),
         }
     }
 
@@ -718,15 +747,16 @@ impl FieldPlacement {
                 assert!(i < count);
                 stride * i
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i]
+            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i],
         }
     }
 
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
-            FieldPlacement::Union(_) |
-            FieldPlacement::Array { .. } => i,
-            FieldPlacement::Arbitrary { ref memory_index, .. } => {
+            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
+            FieldPlacement::Arbitrary {
+                ref memory_index, ..
+            } => {
                 let r = memory_index[i];
                 assert_eq!(r as usize as u32, r);
                 r as usize
@@ -736,13 +766,16 @@ impl FieldPlacement {
 
     /// Get source indices of the fields by increasing offsets.
     #[inline]
-    pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item=usize>+'a {
+    pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
         let mut inverse_small = [0u8; 64];
         let mut inverse_big = vec![];
         let use_small = self.count() <= inverse_small.len();
 
         // We have to write this logic twice in order to keep the array small.
-        if let FieldPlacement::Arbitrary { ref memory_index, .. } = *self {
+        if let FieldPlacement::Arbitrary {
+            ref memory_index, ..
+        } = *self
+        {
             if use_small {
                 for i in 0..self.count() {
                     inverse_small[memory_index[i] as usize] = i as u8;
@@ -755,13 +788,13 @@ impl FieldPlacement {
             }
         }
 
-        (0..self.count()).map(move |i| {
-            match *self {
-                FieldPlacement::Union(_) |
-                FieldPlacement::Array { .. } => i,
-                FieldPlacement::Arbitrary { .. } => {
-                    if use_small { inverse_small[i] as usize }
-                    else { inverse_big[i] as usize }
+        (0..self.count()).map(move |i| match *self {
+            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
+            FieldPlacement::Arbitrary { .. } => {
+                if use_small {
+                    inverse_small[i] as usize
+                } else {
+                    inverse_big[i] as usize
                 }
             }
         })
@@ -777,23 +810,20 @@ pub enum Abi {
     ScalarPair(Scalar, Scalar),
     Vector {
         element: Scalar,
-        count: u64
+        count: u64,
     },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
-    }
+    },
 }
 
 impl Abi {
     /// Returns true if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Uninhabited |
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => !sized
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Aggregate { sized } => !sized,
         }
     }
 
@@ -824,9 +854,7 @@ newtype_index! {
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single {
-        index: VariantIdx,
-    },
+    Single { index: VariantIdx },
 
     /// General-case enums: for each case there is a struct, and they all have
     /// all space reserved for the tag, and their first field starts
@@ -850,7 +878,7 @@ pub enum Variants {
         niche: Scalar,
         niche_start: u128,
         variants: IndexVec<VariantIdx, LayoutDetails>,
-    }
+    },
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
@@ -859,7 +887,7 @@ pub struct LayoutDetails {
     pub fields: FieldPlacement,
     pub abi: Abi,
     pub align: AbiAndPrefAlign,
-    pub size: Size
+    pub size: Size,
 }
 
 impl LayoutDetails {
@@ -867,7 +895,9 @@ impl LayoutDetails {
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single {
+                index: VariantIdx::new(0),
+            },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
             size,
@@ -886,7 +916,7 @@ impl LayoutDetails {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyLayout<'a, Ty> {
     pub ty: Ty,
-    pub details: &'a LayoutDetails
+    pub details: &'a LayoutDetails,
 }
 
 impl<'a, Ty> Deref for TyLayout<'a, Ty> {
@@ -914,11 +944,17 @@ pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
 
 impl<'a, Ty> TyLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+    where
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty>,
+    {
         Ty::for_variant(self, cx, variant_index)
     }
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+    where
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty>,
+    {
         Ty::field(self, cx, i)
     }
 }
@@ -932,11 +968,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// Returns true if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
+            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
             Abi::Uninhabited => self.size.bytes() == 0,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
+            Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
     }
 }

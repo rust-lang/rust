@@ -3,6 +3,6 @@
 /// Basically a workaround; see [this comment] for details.
 ///
 /// [this comment]: https://github.com/rust-lang/rust/issues/34511#issuecomment-373423999
-pub trait Captures<'a> { }
+pub trait Captures<'a> {}
 
-impl<'a, T: ?Sized> Captures<'a> for T { }
+impl<'a, T: ?Sized> Captures<'a> for T {}

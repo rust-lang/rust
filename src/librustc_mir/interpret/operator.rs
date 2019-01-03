@@ -1,12 +1,14 @@
 use rustc::mir;
-use rustc::ty::{self, layout::{Size, TyLayout}};
-use syntax::ast::FloatTy;
+use rustc::mir::interpret::{EvalResult, Scalar};
+use rustc::ty::{
+    self,
+    layout::{Size, TyLayout},
+};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
-use rustc::mir::interpret::{EvalResult, Scalar};
+use syntax::ast::FloatTy;
 
-use super::{EvalContext, PlaceTy, Immediate, Machine, ImmTy};
-
+use super::{EvalContext, ImmTy, Immediate, Machine, PlaceTy};
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -95,8 +97,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ($ty:path, $size:expr) => {{
                 let l = <$ty>::from_bits(l);
                 let r = <$ty>::from_bits(r);
-                let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>|
-                    Scalar::from_uint(res.value.to_bits(), Size::from_bytes($size));
+                let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| {
+                    Scalar::from_uint(res.value.to_bits(), Size::from_bytes($size))
+                };
                 let val = match bin_op {
                     Eq => Scalar::from_bool(l == r),
                     Ne => Scalar::from_bool(l != r),
@@ -164,11 +167,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         if left_layout.ty != right_layout.ty {
             let msg = format!(
                 "unimplemented asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-                bin_op,
-                l,
-                left_layout.ty,
-                r,
-                right_layout.ty
+                bin_op, l, left_layout.ty, r, right_layout.ty
             );
             return err!(Unimplemented(msg));
         }
@@ -207,8 +206,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         if r == -1 && l == (1 << (size.bits() - 1)) {
                             return Ok((Scalar::from_uint(l, size), true));
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
                 trace!("{}, {}, {}", l, l128, r);
                 let (result, mut oflo) = op(l128, r);
@@ -254,16 +253,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 };
                 let (result, oflo) = op(l, r);
                 let truncated = self.truncate(result, left_layout);
-                return Ok((Scalar::from_uint(truncated, size), oflo || truncated != result));
+                return Ok((
+                    Scalar::from_uint(truncated, size),
+                    oflo || truncated != result,
+                ));
             }
 
             _ => {
                 let msg = format!(
                     "unimplemented binary op {:?}: {:?}, {:?} (both {:?})",
-                    bin_op,
-                    l,
-                    r,
-                    right_layout.ty,
+                    bin_op, l, r, right_layout.ty,
                 );
                 return err!(Unimplemented(msg));
             }
@@ -283,8 +282,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         self.binary_op(
             bin_op,
-            left.to_scalar()?, left.layout,
-            right.to_scalar()?, right.layout,
+            left.to_scalar()?,
+            left.layout,
+            right.to_scalar()?,
+            right.layout,
         )
     }
 
@@ -297,8 +298,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         right: Scalar<M::PointerTag>,
         right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
-        trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-            bin_op, left, left_layout.ty, right, right_layout.ty);
+        trace!(
+            "Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+            bin_op,
+            left,
+            left_layout.ty,
+            right,
+            right_layout.ty
+        );
 
         match left_layout.ty.sty {
             ty::Char => {
@@ -321,10 +328,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
             _ => {
                 // Must be integer(-like) types.  Don't forget about == on fn pointers.
-                assert!(left_layout.ty.is_integral() || left_layout.ty.is_unsafe_ptr() ||
-                    left_layout.ty.is_fn());
-                assert!(right_layout.ty.is_integral() || right_layout.ty.is_unsafe_ptr() ||
-                    right_layout.ty.is_fn());
+                assert!(
+                    left_layout.ty.is_integral()
+                        || left_layout.ty.is_unsafe_ptr()
+                        || left_layout.ty.is_fn()
+                );
+                assert!(
+                    right_layout.ty.is_integral()
+                        || right_layout.ty.is_unsafe_ptr()
+                        || right_layout.ty.is_fn()
+                );
 
                 // Handle operations that support pointer values
                 if left.is_ptr() || right.is_ptr() || bin_op == mir::BinOp::Offset {
@@ -346,17 +359,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::mir::UnOp::*;
-        use rustc_apfloat::ieee::{Single, Double};
+        use rustc_apfloat::ieee::{Double, Single};
         use rustc_apfloat::Float;
 
-        trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty.sty);
+        trace!(
+            "Running unary op {:?}: {:?} ({:?})",
+            un_op,
+            val,
+            layout.ty.sty
+        );
 
         match layout.ty.sty {
             ty::Bool => {
                 let val = val.to_bool()?;
                 let res = match un_op {
                     Not => !val,
-                    _ => bug!("Invalid bool op {:?}", un_op)
+                    _ => bug!("Invalid bool op {:?}", un_op),
                 };
                 Ok(Scalar::from_bool(res))
             }
@@ -365,7 +383,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Single::to_bits(-Single::from_bits(val)),
                     (Neg, FloatTy::F64) => Double::to_bits(-Double::from_bits(val)),
-                    _ => bug!("Invalid float op {:?}", un_op)
+                    _ => bug!("Invalid float op {:?}", un_op),
                 };
                 Ok(Scalar::from_uint(res, layout.size))
             }

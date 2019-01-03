@@ -1,9 +1,9 @@
 use hir;
-use ty::{self, Region, TyCtxt};
-use hir::Node;
-use middle::resolve_lifetime as rl;
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use hir::Node;
 use infer::error_reporting::nice_region_error::NiceRegionError;
+use middle::resolve_lifetime as rl;
+use ty::{self, Region, TyCtxt};
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// This function calls the `visit_ty` method for the parameters
@@ -106,11 +106,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                 return;
             }
 
-            hir::TyKind::TraitObject(ref bounds, _) => for bound in bounds {
-                self.current_index.shift_in(1);
-                self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
-                self.current_index.shift_out(1);
-            },
+            hir::TyKind::TraitObject(ref bounds, _) => {
+                for bound in bounds {
+                    self.current_index.shift_in(1);
+                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    self.current_index.shift_out(1);
+                }
+            }
 
             hir::TyKind::Rptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
@@ -125,9 +127,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     ) => {
                         debug!(
                             "LateBoundAnon depth = {:?} anon_index = {:?} br_index={:?}",
-                            debruijn_index,
-                            anon_index,
-                            br_index
+                            debruijn_index, anon_index, br_index
                         );
                         if debruijn_index == self.current_index && anon_index == br_index {
                             self.found_type = Some(arg);
@@ -142,8 +142,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                         debug!(
                             "EarlyBound self.infcx.tcx.hir().local_def_id(id)={:?} \
                              def_id={:?}",
-                            id,
-                            def_id
+                            id, def_id
                         );
                         if id == def_id {
                             self.found_type = Some(arg);
@@ -235,8 +234,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
                 debug!(
                     "EarlyBound self.infcx.tcx.hir().local_def_id(id)={:?} \
                      def_id={:?}",
-                    id,
-                    def_id
+                    id, def_id
                 );
                 if id == def_id {
                     self.found_it = true;

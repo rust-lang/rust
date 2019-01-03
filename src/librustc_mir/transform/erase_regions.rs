@@ -4,10 +4,10 @@
 //! NOTE:  We do NOT erase regions of statements that are relevant for
 //! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid
 
+use rustc::mir::visit::{MutVisitor, TyContext};
+use rustc::mir::*;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, TyContext};
 use transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
@@ -16,9 +16,7 @@ struct EraseRegionsVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
-        EraseRegionsVisitor {
-            tcx,
-        }
+        EraseRegionsVisitor { tcx }
     }
 }
 
@@ -40,10 +38,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
         *substs = self.tcx.erase_regions(substs);
     }
 
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
+    fn visit_statement(
+        &mut self,
+        block: BasicBlock,
+        statement: &mut Statement<'tcx>,
+        location: Location,
+    ) {
         self.super_statement(block, statement, location);
     }
 }
@@ -51,10 +51,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
 pub struct EraseRegions;
 
 impl MirPass for EraseRegions {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }

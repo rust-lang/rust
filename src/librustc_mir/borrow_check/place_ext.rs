@@ -1,8 +1,8 @@
+use borrow_check::borrow_set::LocalsStateAtExit;
 use rustc::hir;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Local, Mir, Place, Mutability};
+use rustc::mir::{Local, Mir, Mutability, Place};
 use rustc::ty::{self, TyCtxt};
-use borrow_check::borrow_set::LocalsStateAtExit;
 
 /// Extension methods for the `Place` type.
 crate trait PlaceExt<'tcx> {
@@ -15,7 +15,7 @@ crate trait PlaceExt<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
-        ) -> bool;
+    ) -> bool;
 
     /// If this is a place like `x.f.g`, returns the local
     /// `x`. Returns `None` if this is based in a static.
@@ -40,17 +40,17 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             //
             // In particular, the variable cannot be mutated -- the "access checks" will fail --
             // so we don't have to worry about mutation while borrowed.
-            Place::Local(index) => {
-                match locals_state_at_exit {
-                    LocalsStateAtExit::AllAreInvalidated => false,
-                    LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
-                        let ignore = !has_storage_dead_or_moved.contains(*index) &&
-                            mir.local_decls[*index].mutability == Mutability::Not;
-                        debug!("ignore_borrow: local {:?} => {:?}", index, ignore);
-                        ignore
-                    }
+            Place::Local(index) => match locals_state_at_exit {
+                LocalsStateAtExit::AllAreInvalidated => false,
+                LocalsStateAtExit::SomeAreInvalidated {
+                    has_storage_dead_or_moved,
+                } => {
+                    let ignore = !has_storage_dead_or_moved.contains(*index)
+                        && mir.local_decls[*index].mutability == Mutability::Not;
+                    debug!("ignore_borrow: local {:?} => {:?}", index, ignore);
+                    ignore
                 }
-            }
+            },
             Place::Static(static_) => {
                 tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
             }
@@ -59,8 +59,9 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::Subslice { .. }
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Index(_) => proj.base.ignore_borrow(
-                    tcx, mir, locals_state_at_exit),
+                | ProjectionElem::Index(_) => {
+                    proj.base.ignore_borrow(tcx, mir, locals_state_at_exit)
+                }
 
                 ProjectionElem::Deref => {
                     let ty = proj.base.ty(mir, tcx).to_ty(tcx);
@@ -88,8 +89,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         loop {
             match p {
                 Place::Projection(pi) => p = &pi.base,
-                Place::Promoted(_) |
-                Place::Static(_) => return None,
+                Place::Promoted(_) | Place::Static(_) => return None,
                 Place::Local(l) => return Some(*l),
             }
         }

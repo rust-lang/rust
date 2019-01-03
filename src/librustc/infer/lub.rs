@@ -1,45 +1,55 @@
 use super::combine::CombineFields;
-use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
+use super::InferCtxt;
 use super::Subtype;
 
 use traits::ObligationCause;
-use ty::{self, Ty, TyCtxt};
 use ty::relate::{self, Relate, RelateResult, TypeRelation};
+use ty::{self, Ty, TyCtxt};
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+pub struct Lub<'combine, 'infcx: 'combine, 'gcx: 'infcx + 'tcx, 'tcx: 'infcx> {
     fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
 }
 
 impl<'combine, 'infcx, 'gcx, 'tcx> Lub<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Lub<'combine, 'infcx, 'gcx, 'tcx>
-    {
-        Lub { fields: fields, a_is_expected: a_is_expected }
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Lub<'combine, 'infcx, 'gcx, 'tcx> {
+        Lub {
+            fields: fields,
+            a_is_expected: a_is_expected,
+        }
     }
 }
 
 impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
     for Lub<'combine, 'infcx, 'gcx, 'tcx>
 {
-    fn tag(&self) -> &'static str { "Lub" }
+    fn tag(&self) -> &'static str {
+        "Lub"
+    }
 
     fn trait_object_mode(&self) -> relate::TraitObjectMode {
         self.fields.infcx.trait_object_mode()
     }
 
-    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> {
+        self.fields.tcx()
+    }
 
-    fn a_is_expected(&self) -> bool { self.a_is_expected }
+    fn a_is_expected(&self) -> bool {
+        self.a_is_expected
+    }
 
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             variance: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T>
-    {
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        variance: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
@@ -53,20 +63,28 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         lattice::super_lattice_tys(self, a, b)
     }
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})",
-               self.tag(),
-               a,
-               b);
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
         let origin = Subtype(self.fields.trace.clone());
-        Ok(self.fields.infcx.borrow_region_constraints().lub_regions(self.tcx(), origin, a, b))
+        Ok(self
+            .fields
+            .infcx
+            .borrow_region_constraints()
+            .lub_regions(self.tcx(), origin, a, b))
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'tcx>
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        b: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
     {
         debug!("binders(a={:?}, b={:?})", a, b);
 

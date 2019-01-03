@@ -88,9 +88,9 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::Node;
-use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
+use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::Node;
 use rustc::ich::NodeIdHashingMode;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::query::Providers;
@@ -437,6 +437,7 @@ pub fn sanitize(result: &mut String, s: &str) -> bool {
     }
 
     // Underscore-qualify anything that didn't start as an ident.
-    !result.is_empty() && result.as_bytes()[0] != '_' as u8
+    !result.is_empty()
+        && result.as_bytes()[0] != '_' as u8
         && !(result.as_bytes()[0] as char).is_xid_start()
 }

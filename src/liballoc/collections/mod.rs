@@ -45,7 +45,7 @@ use alloc::{AllocErr, LayoutErr};
 
 /// Augments `AllocErr` with a CapacityOverflow variant.
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 pub enum CollectionAllocErr {
     /// Error due to the computed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
@@ -54,7 +54,7 @@ pub enum CollectionAllocErr {
     AllocErr,
 }
 
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 impl From<AllocErr> for CollectionAllocErr {
     #[inline]
     fn from(AllocErr: AllocErr) -> Self {
@@ -62,7 +62,7 @@ impl From<AllocErr> for CollectionAllocErr {
     }
 }
 
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 impl From<LayoutErr> for CollectionAllocErr {
     #[inline]
     fn from(_: LayoutErr) -> Self {

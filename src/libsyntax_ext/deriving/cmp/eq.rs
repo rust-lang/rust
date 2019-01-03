@@ -1,19 +1,21 @@
-use deriving::path_std;
-use deriving::generic::*;
 use deriving::generic::ty::*;
+use deriving::generic::*;
+use deriving::path_std;
 
-use syntax::ast::{self, Expr, MetaItem, GenericArg};
+use syntax::ast::{self, Expr, GenericArg, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn expand_deriving_eq(cx: &mut ExtCtxt,
-                          span: Span,
-                          mitem: &MetaItem,
-                          item: &Annotatable,
-                          push: &mut dyn FnMut(Annotatable)) {
+pub fn expand_deriving_eq(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     let inline = cx.meta_word(span, Symbol::intern("inline"));
     let hidden = cx.meta_list_item_word(span, Symbol::intern("hidden"));
     let doc = cx.meta_list(span, Symbol::intern("doc"), vec![hidden]);
@@ -27,32 +29,41 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
         is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
-                          name: "assert_receiver_is_total_eq",
-                          generics: LifetimeBounds::empty(),
-                          explicit_self: borrowed_explicit_self(),
-                          args: vec![],
-                          ret_ty: nil_ty(),
-                          attributes: attrs,
-                          is_unsafe: false,
-                          unify_fieldless_variants: true,
-                          combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                              cs_total_eq_assert(a, b, c)
-                          })),
-                      }],
+            name: "assert_receiver_is_total_eq",
+            generics: LifetimeBounds::empty(),
+            explicit_self: borrowed_explicit_self(),
+            args: vec![],
+            ret_ty: nil_ty(),
+            attributes: attrs,
+            is_unsafe: false,
+            unify_fieldless_variants: true,
+            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                cs_total_eq_assert(a, b, c)
+            })),
+        }],
         associated_types: Vec::new(),
     };
     trait_def.expand_ext(cx, mitem, item, push, true)
 }
 
 fn cs_total_eq_assert(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
-    fn assert_ty_bounds(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>,
-                        ty: P<ast::Ty>, span: Span, helper_name: &str) {
+    fn assert_ty_bounds(
+        cx: &mut ExtCtxt,
+        stmts: &mut Vec<ast::Stmt>,
+        ty: P<ast::Ty>,
+        span: Span,
+        helper_name: &str,
+    ) {
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
         let span = span.with_ctxt(cx.backtrace());
-        let assert_path = cx.path_all(span, true,
-                                        cx.std_path(&["cmp", helper_name]),
-                                        vec![GenericArg::Type(ty)], vec![]);
+        let assert_path = cx.path_all(
+            span,
+            true,
+            cx.std_path(&["cmp", helper_name]),
+            vec![GenericArg::Type(ty)],
+            vec![],
+        );
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>, variant: &ast::VariantData) {
@@ -72,7 +83,7 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure)
                 process_variant(cx, &mut stmts, &variant.node.data);
             }
         }
-        _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`")
+        _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),
     }
     cx.expr_block(cx.block(trait_span, stmts))
 }

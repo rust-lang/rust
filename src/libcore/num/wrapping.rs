@@ -4,7 +4,7 @@ use ops::*;
 
 #[allow(unused_macros)]
 macro_rules! sh_impl_signed {
-    ($t:ident, $f:ident) => (
+    ($t:ident, $f:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shl<$f> for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -12,9 +12,15 @@ macro_rules! sh_impl_signed {
             #[inline]
             fn shl(self, other: $f) -> Wrapping<$t> {
                 if other < 0 {
-                    Wrapping(self.0.wrapping_shr((-other & self::shift_max::$t as $f) as u32))
+                    Wrapping(
+                        self.0
+                            .wrapping_shr((-other & self::shift_max::$t as $f) as u32),
+                    )
                 } else {
-                    Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
+                    Wrapping(
+                        self.0
+                            .wrapping_shl((other & self::shift_max::$t as $f) as u32),
+                    )
                 }
             }
         }
@@ -35,9 +41,15 @@ macro_rules! sh_impl_signed {
             #[inline]
             fn shr(self, other: $f) -> Wrapping<$t> {
                 if other < 0 {
-                    Wrapping(self.0.wrapping_shl((-other & self::shift_max::$t as $f) as u32))
+                    Wrapping(
+                        self.0
+                            .wrapping_shl((-other & self::shift_max::$t as $f) as u32),
+                    )
                 } else {
-                    Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
+                    Wrapping(
+                        self.0
+                            .wrapping_shr((other & self::shift_max::$t as $f) as u32),
+                    )
                 }
             }
         }
@@ -50,18 +62,21 @@ macro_rules! sh_impl_signed {
             }
         }
         forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
-    )
+    };
 }
 
 macro_rules! sh_impl_unsigned {
-    ($t:ident, $f:ident) => (
+    ($t:ident, $f:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shl<$f> for Wrapping<$t> {
             type Output = Wrapping<$t>;
 
             #[inline]
             fn shl(self, other: $f) -> Wrapping<$t> {
-                Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
+                Wrapping(
+                    self.0
+                        .wrapping_shl((other & self::shift_max::$t as $f) as u32),
+                )
             }
         }
 
@@ -80,7 +95,10 @@ macro_rules! sh_impl_unsigned {
 
             #[inline]
             fn shr(self, other: $f) -> Wrapping<$t> {
-                Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
+                Wrapping(
+                    self.0
+                        .wrapping_shr((other & self::shift_max::$t as $f) as u32),
+                )
             }
         }
 
@@ -92,7 +110,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
         forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
-    )
+    };
 }
 
 // FIXME (#23545): uncomment the remaining impls

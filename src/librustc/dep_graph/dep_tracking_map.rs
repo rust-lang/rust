@@ -4,7 +4,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use util::common::MemoizationMap;
 
-use super::{DepKind, DepNodeIndex, DepGraph};
+use super::{DepGraph, DepKind, DepNodeIndex};
 
 /// A DepTrackingMap offers a subset of the `Map` API and ensures that
 /// we make calls to `read` and `write` as appropriate. We key the
@@ -67,7 +67,8 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// accesses the body of the item `item`, so we register a read
     /// from `Hir(item_def_id)`.
     fn memoize<OP>(&self, key: M::Key, op: OP) -> M::Value
-        where OP: FnOnce() -> M::Value
+    where
+        OP: FnOnce() -> M::Value,
     {
         let graph;
         {
@@ -80,7 +81,9 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
         }
 
         let (result, dep_node) = graph.with_anon_task(M::to_dep_kind(), op);
-        self.borrow_mut().map.insert(key, (result.clone(), dep_node));
+        self.borrow_mut()
+            .map
+            .insert(key, (result.clone(), dep_node));
         graph.read_index(dep_node);
         result
     }

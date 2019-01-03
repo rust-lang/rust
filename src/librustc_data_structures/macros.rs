@@ -8,5 +8,5 @@ macro_rules! static_assert {
         // is out-of-bounds.
         #[allow(dead_code)]
         static $name: () = [()][!($test: bool) as usize];
-    }
+    };
 }

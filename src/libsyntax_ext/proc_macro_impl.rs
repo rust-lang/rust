@@ -1,9 +1,9 @@
 use errors::FatalError;
 
-use syntax::source_map::Span;
-use syntax::ext::base::*;
-use syntax::tokenstream::TokenStream;
 use syntax::ext::base;
+use syntax::ext::base::*;
+use syntax::source_map::Span;
+use syntax::tokenstream::TokenStream;
 
 pub const EXEC_STRATEGY: ::proc_macro::bridge::server::SameThread =
     ::proc_macro::bridge::server::SameThread;
@@ -15,14 +15,18 @@ pub struct AttrProcMacro {
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
-                   annotation: TokenStream,
-                   annotated: TokenStream)
-                   -> TokenStream {
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt,
+        span: Span,
+        annotation: TokenStream,
+        annotated: TokenStream,
+    ) -> TokenStream {
         let server = ::proc_macro_server::Rustc::new(ecx);
-        match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
+        match self
+            .client
+            .run(&EXEC_STRATEGY, server, annotation, annotated)
+        {
             Ok(stream) => stream,
             Err(e) => {
                 let msg = "custom attribute panicked";
@@ -45,11 +49,7 @@ pub struct BangProcMacro {
 }
 
 impl base::ProcMacro for BangProcMacro {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
-                   input: TokenStream)
-                   -> TokenStream {
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream) -> TokenStream {
         let server = ::proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,

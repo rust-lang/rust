@@ -90,7 +90,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         body: &'gcx hir::Body,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'gcx, 'tcx> {
-        let owner = fcx.tcx.hir().definitions().node_to_hir_id(body.id().node_id);
+        let owner = fcx
+            .tcx
+            .hir()
+            .definitions()
+            .node_to_hir_id(body.id().node_id);
 
         WritebackCx {
             fcx,
@@ -347,7 +351,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_free_region_map(&mut self) {
-        let free_region_map = self.tcx()
+        let free_region_map = self
+            .tcx()
             .lift_to_global(&self.fcx.tables.borrow().free_region_map);
         let free_region_map = free_region_map.expect("all regions in free-region-map are global");
         self.tables.free_region_map = free_region_map;
@@ -386,10 +391,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     let span = self.tcx().hir().span(node_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
-                    let err = self.tcx().sess.struct_span_err(
-                        span,
-                        &format!("user substs: {:?}", user_substs)
-                    );
+                    let err = self
+                        .tcx()
+                        .sess
+                        .struct_span_err(span, &format!("user substs: {:?}", user_substs));
                     err.buffer(&mut errors_buffer);
                 }
             }
@@ -418,9 +423,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 );
             };
 
-            self.tables
-                .user_provided_sigs
-                .insert(def_id, c_sig.clone());
+            self.tables.user_provided_sigs.insert(def_id, c_sig.clone());
         }
     }
 
@@ -464,7 +467,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                     if subst == ty {
                                         // found it in the substitution list, replace with the
                                         // parameter from the existential type
-                                        return self.tcx()
+                                        return self
+                                            .tcx()
                                             .global_tcx()
                                             .mk_ty_param(param.index, param.name);
                                     }
@@ -502,7 +506,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                                 name: p.name,
                                             };
                                             trace!("replace {:?} with {:?}", region, reg);
-                                            return self.tcx()
+                                            return self
+                                                .tcx()
                                                 .global_tcx()
                                                 .mk_region(ty::ReEarlyBound(reg));
                                         }
@@ -540,7 +545,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            let old = self.tables
+            let old = self
+                .tables
                 .concrete_existential_types
                 .insert(def_id, definition_ty);
             if let Some(old) = old {
@@ -548,7 +554,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     span_bug!(
                         span,
                         "visit_opaque_types tried to write \
-                        different types for the same existential type: {:?}, {:?}, {:?}",
+                         different types for the same existential type: {:?}, {:?}, {:?}",
                         def_id,
                         definition_ty,
                         old,
@@ -560,7 +566,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_field_id(&mut self, node_id: ast::NodeId) {
         let hir_id = self.tcx().hir().node_to_hir_id(node_id);
-        if let Some(index) = self.fcx
+        if let Some(index) = self
+            .fcx
             .tables
             .borrow_mut()
             .field_indices_mut()
@@ -572,7 +579,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Export associated path extensions and method resolutions.
-        if let Some(def) = self.fcx
+        if let Some(def) = self
+            .fcx
             .tables
             .borrow_mut()
             .type_dependent_defs_mut()
@@ -600,7 +608,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
-        let adjustment = self.fcx
+        let adjustment = self
+            .fcx
             .tables
             .borrow_mut()
             .adjustments_mut()
@@ -624,7 +633,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
-        let adjustment = self.fcx
+        let adjustment = self
+            .fcx
             .tables
             .borrow_mut()
             .pat_adjustments_mut()
@@ -782,7 +792,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
     // FIXME This should be carefully checked
     // We could use `self.report_error` but it doesn't accept a ty::Region, right now.
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        self.infcx.fully_resolve(&r).unwrap_or(self.tcx.types.re_static)
+        self.infcx
+            .fully_resolve(&r)
+            .unwrap_or(self.tcx.types.re_static)
     }
 }
 

@@ -5,13 +5,13 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
 
-use GLOBALS;
-use Span;
 use edition::{Edition, DEFAULT_EDITION};
 use symbol::{keywords, Symbol};
+use Span;
+use GLOBALS;
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::{fmt, mem};
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
@@ -261,20 +261,25 @@ impl SyntaxContext {
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         assert_ne!(mark, Mark::root());
         self.apply_mark_with_transparency(
-            mark, HygieneData::with(|data| data.marks[mark.0 as usize].default_transparency)
+            mark,
+            HygieneData::with(|data| data.marks[mark.0 as usize].default_transparency),
         )
     }
 
     /// Extend a syntax context with a given mark and transparency
-    pub fn apply_mark_with_transparency(self, mark: Mark, transparency: Transparency)
-                                        -> SyntaxContext {
+    pub fn apply_mark_with_transparency(
+        self,
+        mark: Mark,
+        transparency: Transparency,
+    ) -> SyntaxContext {
         assert_ne!(mark, Mark::root());
         if transparency == Transparency::Opaque {
             return self.apply_mark_internal(mark, transparency);
         }
 
-        let call_site_ctxt =
-            mark.expn_info().map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
+        let call_site_ctxt = mark
+            .expn_info()
+            .map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
         let call_site_ctxt = if transparency == Transparency::SemiTransparent {
             call_site_ctxt.modern()
         } else {
@@ -310,52 +315,60 @@ impl SyntaxContext {
 
             if transparency >= Transparency::Opaque {
                 let prev_ctxt = opaque;
-                opaque = *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                    let new_opaque = SyntaxContext(syntax_contexts.len() as u32);
-                    syntax_contexts.push(SyntaxContextData {
-                        outer_mark: mark,
-                        transparency,
-                        prev_ctxt,
-                        opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: keywords::DollarCrate.name(),
+                opaque = *data
+                    .markings
+                    .entry((prev_ctxt, mark, transparency))
+                    .or_insert_with(|| {
+                        let new_opaque = SyntaxContext(syntax_contexts.len() as u32);
+                        syntax_contexts.push(SyntaxContextData {
+                            outer_mark: mark,
+                            transparency,
+                            prev_ctxt,
+                            opaque: new_opaque,
+                            opaque_and_semitransparent: new_opaque,
+                            dollar_crate_name: keywords::DollarCrate.name(),
+                        });
+                        new_opaque
                     });
-                    new_opaque
-                });
             }
 
             if transparency >= Transparency::SemiTransparent {
                 let prev_ctxt = opaque_and_semitransparent;
-                opaque_and_semitransparent =
-                        *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
+                opaque_and_semitransparent = *data
+                    .markings
+                    .entry((prev_ctxt, mark, transparency))
+                    .or_insert_with(|| {
+                        let new_opaque_and_semitransparent =
+                            SyntaxContext(syntax_contexts.len() as u32);
+                        syntax_contexts.push(SyntaxContextData {
+                            outer_mark: mark,
+                            transparency,
+                            prev_ctxt,
+                            opaque,
+                            opaque_and_semitransparent: new_opaque_and_semitransparent,
+                            dollar_crate_name: keywords::DollarCrate.name(),
+                        });
+                        new_opaque_and_semitransparent
+                    });
+            }
+
+            let prev_ctxt = self;
+            *data
+                .markings
+                .entry((prev_ctxt, mark, transparency))
+                .or_insert_with(|| {
+                    let new_opaque_and_semitransparent_and_transparent =
                         SyntaxContext(syntax_contexts.len() as u32);
                     syntax_contexts.push(SyntaxContextData {
                         outer_mark: mark,
                         transparency,
                         prev_ctxt,
                         opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
+                        opaque_and_semitransparent,
                         dollar_crate_name: keywords::DollarCrate.name(),
                     });
-                    new_opaque_and_semitransparent
-                });
-            }
-
-            let prev_ctxt = self;
-            *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                let new_opaque_and_semitransparent_and_transparent =
-                    SyntaxContext(syntax_contexts.len() as u32);
-                syntax_contexts.push(SyntaxContextData {
-                    outer_mark: mark,
-                    transparency,
-                    prev_ctxt,
-                    opaque,
-                    opaque_and_semitransparent,
-                    dollar_crate_name: keywords::DollarCrate.name(),
-                });
-                new_opaque_and_semitransparent_and_transparent
-            })
+                    new_opaque_and_semitransparent_and_transparent
+                })
         })
     }
 
@@ -453,8 +466,11 @@ impl SyntaxContext {
     /// ```
     /// This returns `None` if the context cannot be glob-adjusted.
     /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
-    pub fn glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
-                       -> Option<Option<Mark>> {
+    pub fn glob_adjust(
+        &mut self,
+        expansion: Mark,
+        mut glob_ctxt: SyntaxContext,
+    ) -> Option<Option<Mark>> {
         let mut scope = None;
         while !expansion.is_descendant_of(glob_ctxt.outer()) {
             scope = Some(glob_ctxt.remove_mark());
@@ -475,8 +491,11 @@ impl SyntaxContext {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
     /// ```
-    pub fn reverse_glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
-                               -> Option<Option<Mark>> {
+    pub fn reverse_glob_adjust(
+        &mut self,
+        expansion: Mark,
+        mut glob_ctxt: SyntaxContext,
+    ) -> Option<Option<Mark>> {
         if self.adjust(expansion).is_some() {
             return None;
         }
@@ -515,11 +534,14 @@ impl SyntaxContext {
     pub fn set_dollar_crate_name(self, dollar_crate_name: Symbol) {
         HygieneData::with(|data| {
             let prev_dollar_crate_name = mem::replace(
-                &mut data.syntax_contexts[self.0 as usize].dollar_crate_name, dollar_crate_name
+                &mut data.syntax_contexts[self.0 as usize].dollar_crate_name,
+                dollar_crate_name,
             );
-            assert!(dollar_crate_name == prev_dollar_crate_name ||
-                    prev_dollar_crate_name == keywords::DollarCrate.name(),
-                    "$crate name is reset for a syntax context");
+            assert!(
+                dollar_crate_name == prev_dollar_crate_name
+                    || prev_dollar_crate_name == keywords::DollarCrate.name(),
+                "$crate name is reset for a syntax context"
+            );
         })
     }
 }
@@ -572,7 +594,7 @@ pub enum ExpnFormat {
     /// e.g., `format!()`
     MacroBang(Symbol),
     /// Desugaring done by the compiler during HIR lowering.
-    CompilerDesugaring(CompilerDesugaringKind)
+    CompilerDesugaring(CompilerDesugaringKind),
 }
 
 impl ExpnFormat {

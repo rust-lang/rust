@@ -1,9 +1,9 @@
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::{LocationIndex, LocationTable};
 use borrow_check::nll::facts::AllFactsExt;
-use borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
-use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use borrow_check::nll::region_infer::values::RegionValueElements;
+use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
+use borrow_check::nll::type_check::{MirTypeckRegionConstraints, MirTypeckResults};
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -13,8 +13,8 @@ use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_errors::Diagnostic;
-use std::fmt::Debug;
 use std::env;
+use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -155,13 +155,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     );
 
     // Generate various additional constraints.
-    invalidation::generate_invalidates(
-        infcx.tcx,
-        &mut all_facts,
-        location_table,
-        &mir,
-        borrow_set,
-    );
+    invalidation::generate_invalidates(infcx.tcx, &mut all_facts, location_table, &mir, borrow_set);
 
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
@@ -173,15 +167,11 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         }
 
         if infcx.tcx.sess.opts.debugging_opts.polonius {
-            let algorithm = env::var("POLONIUS_ALGORITHM")
-                .unwrap_or_else(|_| String::from("DatafrogOpt"));
+            let algorithm =
+                env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("DatafrogOpt"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
-            Some(Rc::new(Output::compute(
-                &all_facts,
-                algorithm,
-                false,
-            )))
+            Some(Rc::new(Output::compute(&all_facts, algorithm, false)))
         } else {
             None
         }
@@ -202,7 +192,14 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
     // information
-    dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements, errors_buffer);
+    dump_annotation(
+        infcx,
+        &mir,
+        def_id,
+        &regioncx,
+        &closure_region_requirements,
+        errors_buffer,
+    );
 
     (regioncx, polonius_output, closure_region_requirements)
 }
@@ -241,11 +238,9 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                     }
                 }
 
-                PassWhere::BeforeLocation(_) => {
-                }
+                PassWhere::BeforeLocation(_) => {}
 
-                PassWhere::AfterTerminator(_) => {
-                }
+                PassWhere::AfterTerminator(_) => {}
 
                 PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
             }
@@ -307,7 +302,8 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
         for_each_region_constraint(closure_region_requirements, &mut |msg| {
             err.note(msg);
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
 
         err.buffer(errors_buffer);
     } else {

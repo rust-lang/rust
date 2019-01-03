@@ -1,8 +1,8 @@
-use hir::Unsafety;
 use hir::def_id::DefId;
-use ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
-use traits;
+use hir::Unsafety;
 use rustc_target::spec::abi::Abi;
+use traits;
+use ty::{self, PolyFnSig, Substs, Ty, TyCtxt, TypeFoldable};
 use util::ppaux;
 
 use std::fmt;
@@ -30,7 +30,9 @@ pub enum InstanceDef<'tcx> {
     Virtual(DefId, usize),
 
     /// <[mut closure] as FnOnce>::call_once
-    ClosureOnceShim { call_once: DefId },
+    ClosureOnceShim {
+        call_once: DefId,
+    },
 
     /// drop_in_place::<T>; None for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
@@ -40,16 +42,9 @@ pub enum InstanceDef<'tcx> {
 }
 
 impl<'a, 'tcx> Instance<'tcx> {
-    pub fn ty(&self,
-              tcx: TyCtxt<'a, 'tcx, 'tcx>)
-              -> Ty<'tcx>
-    {
+    pub fn ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.subst_and_normalize_erasing_regions(
-            self.substs,
-            ty::ParamEnv::reveal_all(),
-            &ty,
-        )
+        tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)
     }
 
     fn fn_sig_noadjust(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {
@@ -116,14 +111,14 @@ impl<'tcx> InstanceDef<'tcx> {
     #[inline]
     pub fn def_id(&self) -> DefId {
         match *self {
-            InstanceDef::Item(def_id) |
-            InstanceDef::VtableShim(def_id) |
-            InstanceDef::FnPtrShim(def_id, _) |
-            InstanceDef::Virtual(def_id, _) |
-            InstanceDef::Intrinsic(def_id, ) |
-            InstanceDef::ClosureOnceShim { call_once: def_id } |
-            InstanceDef::DropGlue(def_id, _) |
-            InstanceDef::CloneShim(def_id, _) => def_id
+            InstanceDef::Item(def_id)
+            | InstanceDef::VtableShim(def_id)
+            | InstanceDef::FnPtrShim(def_id, _)
+            | InstanceDef::Virtual(def_id, _)
+            | InstanceDef::Intrinsic(def_id)
+            | InstanceDef::ClosureOnceShim { call_once: def_id }
+            | InstanceDef::DropGlue(def_id, _)
+            | InstanceDef::CloneShim(def_id, _) => def_id,
         }
     }
 
@@ -132,36 +127,30 @@ impl<'tcx> InstanceDef<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline<'a>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>
-    ) -> bool {
+    pub fn is_inline<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         use hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
-            _ => return true
+            _ => return true,
         };
         match tcx.def_key(def_id).disambiguated_data.data {
-            DefPathData::StructCtor |
-            DefPathData::EnumVariant(..) |
-            DefPathData::ClosureExpr => true,
-            _ => false
+            DefPathData::StructCtor | DefPathData::EnumVariant(..) | DefPathData::ClosureExpr => {
+                true
+            }
+            _ => false,
         }
     }
 
-    pub fn requires_local<'a>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>
-    ) -> bool {
+    pub fn requires_local<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         if self.is_inline(tcx) {
-            return true
+            return true;
         }
         if let ty::InstanceDef::DropGlue(..) = *self {
             // Drop glue wants to be instantiated at every codegen
             // unit, but without an #[inline] hint. We should make this
             // available to normal end-users.
-            return true
+            return true;
         }
         tcx.codegen_fn_attrs(self.def_id()).requests_inline()
     }
@@ -172,38 +161,29 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         ppaux::parameterized(f, self.substs, self.def_id(), &[])?;
         match self.def {
             InstanceDef::Item(_) => Ok(()),
-            InstanceDef::VtableShim(_) => {
-                write!(f, " - shim(vtable)")
-            }
-            InstanceDef::Intrinsic(_) => {
-                write!(f, " - intrinsic")
-            }
-            InstanceDef::Virtual(_, num) => {
-                write!(f, " - shim(#{})", num)
-            }
-            InstanceDef::FnPtrShim(_, ty) => {
-                write!(f, " - shim({:?})", ty)
-            }
-            InstanceDef::ClosureOnceShim { .. } => {
-                write!(f, " - shim")
-            }
-            InstanceDef::DropGlue(_, ty) => {
-                write!(f, " - shim({:?})", ty)
-            }
-            InstanceDef::CloneShim(_, ty) => {
-                write!(f, " - shim({:?})", ty)
-            }
+            InstanceDef::VtableShim(_) => write!(f, " - shim(vtable)"),
+            InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+            InstanceDef::Virtual(_, num) => write!(f, " - shim(#{})", num),
+            InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({:?})", ty),
+            InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+            InstanceDef::DropGlue(_, ty) => write!(f, " - shim({:?})", ty),
+            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({:?})", ty),
         }
     }
 }
 
 impl<'a, 'b, 'tcx> Instance<'tcx> {
-    pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
-               -> Instance<'tcx> {
-        assert!(!substs.has_escaping_bound_vars(),
-                "substs of instance {:?} not normalized for codegen: {:?}",
-                def_id, substs);
-        Instance { def: InstanceDef::Item(def_id), substs: substs }
+    pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>) -> Instance<'tcx> {
+        assert!(
+            !substs.has_escaping_bound_vars(),
+            "substs of instance {:?} not normalized for codegen: {:?}",
+            def_id,
+            substs
+        );
+        Instance {
+            def: InstanceDef::Item(def_id),
+            substs: substs,
+        }
     }
 
     pub fn mono(tcx: TyCtxt<'a, 'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
@@ -233,29 +213,30 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Some`.
-    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   param_env: ty::ParamEnv<'tcx>,
-                   def_id: DefId,
-                   substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+    pub fn resolve(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
-            debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
+            debug!(
+                " => associated item, attempting to find impl in param_env {:#?}",
+                param_env
+            );
             let item = tcx.associated_item(def_id);
             resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
-            let item_type = tcx.subst_and_normalize_erasing_regions(
-                substs,
-                param_env,
-                &ty,
-            );
+            let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
 
             let def = match item_type.sty {
-                ty::FnDef(..) if {
-                    let f = item_type.fn_sig(tcx);
-                    f.abi() == Abi::RustIntrinsic ||
-                        f.abi() == Abi::PlatformIntrinsic
-                } =>
+                ty::FnDef(..)
+                    if {
+                        let f = item_type.fn_sig(tcx);
+                        f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic
+                    } =>
                 {
                     debug!(" => intrinsic");
                     ty::InstanceDef::Intrinsic(def_id)
@@ -278,17 +259,22 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             };
             Some(Instance {
                 def: def,
-                substs: substs
+                substs: substs,
             })
         };
-        debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
+        debug!(
+            "resolve(def_id={:?}, substs={:?}) = {:?}",
+            def_id, substs, result
+        );
         result
     }
 
-    pub fn resolve_for_vtable(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              param_env: ty::ParamEnv<'tcx>,
-                              def_id: DefId,
-                              substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+    pub fn resolve_for_vtable(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let fn_sig = tcx.fn_sig(def_id);
         let is_vtable_shim =
@@ -308,14 +294,13 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
         substs: ty::ClosureSubsts<'tcx>,
-        requested_kind: ty::ClosureKind)
-        -> Instance<'tcx>
-    {
+        requested_kind: ty::ClosureKind,
+    ) -> Instance<'tcx> {
         let actual_kind = substs.closure_kind(def_id, tcx);
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
-            _ => Instance::new(def_id, substs.substs)
+            _ => Instance::new(def_id, substs.substs),
         }
     }
 
@@ -336,11 +321,13 @@ fn resolve_associated_item<'a, 'tcx>(
     rcvr_substs: &'tcx Substs<'tcx>,
 ) -> Option<Instance<'tcx>> {
     let def_id = trait_item.def_id;
-    debug!("resolve_associated_item(trait_item={:?}, \
-            param_env={:?}, \
-            trait_id={:?}, \
-            rcvr_substs={:?})",
-            def_id, param_env, trait_id, rcvr_substs);
+    debug!(
+        "resolve_associated_item(trait_item={:?}, \
+         param_env={:?}, \
+         trait_id={:?}, \
+         rcvr_substs={:?})",
+        def_id, param_env, trait_id, rcvr_substs
+    );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
     let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
@@ -349,98 +336,94 @@ fn resolve_associated_item<'a, 'tcx>(
     // the actual function:
     match vtbl {
         traits::VtableImpl(impl_data) => {
-            let (def_id, substs) = traits::find_associated_item(
-                tcx, param_env, trait_item, rcvr_substs, &impl_data);
+            let (def_id, substs) =
+                traits::find_associated_item(tcx, param_env, trait_item, rcvr_substs, &impl_data);
             let substs = tcx.erase_regions(&substs);
             Some(ty::Instance::new(def_id, substs))
         }
-        traits::VtableGenerator(generator_data) => {
-            Some(Instance {
-                def: ty::InstanceDef::Item(generator_data.generator_def_id),
-                substs: generator_data.substs.substs
-            })
-        }
+        traits::VtableGenerator(generator_data) => Some(Instance {
+            def: ty::InstanceDef::Item(generator_data.generator_def_id),
+            substs: generator_data.substs.substs,
+        }),
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            Some(Instance::resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
-                                           trait_closure_kind))
+            Some(Instance::resolve_closure(
+                tcx,
+                closure_data.closure_def_id,
+                closure_data.substs,
+                trait_closure_kind,
+            ))
         }
-        traits::VtableFnPointer(ref data) => {
-            Some(Instance {
-                def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
-                substs: rcvr_substs
-            })
-        }
+        traits::VtableFnPointer(ref data) => Some(Instance {
+            def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
+            substs: rcvr_substs,
+        }),
         traits::VtableObject(ref data) => {
             let index = tcx.get_vtable_index_of_object_method(data, def_id);
             Some(Instance {
                 def: ty::InstanceDef::Virtual(def_id, index),
-                substs: rcvr_substs
+                substs: rcvr_substs,
             })
         }
         traits::VtableBuiltin(..) => {
             if tcx.lang_items().clone_trait().is_some() {
                 Some(Instance {
                     def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
-                    substs: rcvr_substs
+                    substs: rcvr_substs,
                 })
             } else {
                 None
             }
         }
-        traits::VtableAutoImpl(..) |
-        traits::VtableParam(..) |
-        traits::VtableTraitAlias(..) => None
+        traits::VtableAutoImpl(..) | traits::VtableParam(..) | traits::VtableTraitAlias(..) => None,
     }
 }
 
-fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
-                                        trait_closure_kind: ty::ClosureKind)
-    -> Result<bool, ()>
-{
+fn needs_fn_once_adapter_shim<'a, 'tcx>(
+    actual_closure_kind: ty::ClosureKind,
+    trait_closure_kind: ty::ClosureKind,
+) -> Result<bool, ()> {
     match (actual_closure_kind, trait_closure_kind) {
-        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
-            (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
-                // No adapter needed.
-                Ok(false)
-            }
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn)
+        | (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut)
+        | (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
+            // No adapter needed.
+            Ok(false)
+        }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
             // `fn(&mut self, ...)`. In fact, at codegen time, these are
             // basically the same thing, so we can just return llfn.
             Ok(false)
         }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-                // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-                // self, ...)`.  We want a `fn(self, ...)`. We can produce
-                // this by doing something like:
-                //
-                //     fn call_once(self, ...) { call_mut(&self, ...) }
-                //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
-                //
-                // These are both the same at codegen time.
-                Ok(true)
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce)
+        | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
+            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // this by doing something like:
+            //
+            //     fn call_once(self, ...) { call_mut(&self, ...) }
+            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+            //
+            // These are both the same at codegen time.
+            Ok(true)
         }
-        (ty::ClosureKind::FnMut, _) |
-        (ty::ClosureKind::FnOnce, _) => Err(())
+        (ty::ClosureKind::FnMut, _) | (ty::ClosureKind::FnOnce, _) => Err(()),
     }
 }
 
 fn fn_once_adapter_instance<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     closure_did: DefId,
-    substs: ty::ClosureSubsts<'tcx>)
-    -> Instance<'tcx>
-{
-    debug!("fn_once_adapter_shim({:?}, {:?})",
-           closure_did,
-           substs);
+    substs: ty::ClosureSubsts<'tcx>,
+) -> Instance<'tcx> {
+    debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
     let fn_once = tcx.lang_items().fn_once_trait().unwrap();
-    let call_once = tcx.associated_items(fn_once)
+    let call_once = tcx
+        .associated_items(fn_once)
         .find(|it| it.kind == ty::AssociatedKind::Method)
-        .unwrap().def_id;
+        .unwrap()
+        .def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
     let self_ty = tcx.mk_closure(closure_did, substs);

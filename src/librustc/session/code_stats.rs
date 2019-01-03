@@ -1,5 +1,5 @@
+use rustc_data_structures::fx::FxHashSet;
 use rustc_target::abi::{Align, Size};
-use rustc_data_structures::fx::{FxHashSet};
 use std::cmp::{self, Ordering};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -50,14 +50,16 @@ pub struct CodeStats {
 }
 
 impl CodeStats {
-    pub fn record_type_size<S: ToString>(&mut self,
-                                         kind: DataTypeKind,
-                                         type_desc: S,
-                                         align: Align,
-                                         overall_size: Size,
-                                         packed: bool,
-                                         opt_discr_size: Option<Size>,
-                                         variants: Vec<VariantInfo>) {
+    pub fn record_type_size<S: ToString>(
+        &mut self,
+        kind: DataTypeKind,
+        type_desc: S,
+        align: Align,
+        overall_size: Size,
+        packed: bool,
+        opt_discr_size: Option<Size>,
+        variants: Vec<VariantInfo>,
+    ) {
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
@@ -84,13 +86,17 @@ impl CodeStats {
         });
 
         for info in &sorted {
-            println!("print-type-size type: `{}`: {} bytes, alignment: {} bytes",
-                     info.type_description, info.overall_size, info.align);
+            println!(
+                "print-type-size type: `{}`: {} bytes, alignment: {} bytes",
+                info.type_description, info.overall_size, info.align
+            );
             let indent = "    ";
 
             let discr_size = if let Some(discr_size) = info.opt_discr_size {
-                println!("print-type-size {}discriminant: {} bytes",
-                         indent, discr_size);
+                println!(
+                    "print-type-size {}discriminant: {} bytes",
+                    indent, discr_size
+                );
                 discr_size
             } else {
                 0
@@ -107,14 +113,24 @@ impl CodeStats {
                 DataTypeKind::Enum | DataTypeKind::Union => false,
             };
             for (i, variant_info) in info.variants.iter().enumerate() {
-                let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;
+                let VariantInfo {
+                    ref name,
+                    kind: _,
+                    align: _,
+                    size,
+                    ref fields,
+                } = *variant_info;
                 let indent = if !struct_like {
                     let name = match name.as_ref() {
                         Some(name) => name.to_owned(),
                         None => i.to_string(),
                     };
-                    println!("print-type-size {}variant `{}`: {} bytes",
-                             indent, name, size - discr_size);
+                    println!(
+                        "print-type-size {}variant `{}`: {} bytes",
+                        indent,
+                        name,
+                        size - discr_size
+                    );
                     "        "
                 } else {
                     assert!(i < 1);
@@ -129,40 +145,56 @@ impl CodeStats {
                 fields.sort_by_key(|f| f.offset);
 
                 for field in fields.iter() {
-                    let FieldInfo { ref name, offset, size, align } = *field;
+                    let FieldInfo {
+                        ref name,
+                        offset,
+                        size,
+                        align,
+                    } = *field;
 
                     if offset > min_offset {
                         let pad = offset - min_offset;
-                        println!("print-type-size {}padding: {} bytes",
-                                 indent, pad);
+                        println!("print-type-size {}padding: {} bytes", indent, pad);
                     }
 
                     if offset < min_offset {
                         // if this happens something is very wrong
-                        println!("print-type-size {}field `.{}`: {} bytes, \
-                                  offset: {} bytes, \
-                                  alignment: {} bytes",
-                                 indent, name, size, offset, align);
+                        println!(
+                            "print-type-size {}field `.{}`: {} bytes, \
+                             offset: {} bytes, \
+                             alignment: {} bytes",
+                            indent, name, size, offset, align
+                        );
                     } else if info.packed || offset == min_offset {
-                        println!("print-type-size {}field `.{}`: {} bytes",
-                                 indent, name, size);
+                        println!(
+                            "print-type-size {}field `.{}`: {} bytes",
+                            indent, name, size
+                        );
                     } else {
                         // Include field alignment in output only if it caused padding injection
-                        println!("print-type-size {}field `.{}`: {} bytes, \
-                                  alignment: {} bytes",
-                                 indent, name, size, align);
+                        println!(
+                            "print-type-size {}field `.{}`: {} bytes, \
+                             alignment: {} bytes",
+                            indent, name, size, align
+                        );
                     }
 
                     min_offset = offset + size;
                 }
             }
 
-            assert!(max_variant_size <= info.overall_size,
-                    "max_variant_size {} !<= {} overall_size",
-                    max_variant_size, info.overall_size);
+            assert!(
+                max_variant_size <= info.overall_size,
+                "max_variant_size {} !<= {} overall_size",
+                max_variant_size,
+                info.overall_size
+            );
             if max_variant_size < info.overall_size {
-                println!("print-type-size {}end padding: {} bytes",
-                         indent, info.overall_size - max_variant_size);
+                println!(
+                    "print-type-size {}end padding: {} bytes",
+                    indent,
+                    info.overall_size - max_variant_size
+                );
             }
         }
     }

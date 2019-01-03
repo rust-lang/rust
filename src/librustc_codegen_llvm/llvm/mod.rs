@@ -3,21 +3,21 @@
 #![allow(non_snake_case)]
 #![deny(bare_trait_objects)]
 
-pub use self::IntPredicate::*;
-pub use self::RealPredicate::*;
 pub use self::AtomicRmwBinOp::*;
-pub use self::MetadataType::*;
-pub use self::CodeGenOptSize::*;
 pub use self::CallConv::*;
+pub use self::CodeGenOptSize::*;
+pub use self::IntPredicate::*;
 pub use self::Linkage::*;
+pub use self::MetadataType::*;
+pub use self::RealPredicate::*;
 
+use libc::{self, c_char, c_uint, size_t};
+use rustc_data_structures::small_c_str::SmallCStr;
+use std::cell::RefCell;
+use std::ffi::CStr;
+use std::slice;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
-use std::slice;
-use std::ffi::CStr;
-use std::cell::RefCell;
-use libc::{self, c_uint, c_char, size_t};
-use rustc_data_structures::small_c_str::SmallCStr;
 
 pub mod archive_ro;
 pub mod diagnostic;
@@ -34,15 +34,9 @@ impl LLVMRustResult {
     }
 }
 
-pub fn AddFunctionAttrStringValue(llfn: &'a Value,
-                                  idx: AttributePlace,
-                                  attr: &CStr,
-                                  value: &CStr) {
+pub fn AddFunctionAttrStringValue(llfn: &'a Value, idx: AttributePlace, attr: &CStr, value: &CStr) {
     unsafe {
-        LLVMRustAddFunctionAttrStringValue(llfn,
-                                           idx.as_uint(),
-                                           attr.as_ptr(),
-                                           value.as_ptr())
+        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), value.as_ptr())
     }
 }
 
@@ -91,9 +85,11 @@ pub struct RustString {
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
 #[no_mangle]
-pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
-                                                 ptr: *const c_char,
-                                                 size: size_t) {
+pub unsafe extern "C" fn LLVMRustStringWriteImpl(
+    sr: &RustString,
+    ptr: *const c_char,
+    size: size_t,
+) {
     let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
 
     sr.bytes.borrow_mut().extend_from_slice(slice);
@@ -208,14 +204,22 @@ impl Drop for SectionIter<'a> {
 }
 
 pub fn mk_section_iter(llof: &'a ffi::ObjectFile) -> SectionIter<'a> {
-    unsafe { SectionIter { llsi: LLVMGetSections(llof) } }
+    unsafe {
+        SectionIter {
+            llsi: LLVMGetSections(llof),
+        }
+    }
 }
 
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
 pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
     unsafe {
-        assert!(index < LLVMCountParams(llfn),
-            "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
+        assert!(
+            index < LLVMCountParams(llfn),
+            "out of bounds argument access: {} out of {} arguments",
+            index,
+            LLVMCountParams(llfn)
+        );
         LLVMGetParam(llfn, index)
     }
 }
@@ -230,8 +234,7 @@ pub fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error
 
 pub fn twine_to_string(tr: &Twine) -> String {
     unsafe {
-        build_string(|s| LLVMRustWriteTwineToString(tr, s))
-            .expect("got a non-UTF8 Twine from LLVM")
+        build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
     }
 }
 

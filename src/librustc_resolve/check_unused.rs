@@ -10,15 +10,14 @@
 
 use std::ops::{Deref, DerefMut};
 
-use Resolver;
 use resolve_imports::ImportDirectiveSubclass;
+use Resolver;
 
-use rustc::{lint, ty};
 use rustc::util::nodemap::NodeMap;
+use rustc::{lint, ty};
 use syntax::ast;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-
+use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a> {
     resolver: &'a mut Resolver<'b>,
@@ -54,7 +53,10 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
                 // Check later.
                 return;
             }
-            self.unused_imports.entry(item_id).or_default().insert(id, span);
+            self.unused_imports
+                .entry(item_id)
+                .or_default()
+                .insert(id, span);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
@@ -116,9 +118,10 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
 pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
     for directive in resolver.potentially_unused_imports.iter() {
         match directive.subclass {
-            _ if directive.used.get() ||
-                 directive.vis.get() == ty::Visibility::Public ||
-                 directive.span.is_dummy() => {
+            _ if directive.used.get()
+                || directive.vis.get() == ty::Visibility::Public
+                || directive.span.is_dummy() =>
+            {
                 if let ImportDirectiveSubclass::MacroUse = directive.subclass {
                     if !directive.span.is_dummy() {
                         resolver.session.buffer_lint(
@@ -134,19 +137,25 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                 }
             }
             ImportDirectiveSubclass::ExternCrate { .. } => {
-                resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
+                resolver
+                    .maybe_unused_extern_crates
+                    .push((directive.id, directive.span));
             }
             ImportDirectiveSubclass::MacroUse => {
                 let lint = lint::builtin::UNUSED_IMPORTS;
                 let msg = "unused `#[macro_use]` import";
-                resolver.session.buffer_lint(lint, directive.id, directive.span, msg);
+                resolver
+                    .session
+                    .buffer_lint(lint, directive.id, directive.span, msg);
             }
             _ => {}
         }
     }
 
     for (id, span) in resolver.unused_labels.iter() {
-        resolver.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
+        resolver
+            .session
+            .buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
     }
 
     let mut visitor = UnusedImportCheckVisitor {
@@ -162,21 +171,25 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         let mut spans = spans.values().cloned().collect::<Vec<Span>>();
         spans.sort();
         let ms = MultiSpan::from_spans(spans.clone());
-        let mut span_snippets = spans.iter()
-            .filter_map(|s| {
-                match visitor.session.source_map().span_to_snippet(*s) {
-                    Ok(s) => Some(format!("`{}`", s)),
-                    _ => None,
-                }
-            }).collect::<Vec<String>>();
+        let mut span_snippets = spans
+            .iter()
+            .filter_map(|s| match visitor.session.source_map().span_to_snippet(*s) {
+                Ok(s) => Some(format!("`{}`", s)),
+                _ => None,
+            })
+            .collect::<Vec<String>>();
         span_snippets.sort();
-        let msg = format!("unused import{}{}",
-                          if len > 1 { "s" } else { "" },
-                          if !span_snippets.is_empty() {
-                              format!(": {}", span_snippets.join(", "))
-                          } else {
-                              String::new()
-                          });
-        visitor.session.buffer_lint(lint::builtin::UNUSED_IMPORTS, *id, ms, &msg);
+        let msg = format!(
+            "unused import{}{}",
+            if len > 1 { "s" } else { "" },
+            if !span_snippets.is_empty() {
+                format!(": {}", span_snippets.join(", "))
+            } else {
+                String::new()
+            }
+        );
+        visitor
+            .session
+            .buffer_lint(lint::builtin::UNUSED_IMPORTS, *id, ms, &msg);
     }
 }

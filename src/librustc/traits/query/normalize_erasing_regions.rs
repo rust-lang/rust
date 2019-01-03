@@ -7,8 +7,8 @@
 //! `normalize_ty_after_erasing_regions` query for each type found
 //! within. (This underlying query is what is cached.)
 
-use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
+use ty::{self, Ty, TyCtxt};
 
 impl<'cx, 'tcx> TyCtxt<'cx, 'tcx, 'tcx> {
     /// Erase the regions in `value` and then fully normalize all the
@@ -73,6 +73,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx, 'tcx> for NormalizeAfterErasingRegionsFolder<'c
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx.normalize_ty_after_erasing_regions(self.param_env.and(ty))
+        self.tcx
+            .normalize_ty_after_erasing_regions(self.param_env.and(ty))
     }
 }

@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::mem::size_of;
-use std::{usize, isize};
-use std::vec::{Drain, IntoIter};
 use std::collections::CollectionAllocErr::*;
+use std::mem::size_of;
+use std::vec::{Drain, IntoIter};
+use std::{isize, usize};
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -32,8 +32,12 @@ fn test_double_drop() {
             x: Vec::new(),
             y: Vec::new(),
         };
-        tv.x.push(DropCounter { count: &mut count_x });
-        tv.y.push(DropCounter { count: &mut count_y });
+        tv.x.push(DropCounter {
+            count: &mut count_x,
+        });
+        tv.y.push(DropCounter {
+            count: &mut count_y,
+        });
 
         // If Vec had a drop flag, here is where it would be zeroed.
         // Instead, it should rely on its internal state to prevent
@@ -113,7 +117,9 @@ fn test_extend() {
     let mut count_x = 0;
     {
         let mut x = Vec::new();
-        let y = vec![DropCounter { count: &mut count_x }];
+        let y = vec![DropCounter {
+            count: &mut count_x,
+        }];
         x.extend(y);
     }
     assert_eq!(count_x, 1);
@@ -271,7 +277,12 @@ fn test_dedup_by() {
     assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
 
     let mut vec = vec![("foo", 1), ("foo", 2), ("bar", 3), ("bar", 4), ("bar", 5)];
-    vec.dedup_by(|a, b| a.0 == b.0 && { b.1 += a.1; true });
+    vec.dedup_by(|a, b| {
+        a.0 == b.0 && {
+            b.1 += a.1;
+            true
+        }
+    });
 
     assert_eq!(vec, [("foo", 3), ("bar", 12)]);
 }
@@ -323,14 +334,22 @@ fn zero_sized_values() {
 
 #[test]
 fn test_partition() {
-    assert_eq!(vec![].into_iter().partition(|x: &i32| *x < 3),
-               (vec![], vec![]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 4),
-               (vec![1, 2, 3], vec![]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 2),
-               (vec![1], vec![2, 3]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 0),
-               (vec![], vec![1, 2, 3]));
+    assert_eq!(
+        vec![].into_iter().partition(|x: &i32| *x < 3),
+        (vec![], vec![])
+    );
+    assert_eq!(
+        vec![1, 2, 3].into_iter().partition(|x| *x < 4),
+        (vec![1, 2, 3], vec![])
+    );
+    assert_eq!(
+        vec![1, 2, 3].into_iter().partition(|x| *x < 2),
+        (vec![1], vec![2, 3])
+    );
+    assert_eq!(
+        vec![1, 2, 3].into_iter().partition(|x| *x < 0),
+        (vec![], vec![1, 2, 3])
+    );
 }
 
 #[test]
@@ -509,66 +528,59 @@ fn test_drain_out_of_bounds() {
 #[test]
 fn test_drain_range() {
     let mut v = vec![1, 2, 3, 4, 5];
-    for _ in v.drain(4..) {
-    }
+    for _ in v.drain(4..) {}
     assert_eq!(v, &[1, 2, 3, 4]);
 
     let mut v: Vec<_> = (1..6).map(|x| x.to_string()).collect();
-    for _ in v.drain(1..4) {
-    }
+    for _ in v.drain(1..4) {}
     assert_eq!(v, &[1.to_string(), 5.to_string()]);
 
     let mut v: Vec<_> = (1..6).map(|x| x.to_string()).collect();
-    for _ in v.drain(1..4).rev() {
-    }
+    for _ in v.drain(1..4).rev() {}
     assert_eq!(v, &[1.to_string(), 5.to_string()]);
 
     let mut v: Vec<_> = vec![(); 5];
-    for _ in v.drain(1..4).rev() {
-    }
+    for _ in v.drain(1..4).rev() {}
     assert_eq!(v, &[(), ()]);
 }
 
 #[test]
 fn test_drain_inclusive_range() {
     let mut v = vec!['a', 'b', 'c', 'd', 'e'];
-    for _ in v.drain(1..=3) {
-    }
+    for _ in v.drain(1..=3) {}
     assert_eq!(v, &['a', 'e']);
 
     let mut v: Vec<_> = (0..=5).map(|x| x.to_string()).collect();
-    for _ in v.drain(1..=5) {
-    }
+    for _ in v.drain(1..=5) {}
     assert_eq!(v, &["0".to_string()]);
 
     let mut v: Vec<String> = (0..=5).map(|x| x.to_string()).collect();
-    for _ in v.drain(0..=5) {
-    }
+    for _ in v.drain(0..=5) {}
     assert_eq!(v, Vec::<String>::new());
 
     let mut v: Vec<_> = (0..=5).map(|x| x.to_string()).collect();
-    for _ in v.drain(0..=3) {
-    }
+    for _ in v.drain(0..=3) {}
     assert_eq!(v, &["4".to_string(), "5".to_string()]);
 
     let mut v: Vec<_> = (0..=1).map(|x| x.to_string()).collect();
-    for _ in v.drain(..=0) {
-    }
+    for _ in v.drain(..=0) {}
     assert_eq!(v, &["1".to_string()]);
 }
 
 #[test]
 fn test_drain_max_vec_size() {
     let mut v = Vec::<()>::with_capacity(usize::max_value());
-    unsafe { v.set_len(usize::max_value()); }
-    for _ in v.drain(usize::max_value() - 1..) {
+    unsafe {
+        v.set_len(usize::max_value());
     }
+    for _ in v.drain(usize::max_value() - 1..) {}
     assert_eq!(v.len(), usize::max_value() - 1);
 
     let mut v = Vec::<()>::with_capacity(usize::max_value());
-    unsafe { v.set_len(usize::max_value()); }
-    for _ in v.drain(usize::max_value() - 1..=usize::max_value() - 1) {
+    unsafe {
+        v.set_len(usize::max_value());
     }
+    for _ in v.drain(usize::max_value() - 1..=usize::max_value() - 1) {}
     assert_eq!(v.len(), usize::max_value() - 1);
 }
 
@@ -734,7 +746,10 @@ fn test_cow_from() {
 fn test_from_cow() {
     let borrowed: &[_] = &["borrowed", "(slice)"];
     let owned = vec!["owned", "(vec)"];
-    assert_eq!(Vec::from(Cow::Borrowed(borrowed)), vec!["borrowed", "(slice)"]);
+    assert_eq!(
+        Vec::from(Cow::Borrowed(borrowed)),
+        vec!["borrowed", "(slice)"]
+    );
     assert_eq!(Vec::from(Cow::Owned(owned)), vec!["owned", "(vec)"]);
 }
 
@@ -864,35 +879,29 @@ fn drain_filter_true() {
 
 #[test]
 fn drain_filter_complex() {
-
-    {   //                [+xxx++++++xxxxx++++x+x++]
-        let mut vec = vec![1,
-                           2, 4, 6,
-                           7, 9, 11, 13, 15, 17,
-                           18, 20, 22, 24, 26,
-                           27, 29, 31, 33,
-                           34,
-                           35,
-                           36,
-                           37, 39];
+    {
+        //                [+xxx++++++xxxxx++++x+x++]
+        let mut vec = vec![
+            1, 2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36, 37,
+            39,
+        ];
 
         let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(vec.len(), 14);
-        assert_eq!(vec, vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]);
+        assert_eq!(
+            vec,
+            vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
+        );
     }
 
-    {   //                [xxx++++++xxxxx++++x+x++]
-        let mut vec = vec![2, 4, 6,
-                           7, 9, 11, 13, 15, 17,
-                           18, 20, 22, 24, 26,
-                           27, 29, 31, 33,
-                           34,
-                           35,
-                           36,
-                           37, 39];
+    {
+        //                [xxx++++++xxxxx++++x+x++]
+        let mut vec = vec![
+            2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36, 37, 39,
+        ];
 
         let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
@@ -902,14 +911,11 @@ fn drain_filter_complex() {
         assert_eq!(vec, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]);
     }
 
-    {   //                [xxx++++++xxxxx++++x+x]
-        let mut vec = vec![2, 4, 6,
-                           7, 9, 11, 13, 15, 17,
-                           18, 20, 22, 24, 26,
-                           27, 29, 31, 33,
-                           34,
-                           35,
-                           36];
+    {
+        //                [xxx++++++xxxxx++++x+x]
+        let mut vec = vec![
+            2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36,
+        ];
 
         let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
@@ -919,9 +925,11 @@ fn drain_filter_complex() {
         assert_eq!(vec, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35]);
     }
 
-    {   //                [xxxxxxxxxx+++++++++++]
-        let mut vec = vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
-                           1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+    {
+        //                [xxxxxxxxxx+++++++++++]
+        let mut vec = vec![
+            2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19,
+        ];
 
         let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
@@ -931,9 +939,11 @@ fn drain_filter_complex() {
         assert_eq!(vec, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
 
-    {   //                [+++++++++++xxxxxxxxxx]
-        let mut vec = vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19,
-                           2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
+    {
+        //                [+++++++++++xxxxxxxxxx]
+        let mut vec = vec![
+            1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
+        ];
 
         let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
@@ -970,7 +980,6 @@ fn test_reserve_exact() {
 
 #[test]
 fn test_try_reserve() {
-
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
     // * > isize::MAX should always fail
@@ -1004,22 +1013,29 @@ fn test_try_reserve() {
         if guards_against_isize {
             // Check isize::MAX + 1 does count as overflow
             if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_CAP + 1) {
-            } else { panic!("isize::MAX + 1 should trigger an overflow!") }
+            } else {
+                panic!("isize::MAX + 1 should trigger an overflow!")
+            }
 
             // Check usize::MAX does count as overflow
             if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE) {
-            } else { panic!("usize::MAX should trigger an overflow!") }
+            } else {
+                panic!("usize::MAX should trigger an overflow!")
+            }
         } else {
             // Check isize::MAX + 1 is an OOM
             if let Err(AllocErr) = empty_bytes.try_reserve(MAX_CAP + 1) {
-            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+            } else {
+                panic!("isize::MAX + 1 should trigger an OOM!")
+            }
 
             // Check usize::MAX is an OOM
             if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE) {
-            } else { panic!("usize::MAX should trigger an OOM!") }
+            } else {
+                panic!("usize::MAX should trigger an OOM!")
+            }
         }
     }
-
 
     {
         // Same basic idea, but with non-zero len
@@ -1033,33 +1049,42 @@ fn test_try_reserve() {
         }
         if guards_against_isize {
             if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+            } else {
+                panic!("isize::MAX + 1 should trigger an overflow!");
+            }
         } else {
             if let Err(AllocErr) = ten_bytes.try_reserve(MAX_CAP - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+            } else {
+                panic!("isize::MAX + 1 should trigger an OOM!")
+            }
         }
         // Should always overflow in the add-to-len
         if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_USIZE) {
-        } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            panic!("usize::MAX should trigger an overflow!")
+        }
     }
-
 
     {
         // Same basic idea, but with interesting type size
         let mut ten_u32s: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 10) {
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP / 4 - 10) {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
-        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 10) {
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP / 4 - 10) {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
         if guards_against_isize {
-            if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+            if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP / 4 - 9) {
+            } else {
+                panic!("isize::MAX + 1 should trigger an overflow!");
+            }
         } else {
-            if let Err(AllocErr) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+            if let Err(AllocErr) = ten_u32s.try_reserve(MAX_CAP / 4 - 9) {
+            } else {
+                panic!("isize::MAX + 1 should trigger an OOM!")
+            }
         }
         // Should fail in the mul-by-size
         if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_USIZE - 20) {
@@ -1067,12 +1092,10 @@ fn test_try_reserve() {
             panic!("usize::MAX should trigger an overflow!");
         }
     }
-
 }
 
 #[test]
 fn test_try_reserve_exact() {
-
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.
 
@@ -1093,19 +1116,26 @@ fn test_try_reserve_exact() {
 
         if guards_against_isize {
             if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
-            } else { panic!("isize::MAX + 1 should trigger an overflow!") }
+            } else {
+                panic!("isize::MAX + 1 should trigger an overflow!")
+            }
 
             if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_USIZE) {
-            } else { panic!("usize::MAX should trigger an overflow!") }
+            } else {
+                panic!("usize::MAX should trigger an overflow!")
+            }
         } else {
             if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
-            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+            } else {
+                panic!("isize::MAX + 1 should trigger an OOM!")
+            }
 
             if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_USIZE) {
-            } else { panic!("usize::MAX should trigger an OOM!") }
+            } else {
+                panic!("usize::MAX should trigger an OOM!")
+            }
         }
     }
-
 
     {
         let mut ten_bytes: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -1118,34 +1148,44 @@ fn test_try_reserve_exact() {
         }
         if guards_against_isize {
             if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+            } else {
+                panic!("isize::MAX + 1 should trigger an overflow!");
+            }
         } else {
             if let Err(AllocErr) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+            } else {
+                panic!("isize::MAX + 1 should trigger an OOM!")
+            }
         }
         if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_USIZE) {
-        } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            panic!("usize::MAX should trigger an overflow!")
+        }
     }
-
 
     {
         let mut ten_u32s: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 10) {
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP / 4 - 10) {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
-        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 10) {
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP / 4 - 10) {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
         if guards_against_isize {
-            if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+            if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP / 4 - 9) {
+            } else {
+                panic!("isize::MAX + 1 should trigger an overflow!");
+            }
         } else {
-            if let Err(AllocErr) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
-            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+            if let Err(AllocErr) = ten_u32s.try_reserve_exact(MAX_CAP / 4 - 9) {
+            } else {
+                panic!("isize::MAX + 1 should trigger an OOM!")
+            }
         }
         if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_USIZE - 20) {
-        } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            panic!("usize::MAX should trigger an overflow!")
+        }
     }
-
 }

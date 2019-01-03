@@ -1,6 +1,6 @@
-use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
+use print::pprust::token_to_string;
 use tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
@@ -44,21 +44,22 @@ impl<'a> StringReader<'a> {
                 }
 
                 if let Some((delim, _)) = self.open_braces.last() {
-                    if let Some((_, open_sp, close_sp)) = self.matching_delim_spans.iter()
+                    if let Some((_, open_sp, close_sp)) = self
+                        .matching_delim_spans
+                        .iter()
                         .filter(|(d, open_sp, close_sp)| {
-
-                        if let Some(close_padding) = sm.span_to_margin(*close_sp) {
-                            if let Some(open_padding) = sm.span_to_margin(*open_sp) {
-                                return delim == d && close_padding != open_padding;
+                            if let Some(close_padding) = sm.span_to_margin(*close_sp) {
+                                if let Some(open_padding) = sm.span_to_margin(*open_sp) {
+                                    return delim == d && close_padding != open_padding;
+                                }
                             }
-                        }
-                        false
-                        }).next()  // these are in reverse order as they get inserted on close, but
-                    {              // we want the last open/first close
-                        err.span_label(
-                            *open_sp,
-                            "this delimiter might not be properly closed...",
-                        );
+                            false
+                        })
+                        .next()
+                    // these are in reverse order as they get inserted on close, but
+                    {
+                        // we want the last open/first close
+                        err.span_label(*open_sp, "this delimiter might not be properly closed...");
                         err.span_label(
                             *close_sp,
                             "...as it matches this but it has different indentation",
@@ -66,7 +67,7 @@ impl<'a> StringReader<'a> {
                     }
                 }
                 Err(err)
-            },
+            }
             token::OpenDelim(delim) => {
                 // The span for beginning of the delimited section
                 let pre_span = self.span;
@@ -92,9 +93,11 @@ impl<'a> StringReader<'a> {
                             // properly matched delimiters so far for an entire block.
                             self.matching_delim_spans.clear();
                         } else {
-                            self.matching_delim_spans.push(
-                                (open_brace, open_brace_span, self.span),
-                            );
+                            self.matching_delim_spans.push((
+                                open_brace,
+                                open_brace_span,
+                                self.span,
+                            ));
                         }
                         // Parse the close delimiter.
                         self.real_token();
@@ -106,10 +109,8 @@ impl<'a> StringReader<'a> {
                             // do not complain about the same unclosed delimiter multiple times
                             self.last_unclosed_found_span = Some(self.span);
                             let msg = format!("incorrect close delimiter: `{}`", token_str);
-                            let mut err = self.sess.span_diagnostic.struct_span_err(
-                                self.span,
-                                &msg,
-                            );
+                            let mut err =
+                                self.sess.span_diagnostic.struct_span_err(self.span, &msg);
                             err.span_label(self.span, "incorrect close delimiter");
                             // This is a conservative error: only report the last unclosed
                             // delimiter. The previous unclosed delimiters could actually be
@@ -149,16 +150,12 @@ impl<'a> StringReader<'a> {
                         // Silently recover, the EOF token will be seen again
                         // and an error emitted then. Thus we don't pop from
                         // self.open_braces here.
-                    },
+                    }
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(
-                    delim_span,
-                    delim,
-                    tts.into(),
-                ).into())
-            },
+                Ok(TokenTree::Delimited(delim_span, delim, tts.into()).into())
+            }
             token::CloseDelim(_) => {
                 // An unexpected closing delimiter (i.e., there is no
                 // matching opening delimiter).
@@ -167,7 +164,7 @@ impl<'a> StringReader<'a> {
                 let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
                 err.span_label(self.span, "unexpected close delimiter");
                 Err(err)
-            },
+            }
             _ => {
                 let tt = TokenTree::Token(self.span, self.token.clone());
                 // Note that testing for joint-ness here is done via the raw
@@ -176,7 +173,10 @@ impl<'a> StringReader<'a> {
                 let raw = self.span_src_raw;
                 self.real_token();
                 let is_joint = raw.hi() == self.span_src_raw.lo() && token::is_op(&self.token);
-                Ok(TokenStream::Tree(tt, if is_joint { Joint } else { NonJoint }))
+                Ok(TokenStream::Tree(
+                    tt,
+                    if is_joint { Joint } else { NonJoint },
+                ))
             }
         }
     }

@@ -15,12 +15,12 @@ pub type pthread_t = c_long;
 
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use self::arch::{dev_t, mode_t, blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
+pub use self::arch::{blkcnt_t, blksize_t, dev_t, ino_t, mode_t, nlink_t, off_t, stat, time_t};
 
 #[cfg(any(target_arch = "arm", target_arch = "x86"))]
 mod arch {
-    use os::raw::{c_uint, c_uchar, c_ulonglong, c_longlong, c_ulong};
-    use os::unix::raw::{uid_t, gid_t};
+    use os::raw::{c_longlong, c_uchar, c_uint, c_ulong, c_ulonglong};
+    use os::unix::raw::{gid_t, uid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -86,11 +86,10 @@ mod arch {
 
 }
 
-
 #[cfg(target_arch = "aarch64")]
 mod arch {
     use os::raw::{c_uchar, c_ulong};
-    use os::unix::raw::{uid_t, gid_t};
+    use os::unix::raw::{gid_t, uid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -157,8 +156,8 @@ mod arch {
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
-    use os::raw::{c_uint, c_long, c_ulong};
-    use os::unix::raw::{uid_t, gid_t};
+    use os::raw::{c_long, c_uint, c_ulong};
+    use os::unix::raw::{gid_t, uid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -217,4 +216,3 @@ mod arch {
         __unused: [c_long; 3],
     }
 }
-

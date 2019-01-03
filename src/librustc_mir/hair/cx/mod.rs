@@ -4,24 +4,24 @@
 //! work.
 //!
 
-use hair::*;
 use hair::util::UserAnnotatedTyHelpers;
+use hair::*;
 
-use rustc_data_structures::indexed_vec::Idx;
+use hair::constant::{lit_to_const, LitToConstError};
+use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::Node;
-use rustc::middle::region;
 use rustc::infer::InferCtxt;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::middle::region;
 use rustc::ty::layout::VariantIdx;
+use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use rustc::hir;
-use rustc_data_structures::sync::Lrc;
-use hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -52,15 +52,13 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               src_id: ast::NodeId) -> Cx<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, src_id: ast::NodeId) -> Cx<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id(src_id);
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
-            hir::BodyOwnerKind::Const |
-            hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
+            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
             hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
@@ -135,16 +133,24 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         sp: Span,
         neg: bool,
     ) -> &'tcx ty::Const<'tcx> {
-        trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
+        trace!(
+            "const_eval_literal: {:#?}, {:?}, {:?}, {:?}",
+            lit,
+            ty,
+            sp,
+            neg
+        );
 
         match lit_to_const(lit, self.tcx, ty, neg) {
             Ok(c) => c,
             Err(LitToConstError::UnparseableFloat) => {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
-                self.tcx.sess.span_err(sp, "could not evaluate float literal (see issue #31407)");
+                self.tcx
+                    .sess
+                    .span_err(sp, "could not evaluate float literal (see issue #31407)");
                 // create a dummy value and continue compiling
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
-            },
+            }
             Err(LitToConstError::Reported) => {
                 // create a dummy value and continue compiling
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
@@ -156,20 +162,23 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let tcx = self.tcx.global_tcx();
         let p = match tcx.hir().get(p.id) {
             Node::Pat(p) | Node::Binding(p) => p,
-            node => bug!("pattern became {:?}", node)
+            node => bug!("pattern became {:?}", node),
         };
-        Pattern::from_hir(tcx,
-                          self.param_env.and(self.identity_substs),
-                          self.tables(),
-                          p)
+        Pattern::from_hir(
+            tcx,
+            self.param_env.and(self.identity_substs),
+            self.tables(),
+            p,
+        )
     }
 
-    pub fn trait_method(&mut self,
-                        trait_def_id: DefId,
-                        method_name: &str,
-                        self_ty: Ty<'tcx>,
-                        params: &[Kind<'tcx>])
-                        -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
+    pub fn trait_method(
+        &mut self,
+        trait_def_id: DefId,
+        method_name: &str,
+        self_ty: Ty<'tcx>,
+        params: &[Kind<'tcx>],
+    ) -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
         let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
@@ -190,18 +199,27 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
-        let (ty, param_env) = self.tcx.lift_to_global(&(ty, self.param_env)).unwrap_or_else(|| {
-            bug!("MIR: Cx::needs_drop({:?}, {:?}) got \
-                  type with inference types/regions",
-                 ty, self.param_env);
-        });
+        let (ty, param_env) = self
+            .tcx
+            .lift_to_global(&(ty, self.param_env))
+            .unwrap_or_else(|| {
+                bug!(
+                    "MIR: Cx::needs_drop({:?}, {:?}) got \
+                     type with inference types/regions",
+                    ty,
+                    self.param_env
+                );
+            });
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
     fn lint_level_of(&self, node_id: ast::NodeId) -> LintLevel {
         let hir_id = self.tcx.hir().definitions().node_to_hir_id(node_id);
         let has_lint_level = self.tcx.dep_graph.with_ignore(|| {
-            self.tcx.lint_levels(LOCAL_CRATE).lint_level_set(hir_id).is_some()
+            self.tcx
+                .lint_levels(LOCAL_CRATE)
+                .lint_level_set(hir_id)
+                .is_some()
         });
 
         if has_lint_level {
@@ -224,7 +242,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
+        self.infcx
+            .type_is_copy_modulo_regions(self.param_env, ty, span)
     }
 }
 
@@ -252,7 +271,7 @@ fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
         loop {
             let hir_id = tcx.hir().definitions().node_to_hir_id(id);
             if sets.lint_level_set(hir_id).is_some() {
-                return id
+                return id;
             }
             let next = tcx.hir().get_parent_node(id);
             if next == id {

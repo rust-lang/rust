@@ -10,12 +10,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// span of that statement (including its semicolon, if any).
     /// Diagnostics use this span (which may be larger than that of
     /// `expr`) to identify when statement temporaries are dropped.
-    pub fn stmt_expr(&mut self,
-                     mut block: BasicBlock,
-                     expr: Expr<'tcx>,
-                     opt_stmt_span: Option<StatementSpan>)
-                     -> BlockAnd<()>
-    {
+    pub fn stmt_expr(
+        &mut self,
+        mut block: BasicBlock,
+        expr: Expr<'tcx>,
+        opt_stmt_span: Option<StatementSpan>,
+    ) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr.span);
@@ -72,7 +72,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let lhs = this.hir.mirror(lhs);
                 let lhs_ty = lhs.ty;
 
-                debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr2);
+                debug!(
+                    "stmt_expr AssignOp block_context.push(SubExpr) : {:?}",
+                    expr2
+                );
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
@@ -124,7 +127,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     (break_block, region_scope, break_destination.clone())
                 };
                 if let Some(value) = value {
-                    debug!("stmt_expr Break val block_context.push(SubExpr) : {:?}", expr2);
+                    debug!(
+                        "stmt_expr Break val block_context.push(SubExpr) : {:?}",
+                        expr2
+                    );
                     this.block_context.push(BlockFrame::SubExpr);
                     unpack!(block = this.into(&destination, block, value));
                     this.block_context.pop();
@@ -137,7 +143,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Return { value } => {
                 block = match value {
                     Some(value) => {
-                        debug!("stmt_expr Return val block_context.push(SubExpr) : {:?}", expr2);
+                        debug!(
+                            "stmt_expr Return val block_context.push(SubExpr) : {:?}",
+                            expr2
+                        );
                         this.block_context.push(BlockFrame::SubExpr);
                         let result = unpack!(this.into(&Place::Local(RETURN_PLACE), block, value));
                         this.block_context.pop();
@@ -159,7 +168,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 outputs,
                 inputs,
             } => {
-                debug!("stmt_expr InlineAsm block_context.push(SubExpr) : {:?}", expr2);
+                debug!(
+                    "stmt_expr InlineAsm block_context.push(SubExpr) : {:?}",
+                    expr2
+                );
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()
@@ -173,7 +185,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             input.span(),
                             unpack!(block = this.as_local_operand(block, input)),
                         )
-                    }).collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
                     .into_boxed_slice();
                 this.cfg.push(
                     block,
@@ -221,24 +234,31 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     if temp_in_tail_of_block {
                         if this.block_context.currently_ignores_tail_results() {
                             local_decl = local_decl.block_tail(BlockTailInfo {
-                                tail_result_is_ignored: true
+                                tail_result_is_ignored: true,
                             });
                         }
                     }
                     let temp = this.local_decls.push(local_decl);
                     let place = Place::Local(temp);
-                    debug!("created temp {:?} for expr {:?} in block_context: {:?}",
-                           temp, expr, this.block_context);
+                    debug!(
+                        "created temp {:?} for expr {:?} in block_context: {:?}",
+                        temp, expr, this.block_context
+                    );
                     place
                 };
                 unpack!(block = this.into(&temp, block, expr));
 
                 // Attribute drops of the statement's temps to the
                 // semicolon at the statement's end.
-                let drop_point = this.hir.tcx().sess.source_map().end_point(match opt_stmt_span {
-                    None => expr_span,
-                    Some(StatementSpan(span)) => span,
-                });
+                let drop_point = this
+                    .hir
+                    .tcx()
+                    .sess
+                    .source_map()
+                    .end_point(match opt_stmt_span {
+                        None => expr_span,
+                        Some(StatementSpan(span)) => span,
+                    });
 
                 unpack!(block = this.build_drop(block, drop_point, temp, expr_ty));
                 block.unit()

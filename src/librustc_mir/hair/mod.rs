@@ -4,38 +4,38 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
+use self::cx::Cx;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
-use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const, UserTypeAnnotation};
+use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc::ty::layout::VariantIdx;
-use rustc::hir;
+use rustc::ty::subst::Substs;
+use rustc::ty::{AdtDef, Const, Region, Ty, UpvarSubsts, UserTypeAnnotation};
 use syntax::ast;
 use syntax_pos::Span;
-use self::cx::Cx;
 
-pub mod cx;
 mod constant;
+pub mod cx;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternRange, FieldPattern};
 pub(crate) use self::pattern::PatternTypeProjection;
+pub use self::pattern::{BindingMode, FieldPattern, Pattern, PatternKind, PatternRange};
 
 mod util;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
     Inherited,
-    Explicit(ast::NodeId)
+    Explicit(ast::NodeId),
 }
 
 impl LintLevel {
     pub fn is_explicit(self) -> bool {
         match self {
             LintLevel::Inherited => false,
-            LintLevel::Explicit(_) => true
+            LintLevel::Explicit(_) => true,
         }
     }
 }
@@ -56,7 +56,7 @@ pub enum BlockSafety {
     Safe,
     ExplicitUnsafe(ast::NodeId),
     PushUnsafe,
-    PopUnsafe
+    PopUnsafe,
 }
 
 #[derive(Clone, Debug)]
@@ -167,7 +167,7 @@ pub enum ExprKind<'tcx> {
         lhs: ExprRef<'tcx>,
         rhs: ExprRef<'tcx>,
     }, // NOT overloaded!
-       // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
+    // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
     Unary {
         op: UnOp,
         arg: ExprRef<'tcx>,
@@ -269,7 +269,7 @@ pub enum ExprKind<'tcx> {
         user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
 
         fields: Vec<FieldExprRef<'tcx>>,
-        base: Option<FruInfo<'tcx>>
+        base: Option<FruInfo<'tcx>>,
     },
     PlaceTypeAscription {
         source: ExprRef<'tcx>,
@@ -294,7 +294,7 @@ pub enum ExprKind<'tcx> {
     InlineAsm {
         asm: &'tcx hir::InlineAsm,
         outputs: Vec<ExprRef<'tcx>>,
-        inputs: Vec<ExprRef<'tcx>>
+        inputs: Vec<ExprRef<'tcx>>,
     },
     Yield {
         value: ExprRef<'tcx>,
@@ -316,7 +316,7 @@ pub struct FieldExprRef<'tcx> {
 #[derive(Clone, Debug)]
 pub struct FruInfo<'tcx> {
     pub base: ExprRef<'tcx>,
-    pub field_types: Vec<Ty<'tcx>>
+    pub field_types: Vec<Ty<'tcx>>,
 }
 
 #[derive(Clone, Debug)]

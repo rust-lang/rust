@@ -71,13 +71,12 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         // region constraints like `for<'a> 'a: 'b`. At some point
         // when we move to universes, we will, and this assertion
         // will start to fail.
-        let ty::OutlivesPredicate(k1, r2) =
-            query_constraint.no_bound_vars().unwrap_or_else(|| {
-                bug!(
-                    "query_constraint {:?} contained bound vars",
-                    query_constraint,
-                );
-            });
+        let ty::OutlivesPredicate(k1, r2) = query_constraint.no_bound_vars().unwrap_or_else(|| {
+            bug!(
+                "query_constraint {:?} contained bound vars",
+                query_constraint,
+            );
+        });
 
         match k1.unpack() {
             UnpackedKind::Lifetime(r1) => {
@@ -97,7 +96,8 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
                     region_bound_pairs,
                     implicit_region_bound,
                     param_env,
-                ).type_must_outlive(origin, t1, r2);
+                )
+                .type_must_outlive(origin, t1, r2);
             }
         }
     }

@@ -135,12 +135,14 @@ impl StyledBuffer {
         self.text.len()
     }
 
-    pub fn set_style_range(&mut self,
-                           line: usize,
-                           col_start: usize,
-                           col_end: usize,
-                           style: Style,
-                           overwrite: bool) {
+    pub fn set_style_range(
+        &mut self,
+        line: usize,
+        col_start: usize,
+        col_end: usize,
+        style: Style,
+        overwrite: bool,
+    ) {
         for col in col_start..col_end {
             self.set_style(line, col, style, overwrite);
         }

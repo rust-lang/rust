@@ -145,8 +145,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 let gcx = self.infcx.tcx.global_tcx();
 
                 let mut orig_values = OriginalQueryValues::default();
-                let c_data = self.infcx.canonicalize_query(
-                    &self.param_env.and(*data), &mut orig_values);
+                let c_data = self
+                    .infcx
+                    .canonicalize_query(&self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match gcx.normalize_projection_ty(c_data) {
@@ -157,13 +158,18 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             return ty;
                         }
 
-                        match self.infcx.instantiate_query_response_and_region_obligations(
-                            self.cause,
-                            self.param_env,
-                            &orig_values,
-                            &result)
-                        {
-                            Ok(InferOk { value: result, obligations }) => {
+                        match self
+                            .infcx
+                            .instantiate_query_response_and_region_obligations(
+                                self.cause,
+                                self.param_env,
+                                &orig_values,
+                                &result,
+                            ) {
+                            Ok(InferOk {
+                                value: result,
+                                obligations,
+                            }) => {
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                                 self.obligations.extend(obligations);
@@ -214,7 +220,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 promoted: None,
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return self.fold_const(evaluated)
+                                return self.fold_const(evaluated);
                             }
                         }
                     }

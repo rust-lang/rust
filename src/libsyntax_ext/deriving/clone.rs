@@ -1,21 +1,23 @@
-use deriving::path_std;
-use deriving::generic::*;
 use deriving::generic::ty::*;
+use deriving::generic::*;
+use deriving::path_std;
 
-use syntax::ast::{self, Expr, Generics, ItemKind, MetaItem, VariantData};
 use syntax::ast::GenericArg;
+use syntax::ast::{self, Expr, Generics, ItemKind, MetaItem, VariantData};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{keywords, Symbol};
 use syntax_pos::Span;
 
-pub fn expand_deriving_clone(cx: &mut ExtCtxt,
-                             span: Span,
-                             mitem: &MetaItem,
-                             item: &Annotatable,
-                             push: &mut dyn FnMut(Annotatable)) {
+pub fn expand_deriving_clone(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     // check if we can use a short form
     //
     // the short form is `fn clone(&self) -> Self { *self }`
@@ -34,45 +36,41 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     let substructure;
     let is_shallow;
     match *item {
-        Annotatable::Item(ref annitem) => {
-            match annitem.node {
-                ItemKind::Struct(_, Generics { ref params, .. }) |
-                ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
-                        !params.iter().any(|param| match param.kind {
-                            ast::GenericParamKind::Type { .. } => true,
-                            _ => false,
-                        })
-                    {
-                        bounds = vec![];
-                        is_shallow = true;
-                        substructure = combine_substructure(Box::new(|c, s, sub| {
-                            cs_clone_shallow("Clone", c, s, sub, false)
-                        }));
-                    } else {
-                        bounds = vec![];
-                        is_shallow = false;
-                        substructure = combine_substructure(Box::new(|c, s, sub| {
-                            cs_clone("Clone", c, s, sub)
-                        }));
-                    }
-                }
-                ItemKind::Union(..) => {
-                    bounds = vec![Literal(path_std!(cx, marker::Copy))];
+        Annotatable::Item(ref annitem) => match annitem.node {
+            ItemKind::Struct(_, Generics { ref params, .. })
+            | ItemKind::Enum(_, Generics { ref params, .. }) => {
+                if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker")
+                    && !params.iter().any(|param| match param.kind {
+                        ast::GenericParamKind::Type { .. } => true,
+                        _ => false,
+                    })
+                {
+                    bounds = vec![];
                     is_shallow = true;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_shallow("Clone", c, s, sub, true)
+                        cs_clone_shallow("Clone", c, s, sub, false)
                     }));
-                }
-                _ => {
+                } else {
                     bounds = vec![];
                     is_shallow = false;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone("Clone", c, s, sub)
-                    }));
+                    substructure =
+                        combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
                 }
             }
-        }
+            ItemKind::Union(..) => {
+                bounds = vec![Literal(path_std!(cx, marker::Copy))];
+                is_shallow = true;
+                substructure = combine_substructure(Box::new(|c, s, sub| {
+                    cs_clone_shallow("Clone", c, s, sub, true)
+                }));
+            }
+            _ => {
+                bounds = vec![];
+                is_shallow = false;
+                substructure =
+                    combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
+            }
+        },
 
         _ => cx.span_bug(span, "#[derive(Clone)] on trait item or impl item"),
     }
@@ -88,42 +86,58 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
         is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
-                          name: "clone",
-                          generics: LifetimeBounds::empty(),
-                          explicit_self: borrowed_explicit_self(),
-                          args: Vec::new(),
-                          ret_ty: Self_,
-                          attributes: attrs,
-                          is_unsafe: false,
-                          unify_fieldless_variants: false,
-                          combine_substructure: substructure,
-                      }],
+            name: "clone",
+            generics: LifetimeBounds::empty(),
+            explicit_self: borrowed_explicit_self(),
+            args: Vec::new(),
+            ret_ty: Self_,
+            attributes: attrs,
+            is_unsafe: false,
+            unify_fieldless_variants: false,
+            combine_substructure: substructure,
+        }],
         associated_types: Vec::new(),
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_shallow)
 }
 
-fn cs_clone_shallow(name: &str,
-                    cx: &mut ExtCtxt,
-                    trait_span: Span,
-                    substr: &Substructure,
-                    is_union: bool)
-                    -> P<Expr> {
-    fn assert_ty_bounds(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>,
-                        ty: P<ast::Ty>, span: Span, helper_name: &str) {
+fn cs_clone_shallow(
+    name: &str,
+    cx: &mut ExtCtxt,
+    trait_span: Span,
+    substr: &Substructure,
+    is_union: bool,
+) -> P<Expr> {
+    fn assert_ty_bounds(
+        cx: &mut ExtCtxt,
+        stmts: &mut Vec<ast::Stmt>,
+        ty: P<ast::Ty>,
+        span: Span,
+        helper_name: &str,
+    ) {
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
         let span = span.with_ctxt(cx.backtrace());
-        let assert_path = cx.path_all(span, true,
-                                        cx.std_path(&["clone", helper_name]),
-                                        vec![GenericArg::Type(ty)], vec![]);
+        let assert_path = cx.path_all(
+            span,
+            true,
+            cx.std_path(&["clone", helper_name]),
+            vec![GenericArg::Type(ty)],
+            vec![],
+        );
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
         for field in variant.fields() {
             // let _: AssertParamIsClone<FieldTy>;
-            assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsClone");
+            assert_ty_bounds(
+                cx,
+                stmts,
+                field.ty.clone(),
+                field.span,
+                "AssertParamIsClone",
+            );
         }
     }
 
@@ -142,19 +156,21 @@ fn cs_clone_shallow(name: &str,
                     process_variant(cx, &mut stmts, &variant.node.data);
                 }
             }
-            _ => cx.span_bug(trait_span, &format!("unexpected substructure in \
-                                                    shallow `derive({})`", name))
+            _ => cx.span_bug(
+                trait_span,
+                &format!(
+                    "unexpected substructure in \
+                     shallow `derive({})`",
+                    name
+                ),
+            ),
         }
     }
     stmts.push(cx.stmt_expr(cx.expr_deref(trait_span, cx.expr_self(trait_span))));
     cx.expr_block(cx.block(trait_span, stmts))
 }
 
-fn cs_clone(name: &str,
-            cx: &mut ExtCtxt,
-            trait_span: Span,
-            substr: &Substructure)
-            -> P<Expr> {
+fn cs_clone(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&["clone", "Clone", "clone"]);
@@ -175,12 +191,14 @@ fn cs_clone(name: &str,
             all_fields = af;
             vdata = &variant.node.data;
         }
-        EnumNonMatchingCollapsed(..) => {
-            cx.span_bug(trait_span,
-                        &format!("non-matching enum variants in \
-                                 `derive({})`",
-                                 name))
-        }
+        EnumNonMatchingCollapsed(..) => cx.span_bug(
+            trait_span,
+            &format!(
+                "non-matching enum variants in \
+                 `derive({})`",
+                name
+            ),
+        ),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, &format!("static method in `derive({})`", name))
         }
@@ -188,16 +206,19 @@ fn cs_clone(name: &str,
 
     match *vdata {
         VariantData::Struct(..) => {
-            let fields = all_fields.iter()
+            let fields = all_fields
+                .iter()
                 .map(|field| {
                     let ident = match field.name {
                         Some(i) => i,
-                        None => {
-                            cx.span_bug(trait_span,
-                                        &format!("unnamed field in normal struct in \
-                                                `derive({})`",
-                                                    name))
-                        }
+                        None => cx.span_bug(
+                            trait_span,
+                            &format!(
+                                "unnamed field in normal struct in \
+                                 `derive({})`",
+                                name
+                            ),
+                        ),
                     };
                     let call = subcall(cx, field);
                     cx.field_imm(field.span, ident, call)

@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
-use std::thread;
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -92,8 +92,11 @@ pub fn gnu_target(target: &str) -> &str {
 }
 
 pub fn make(host: &str) -> PathBuf {
-    if host.contains("bitrig") || host.contains("dragonfly") || host.contains("freebsd")
-        || host.contains("netbsd") || host.contains("openbsd")
+    if host.contains("bitrig")
+        || host.contains("dragonfly")
+        || host.contains("freebsd")
+        || host.contains("netbsd")
+        || host.contains("openbsd")
     {
         PathBuf::from("gmake")
     } else {
@@ -120,7 +123,8 @@ pub fn output(cmd: &mut Command) -> String {
 }
 
 pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
-    let mut stack = dir.read_dir()
+    let mut stack = dir
+        .read_dir()
         .unwrap()
         .map(|e| e.unwrap())
         .filter(|e| &*e.file_name() != ".git")
@@ -178,7 +182,7 @@ impl NativeLibBoilerplate {
     /// ensure it's linked against correctly.
     pub fn fixup_sanitizer_lib_name(&self, sanitizer_name: &str) {
         if env::var("TARGET").unwrap() != "x86_64-apple-darwin" {
-            return
+            return;
         }
 
         let dir = self.out_dir.join("build/lib/darwin");
@@ -221,8 +225,8 @@ pub fn native_lib_boilerplate(
 ) -> Result<NativeLibBoilerplate, ()> {
     rerun_if_changed_anything_in_dir(src_dir);
 
-    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or_else(||
-        env::var_os("OUT_DIR").unwrap());
+    let out_dir =
+        env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or_else(|| env::var_os("OUT_DIR").unwrap());
     let out_dir = PathBuf::from(out_dir).join(out_name);
     t!(fs::create_dir_all(&out_dir));
     if link_name.contains('=') {
@@ -246,9 +250,9 @@ pub fn native_lib_boilerplate(
     }
 }
 
-pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
-    -> Result<(NativeLibBoilerplate, String), ()>
-{
+pub fn sanitizer_lib_boilerplate(
+    sanitizer_name: &str,
+) -> Result<(NativeLibBoilerplate, String), ()> {
     let (link_name, search_path, apple) = match &*env::var("TARGET").unwrap() {
         "x86_64-unknown-linux-gnu" => (
             format!("clang_rt.{}-x86_64", sanitizer_name),
@@ -270,12 +274,7 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
     // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
     // load our env var set by cargo to find the source code.
     let dir = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
-    let lib = native_lib_boilerplate(
-        dir.as_ref(),
-        sanitizer_name,
-        &to_link,
-        search_path,
-    )?;
+    let lib = native_lib_boilerplate(dir.as_ref(), sanitizer_name, &to_link, search_path)?;
     Ok((lib, link_name))
 }
 

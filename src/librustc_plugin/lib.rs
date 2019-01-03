@@ -50,27 +50,28 @@
 //! See the [`plugin` feature](../unstable-book/language-features/plugin.html) of
 //! the Unstable Book for more examples.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
+#![recursion_limit = "256"]
 
-#![recursion_limit="256"]
-
-#[macro_use] extern crate syntax;
+#[macro_use]
+extern crate syntax;
 
 extern crate rustc;
+extern crate rustc_errors as errors;
 extern crate rustc_metadata;
 extern crate syntax_pos;
-extern crate rustc_errors as errors;
 
 pub use self::registry::Registry;
 
-mod diagnostics;
-pub mod registry;
-pub mod load;
 pub mod build;
+mod diagnostics;
+pub mod load;
+pub mod registry;
 
 __build_diagnostic_array! { librustc_plugin, DIAGNOSTICS }

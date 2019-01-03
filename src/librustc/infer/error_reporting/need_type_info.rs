@@ -1,11 +1,11 @@
-use hir::{self, Local, Pat, Body, HirId};
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use infer::InferCtxt;
+use errors::DiagnosticBuilder;
+use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use hir::{self, Body, HirId, Local, Pat};
 use infer::type_variable::TypeVariableOrigin;
-use ty::{self, Ty, Infer, TyVar};
+use infer::InferCtxt;
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
+use ty::{self, Infer, Ty, TyVar};
 
 struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
@@ -17,22 +17,23 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     fn node_matches_type(&mut self, node_id: HirId) -> bool {
-        let ty_opt = self.infcx.in_progress_tables.and_then(|tables| {
-            tables.borrow().node_id_to_type_opt(node_id)
-        });
+        let ty_opt = self
+            .infcx
+            .in_progress_tables
+            .and_then(|tables| tables.borrow().node_id_to_type_opt(node_id));
         match ty_opt {
             Some(ty) => {
                 let ty = self.infcx.resolve_type_vars_if_possible(&ty);
                 ty.walk().any(|inner_ty| {
-                    inner_ty == *self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
-                        (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                            self.infcx
+                    inner_ty == *self.target_ty
+                        || match (&inner_ty.sty, &self.target_ty.sty) {
+                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
+                                .infcx
                                 .type_variables
                                 .borrow_mut()
-                                .sub_unified(a_vid, b_vid)
+                                .sub_unified(a_vid, b_vid),
+                            _ => false,
                         }
-                        _ => false,
-                    }
                 })
             }
             None => false,
@@ -62,13 +63,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
         if let ty::Infer(ty::TyVar(ty_vid)) = (*ty).sty {
             let ty_vars = self.type_variables.borrow();
             if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                *ty_vars.var_origin(ty_vid) {
+                *ty_vars.var_origin(ty_vid)
+            {
                 name.to_string()
             } else {
                 ty.to_string()
@@ -78,11 +79,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn need_type_info_err(&self,
-                            body_id: Option<hir::BodyId>,
-                            span: Span,
-                            ty: Ty<'tcx>)
-                            -> DiagnosticBuilder<'gcx> {
+    pub fn need_type_info_err(
+        &self,
+        body_id: Option<hir::BodyId>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> DiagnosticBuilder<'gcx> {
         let ty = self.resolve_type_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty);
 
@@ -127,13 +129,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //          ^ consider giving this closure parameter a type
             // ```
             labels.clear();
-            labels.push(
-                (pattern.span, "consider giving this closure parameter a type".to_owned()));
+            labels.push((
+                pattern.span,
+                "consider giving this closure parameter a type".to_owned(),
+            ));
         } else if let Some(pattern) = local_visitor.found_local_pattern {
             if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.compiler_desugaring_kind() {
-                    None => labels.push((pattern.span,
-                                         format!("consider giving `{}` a type", simple_ident))),
+                    None => labels.push((
+                        pattern.span,
+                        format!("consider giving `{}` a type", simple_ident),
+                    )),
                     Some(CompilerDesugaringKind::ForLoop) => labels.push((
                         pattern.span,
                         "the element type for this iterator is not specified".to_owned(),
@@ -141,14 +147,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => {}
                 }
             } else {
-                labels.push((pattern.span, "consider giving the pattern a type".to_owned()));
+                labels.push((
+                    pattern.span,
+                    "consider giving the pattern a type".to_owned(),
+                ));
             }
         }
 
-        let mut err = struct_span_err!(self.tcx.sess,
-                                       err_span,
-                                       E0282,
-                                       "type annotations needed");
+        let mut err = struct_span_err!(self.tcx.sess, err_span, E0282, "type annotations needed");
 
         for (target_span, label_message) in labels {
             err.span_label(target_span, label_message);

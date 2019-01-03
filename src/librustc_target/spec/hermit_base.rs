@@ -3,12 +3,15 @@ use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc, vec![
-        "-Wl,-Bstatic".to_string(),
-        "-Wl,--no-dynamic-linker".to_string(),
-        "-Wl,--gc-sections".to_string(),
-        "-Wl,--as-needed".to_string(),
-    ]);
+    args.insert(
+        LinkerFlavor::Gcc,
+        vec![
+            "-Wl,-Bstatic".to_string(),
+            "-Wl,--no-dynamic-linker".to_string(),
+            "-Wl,--gc-sections".to_string(),
+            "-Wl,--as-needed".to_string(),
+        ],
+    );
 
     TargetOptions {
         executables: true,
@@ -21,6 +24,6 @@ pub fn opts() -> TargetOptions {
         relocation_model: "static".to_string(),
         target_family: Some("unix".to_string()),
         tls_model: "local-exec".to_string(),
-        .. Default::default()
+        ..Default::default()
     }
 }

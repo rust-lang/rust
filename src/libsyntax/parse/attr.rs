@@ -1,9 +1,9 @@
-use attr;
 use ast;
+use attr;
+use parse::parser::{Parser, PathStyle, TokenType};
+use parse::token::{self, DelimToken, Nonterminal};
+use parse::{PResult, SeqSep};
 use source_map::respan;
-use parse::{SeqSep, PResult};
-use parse::token::{self, Nonterminal, DelimToken};
-use parse::parser::{Parser, TokenType, PathStyle};
 use tokenstream::{TokenStream, TokenTree};
 
 #[derive(Debug)]
@@ -31,8 +31,9 @@ impl<'a> Parser<'a> {
                     } else {
                         DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
                     };
-                    let inner_parse_policy =
-                        InnerAttributeParsePolicy::NotPermitted { reason: inner_error_reason };
+                    let inner_parse_policy = InnerAttributeParsePolicy::NotPermitted {
+                        reason: inner_error_reason,
+                    };
                     attrs.push(self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?);
                     just_parsed_doc_comment = false;
                 }
@@ -40,8 +41,10 @@ impl<'a> Parser<'a> {
                     let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
                     if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
-                        err.note("inner doc comments like this (starting with \
-                                  `//!` or `/*!`) can only appear before items");
+                        err.note(
+                            "inner doc comments like this (starting with \
+                             `//!` or `/*!`) can only appear before items",
+                        );
                         return Err(err);
                     }
                     attrs.push(attr);
@@ -59,26 +62,30 @@ impl<'a> Parser<'a> {
     /// If permit_inner is true, then a leading `!` indicates an inner
     /// attribute
     pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute: permit_inner={:?} self.token={:?}",
-               permit_inner,
-               self.token);
+        debug!(
+            "parse_attribute: permit_inner={:?} self.token={:?}",
+            permit_inner, self.token
+        );
         let inner_parse_policy = if permit_inner {
             InnerAttributeParsePolicy::Permitted
         } else {
-            InnerAttributeParsePolicy::NotPermitted
-                { reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG }
+            InnerAttributeParsePolicy::NotPermitted {
+                reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG,
+            }
         };
         self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
     }
 
     /// The same as `parse_attribute`, except it takes in an `InnerAttributeParsePolicy`
     /// that prescribes how to handle inner attributes.
-    fn parse_attribute_with_inner_parse_policy(&mut self,
-                                               inner_parse_policy: InnerAttributeParsePolicy)
-                                               -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
-               inner_parse_policy,
-               self.token);
+    fn parse_attribute_with_inner_parse_policy(
+        &mut self,
+        inner_parse_policy: InnerAttributeParsePolicy,
+    ) -> PResult<'a, ast::Attribute> {
+        debug!(
+            "parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
+            inner_parse_policy, self.token
+        );
         let (span, path, tokens, style) = match self.token {
             token::Pound => {
                 let lo = self.span;
@@ -89,15 +96,16 @@ impl<'a> Parser<'a> {
                 }
                 let style = if self.token == token::Not {
                     self.bump();
-                    if let InnerAttributeParsePolicy::NotPermitted { reason } = inner_parse_policy
-                    {
+                    if let InnerAttributeParsePolicy::NotPermitted { reason } = inner_parse_policy {
                         let span = self.span;
                         self.diagnostic()
                             .struct_span_err(span, reason)
-                            .note("inner attributes, like `#![no_std]`, annotate the item \
-                                   enclosing them, and are usually found at the beginning of \
-                                   source files. Outer attributes, like `#[test]`, annotate the \
-                                   item following them.")
+                            .note(
+                                "inner attributes, like `#![no_std]`, annotate the item \
+                                 enclosing them, and are usually found at the beginning of \
+                                 source files. Outer attributes, like `#[test]`, annotate the \
+                                 item following them.",
+                            )
                             .emit()
                     }
                     ast::AttrStyle::Inner
@@ -150,10 +158,11 @@ impl<'a> Parser<'a> {
             (meta.ident, meta.node.tokens(meta.span))
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
-            let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
-               self.check(&token::OpenDelim(DelimToken::Bracket)) ||
-               self.check(&token::OpenDelim(DelimToken::Brace)) {
-                   self.parse_token_tree().into()
+            let tokens = if self.check(&token::OpenDelim(DelimToken::Paren))
+                || self.check(&token::OpenDelim(DelimToken::Bracket))
+                || self.check(&token::OpenDelim(DelimToken::Brace))
+            {
+                self.parse_token_tree().into()
             } else if self.eat(&token::Eq) {
                 let eq = TokenTree::Token(self.prev_span, token::Eq);
                 let tree = match self.token {
@@ -209,11 +218,14 @@ impl<'a> Parser<'a> {
 
         if !lit.node.is_unsuffixed() {
             let msg = "suffixed literals are not allowed in attributes";
-            self.diagnostic().struct_span_err(lit.span, msg)
-                             .help("instead of using a suffixed literal \
-                                    (1u8, 1.0f32, etc.), use an unsuffixed version \
-                                    (1, 1.0, etc.).")
-                             .emit()
+            self.diagnostic()
+                .struct_span_err(lit.span, msg)
+                .help(
+                    "instead of using a suffixed literal \
+                     (1u8, 1.0f32, etc.), use an unsuffixed version \
+                     (1, 1.0, etc.).",
+                )
+                .emit()
         }
 
         Ok(lit)
@@ -260,16 +272,22 @@ impl<'a> Parser<'a> {
 
         match self.parse_unsuffixed_lit() {
             Ok(lit) => {
-                return Ok(respan(lo.to(self.prev_span), ast::NestedMetaItemKind::Literal(lit)))
+                return Ok(respan(
+                    lo.to(self.prev_span),
+                    ast::NestedMetaItemKind::Literal(lit),
+                ))
             }
-            Err(ref mut err) => self.diagnostic().cancel(err)
+            Err(ref mut err) => self.diagnostic().cancel(err),
         }
 
         match self.parse_meta_item() {
             Ok(mi) => {
-                return Ok(respan(lo.to(self.prev_span), ast::NestedMetaItemKind::MetaItem(mi)))
+                return Ok(respan(
+                    lo.to(self.prev_span),
+                    ast::NestedMetaItemKind::MetaItem(mi),
+                ))
             }
-            Err(ref mut err) => self.diagnostic().cancel(err)
+            Err(ref mut err) => self.diagnostic().cancel(err),
         }
 
         let found = self.this_token_to_string();
@@ -279,8 +297,10 @@ impl<'a> Parser<'a> {
 
     /// matches meta_seq = ( COMMASEP(meta_item_inner) )
     fn parse_meta_seq(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
-        self.parse_seq_to_end(&token::CloseDelim(token::Paren),
-                              SeqSep::trailing_allowed(token::Comma),
-                              |p: &mut Parser<'a>| p.parse_meta_item_inner())
+        self.parse_seq_to_end(
+            &token::CloseDelim(token::Paren),
+            SeqSep::trailing_allowed(token::Comma),
+            |p: &mut Parser<'a>| p.parse_meta_item_inner(),
+        )
     }
 }

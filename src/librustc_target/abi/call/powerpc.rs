@@ -2,7 +2,9 @@ use abi::call::{ArgType, FnType, Reg, Uniform};
 use abi::{HasDataLayout, LayoutOf, Size, TyLayoutMethods};
 
 fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<Ty>, offset: &mut Size)
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C>,
+    C: LayoutOf<Ty = Ty> + HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
@@ -13,7 +15,9 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<Ty>, offset: &mut Size)
 }
 
 fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<Ty>, offset: &mut Size)
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C>,
+    C: LayoutOf<Ty = Ty> + HasDataLayout,
 {
     let dl = cx.data_layout();
     let size = arg.layout.size;
@@ -22,7 +26,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<Ty>, offset: &mut Size)
     if arg.layout.is_aggregate() {
         arg.cast_to(Uniform {
             unit: Reg::i32(),
-            total: size
+            total: size,
         });
         if !offset.is_aligned(align) {
             arg.pad_with(Reg::i32());
@@ -35,7 +39,9 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<Ty>, offset: &mut Size)
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<Ty>)
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C>,
+    C: LayoutOf<Ty = Ty> + HasDataLayout,
 {
     let mut offset = Size::ZERO;
     if !fty.ret.is_ignore() {
@@ -43,7 +49,9 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<Ty>)
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg_ty(cx, arg, &mut offset);
     }
 }

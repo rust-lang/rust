@@ -2,8 +2,8 @@
 
 pub use self::FromHexError::*;
 
-use std::fmt;
 use std::error;
+use std::fmt;
 
 /// A trait for converting a value to hexadecimal encoding
 pub trait ToHex {
@@ -37,9 +37,7 @@ impl ToHex for [u8] {
             v.push(CHARS[(byte & 0xf) as usize]);
         }
 
-        unsafe {
-            String::from_utf8_unchecked(v)
-        }
+        unsafe { String::from_utf8_unchecked(v) }
     }
 }
 
@@ -62,8 +60,9 @@ pub enum FromHexError {
 impl fmt::Display for FromHexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InvalidHexCharacter(ch, idx) =>
-                write!(f, "Invalid character '{}' at position {}", ch, idx),
+            InvalidHexCharacter(ch, idx) => {
+                write!(f, "Invalid character '{}' at position {}", ch, idx)
+            }
             InvalidHexLength => write!(f, "Invalid input length"),
         }
     }
@@ -77,7 +76,6 @@ impl error::Error for FromHexError {
         }
     }
 }
-
 
 impl FromHex for str {
     /// Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
@@ -118,13 +116,13 @@ impl FromHex for str {
                 b'A'..=b'F' => buf |= byte - b'A' + 10,
                 b'a'..=b'f' => buf |= byte - b'a' + 10,
                 b'0'..=b'9' => buf |= byte - b'0',
-                b' '|b'\r'|b'\n'|b'\t' => {
+                b' ' | b'\r' | b'\n' | b'\t' => {
                     buf >>= 4;
-                    continue
+                    continue;
                 }
                 _ => {
                     let ch = self[idx..].chars().next().unwrap();
-                    return Err(InvalidHexCharacter(ch, idx))
+                    return Err(InvalidHexCharacter(ch, idx));
                 }
             }
 
@@ -155,10 +153,8 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_okay() {
-        assert_eq!("666f6f626172".from_hex().unwrap(),
-                   b"foobar");
-        assert_eq!("666F6F626172".from_hex().unwrap(),
-                   b"foobar");
+        assert_eq!("666f6f626172".from_hex().unwrap(), b"foobar");
+        assert_eq!("666F6F626172".from_hex().unwrap(), b"foobar");
     }
 
     #[test]
@@ -174,8 +170,7 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_ignores_whitespace() {
-        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
-                   b"foobar");
+        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(), b"foobar");
     }
 
     #[test]
@@ -189,12 +184,8 @@ mod tests {
     pub fn test_from_hex_all_bytes() {
         for i in 0..256 {
             let ii: &[u8] = &[i as u8];
-            assert_eq!(format!("{:02x}", i as usize).from_hex()
-                                                   .unwrap(),
-                       ii);
-            assert_eq!(format!("{:02X}", i as usize).from_hex()
-                                                   .unwrap(),
-                       ii);
+            assert_eq!(format!("{:02x}", i as usize).from_hex().unwrap(), ii);
+            assert_eq!(format!("{:02X}", i as usize).from_hex().unwrap(), ii);
         }
     }
 

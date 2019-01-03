@@ -134,7 +134,7 @@ fn test_format_int_sign_padding() {
 
 #[test]
 fn test_format_int_twos_complement() {
-    use core::{i8, i16, i32, i64};
+    use core::{i16, i32, i64, i8};
     assert!(format!("{}", i8::MIN) == "-128");
     assert!(format!("{}", i16::MIN) == "-32768");
     assert!(format!("{}", i32::MIN) == "-2147483648");

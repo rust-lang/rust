@@ -11,17 +11,17 @@
 
 pub use self::LangItem::*;
 
-use hir::def_id::DefId;
 use hir::check_attr::Target;
-use ty::{self, TyCtxt};
+use hir::def_id::DefId;
 use middle::weak_lang_items;
+use ty::{self, TyCtxt};
 use util::nodemap::FxHashMap;
 
+use hir;
+use hir::itemlikevisit::ItemLikeVisitor;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use hir::itemlikevisit::ItemLikeVisitor;
-use hir;
 
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
@@ -379,8 +379,8 @@ language_item_table! {
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
-        self.lang_items().require(lang_item).unwrap_or_else(|msg| {
-            self.sess.fatal(&msg)
-        })
+        self.lang_items()
+            .require(lang_item)
+            .unwrap_or_else(|msg| self.sess.fatal(&msg))
     }
 }

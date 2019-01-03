@@ -4,8 +4,8 @@
 use rustc::mir::{BasicBlock, Location};
 use rustc_data_structures::bit_set::{BitIter, BitSet, HybridBitSet};
 
-use dataflow::{BitDenotation, BlockSets, DataflowResults};
 use dataflow::move_paths::{HasMoveData, MovePathIndex};
+use dataflow::{BitDenotation, BlockSets, DataflowResults};
 
 use std::iter;
 
@@ -134,16 +134,20 @@ where
 }
 
 impl<'tcx, BD> FlowsAtLocation for FlowAtLocation<'tcx, BD>
-    where BD: BitDenotation<'tcx>
+where
+    BD: BitDenotation<'tcx>,
 {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
-        self.curr_state.overwrite(self.base_results.sets().on_entry_set_for(bb.index()));
+        self.curr_state
+            .overwrite(self.base_results.sets().on_entry_set_for(bb.index()));
     }
 
     fn reset_to_exit_of(&mut self, bb: BasicBlock) {
         self.reset_to_entry_of(bb);
-        self.curr_state.union(self.base_results.sets().gen_set_for(bb.index()));
-        self.curr_state.subtract(self.base_results.sets().kill_set_for(bb.index()));
+        self.curr_state
+            .union(self.base_results.sets().gen_set_for(bb.index()));
+        self.curr_state
+            .subtract(self.base_results.sets().kill_set_for(bb.index()));
     }
 
     fn reconstruct_statement_effect(&mut self, loc: Location) {
@@ -201,7 +205,6 @@ impl<'tcx, BD> FlowsAtLocation for FlowAtLocation<'tcx, BD>
         self.curr_state.subtract(&self.stmt_kill);
     }
 }
-
 
 impl<'tcx, T> FlowAtLocation<'tcx, T>
 where

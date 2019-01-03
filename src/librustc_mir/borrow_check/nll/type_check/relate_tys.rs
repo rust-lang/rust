@@ -1,6 +1,6 @@
 use borrow_check::nll::constraints::OutlivesConstraint;
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
-use rustc::infer::nll_relate::{TypeRelating, TypeRelatingDelegate, NormalizationStrategy};
+use rustc::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::traits::query::Fallible;
@@ -29,8 +29,9 @@ pub(super) fn relate_types<'tcx>(
     TypeRelating::new(
         infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
-        v
-    ).relate(&a, &b)?;
+        v,
+    )
+    .relate(&a, &b)?;
     Ok(())
 }
 
@@ -75,12 +76,11 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
         }
     }
 
-    fn next_placeholder_region(
-        &mut self,
-        placeholder: ty::PlaceholderRegion
-    ) -> ty::Region<'tcx> {
+    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
         if let Some(borrowck_context) = &mut self.borrowck_context {
-            borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
+            borrowck_context
+                .constraints
+                .placeholder_region(self.infcx, placeholder)
         } else {
             self.infcx.tcx.types.re_erased
         }

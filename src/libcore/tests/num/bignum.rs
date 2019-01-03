@@ -1,5 +1,5 @@
-use std::prelude::v1::*;
 use core::num::bignum::tests::Big8x3 as Big;
+use std::prelude::v1::*;
 
 #[test]
 #[should_panic]
@@ -9,12 +9,30 @@ fn test_from_u64_overflow() {
 
 #[test]
 fn test_add() {
-    assert_eq!(*Big::from_small(3).add(&Big::from_small(4)), Big::from_small(7));
-    assert_eq!(*Big::from_small(3).add(&Big::from_small(0)), Big::from_small(3));
-    assert_eq!(*Big::from_small(0).add(&Big::from_small(3)), Big::from_small(3));
-    assert_eq!(*Big::from_small(3).add(&Big::from_u64(0xfffe)), Big::from_u64(0x10001));
-    assert_eq!(*Big::from_u64(0xfedc).add(&Big::from_u64(0x789)), Big::from_u64(0x10665));
-    assert_eq!(*Big::from_u64(0x789).add(&Big::from_u64(0xfedc)), Big::from_u64(0x10665));
+    assert_eq!(
+        *Big::from_small(3).add(&Big::from_small(4)),
+        Big::from_small(7)
+    );
+    assert_eq!(
+        *Big::from_small(3).add(&Big::from_small(0)),
+        Big::from_small(3)
+    );
+    assert_eq!(
+        *Big::from_small(0).add(&Big::from_small(3)),
+        Big::from_small(3)
+    );
+    assert_eq!(
+        *Big::from_small(3).add(&Big::from_u64(0xfffe)),
+        Big::from_u64(0x10001)
+    );
+    assert_eq!(
+        *Big::from_u64(0xfedc).add(&Big::from_u64(0x789)),
+        Big::from_u64(0x10665)
+    );
+    assert_eq!(
+        *Big::from_u64(0x789).add(&Big::from_u64(0xfedc)),
+        Big::from_u64(0x10665)
+    );
 }
 
 #[test]
@@ -36,7 +54,10 @@ fn test_add_small() {
     assert_eq!(*Big::from_small(0).add_small(3), Big::from_small(3));
     assert_eq!(*Big::from_small(7).add_small(250), Big::from_u64(257));
     assert_eq!(*Big::from_u64(0x7fff).add_small(1), Big::from_u64(0x8000));
-    assert_eq!(*Big::from_u64(0x2ffe).add_small(0x35), Big::from_u64(0x3033));
+    assert_eq!(
+        *Big::from_u64(0x2ffe).add_small(0x35),
+        Big::from_u64(0x3033)
+    );
     assert_eq!(*Big::from_small(0xdc).add_small(0x89), Big::from_u64(0x165));
 }
 
@@ -48,11 +69,26 @@ fn test_add_small_overflow() {
 
 #[test]
 fn test_sub() {
-    assert_eq!(*Big::from_small(7).sub(&Big::from_small(4)), Big::from_small(3));
-    assert_eq!(*Big::from_u64(0x10665).sub(&Big::from_u64(0x789)), Big::from_u64(0xfedc));
-    assert_eq!(*Big::from_u64(0x10665).sub(&Big::from_u64(0xfedc)), Big::from_u64(0x789));
-    assert_eq!(*Big::from_u64(0x10665).sub(&Big::from_u64(0x10664)), Big::from_small(1));
-    assert_eq!(*Big::from_u64(0x10665).sub(&Big::from_u64(0x10665)), Big::from_small(0));
+    assert_eq!(
+        *Big::from_small(7).sub(&Big::from_small(4)),
+        Big::from_small(3)
+    );
+    assert_eq!(
+        *Big::from_u64(0x10665).sub(&Big::from_u64(0x789)),
+        Big::from_u64(0xfedc)
+    );
+    assert_eq!(
+        *Big::from_u64(0x10665).sub(&Big::from_u64(0xfedc)),
+        Big::from_u64(0x789)
+    );
+    assert_eq!(
+        *Big::from_u64(0x10665).sub(&Big::from_u64(0x10664)),
+        Big::from_small(1)
+    );
+    assert_eq!(
+        *Big::from_u64(0x10665).sub(&Big::from_u64(0x10665)),
+        Big::from_small(0)
+    );
 }
 
 #[test]
@@ -70,8 +106,14 @@ fn test_sub_underflow_2() {
 #[test]
 fn test_mul_small() {
     assert_eq!(*Big::from_small(7).mul_small(5), Big::from_small(35));
-    assert_eq!(*Big::from_small(0xff).mul_small(0xff), Big::from_u64(0xfe01));
-    assert_eq!(*Big::from_u64(0xffffff/13).mul_small(13), Big::from_u64(0xffffff));
+    assert_eq!(
+        *Big::from_small(0xff).mul_small(0xff),
+        Big::from_u64(0xfe01)
+    );
+    assert_eq!(
+        *Big::from_u64(0xffffff / 13).mul_small(13),
+        Big::from_u64(0xffffff)
+    );
 }
 
 #[test]
@@ -131,12 +173,30 @@ fn test_mul_pow5_overflow_2() {
 #[test]
 fn test_mul_digits() {
     assert_eq!(*Big::from_small(3).mul_digits(&[5]), Big::from_small(15));
-    assert_eq!(*Big::from_small(0xff).mul_digits(&[0xff]), Big::from_u64(0xfe01));
-    assert_eq!(*Big::from_u64(0x123).mul_digits(&[0x56, 0x4]), Big::from_u64(0x4edc2));
-    assert_eq!(*Big::from_u64(0x12345).mul_digits(&[0x67]), Big::from_u64(0x7530c3));
-    assert_eq!(*Big::from_small(0x12).mul_digits(&[0x67, 0x45, 0x3]), Big::from_u64(0x3ae13e));
-    assert_eq!(*Big::from_u64(0xffffff/13).mul_digits(&[13]), Big::from_u64(0xffffff));
-    assert_eq!(*Big::from_small(13).mul_digits(&[0x3b, 0xb1, 0x13]), Big::from_u64(0xffffff));
+    assert_eq!(
+        *Big::from_small(0xff).mul_digits(&[0xff]),
+        Big::from_u64(0xfe01)
+    );
+    assert_eq!(
+        *Big::from_u64(0x123).mul_digits(&[0x56, 0x4]),
+        Big::from_u64(0x4edc2)
+    );
+    assert_eq!(
+        *Big::from_u64(0x12345).mul_digits(&[0x67]),
+        Big::from_u64(0x7530c3)
+    );
+    assert_eq!(
+        *Big::from_small(0x12).mul_digits(&[0x67, 0x45, 0x3]),
+        Big::from_u64(0x3ae13e)
+    );
+    assert_eq!(
+        *Big::from_u64(0xffffff / 13).mul_digits(&[13]),
+        Big::from_u64(0xffffff)
+    );
+    assert_eq!(
+        *Big::from_small(13).mul_digits(&[0x3b, 0xb1, 0x13]),
+        Big::from_u64(0xffffff)
+    );
 }
 
 #[test]
@@ -154,13 +214,26 @@ fn test_mul_digits_overflow_2() {
 #[test]
 fn test_div_rem_small() {
     let as_val = |(q, r): (&mut Big, u8)| (q.clone(), r);
-    assert_eq!(as_val(Big::from_small(0xff).div_rem_small(15)), (Big::from_small(17), 0));
-    assert_eq!(as_val(Big::from_small(0xff).div_rem_small(16)), (Big::from_small(15), 15));
-    assert_eq!(as_val(Big::from_small(3).div_rem_small(40)), (Big::from_small(0), 3));
-    assert_eq!(as_val(Big::from_u64(0xffffff).div_rem_small(123)),
-               (Big::from_u64(0xffffff / 123), (0xffffffu64 % 123) as u8));
-    assert_eq!(as_val(Big::from_u64(0x10000).div_rem_small(123)),
-               (Big::from_u64(0x10000 / 123), (0x10000u64 % 123) as u8));
+    assert_eq!(
+        as_val(Big::from_small(0xff).div_rem_small(15)),
+        (Big::from_small(17), 0)
+    );
+    assert_eq!(
+        as_val(Big::from_small(0xff).div_rem_small(16)),
+        (Big::from_small(15), 15)
+    );
+    assert_eq!(
+        as_val(Big::from_small(3).div_rem_small(40)),
+        (Big::from_small(0), 3)
+    );
+    assert_eq!(
+        as_val(Big::from_u64(0xffffff).div_rem_small(123)),
+        (Big::from_u64(0xffffff / 123), (0xffffffu64 % 123) as u8)
+    );
+    assert_eq!(
+        as_val(Big::from_u64(0x10000).div_rem_small(123)),
+        (Big::from_u64(0x10000 / 123), (0x10000u64 % 123) as u8)
+    );
 }
 
 #[test]
@@ -176,10 +249,22 @@ fn test_div_rem() {
     assert_eq!(div_rem(1, 7), (Big::from_small(0), Big::from_small(1)));
     assert_eq!(div_rem(45, 9), (Big::from_small(5), Big::from_small(0)));
     assert_eq!(div_rem(103, 9), (Big::from_small(11), Big::from_small(4)));
-    assert_eq!(div_rem(123456, 77), (Big::from_u64(1603), Big::from_small(25)));
-    assert_eq!(div_rem(0xffff, 1), (Big::from_u64(0xffff), Big::from_small(0)));
-    assert_eq!(div_rem(0xeeee, 0xffff), (Big::from_small(0), Big::from_u64(0xeeee)));
-    assert_eq!(div_rem(2_000_000, 2), (Big::from_u64(1_000_000), Big::from_u64(0)));
+    assert_eq!(
+        div_rem(123456, 77),
+        (Big::from_u64(1603), Big::from_small(25))
+    );
+    assert_eq!(
+        div_rem(0xffff, 1),
+        (Big::from_u64(0xffff), Big::from_small(0))
+    );
+    assert_eq!(
+        div_rem(0xeeee, 0xffff),
+        (Big::from_small(0), Big::from_u64(0xeeee))
+    );
+    assert_eq!(
+        div_rem(2_000_000, 2),
+        (Big::from_u64(1_000_000), Big::from_u64(0))
+    );
 }
 
 #[test]
@@ -187,8 +272,12 @@ fn test_is_zero() {
     assert!(Big::from_small(0).is_zero());
     assert!(!Big::from_small(3).is_zero());
     assert!(!Big::from_u64(0x123).is_zero());
-    assert!(!Big::from_u64(0xffffff).sub(&Big::from_u64(0xfffffe)).is_zero());
-    assert!(Big::from_u64(0xffffff).sub(&Big::from_u64(0xffffff)).is_zero());
+    assert!(!Big::from_u64(0xffffff)
+        .sub(&Big::from_u64(0xfffffe))
+        .is_zero());
+    assert!(Big::from_u64(0xffffff)
+        .sub(&Big::from_u64(0xffffff))
+        .is_zero());
 }
 
 #[test]
@@ -236,4 +325,3 @@ fn test_fmt() {
     assert_eq!(format!("{:?}", Big::from_u64(0x12345)), "0x1_23_45");
     assert_eq!(format!("{:?}", Big::from_u64(0x123456)), "0x12_34_56");
 }
-

@@ -1,17 +1,11 @@
-use rustc::traits::{
-    Clause,
-    Clauses,
-    DomainGoal,
-    FromEnv,
-    ProgramClause,
-    ProgramClauseCategory,
-    Environment,
-};
-use rustc::ty::{self, TyCtxt, Ty};
-use rustc::hir::def_id::DefId;
-use rustc_data_structures::fx::FxHashSet;
 use super::Lower;
 use crate::generic_types;
+use rustc::hir::def_id::DefId;
+use rustc::traits::{
+    Clause, Clauses, DomainGoal, Environment, FromEnv, ProgramClause, ProgramClauseCategory,
+};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc_data_structures::fx::FxHashSet;
 use std::iter;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
@@ -21,41 +15,36 @@ struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
 
 impl ClauseVisitor<'set, 'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, round: &'set mut FxHashSet<Clause<'tcx>>) -> Self {
-        ClauseVisitor {
-            tcx,
-            round,
-        }
+        ClauseVisitor { tcx, round }
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
         match ty.sty {
             ty::Projection(data) => {
                 self.round.extend(
-                    self.tcx.program_clauses_for(data.item_def_id)
+                    self.tcx
+                        .program_clauses_for(data.item_def_id)
                         .iter()
                         .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
-                        .cloned()
+                        .cloned(),
                 );
             }
 
             // forall<'a, T> { `Outlives(T: 'a) :- FromEnv(&'a T)` }
             ty::Ref(_, _, mutbl) => {
-                let region = self.tcx.mk_region(
-                    ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
-                );
+                let region = self
+                    .tcx
+                    .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0)));
                 let ty = generic_types::bound(self.tcx, 1);
-                let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
-                    ty,
-                    mutbl,
-                });
+                let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut { ty, mutbl });
 
                 let from_env = DomainGoal::FromEnv(FromEnv::Ty(ref_ty));
 
                 let clause = ProgramClause {
                     goal: ty::OutlivesPredicate(ty, region).lower(),
-                    hypotheses: self.tcx.mk_goals(
-                        iter::once(self.tcx.mk_goal(from_env.into_goal()))
-                    ),
+                    hypotheses: self
+                        .tcx
+                        .mk_goals(iter::once(self.tcx.mk_goal(from_env.into_goal()))),
                     category: ProgramClauseCategory::ImpliedBound,
                 };
                 let clause = Clause::ForAll(ty::Binder::bind(clause));
@@ -68,46 +57,46 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
 
             ty::Adt(def, ..) => {
                 self.round.extend(
-                    self.tcx.program_clauses_for(def.did)
+                    self.tcx
+                        .program_clauses_for(def.did)
                         .iter()
                         .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
-                        .cloned()
+                        .cloned(),
                 );
             }
 
-            ty::Foreign(def_id) |
-            ty::FnDef(def_id, ..) |
-            ty::Closure(def_id, ..) |
-            ty::Generator(def_id, ..) |
-            ty::Opaque(def_id, ..) => {
+            ty::Foreign(def_id)
+            | ty::FnDef(def_id, ..)
+            | ty::Closure(def_id, ..)
+            | ty::Generator(def_id, ..)
+            | ty::Opaque(def_id, ..) => {
                 self.round.extend(
-                    self.tcx.program_clauses_for(def_id)
+                    self.tcx
+                        .program_clauses_for(def_id)
                         .iter()
                         .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
-                        .cloned()
+                        .cloned(),
                 );
             }
 
-            ty::Bool |
-            ty::Char |
-            ty::Int(..) |
-            ty::Uint(..) |
-            ty::Float(..) |
-            ty::Str |
-            ty::Array(..) |
-            ty::Slice(..) |
-            ty::RawPtr(..) |
-            ty::FnPtr(..) |
-            ty::Tuple(..) |
-            ty::Never |
-            ty::Infer(..) |
-            ty::Placeholder(..) |
-            ty::Param(..) |
-            ty::Bound(..) => (),
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::FnPtr(..)
+            | ty::Tuple(..)
+            | ty::Never
+            | ty::Infer(..)
+            | ty::Placeholder(..)
+            | ty::Param(..)
+            | ty::Bound(..) => (),
 
-            ty::GeneratorWitness(..) |
-            ty::UnnormalizedProjection(..) |
-            ty::Error => {
+            ty::GeneratorWitness(..) | ty::UnnormalizedProjection(..) | ty::Error => {
                 bug!("unexpected type {:?}", ty);
             }
         }
@@ -117,10 +106,11 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
         match from_env {
             FromEnv::Trait(predicate) => {
                 self.round.extend(
-                    self.tcx.program_clauses_for(predicate.def_id())
+                    self.tcx
+                        .program_clauses_for(predicate.def_id())
                         .iter()
                         .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
-                        .cloned()
+                        .cloned(),
                 );
             }
 
@@ -174,24 +164,17 @@ crate fn program_clauses_for_env<'a, 'tcx>(
         for clause in last_round.drain() {
             visitor.visit_clause(clause);
         }
-        last_round.extend(
-            next_round.drain().filter(|&clause| closure.insert(clause))
-        );
+        last_round.extend(next_round.drain().filter(|&clause| closure.insert(clause)));
     }
 
     debug!("program_clauses_for_env: closure = {:#?}", closure);
 
-    return tcx.mk_clauses(
-        closure.into_iter()
-    );
+    return tcx.mk_clauses(closure.into_iter());
 }
 
-crate fn environment<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId
-) -> Environment<'tcx> {
-    use super::{Lower, IntoFromEnvGoal};
-    use rustc::hir::{Node, TraitItemKind, ImplItemKind, ItemKind, ForeignItemKind};
+crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Environment<'tcx> {
+    use super::{IntoFromEnvGoal, Lower};
+    use rustc::hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
 
     debug!("environment(def_id = {:?})", def_id);
 
@@ -201,14 +184,14 @@ crate fn environment<'a, 'tcx>(
     }
 
     // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates } = tcx.predicates_of(def_id)
-        .instantiate_identity(tcx);
+    let ty::InstantiatedPredicates { predicates } =
+        tcx.predicates_of(def_id).instantiate_identity(tcx);
 
-    let clauses = predicates.into_iter()
+    let clauses = predicates
+        .into_iter()
         .map(|predicate| predicate.lower())
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_from_env_goal()))
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_program_clause()))
-
         // `ForAll` because each `domain_goal` is a `PolyDomainGoal` and
         // could bound lifetimes.
         .map(Clause::ForAll);
@@ -227,24 +210,24 @@ crate fn environment<'a, 'tcx>(
         Node::TraitItem(item) => match item.node {
             TraitItemKind::Method(..) => NodeKind::Fn,
             _ => NodeKind::Other,
-        }
+        },
 
         Node::ImplItem(item) => match item.node {
             ImplItemKind::Method(..) => NodeKind::Fn,
             _ => NodeKind::Other,
-        }
+        },
 
         Node::Item(item) => match item.node {
             ItemKind::Impl(.., Some(..), _, _) => NodeKind::TraitImpl,
             ItemKind::Impl(.., None, _, _) => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
-        }
+        },
 
         Node::ForeignItem(item) => match item.node {
             ForeignItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
-        }
+        },
 
         // FIXME: closures?
         _ => NodeKind::Other,
@@ -256,12 +239,9 @@ crate fn environment<'a, 'tcx>(
         // In a trait impl, we assume that the header trait ref and all its
         // constituents are well-formed.
         NodeKind::TraitImpl => {
-            let trait_ref = tcx.impl_trait_ref(def_id)
-                .expect("not an impl");
+            let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
 
-            input_tys.extend(
-                trait_ref.input_types().flat_map(|ty| ty.walk())
-            );
+            input_tys.extend(trait_ref.input_types().flat_map(|ty| ty.walk()));
         }
 
         // In an inherent impl, we assume that the receiver type and all its
@@ -277,19 +257,18 @@ crate fn environment<'a, 'tcx>(
             let fn_sig = tcx.fn_sig(def_id);
             let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
 
-            input_tys.extend(
-                fn_sig.inputs().iter().flat_map(|ty| ty.walk())
-            );
+            input_tys.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
         }
 
         NodeKind::Other => (),
     }
 
     let clauses = clauses.chain(
-        input_tys.into_iter()
+        input_tys
+            .into_iter()
             .map(|ty| DomainGoal::FromEnv(FromEnv::Ty(ty)))
             .map(|domain_goal| domain_goal.into_program_clause())
-            .map(Clause::Implies)
+            .map(Clause::Implies),
     );
 
     debug!("environment: clauses = {:?}", clauses);

@@ -111,7 +111,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     );
                     true
                 }
-                _ => false
+                _ => false,
             }
         });
 
@@ -170,21 +170,23 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 None => return AutoTraitResult::NegativeImpl,
             };
 
-            let (full_env, full_user_env) = self.evaluate_predicates(
-                &mut infcx,
-                did,
-                trait_did,
-                ty,
-                new_env.clone(),
-                user_env,
-                &mut fresh_preds,
-                true,
-            ).unwrap_or_else(|| {
-                panic!(
-                    "Failed to fully process: {:?} {:?} {:?}",
-                    ty, trait_did, orig_params
+            let (full_env, full_user_env) = self
+                .evaluate_predicates(
+                    &mut infcx,
+                    did,
+                    trait_did,
+                    ty,
+                    new_env.clone(),
+                    user_env,
+                    &mut fresh_preds,
+                    true,
                 )
-            });
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Failed to fully process: {:?} {:?} {:?}",
+                        ty, trait_did, orig_params
+                    )
+                });
 
             debug!(
                 "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): fulfilling \
@@ -326,9 +328,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             // Call infcx.resolve_type_vars_if_possible to see if we can
             // get rid of any inference variables.
-            let obligation = infcx.resolve_type_vars_if_possible(
-                &Obligation::new(dummy_cause.clone(), new_env, pred)
-            );
+            let obligation = infcx.resolve_type_vars_if_possible(&Obligation::new(
+                dummy_cause.clone(),
+                new_env,
+                pred,
+            ));
             let result = select.select(&obligation);
 
             match &result {
@@ -340,11 +344,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             // Blame tidy for the weird bracket placement
                             if infcx.tcx.impl_polarity(*impl_def_id) == hir::ImplPolarity::Negative
                             {
-                                debug!("evaluate_nested_obligations: Found explicit negative impl\
-                                        {:?}, bailing out", impl_def_id);
+                                debug!(
+                                    "evaluate_nested_obligations: Found explicit negative impl\
+                                     {:?}, bailing out",
+                                    impl_def_id
+                                );
                                 return None;
                             }
-                        },
+                        }
                         _ => {}
                     }
 
@@ -388,17 +395,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             computed_preds.extend(user_computed_preds.iter().cloned());
             let normalized_preds =
                 elaborate_predicates(tcx, computed_preds.clone().into_iter().collect());
-            new_env = ty::ParamEnv::new(
-                tcx.mk_predicates(normalized_preds),
-                param_env.reveal,
-                None
-            );
+            new_env =
+                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
             user_env.reveal,
-            None
+            None,
         );
         debug!(
             "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
@@ -462,8 +466,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     ty::RegionKind::ReLateBound(_, _),
                                 ) => {}
 
-                                (ty::RegionKind::ReLateBound(_, _), _) |
-                                (_, ty::RegionKind::ReVar(_)) => {
+                                (ty::RegionKind::ReLateBound(_, _), _)
+                                | (_, ty::RegionKind::ReVar(_)) => {
                                     // One of these is true:
                                     // The new predicate has a HRTB in a spot where the old
                                     // predicate does not (if they both had a HRTB, the previous
@@ -489,8 +493,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     // user_computed_preds
                                     return false;
                                 }
-                                (_, ty::RegionKind::ReLateBound(_, _)) |
-                                (ty::RegionKind::ReVar(_), _) => {
+                                (_, ty::RegionKind::ReLateBound(_, _))
+                                | (ty::RegionKind::ReVar(_), _) => {
                                     // This is the opposite situation as the previous arm.
                                     // One of these is true:
                                     //
@@ -506,7 +510,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     // predicate in user_computed_preds, and skip adding
                                     // new_pred to user_computed_params.
                                     should_add_new = false
-                                },
+                                }
                                 _ => {}
                             }
                         }
@@ -529,14 +533,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
     }
 
-    pub fn get_lifetime(&self, region: Region<'_>,
-                        names_map: &FxHashMap<String, String>) -> String {
+    pub fn get_lifetime(
+        &self,
+        region: Region<'_>,
+        names_map: &FxHashMap<String, String>,
+    ) -> String {
         self.region_name(region)
-            .map(|name|
-                names_map.get(&name).unwrap_or_else(||
+            .map(|name| {
+                names_map.get(&name).unwrap_or_else(|| {
                     panic!("Missing lifetime with name {:?} for {:?}", name, region)
-                )
-            )
+                })
+            })
             .cloned()
             .unwrap_or_else(|| "'static".to_owned())
     }
@@ -632,8 +639,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     }
 
     fn is_param_no_infer(&self, substs: &Substs<'_>) -> bool {
-        return self.is_of_param(substs.type_at(0)) &&
-            !substs.types().any(|t| t.has_infer_types());
+        return self.is_of_param(substs.type_at(0)) && !substs.types().any(|t| t.has_infer_types());
     }
 
     pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
@@ -646,10 +652,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
         match p.ty().skip_binder().sty {
-            ty::Projection(proj) if proj == p.skip_binder().projection_ty => {
-                true
-            },
-            _ => false
+            ty::Projection(proj) if proj == p.skip_binder().projection_ty => true,
+            _ => false,
         }
     }
 
@@ -671,9 +675,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     ) -> bool {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
-        for (obligation, mut predicate) in nested
-            .map(|o| (o.clone(), o.predicate.clone()))
-        {
+        for (obligation, mut predicate) in nested.map(|o| (o.clone(), o.predicate.clone())) {
             let is_new_pred =
                 fresh_preds.insert(self.clean_pred(select.infcx(), predicate.clone()));
 
@@ -696,15 +698,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 &ty::Predicate::Trait(ref p) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
-                        && is_new_pred {
-
+                        && is_new_pred
+                    {
                         self.add_user_pred(computed_preds, predicate);
                     }
                     predicates.push_back(p.clone());
                 }
                 &ty::Predicate::Projection(p) => {
-                    debug!("evaluate_nested_obligations: examining projection predicate {:?}",
-                           predicate);
+                    debug!(
+                        "evaluate_nested_obligations: examining projection predicate {:?}",
+                        predicate
+                    );
 
                     // As described above, we only want to display
                     // bounds which include a generic parameter but don't include
@@ -713,35 +717,42 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // to avoid rendering duplicate bounds to the user.
                     if self.is_param_no_infer(p.skip_binder().projection_ty.substs)
                         && !p.ty().skip_binder().is_ty_infer()
-                        && is_new_pred {
-                            debug!("evaluate_nested_obligations: adding projection predicate\
-                            to computed_preds: {:?}", predicate);
+                        && is_new_pred
+                    {
+                        debug!(
+                            "evaluate_nested_obligations: adding projection predicate\
+                             to computed_preds: {:?}",
+                            predicate
+                        );
 
-                            // Under unusual circumstances, we can end up with a self-refeential
-                            // projection predicate. For example:
-                            // <T as MyType>::Value == <T as MyType>::Value
-                            // Not only is displaying this to the user pointless,
-                            // having it in the ParamEnv will cause an issue if we try to call
-                            // poly_project_and_unify_type on the predicate, since this kind of
-                            // predicate will normally never end up in a ParamEnv.
-                            //
-                            // For these reasons, we ignore these weird predicates,
-                            // ensuring that we're able to properly synthesize an auto trait impl
-                            if self.is_self_referential_projection(p) {
-                                debug!("evaluate_nested_obligations: encountered a projection
-                                 predicate equating a type with itself! Skipping");
-
-                            } else {
-                                self.add_user_pred(computed_preds, predicate);
-                            }
+                        // Under unusual circumstances, we can end up with a self-refeential
+                        // projection predicate. For example:
+                        // <T as MyType>::Value == <T as MyType>::Value
+                        // Not only is displaying this to the user pointless,
+                        // having it in the ParamEnv will cause an issue if we try to call
+                        // poly_project_and_unify_type on the predicate, since this kind of
+                        // predicate will normally never end up in a ParamEnv.
+                        //
+                        // For these reasons, we ignore these weird predicates,
+                        // ensuring that we're able to properly synthesize an auto trait impl
+                        if self.is_self_referential_projection(p) {
+                            debug!(
+                                "evaluate_nested_obligations: encountered a projection
+                                 predicate equating a type with itself! Skipping"
+                            );
+                        } else {
+                            self.add_user_pred(computed_preds, predicate);
+                        }
                     }
 
                     // We can only call poly_project_and_unify_type when our predicate's
                     // Ty contains an inference variable - otherwise, there won't be anything to
                     // unify
                     if p.ty().skip_binder().has_infer_types() {
-                        debug!("Projecting and unifying projection predicate {:?}",
-                               predicate);
+                        debug!(
+                            "Projecting and unifying projection predicate {:?}",
+                            predicate
+                        );
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
                             Err(e) => {
                                 debug!(
@@ -771,7 +782,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 &ty::Predicate::RegionOutlives(ref binder) => {
-                    let () = select.infcx().region_outlives_predicate(&dummy_cause, binder);
+                    let () = select
+                        .infcx()
+                        .region_outlives_predicate(&dummy_cause, binder);
                 }
                 &ty::Predicate::TypeOutlives(ref binder) => {
                     match (
@@ -825,6 +838,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
         (match r {
             &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
             _ => None,
-        }).unwrap_or_else(|| r.super_fold_with(self))
+        })
+        .unwrap_or_else(|| r.super_fold_with(self))
     }
 }

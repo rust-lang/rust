@@ -83,7 +83,8 @@ impl Default for Subcommand {
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
         let mut extra_help = String::new();
-        let mut subcommand_help = String::from("\
+        let mut subcommand_help = String::from(
+            "\
 Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
@@ -96,7 +97,7 @@ Subcommands:
     dist        Build distribution artifacts
     install     Install distribution artifacts
 
-To learn more about a subcommand, run `./x.py <subcommand> -h`"
+To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
 
         let mut opts = Options::new();
@@ -110,12 +111,20 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
         opts.optmulti("", "exclude", "build paths to exclude", "PATH");
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optflag("", "dry-run", "dry run; don't build anything");
-        opts.optopt("", "stage",
+        opts.optopt(
+            "",
+            "stage",
             "stage to build (indicates compiler to use/test, e.g., stage 0 uses the \
              bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)",
-            "N");
-        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling \
-            (pass multiple times to keep e.g., both stages 0 and 1)", "N");
+            "N",
+        );
+        opts.optmulti(
+            "",
+            "keep-stage",
+            "stage(s) to keep without recompiling \
+             (pass multiple times to keep e.g., both stages 0 and 1)",
+            "N",
+        );
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
@@ -344,7 +353,8 @@ Arguments:
                 format!(
                     "Run `./x.py {} -h -v` to see a list of available paths.",
                     subcommand
-                ).as_str(),
+                )
+                .as_str(),
             );
         }
 
@@ -399,8 +409,10 @@ Arguments:
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
-            keep_stage: matches.opt_strs("keep-stage")
-                .into_iter().map(|j| j.parse().unwrap())
+            keep_stage: matches
+                .opt_strs("keep-stage")
+                .into_iter()
+                .map(|j| j.parse().unwrap())
                 .collect(),
             host: split(&matches.opt_strs("host"))
                 .into_iter()

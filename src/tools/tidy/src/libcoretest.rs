@@ -3,8 +3,8 @@
 //! `#![no_core]` libraries cannot be tested directly due to duplicating lang
 //! item. All tests must be written externally in `libcore/tests`.
 
-use std::path::Path;
 use std::fs::read_to_string;
+use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
     let libcore_path = path.join("libcore");
@@ -19,7 +19,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                             tidy_error!(
                                 bad,
                                 "{} contains #[test]; libcore tests must be placed inside \
-                                `src/libcore/tests/`",
+                                 `src/libcore/tests/`",
                                 subpath.display()
                             );
                         }

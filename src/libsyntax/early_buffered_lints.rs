@@ -16,14 +16,14 @@ pub enum BufferedEarlyLintId {
 /// Stores buffered lint info which can later be passed to `librustc`.
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-   pub span: MultiSpan,
+    pub span: MultiSpan,
 
-   /// The lint message.
-   pub msg: String,
+    /// The lint message.
+    pub msg: String,
 
-   /// The `NodeId` of the AST node that generated the lint.
-   pub id: NodeId,
+    /// The `NodeId` of the AST node that generated the lint.
+    pub id: NodeId,
 
-   /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
-   pub lint_id: BufferedEarlyLintId,
+    /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
+    pub lint_id: BufferedEarlyLintId,
 }

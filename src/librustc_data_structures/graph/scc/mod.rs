@@ -46,7 +46,7 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
 
     /// Returns an iterator over the SCCs in the graph.
     pub fn all_sccs(&self) -> impl Iterator<Item = S> {
-        (0 .. self.scc_data.len()).map(S::new)
+        (0..self.scc_data.len()).map(S::new)
     }
 
     /// Returns the SCC to which a node `r` belongs.

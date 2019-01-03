@@ -11,17 +11,17 @@
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 
-use llvm;
-use llvm::AttributePlace::Function;
-use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::LayoutOf;
-use rustc::session::config::Sanitizer;
-use rustc_data_structures::small_c_str::SmallCStr;
 use abi::{FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
-use type_::Type;
+use llvm;
+use llvm::AttributePlace::Function;
+use rustc::session::config::Sanitizer;
+use rustc::ty::layout::LayoutOf;
+use rustc::ty::{self, PolyFnSig};
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::small_c_str::SmallCStr;
+use type_::Type;
 use value::Value;
 
 /// Declare a function.
@@ -36,17 +36,21 @@ fn declare_raw_fn(
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = SmallCStr::new(name);
-    let llfn = unsafe {
-        llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty)
-    };
+    let llfn = unsafe { llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty) };
 
     llvm::SetFunctionCallConv(llfn, callconv);
     // Function addresses in Rust are never significant, allowing functions to
     // be merged.
     llvm::SetUnnamedAddr(llfn, true);
 
-    if cx.tcx.sess.opts.cg.no_redzone
-        .unwrap_or(cx.tcx.sess.target.target.options.disable_redzone) {
+    if cx
+        .tcx
+        .sess
+        .opts
+        .cg
+        .no_redzone
+        .unwrap_or(cx.tcx.sess.target.target.options.disable_redzone)
+    {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
     }
 
@@ -54,13 +58,13 @@ fn declare_raw_fn(
         match *sanitizer {
             Sanitizer::Address => {
                 llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
-            },
+            }
             Sanitizer::Memory => {
                 llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
-            },
+            }
             Sanitizer::Thread => {
                 llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
-            },
+            }
             _ => {}
         }
     }
@@ -68,12 +72,12 @@ fn declare_raw_fn(
     match cx.tcx.sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
         Some("s") => {
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
+        }
         Some("z") => {
             llvm::Attribute::MinSize.apply_llfn(Function, llfn);
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
-        _ => {},
+        }
+        _ => {}
     }
 
     attributes::non_lazy_bind(cx.sess(), llfn);
@@ -82,33 +86,21 @@ fn declare_raw_fn(
 }
 
 impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-
-    fn declare_global(
-        &self,
-        name: &str, ty: &'ll Type
-    ) -> &'ll Value {
+    fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         let namebuf = SmallCStr::new(name);
-        unsafe {
-            llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty)
-        }
+        unsafe { llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty) }
     }
 
-    fn declare_cfn(
-        &self,
-        name: &str,
-        fn_type: &'ll Type
-    ) -> &'ll Value {
+    fn declare_cfn(&self, name: &str, fn_type: &'ll Type) -> &'ll Value {
         declare_raw_fn(self, name, llvm::CCallConv, fn_type)
     }
 
-    fn declare_fn(
-        &self,
-        name: &str,
-        sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
+    fn declare_fn(&self, name: &str, sig: PolyFnSig<'tcx>) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, sig={:?})", name, sig);
-        let sig = self.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let sig = self
+            .tcx
+            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
         let fty = FnType::new(self, sig, &[]);
@@ -123,11 +115,7 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         llfn
     }
 
-    fn define_global(
-        &self,
-        name: &str,
-        ty: &'ll Type
-    ) -> Option<&'ll Value> {
+    fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
         if self.get_defined_value(name).is_some() {
             None
         } else {
@@ -136,28 +124,19 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
-        unsafe {
-            llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty)
-        }
+        unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty) }
     }
 
-    fn define_fn(
-        &self,
-        name: &str,
-        fn_sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
+    fn define_fn(&self, name: &str, fn_sig: PolyFnSig<'tcx>) -> &'ll Value {
         if self.get_defined_value(name).is_some() {
-            self.sess().fatal(&format!("symbol `{}` already defined", name))
+            self.sess()
+                .fatal(&format!("symbol `{}` already defined", name))
         } else {
             self.declare_fn(name, fn_sig)
         }
     }
 
-    fn define_internal_fn(
-        &self,
-        name: &str,
-        fn_sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
+    fn define_internal_fn(&self, name: &str, fn_sig: PolyFnSig<'tcx>) -> &'ll Value {
         let llfn = self.define_fn(name, fn_sig);
         unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
         llfn
@@ -170,10 +149,8 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
-        self.get_declared_value(name).and_then(|val|{
-            let declaration = unsafe {
-                llvm::LLVMIsDeclaration(val) != 0
-            };
+        self.get_declared_value(name).and_then(|val| {
+            let declaration = unsafe { llvm::LLVMIsDeclaration(val) != 0 };
             if !declaration {
                 Some(val)
             } else {

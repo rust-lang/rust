@@ -1,4 +1,4 @@
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
 #[bench]
 fn char_iterator(b: &mut Bencher) {
@@ -12,7 +12,9 @@ fn char_iterator_for(b: &mut Bencher) {
     let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
     b.iter(|| {
-        for ch in s.chars() { black_box(ch); }
+        for ch in s.chars() {
+            black_box(ch);
+        }
     });
 }
 
@@ -40,7 +42,9 @@ fn char_iterator_rev_for(b: &mut Bencher) {
     let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
     b.iter(|| {
-        for ch in s.chars().rev() { black_box(ch); }
+        for ch in s.chars().rev() {
+            black_box(ch);
+        }
     });
 }
 
@@ -62,7 +66,8 @@ fn char_indicesator_rev(b: &mut Bencher) {
 
 #[bench]
 fn split_unicode_ascii(b: &mut Bencher) {
-    let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
+    let s =
+        "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
     b.iter(|| assert_eq!(s.split('V').count(), 3));
 }
@@ -79,7 +84,9 @@ fn split_ascii(b: &mut Bencher) {
 fn split_extern_fn(b: &mut Bencher) {
     let s = "Mary had a little lamb, Little lamb, little-lamb.";
     let len = s.split(' ').count();
-    fn pred(c: char) -> bool { c == ' ' }
+    fn pred(c: char) -> bool {
+        c == ' '
+    }
 
     b.iter(|| assert_eq!(s.split(pred).count(), len));
 }
@@ -185,16 +192,19 @@ fn bench_contains_equal(b: &mut Bencher) {
     })
 }
 
-
 macro_rules! make_test_inner {
     ($s:ident, $code:expr, $name:ident, $str:expr, $iters:expr) => {
         #[bench]
         fn $name(bencher: &mut Bencher) {
             let mut $s = $str;
             black_box(&mut $s);
-            bencher.iter(|| for _ in 0..$iters { black_box($code); });
+            bencher.iter(|| {
+                for _ in 0..$iters {
+                    black_box($code);
+                }
+            });
         }
-    }
+    };
 }
 
 macro_rules! make_test {
@@ -283,11 +293,25 @@ make_test!(starts_with_ascii_char, s, s.starts_with('/'), 1024);
 make_test!(ends_with_ascii_char, s, s.ends_with('/'), 1024);
 make_test!(starts_with_unichar, s, s.starts_with('\u{1F4A4}'), 1024);
 make_test!(ends_with_unichar, s, s.ends_with('\u{1F4A4}'), 1024);
-make_test!(starts_with_str, s, s.starts_with("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩"), 1024);
-make_test!(ends_with_str, s, s.ends_with("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩"), 1024);
+make_test!(
+    starts_with_str,
+    s,
+    s.starts_with("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩"),
+    1024
+);
+make_test!(
+    ends_with_str,
+    s,
+    s.ends_with("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩"),
+    1024
+);
 
 make_test!(split_space_char, s, s.split(' ').count());
-make_test!(split_terminator_space_char, s, s.split_terminator(' ').count());
+make_test!(
+    split_terminator_space_char,
+    s,
+    s.split_terminator(' ').count()
+);
 
 make_test!(splitn_space_char, s, s.splitn(10, ' ').count());
 make_test!(rsplitn_space_char, s, s.rsplitn(10, ' ').count());

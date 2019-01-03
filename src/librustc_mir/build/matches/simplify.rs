@@ -12,19 +12,18 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
+use build::matches::{Ascription, Binding, Candidate, MatchPair};
 use build::Builder;
-use build::matches::{Ascription, Binding, MatchPair, Candidate};
 use hair::*;
+use rustc::hir::RangeEnd;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
-use rustc::hir::RangeEnd;
 
 use std::mem;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn simplify_candidate<'pat>(&mut self,
-                                    candidate: &mut Candidate<'pat, 'tcx>) {
+    pub fn simplify_candidate<'pat>(&mut self, candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
@@ -50,20 +49,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// have been pushed into the candidate. If no simplification is
     /// possible, Err is returned and no changes are made to
     /// candidate.
-    fn simplify_match_pair<'pat>(&mut self,
-                                 match_pair: MatchPair<'pat, 'tcx>,
-                                 candidate: &mut Candidate<'pat, 'tcx>)
-                                 -> Result<(), MatchPair<'pat, 'tcx>> {
+    fn simplify_match_pair<'pat>(
+        &mut self,
+        match_pair: MatchPair<'pat, 'tcx>,
+        candidate: &mut Candidate<'pat, 'tcx>,
+    ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
-            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType {
+                ref subpattern,
+                ref user_ty,
+                user_ty_span,
+            } => {
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
                     user_ty: user_ty.clone(),
                     source: match_pair.place.clone(),
                 });
 
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                candidate
+                    .match_pairs
+                    .push(MatchPair::new(match_pair.place, subpattern));
 
                 Ok(())
             }
@@ -73,7 +79,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Ok(())
             }
 
-            PatternKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
+            PatternKind::Binding {
+                name,
+                mutability,
+                mode,
+                var,
+                ty,
+                ref subpattern,
+            } => {
                 candidate.bindings.push(Binding {
                     name,
                     mutability,
@@ -86,7 +99,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                    candidate
+                        .match_pairs
+                        .push(MatchPair::new(match_pair.place, subpattern));
                 }
 
                 Ok(())
@@ -99,9 +114,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
                 let range = match ty.sty {
-                    ty::Char => {
-                        Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32)))
-                    }
+                    ty::Char => Some((
+                        '\u{0000}' as u128,
+                        '\u{10FFFF}' as u128,
+                        Size::from_bits(32),
+                    )),
                     ty::Int(ity) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
@@ -128,56 +145,81 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+            PatternKind::Slice {
+                ref prefix,
+                ref slice,
+                ref suffix,
+            } => {
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     // irrefutable
-                    self.prefix_slice_suffix(&mut candidate.match_pairs,
-                                             &match_pair.place,
-                                             prefix,
-                                             slice.as_ref(),
-                                             suffix);
+                    self.prefix_slice_suffix(
+                        &mut candidate.match_pairs,
+                        &match_pair.place,
+                        prefix,
+                        slice.as_ref(),
+                        suffix,
+                    );
                     Ok(())
                 } else {
                     Err(match_pair)
                 }
             }
 
-            PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
+            PatternKind::Variant {
+                adt_def,
+                substs,
+                variant_index,
+                ref subpatterns,
+            } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().never_type &&
-                        self.hir.tcx().features().exhaustive_patterns &&
-                        self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
+                        self.hir.tcx().features().never_type
+                            && self.hir.tcx().features().exhaustive_patterns
+                            && self
+                                .hir
+                                .tcx()
+                                .is_variant_uninhabited_from_all_modules(v, substs)
                     }
                 });
                 if irrefutable {
                     let place = match_pair.place.downcast(adt_def, variant_index);
-                    candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
+                    candidate
+                        .match_pairs
+                        .extend(self.field_match_pairs(place, subpatterns));
                     Ok(())
                 } else {
                     Err(match_pair)
                 }
-            },
+            }
 
-            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
-                self.prefix_slice_suffix(&mut candidate.match_pairs,
-                                         &match_pair.place,
-                                         prefix,
-                                         slice.as_ref(),
-                                         suffix);
+            PatternKind::Array {
+                ref prefix,
+                ref slice,
+                ref suffix,
+            } => {
+                self.prefix_slice_suffix(
+                    &mut candidate.match_pairs,
+                    &match_pair.place,
+                    prefix,
+                    slice.as_ref(),
+                    suffix,
+                );
                 Ok(())
             }
 
             PatternKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
-                candidate.match_pairs
-                         .extend(self.field_match_pairs(match_pair.place, subpatterns));
+                candidate
+                    .match_pairs
+                    .extend(self.field_match_pairs(match_pair.place, subpatterns));
                 Ok(())
             }
 
             PatternKind::Deref { ref subpattern } => {
                 let place = match_pair.place.deref();
-                candidate.match_pairs.push(MatchPair::new(place, subpattern));
+                candidate
+                    .match_pairs
+                    .push(MatchPair::new(place, subpattern));
                 Ok(())
             }
         }

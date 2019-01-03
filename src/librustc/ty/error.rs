@@ -1,11 +1,11 @@
+use errors::{Applicability, DiagnosticBuilder};
 use hir::def_id::DefId;
-use ty::{self, Region, Ty, TyCtxt};
+use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::fmt;
-use rustc_target::spec::abi;
 use syntax::ast;
-use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
+use ty::{self, Region, Ty, TyCtxt};
 
 use hir;
 
@@ -58,8 +58,11 @@ pub enum UnconstrainedNumeric {
 impl<'tcx> fmt::Display for TypeError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::TypeError::*;
-        fn report_maybe_different(f: &mut fmt::Formatter<'_>,
-                                  expected: &str, found: &str) -> fmt::Result {
+        fn report_maybe_different(
+            f: &mut fmt::Formatter<'_>,
+            expected: &str,
+            found: &str,
+        ) -> fmt::Result {
             // A naive approach to making sure that we're not reporting silly errors such as:
             // (expected closure, found closure).
             if expected == found {
@@ -72,78 +75,88 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
-            UnsafetyMismatch(values) => {
-                write!(f, "expected {} fn, found {} fn",
-                       values.expected,
-                       values.found)
-            }
-            AbiMismatch(values) => {
-                write!(f, "expected {} fn, found {} fn",
-                       values.expected,
-                       values.found)
-            }
+            UnsafetyMismatch(values) => write!(
+                f,
+                "expected {} fn, found {} fn",
+                values.expected, values.found
+            ),
+            AbiMismatch(values) => write!(
+                f,
+                "expected {} fn, found {} fn",
+                values.expected, values.found
+            ),
             Mutability => write!(f, "types differ in mutability"),
-            FixedArraySize(values) => {
-                write!(f, "expected an array with a fixed size of {} elements, \
-                           found one with {} elements",
-                       values.expected,
-                       values.found)
-            }
-            TupleSize(values) => {
-                write!(f, "expected a tuple with {} elements, \
-                           found one with {} elements",
-                       values.expected,
-                       values.found)
-            }
-            ArgCount => {
-                write!(f, "incorrect number of function parameters")
-            }
-            RegionsDoesNotOutlive(..) => {
-                write!(f, "lifetime mismatch")
-            }
-            RegionsPlaceholderMismatch => {
-                write!(f, "one type is more general than the other")
-            }
+            FixedArraySize(values) => write!(
+                f,
+                "expected an array with a fixed size of {} elements, \
+                 found one with {} elements",
+                values.expected, values.found
+            ),
+            TupleSize(values) => write!(
+                f,
+                "expected a tuple with {} elements, \
+                 found one with {} elements",
+                values.expected, values.found
+            ),
+            ArgCount => write!(f, "incorrect number of function parameters"),
+            RegionsDoesNotOutlive(..) => write!(f, "lifetime mismatch"),
+            RegionsPlaceholderMismatch => write!(f, "one type is more general than the other"),
             Sorts(values) => ty::tls::with(|tcx| {
-                report_maybe_different(f, &values.expected.sort_string(tcx),
-                                       &values.found.sort_string(tcx))
+                report_maybe_different(
+                    f,
+                    &values.expected.sort_string(tcx),
+                    &values.found.sort_string(tcx),
+                )
             }),
             Traits(values) => ty::tls::with(|tcx| {
-                report_maybe_different(f,
-                                       &format!("trait `{}`",
-                                                tcx.item_path_str(values.expected)),
-                                       &format!("trait `{}`",
-                                                tcx.item_path_str(values.found)))
+                report_maybe_different(
+                    f,
+                    &format!("trait `{}`", tcx.item_path_str(values.expected)),
+                    &format!("trait `{}`", tcx.item_path_str(values.found)),
+                )
             }),
-            IntMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`",
-                       values.expected,
-                       values.found)
-            }
-            FloatMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`",
-                       values.expected,
-                       values.found)
-            }
-            VariadicMismatch(ref values) => {
-                write!(f, "expected {} fn, found {} function",
-                       if values.expected { "variadic" } else { "non-variadic" },
-                       if values.found { "variadic" } else { "non-variadic" })
-            }
+            IntMismatch(ref values) => write!(
+                f,
+                "expected `{:?}`, found `{:?}`",
+                values.expected, values.found
+            ),
+            FloatMismatch(ref values) => write!(
+                f,
+                "expected `{:?}`, found `{:?}`",
+                values.expected, values.found
+            ),
+            VariadicMismatch(ref values) => write!(
+                f,
+                "expected {} fn, found {} function",
+                if values.expected {
+                    "variadic"
+                } else {
+                    "non-variadic"
+                },
+                if values.found {
+                    "variadic"
+                } else {
+                    "non-variadic"
+                }
+            ),
             ProjectionMismatched(ref values) => ty::tls::with(|tcx| {
-                write!(f, "expected {}, found {}",
-                       tcx.item_path_str(values.expected),
-                       tcx.item_path_str(values.found))
+                write!(
+                    f,
+                    "expected {}, found {}",
+                    tcx.item_path_str(values.expected),
+                    tcx.item_path_str(values.found)
+                )
             }),
-            ProjectionBoundsLength(ref values) => {
-                write!(f, "expected {} associated type bindings, found {}",
-                       values.expected,
-                       values.found)
-            },
-            ExistentialMismatch(ref values) => {
-                report_maybe_different(f, &format!("trait `{}`", values.expected),
-                                       &format!("trait `{}`", values.found))
-            }
+            ProjectionBoundsLength(ref values) => write!(
+                f,
+                "expected {} associated type bindings, found {}",
+                values.expected, values.found
+            ),
+            ExistentialMismatch(ref values) => report_maybe_different(
+                f,
+                &format!("trait `{}`", values.expected),
+                &format!("trait `{}`", values.found),
+            ),
         }
     }
 }
@@ -151,18 +164,17 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> Cow<'static, str> {
         match self.sty {
-            ty::Bool | ty::Char | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string().into(),
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
+                self.to_string().into()
+            }
             ty::Tuple(ref tys) if tys.is_empty() => self.to_string().into(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)).into(),
-            ty::Array(_, n) => {
-                match n.assert_usize(tcx) {
-                    Some(n) => format!("array of {} elements", n).into(),
-                    None => "array".into(),
-                }
-            }
+            ty::Array(_, n) => match n.assert_usize(tcx) {
+                Some(n) => format!("array of {} elements", n).into(),
+                None => "array".into(),
+            },
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "*-ptr".into(),
             ty::Ref(region, ty, mutbl) => {
@@ -170,12 +182,17 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                 let tymut_string = tymut.to_string();
                 if tymut_string == "_" ||         //unknown type name,
                    tymut_string.len() > 10 ||     //name longer than saying "reference",
-                   region.to_string() != ""       //... or a complex type
+                   region.to_string() != ""
+                //... or a complex type
                 {
-                    format!("{}reference", match mutbl {
-                        hir::Mutability::MutMutable => "mutable ",
-                        _ => ""
-                    }).into()
+                    format!(
+                        "{}reference",
+                        match mutbl {
+                            hir::Mutability::MutMutable => "mutable ",
+                            _ => "",
+                        }
+                    )
+                    .into()
                 } else {
                     format!("&{}", tymut_string).into()
                 }
@@ -213,10 +230,12 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn note_and_explain_type_err(self,
-                                     db: &mut DiagnosticBuilder<'_>,
-                                     err: &TypeError<'tcx>,
-                                     sp: Span) {
+    pub fn note_and_explain_type_err(
+        self,
+        db: &mut DiagnosticBuilder<'_>,
+        err: &TypeError<'tcx>,
+        sp: Span,
+    ) {
         use self::TypeError::*;
 
         match err.clone() {
@@ -228,26 +247,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
                 if let (ty::Infer(ty::IntVar(_)), ty::Float(_)) =
-                       (&values.found.sty, &values.expected.sty) // Issue #53280
+                    (&values.found.sty, &values.expected.sty)
+                // Issue #53280
                 {
                     if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
-                        if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
+                        if snippet
+                            .chars()
+                            .all(|c| c.is_digit(10) || c == '-' || c == '_')
+                        {
                             db.span_suggestion_with_applicability(
                                 sp,
                                 "use a float literal",
                                 format!("{}.0", snippet),
-                                Applicability::MachineApplicable
+                                Applicability::MachineApplicable,
                             );
                         }
                     }
                 }
-            },
+            }
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
                 if ty.is_closure() || ty.is_generator() {
-                    db.note("closures cannot capture themselves or take themselves as argument;\n\
-                             this error may be the result of a recent compiler bug-fix,\n\
-                             see https://github.com/rust-lang/rust/issues/46062 for more details");
+                    db.note(
+                        "closures cannot capture themselves or take themselves as argument;\n\
+                         this error may be the result of a recent compiler bug-fix,\n\
+                         see https://github.com/rust-lang/rust/issues/46062 for more details",
+                    );
                 }
             }
             _ => {}

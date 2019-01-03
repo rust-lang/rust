@@ -1,21 +1,21 @@
+use std::cell::RefCell;
 use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::cell::RefCell;
 
 use errors;
-use testing;
-use syntax::source_map::DUMMY_SP;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::source_map::DUMMY_SP;
+use testing;
 
-use externalfiles::{LoadStringError, load_string};
+use externalfiles::{load_string, LoadStringError};
 
 use config::{Options, RenderOptions};
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
-use test::{TestOptions, Collector};
+use html::markdown::{find_testable_code, ErrorCodes, IdMap, Markdown, MarkdownWithToc};
+use test::{Collector, TestOptions};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
@@ -45,7 +45,10 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
 
     let mut css = String::new();
     for name in &options.markdown_css {
-        let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
+        let s = format!(
+            "<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n",
+            name
+        );
         css.push_str(&s)
     }
 
@@ -54,15 +57,17 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
         Err(LoadStringError::ReadFail) => return 1,
         Err(LoadStringError::BadUtf8) => return 2,
     };
-    let playground_url = options.markdown_playground_url
-                            .or(options.playground_url);
+    let playground_url = options.markdown_playground_url.or(options.playground_url);
     if let Some(playground) = playground_url {
-        markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
+        markdown::PLAYGROUND.with(|s| {
+            *s.borrow_mut() = Some((None, playground));
+        });
     }
 
     let mut out = match File::create(&output) {
         Err(e) => {
-            diag.struct_err(&format!("{}: {}", output.display(), e)).emit();
+            diag.struct_err(&format!("{}: {}", output.display(), e))
+                .emit();
             return 4;
         }
         Ok(f) => f,
@@ -70,7 +75,8 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
 
     let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.is_empty() {
-        diag.struct_err("invalid markdown file: no initial lines starting with `# ` or `%`").emit();
+        diag.struct_err("invalid markdown file: no initial lines starting with `# ` or `%`")
+            .emit();
         return 5;
     }
     let title = metadata[0];
@@ -120,7 +126,8 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
 
     match err {
         Err(e) => {
-            diag.struct_err(&format!("cannot write to `{}`: {}", output.display(), e)).emit();
+            diag.struct_err(&format!("cannot write to `{}`: {}", output.display(), e))
+                .emit();
             6
         }
         Ok(_) => 0,
@@ -138,11 +145,20 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
     opts.display_warnings = options.display_warnings;
-    let mut collector = Collector::new(options.input.display().to_string(), options.cfgs,
-                                       options.libs, options.codegen_options, options.externs,
-                                       true, opts, options.maybe_sysroot, None,
-                                       Some(options.input),
-                                       options.linker, options.edition);
+    let mut collector = Collector::new(
+        options.input.display().to_string(),
+        options.cfgs,
+        options.libs,
+        options.codegen_options,
+        options.externs,
+        true,
+        opts,
+        options.maybe_sysroot,
+        None,
+        Some(options.input),
+        options.linker,
+        options.edition,
+    );
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let res = find_testable_code(&input_str, &mut collector, codes);
@@ -150,7 +166,10 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
         diag.span_warn(DUMMY_SP, &err.to_string());
     }
     options.test_args.insert(0, "rustdoctest".to_string());
-    testing::test_main(&options.test_args, collector.tests,
-                       testing::Options::new().display_output(options.display_warnings));
+    testing::test_main(
+        &options.test_args,
+        collector.tests,
+        testing::Options::new().display_output(options.display_warnings),
+    );
     0
 }

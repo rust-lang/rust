@@ -1,21 +1,16 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
-use rustc::ty::layout::{self, TyLayout, VariantIdx};
+use rustc::mir::interpret::EvalResult;
 use rustc::ty;
-use rustc::mir::interpret::{
-    EvalResult,
-};
+use rustc::ty::layout::{self, TyLayout, VariantIdx};
 
-use super::{
-    Machine, EvalContext, MPlaceTy, OpTy,
-};
+use super::{EvalContext, MPlaceTy, Machine, OpTy};
 
 // A thing that we can project into, and that has a layout.
 // This wouldn't have to depend on `Machine` but with the current type inference,
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
-pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
-{
+pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy {
     /// Get this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 

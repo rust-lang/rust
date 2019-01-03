@@ -1,6 +1,6 @@
-use rustc::middle::privacy::{AccessLevels, AccessLevel};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::Visibility;
 use rustc::util::nodemap::FxHashSet;
 
@@ -23,19 +23,20 @@ pub struct LibEmbargoVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
 }
 
 impl<'a, 'tcx, 'rcx> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
-    pub fn new(
-        cx: &'a ::core::DocContext<'a, 'tcx, 'rcx>
-    ) -> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
+    pub fn new(cx: &'a ::core::DocContext<'a, 'tcx, 'rcx>) -> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
         LibEmbargoVisitor {
             cx,
             access_levels: RefMut::map(cx.renderinfo.borrow_mut(), |ri| &mut ri.access_levels),
             prev_level: Some(AccessLevel::Public),
-            visited_mods: FxHashSet::default()
+            visited_mods: FxHashSet::default(),
         }
     }
 
     pub fn visit_lib(&mut self, cnum: CrateNum) {
-        let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        let did = DefId {
+            krate: cnum,
+            index: CRATE_DEF_INDEX,
+        };
         self.update(did, Some(AccessLevel::Public));
         self.visit_mod(did);
     }
@@ -60,8 +61,14 @@ impl<'a, 'tcx, 'rcx> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
         }
 
         for item in self.cx.tcx.item_children(def_id).iter() {
-            if self.cx.tcx.def_key(item.def.def_id()).parent.map_or(false, |d| d == def_id.index) ||
-                item.vis == Visibility::Public {
+            if self
+                .cx
+                .tcx
+                .def_key(item.def.def_id())
+                .parent
+                .map_or(false, |d| d == def_id.index)
+                || item.vis == Visibility::Public
+            {
                 self.visit_item(item.def);
             }
         }

@@ -322,8 +322,8 @@ mod tests {
     use stats::Stats;
     use stats::Summary;
     use std::f64;
-    use std::io::prelude::*;
     use std::io;
+    use std::io::prelude::*;
 
     macro_rules! assert_approx_eq {
         ($a: expr, $b: expr) => {{

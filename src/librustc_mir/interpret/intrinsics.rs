@@ -2,18 +2,13 @@
 //! looking at their MIR.  Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use syntax::symbol::Symbol;
+use rustc::mir::interpret::{EvalErrorKind, EvalResult, Scalar};
+use rustc::mir::BinOp;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive};
-use rustc::mir::BinOp;
-use rustc::mir::interpret::{
-    EvalResult, EvalErrorKind, Scalar,
-};
+use syntax::symbol::Symbol;
 
-use super::{
-    Machine, PlaceTy, OpTy, EvalContext,
-};
-
+use super::{EvalContext, Machine, OpTy, PlaceTy};
 
 fn numeric_intrinsic<'tcx, Tag>(
     name: &str,
@@ -75,12 +70,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let id_val = Scalar::from_uint(type_id, dest.layout.size);
                 self.write_scalar(id_val, dest)?;
             }
-            | "ctpop"
-            | "cttz"
-            | "cttz_nonzero"
-            | "ctlz"
-            | "ctlz_nonzero"
-            | "bswap"
+            "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap"
             | "bitreverse" => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
@@ -99,12 +89,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 };
                 self.write_scalar(out_val, dest)?;
             }
-            | "overflowing_add"
-            | "overflowing_sub"
-            | "overflowing_mul"
-            | "add_with_overflow"
-            | "sub_with_overflow"
-            | "mul_with_overflow" => {
+            "overflowing_add" | "overflowing_sub" | "overflowing_mul" | "add_with_overflow"
+            | "sub_with_overflow" | "mul_with_overflow" => {
                 let lhs = self.read_immediate(args[0])?;
                 let rhs = self.read_immediate(args[1])?;
                 let (bin_op, ignore_overflow) = match intrinsic_name {
@@ -114,7 +100,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     "add_with_overflow" => (BinOp::Add, false),
                     "sub_with_overflow" => (BinOp::Sub, false),
                     "mul_with_overflow" => (BinOp::Mul, false),
-                    _ => bug!("Already checked for int ops")
+                    _ => bug!("Already checked for int ops"),
                 };
                 if ignore_overflow {
                     self.binop_ignore_overflow(bin_op, lhs, rhs, dest)?;
@@ -128,15 +114,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let bin_op = match intrinsic_name {
                     "unchecked_shl" => BinOp::Shl,
                     "unchecked_shr" => BinOp::Shr,
-                    _ => bug!("Already checked for int ops")
+                    _ => bug!("Already checked for int ops"),
                 };
                 let (val, overflowed) = self.binary_op_imm(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val =  r.to_scalar()?.to_bits(layout.size)?;
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in {}", r_val, intrinsic_name),
-                    ));
+                    let r_val = r.to_scalar()?.to_bits(layout.size)?;
+                    return err!(Intrinsic(format!(
+                        "Overflowing shift by {} in {}",
+                        r_val, intrinsic_name
+                    ),));
                 }
                 self.write_scalar(val, dest)?;
             }
@@ -205,7 +192,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
+            return Err(EvalErrorKind::Panic {
+                msg,
+                file,
+                line,
+                col,
+            }
+            .into());
         } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
@@ -223,7 +216,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
+            return Err(EvalErrorKind::Panic {
+                msg,
+                file,
+                line,
+                col,
+            }
+            .into());
         } else {
             return Ok(false);
         }

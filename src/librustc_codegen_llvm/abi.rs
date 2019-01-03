@@ -1,25 +1,25 @@
-use llvm::{self, AttributePlace};
-use rustc_codegen_ssa::MemFlags;
 use builder::Builder;
 use context::CodegenCx;
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use llvm::{self, AttributePlace};
 use rustc_codegen_ssa::mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::MemFlags;
+use rustc_target::abi::call::ArgType;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
-use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;
 
-use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
-use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout;
+use rustc::ty::{self, Instance, Ty};
+use rustc_target::abi::{Abi as LayoutAbi, HasDataLayout, LayoutOf, Size, TyLayout};
 
 use libc::c_uint;
 
-pub use rustc_target::spec::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 pub use rustc_target::abi::call::*;
+pub use rustc_target::spec::abi::Abi;
 
 macro_rules! for_each_kind {
     ($flags: ident, $f: ident, $($kind: ident),+) => ({
@@ -28,13 +28,19 @@ macro_rules! for_each_kind {
 }
 
 trait ArgAttributeExt {
-    fn for_each_kind<F>(&self, f: F) where F: FnMut(llvm::Attribute);
+    fn for_each_kind<F>(&self, f: F)
+    where
+        F: FnMut(llvm::Attribute);
 }
 
 impl ArgAttributeExt for ArgAttribute {
-    fn for_each_kind<F>(&self, mut f: F) where F: FnMut(llvm::Attribute) {
-        for_each_kind!(self, f,
-                       ByVal, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg)
+    fn for_each_kind<F>(&self, mut f: F)
+    where
+        F: FnMut(llvm::Attribute),
+    {
+        for_each_kind!(
+            self, f, ByVal, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg
+        )
     }
 }
 
@@ -50,20 +56,14 @@ impl ArgAttributesExt for ArgAttributes {
             let deref = self.pointee_size.bytes();
             if deref != 0 {
                 if regular.contains(ArgAttribute::NonNull) {
-                    llvm::LLVMRustAddDereferenceableAttr(llfn,
-                                                         idx.as_uint(),
-                                                         deref);
+                    llvm::LLVMRustAddDereferenceableAttr(llfn, idx.as_uint(), deref);
                 } else {
-                    llvm::LLVMRustAddDereferenceableOrNullAttr(llfn,
-                                                               idx.as_uint(),
-                                                               deref);
+                    llvm::LLVMRustAddDereferenceableOrNullAttr(llfn, idx.as_uint(), deref);
                 }
                 regular -= ArgAttribute::NonNull;
             }
             if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentAttr(llfn,
-                                               idx.as_uint(),
-                                               align.bytes() as u32);
+                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
             }
             regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
         }
@@ -75,20 +75,22 @@ impl ArgAttributesExt for ArgAttributes {
             let deref = self.pointee_size.bytes();
             if deref != 0 {
                 if regular.contains(ArgAttribute::NonNull) {
-                    llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite,
-                                                                 idx.as_uint(),
-                                                                 deref);
+                    llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite, idx.as_uint(), deref);
                 } else {
-                    llvm::LLVMRustAddDereferenceableOrNullCallSiteAttr(callsite,
-                                                                       idx.as_uint(),
-                                                                       deref);
+                    llvm::LLVMRustAddDereferenceableOrNullCallSiteAttr(
+                        callsite,
+                        idx.as_uint(),
+                        deref,
+                    );
                 }
                 regular -= ArgAttribute::NonNull;
             }
             if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentCallSiteAttr(callsite,
-                                                       idx.as_uint(),
-                                                       align.bytes() as u32);
+                llvm::LLVMRustAddAlignmentCallSiteAttr(
+                    callsite,
+                    idx.as_uint(),
+                    align.bytes() as u32,
+                );
             }
             regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
         }
@@ -103,16 +105,12 @@ impl LlvmType for Reg {
     fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         match self.kind {
             RegKind::Integer => cx.type_ix(self.size.bits()),
-            RegKind::Float => {
-                match self.size.bits() {
-                    32 => cx.type_f32(),
-                    64 => cx.type_f64(),
-                    _ => bug!("unsupported float: {:?}", self)
-                }
-            }
-            RegKind::Vector => {
-                cx.type_vector(cx.type_i8(), self.size.bytes())
-            }
+            RegKind::Float => match self.size.bits() {
+                32 => cx.type_f32(),
+                64 => cx.type_f64(),
+                _ => bug!("unsupported float: {:?}", self),
+            },
+            RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
         }
     }
 }
@@ -123,8 +121,10 @@ impl LlvmType for CastTarget {
         let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
             (0, 0)
         } else {
-            (self.rest.total.bytes() / self.rest.unit.size.bytes(),
-            self.rest.total.bytes() % self.rest.unit.size.bytes())
+            (
+                self.rest.total.bytes() / self.rest.unit.size.bytes(),
+                self.rest.total.bytes() % self.rest.unit.size.bytes(),
+            )
         };
 
         if self.prefix.iter().all(|x| x.is_none()) {
@@ -140,9 +140,18 @@ impl LlvmType for CastTarget {
         }
 
         // Create list of fields in the main structure
-        let mut args: Vec<_> =
-            self.prefix.iter().flat_map(|option_kind| option_kind.map(
-                |kind| Reg { kind: kind, size: self.prefix_chunk }.llvm_type(cx)))
+        let mut args: Vec<_> = self
+            .prefix
+            .iter()
+            .flat_map(|option_kind| {
+                option_kind.map(|kind| {
+                    Reg {
+                        kind: kind,
+                        size: self.prefix_chunk,
+                    }
+                    .llvm_type(cx)
+                })
+            })
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();
 
@@ -236,7 +245,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                     llscratch,
                     scratch_align,
                     bx.const_usize(self.layout.size.bytes()),
-                    MemFlags::empty()
+                    MemFlags::empty(),
                 );
 
                 bx.lifetime_end(llscratch, scratch_size);
@@ -258,7 +267,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             val
         };
         match self.mode {
-            PassMode::Ignore => {},
+            PassMode::Ignore => {}
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
@@ -276,7 +285,8 @@ impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn store_fn_arg(
         &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
-        idx: &mut usize, dst: PlaceRef<'tcx, Self::Value>
+        idx: &mut usize,
+        dst: PlaceRef<'tcx, Self::Value>,
     ) {
         ty.store_fn_arg(self, idx, dst)
     }
@@ -284,7 +294,7 @@ impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>
+        dst: PlaceRef<'tcx, &'ll Value>,
     ) {
         ty.store(self, val, dst)
     }
@@ -295,21 +305,16 @@ impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
 pub trait FnTypeExt<'tcx> {
     fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self;
-    fn new(cx: &CodegenCx<'ll, 'tcx>,
-           sig: ty::FnSig<'tcx>,
-           extra_args: &[Ty<'tcx>]) -> Self;
-    fn new_vtable(cx: &CodegenCx<'ll, 'tcx>,
-                  sig: ty::FnSig<'tcx>,
-                  extra_args: &[Ty<'tcx>]) -> Self;
+    fn new(cx: &CodegenCx<'ll, 'tcx>, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn new_vtable(cx: &CodegenCx<'ll, 'tcx>, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>])
+        -> Self;
     fn new_internal(
         cx: &CodegenCx<'ll, 'tcx>,
         sig: ty::FnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
     ) -> Self;
-    fn adjust_for_abi(&mut self,
-                      cx: &CodegenCx<'ll, 'tcx>,
-                      abi: Abi);
+    fn adjust_for_abi(&mut self, cx: &CodegenCx<'ll, 'tcx>, abi: Abi);
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
@@ -320,21 +325,21 @@ pub trait FnTypeExt<'tcx> {
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
     fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self {
         let sig = instance.fn_sig(cx.tcx);
-        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let sig = cx
+            .tcx
+            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         FnType::new(cx, sig, &[])
     }
 
-    fn new(cx: &CodegenCx<'ll, 'tcx>,
-           sig: ty::FnSig<'tcx>,
-           extra_args: &[Ty<'tcx>]) -> Self {
-        FnType::new_internal(cx, sig, extra_args, |ty, _| {
-            ArgType::new(cx.layout_of(ty))
-        })
+    fn new(cx: &CodegenCx<'ll, 'tcx>, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        FnType::new_internal(cx, sig, extra_args, |ty, _| ArgType::new(cx.layout_of(ty)))
     }
 
-    fn new_vtable(cx: &CodegenCx<'ll, 'tcx>,
-                  sig: ty::FnSig<'tcx>,
-                  extra_args: &[Ty<'tcx>]) -> Self {
+    fn new_vtable(
+        cx: &CodegenCx<'ll, 'tcx>,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+    ) -> Self {
         FnType::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
@@ -348,7 +353,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 } else {
                     match layout.abi {
                         LayoutAbi::ScalarPair(..) => (),
-                        _ => bug!("receiver type has unsupported layout: {:?}", layout)
+                        _ => bug!("receiver type has unsupported layout: {:?}", layout),
                     }
 
                     // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
@@ -365,11 +370,14 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
                             if !field_layout.is_zst() {
                                 fat_pointer_layout = field_layout;
-                                continue 'descend_newtypes
+                                continue 'descend_newtypes;
                             }
                         }
 
-                        bug!("receiver has no non-zero-sized fields {:?}", fat_pointer_layout);
+                        bug!(
+                            "receiver has no non-zero-sized fields {:?}",
+                            fat_pointer_layout
+                        );
                     }
 
                     fat_pointer_layout.ty
@@ -396,8 +404,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
         use self::Abi::*;
         let conv = match cx.sess().target.target.adjust_abi(sig.abi) {
-            RustIntrinsic | PlatformIntrinsic |
-            Rust | RustCall => Conv::C,
+            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::C,
 
             // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
@@ -430,8 +437,10 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     tupled_arguments
                 }
                 _ => {
-                    bug!("argument to function with \"rust-call\" ABI \
-                          is not a tuple");
+                    bug!(
+                        "argument to function with \"rust-call\" ABI \
+                         is not a tuple"
+                    );
                 }
             }
         } else {
@@ -440,18 +449,15 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         };
 
         let target = &cx.sess().target.target;
-        let win_x64_gnu = target.target_os == "windows"
-                       && target.arch == "x86_64"
-                       && target.target_env == "gnu";
-        let linux_s390x = target.target_os == "linux"
-                       && target.arch == "s390x"
-                       && target.target_env == "gnu";
-        let linux_sparc64 = target.target_os == "linux"
-                       && target.arch == "sparc64"
-                       && target.target_env == "gnu";
+        let win_x64_gnu =
+            target.target_os == "windows" && target.arch == "x86_64" && target.target_env == "gnu";
+        let linux_s390x =
+            target.target_os == "linux" && target.arch == "s390x" && target.target_env == "gnu";
+        let linux_sparc64 =
+            target.target_os == "linux" && target.arch == "sparc64" && target.target_env == "gnu";
         let rust_abi = match sig.abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
-            _ => false
+            _ => false,
         };
 
         // Handle safe Rust thin and fat pointers.
@@ -493,8 +499,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     let no_alias = match kind {
                         PointerKind::Shared => false,
                         PointerKind::UniqueOwned => true,
-                        PointerKind::Frozen |
-                        PointerKind::UniqueBorrowed => !is_return
+                        PointerKind::Frozen | PointerKind::UniqueBorrowed => !is_return,
                     };
                     if no_alias {
                         attrs.set(ArgAttribute::NoAlias);
@@ -525,16 +530,14 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 if let layout::Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
                     let mut a_attrs = ArgAttributes::new();
                     let mut b_attrs = ArgAttributes::new();
-                    adjust_for_rust_scalar(&mut a_attrs,
-                                           a,
-                                           arg.layout,
-                                           Size::ZERO,
-                                           false);
-                    adjust_for_rust_scalar(&mut b_attrs,
-                                           b,
-                                           arg.layout,
-                                           a.value.size(cx).align_to(b.value.align(cx).abi),
-                                           false);
+                    adjust_for_rust_scalar(&mut a_attrs, a, arg.layout, Size::ZERO, false);
+                    adjust_for_rust_scalar(
+                        &mut b_attrs,
+                        b,
+                        arg.layout,
+                        a.value.size(cx).align_to(b.value.align(cx).abi),
+                        false,
+                    );
                     arg.mode = PassMode::Pair(a_attrs, b_attrs);
                     return arg;
                 }
@@ -542,11 +545,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
             if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
-                    adjust_for_rust_scalar(attrs,
-                                           scalar,
-                                           arg.layout,
-                                           Size::ZERO,
-                                           is_return);
+                    adjust_for_rust_scalar(attrs, scalar, arg.layout, Size::ZERO, is_return);
                 }
             }
 
@@ -555,9 +554,12 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
         let mut fn_ty = FnType {
             ret: arg_of(sig.output(), None),
-            args: inputs.iter().chain(extra_args).enumerate().map(|(i, ty)| {
-                arg_of(ty, Some(i))
-            }).collect(),
+            args: inputs
+                .iter()
+                .chain(extra_args)
+                .enumerate()
+                .map(|(i, ty)| arg_of(ty, Some(i)))
+                .collect(),
             variadic: sig.variadic,
             conv,
         };
@@ -565,15 +567,20 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         fn_ty
     }
 
-    fn adjust_for_abi(&mut self,
-                      cx: &CodegenCx<'ll, 'tcx>,
-                      abi: Abi) {
-        if abi == Abi::Unadjusted { return }
+    fn adjust_for_abi(&mut self, cx: &CodegenCx<'ll, 'tcx>, abi: Abi) {
+        if abi == Abi::Unadjusted {
+            return;
+        }
 
-        if abi == Abi::Rust || abi == Abi::RustCall ||
-           abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
+        if abi == Abi::Rust
+            || abi == Abi::RustCall
+            || abi == Abi::RustIntrinsic
+            || abi == Abi::PlatformIntrinsic
+        {
             let fixup = |arg: &mut ArgType<'tcx, Ty<'tcx>>| {
-                if arg.is_ignore() { return; }
+                if arg.is_ignore() {
+                    return;
+                }
 
                 match arg.layout.abi {
                     layout::Abi::Aggregate { .. } => {}
@@ -598,14 +605,14 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     // that's how we connect up to LLVM and it's unstable
                     // anyway, we control all calls to it in libstd.
                     layout::Abi::Vector { .. }
-                        if abi != Abi::PlatformIntrinsic &&
-                            cx.sess().target.target.options.simd_types_indirect =>
+                        if abi != Abi::PlatformIntrinsic
+                            && cx.sess().target.target.options.simd_types_indirect =>
                     {
                         arg.make_indirect();
-                        return
+                        return;
                     }
 
-                    _ => return
+                    _ => return,
                 }
 
                 let size = arg.layout.size;
@@ -617,7 +624,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     // so we pick an appropriately sized integer type instead.
                     arg.cast_to(Reg {
                         kind: RegKind::Integer,
-                        size
+                        size,
                     });
                 }
             };
@@ -642,14 +649,16 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
         ).sum();
         let mut llargument_tys = Vec::with_capacity(
-            if let PassMode::Indirect(..) = self.ret.mode { 1 } else { 0 } + args_capacity
+            if let PassMode::Indirect(..) = self.ret.mode {
+                1
+            } else {
+                0
+            } + args_capacity,
         );
 
         let llreturn_ty = match self.ret.mode {
             PassMode::Ignore => cx.type_void(),
-            PassMode::Direct(_) | PassMode::Pair(..) => {
-                self.ret.layout.immediate_llvm_type(cx)
-            }
+            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(..) => {
                 llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
@@ -693,8 +702,10 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         unsafe {
-            llvm::LLVMPointerType(self.llvm_type(cx),
-                                  cx.data_layout().instruction_address_space as c_uint)
+            llvm::LLVMPointerType(
+                self.llvm_type(cx),
+                cx.data_layout().instruction_address_space as c_uint,
+            )
         }
     }
 
@@ -734,8 +745,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             }
             match arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Direct(ref attrs) |
-                PassMode::Indirect(ref attrs, None) => apply(attrs),
+                PassMode::Direct(ref attrs) | PassMode::Indirect(ref attrs, None) => apply(attrs),
                 PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
                     apply(attrs);
                     apply(extra_attrs);
@@ -781,8 +791,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             }
             match arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Direct(ref attrs) |
-                PassMode::Indirect(ref attrs, None) => apply(attrs),
+                PassMode::Direct(ref attrs) | PassMode::Indirect(ref attrs, None) => apply(attrs),
                 PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
                     apply(attrs);
                     apply(extra_attrs);
@@ -806,11 +815,7 @@ impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn new_fn_type(&self, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> FnType<'tcx, Ty<'tcx>> {
         FnType::new(&self, sig, extra_args)
     }
-    fn new_vtable(
-        &self,
-        sig: ty::FnSig<'tcx>,
-        extra_args: &[Ty<'tcx>]
-    ) -> FnType<'tcx, Ty<'tcx>> {
+    fn new_vtable(&self, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> FnType<'tcx, Ty<'tcx>> {
         FnType::new_vtable(&self, sig, extra_args)
     }
     fn fn_type_of_instance(&self, instance: &Instance<'tcx>) -> FnType<'tcx, Ty<'tcx>> {
@@ -819,11 +824,7 @@ impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn apply_attrs_callsite(
-        &mut self,
-        ty: &FnType<'tcx, Ty<'tcx>>,
-        callsite: Self::Value
-    ) {
+    fn apply_attrs_callsite(&mut self, ty: &FnType<'tcx, Ty<'tcx>>, callsite: Self::Value) {
         ty.apply_attrs_callsite(self, callsite)
     }
 }

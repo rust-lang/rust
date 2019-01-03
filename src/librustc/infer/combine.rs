@@ -24,24 +24,24 @@
 
 use super::equate::Equate;
 use super::glb::Glb;
-use super::{InferCtxt, MiscVariable, TypeTrace};
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
+use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use hir::def_id::DefId;
-use ty::{IntType, UintType};
-use ty::{self, Ty, TyCtxt};
+use traits::{Obligation, PredicateObligations};
 use ty::error::TypeError;
 use ty::relate::{self, Relate, RelateResult, TypeRelation};
 use ty::subst::Substs;
-use traits::{Obligation, PredicateObligations};
+use ty::{self, Ty, TyCtxt};
+use ty::{IntType, UintType};
 
 use syntax::ast;
 use syntax_pos::Span;
 
 #[derive(Clone)]
-pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+pub struct CombineFields<'infcx, 'gcx: 'infcx + 'tcx, 'tcx: 'infcx> {
     pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
@@ -51,16 +51,20 @@ pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum RelationDir {
-    SubtypeOf, SupertypeOf, EqTo
+    SubtypeOf,
+    SupertypeOf,
+    EqTo,
 }
 
 impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
-    pub fn super_combine_tys<R>(&self,
-                                relation: &mut R,
-                                a: Ty<'tcx>,
-                                b: Ty<'tcx>)
-                                -> RelateResult<'tcx, Ty<'tcx>>
-        where R: TypeRelation<'infcx, 'gcx, 'tcx>
+    pub fn super_combine_tys<R>(
+        &self,
+        relation: &mut R,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        R: TypeRelation<'infcx, 'gcx, 'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -102,24 +106,20 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
             }
 
             // All other cases of inference are errors
-            (&ty::Infer(_), _) |
-            (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(ty::relate::expected_found(relation, &a, &b)))
-            }
+            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => Err(TypeError::Sorts(
+                ty::relate::expected_found(relation, &a, &b),
+            )),
 
-
-            _ => {
-                ty::relate::super_relate_tys(relation, a, b)
-            }
+            _ => ty::relate::super_relate_tys(relation, a, b),
         }
     }
 
-    fn unify_integral_variable(&self,
-                               vid_is_expected: bool,
-                               vid: ty::IntVid,
-                               val: ty::IntVarValue)
-                               -> RelateResult<'tcx, Ty<'tcx>>
-    {
+    fn unify_integral_variable(
+        &self,
+        vid_is_expected: bool,
+        vid: ty::IntVid,
+        val: ty::IntVarValue,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         self.int_unification_table
             .borrow_mut()
             .unify_var_value(vid, Some(val))
@@ -130,12 +130,12 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
         }
     }
 
-    fn unify_float_variable(&self,
-                            vid_is_expected: bool,
-                            vid: ty::FloatVid,
-                            val: ast::FloatTy)
-                            -> RelateResult<'tcx, Ty<'tcx>>
-    {
+    fn unify_float_variable(
+        &self,
+        vid_is_expected: bool,
+        vid: ty::FloatVid,
+        val: ast::FloatTy,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         self.float_unification_table
             .borrow_mut()
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
@@ -174,19 +174,27 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     /// will first instantiate `b_vid` with a *generalized* version
     /// of `a_ty`. Generalization introduces other inference
     /// variables wherever subtyping could occur.
-    pub fn instantiate(&mut self,
-                       a_ty: Ty<'tcx>,
-                       dir: RelationDir,
-                       b_vid: ty::TyVid,
-                       a_is_expected: bool)
-                       -> RelateResult<'tcx, ()>
-    {
+    pub fn instantiate(
+        &mut self,
+        a_ty: Ty<'tcx>,
+        dir: RelationDir,
+        b_vid: ty::TyVid,
+        a_is_expected: bool,
+    ) -> RelateResult<'tcx, ()> {
         use self::RelationDir::*;
 
         // Get the actual variable that b_vid has been inferred to
-        debug_assert!(self.infcx.type_variables.borrow_mut().probe(b_vid).is_unknown());
+        debug_assert!(self
+            .infcx
+            .type_variables
+            .borrow_mut()
+            .probe(b_vid)
+            .is_unknown());
 
-        debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
+        debug!(
+            "instantiate(a_ty={:?} dir={:?} b_vid={:?})",
+            a_ty, dir, b_vid
+        );
 
         // Generalize type of `a_ty` appropriately depending on the
         // direction.  As an example, assume:
@@ -200,14 +208,21 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
         let Generalization { ty: b_ty, needs_wf } = self.generalize(a_ty, b_vid, dir)?;
-        debug!("instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
-               a_ty, dir, b_vid, b_ty);
-        self.infcx.type_variables.borrow_mut().instantiate(b_vid, b_ty);
+        debug!(
+            "instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
+            a_ty, dir, b_vid, b_ty
+        );
+        self.infcx
+            .type_variables
+            .borrow_mut()
+            .instantiate(b_vid, b_ty);
 
         if needs_wf {
-            self.obligations.push(Obligation::new(self.trace.cause.clone(),
-                                                  self.param_env,
-                                                  ty::Predicate::WellFormed(b_ty)));
+            self.obligations.push(Obligation::new(
+                self.trace.cause.clone(),
+                self.param_env,
+                ty::Predicate::WellFormed(b_ty),
+            ));
         }
 
         // Finally, relate `b_ty` to `a_ty`, as described in previous comment.
@@ -219,8 +234,10 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         match dir {
             EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
             SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
-            SupertypeOf => self.sub(a_is_expected).relate_with_variance(
-                ty::Contravariant, &a_ty, &b_ty),
+            SupertypeOf => {
+                self.sub(a_is_expected)
+                    .relate_with_variance(ty::Contravariant, &a_ty, &b_ty)
+            }
         }?;
 
         Ok(())
@@ -235,13 +252,16 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     /// Preconditions:
     ///
     /// - `for_vid` is a "root vid"
-    fn generalize(&self,
-                  ty: Ty<'tcx>,
-                  for_vid: ty::TyVid,
-                  dir: RelationDir)
-                  -> RelateResult<'tcx, Generalization<'tcx>>
-    {
-        debug!("generalize(ty={:?}, for_vid={:?}, dir={:?}", ty, for_vid, dir);
+    fn generalize(
+        &self,
+        ty: Ty<'tcx>,
+        for_vid: ty::TyVid,
+        dir: RelationDir,
+    ) -> RelateResult<'tcx, Generalization<'tcx>> {
+        debug!(
+            "generalize(ty={:?}, for_vid={:?}, dir={:?}",
+            ty, for_vid, dir
+        );
         // Determine the ambient variance within which `ty` appears.
         // The surrounding equation is:
         //
@@ -277,7 +297,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     }
 }
 
-struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
+struct Generalizer<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
 
     /// Span, used when creating new type variables and things.
@@ -349,19 +369,25 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         true
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'tcx>
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        b: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(ty::Binder::bind(
+            self.relate(a.skip_binder(), b.skip_binder())?,
+        ))
     }
 
-    fn relate_item_substs(&mut self,
-                          item_def_id: DefId,
-                          a_subst: &'tcx Substs<'tcx>,
-                          b_subst: &'tcx Substs<'tcx>)
-                          -> RelateResult<'tcx, &'tcx Substs<'tcx>>
-    {
+    fn relate_item_substs(
+        &mut self,
+        item_def_id: DefId,
+        a_subst: &'tcx Substs<'tcx>,
+        b_subst: &'tcx Substs<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx Substs<'tcx>> {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
@@ -373,12 +399,12 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         }
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             variance: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T>
-    {
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        variance: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
 
@@ -428,63 +454,58 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                             let origin = *variables.var_origin(vid);
                             let new_var_id = variables.new_var(universe, false, origin);
                             let u = self.tcx().mk_var(new_var_id);
-                            debug!("generalize: replacing original vid={:?} with new={:?}",
-                                   vid, u);
+                            debug!(
+                                "generalize: replacing original vid={:?} with new={:?}",
+                                vid, u
+                            );
                             return Ok(u);
                         }
                     }
                 }
             }
-            ty::Infer(ty::IntVar(_)) |
-            ty::Infer(ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.
                 Ok(t)
             }
-            _ => {
-                relate::super_relate_tys(self, t, t)
-            }
+            _ => relate::super_relate_tys(self, t, t),
         }
     }
 
-    fn regions(&mut self, r: ty::Region<'tcx>, r2: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>> {
+    fn regions(
+        &mut self,
+        r: ty::Region<'tcx>,
+        r2: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         assert_eq!(r, r2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
         match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
-            ty::ReLateBound(..) |
-            ty::ReErased => {
+            ty::ReLateBound(..) | ty::ReErased => {
                 return Ok(r);
             }
 
             // Always make a fresh region variable for placeholder
             // regions; the higher-ranked decision procedures rely on
             // this.
-            ty::RePlaceholder(..) => { }
+            ty::RePlaceholder(..) => {}
 
             // For anything else, we make a region variable, unless we
             // are *equating*, in which case it's just wasteful.
-            ty::ReEmpty |
-            ty::ReStatic |
-            ty::ReScope(..) |
-            ty::ReVar(..) |
-            ty::ReEarlyBound(..) |
-            ty::ReFree(..) => {
-                match self.ambient_variance {
-                    ty::Invariant => return Ok(r),
-                    ty::Bivariant | ty::Covariant | ty::Contravariant => (),
-                }
-            }
+            ty::ReEmpty
+            | ty::ReStatic
+            | ty::ReScope(..)
+            | ty::ReVar(..)
+            | ty::ReEarlyBound(..)
+            | ty::ReFree(..) => match self.ambient_variance {
+                ty::Invariant => return Ok(r),
+                ty::Bivariant | ty::Covariant | ty::Contravariant => (),
+            },
 
             ty::ReClosureBound(..) => {
-                span_bug!(
-                    self.span,
-                    "encountered unexpected ReClosureBound: {:?}",
-                    r,
-                );
+                span_bug!(self.span, "encountered unexpected ReClosureBound: {:?}", r,);
             }
         }
 
@@ -495,35 +516,33 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
 }
 
 pub trait RelateResultCompare<'tcx, T> {
-    fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T> where
+    fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T>
+    where
         F: FnOnce() -> TypeError<'tcx>;
 }
 
-impl<'tcx, T:Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'tcx, T> {
-    fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T> where
+impl<'tcx, T: Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'tcx, T> {
+    fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T>
+    where
         F: FnOnce() -> TypeError<'tcx>,
     {
-        self.clone().and_then(|s| {
-            if s == t {
-                self.clone()
-            } else {
-                Err(f())
-            }
-        })
+        self.clone()
+            .and_then(|s| if s == t { self.clone() } else { Err(f()) })
     }
 }
 
-fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::IntVarValue))
-                               -> TypeError<'tcx>
-{
+fn int_unification_error<'tcx>(
+    a_is_expected: bool,
+    v: (ty::IntVarValue, ty::IntVarValue),
+) -> TypeError<'tcx> {
     let (a, b) = v;
     TypeError::IntMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
 }
 
-fn float_unification_error<'tcx>(a_is_expected: bool,
-                                 v: (ty::FloatVarValue, ty::FloatVarValue))
-                                 -> TypeError<'tcx>
-{
+fn float_unification_error<'tcx>(
+    a_is_expected: bool,
+    v: (ty::FloatVarValue, ty::FloatVarValue),
+) -> TypeError<'tcx> {
     let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
     TypeError::FloatMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
 }

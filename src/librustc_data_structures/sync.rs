@@ -21,19 +21,20 @@
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_queries).
 
-use std::collections::HashMap;
-use std::hash::{Hash, BuildHasher};
+use owning_ref::{Erased, OwningRef};
 use std::cmp::Ordering;
-use std::marker::PhantomData;
+use std::collections::HashMap;
+use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Formatter;
-use std::fmt;
+use std::hash::{BuildHasher, Hash};
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use owning_ref::{Erased, OwningRef};
 
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
-    where A: FnOnce() -> RA,
-          B: FnOnce() -> RB
+where
+    A: FnOnce() -> RA,
+    B: FnOnce() -> RB,
 {
     (oper_a(), oper_b())
 }
@@ -42,14 +43,16 @@ pub struct SerialScope;
 
 impl SerialScope {
     pub fn spawn<F>(&self, f: F)
-        where F: FnOnce(&SerialScope)
+    where
+        F: FnOnce(&SerialScope),
     {
         f(self)
     }
 }
 
 pub fn serial_scope<F, R>(f: F) -> R
-    where F: FnOnce(&SerialScope) -> R
+where
+    F: FnOnce(&SerialScope) -> R,
 {
     f(&SerialScope)
 }
@@ -334,7 +337,9 @@ pub trait HashMapExt<K, V> {
 
 impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> {
     fn insert_same(&mut self, key: K, value: V) {
-        self.entry(key).and_modify(|old| assert!(*old == value)).or_insert(value);
+        self.entry(key)
+            .and_modify(|old| assert!(*old == value))
+            .or_insert(value);
     }
 }
 
@@ -376,7 +381,10 @@ impl<T> Once<T> {
     /// otherwise if the inner value was already set it asserts that `value` is equal to the inner
     /// value and then returns `value` back to the caller
     #[inline]
-    pub fn try_set_same(&self, value: T) -> Option<T> where T: Eq {
+    pub fn try_set_same(&self, value: T) -> Option<T>
+    where
+        T: Eq,
+    {
         let mut lock = self.0.lock();
         if let Some(ref inner) = *lock {
             assert!(*inner == value);
@@ -433,7 +441,10 @@ impl<T> Once<T> {
     /// If our closure set the value, `None` is returned.
     /// If the value is already initialized, the closure is not called and `None` is returned.
     #[inline]
-    pub fn init_nonlocking_same<F: FnOnce() -> T>(&self, f: F) -> Option<T> where T: Eq {
+    pub fn init_nonlocking_same<F: FnOnce() -> T>(&self, f: F) -> Option<T>
+    where
+        T: Eq,
+    {
         if self.0.lock().is_some() {
             None
         } else {
@@ -474,7 +485,7 @@ impl<T: Copy + Debug> Debug for LockCell<T> {
     }
 }
 
-impl<T:Default> Default for LockCell<T> {
+impl<T: Default> Default for LockCell<T> {
     /// Creates a `LockCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> LockCell<T> {
@@ -482,16 +493,16 @@ impl<T:Default> Default for LockCell<T> {
     }
 }
 
-impl<T:PartialEq + Copy> PartialEq for LockCell<T> {
+impl<T: PartialEq + Copy> PartialEq for LockCell<T> {
     #[inline]
     fn eq(&self, other: &LockCell<T>) -> bool {
         self.get() == other.get()
     }
 }
 
-impl<T:Eq + Copy> Eq for LockCell<T> {}
+impl<T: Eq + Copy> Eq for LockCell<T> {}
 
-impl<T:PartialOrd + Copy> PartialOrd for LockCell<T> {
+impl<T: PartialOrd + Copy> PartialOrd for LockCell<T> {
     #[inline]
     fn partial_cmp(&self, other: &LockCell<T>) -> Option<Ordering> {
         self.get().partial_cmp(&other.get())
@@ -518,7 +529,7 @@ impl<T:PartialOrd + Copy> PartialOrd for LockCell<T> {
     }
 }
 
-impl<T:Ord + Copy> Ord for LockCell<T> {
+impl<T: Ord + Copy> Ord for LockCell<T> {
     #[inline]
     fn cmp(&self, other: &LockCell<T>) -> Ordering {
         self.get().cmp(&other.get())

@@ -8,46 +8,48 @@
 /// For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
+use super::Constraint;
 use hir::def_id::DefIndex;
-use ty;
+use infer::region_constraints::RegionConstraintData;
+use infer::SubregionOrigin;
 use middle::free_region::RegionRelations;
 use middle::region;
-use super::Constraint;
-use infer::SubregionOrigin;
-use infer::region_constraints::RegionConstraintData;
+use ty;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry::Vacant;
 use std::collections::btree_map::BTreeMap;
+use std::collections::hash_map::Entry::Vacant;
 use std::env;
 use std::fs;
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 fn print_help_message() {
-    println!("\
--Z print-region-graph by default prints a region constraint graph for every \n\
-function body, to the path `constraints.nodeXXX.dot`, where the XXX is \n\
-replaced with the node id of the function under analysis.                   \n\
-                                                                            \n\
-To select one particular function body, set `RUST_REGION_GRAPH_NODE=XXX`,   \n\
-where XXX is the node id desired.                                           \n\
-                                                                            \n\
-To generate output to some path other than the default                      \n\
-`constraints.nodeXXX.dot`, set `RUST_REGION_GRAPH=/path/desired.dot`;  \n\
-occurrences of the character `%` in the requested path will be replaced with\n\
-the node id of the function under analysis.                                 \n\
-                                                                            \n\
-(Since you requested help via RUST_REGION_GRAPH=help, no region constraint  \n\
-graphs will be printed.                                                     \n\
-");
+    println!(
+        "\
+         -Z print-region-graph by default prints a region constraint graph for every \n\
+         function body, to the path `constraints.nodeXXX.dot`, where the XXX is \n\
+         replaced with the node id of the function under analysis.                   \n\
+         \n\
+         To select one particular function body, set `RUST_REGION_GRAPH_NODE=XXX`,   \n\
+         where XXX is the node id desired.                                           \n\
+         \n\
+         To generate output to some path other than the default                      \n\
+         `constraints.nodeXXX.dot`, set `RUST_REGION_GRAPH=/path/desired.dot`;  \n\
+         occurrences of the character `%` in the requested path will be replaced with\n\
+         the node id of the function under analysis.                                 \n\
+         \n\
+         (Since you requested help via RUST_REGION_GRAPH=help, no region constraint  \n\
+         graphs will be printed.                                                     \n\
+         "
+    );
 }
 
 pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     region_data: &RegionConstraintData<'tcx>,
-    region_rels: &RegionRelations<'a, 'gcx, 'tcx>)
-{
+    region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+) {
     let tcx = region_rels.tcx;
     let context = region_rels.context;
 
@@ -56,16 +58,18 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     }
 
     let requested_node = env::var("RUST_REGION_GRAPH_NODE")
-        .ok().and_then(|s| s.parse().map(DefIndex::from_raw_u32).ok());
+        .ok()
+        .and_then(|s| s.parse().map(DefIndex::from_raw_u32).ok());
 
     if requested_node.is_some() && requested_node != Some(context.index) {
         return;
     }
 
     let requested_output = env::var("RUST_REGION_GRAPH");
-    debug!("requested_output: {:?} requested_node: {:?}",
-           requested_output,
-           requested_node);
+    debug!(
+        "requested_output: {:?} requested_node: {:?}",
+        requested_output, requested_node
+    );
 
     let output_path = {
         let output_template = match requested_output {
@@ -107,7 +111,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     }
 }
 
-struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct ConstraintGraph<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     graph_name: String,
     region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
     map: &'a BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
@@ -127,10 +131,11 @@ enum Edge<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
-    fn new(name: String,
-           region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
-           map: &'a ConstraintMap<'tcx>)
-           -> ConstraintGraph<'a, 'gcx, 'tcx> {
+    fn new(
+        name: String,
+        region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
+        map: &'a ConstraintMap<'tcx>,
+    ) -> ConstraintGraph<'a, 'gcx, 'tcx> {
         let mut i = 0;
         let mut node_ids = FxHashMap::default();
         {
@@ -174,8 +179,8 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         };
         let name = || format!("node_{}", node_id);
 
-        dot::Id::new(name()).unwrap_or_else(|_|
-            bug!("failed to create graphviz node identified by {}", name()))
+        dot::Id::new(name())
+            .unwrap_or_else(|_| bug!("failed to create graphviz node identified by {}", name()))
     }
     fn node_label(&self, n: &Node) -> dot::LabelText<'_> {
         match *n {
@@ -185,8 +190,9 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     }
     fn edge_label(&self, e: &Edge<'_>) -> dot::LabelText<'_> {
         match *e {
-            Edge::Constraint(ref c) =>
-                dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap())),
+            Edge::Constraint(ref c) => {
+                dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap()))
+            }
             Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_owned()),
         }
     }
@@ -194,24 +200,20 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 fn constraint_to_nodes(c: &Constraint<'_>) -> (Node, Node) {
     match *c {
-        Constraint::VarSubVar(rv_1, rv_2) =>
-            (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
-        Constraint::RegSubVar(r_1, rv_2) =>
-            (Node::Region(*r_1), Node::RegionVid(rv_2)),
-        Constraint::VarSubReg(rv_1, r_2) =>
-            (Node::RegionVid(rv_1), Node::Region(*r_2)),
-        Constraint::RegSubReg(r_1, r_2) =>
-            (Node::Region(*r_1), Node::Region(*r_2)),
+        Constraint::VarSubVar(rv_1, rv_2) => (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
+        Constraint::RegSubVar(r_1, rv_2) => (Node::Region(*r_1), Node::RegionVid(rv_2)),
+        Constraint::VarSubReg(rv_1, r_2) => (Node::RegionVid(rv_1), Node::Region(*r_2)),
+        Constraint::RegSubReg(r_1, r_2) => (Node::Region(*r_1), Node::Region(*r_2)),
     }
 }
 
 fn edge_to_nodes(e: &Edge<'_>) -> (Node, Node) {
     match *e {
         Edge::Constraint(ref c) => constraint_to_nodes(c),
-        Edge::EnclScope(sub, sup) => {
-            (Node::Region(ty::ReScope(sub)),
-             Node::Region(ty::ReScope(sup)))
-        }
+        Edge::EnclScope(sub, sup) => (
+            Node::Region(ty::ReScope(sub)),
+            Node::Region(ty::ReScope(sup)),
+        ),
     }
 }
 
@@ -226,9 +228,9 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     fn edges(&self) -> dot::Edges<'_, Edge<'tcx>> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v: Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
-        self.region_rels.region_scope_tree.each_encl_scope(|sub, sup| {
-            v.push(Edge::EnclScope(sub, sup))
-        });
+        self.region_rels
+            .region_scope_tree
+            .each_encl_scope(|sub, sup| v.push(Edge::EnclScope(sub, sup)));
         debug!("region graph has {} edges", v.len());
         Cow::Owned(v)
     }
@@ -246,13 +248,12 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 pub type ConstraintMap<'tcx> = BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
-fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-                                       map: &ConstraintMap<'tcx>,
-                                       path: &str)
-                                       -> io::Result<()> {
-    debug!("dump_region_data map (len: {}) path: {}",
-           map.len(),
-           path);
+fn dump_region_data_to<'a, 'gcx, 'tcx>(
+    region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+    map: &ConstraintMap<'tcx>,
+    path: &str,
+) -> io::Result<()> {
+    debug!("dump_region_data map (len: {}) path: {}", map.len(), path);
     let g = ConstraintGraph::new("region_data".to_string(), region_rels, map);
     debug!("dump_region_data calling render");
     let mut v = Vec::new();

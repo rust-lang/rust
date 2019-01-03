@@ -27,7 +27,7 @@ use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::{RelateResult, TraitObjectMode};
 use ty::subst::{Kind, Substs};
-use ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
+use ty::{self, CtxtInterners, GenericParamDefKind, Ty, TyCtxt};
 use ty::{FloatVid, IntVid, TyVid};
 use util::nodemap::FxHashMap;
 
@@ -638,7 +638,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
         match ty.sty {
             ty::Infer(ty::IntVar(vid)) => {
-                if self.int_unification_table
+                if self
+                    .int_unification_table
                     .borrow_mut()
                     .probe_value(vid)
                     .is_some()
@@ -649,7 +650,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             ty::Infer(ty::FloatVar(vid)) => {
-                if self.float_unification_table
+                if self
+                    .float_unification_table
                     .borrow_mut()
                     .probe_value(vid)
                     .is_some()
@@ -876,9 +878,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         snapshot: &CombinedSnapshot<'a, 'tcx>,
     ) -> Option<bool> {
-        self.borrow_region_constraints().region_constraints_added_in_snapshot(
-            &snapshot.region_constraints_snapshot,
-        )
+        self.borrow_region_constraints()
+            .region_constraints_added_in_snapshot(&snapshot.region_constraints_snapshot)
     }
 
     pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
@@ -993,9 +994,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn next_ty_var_in_universe(
         &self,
         origin: TypeVariableOrigin,
-        universe: ty::UniverseIndex
+        universe: ty::UniverseIndex,
     ) -> Ty<'tcx> {
-        let vid = self.type_variables
+        let vid = self
+            .type_variables
             .borrow_mut()
             .new_var(universe, false, origin);
         self.tcx.mk_var(vid)
@@ -1028,7 +1030,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         origin: RegionVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> ty::Region<'tcx> {
-        let region_var = self.borrow_region_constraints()
+        let region_var = self
+            .borrow_region_constraints()
             .new_region_var(universe, origin);
         self.tcx.mk_region(ty::ReVar(region_var))
     }
@@ -1136,7 +1139,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             region_map,
             outlives_env.free_region_map(),
         );
-        let (var_infos, data) = self.region_constraints
+        let (var_infos, data) = self
+            .region_constraints
             .borrow_mut()
             .take()
             .expect("regions already resolved")
@@ -1144,7 +1148,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (lexical_region_resolutions, errors) =
             lexical_region_resolve::resolve(region_rels, var_infos, data);
 
-        let old_value = self.lexical_region_resolutions
+        let old_value = self
+            .lexical_region_resolutions
             .replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
 
@@ -1194,7 +1199,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// called. This is used only during NLL processing to "hand off" ownership
     /// of the set of region variables into the NLL region context.
     pub fn take_region_var_origins(&self) -> VarInfos {
-        let (var_infos, data) = self.region_constraints
+        let (var_infos, data) = self
+            .region_constraints
             .borrow_mut()
             .take()
             .expect("regions already resolved")
@@ -1240,13 +1246,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     .unwrap_or(typ)
             }
 
-            ty::Infer(ty::IntVar(v)) => self.int_unification_table
+            ty::Infer(ty::IntVar(v)) => self
+                .int_unification_table
                 .borrow_mut()
                 .probe_value(v)
                 .map(|v| v.to_type(self.tcx))
                 .unwrap_or(typ),
 
-            ty::Infer(ty::FloatVar(v)) => self.float_unification_table
+            ty::Infer(ty::FloatVar(v)) => self
+                .float_unification_table
                 .borrow_mut()
                 .probe_value(v)
                 .map(|v| v.to_type(self.tcx))
@@ -1376,10 +1384,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
-        value: &ty::Binder<T>
+        value: &ty::Binder<T>,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
-        T: TypeFoldable<'tcx>
+        T: TypeFoldable<'tcx>,
     {
         let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
         let fld_t = |_| self.next_ty_var(TypeVariableOrigin::MiscVariable(span));

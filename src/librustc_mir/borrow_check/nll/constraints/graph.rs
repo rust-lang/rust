@@ -1,6 +1,6 @@
-use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::constraints::ConstraintIndex;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::type_check::Locations;
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
@@ -75,11 +75,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
     /// reporting.
-    crate fn new(
-        direction: D,
-        set: &ConstraintSet,
-        num_region_vars: usize,
-    ) -> Self {
+    crate fn new(direction: D, set: &ConstraintSet, num_region_vars: usize) -> Self {
         let mut first_constraints = IndexVec::from_elem_n(None, num_region_vars);
         let mut next_constraints = IndexVec::from_elem(None, &set.constraints);
 
@@ -135,7 +131,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
                 pointer: first,
                 next_static_idx: None,
                 static_region,
-           }
+            }
         }
     }
 }
@@ -157,12 +153,11 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
 
             Some(self.constraints[p])
         } else if let Some(next_static_idx) = self.next_static_idx {
-            self.next_static_idx =
-                if next_static_idx == (self.graph.first_constraints.len() - 1) {
-                    None
-                } else {
-                    Some(next_static_idx + 1)
-                };
+            self.next_static_idx = if next_static_idx == (self.graph.first_constraints.len() - 1) {
+                None
+            } else {
+                Some(next_static_idx + 1)
+            };
 
             Some(OutlivesConstraint {
                 sup: self.static_region,
@@ -206,7 +201,9 @@ impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
     /// there exists a constraint `R: R1`.
     crate fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'_, D> {
         Successors {
-            edges: self.constraint_graph.outgoing_edges(region_sup, self.set, self.static_region),
+            edges: self
+                .constraint_graph
+                .outgoing_edges(region_sup, self.set, self.static_region),
         }
     }
 }

@@ -8,8 +8,7 @@ use ty::fold::TypeFoldable;
 use ty::{Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc_data_structures::sync::Lrc;
 
 /// A trait's definition with type information.
@@ -44,13 +43,14 @@ pub struct TraitImpls {
 }
 
 impl<'a, 'gcx, 'tcx> TraitDef {
-    pub fn new(def_id: DefId,
-               unsafety: hir::Unsafety,
-               paren_sugar: bool,
-               has_auto_impl: bool,
-               is_marker: bool,
-               def_path_hash: DefPathHash)
-               -> TraitDef {
+    pub fn new(
+        def_id: DefId,
+        unsafety: hir::Unsafety,
+        paren_sugar: bool,
+        has_auto_impl: bool,
+        is_marker: bool,
+        def_path_hash: DefPathHash,
+    ) -> TraitDef {
         TraitDef {
             def_id,
             unsafety,
@@ -61,9 +61,11 @@ impl<'a, 'gcx, 'tcx> TraitDef {
         }
     }
 
-    pub fn ancestors(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                     of_impl: DefId)
-                     -> specialization_graph::Ancestors {
+    pub fn ancestors(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        of_impl: DefId,
+    ) -> specialization_graph::Ancestors {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
 }
@@ -85,11 +87,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Iterate over every impl that could possibly match the
     /// self-type `self_ty`.
-    pub fn for_each_relevant_impl<F: FnMut(DefId)>(self,
-                                                   def_id: DefId,
-                                                   self_ty: Ty<'tcx>,
-                                                   mut f: F)
-    {
+    pub fn for_each_relevant_impl<F: FnMut(DefId)>(
+        self,
+        def_id: DefId,
+        self_ty: Ty<'tcx>,
+        mut f: F,
+    ) {
         let impls = self.trait_impls_of(def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
@@ -138,16 +141,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn all_impls(self, def_id: DefId) -> Vec<DefId> {
         let impls = self.trait_impls_of(def_id);
 
-        impls.blanket_impls.iter().chain(
-            impls.non_blanket_impls.values().flatten()
-        ).cloned().collect()
+        impls
+            .blanket_impls
+            .iter()
+            .chain(impls.non_blanket_impls.values().flatten())
+            .cloned()
+            .collect()
     }
 }
 
 // Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                trait_id: DefId)
-                                                -> Lrc<TraitImpls> {
+pub(super) fn trait_impls_of_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_id: DefId,
+) -> Lrc<TraitImpls> {
     let mut impls = TraitImpls::default();
 
     {
@@ -157,13 +164,12 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return;
             }
 
-            if let Some(simplified_self_ty) =
-                fast_reject::simplify_type(tcx, impl_self_ty, false)
-            {
-                impls.non_blanket_impls
-                     .entry(simplified_self_ty)
-                     .or_default()
-                     .push(impl_def_id);
+            if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
+                impls
+                    .non_blanket_impls
+                    .entry(simplified_self_ty)
+                    .or_default()
+                    .push(impl_def_id);
             } else {
                 impls.blanket_impls.push(impl_def_id);
             }
@@ -188,9 +194,11 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         let TraitImpls {
             ref blanket_impls,
             ref non_blanket_impls,

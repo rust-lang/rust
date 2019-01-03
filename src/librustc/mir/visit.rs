@@ -1,9 +1,9 @@
 use hir::def_id::DefId;
 use infer::canonical::Canonical;
-use ty::subst::Substs;
-use ty::{ClosureSubsts, GeneratorSubsts, Region, Ty};
 use mir::*;
 use syntax_pos::Span;
+use ty::subst::Substs;
+use ty::{ClosureSubsts, GeneratorSubsts, Region, Ty};
 
 // # The MIR Visitor
 //
@@ -932,22 +932,19 @@ pub trait MirVisitable<'tcx> {
 }
 
 impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
-    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
-    {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>) {
         visitor.visit_statement(location.block, self, location)
     }
 }
 
 impl<'tcx> MirVisitable<'tcx> for Terminator<'tcx> {
-    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
-    {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>) {
         visitor.visit_terminator(location.block, self, location)
     }
 }
 
 impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
-    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
-    {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>) {
         visitor.visit_terminator(location.block, self.as_ref().unwrap(), location)
     }
 }
@@ -1050,10 +1047,10 @@ impl<'tcx> PlaceContext<'tcx> {
     /// Returns `true` if this place context represents a borrow.
     pub fn is_borrow(&self) -> bool {
         match *self {
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
-            PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) => true,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..))
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..))
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..))
+            | PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) => true,
             _ => false,
         }
     }
@@ -1061,8 +1058,8 @@ impl<'tcx> PlaceContext<'tcx> {
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     pub fn is_storage_marker(&self) -> bool {
         match *self {
-            PlaceContext::NonUse(NonUseContext::StorageLive) |
-            PlaceContext::NonUse(NonUseContext::StorageDead) => true,
+            PlaceContext::NonUse(NonUseContext::StorageLive)
+            | PlaceContext::NonUse(NonUseContext::StorageDead) => true,
             _ => false,
         }
     }
@@ -1110,9 +1107,9 @@ impl<'tcx> PlaceContext<'tcx> {
     /// Returns `true` if this place context represents an assignment statement.
     pub fn is_place_assignment(&self) -> bool {
         match *self {
-            PlaceContext::MutatingUse(MutatingUseContext::Store) |
-            PlaceContext::MutatingUse(MutatingUseContext::Call) |
-            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
+            PlaceContext::MutatingUse(MutatingUseContext::Store)
+            | PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
             _ => false,
         }
     }

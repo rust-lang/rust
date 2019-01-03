@@ -9,8 +9,8 @@
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
-    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
-    OriginalQueryValues, QueryRegionConstraint, QueryResponse,
+    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty, OriginalQueryValues,
+    QueryRegionConstraint, QueryResponse,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxtBuilder;
@@ -48,8 +48,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     pub fn enter_canonical_trait_query<K, R>(
         &'tcx mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut dyn TraitEngine<'tcx>, K)
-            -> Fallible<R>,
+        operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, R>>
     where
         K: TypeFoldable<'tcx>,
@@ -64,7 +63,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
                 infcx.make_canonicalized_query_response(
                     canonical_inference_vars,
                     value,
-                    &mut *fulfill_cx
+                    &mut *fulfill_cx,
                 )
             },
         )
@@ -123,7 +122,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
-        answer: T
+        answer: T,
     ) -> Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
@@ -157,7 +156,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         );
 
         // Select everything, returning errors.
-        let true_errors = fulfill_cx.select_where_possible(self).err().unwrap_or_else(Vec::new);
+        let true_errors = fulfill_cx
+            .select_where_possible(self)
+            .err()
+            .unwrap_or_else(Vec::new);
         debug!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
@@ -167,7 +169,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = fulfill_cx.select_all_or_error(self).err().unwrap_or_else(Vec::new);
+        let ambig_errors = fulfill_cx
+            .select_all_or_error(self)
+            .err()
+            .unwrap_or_else(Vec::new);
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
@@ -327,19 +332,23 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.extend(
-            query_response.value.region_constraints.iter().filter_map(|r_c| {
-                let r_c = substitute_value(self.tcx, &result_subst, r_c);
+            query_response
+                .value
+                .region_constraints
+                .iter()
+                .filter_map(|r_c| {
+                    let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
-                // Screen out `'a: 'a` cases -- we skip the binder here but
-                // only care the inner values to one another, so they are still at
-                // consistent binding levels.
-                let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
-                if k1 != r2.into() {
-                    Some(r_c)
-                } else {
-                    None
-                }
-            })
+                    // Screen out `'a: 'a` cases -- we skip the binder here but
+                    // only care the inner values to one another, so they are still at
+                    // consistent binding levels.
+                    let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
+                    if k1 != r2.into() {
+                        Some(r_c)
+                    } else {
+                        None
+                    }
+                }),
         );
 
         let user_result: R =
@@ -379,13 +388,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         let result_subst =
             self.query_response_substitution_guess(cause, original_values, query_response);
 
-        let obligations = self.unify_query_response_substitution_guess(
-            cause,
-            param_env,
-            original_values,
-            &result_subst,
-            query_response,
-        )?
+        let obligations = self
+            .unify_query_response_substitution_guess(
+                cause,
+                param_env,
+                original_values,
+                &result_subst,
+                query_response,
+            )?
             .into_obligations();
 
         Ok(InferOk {
@@ -559,16 +569,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     param_env,
                     match k1.unpack() {
                         UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
-                            ty::Binder::bind(
-                                ty::OutlivesPredicate(r1, r2)
-                            )
+                            ty::Binder::bind(ty::OutlivesPredicate(r1, r2)),
                         ),
-                        UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
-                            ty::Binder::bind(
-                                ty::OutlivesPredicate(t1, r2)
-                            )
-                        ),
-                    }
+                        UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(ty::Binder::bind(
+                            ty::OutlivesPredicate(t1, r2),
+                        )),
+                    },
                 )
             })
     }
@@ -652,7 +658,7 @@ pub fn make_query_outlives<'tcx>(
         .chain(
             outlives_obligations
                 .map(|(ty, r)| ty::OutlivesPredicate(ty.into(), r))
-                .map(ty::Binder::dummy) // no bound vars in the code above
+                .map(ty::Binder::dummy), // no bound vars in the code above
         )
         .collect();
 

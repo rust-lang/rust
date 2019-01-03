@@ -3,12 +3,14 @@ use rustc::util::nodemap::DefIdSet;
 use clean;
 use core::DocContext;
 use fold::DocFolder;
-use passes::{ImplStripper, ImportStripper, Stripper, Pass};
+use passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
-pub const STRIP_PRIVATE: Pass =
-    Pass::early("strip-private", strip_private,
-        "strips all private items from a crate which cannot be seen externally, \
-         implies strip-priv-imports");
+pub const STRIP_PRIVATE: Pass = Pass::early(
+    "strip-private",
+    strip_private,
+    "strips all private items from a crate which cannot be seen externally, \
+     implies strip-priv-imports",
+);
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
@@ -28,6 +30,8 @@ pub fn strip_private(mut krate: clean::Crate, cx: &DocContext) -> clean::Crate {
     }
 
     // strip all impls referencing private items
-    let mut stripper = ImplStripper { retained: &retained };
+    let mut stripper = ImplStripper {
+        retained: &retained,
+    };
     stripper.fold_crate(krate)
 }

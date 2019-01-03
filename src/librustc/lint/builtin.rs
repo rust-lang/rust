@@ -5,7 +5,7 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use errors::{Applicability, DiagnosticBuilder};
-use lint::{LintPass, LateLintPass, LintArray};
+use lint::{LateLintPass, LintArray, LintPass};
 use session::Session;
 use syntax::ast;
 use syntax::source_map::Span;
@@ -162,10 +162,10 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub LEGACY_DIRECTORY_OWNERSHIP,
-    Deny,
-    "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
-     not named `mod.rs`"
+pub LEGACY_DIRECTORY_OWNERSHIP,
+Deny,
+"non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
+ not named `mod.rs`"
 }
 
 declare_lint! {
@@ -266,10 +266,10 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-    Allow,
-    "fully qualified paths that start with a module name \
-     instead of `crate`, `self`, or an extern crate name"
+pub ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+Allow,
+"fully qualified paths that start with a module name \
+ instead of `crate`, `self`, or an extern crate name"
 }
 
 declare_lint! {
@@ -333,17 +333,17 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub MACRO_USE_EXTERN_CRATE,
-    Allow,
-    "the `#[macro_use]` attribute is now deprecated in favor of using macros \
-     via the module system"
+pub MACRO_USE_EXTERN_CRATE,
+Allow,
+"the `#[macro_use]` attribute is now deprecated in favor of using macros \
+ via the module system"
 }
 
 declare_lint! {
-    pub MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-    Deny,
-    "macro-expanded `macro_export` macros from the current crate \
-     cannot be referred to by absolute paths"
+pub MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+Deny,
+"macro-expanded `macro_export` macros from the current crate \
+ cannot be referred to by absolute paths"
 }
 
 declare_lint! {
@@ -456,10 +456,11 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::Normal => (),
             BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
                 let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) if is_global => (format!("dyn ({})", s),
-                                               Applicability::MachineApplicable),
+                    Ok(ref s) if is_global => {
+                        (format!("dyn ({})", s), Applicability::MachineApplicable)
+                    }
                     Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders)
+                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
                 };
                 db.span_suggestion_with_applicability(span, "use `dyn`", sugg, app);
             }
@@ -474,9 +475,12 @@ impl BuiltinLintDiagnostics {
                             "::"
                         };
 
-                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
+                        (
+                            format!("crate{}{}", opt_colon, s),
+                            Applicability::MachineApplicable,
+                        )
                     }
-                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders)
+                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
                 };
                 db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
             }
@@ -485,14 +489,21 @@ impl BuiltinLintDiagnostics {
                 db.span_note(earlier_span, "previous macro export is now shadowed");
             }
             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
-                db.span_label(span, "names from parent modules are not \
-                                     accessible without an explicit import");
+                db.span_label(
+                    span,
+                    "names from parent modules are not \
+                     accessible without an explicit import",
+                );
             }
             BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
                 db.span_note(span_def, "the macro is defined here");
             }
             BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                n, path_span, incl_angl_brckt, insertion_span, anon_lts
+                n,
+                path_span,
+                incl_angl_brckt,
+                insertion_span,
+                anon_lts,
             ) => {
                 let (replace_span, suggestion) = if incl_angl_brckt {
                     (insertion_span, anon_lts)
@@ -521,9 +532,12 @@ impl BuiltinLintDiagnostics {
                 };
                 db.span_suggestion_with_applicability(
                     replace_span,
-                    &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
+                    &format!(
+                        "indicate the anonymous lifetime{}",
+                        if n >= 2 { "s" } else { "" }
+                    ),
                     suggestion,
-                    Applicability::MachineApplicable
+                    Applicability::MachineApplicable,
                 );
             }
             BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
@@ -531,7 +545,7 @@ impl BuiltinLintDiagnostics {
                     span,
                     &note,
                     sugg,
-                    Applicability::MaybeIncorrect
+                    Applicability::MaybeIncorrect,
                 );
             }
         }

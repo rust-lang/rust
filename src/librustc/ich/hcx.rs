@@ -1,35 +1,38 @@
 use hir;
 use hir::def_id::{DefId, DefIndex};
-use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
+use hir::map::DefPathHash;
 use ich::{self, CachingSourceMapView, Fingerprint};
 use middle::cstore::CrateStore;
-use ty::{TyCtxt, fast_reject};
 use session::Session;
+use ty::{fast_reject, TyCtxt};
 
-use std::cmp::Ord;
-use std::hash as std_hash;
-use std::collections::HashMap;
 use std::cell::RefCell;
+use std::cmp::Ord;
+use std::collections::HashMap;
+use std::hash as std_hash;
 
 use syntax::ast;
 
-use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::SyntaxContext;
+use syntax::source_map::SourceMap;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::DelimSpan;
-use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene;
+use syntax_pos::{Span, DUMMY_SP};
 
-use rustc_data_structures::stable_hasher::{HashStable,
-                                           StableHasher, StableHasherResult,
-                                           ToStableHashKey};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{
+    HashStable, StableHasher, StableHasherResult, ToStableHashKey,
+};
 use smallvec::SmallVec;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
-    ich::IGNORED_ATTRIBUTES.iter().map(|&s| Symbol::intern(s)).collect()
+    ich::IGNORED_ATTRIBUTES
+        .iter()
+        .map(|&s| Symbol::intern(s))
+        .collect()
 }
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -77,11 +80,12 @@ impl<'a> StableHashingContext<'a> {
     // Don't use it for anything else or you'll run the risk of
     // leaking data out of the tracking system.
     #[inline]
-    pub fn new(sess: &'a Session,
-               krate: &'a hir::Crate,
-               definitions: &'a Definitions,
-               cstore: &'a dyn CrateStore)
-               -> Self {
+    pub fn new(
+        sess: &'a Session,
+        krate: &'a hir::Crate,
+        definitions: &'a Definitions,
+        cstore: &'a dyn CrateStore,
+    ) -> Self {
         let hash_spans_initial = !sess.opts.debugging_opts.incremental_ignore_spans;
 
         StableHashingContext {
@@ -103,9 +107,7 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn while_hashing_hir_bodies<F: FnOnce(&mut Self)>(&mut self,
-                                                          hash_bodies: bool,
-                                                          f: F) {
+    pub fn while_hashing_hir_bodies<F: FnOnce(&mut Self)>(&mut self, hash_bodies: bool, f: F) {
         let prev_hash_bodies = self.hash_bodies;
         self.hash_bodies = hash_bodies;
         f(self);
@@ -113,9 +115,7 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn while_hashing_spans<F: FnOnce(&mut Self)>(&mut self,
-                                                     hash_spans: bool,
-                                                     f: F) {
+    pub fn while_hashing_spans<F: FnOnce(&mut Self)>(&mut self, hash_spans: bool, f: F) {
         let prev_hash_spans = self.hash_spans;
         self.hash_spans = hash_spans;
         f(self);
@@ -123,9 +123,11 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn with_node_id_hashing_mode<F: FnOnce(&mut Self)>(&mut self,
-                                                           mode: NodeIdHashingMode,
-                                                           f: F) {
+    pub fn with_node_id_hashing_mode<F: FnOnce(&mut Self)>(
+        &mut self,
+        mode: NodeIdHashingMode,
+        f: F,
+    ) {
         let prev = self.node_id_hashing_mode;
         self.node_id_hashing_mode = mode;
         f(self);
@@ -159,9 +161,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
-            Some(ref mut cm) => {
-                cm
-            }
+            Some(ref mut cm) => cm,
             ref mut none => {
                 *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
@@ -192,15 +192,13 @@ pub trait StableHashingContextProvider<'a> {
     fn get_stable_hashing_context(&self) -> StableHashingContext<'a>;
 }
 
-impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a>
-for &'b T {
+impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a> for &'b T {
     fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
         (**self).get_stable_hashing_context()
     }
 }
 
-impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a>
-for &'b mut T {
+impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a> for &'b mut T {
     fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
         (**self).get_stable_hashing_context()
     }
@@ -218,14 +216,14 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
     }
 }
 
-impl<'a> ::dep_graph::DepGraphSafe for StableHashingContext<'a> {
-}
-
+impl<'a> ::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         if hcx.hash_bodies() {
             hcx.body_resolver.body(*self).hash_stable(hcx, hasher);
         }
@@ -234,18 +232,17 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::HirId {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
             }
             NodeIdHashingMode::HashDefPath => {
-                let hir::HirId {
-                    owner,
-                    local_id,
-                } = *self;
+                let hir::HirId { owner, local_id } = *self;
 
                 hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
@@ -258,24 +255,29 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
     type KeyType = (DefPathHash, hir::ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self,
-                          hcx: &StableHashingContext<'a>)
-                          -> (DefPathHash, hir::ItemLocalId) {
+    fn to_stable_hash_key(
+        &self,
+        hcx: &StableHashingContext<'a>,
+    ) -> (DefPathHash, hir::ItemLocalId) {
         let def_path_hash = hcx.local_def_path_hash(self.owner);
         (def_path_hash, self.local_id)
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
             }
             NodeIdHashingMode::HashDefPath => {
-                hcx.definitions.node_to_hir_id(*self).hash_stable(hcx, hasher);
+                hcx.definitions
+                    .node_to_hir_id(*self)
+                    .hash_stable(hcx, hasher);
             }
         }
     }
@@ -285,15 +287,17 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
     type KeyType = (DefPathHash, hir::ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self,
-                          hcx: &StableHashingContext<'a>)
-                          -> (DefPathHash, hir::ItemLocalId) {
-        hcx.definitions.node_to_hir_id(*self).to_stable_hash_key(hcx)
+    fn to_stable_hash_key(
+        &self,
+        hcx: &StableHashingContext<'a>,
+    ) -> (DefPathHash, hir::ItemLocalId) {
+        hcx.definitions
+            .node_to_hir_id(*self)
+            .to_stable_hash_key(hcx)
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Span {
-
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
     // offsets into the SourceMap). Instead, we hash the (file name, line, column)
@@ -303,16 +307,18 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
     // codepoint offsets. For the purpose of the hash that's sufficient.
     // Also, hashing filenames is expensive so we avoid doing it twice when the
     // span starts and ends in the same file, which is almost always the case.
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
         if !hcx.hash_spans {
-            return
+            return;
         }
 
         if *self == DUMMY_SP {
@@ -328,8 +334,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
-        let (file_lo, line_lo, col_lo) = match hcx.source_map()
-                                                  .byte_pos_to_line_and_col(span.lo) {
+        let (file_lo, line_lo, col_lo) = match hcx.source_map().byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {
                 return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
@@ -398,9 +403,10 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &[DefId],
-    non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>)
-    where W: StableHasherResult,
-          R: std_hash::BuildHasher,
+    non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>,
+) where
+    W: StableHasherResult,
+    R: std_hash::BuildHasher,
 {
     {
         let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
@@ -416,15 +422,15 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
     }
 
     {
-        let mut keys: SmallVec<[_; 8]> =
-            non_blanket_impls.keys()
-                             .map(|k| (k, k.map_def(|d| hcx.def_path_hash(d))))
-                             .collect();
+        let mut keys: SmallVec<[_; 8]> = non_blanket_impls
+            .keys()
+            .map(|k| (k, k.map_def(|d| hcx.def_path_hash(d))))
+            .collect();
         keys.sort_unstable_by(|&(_, ref k1), &(_, ref k2)| k1.cmp(k2));
         keys.len().hash_stable(hcx, hasher);
         for (key, ref stable_key) in keys {
             stable_key.hash_stable(hcx, hasher);
-            let mut impls : SmallVec<[_; 8]> = non_blanket_impls[key]
+            let mut impls: SmallVec<[_; 8]> = non_blanket_impls[key]
                 .iter()
                 .map(|&impl_id| hcx.def_path_hash(impl_id))
                 .collect();
@@ -437,4 +443,3 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
         }
     }
 }
-

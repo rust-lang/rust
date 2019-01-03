@@ -2,7 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
-use rustc::traits::{TraitEngine, Normalized, ObligationCause, TraitEngineExt};
+use rustc::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
@@ -139,7 +139,7 @@ fn dropck_outlives<'tcx>(
             infcx.make_canonicalized_query_response(
                 canonical_inference_vars,
                 result,
-                &mut *fulfill_cx
+                &mut *fulfill_cx,
             )
         },
     )
@@ -190,7 +190,8 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety)
         }
 
-        ty::Tuple(tys) => tys.iter()
+        ty::Tuple(tys) => tys
+            .iter()
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
@@ -302,7 +303,8 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
         return Ok(result);
     }
 
-    let mut result = def.all_fields()
+    let mut result = def
+        .all_fields()
         .map(|field| tcx.type_of(field.did))
         .map(|fty| dtorck_constraint_for_ty(tcx, span, fty, 0, fty))
         .collect::<Result<DtorckConstraint, NoSolution>>()?;

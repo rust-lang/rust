@@ -1,22 +1,22 @@
 use build;
 use build::scope::{CachedBlock, DropKind};
 use hair::cx::Cx;
-use hair::{LintLevel, BindingMode, PatternKind};
+use hair::{BindingMode, LintLevel, PatternKind};
 use rustc::hir;
-use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LocalDefId};
+use rustc::hir::Node;
 use rustc::middle::region;
-use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::mir::*;
 use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::NodeMap;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
 use std::mem;
 use std::u32;
-use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
@@ -32,41 +32,46 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
-        Node::Variant(variant) =>
-            return create_constructor_shim(tcx, id, &variant.node.data),
-        Node::StructCtor(ctor) =>
-            return create_constructor_shim(tcx, id, ctor),
+        Node::Variant(variant) => return create_constructor_shim(tcx, id, &variant.node.data),
+        Node::StructCtor(ctor) => return create_constructor_shim(tcx, id, ctor),
 
-        Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })
-        | Node::ImplItem(
-            hir::ImplItem {
-                node: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
-                ..
-            }
-        )
-        | Node::TraitItem(
-            hir::TraitItem {
-                node: hir::TraitItemKind::Method(
+        Node::Expr(hir::Expr {
+            node: hir::ExprKind::Closure(_, decl, body_id, _, _),
+            ..
+        })
+        | Node::Item(hir::Item {
+            node: hir::ItemKind::Fn(decl, _, _, body_id),
+            ..
+        })
+        | Node::ImplItem(hir::ImplItem {
+            node: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
+            ..
+        })
+        | Node::TraitItem(hir::TraitItem {
+            node:
+                hir::TraitItemKind::Method(
                     hir::MethodSig { decl, .. },
                     hir::TraitMethod::Provided(body_id),
                 ),
-                ..
-            }
-        ) => {
-            (*body_id, decl.output.span())
-        }
-        Node::Item(hir::Item { node: hir::ItemKind::Static(ty, _, body_id), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
-        | Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Const(ty, body_id), .. })
-        | Node::TraitItem(
-            hir::TraitItem { node: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
-        ) => {
-            (*body_id, ty.span)
-        }
-        Node::AnonConst(hir::AnonConst { body, id, .. }) => {
-            (*body, tcx.hir().span(*id))
-        }
+            ..
+        }) => (*body_id, decl.output.span()),
+        Node::Item(hir::Item {
+            node: hir::ItemKind::Static(ty, _, body_id),
+            ..
+        })
+        | Node::Item(hir::Item {
+            node: hir::ItemKind::Const(ty, body_id),
+            ..
+        })
+        | Node::ImplItem(hir::ImplItem {
+            node: hir::ImplItemKind::Const(ty, body_id),
+            ..
+        })
+        | Node::TraitItem(hir::TraitItem {
+            node: hir::TraitItemKind::Const(ty, Some(body_id)),
+            ..
+        }) => (*body_id, ty.span),
+        Node::AnonConst(hir::AnonConst { body, id, .. }) => (*body, tcx.hir().span(*id)),
 
         _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def_id),
     };
@@ -89,7 +94,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
+                    Some(ArgInfo(
+                        liberated_closure_env_ty(tcx, id, body_id),
+                        None,
+                        None,
+                        None,
+                    ))
                 }
                 ty::Generator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
@@ -104,52 +114,60 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             };
 
             let body = tcx.hir().body(body_id);
-            let explicit_arguments =
-                body.arguments
-                    .iter()
-                    .enumerate()
-                    .map(|(index, arg)| {
-                        let owner_id = tcx.hir().body_owner(body_id);
-                        let opt_ty_info;
-                        let self_arg;
-                        if let Some(ref fn_decl) = tcx.hir().fn_decl(owner_id) {
-                            let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir().span(tcx.hir().hir_to_node_id(ty_hir_id));
-                            opt_ty_info = Some(ty_span);
-                            self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
-                                match fn_decl.implicit_self {
-                                    hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
-                                    hir::ImplicitSelfKind::Mut => Some(ImplicitSelfKind::Mut),
-                                    hir::ImplicitSelfKind::ImmRef => Some(ImplicitSelfKind::ImmRef),
-                                    hir::ImplicitSelfKind::MutRef => Some(ImplicitSelfKind::MutRef),
-                                    _ => None,
-                                }
-                            } else {
-                                None
-                            };
-                        } else {
-                            opt_ty_info = None;
-                            self_arg = None;
+            let explicit_arguments = body.arguments.iter().enumerate().map(|(index, arg)| {
+                let owner_id = tcx.hir().body_owner(body_id);
+                let opt_ty_info;
+                let self_arg;
+                if let Some(ref fn_decl) = tcx.hir().fn_decl(owner_id) {
+                    let ty_hir_id = fn_decl.inputs[index].hir_id;
+                    let ty_span = tcx.hir().span(tcx.hir().hir_to_node_id(ty_hir_id));
+                    opt_ty_info = Some(ty_span);
+                    self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
+                        match fn_decl.implicit_self {
+                            hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
+                            hir::ImplicitSelfKind::Mut => Some(ImplicitSelfKind::Mut),
+                            hir::ImplicitSelfKind::ImmRef => Some(ImplicitSelfKind::ImmRef),
+                            hir::ImplicitSelfKind::MutRef => Some(ImplicitSelfKind::MutRef),
+                            _ => None,
                         }
-                        ArgInfo(fn_sig.inputs()[index], opt_ty_info, Some(&*arg.pat), self_arg)
-                    });
+                    } else {
+                        None
+                    };
+                } else {
+                    opt_ty_info = None;
+                    self_arg = None;
+                }
+                ArgInfo(
+                    fn_sig.inputs()[index],
+                    opt_ty_info,
+                    Some(&*arg.pat),
+                    self_arg,
+                )
+            });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.is_generator {
                 let gen_sig = match ty.sty {
-                    ty::Generator(gen_def_id, gen_substs, ..) =>
-                        gen_substs.sig(gen_def_id, tcx),
-                    _ =>
-                        span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
+                    ty::Generator(gen_def_id, gen_substs, ..) => gen_substs.sig(gen_def_id, tcx),
+                    _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
             } else {
                 (None, fn_sig.output())
             };
 
-            build::construct_fn(cx, id, arguments, safety, abi,
-                                return_ty, yield_ty, return_ty_span, body)
+            build::construct_fn(
+                cx,
+                id,
+                arguments,
+                safety,
+                abi,
+                return_ty,
+                yield_ty,
+                return_ty_span,
+                body,
+            )
         } else {
             build::construct_const(cx, body_id, return_ty_span)
         };
@@ -157,15 +175,20 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         // Convert the Mir to global types.
         let mut globalizer = GlobalizeMir {
             tcx,
-            span: mir.span
+            span: mir.span,
         };
         globalizer.visit_mir(&mut mir);
-        let mir = unsafe {
-            mem::transmute::<Mir, Mir<'tcx>>(mir)
-        };
+        let mir = unsafe { mem::transmute::<Mir, Mir<'tcx>>(mir) };
 
-        mir_util::dump_mir(tcx, None, "mir_map", &0,
-                           MirSource::item(def_id), &mir, |_, _| Ok(()) );
+        mir_util::dump_mir(
+            tcx,
+            None,
+            "mir_map",
+            &0,
+            MirSource::item(def_id),
+            &mir,
+            |_, _| Ok(()),
+        );
 
         lints::check(tcx, &mir, def_id);
 
@@ -178,7 +201,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 /// can change 'tcx so we have to transmute afterwards.
 struct GlobalizeMir<'a, 'gcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    span: Span
+    span: Span,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
@@ -186,9 +209,11 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         if let Some(lifted) = self.tcx.lift(ty) {
             *ty = lifted;
         } else {
-            span_bug!(self.span,
-                      "found type `{:?}` with inference types/regions in MIR",
-                      ty);
+            span_bug!(
+                self.span,
+                "found type `{:?}` with inference types/regions in MIR",
+                ty
+            );
         }
     }
 
@@ -196,9 +221,11 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         if let Some(lifted) = self.tcx.lift(region) {
             *region = lifted;
         } else {
-            span_bug!(self.span,
-                      "found region `{:?}` with inference types/regions in MIR",
-                      region);
+            span_bug!(
+                self.span,
+                "found region `{:?}` with inference types/regions in MIR",
+                region
+            );
         }
     }
 
@@ -206,9 +233,11 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         if let Some(lifted) = self.tcx.lift(constant) {
             *constant = lifted;
         } else {
-            span_bug!(self.span,
-                      "found constant `{:?}` with inference types/regions in MIR",
-                      constant);
+            span_bug!(
+                self.span,
+                "found constant `{:?}` with inference types/regions in MIR",
+                constant
+            );
         }
     }
 
@@ -216,18 +245,20 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         if let Some(lifted) = self.tcx.lift(substs) {
             *substs = lifted;
         } else {
-            span_bug!(self.span,
-                      "found substs `{:?}` with inference types/regions in MIR",
-                      substs);
+            span_bug!(
+                self.span,
+                "found substs `{:?}` with inference types/regions in MIR",
+                substs
+            );
         }
     }
 }
 
-fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     ctor_id: ast::NodeId,
-                                     v: &'tcx hir::VariantData)
-                                     -> Mir<'tcx>
-{
+fn create_constructor_shim<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ctor_id: ast::NodeId,
+    v: &'tcx hir::VariantData,
+) -> Mir<'tcx> {
     let span = tcx.hir().span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
@@ -237,37 +268,48 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
                 tcx,
-                span: mir.span
+                span: mir.span,
             };
             globalizer.visit_mir(&mut mir);
-            let mir = unsafe {
-                mem::transmute::<Mir, Mir<'tcx>>(mir)
-            };
+            let mir = unsafe { mem::transmute::<Mir, Mir<'tcx>>(mir) };
 
-            mir_util::dump_mir(tcx, None, "mir_map", &0,
-                               MirSource::item(tcx.hir().local_def_id(ctor_id)),
-                               &mir, |_, _| Ok(()) );
+            mir_util::dump_mir(
+                tcx,
+                None,
+                "mir_map",
+                &0,
+                MirSource::item(tcx.hir().local_def_id(ctor_id)),
+                &mir,
+                |_, _| Ok(()),
+            );
 
             mir
         })
     } else {
-        span_bug!(span, "attempting to create MIR for non-tuple variant {:?}", v);
+        span_bug!(
+            span,
+            "attempting to create MIR for non-tuple variant {:?}",
+            v
+        );
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            closure_expr_id: ast::NodeId,
-                                            body_id: hir::BodyId)
-                                            -> Ty<'tcx> {
+fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    closure_expr_id: ast::NodeId,
+    body_id: hir::BodyId,
+) -> Ty<'tcx> {
     let closure_expr_hir_id = tcx.hir().node_to_hir_id(closure_expr_id);
-    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
+    let closure_ty = tcx
+        .body_tables(body_id)
+        .node_id_to_type(closure_expr_hir_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
-        _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
+        _ => bug!("closure expr does not have closure type: {:?}", closure_ty),
     };
 
     let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
@@ -285,7 +327,7 @@ pub enum BlockFrame {
     Statement {
         /// If true, then statement discards result from evaluating
         /// the expression (such as examples 1 and 2 above).
-        ignores_expr_result: bool
+        ignores_expr_result: bool,
     },
 
     /// Evaluation is currently within the tail expression of a block.
@@ -296,7 +338,7 @@ pub enum BlockFrame {
         /// the result of evaluating the block's tail expression.
         ///
         /// Example: `let _ = { STMT_1; EXPR };`
-        tail_result_is_ignored: bool
+        tail_result_is_ignored: bool,
     },
 
     /// Generic mark meaning that the block occurred as a subexpression
@@ -311,24 +353,22 @@ impl BlockFrame {
         match *self {
             BlockFrame::TailExpr { .. } => true,
 
-            BlockFrame::Statement { .. } |
-            BlockFrame::SubExpr => false,
+            BlockFrame::Statement { .. } | BlockFrame::SubExpr => false,
         }
     }
     fn is_statement(&self) -> bool {
         match *self {
             BlockFrame::Statement { .. } => true,
 
-            BlockFrame::TailExpr { .. } |
-            BlockFrame::SubExpr => false,
+            BlockFrame::TailExpr { .. } | BlockFrame::SubExpr => false,
         }
     }
- }
+}
 
 #[derive(Debug)]
 struct BlockContext(Vec<BlockFrame>);
 
-struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct Builder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     hir: Cx<'a, 'gcx, 'tcx>,
     cfg: CFG<'tcx>,
 
@@ -394,7 +434,9 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn is_bound_var_in_guard(&self, id: ast::NodeId) -> bool {
-        self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
+        self.guard_context
+            .iter()
+            .any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
 
     fn var_local_id(&self, id: ast::NodeId, for_guard: ForGuard) -> Local {
@@ -403,9 +445,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 }
 
 impl BlockContext {
-    fn new() -> Self { BlockContext(vec![]) }
-    fn push(&mut self, bf: BlockFrame) { self.0.push(bf); }
-    fn pop(&mut self) -> Option<BlockFrame> { self.0.pop() }
+    fn new() -> Self {
+        BlockContext(vec![])
+    }
+    fn push(&mut self, bf: BlockFrame) {
+        self.0.push(bf);
+    }
+    fn pop(&mut self) -> Option<BlockFrame> {
+        self.0.pop()
+    }
 
     /// Traverses the frames on the BlockContext, searching for either
     /// the first block-tail expression frame with no intervening
@@ -422,8 +470,13 @@ impl BlockContext {
             match bf {
                 BlockFrame::SubExpr => continue,
                 BlockFrame::Statement { .. } => break,
-                &BlockFrame::TailExpr { tail_result_is_ignored } =>
-                    return Some(BlockTailInfo { tail_result_is_ignored })
+                &BlockFrame::TailExpr {
+                    tail_result_is_ignored,
+                } => {
+                    return Some(BlockTailInfo {
+                        tail_result_is_ignored,
+                    })
+                }
             }
         }
 
@@ -445,8 +498,12 @@ impl BlockContext {
             Some(BlockFrame::SubExpr) => false,
 
             // otherwise: use accumulated is_ignored state.
-            Some(BlockFrame::TailExpr { tail_result_is_ignored: ignored }) |
-            Some(BlockFrame::Statement { ignores_expr_result: ignored }) => *ignored,
+            Some(BlockFrame::TailExpr {
+                tail_result_is_ignored: ignored,
+            })
+            | Some(BlockFrame::Statement {
+                ignores_expr_result: ignored,
+            }) => *ignored,
         }
     }
 }
@@ -477,7 +534,11 @@ enum LocalsForNode {
     /// There reason we have `k` Locals rather than just 1 is to
     /// accommodate some restrictions imposed by two-phase borrows,
     /// which apply when we have a `ref mut` pattern.
-    ForGuard { vals_for_guard: Vec<Local>, ref_for_guard: Local, for_arm_body: Local },
+    ForGuard {
+        vals_for_guard: Vec<Local>,
+        ref_for_guard: Local,
+        for_arm_body: Local,
+    },
 }
 
 #[derive(Debug)]
@@ -487,9 +548,7 @@ struct GuardFrameLocal {
 
 impl GuardFrameLocal {
     fn new(id: ast::NodeId, _binding_mode: BindingMode) -> Self {
-        GuardFrameLocal {
-            id: id,
-        }
+        GuardFrameLocal { id: id }
     }
 }
 
@@ -527,18 +586,33 @@ enum ForGuard {
 impl LocalsForNode {
     fn local_id(&self, for_guard: ForGuard) -> Local {
         match (self, for_guard) {
-            (&LocalsForNode::One(local_id), ForGuard::OutsideGuard) |
-            (&LocalsForNode::ForGuard { ref_for_guard: local_id, .. }, ForGuard::RefWithinGuard) |
-            (&LocalsForNode::ForGuard { for_arm_body: local_id, .. }, ForGuard::OutsideGuard) =>
-                local_id,
+            (&LocalsForNode::One(local_id), ForGuard::OutsideGuard)
+            | (
+                &LocalsForNode::ForGuard {
+                    ref_for_guard: local_id,
+                    ..
+                },
+                ForGuard::RefWithinGuard,
+            )
+            | (
+                &LocalsForNode::ForGuard {
+                    for_arm_body: local_id,
+                    ..
+                },
+                ForGuard::OutsideGuard,
+            ) => local_id,
 
-            (&LocalsForNode::ForGuard { ref vals_for_guard, .. },
-             ForGuard::ValWithinGuard(pat_idx)) =>
-                vals_for_guard[pat_idx],
+            (
+                &LocalsForNode::ForGuard {
+                    ref vals_for_guard, ..
+                },
+                ForGuard::ValWithinGuard(pat_idx),
+            ) => vals_for_guard[pat_idx],
 
-            (&LocalsForNode::One(_), ForGuard::ValWithinGuard(_)) |
-            (&LocalsForNode::One(_), ForGuard::RefWithinGuard) =>
-                bug!("anything with one local should never be within a guard."),
+            (&LocalsForNode::One(_), ForGuard::ValWithinGuard(_))
+            | (&LocalsForNode::One(_), ForGuard::RefWithinGuard) => {
+                bug!("anything with one local should never be within a guard.")
+            }
         }
     }
 }
@@ -578,34 +652,37 @@ impl BlockAndExtension for BasicBlock {
 /// Update a block pointer and return the value.
 /// Use it like `let x = unpack!(block = self.foo(block, foo))`.
 macro_rules! unpack {
-    ($x:ident = $c:expr) => {
-        {
-            let BlockAnd(b, v) = $c;
-            $x = b;
-            v
-        }
-    };
+    ($x:ident = $c:expr) => {{
+        let BlockAnd(b, v) = $c;
+        $x = b;
+        v
+    }};
 
-    ($c:expr) => {
-        {
-            let BlockAnd(b, ()) = $c;
-            b
-        }
-    };
+    ($c:expr) => {{
+        let BlockAnd(b, ()) = $c;
+        b
+    }};
 }
 
-fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         fn_def_id: DefId,
-                                         abi: Abi)
-                                         -> bool {
+fn should_abort_on_panic<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn_def_id: DefId,
+    abi: Abi,
+) -> bool {
     // Not callable from C, so we can safely unwind through these
-    if abi == Abi::Rust || abi == Abi::RustCall { return false; }
+    if abi == Abi::Rust || abi == Abi::RustCall {
+        return false;
+    }
 
     // We never unwind, so it's not relevant to stop an unwind
-    if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
+    if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
+        return false;
+    }
 
     // We cannot add landing pads, so don't add one
-    if tcx.sess.no_landing_pads() { return false; }
+    if tcx.sess.no_landing_pads() {
+        return false;
+    }
 
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
@@ -620,22 +697,26 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'gcx>(Ty<'gcx>,
-                     Option<Span>,
-                     Option<&'gcx hir::Pat>,
-                     Option<ImplicitSelfKind>);
+struct ArgInfo<'gcx>(
+    Ty<'gcx>,
+    Option<Span>,
+    Option<&'gcx hir::Pat>,
+    Option<ImplicitSelfKind>,
+);
 
-fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   fn_id: ast::NodeId,
-                                   arguments: A,
-                                   safety: Safety,
-                                   abi: Abi,
-                                   return_ty: Ty<'gcx>,
-                                   yield_ty: Option<Ty<'gcx>>,
-                                   return_ty_span: Span,
-                                   body: &'gcx hir::Body)
-                                   -> Mir<'tcx>
-    where A: Iterator<Item=ArgInfo<'gcx>>
+fn construct_fn<'a, 'gcx, 'tcx, A>(
+    hir: Cx<'a, 'gcx, 'tcx>,
+    fn_id: ast::NodeId,
+    arguments: A,
+    safety: Safety,
+    abi: Abi,
+    return_ty: Ty<'gcx>,
+    yield_ty: Option<Ty<'gcx>>,
+    return_ty_span: Span,
+    body: &'gcx hir::Body,
+) -> Mir<'tcx>
+where
+    A: Iterator<Item = ArgInfo<'gcx>>,
 {
     let arguments: Vec<_> = arguments.collect();
 
@@ -644,87 +725,103 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
-        freevars.iter().map(|fv| {
-            let var_id = fv.var_id();
-            let var_hir_id = tcx.hir().node_to_hir_id(var_id);
-            let closure_expr_id = tcx.hir().local_def_id(fn_id);
-            let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_path: ty::UpvarPath {hir_id: var_hir_id},
-                closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
-            });
-            let by_ref = match capture {
-                ty::UpvarCapture::ByValue => false,
-                ty::UpvarCapture::ByRef(..) => true
-            };
-            let mut decl = UpvarDecl {
-                debug_name: keywords::Invalid.name(),
-                var_hir_id: ClearCrossCrate::Set(var_hir_id),
-                by_ref,
-                mutability: Mutability::Not,
-            };
-            if let Some(Node::Binding(pat)) = tcx.hir().find(var_id) {
-                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
-                    decl.debug_name = ident.name;
+        freevars
+            .iter()
+            .map(|fv| {
+                let var_id = fv.var_id();
+                let var_hir_id = tcx.hir().node_to_hir_id(var_id);
+                let closure_expr_id = tcx.hir().local_def_id(fn_id);
+                let capture = hir.tables().upvar_capture(ty::UpvarId {
+                    var_path: ty::UpvarPath { hir_id: var_hir_id },
+                    closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
+                });
+                let by_ref = match capture {
+                    ty::UpvarCapture::ByValue => false,
+                    ty::UpvarCapture::ByRef(..) => true,
+                };
+                let mut decl = UpvarDecl {
+                    debug_name: keywords::Invalid.name(),
+                    var_hir_id: ClearCrossCrate::Set(var_hir_id),
+                    by_ref,
+                    mutability: Mutability::Not,
+                };
+                if let Some(Node::Binding(pat)) = tcx.hir().find(var_id) {
+                    if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                        decl.debug_name = ident.name;
 
-                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                        if bm == ty::BindByValue(hir::MutMutable) {
-                            decl.mutability = Mutability::Mut;
+                        if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
+                            if bm == ty::BindByValue(hir::MutMutable) {
+                                decl.mutability = Mutability::Mut;
+                            } else {
+                                decl.mutability = Mutability::Not;
+                            }
                         } else {
-                            decl.mutability = Mutability::Not;
+                            tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                         }
-                    } else {
-                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                     }
                 }
-            }
-            decl
-        }).collect()
+                decl
+            })
+            .collect()
     });
 
-    let mut builder = Builder::new(hir,
+    let mut builder = Builder::new(
+        hir,
         span,
         arguments.len(),
         safety,
         return_ty,
         return_ty_span,
-        upvar_decls);
+        upvar_decls,
+    );
 
     let fn_def_id = tcx.hir().local_def_id(fn_id);
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,
-        data: region::ScopeData::CallSite
+        data: region::ScopeData::CallSite,
     };
     let arg_scope = region::Scope {
         id: body.value.hir_id.local_id,
-        data: region::ScopeData::Arguments
+        data: region::ScopeData::Arguments,
     };
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
-    unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
-        if should_abort_on_panic(tcx, fn_def_id, abi) {
-            builder.schedule_abort();
-        }
+    unpack!(
+        block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
+            if should_abort_on_panic(tcx, fn_def_id, abi) {
+                builder.schedule_abort();
+            }
 
-        let arg_scope_s = (arg_scope, source_info);
-        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
-            builder.args_and_body(block, &arguments, arg_scope, &body.value)
-        }));
-        // Attribute epilogue to function's closing brace
-        let fn_end = span.shrink_to_hi();
-        let source_info = builder.source_info(fn_end);
-        let return_block = builder.return_block();
-        builder.cfg.terminate(block, source_info,
-                              TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, source_info,
-                              TerminatorKind::Return);
-        // Attribute any unreachable codepaths to the function's closing brace
-        if let Some(unreachable_block) = builder.cached_unreachable_block {
-            builder.cfg.terminate(unreachable_block, source_info,
-                                  TerminatorKind::Unreachable);
-        }
-        return_block.unit()
-    }));
+            let arg_scope_s = (arg_scope, source_info);
+            unpack!(
+                block = builder
+                    .in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| builder
+                        .args_and_body(block, &arguments, arg_scope, &body.value))
+            );
+            // Attribute epilogue to function's closing brace
+            let fn_end = span.shrink_to_hi();
+            let source_info = builder.source_info(fn_end);
+            let return_block = builder.return_block();
+            builder.cfg.terminate(
+                block,
+                source_info,
+                TerminatorKind::Goto {
+                    target: return_block,
+                },
+            );
+            builder
+                .cfg
+                .terminate(return_block, source_info, TerminatorKind::Return);
+            // Attribute any unreachable codepaths to the function's closing brace
+            if let Some(unreachable_block) = builder.cached_unreachable_block {
+                builder
+                    .cfg
+                    .terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
+            }
+            return_block.unit()
+        })
+    );
     assert_eq!(block, builder.return_block());
 
     let mut spread_arg = None;
@@ -733,8 +830,11 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         spread_arg = Some(Local::new(arguments.len()));
     }
     let closure_expr_id = tcx.hir().local_def_id(fn_id);
-    info!("fn_id {:?} has attrs {:?}", closure_expr_id,
-          tcx.get_attrs(closure_expr_id));
+    info!(
+        "fn_id {:?} has attrs {:?}",
+        closure_expr_id,
+        tcx.get_attrs(closure_expr_id)
+    );
 
     let mut mir = builder.finish(yield_ty);
     mir.spread_arg = spread_arg;
@@ -751,14 +851,16 @@ fn construct_const<'a, 'gcx, 'tcx>(
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir().body_owner(body_id);
     let span = tcx.hir().span(owner_id);
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, ty_span,vec![]);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, ty_span, vec![]);
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
     unpack!(block = builder.into_expr(&Place::Local(RETURN_PLACE), block, expr));
 
     let source_info = builder.source_info(span);
-    builder.cfg.terminate(block, source_info, TerminatorKind::Return);
+    builder
+        .cfg
+        .terminate(block, source_info, TerminatorKind::Return);
 
     // Constants can't `return` so a return block should not be created.
     assert_eq!(builder.cached_return_block, None);
@@ -766,38 +868,42 @@ fn construct_const<'a, 'gcx, 'tcx>(
     // Constants may be match expressions in which case an unreachable block may
     // be created, so terminate it properly.
     if let Some(unreachable_block) = builder.cached_unreachable_block {
-        builder.cfg.terminate(unreachable_block, source_info,
-                              TerminatorKind::Unreachable);
+        builder
+            .cfg
+            .terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
     }
 
     builder.finish(None)
 }
 
-fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   body_id: hir::BodyId)
-                                   -> Mir<'tcx> {
+fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>, body_id: hir::BodyId) -> Mir<'tcx> {
     let owner_id = hir.tcx().hir().body_owner(body_id);
     let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![]);
     let source_info = builder.source_info(span);
-    builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
+    builder
+        .cfg
+        .terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     builder.finish(None)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    fn new(hir: Cx<'a, 'gcx, 'tcx>,
-           span: Span,
-           arg_count: usize,
-           safety: Safety,
-           return_ty: Ty<'tcx>,
-           return_span: Span,
-           upvar_decls: Vec<UpvarDecl>)
-           -> Builder<'a, 'gcx, 'tcx> {
+    fn new(
+        hir: Cx<'a, 'gcx, 'tcx>,
+        span: Span,
+        arg_count: usize,
+        safety: Safety,
+        return_ty: Ty<'tcx>,
+        return_span: Span,
+        upvar_decls: Vec<UpvarDecl>,
+    ) -> Builder<'a, 'gcx, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
             hir,
-            cfg: CFG { basic_blocks: IndexVec::new() },
+            cfg: CFG {
+                basic_blocks: IndexVec::new(),
+            },
             fn_span: span,
             arg_count,
             scopes: vec![],
@@ -825,15 +931,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
         assert_eq!(
             builder.new_source_scope(span, lint_level, Some(safety)),
-            OUTERMOST_SOURCE_SCOPE);
+            OUTERMOST_SOURCE_SCOPE
+        );
         builder.source_scopes[OUTERMOST_SOURCE_SCOPE].parent_scope = None;
 
         builder
     }
 
-    fn finish(self,
-              yield_ty: Option<Ty<'tcx>>)
-              -> Mir<'tcx> {
+    fn finish(self, yield_ty: Option<Ty<'tcx>>) -> Mir<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
@@ -855,13 +960,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         )
     }
 
-    fn args_and_body(&mut self,
-                     mut block: BasicBlock,
-                     arguments: &[ArgInfo<'gcx>],
-                     argument_scope: region::Scope,
-                     ast_body: &'gcx hir::Expr)
-                     -> BlockAnd<()>
-    {
+    fn args_and_body(
+        &mut self,
+        mut block: BasicBlock,
+        arguments: &[ArgInfo<'gcx>],
+        argument_scope: region::Scope,
+        ast_body: &'gcx hir::Expr,
+    ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, pattern, _) in arguments.iter() {
             // If this is a simple binding pattern, give the local a name for
@@ -881,7 +986,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             let source_info = SourceInfo {
                 scope: OUTERMOST_SOURCE_SCOPE,
-                span: pattern.map_or(self.fn_span, |pat| pat.span)
+                span: pattern.map_or(self.fn_span, |pat| pat.span),
             };
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
@@ -910,27 +1015,36 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
-                    PatternKind::Binding { mutability, var, mode: BindingMode::ByValue, .. } => {
+                    PatternKind::Binding {
+                        mutability,
+                        var,
+                        mode: BindingMode::ByValue,
+                        ..
+                    } => {
                         self.local_decls[local].mutability = mutability;
-                        self.local_decls[local].is_user_variable =
-                            if let Some(kind) = self_binding {
-                                Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
-                            } else {
-                                let binding_mode = ty::BindingMode::BindByValue(mutability.into());
-                                Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                                    binding_mode,
-                                    opt_ty_info,
-                                    opt_match_place: Some((Some(place.clone()), span)),
-                                    pat_span: span,
-                                })))
-                            };
+                        self.local_decls[local].is_user_variable = if let Some(kind) = self_binding
+                        {
+                            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
+                        } else {
+                            let binding_mode = ty::BindingMode::BindByValue(mutability.into());
+                            Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                                binding_mode,
+                                opt_ty_info,
+                                opt_match_place: Some((Some(place.clone()), span)),
+                                pat_span: span,
+                            })))
+                        };
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }
                     _ => {
-                        scope = self.declare_bindings(scope, ast_body.span,
-                                                      LintLevel::Inherited, &[pattern.clone()],
-                                                      matches::ArmHasGuard(false),
-                                                      Some((Some(&place), span)));
+                        scope = self.declare_bindings(
+                            scope,
+                            ast_body.span,
+                            LintLevel::Inherited,
+                            &[pattern.clone()],
+                            matches::ArmHasGuard(false),
+                            Some((Some(&place), span)),
+                        );
                         unpack!(block = self.place_into_pattern(block, pattern, &place, false));
                     }
                 }
@@ -939,8 +1053,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                argument_scope, &place, ty,
-                DropKind::Value { cached_block: CachedBlock::default() },
+                argument_scope,
+                &place,
+                ty,
+                DropKind::Value {
+                    cached_block: CachedBlock::default(),
+                },
             );
         }
 

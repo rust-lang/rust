@@ -11,7 +11,7 @@ macro_rules! define_id_collections {
     ($map_name:ident, $set_name:ident, $key:ty) => {
         pub type $map_name<T> = FxHashMap<$key, T>;
         pub type $set_name = FxHashSet<$key>;
-    }
+    };
 }
 
 define_id_collections!(NodeMap, NodeSet, ast::NodeId);

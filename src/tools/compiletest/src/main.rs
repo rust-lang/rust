@@ -15,9 +15,9 @@ extern crate regex;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
+extern crate rustfix;
 extern crate serde_json;
 extern crate test;
-extern crate rustfix;
 extern crate walkdir;
 
 use common::CompareMode;
@@ -67,173 +67,174 @@ pub fn parse_config(args: Vec<String>) -> Config {
         "compile-lib-path",
         "path to host shared libraries",
         "PATH",
-    ).reqopt(
-            "",
-            "run-lib-path",
-            "path to target shared libraries",
-            "PATH",
-        )
-        .reqopt(
-            "",
-            "rustc-path",
-            "path to rustc to use for compiling",
-            "PATH",
-        )
-        .optopt(
-            "",
-            "rustdoc-path",
-            "path to rustdoc to use for compiling",
-            "PATH",
-        )
-        .reqopt(
-            "",
-            "lldb-python",
-            "path to python to use for doc tests",
-            "PATH",
-        )
-        .reqopt(
-            "",
-            "docck-python",
-            "path to python to use for doc tests",
-            "PATH",
-        )
-        .optopt(
-            "",
-            "valgrind-path",
-            "path to Valgrind executable for Valgrind tests",
-            "PROGRAM",
-        )
-        .optflag(
-            "",
-            "force-valgrind",
-            "fail if Valgrind tests cannot be run under Valgrind",
-        )
-        .optopt(
-            "",
-            "llvm-filecheck",
-            "path to LLVM's FileCheck binary",
-            "DIR",
-        )
-        .reqopt("", "src-base", "directory to scan for test files", "PATH")
-        .reqopt(
-            "",
-            "build-base",
-            "directory to deposit test outputs",
-            "PATH",
-        )
-        .reqopt(
-            "",
-            "stage-id",
-            "the target-stage identifier",
-            "stageN-TARGET",
-        )
-        .reqopt(
-            "",
-            "mode",
-            "which sort of compile tests to run",
-            "(compile-fail|run-fail|run-pass|\
-             run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
-        )
-        .optflag("", "ignored", "run tests marked as ignored")
-        .optflag("", "exact", "filters match exactly")
-        .optopt(
-            "",
-            "runtool",
-            "supervisor program to run tests under \
-             (eg. emulator, valgrind)",
-            "PROGRAM",
-        )
-        .optopt(
-            "",
-            "host-rustcflags",
-            "flags to pass to rustc for host",
-            "FLAGS",
-        )
-        .optopt(
-            "",
-            "target-rustcflags",
-            "flags to pass to rustc for target",
-            "FLAGS",
-        )
-        .optflag("", "verbose", "run tests verbosely, showing all output")
-        .optflag(
-            "",
-            "bless",
-            "overwrite stderr/stdout files instead of complaining about a mismatch",
-        )
-        .optflag(
-            "",
-            "quiet",
-            "print one character per test instead of one line",
-        )
-        .optopt("", "color", "coloring: auto, always, never", "WHEN")
-        .optopt("", "logfile", "file to log test execution to", "FILE")
-        .optopt("", "target", "the target to build for", "TARGET")
-        .optopt("", "host", "the host to build for", "HOST")
-        .optopt(
-            "",
-            "gdb",
-            "path to GDB to use for GDB debuginfo tests",
-            "PATH",
-        )
-        .optopt(
-            "",
-            "lldb-version",
-            "the version of LLDB used",
-            "VERSION STRING",
-        )
-        .optopt(
-            "",
-            "llvm-version",
-            "the version of LLVM used",
-            "VERSION STRING",
-        )
-        .optflag("", "system-llvm", "is LLVM the system LLVM")
-        .optopt(
-            "",
-            "android-cross-path",
-            "Android NDK standalone path",
-            "PATH",
-        )
-        .optopt("", "adb-path", "path to the android debugger", "PATH")
-        .optopt(
-            "",
-            "adb-test-dir",
-            "path to tests for the android debugger",
-            "PATH",
-        )
-        .optopt(
-            "",
-            "lldb-python-dir",
-            "directory containing LLDB's python module",
-            "PATH",
-        )
-        .reqopt("", "cc", "path to a C compiler", "PATH")
-        .reqopt("", "cxx", "path to a C++ compiler", "PATH")
-        .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
-        .optopt("", "ar", "path to an archiver", "PATH")
-        .optopt("", "linker", "path to a linker", "PATH")
-        .reqopt(
-            "",
-            "llvm-components",
-            "list of LLVM components built in",
-            "LIST",
-        )
-        .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
-        .optopt("", "nodejs", "the name of nodejs", "PATH")
-        .optopt(
-            "",
-            "remote-test-client",
-            "path to the remote test client",
-            "PATH",
-        )
-        .optopt(
-            "",
-            "compare-mode",
-            "mode describing what file the actual ui output will be compared to",
-            "COMPARE MODE",
-        )
-        .optflag("h", "help", "show this message");
+    )
+    .reqopt(
+        "",
+        "run-lib-path",
+        "path to target shared libraries",
+        "PATH",
+    )
+    .reqopt(
+        "",
+        "rustc-path",
+        "path to rustc to use for compiling",
+        "PATH",
+    )
+    .optopt(
+        "",
+        "rustdoc-path",
+        "path to rustdoc to use for compiling",
+        "PATH",
+    )
+    .reqopt(
+        "",
+        "lldb-python",
+        "path to python to use for doc tests",
+        "PATH",
+    )
+    .reqopt(
+        "",
+        "docck-python",
+        "path to python to use for doc tests",
+        "PATH",
+    )
+    .optopt(
+        "",
+        "valgrind-path",
+        "path to Valgrind executable for Valgrind tests",
+        "PROGRAM",
+    )
+    .optflag(
+        "",
+        "force-valgrind",
+        "fail if Valgrind tests cannot be run under Valgrind",
+    )
+    .optopt(
+        "",
+        "llvm-filecheck",
+        "path to LLVM's FileCheck binary",
+        "DIR",
+    )
+    .reqopt("", "src-base", "directory to scan for test files", "PATH")
+    .reqopt(
+        "",
+        "build-base",
+        "directory to deposit test outputs",
+        "PATH",
+    )
+    .reqopt(
+        "",
+        "stage-id",
+        "the target-stage identifier",
+        "stageN-TARGET",
+    )
+    .reqopt(
+        "",
+        "mode",
+        "which sort of compile tests to run",
+        "(compile-fail|run-fail|run-pass|\
+         run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+    )
+    .optflag("", "ignored", "run tests marked as ignored")
+    .optflag("", "exact", "filters match exactly")
+    .optopt(
+        "",
+        "runtool",
+        "supervisor program to run tests under \
+         (eg. emulator, valgrind)",
+        "PROGRAM",
+    )
+    .optopt(
+        "",
+        "host-rustcflags",
+        "flags to pass to rustc for host",
+        "FLAGS",
+    )
+    .optopt(
+        "",
+        "target-rustcflags",
+        "flags to pass to rustc for target",
+        "FLAGS",
+    )
+    .optflag("", "verbose", "run tests verbosely, showing all output")
+    .optflag(
+        "",
+        "bless",
+        "overwrite stderr/stdout files instead of complaining about a mismatch",
+    )
+    .optflag(
+        "",
+        "quiet",
+        "print one character per test instead of one line",
+    )
+    .optopt("", "color", "coloring: auto, always, never", "WHEN")
+    .optopt("", "logfile", "file to log test execution to", "FILE")
+    .optopt("", "target", "the target to build for", "TARGET")
+    .optopt("", "host", "the host to build for", "HOST")
+    .optopt(
+        "",
+        "gdb",
+        "path to GDB to use for GDB debuginfo tests",
+        "PATH",
+    )
+    .optopt(
+        "",
+        "lldb-version",
+        "the version of LLDB used",
+        "VERSION STRING",
+    )
+    .optopt(
+        "",
+        "llvm-version",
+        "the version of LLVM used",
+        "VERSION STRING",
+    )
+    .optflag("", "system-llvm", "is LLVM the system LLVM")
+    .optopt(
+        "",
+        "android-cross-path",
+        "Android NDK standalone path",
+        "PATH",
+    )
+    .optopt("", "adb-path", "path to the android debugger", "PATH")
+    .optopt(
+        "",
+        "adb-test-dir",
+        "path to tests for the android debugger",
+        "PATH",
+    )
+    .optopt(
+        "",
+        "lldb-python-dir",
+        "directory containing LLDB's python module",
+        "PATH",
+    )
+    .reqopt("", "cc", "path to a C compiler", "PATH")
+    .reqopt("", "cxx", "path to a C++ compiler", "PATH")
+    .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
+    .optopt("", "ar", "path to an archiver", "PATH")
+    .optopt("", "linker", "path to a linker", "PATH")
+    .reqopt(
+        "",
+        "llvm-components",
+        "list of LLVM components built in",
+        "LIST",
+    )
+    .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
+    .optopt("", "nodejs", "the name of nodejs", "PATH")
+    .optopt(
+        "",
+        "remote-test-client",
+        "path to the remote test client",
+        "PATH",
+    )
+    .optopt(
+        "",
+        "compare-mode",
+        "mode describing what file the actual ui output will be compared to",
+        "COMPARE MODE",
+    )
+    .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -272,8 +273,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
-    let (gdb, gdb_version, gdb_native_rust) = analyze_gdb(matches.opt_str("gdb"), &target,
-                                                          &android_cross_path);
+    let (gdb, gdb_version, gdb_native_rust) =
+        analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
     let (lldb_version, lldb_native_rust) = extract_lldb_version(matches.opt_str("lldb-version"));
 
     let color = match matches.opt_str("color").as_ref().map(|x| &**x) {
@@ -537,7 +538,8 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
         &config.src_base,
         &PathBuf::new(),
         &mut tests,
-    ).unwrap();
+    )
+    .unwrap();
     tests
 }
 
@@ -627,11 +629,13 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
         Pretty => test::ShouldPanic::No,
-        _ => if early_props.should_fail {
-            test::ShouldPanic::Yes
-        } else {
-            test::ShouldPanic::No
-        },
+        _ => {
+            if early_props.should_fail {
+                test::ShouldPanic::Yes
+            } else {
+                test::ShouldPanic::No
+            }
+        }
     };
 
     // Incremental tests are special, they inherently cannot be run in parallel.
@@ -652,8 +656,9 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
                     &early_props,
                     revision.map(|s| s.as_str()),
                 )
-                || ((config.mode == DebugInfoBoth ||
-                     config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
+                || ((config.mode == DebugInfoBoth
+                    || config.mode == DebugInfoGdb
+                    || config.mode == DebugInfoLldb)
                     && config.target.contains("emscripten"))
                 || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
                 || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb());
@@ -675,7 +680,7 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
 }
 
 /// Return an iterator over timestamps of files in the directory at `path`.
-fn collect_timestamps(path: &PathBuf) -> impl Iterator<Item=FileTime> {
+fn collect_timestamps(path: &PathBuf) -> impl Iterator<Item = FileTime> {
     WalkDir::new(path)
         .into_iter()
         .map(|entry| entry.unwrap())
@@ -708,12 +713,9 @@ fn up_to_date(
     let stamp = mtime(&stamp_name);
     let mut inputs = vec![mtime(&testpaths.file), mtime(&config.rustc_path)];
     for aux in props.aux.iter() {
-        inputs.push(mtime(&testpaths
-            .file
-            .parent()
-            .unwrap()
-            .join("auxiliary")
-            .join(aux)));
+        inputs.push(mtime(
+            &testpaths.file.parent().unwrap().join("auxiliary").join(aux),
+        ));
     }
     // Relevant pretty printer files
     let pretty_printer_files = [
@@ -739,7 +741,9 @@ fn up_to_date(
     }
 
     // Compiletest itself.
-    inputs.extend(collect_timestamps(&rust_src_dir.join("src/tools/compiletest/")));
+    inputs.extend(collect_timestamps(
+        &rust_src_dir.join("src/tools/compiletest/"),
+    ));
 
     inputs.iter().any(|input| *input > stamp)
 }
@@ -808,8 +812,11 @@ fn is_android_gdb_target(target: &String) -> bool {
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
-fn analyze_gdb(gdb: Option<String>, target: &String, android_cross_path: &PathBuf)
-               -> (Option<String>, Option<u32>, bool) {
+fn analyze_gdb(
+    gdb: Option<String>,
+    target: &String,
+    android_cross_path: &PathBuf,
+) -> (Option<String>, Option<u32>, bool) {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";
     #[cfg(windows)]
@@ -887,23 +894,25 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
         let line = &line[next_split + 1..];
 
         let (minor, patch) = match line.find(|c: char| !c.is_digit(10)) {
-            Some(idx) => if line.as_bytes()[idx] == b'.' {
-                let patch = &line[idx + 1..];
+            Some(idx) => {
+                if line.as_bytes()[idx] == b'.' {
+                    let patch = &line[idx + 1..];
 
-                let patch_len = patch
-                    .find(|c: char| !c.is_digit(10))
-                    .unwrap_or_else(|| patch.len());
-                let patch = &patch[..patch_len];
-                let patch = if patch_len > 3 || patch_len == 0 {
-                    None
+                    let patch_len = patch
+                        .find(|c: char| !c.is_digit(10))
+                        .unwrap_or_else(|| patch.len());
+                    let patch = &patch[..patch_len];
+                    let patch = if patch_len > 3 || patch_len == 0 {
+                        None
+                    } else {
+                        Some(patch)
+                    };
+
+                    (&line[..idx], patch)
                 } else {
-                    Some(patch)
-                };
-
-                (&line[..idx], patch)
-            } else {
-                (&line[..idx], None)
-            },
+                    (&line[..idx], None)
+                }
+            }
             None => (line, None),
         };
 
@@ -986,7 +995,10 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
                     .take_while(|c| c.is_digit(10))
                     .collect::<String>();
                 if !vers.is_empty() {
-                    return (Some(vers + "00"), full_version_line.contains("rust-enabled"));
+                    return (
+                        Some(vers + "00"),
+                        full_version_line.contains("rust-enabled"),
+                    );
                 }
             }
         }

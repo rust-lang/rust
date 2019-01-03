@@ -145,11 +145,11 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::ops::{Deref, DerefMut};
-use core::iter::{FromIterator, FusedIterator};
-use core::mem::{swap, size_of, ManuallyDrop};
-use core::ptr;
 use core::fmt;
+use core::iter::{FromIterator, FusedIterator};
+use core::mem::{size_of, swap, ManuallyDrop};
+use core::ops::{Deref, DerefMut};
+use core::ptr;
 
 use slice;
 use vec::{self, Vec};
@@ -229,9 +229,7 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("PeekMut")
-         .field(&self.heap.data[0])
-         .finish()
+        f.debug_tuple("PeekMut").field(&self.heap.data[0]).finish()
     }
 }
 
@@ -272,7 +270,9 @@ impl<'a, T: Ord> PeekMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for BinaryHeap<T> {
     fn clone(&self) -> Self {
-        BinaryHeap { data: self.data.clone() }
+        BinaryHeap {
+            data: self.data.clone(),
+        }
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -329,7 +329,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
-        BinaryHeap { data: Vec::with_capacity(capacity) }
+        BinaryHeap {
+            data: Vec::with_capacity(capacity),
+        }
     }
 
     /// Returns an iterator visiting all values in the underlying vector, in
@@ -350,7 +352,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
-        Iter { iter: self.data.iter() }
+        Iter {
+            iter: self.data.iter(),
+        }
     }
 
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
@@ -519,7 +523,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.data.shrink_to(min_capacity)
     }
@@ -762,7 +766,9 @@ impl<T: Ord> BinaryHeap<T> {
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {
-        Drain { iter: self.data.drain(..) }
+        Drain {
+            iter: self.data.drain(..),
+        }
     }
 
     /// Drops all items from the binary heap.
@@ -934,9 +940,7 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Iter")
-         .field(&self.iter.as_slice())
-         .finish()
+        f.debug_tuple("Iter").field(&self.iter.as_slice()).finish()
     }
 }
 
@@ -944,7 +948,9 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
-        Iter { iter: self.iter.clone() }
+        Iter {
+            iter: self.iter.clone(),
+        }
     }
 }
 
@@ -998,8 +1004,8 @@ pub struct IntoIter<T> {
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
-         .field(&self.iter.as_slice())
-         .finish()
+            .field(&self.iter.as_slice())
+            .finish()
     }
 }
 
@@ -1129,13 +1135,16 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
     /// }
     /// ```
     fn into_iter(self) -> IntoIter<T> {
-        IntoIter { iter: self.data.into_iter() }
+        IntoIter {
+            iter: self.data.into_iter(),
+        }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a BinaryHeap<T>
-    where T: Ord
+where
+    T: Ord,
 {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;

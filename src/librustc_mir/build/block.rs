@@ -1,20 +1,21 @@
-use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use build::ForGuard::OutsideGuard;
 use build::matches::ArmHasGuard;
+use build::ForGuard::OutsideGuard;
+use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use hair::*;
-use rustc::mir::*;
 use rustc::hir;
+use rustc::mir::*;
 use syntax_pos::Span;
 
 use std::slice;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn ast_block(&mut self,
-                     destination: &Place<'tcx>,
-                     block: BasicBlock,
-                     ast_block: &'tcx hir::Block,
-                     source_info: SourceInfo)
-                     -> BlockAnd<()> {
+    pub fn ast_block(
+        &mut self,
+        destination: &Place<'tcx>,
+        block: BasicBlock,
+        ast_block: &'tcx hir::Block,
+        source_info: SourceInfo,
+    ) -> BlockAnd<()> {
         let Block {
             region_scope,
             opt_destruction_scope,
@@ -22,38 +23,59 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             stmts,
             expr,
             targeted_by_break,
-            safety_mode
-        } =
-            self.hir.mirror(ast_block);
-        self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), block, move |this| {
-            this.in_scope((region_scope, source_info), LintLevel::Inherited, block, move |this| {
-                if targeted_by_break {
-                    // This is a `break`-able block
-                    let exit_block = this.cfg.start_new_block();
-                    let block_exit = this.in_breakable_scope(
-                        None, exit_block, destination.clone(), |this| {
-                            this.ast_block_stmts(destination, block, span, stmts, expr,
-                                                 safety_mode)
-                        });
-                    this.cfg.terminate(unpack!(block_exit), source_info,
-                                       TerminatorKind::Goto { target: exit_block });
-                    exit_block.unit()
-                } else {
-                    this.ast_block_stmts(destination, block, span, stmts, expr,
-                                         safety_mode)
-                }
-            })
-        })
+            safety_mode,
+        } = self.hir.mirror(ast_block);
+        self.in_opt_scope(
+            opt_destruction_scope.map(|de| (de, source_info)),
+            block,
+            move |this| {
+                this.in_scope(
+                    (region_scope, source_info),
+                    LintLevel::Inherited,
+                    block,
+                    move |this| {
+                        if targeted_by_break {
+                            // This is a `break`-able block
+                            let exit_block = this.cfg.start_new_block();
+                            let block_exit = this.in_breakable_scope(
+                                None,
+                                exit_block,
+                                destination.clone(),
+                                |this| {
+                                    this.ast_block_stmts(
+                                        destination,
+                                        block,
+                                        span,
+                                        stmts,
+                                        expr,
+                                        safety_mode,
+                                    )
+                                },
+                            );
+                            this.cfg.terminate(
+                                unpack!(block_exit),
+                                source_info,
+                                TerminatorKind::Goto { target: exit_block },
+                            );
+                            exit_block.unit()
+                        } else {
+                            this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
+                        }
+                    },
+                )
+            },
+        )
     }
 
-    fn ast_block_stmts(&mut self,
-                       destination: &Place<'tcx>,
-                       mut block: BasicBlock,
-                       span: Span,
-                       stmts: Vec<StmtRef<'tcx>>,
-                       expr: Option<ExprRef<'tcx>>,
-                       safety_mode: BlockSafety)
-                       -> BlockAnd<()> {
+    fn ast_block_stmts(
+        &mut self,
+        destination: &Place<'tcx>,
+        mut block: BasicBlock,
+        span: Span,
+        stmts: Vec<StmtRef<'tcx>>,
+        expr: Option<ExprRef<'tcx>>,
+        safety_mode: BlockSafety,
+    ) -> BlockAnd<()> {
         let this = self;
 
         // This convoluted structure is to avoid using recursion as we walk down a list
@@ -80,40 +102,53 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let source_info = this.source_info(span);
         for stmt in stmts {
-            let Stmt { kind, opt_destruction_scope, span: stmt_span } = this.hir.mirror(stmt);
+            let Stmt {
+                kind,
+                opt_destruction_scope,
+                span: stmt_span,
+            } = this.hir.mirror(stmt);
             match kind {
                 StmtKind::Expr { scope, expr } => {
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
-                    unpack!(block = this.in_opt_scope(
-                        opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
-                            let si = (scope, source_info);
-                            this.in_scope(si, LintLevel::Inherited, block, |this| {
-                                let expr = this.hir.mirror(expr);
-                                this.stmt_expr(block, expr, Some(stmt_span))
-                            })
-                        }));
+                    this.block_context.push(BlockFrame::Statement {
+                        ignores_expr_result: true,
+                    });
+                    unpack!(
+                        block = this.in_opt_scope(
+                            opt_destruction_scope.map(|de| (de, source_info)),
+                            block,
+                            |this| {
+                                let si = (scope, source_info);
+                                this.in_scope(si, LintLevel::Inherited, block, |this| {
+                                    let expr = this.hir.mirror(expr);
+                                    this.stmt_expr(block, expr, Some(stmt_span))
+                                })
+                            }
+                        )
+                    );
                 }
                 StmtKind::Let {
                     remainder_scope,
                     init_scope,
                     pattern,
                     initializer,
-                    lint_level
+                    lint_level,
                 } => {
                     let ignores_expr_result = if let PatternKind::Wild = *pattern.kind {
                         true
                     } else {
                         false
                     };
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+                    this.block_context.push(BlockFrame::Statement {
+                        ignores_expr_result,
+                    });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
                     this.push_scope((remainder_scope, source_info));
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
-                    let remainder_span = remainder_scope.span(this.hir.tcx(),
-                                                              &this.hir.region_scope_tree);
+                    let remainder_span =
+                        remainder_scope.span(this.hir.tcx(), &this.hir.region_scope_tree);
 
                     let scope;
 
@@ -129,17 +164,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             ArmHasGuard(false),
                             Some((None, initializer_span)),
                         );
-                        unpack!(block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
-                                let scope = (init_scope, source_info);
-                                this.in_scope(scope, lint_level, block, |this| {
-                                    this.expr_into_pattern(block, pattern, init)
-                                })
-                            }));
+                        unpack!(
+                            block = this.in_opt_scope(
+                                opt_destruction_scope.map(|de| (de, source_info)),
+                                block,
+                                |this| {
+                                    let scope = (init_scope, source_info);
+                                    this.in_scope(scope, lint_level, block, |this| {
+                                        this.expr_into_pattern(block, pattern, init)
+                                    })
+                                }
+                            )
+                        );
                     } else {
                         scope = this.declare_bindings(
-                            None, remainder_span, lint_level, slice::from_ref(&pattern),
-                            ArmHasGuard(false), None);
+                            None,
+                            remainder_span,
+                            lint_level,
+                            slice::from_ref(&pattern),
+                            ArmHasGuard(false),
+                            None,
+                        );
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_bindings(
@@ -148,7 +193,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             &mut |this, _, _, _, node, span, _, _| {
                                 this.storage_live_binding(block, node, span, OutsideGuard);
                                 this.schedule_drop_for_binding(node, span, OutsideGuard);
-                            })
+                            },
+                        )
                     }
 
                     // Enter the source scope, after evaluating the initializer.
@@ -159,7 +205,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             let popped = this.block_context.pop();
-            assert!(popped.map_or(false, |bf|bf.is_statement()));
+            assert!(popped.map_or(false, |bf| bf.is_statement()));
         }
 
         // Then, the block may have an optional trailing expression which is a “return” value
@@ -167,14 +213,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let tcx = this.hir.tcx();
         let destination_ty = destination.ty(&this.local_decls, tcx).to_ty(tcx);
         if let Some(expr) = expr {
-            let tail_result_is_ignored = destination_ty.is_unit() ||
-                this.block_context.currently_ignores_tail_results();
-            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored });
+            let tail_result_is_ignored =
+                destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
+            this.block_context.push(BlockFrame::TailExpr {
+                tail_result_is_ignored,
+            });
 
             unpack!(block = this.into(destination, block, expr));
             let popped = this.block_context.pop();
 
-            assert!(popped.map_or(false, |bf|bf.is_tail_expr()));
+            assert!(popped.map_or(false, |bf| bf.is_tail_expr()));
         } else {
             // If a block has no trailing expression, then it is given an implicit return type.
             // This return type is usually `()`, unless the block is diverging, in which case the
@@ -199,10 +247,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// If we are changing the safety mode, create a new source scope
-    fn update_source_scope_for_safety_mode(&mut self,
-                                               span: Span,
-                                               safety_mode: BlockSafety)
-    {
+    fn update_source_scope_for_safety_mode(&mut self, span: Span, safety_mode: BlockSafety) {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => None,
@@ -210,7 +255,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 assert_eq!(self.push_unsafe_count, 0);
                 match self.unpushed_unsafe {
                     Safety::Safe => {}
-                    _ => return
+                    _ => return,
                 }
                 self.unpushed_unsafe = Safety::ExplicitUnsafe(node_id);
                 Some(Safety::ExplicitUnsafe(node_id))
@@ -220,10 +265,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Some(Safety::BuiltinUnsafe)
             }
             BlockSafety::PopUnsafe => {
-                self.push_unsafe_count =
-                    self.push_unsafe_count.checked_sub(1).unwrap_or_else(|| {
-                        span_bug!(span, "unsafe count underflow")
-                    });
+                self.push_unsafe_count = self
+                    .push_unsafe_count
+                    .checked_sub(1)
+                    .unwrap_or_else(|| span_bug!(span, "unsafe count underflow"));
                 if self.push_unsafe_count == 0 {
                     Some(self.unpushed_unsafe)
                 } else {
@@ -233,8 +278,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         if let Some(unsafety) = new_unsafety {
-            self.source_scope = self.new_source_scope(
-                span, LintLevel::Inherited, Some(unsafety));
+            self.source_scope = self.new_source_scope(span, LintLevel::Inherited, Some(unsafety));
         }
     }
 }

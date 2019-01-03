@@ -1,31 +1,34 @@
 use namespace::Namespace;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::traits::{self, IntercrateMode, FutureCompatOverlapErrorKind};
-use rustc::ty::TyCtxt;
+use rustc::traits::{self, FutureCompatOverlapErrorKind, IntercrateMode};
 use rustc::ty::relate::TraitObjectMode;
+use rustc::ty::TyCtxt;
 
 use lint;
 
-pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    crate_num: CrateNum) {
+pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    crate_num: CrateNum,
+) {
     assert_eq!(crate_num, LOCAL_CRATE);
     let krate = tcx.hir().krate();
     krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
 }
 
 struct InherentOverlapChecker<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
     fn check_for_common_items_in_impls(
-        &self, impl1: DefId, impl2: DefId,
+        &self,
+        impl1: DefId,
+        impl2: DefId,
         overlap: traits::OverlapResult,
-        used_to_be_allowed: Option<FutureCompatOverlapErrorKind>)
-    {
-
+        used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
+    ) {
         let name_and_namespace = |def_id| {
             let item = self.tcx.associated_item(def_id);
             (item.ident, Namespace::from(item.kind))
@@ -43,31 +46,37 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
                     let mut err = match used_to_be_allowed {
                         Some(kind) if node_id.is_some() => {
                             let lint = match kind {
-                                FutureCompatOverlapErrorKind::Issue43355 =>
-                                    lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
-                                FutureCompatOverlapErrorKind::Issue33140 =>
-                                    lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS,
+                                FutureCompatOverlapErrorKind::Issue43355 => {
+                                    lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS
+                                }
+                                FutureCompatOverlapErrorKind::Issue33140 => {
+                                    lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS
+                                }
                             };
                             self.tcx.struct_span_lint_node(
                                 lint,
                                 node_id.unwrap(),
                                 self.tcx.span_of_impl(item1).unwrap(),
-                                &format!("duplicate definitions with name `{}` (E0592)", name)
+                                &format!("duplicate definitions with name `{}` (E0592)", name),
                             )
                         }
-                        _ => {
-                            struct_span_err!(self.tcx.sess,
-                                             self.tcx.span_of_impl(item1).unwrap(),
-                                             E0592,
-                                             "duplicate definitions with name `{}`",
-                                             name)
-                        }
+                        _ => struct_span_err!(
+                            self.tcx.sess,
+                            self.tcx.span_of_impl(item1).unwrap(),
+                            E0592,
+                            "duplicate definitions with name `{}`",
+                            name
+                        ),
                     };
 
-                    err.span_label(self.tcx.span_of_impl(item1).unwrap(),
-                                   format!("duplicate definitions for `{}`", name));
-                    err.span_label(self.tcx.span_of_impl(item2).unwrap(),
-                                   format!("other definition for `{}`", name));
+                    err.span_label(
+                        self.tcx.span_of_impl(item1).unwrap(),
+                        format!("duplicate definitions for `{}`", name),
+                    );
+                    err.span_label(
+                        self.tcx.span_of_impl(item2).unwrap(),
+                        format!("other definition for `{}`", name),
+                    );
 
                     for cause in &overlap.intercrate_ambiguity_causes {
                         cause.add_intercrate_ambiguity_hint(&mut err);
@@ -163,10 +172,10 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Trait(..) |
-            hir::ItemKind::Union(..) => {
+            hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Trait(..)
+            | hir::ItemKind::Union(..) => {
                 let type_def_id = self.tcx.hir().local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }
@@ -174,9 +183,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-    }
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
 }

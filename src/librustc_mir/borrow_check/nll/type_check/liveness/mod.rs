@@ -1,11 +1,11 @@
 use borrow_check::location::LocationTable;
-use borrow_check::nll::region_infer::values::RegionValueElements;
 use borrow_check::nll::constraints::ConstraintSet;
-use borrow_check::nll::NllLivenessMap;
+use borrow_check::nll::region_infer::values::RegionValueElements;
 use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::NllLivenessMap;
 use dataflow::move_paths::MoveData;
-use dataflow::MaybeInitializedPlaces;
 use dataflow::FlowAtLocation;
+use dataflow::MaybeInitializedPlaces;
 use rustc::mir::Mir;
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::FxHashSet;
@@ -43,7 +43,15 @@ pub(super) fn generate<'gcx, 'tcx>(
         )
     };
     let liveness_map = NllLivenessMap::compute(typeck.tcx(), &free_regions, mir);
-    trace::trace(typeck, mir, elements, flow_inits, move_data, &liveness_map, location_table);
+    trace::trace(
+        typeck,
+        mir,
+        elements,
+        flow_inits,
+        move_data,
+        &liveness_map,
+        location_table,
+    );
 }
 
 /// Compute all regions that are (currently) known to outlive free

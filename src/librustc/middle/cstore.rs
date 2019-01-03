@@ -6,17 +6,17 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{DefKey, DefPathTable};
 use rustc_data_structures::svh::Svh;
-use ty::{self, TyCtxt};
-use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;
+use session::{CrateDisambiguator, Session};
+use ty::{self, TyCtxt};
 
+use rustc_data_structures::sync::{self, Lrc, MetadataRef};
+use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use rustc_target::spec::Target;
-use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
 
@@ -145,7 +145,7 @@ pub enum ExternCrateSource {
 }
 
 pub struct EncodedMetadata {
-    pub raw_data: Vec<u8>
+    pub raw_data: Vec<u8>,
 }
 
 impl EncodedMetadata {
@@ -165,14 +165,8 @@ impl EncodedMetadata {
 /// metadata in library -- this trait just serves to decouple rustc_metadata from
 /// the archive reader, which depends on LLVM.
 pub trait MetadataLoader {
-    fn get_rlib_metadata(&self,
-                         target: &Target,
-                         filename: &Path)
-                         -> Result<MetadataRef, String>;
-    fn get_dylib_metadata(&self,
-                          target: &Target,
-                          filename: &Path)
-                          -> Result<MetadataRef, String>;
+    fn get_rlib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
+    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
 }
 
 /// A store of Rust crates, through with their metadata
@@ -207,9 +201,7 @@ pub trait CrateStore {
     fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
-    fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                 -> EncodedMetadata;
+    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -224,15 +216,17 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
-    -> Vec<(CrateNum, LibSource)>
-{
-    let mut libs = tcx.crates()
+pub fn used_crates(
+    tcx: TyCtxt<'_, '_, '_>,
+    prefer: LinkagePreference,
+) -> Vec<(CrateNum, LibSource)> {
+    let mut libs = tcx
+        .crates()
         .iter()
         .cloned()
         .filter_map(|cnum| {
             if tcx.dep_kind(cnum).macros_only() {
-                return None
+                return None;
             }
             let source = tcx.used_crate_source(cnum);
             let path = match prefer {
@@ -254,8 +248,6 @@ pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
         .collect::<Vec<_>>();
     let mut ordering = tcx.postorder_cnums(LOCAL_CRATE);
     Lrc::make_mut(&mut ordering).reverse();
-    libs.sort_by_cached_key(|&(a, _)| {
-        ordering.iter().position(|x| *x == a)
-    });
+    libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
     libs
 }

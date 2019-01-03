@@ -57,8 +57,13 @@ pub fn check_drop_impl<'a, 'tcx>(
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            tcx.sess.delay_span_bug(span,
-                &format!("should have been rejected by coherence check: {}", dtor_self_type));
+            tcx.sess.delay_span_bug(
+                span,
+                &format!(
+                    "should have been rejected by coherence check: {}",
+                    dtor_self_type
+                ),
+            );
             Err(ErrorReported)
         }
     }
@@ -100,12 +105,13 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
                     drop_impl_span,
                     E0366,
                     "Implementations of Drop cannot be specialized"
-                ).span_note(
+                )
+                .span_note(
                     item_span,
                     "Use same sequence of generic type and region \
                      parameters that is on the struct/enum definition",
                 )
-                    .emit();
+                .emit();
                 return Err(ErrorReported);
             }
         }
@@ -223,12 +229,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
                 E0367,
                 "The requirement `{}` is added only by the Drop impl.",
                 predicate
-            ).span_note(
+            )
+            .span_note(
                 item_span,
                 "The same requirement must be part of \
                  the struct/enum definition",
             )
-                .emit();
+            .emit();
             result = Err(ErrorReported);
         }
     }
@@ -295,8 +302,10 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     body_id: ast::NodeId,
     scope: region::Scope,
 ) -> Result<(), ErrorReported> {
-    debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
-           ty, scope);
+    debug!(
+        "check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
+        ty, scope
+    );
 
     let parent_scope = match rcx.region_scope_tree.opt_encl_scope(scope) {
         Some(parent_scope) => parent_scope,

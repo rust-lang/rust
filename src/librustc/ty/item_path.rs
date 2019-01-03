@@ -1,9 +1,9 @@
-use hir::map::DefPathData;
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use ty::{self, DefIdTree, Ty, TyCtxt};
+use hir::map::DefPathData;
 use middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::{keywords, LocalInternedString, Symbol};
+use ty::{self, DefIdTree, Ty, TyCtxt};
 
 use std::cell::Cell;
 use std::fmt::Debug;
@@ -80,7 +80,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// suitable for user output. It always begins with a crate identifier.
     pub fn absolute_item_path_str(self, def_id: DefId) -> String {
         let mut buffer = LocalPathBuffer::new(RootMode::Absolute);
-        debug!("absolute_item_path_str: buffer={:?} def_id={:?}", buffer, def_id);
+        debug!(
+            "absolute_item_path_str: buffer={:?} def_id={:?}",
+            buffer, def_id
+        );
         self.push_item_path(&mut buffer, def_id, false);
         buffer.into_string()
     }
@@ -94,7 +97,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// we do not want to prepend `crate::` (as that would not be a valid
     /// path).
     pub fn push_krate_path<T>(self, buffer: &mut T, cnum: CrateNum, pushed_prelude_crate: bool)
-        where T: ItemPathBuffer + Debug
+    where
+        T: ItemPathBuffer + Debug,
     {
         debug!(
             "push_krate_path: buffer={:?} cnum={:?} LOCAL_CRATE={:?}",
@@ -158,7 +162,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         external_def_id: DefId,
         pushed_prelude_crate: bool,
     ) -> bool
-        where T: ItemPathBuffer + Debug
+    where
+        T: ItemPathBuffer + Debug,
     {
         debug!(
             "try_push_visible_item_path: buffer={:?} external_def_id={:?}",
@@ -183,15 +188,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }) => {
                         debug!("try_push_visible_item_path: def_id={:?}", def_id);
                         self.push_item_path(buffer, def_id, pushed_prelude_crate);
-                        cur_path.iter().rev().for_each(|segment| buffer.push(&segment));
+                        cur_path
+                            .iter()
+                            .rev()
+                            .for_each(|segment| buffer.push(&segment));
                         return true;
                     }
                     None => {
                         buffer.push(&self.crate_name(cur_def.krate).as_str());
-                        cur_path.iter().rev().for_each(|segment| buffer.push(&segment));
+                        cur_path
+                            .iter()
+                            .rev()
+                            .for_each(|segment| buffer.push(&segment));
                         return true;
                     }
-                    _ => {},
+                    _ => {}
                 }
             }
 
@@ -202,7 +213,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             if let DefPathData::StructCtor = cur_def_key.disambiguated_data.data {
                 let parent = DefId {
                     krate: cur_def.krate,
-                    index: cur_def_key.parent.expect("DefPathData::StructCtor missing a parent"),
+                    index: cur_def_key
+                        .parent
+                        .expect("DefPathData::StructCtor missing a parent"),
                 };
 
                 cur_def_key = self.def_key(parent);
@@ -258,7 +271,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     name.map(|n| n.as_str()).unwrap_or(module_name.as_str())
-                },
+                }
                 _ => {
                     data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
                         // Re-exported `extern crate` (#43189).
@@ -268,7 +281,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                             Symbol::intern("<unnamed>").as_str()
                         }
                     })
-                },
+                }
             };
             debug!("try_push_visible_item_path: symbol={:?}", symbol);
             cur_path.push(symbol);
@@ -281,15 +294,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn push_item_path<T>(self, buffer: &mut T, def_id: DefId, pushed_prelude_crate: bool)
-        where T: ItemPathBuffer + Debug
+    where
+        T: ItemPathBuffer + Debug,
     {
         debug!(
             "push_item_path: buffer={:?} def_id={:?} pushed_prelude_crate={:?}",
             buffer, def_id, pushed_prelude_crate
         );
         match *buffer.root_mode() {
-            RootMode::Local if !def_id.is_local() =>
-                if self.try_push_visible_item_path(buffer, def_id, pushed_prelude_crate) { return },
+            RootMode::Local if !def_id.is_local() => {
+                if self.try_push_visible_item_path(buffer, def_id, pushed_prelude_crate) {
+                    return;
+                }
+            }
             _ => {}
         }
 
@@ -308,23 +325,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // Unclear if there is any value in distinguishing these.
             // Probably eventually (and maybe we would even want
             // finer-grained distinctions, e.g., between enum/struct).
-            data @ DefPathData::Misc |
-            data @ DefPathData::TypeNs(..) |
-            data @ DefPathData::Trait(..) |
-            data @ DefPathData::AssocTypeInTrait(..) |
-            data @ DefPathData::AssocTypeInImpl(..) |
-            data @ DefPathData::AssocExistentialInImpl(..) |
-            data @ DefPathData::ValueNs(..) |
-            data @ DefPathData::Module(..) |
-            data @ DefPathData::TypeParam(..) |
-            data @ DefPathData::LifetimeParam(..) |
-            data @ DefPathData::EnumVariant(..) |
-            data @ DefPathData::Field(..) |
-            data @ DefPathData::AnonConst |
-            data @ DefPathData::MacroDef(..) |
-            data @ DefPathData::ClosureExpr |
-            data @ DefPathData::ImplTrait |
-            data @ DefPathData::GlobalMetaData(..) => {
+            data @ DefPathData::Misc
+            | data @ DefPathData::TypeNs(..)
+            | data @ DefPathData::Trait(..)
+            | data @ DefPathData::AssocTypeInTrait(..)
+            | data @ DefPathData::AssocTypeInImpl(..)
+            | data @ DefPathData::AssocExistentialInImpl(..)
+            | data @ DefPathData::ValueNs(..)
+            | data @ DefPathData::Module(..)
+            | data @ DefPathData::TypeParam(..)
+            | data @ DefPathData::LifetimeParam(..)
+            | data @ DefPathData::EnumVariant(..)
+            | data @ DefPathData::Field(..)
+            | data @ DefPathData::AnonConst
+            | data @ DefPathData::MacroDef(..)
+            | data @ DefPathData::ClosureExpr
+            | data @ DefPathData::ImplTrait
+            | data @ DefPathData::GlobalMetaData(..) => {
                 let parent_did = self.parent_def_id(def_id).unwrap();
 
                 // Keep track of whether we are one recursion away from the `CrateRoot` and
@@ -332,33 +349,34 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // printing the `CrateRoot` so we don't prepend a `crate::` to paths.
                 let mut is_prelude_crate = false;
                 if let DefPathData::CrateRoot = self.def_key(parent_did).disambiguated_data.data {
-                    if self.extern_prelude.contains_key(&data.as_interned_str().as_symbol()) {
+                    if self
+                        .extern_prelude
+                        .contains_key(&data.as_interned_str().as_symbol())
+                    {
                         is_prelude_crate = true;
                     }
                 }
 
-                self.push_item_path(
-                    buffer, parent_did, pushed_prelude_crate || is_prelude_crate
-                );
+                self.push_item_path(buffer, parent_did, pushed_prelude_crate || is_prelude_crate);
                 buffer.push(&data.as_interned_str().as_symbol().as_str());
-            },
+            }
 
-            DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
+            DefPathData::StructCtor => {
+                // present `X` instead of `X::{{constructor}}`
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id, pushed_prelude_crate);
             }
         }
     }
 
-    fn push_impl_path<T>(
-        self,
-         buffer: &mut T,
-         impl_def_id: DefId,
-         pushed_prelude_crate: bool,
-    )
-        where T: ItemPathBuffer + Debug
+    fn push_impl_path<T>(self, buffer: &mut T, impl_def_id: DefId, pushed_prelude_crate: bool)
+    where
+        T: ItemPathBuffer + Debug,
     {
-        debug!("push_impl_path: buffer={:?} impl_def_id={:?}", buffer, impl_def_id);
+        debug!(
+            "push_impl_path: buffer={:?} impl_def_id={:?}",
+            buffer, impl_def_id
+        );
         let parent_def_id = self.parent_def_id(impl_def_id).unwrap();
 
         // Always use types for non-local impls, where types are always
@@ -417,7 +435,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // anything other than a simple path.
         match self_ty.sty {
             ty::Adt(adt_def, substs) => {
-                if substs.types().next().is_none() { // ignore regions
+                if substs.types().next().is_none() {
+                    // ignore regions
                     self.push_item_path(buffer, adt_def.did, pushed_prelude_crate);
                 } else {
                     buffer.push(&format!("<{}>", self_ty));
@@ -426,12 +445,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             ty::Foreign(did) => self.push_item_path(buffer, did, pushed_prelude_crate),
 
-            ty::Bool |
-            ty::Char |
-            ty::Int(_) |
-            ty::Uint(_) |
-            ty::Float(_) |
-            ty::Str => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => {
                 buffer.push(&self_ty.to_string());
             }
 
@@ -446,8 +460,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         buffer: &mut T,
         impl_def_id: DefId,
         pushed_prelude_crate: bool,
-    )
-        where T: ItemPathBuffer + Debug
+    ) where
+        T: ItemPathBuffer + Debug,
     {
         // If no type info is available, fall back to
         // pretty printing some span information. This should
@@ -465,7 +479,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// inlined root.
     pub fn parent_def_id(self, def_id: DefId) -> Option<DefId> {
         let key = self.def_key(def_id);
-        key.parent.map(|index| DefId { krate: def_id.krate, index: index })
+        key.parent.map(|index| DefId {
+            krate: def_id.krate,
+            index: index,
+        })
     }
 }
 
@@ -481,39 +498,39 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 
         ty::Dynamic(data, ..) => Some(data.principal().def_id()),
 
-        ty::Array(subty, _) |
-        ty::Slice(subty) => characteristic_def_id_of_type(subty),
+        ty::Array(subty, _) | ty::Slice(subty) => characteristic_def_id_of_type(subty),
 
         ty::RawPtr(mt) => characteristic_def_id_of_type(mt.ty),
 
         ty::Ref(_, ty, _) => characteristic_def_id_of_type(ty),
 
-        ty::Tuple(ref tys) => tys.iter()
-                                   .filter_map(|ty| characteristic_def_id_of_type(ty))
-                                   .next(),
+        ty::Tuple(ref tys) => tys
+            .iter()
+            .filter_map(|ty| characteristic_def_id_of_type(ty))
+            .next(),
 
-        ty::FnDef(def_id, _) |
-        ty::Closure(def_id, _) |
-        ty::Generator(def_id, _, _) |
-        ty::Foreign(def_id) => Some(def_id),
+        ty::FnDef(def_id, _)
+        | ty::Closure(def_id, _)
+        | ty::Generator(def_id, _, _)
+        | ty::Foreign(def_id) => Some(def_id),
 
-        ty::Bool |
-        ty::Char |
-        ty::Int(_) |
-        ty::Uint(_) |
-        ty::Str |
-        ty::FnPtr(_) |
-        ty::Projection(_) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) |
-        ty::Param(_) |
-        ty::Opaque(..) |
-        ty::Infer(_) |
-        ty::Bound(..) |
-        ty::Error |
-        ty::GeneratorWitness(..) |
-        ty::Never |
-        ty::Float(_) => None,
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Str
+        | ty::FnPtr(_)
+        | ty::Projection(_)
+        | ty::Placeholder(..)
+        | ty::UnnormalizedProjection(..)
+        | ty::Param(_)
+        | ty::Opaque(..)
+        | ty::Infer(_)
+        | ty::Bound(..)
+        | ty::Error
+        | ty::GeneratorWitness(..)
+        | ty::Never
+        | ty::Float(_) => None,
     }
 }
 

@@ -1,7 +1,7 @@
 extern crate rustc_apfloat;
 
-use rustc_apfloat::{Category, Float, Round};
 use rustc_apfloat::ppc::DoubleDouble;
+use rustc_apfloat::{Category, Float, Round};
 
 use std::cmp::Ordering;
 
@@ -451,10 +451,12 @@ fn ppc_double_double_mod() {
 fn ppc_double_double_fma() {
     // Sanity check for now.
     let mut a = "2".parse::<DoubleDouble>().unwrap();
-    a = a.mul_add(
-        "3".parse::<DoubleDouble>().unwrap(),
-        "4".parse::<DoubleDouble>().unwrap(),
-    ).value;
+    a = a
+        .mul_add(
+            "3".parse::<DoubleDouble>().unwrap(),
+            "4".parse::<DoubleDouble>().unwrap(),
+        )
+        .value;
     assert_eq!(
         Some(Ordering::Equal),
         "10".parse::<DoubleDouble>().unwrap().partial_cmp(&a)
@@ -614,14 +616,12 @@ fn ppc_double_double_is_denormal() {
 
 #[test]
 fn ppc_double_double_exact_inverse() {
-    assert!(
-        "2.0"
-            .parse::<DoubleDouble>()
-            .unwrap()
-            .get_exact_inverse()
-            .unwrap()
-            .bitwise_eq("0.5".parse::<DoubleDouble>().unwrap())
-    );
+    assert!("2.0"
+        .parse::<DoubleDouble>()
+        .unwrap()
+        .get_exact_inverse()
+        .unwrap()
+        .bitwise_eq("0.5".parse::<DoubleDouble>().unwrap()));
 }
 
 #[test]

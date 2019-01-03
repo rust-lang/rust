@@ -11,15 +11,14 @@
 //! `a[x]` would still overlap them both. But that is not this
 //! representation does today.)
 
-use rustc::mir::{Local, PlaceElem, Operand, ProjectionElem};
+use rustc::mir::{Local, Operand, PlaceElem, ProjectionElem};
 use rustc::ty::Ty;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct AbstractOperand;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct AbstractType;
-pub type AbstractElem<'tcx> =
-    ProjectionElem<'tcx, AbstractOperand, AbstractType>;
+pub type AbstractElem<'tcx> = ProjectionElem<'tcx, AbstractOperand, AbstractType>;
 
 pub trait Lift {
     type Abstract;
@@ -27,36 +26,42 @@ pub trait Lift {
 }
 impl<'tcx> Lift for Operand<'tcx> {
     type Abstract = AbstractOperand;
-    fn lift(&self) -> Self::Abstract { AbstractOperand }
+    fn lift(&self) -> Self::Abstract {
+        AbstractOperand
+    }
 }
 impl Lift for Local {
     type Abstract = AbstractOperand;
-    fn lift(&self) -> Self::Abstract { AbstractOperand }
+    fn lift(&self) -> Self::Abstract {
+        AbstractOperand
+    }
 }
 impl<'tcx> Lift for Ty<'tcx> {
     type Abstract = AbstractType;
-    fn lift(&self) -> Self::Abstract { AbstractType }
+    fn lift(&self) -> Self::Abstract {
+        AbstractType
+    }
 }
 impl<'tcx> Lift for PlaceElem<'tcx> {
     type Abstract = AbstractElem<'tcx>;
     fn lift(&self) -> Self::Abstract {
         match *self {
-            ProjectionElem::Deref =>
-                ProjectionElem::Deref,
-            ProjectionElem::Field(ref f, ty) =>
-                ProjectionElem::Field(f.clone(), ty.lift()),
-            ProjectionElem::Index(ref i) =>
-                ProjectionElem::Index(i.lift()),
-            ProjectionElem::Subslice {from, to} =>
-                ProjectionElem::Subslice { from: from, to: to },
-            ProjectionElem::ConstantIndex {offset,min_length,from_end} =>
-                ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length,
-                    from_end,
-                },
-            ProjectionElem::Downcast(a, u) =>
-                ProjectionElem::Downcast(a.clone(), u.clone()),
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Field(ref f, ty) => ProjectionElem::Field(f.clone(), ty.lift()),
+            ProjectionElem::Index(ref i) => ProjectionElem::Index(i.lift()),
+            ProjectionElem::Subslice { from, to } => {
+                ProjectionElem::Subslice { from: from, to: to }
+            }
+            ProjectionElem::ConstantIndex {
+                offset,
+                min_length,
+                from_end,
+            } => ProjectionElem::ConstantIndex {
+                offset,
+                min_length,
+                from_end,
+            },
+            ProjectionElem::Downcast(a, u) => ProjectionElem::Downcast(a.clone(), u.clone()),
         }
     }
 }

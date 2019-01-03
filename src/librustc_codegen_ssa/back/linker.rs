@@ -1,6 +1,6 @@
-use super::symbol_export;
-use super::command::Command;
 use super::archive;
+use super::command::Command;
+use super::symbol_export;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::ffi::{OsStr, OsString};
@@ -9,11 +9,10 @@ use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
-use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::middle::dependency_format::Linkage;
+use rustc::session::config::{self, CrateType, CrossLangLto, DebugInfo, OptLevel};
 use rustc::session::Session;
-use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
-                             CrossLangLto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
@@ -27,9 +26,13 @@ pub struct LinkerInfo {
 impl LinkerInfo {
     pub fn new(tcx: TyCtxt) -> LinkerInfo {
         LinkerInfo {
-            exports: tcx.sess.crate_types.borrow().iter().map(|&c| {
-                (c, exported_symbols(tcx, c))
-            }).collect(),
+            exports: tcx
+                .sess
+                .crate_types
+                .borrow()
+                .iter()
+                .map(|&c| (c, exported_symbols(tcx, c)))
+                .collect(),
         }
     }
 
@@ -39,54 +42,44 @@ impl LinkerInfo {
         sess: &'a Session,
         flavor: LinkerFlavor,
         target_cpu: &'a str,
-    ) -> Box<dyn Linker+'a> {
+    ) -> Box<dyn Linker + 'a> {
         match flavor {
-            LinkerFlavor::Lld(LldFlavor::Link) |
-            LinkerFlavor::Msvc => {
-                Box::new(MsvcLinker {
-                    cmd,
-                    sess,
-                    info: self
-                }) as Box<dyn Linker>
-            }
-            LinkerFlavor::Em =>  {
-                Box::new(EmLinker {
-                    cmd,
-                    sess,
-                    info: self
-                }) as Box<dyn Linker>
-            }
-            LinkerFlavor::Gcc =>  {
-                Box::new(GccLinker {
-                    cmd,
-                    sess,
-                    info: self,
-                    hinted_static: false,
-                    is_ld: false,
-                    target_cpu,
-                }) as Box<dyn Linker>
-            }
+            LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => Box::new(MsvcLinker {
+                cmd,
+                sess,
+                info: self,
+            })
+                as Box<dyn Linker>,
+            LinkerFlavor::Em => Box::new(EmLinker {
+                cmd,
+                sess,
+                info: self,
+            }) as Box<dyn Linker>,
+            LinkerFlavor::Gcc => Box::new(GccLinker {
+                cmd,
+                sess,
+                info: self,
+                hinted_static: false,
+                is_ld: false,
+                target_cpu,
+            }) as Box<dyn Linker>,
 
-            LinkerFlavor::Lld(LldFlavor::Ld) |
-            LinkerFlavor::Lld(LldFlavor::Ld64) |
-            LinkerFlavor::Ld => {
-                Box::new(GccLinker {
-                    cmd,
-                    sess,
-                    info: self,
-                    hinted_static: false,
-                    is_ld: true,
-                    target_cpu,
-                }) as Box<dyn Linker>
-            }
+            LinkerFlavor::Lld(LldFlavor::Ld)
+            | LinkerFlavor::Lld(LldFlavor::Ld64)
+            | LinkerFlavor::Ld => Box::new(GccLinker {
+                cmd,
+                sess,
+                info: self,
+                hinted_static: false,
+                is_ld: true,
+                target_cpu,
+            }) as Box<dyn Linker>,
 
-            LinkerFlavor::Lld(LldFlavor::Wasm) => {
-                Box::new(WasmLd {
-                    cmd,
-                    sess,
-                    info: self
-                }) as Box<dyn Linker>
-            }
+            LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd {
+                cmd,
+                sess,
+                info: self,
+            }) as Box<dyn Linker>,
         }
     }
 }
@@ -147,7 +140,8 @@ impl<'a> GccLinker<'a> {
     ///
     /// These arguments need to be prepended with '-Wl,' when a gcc-style linker is used
     fn linker_arg<S>(&mut self, arg: S) -> &mut Self
-        where S: AsRef<OsStr>
+    where
+        S: AsRef<OsStr>,
     {
         if !self.is_ld {
             let mut os = OsString::from("-Wl,");
@@ -168,7 +162,9 @@ impl<'a> GccLinker<'a> {
     // was flagged "static" (most defaults are dynamic) to ensure that if
     // libfoo.a and libfoo.so both exist that the right one is chosen.
     fn hint_static(&mut self) {
-        if !self.takes_hints() { return }
+        if !self.takes_hints() {
+            return;
+        }
         if !self.hinted_static {
             self.linker_arg("-Bstatic");
             self.hinted_static = true;
@@ -176,7 +172,9 @@ impl<'a> GccLinker<'a> {
     }
 
     fn hint_dynamic(&mut self) {
-        if !self.takes_hints() { return }
+        if !self.takes_hints() {
+            return;
+        }
         if self.hinted_static {
             self.linker_arg("-Bdynamic");
             self.hinted_static = false;
@@ -206,22 +204,52 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}", lib)); }
-    fn link_staticlib(&mut self, lib: &str) {
-        self.hint_static(); self.cmd.arg(format!("-l{}", lib));
+    fn link_dylib(&mut self, lib: &str) {
+        self.hint_dynamic();
+        self.cmd.arg(format!("-l{}", lib));
     }
-    fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
-    fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
-    fn framework_path(&mut self, path: &Path) { self.cmd.arg("-F").arg(path); }
-    fn output_filename(&mut self, path: &Path) { self.cmd.arg("-o").arg(path); }
-    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
-    fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
-    fn no_position_independent_executable(&mut self) { self.cmd.arg("-no-pie"); }
-    fn full_relro(&mut self) { self.linker_arg("-zrelro"); self.linker_arg("-znow"); }
-    fn partial_relro(&mut self) { self.linker_arg("-zrelro"); }
-    fn no_relro(&mut self) { self.linker_arg("-znorelro"); }
-    fn build_static_executable(&mut self) { self.cmd.arg("-static"); }
-    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+    fn link_staticlib(&mut self, lib: &str) {
+        self.hint_static();
+        self.cmd.arg(format!("-l{}", lib));
+    }
+    fn link_rlib(&mut self, lib: &Path) {
+        self.hint_static();
+        self.cmd.arg(lib);
+    }
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+    fn framework_path(&mut self, path: &Path) {
+        self.cmd.arg("-F").arg(path);
+    }
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
+    }
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+    fn position_independent_executable(&mut self) {
+        self.cmd.arg("-pie");
+    }
+    fn no_position_independent_executable(&mut self) {
+        self.cmd.arg("-no-pie");
+    }
+    fn full_relro(&mut self) {
+        self.linker_arg("-zrelro");
+        self.linker_arg("-znow");
+    }
+    fn partial_relro(&mut self) {
+        self.linker_arg("-zrelro");
+    }
+    fn no_relro(&mut self) {
+        self.linker_arg("-znorelro");
+    }
+    fn build_static_executable(&mut self) {
+        self.cmd.arg("-static");
+    }
+    fn args(&mut self, args: &[String]) {
+        self.cmd.args(args);
+    }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
@@ -243,7 +271,9 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg(format!("-l{}", lib));
+            self.linker_arg("--whole-archive")
+                .cmd
+                .arg(format!("-l{}", lib));
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
@@ -296,18 +326,23 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn optimize(&mut self) {
-        if !self.sess.target.target.options.linker_is_gnu { return }
+        if !self.sess.target.target.options.linker_is_gnu {
+            return;
+        }
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::Default ||
-           self.sess.opts.optimize == config::OptLevel::Aggressive {
+        if self.sess.opts.optimize == config::OptLevel::Default
+            || self.sess.opts.optimize == config::OptLevel::Aggressive
+        {
             self.linker_arg("-O1");
         }
     }
 
     fn pgo_gen(&mut self) {
-        if !self.sess.target.target.options.linker_is_gnu { return }
+        if !self.sess.target.target.options.linker_is_gnu {
+            return;
+        }
 
         // If we're doing PGO generation stuff and on a GNU-like linker, use the
         // "-u" flag to properly pull in the profiler runtime bits.
@@ -370,9 +405,8 @@ impl<'a> Linker for GccLinker<'a> {
         // exported symbols to ensure we don't expose any more. The object files
         // have far more public symbols than we actually want to export, so we
         // hide them all here.
-        if crate_type == CrateType::Dylib ||
-           crate_type == CrateType::ProcMacro {
-            return
+        if crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro {
+            return;
         }
 
         let mut arg = OsString::new();
@@ -391,7 +425,8 @@ impl<'a> Linker for GccLinker<'a> {
                 Ok(())
             })();
             if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+                self.sess
+                    .fatal(&format!("failed to write lib.def file: {}", e));
             }
         } else {
             // Write an LD version script
@@ -406,7 +441,8 @@ impl<'a> Linker for GccLinker<'a> {
                 Ok(())
             })();
             if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write version script: {}", e));
+                self.sess
+                    .fatal(&format!("failed to write version script: {}", e));
             }
         }
 
@@ -472,13 +508,19 @@ impl<'a> Linker for GccLinker<'a> {
 pub struct MsvcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo
+    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
-    fn link_rlib(&mut self, lib: &Path) { self.cmd.arg(lib); }
-    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
-    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+    fn link_rlib(&mut self, lib: &Path) {
+        self.cmd.arg(lib);
+    }
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+    fn args(&mut self, args: &[String]) {
+        self.cmd.args(args);
+    }
 
     fn build_dylib(&mut self, out_filename: &Path) {
         self.cmd.arg("/DLL");
@@ -605,7 +647,8 @@ impl<'a> Linker for MsvcLinker<'a> {
             if let Some(ref linker_path) = self.sess.opts.cg.linker {
                 if let Some(linker_name) = Path::new(&linker_path).file_stem() {
                     if linker_name.to_str().unwrap().to_lowercase() == "lld-link" {
-                        self.sess.warn("not embedding natvis: lld-link may not support the flag");
+                        self.sess
+                            .warn("not embedding natvis: lld-link may not support the flag");
                         return;
                     }
                 }
@@ -619,10 +662,11 @@ impl<'a> Linker for MsvcLinker<'a> {
                             arg.push(path);
                             self.cmd.arg(arg);
                         }
-                    },
+                    }
                     Err(err) => {
-                        self.sess.warn(&format!("error enumerating natvis directory: {}", err));
-                    },
+                        self.sess
+                            .warn(&format!("error enumerating natvis directory: {}", err));
+                    }
                 }
             }
         }
@@ -640,9 +684,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     // crates. Upstream rlibs may be linked statically to this dynamic library,
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
-    fn export_symbols(&mut self,
-                      tmpdir: &Path,
-                      crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
         let path = tmpdir.join("lib.def");
         let res = (|| -> io::Result<()> {
             let mut f = BufWriter::new(File::create(&path)?);
@@ -658,7 +700,8 @@ impl<'a> Linker for MsvcLinker<'a> {
             Ok(())
         })();
         if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+            self.sess
+                .fatal(&format!("failed to write lib.def file: {}", e));
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);
@@ -705,7 +748,7 @@ impl<'a> Linker for MsvcLinker<'a> {
 pub struct EmLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo
+    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for EmLinker<'a> {
@@ -792,7 +835,7 @@ impl<'a> Linker for EmLinker<'a> {
             OptLevel::Default => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
-            OptLevel::SizeMin => "-Oz"
+            OptLevel::SizeMin => "-Oz",
         });
         // Unusable until https://github.com/rust-lang/rust/issues/38454 is resolved
         self.cmd.args(&["--memory-init-file", "0"]);
@@ -807,12 +850,13 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
             DebugInfo::Limited => "-g3",
-            DebugInfo::Full => "-g4"
+            DebugInfo::Full => "-g4",
         });
     }
 
     fn no_default_libraries(&mut self) {
-        self.cmd.args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
+        self.cmd
+            .args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
     }
 
     fn build_dylib(&mut self, _out_filename: &Path) {
@@ -837,14 +881,13 @@ impl<'a> Linker for EmLinker<'a> {
             let mut encoder = json::Encoder::new(&mut encoded);
             let res = encoder.emit_seq(symbols.len(), |encoder| {
                 for (i, sym) in symbols.iter().enumerate() {
-                    encoder.emit_seq_elt(i, |encoder| {
-                        encoder.emit_str(&("_".to_owned() + sym))
-                    })?;
+                    encoder.emit_seq_elt(i, |encoder| encoder.emit_str(&("_".to_owned() + sym)))?;
                 }
                 Ok(())
             });
             if let Err(e) = res {
-                self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
+                self.sess
+                    .fatal(&format!("failed to encode exported symbols: {}", e));
             }
         }
         debug!("{}", encoded);
@@ -905,20 +948,15 @@ impl<'a> Linker for WasmLd<'a> {
         self.cmd.arg(path);
     }
 
-    fn position_independent_executable(&mut self) {
-    }
+    fn position_independent_executable(&mut self) {}
 
-    fn full_relro(&mut self) {
-    }
+    fn full_relro(&mut self) {}
 
-    fn partial_relro(&mut self) {
-    }
+    fn partial_relro(&mut self) {}
 
-    fn no_relro(&mut self) {
-    }
+    fn no_relro(&mut self) {}
 
-    fn build_static_executable(&mut self) {
-    }
+    fn build_static_executable(&mut self) {}
 
     fn args(&mut self, args: &[String]) {
         self.cmd.args(args);
@@ -953,21 +991,17 @@ impl<'a> Linker for WasmLd<'a> {
             // Currently LLD doesn't support `Os` and `Oz`, so pass through `O2`
             // instead.
             OptLevel::Size => "-O2",
-            OptLevel::SizeMin => "-O2"
+            OptLevel::SizeMin => "-O2",
         });
     }
 
-    fn pgo_gen(&mut self) {
-    }
+    fn pgo_gen(&mut self) {}
 
-    fn debuginfo(&mut self) {
-    }
+    fn debuginfo(&mut self) {}
 
-    fn no_default_libraries(&mut self) {
-    }
+    fn no_default_libraries(&mut self) {}
 
-    fn build_dylib(&mut self, _out_filename: &Path) {
-    }
+    fn build_dylib(&mut self, _out_filename: &Path) {}
 
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
         for sym in self.info.exports[&crate_type].iter() {
@@ -975,11 +1009,9 @@ impl<'a> Linker for WasmLd<'a> {
         }
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {
-    }
+    fn subsystem(&mut self, _subsystem: &str) {}
 
-    fn no_position_independent_executable(&mut self) {
-    }
+    fn no_position_independent_executable(&mut self) {}
 
     fn finalize(&mut self) -> Command {
         // There have been reports in the wild (rustwasm/wasm-bindgen#119) of
@@ -1051,7 +1083,7 @@ impl<'a> Linker for WasmLd<'a> {
 
 fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     if let Some(ref exports) = tcx.sess.target.target.options.override_export_symbols {
-        return exports.clone()
+        return exports.clone();
     }
 
     let mut symbols = Vec::new();

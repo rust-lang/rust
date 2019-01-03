@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use std::iter::FromIterator;
 use super::DeterministicRng;
+use std::iter::FromIterator;
 
 #[test]
 fn test_clone_eq() {
@@ -30,7 +30,8 @@ fn test_hash() {
 }
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
-    where F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool
+where
+    F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool,
 {
     let mut set_a = BTreeSet::new();
     let mut set_b = BTreeSet::new();
@@ -43,13 +44,11 @@ fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
     }
 
     let mut i = 0;
-    f(&set_a,
-      &set_b,
-      &mut |&x| {
-          assert_eq!(x, expected[i]);
-          i += 1;
-          true
-      });
+    f(&set_a, &set_b, &mut |&x| {
+        assert_eq!(x, expected[i]);
+        i += 1;
+        true
+    });
     assert_eq!(i, expected.len());
 }
 
@@ -64,9 +63,11 @@ fn test_intersection() {
     check_intersection(&[], &[1, 2, 3], &[]);
     check_intersection(&[2], &[1, 2, 3], &[2]);
     check_intersection(&[1, 2, 3], &[2], &[2]);
-    check_intersection(&[11, 1, 3, 77, 103, 5, -5],
-                       &[2, 11, 77, -9, -42, 5, 3],
-                       &[3, 5, 11, 77]);
+    check_intersection(
+        &[11, 1, 3, 77, 103, 5, -5],
+        &[2, 11, 77, -9, -42, 5, 3],
+        &[3, 5, 11, 77],
+    );
 }
 
 #[test]
@@ -79,9 +80,11 @@ fn test_difference() {
     check_difference(&[1, 12], &[], &[1, 12]);
     check_difference(&[], &[1, 2, 3, 9], &[]);
     check_difference(&[1, 3, 5, 9, 11], &[3, 9], &[1, 5, 11]);
-    check_difference(&[-5, 11, 22, 33, 40, 42],
-                     &[-12, -5, 14, 23, 34, 38, 39, 50],
-                     &[11, 22, 33, 40, 42]);
+    check_difference(
+        &[-5, 11, 22, 33, 40, 42],
+        &[-12, -5, 14, 23, 34, 38, 39, 50],
+        &[11, 22, 33, 40, 42],
+    );
 }
 
 #[test]
@@ -93,9 +96,11 @@ fn test_symmetric_difference() {
     check_symmetric_difference(&[], &[], &[]);
     check_symmetric_difference(&[1, 2, 3], &[2], &[1, 3]);
     check_symmetric_difference(&[2], &[1, 2, 3], &[1, 3]);
-    check_symmetric_difference(&[1, 3, 5, 9, 11],
-                               &[-2, 3, 9, 14, 22],
-                               &[-2, 1, 5, 11, 14, 22]);
+    check_symmetric_difference(
+        &[1, 3, 5, 9, 11],
+        &[-2, 3, 9, 14, 22],
+        &[-2, 1, 5, 11, 14, 22],
+    );
 }
 
 #[test]
@@ -107,9 +112,11 @@ fn test_union() {
     check_union(&[], &[], &[]);
     check_union(&[1, 2, 3], &[2], &[1, 2, 3]);
     check_union(&[2], &[1, 2, 3], &[1, 2, 3]);
-    check_union(&[1, 3, 5, 9, 11, 16, 19, 24],
-                &[-2, 1, 5, 9, 13, 19],
-                &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
+    check_union(
+        &[1, 3, 5, 9, 11, 16, 19, 24],
+        &[-2, 1, 5, 9, 13, 19],
+        &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24],
+    );
 }
 
 #[test]
@@ -316,6 +323,8 @@ fn test_split_off_large_random_sorted() {
     let key = data[data.len() / 2];
     let right = set.split_off(&key);
 
-    assert!(set.into_iter().eq(data.clone().into_iter().filter(|x| *x < key)));
+    assert!(set
+        .into_iter()
+        .eq(data.clone().into_iter().filter(|x| *x < key)));
     assert!(right.into_iter().eq(data.into_iter().filter(|x| *x >= key)));
 }

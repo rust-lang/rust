@@ -1,7 +1,7 @@
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Constant, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::visit::{MutVisitor, Visitor};
+use rustc::mir::{Constant, Local, Location, Mir, Operand, Place, ProjectionElem, Rvalue};
 use rustc::ty::{TyCtxt, TyKind};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
@@ -11,13 +11,10 @@ use transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl MirPass for InstCombine {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
-            return
+            return;
         }
 
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
@@ -62,13 +59,13 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 }
 
 /// Finds optimization opportunities on the MIR.
-struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
+struct OptimizationFinder<'b, 'a, 'tcx: 'a + 'b> {
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     optimizations: OptimizationList<'tcx>,
 }
 
-impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx: 'b> OptimizationFinder<'b, 'a, 'tcx> {
     fn new(mir: &'b Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
         OptimizationFinder {
             mir,
@@ -82,7 +79,12 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, Place::Projection(ref projection)) = *rvalue {
             if let ProjectionElem::Deref = projection.elem {
-                if projection.base.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
+                if projection
+                    .base
+                    .ty(self.mir, self.tcx)
+                    .to_ty(self.tcx)
+                    .is_region_ptr()
+                {
                     self.optimizations.and_stars.insert(location);
                 }
             }
@@ -93,7 +95,12 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             if let TyKind::Array(_, len) = place_ty.sty {
                 let span = self.mir.source_info(location).span;
                 let ty = self.tcx.types.usize;
-                let constant = Constant { span, ty, literal: len, user_ty: None };
+                let constant = Constant {
+                    span,
+                    ty,
+                    literal: len,
+                    user_ty: None,
+                };
                 self.optimizations.arrays_lengths.insert(location, constant);
             }
         }

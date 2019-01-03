@@ -1,14 +1,14 @@
-use syntax_pos::symbol::Symbol;
 use back::write::create_target_machine;
-use llvm;
-use rustc::session::Session;
-use rustc::session::config::PrintRequest;
 use libc::c_int;
+use llvm;
+use rustc::session::config::PrintRequest;
+use rustc::session::Session;
 use std::ffi::CString;
 use syntax::feature_gate::UnstableFeatures;
+use syntax_pos::symbol::Symbol;
 
-use std::str;
 use std::slice;
+use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
@@ -55,8 +55,12 @@ unsafe fn configure_llvm(sess: &Session) {
             llvm_c_strs.push(s);
         };
         add("rustc"); // fake program name
-        if sess.time_llvm_passes() { add("-time-passes"); }
-        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
+        if sess.time_llvm_passes() {
+            add("-time-passes");
+        }
+        if sess.print_llvm_passes() {
+            add("-debug-pass=Structure");
+        }
         if sess.opts.debugging_opts.disable_instrumentation_preinliner {
             add("-disable-preinline");
         }
@@ -77,8 +81,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
     ::rustc_llvm::initialize_available_targets();
 
-    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
-                                 llvm_args.as_ptr());
+    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
 }
 
 // WARNING: the features after applying `to_llvm_feature` must be known
@@ -187,8 +190,10 @@ const WASM_WHITELIST: &[(&str, Option<&str>)] = &[
 ///
 /// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
 /// iterator!
-pub fn all_known_features() -> impl Iterator<Item=(&'static str, Option<&'static str>)> {
-    ARM_WHITELIST.iter().cloned()
+pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<&'static str>)> {
+    ARM_WHITELIST
+        .iter()
+        .cloned()
         .chain(AARCH64_WHITELIST.iter().cloned())
         .chain(X86_WHITELIST.iter().cloned())
         .chain(HEXAGON_WHITELIST.iter().cloned())
@@ -230,12 +235,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             let cstr = CString::new(llvm_feature).unwrap();
             unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
         })
-        .map(|feature| Symbol::intern(feature)).collect()
+        .map(|feature| Symbol::intern(feature))
+        .collect()
 }
 
-pub fn target_feature_whitelist(sess: &Session)
-    -> &'static [(&'static str, Option<&'static str>)]
-{
+pub fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Option<&'static str>)] {
     match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
@@ -252,8 +256,11 @@ pub fn target_feature_whitelist(sess: &Session)
 pub fn print_version() {
     // Can be called without initializing LLVM
     unsafe {
-        println!("LLVM version: {}.{}",
-                 llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
+        println!(
+            "LLVM version: {}.{}",
+            llvm::LLVMRustVersionMajor(),
+            llvm::LLVMRustVersionMinor()
+        );
     }
 }
 
@@ -263,7 +270,9 @@ pub fn get_major_version() -> u32 {
 
 pub fn print_passes() {
     // Can be called without initializing LLVM
-    unsafe { llvm::LLVMRustPrintPasses(); }
+    unsafe {
+        llvm::LLVMRustPrintPasses();
+    }
 }
 
 pub(crate) fn print(req: PrintRequest, sess: &Session) {
@@ -281,10 +290,10 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
 pub fn target_cpu(sess: &Session) -> &str {
     let name = match sess.opts.cg.target_cpu {
         Some(ref s) => &**s,
-        None => &*sess.target.target.options.cpu
+        None => &*sess.target.target.options.cpu,
     };
     if name != "native" {
-        return name
+        return name;
     }
 
     unsafe {

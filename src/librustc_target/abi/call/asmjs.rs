@@ -1,4 +1,4 @@
-use abi::call::{FnType, ArgType, Uniform};
+use abi::call::{ArgType, FnType, Uniform};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
@@ -7,17 +7,15 @@ use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 // The class `EmscriptenABIInfo` in `/lib/CodeGen/TargetInfo.cpp` contains the ABI definitions.
 
 fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if ret.layout.is_aggregate() {
         if let Some(unit) = ret.layout.homogeneous_aggregate(cx) {
             let size = ret.layout.size;
             if unit.size == size {
-                ret.cast_to(Uniform {
-                    unit,
-                    total: size
-                });
+                ret.cast_to(Uniform { unit, total: size });
                 return;
             }
         }
@@ -33,15 +31,18 @@ fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg_ty(arg);
     }
 }

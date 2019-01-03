@@ -1,12 +1,12 @@
 use rustc::infer::canonical::Canonical;
+use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::mir::visit::{MutVisitor, TyContext};
+use rustc::mir::{Location, Mir};
 use rustc::ty::subst::Substs;
 use rustc::ty::{
     self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable, UserTypeAnnotation,
     UserTypeAnnotationIndex,
 };
-use rustc::mir::{Location, Mir};
-use rustc::mir::visit::{MutVisitor, TyContext};
-use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
@@ -20,10 +20,7 @@ pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, '_, 'tcx>, mir: &mut Mir<'tcx>) 
 
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
-pub fn renumber_regions<'tcx, T>(
-    infcx: &InferCtxt<'_, '_, 'tcx>,
-    value: &T,
-) -> T
+pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, '_, 'tcx>, value: &T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
@@ -92,13 +89,10 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         *constant = self.renumber_regions(&*constant);
     }
 
-    fn visit_generator_substs(&mut self,
-                              substs: &mut GeneratorSubsts<'tcx>,
-                              location: Location) {
+    fn visit_generator_substs(&mut self, substs: &mut GeneratorSubsts<'tcx>, location: Location) {
         debug!(
             "visit_generator_substs(substs={:?}, location={:?})",
-            substs,
-            location,
+            substs, location,
         );
 
         *substs = self.renumber_regions(substs);
@@ -109,8 +103,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {
         debug!(
             "visit_closure_substs(substs={:?}, location={:?})",
-            substs,
-            location
+            substs, location
         );
 
         *substs = self.renumber_regions(substs);

@@ -1,6 +1,5 @@
 // See Cargo.toml for a comment explaining this crate.
 #![allow(unused_extern_crates)]
-
 #![feature(nll)]
 
 extern crate bitflags;

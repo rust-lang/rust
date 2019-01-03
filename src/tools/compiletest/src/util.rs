@@ -1,7 +1,7 @@
-use std::ffi::OsStr;
-use std::env;
-use std::path::PathBuf;
 use common::Config;
+use std::env;
+use std::ffi::OsStr;
+use std::path::PathBuf;
 
 /// Conversion table from triple OS name to Rust SYSNAME
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[

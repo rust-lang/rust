@@ -72,25 +72,20 @@ impl Waker {
 impl Clone for Waker {
     #[inline]
     fn clone(&self) -> Self {
-        unsafe {
-            self.inner.as_ref().clone_raw()
-        }
+        unsafe { self.inner.as_ref().clone_raw() }
     }
 }
 
 impl fmt::Debug for Waker {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Waker")
-            .finish()
+        f.debug_struct("Waker").finish()
     }
 }
 
 impl Drop for Waker {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            self.inner.as_ref().drop_raw()
-        }
+        unsafe { self.inner.as_ref().drop_raw() }
     }
 }
 
@@ -191,8 +186,7 @@ impl From<LocalWaker> for Waker {
 
 impl fmt::Debug for LocalWaker {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("LocalWaker")
-            .finish()
+        f.debug_struct("LocalWaker").finish()
     }
 }
 

@@ -4,11 +4,12 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       test(attr(deny(warnings))))]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    test(attr(deny(warnings)))
+)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(rustc_attrs)]
@@ -18,27 +19,30 @@
 #![feature(step_trait)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
+#![recursion_limit = "256"]
 
-#![recursion_limit="256"]
-
-#[macro_use] extern crate bitflags;
+#[macro_use]
+extern crate bitflags;
 extern crate core;
 extern crate serialize;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
-#[macro_use] extern crate rustc_data_structures;
+#[macro_use]
+extern crate rustc_data_structures;
 extern crate rustc_target;
-#[macro_use] extern crate scoped_tls;
+#[macro_use]
+extern crate scoped_tls;
 #[macro_use]
 extern crate smallvec;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-use rustc_data_structures::sync::Lock;
-use rustc_data_structures::bit_set::GrowableBitSet;
-pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
+use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_data_structures::sync::Lock;
+pub use rustc_data_structures::thin_vec::ThinVec;
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
@@ -47,9 +51,9 @@ use ast::AttrId;
 // Exported for syntax_ext, not meant for general use.
 #[macro_export]
 macro_rules! panictry {
-    ($e:expr) => ({
-        use std::result::Result::{Ok, Err};
+    ($e:expr) => {{
         use errors::FatalError;
+        use std::result::Result::{Err, Ok};
         match $e {
             Ok(e) => e,
             Err(mut e) => {
@@ -57,14 +61,14 @@ macro_rules! panictry {
                 FatalError.raise()
             }
         }
-    })
+    }};
 }
 
 // A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
 macro_rules! panictry_buffer {
-    ($handler:expr, $e:expr) => ({
-        use std::result::Result::{Ok, Err};
-        use errors::{FatalError, DiagnosticBuilder};
+    ($handler:expr, $e:expr) => {{
+        use errors::{DiagnosticBuilder, FatalError};
+        use std::result::Result::{Err, Ok};
         match $e {
             Ok(e) => e,
             Err(errs) => {
@@ -74,7 +78,7 @@ macro_rules! panictry_buffer {
                 FatalError.raise()
             }
         }
-    })
+    }};
 }
 
 #[macro_export]
@@ -84,7 +88,7 @@ macro_rules! unwrap_or {
             Some(x) => x,
             None => $default,
         }
-    }
+    };
 }
 
 pub struct Globals {
@@ -106,7 +110,8 @@ impl Globals {
 }
 
 pub fn with_globals<F, R>(f: F) -> R
-    where F: FnOnce() -> R
+where
+    F: FnOnce() -> R,
 {
     let globals = Globals::new();
     GLOBALS.set(&globals, || {
@@ -120,8 +125,8 @@ scoped_thread_local!(pub static GLOBALS: Globals);
 pub mod diagnostics {
     #[macro_use]
     pub mod macros;
-    pub mod plugin;
     pub mod metadata;
+    pub mod plugin;
 }
 
 // N.B., this module needs to be declared first so diagnostics are
@@ -130,19 +135,19 @@ pub mod diagnostic_list;
 
 pub mod util {
     pub mod lev_distance;
+    pub mod move_map;
     pub mod node_count;
     pub mod parser;
     #[cfg(test)]
     pub mod parser_testing;
-    pub mod move_map;
 }
 
 pub mod json;
 
 pub mod syntax {
+    pub use ast;
     pub use ext;
     pub use parse;
-    pub use ast;
 }
 
 pub mod ast;
@@ -179,10 +184,10 @@ pub mod ext {
     pub mod source_util;
 
     pub mod tt {
-        pub mod transcribe;
         pub mod macro_parser;
         pub mod macro_rules;
         pub mod quoted;
+        pub mod transcribe;
     }
 }
 

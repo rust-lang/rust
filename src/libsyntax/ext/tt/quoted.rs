@@ -1,3 +1,4 @@
+use ast;
 use ast::NodeId;
 use early_buffered_lints::BufferedEarlyLintId;
 use ext::tt::macro_parser;
@@ -7,7 +8,6 @@ use print::pprust;
 use symbol::keywords;
 use syntax_pos::{edition::Edition, BytePos, Span};
 use tokenstream::{self, DelimSpan};
-use ast;
 
 use rustc_data_structures::sync::Lrc;
 use std::iter::Peekable;
@@ -145,8 +145,7 @@ impl TokenTree {
             TokenTree::Token(sp, _)
             | TokenTree::MetaVar(sp, _)
             | TokenTree::MetaVarDecl(sp, _, _) => sp,
-            TokenTree::Delimited(sp, _)
-            | TokenTree::Sequence(sp, _) => sp.entire(),
+            TokenTree::Delimited(sp, _) | TokenTree::Sequence(sp, _) => sp.entire(),
         }
     }
 }
@@ -289,16 +288,15 @@ where
                     macro_node_id,
                 );
                 // Get the Kleene operator and optional separator
-                let (separator, op) =
-                    parse_sep_and_kleene_op(
-                        trees,
-                        span.entire(),
-                        sess,
-                        features,
-                        attrs,
-                        edition,
-                        macro_node_id,
-                    );
+                let (separator, op) = parse_sep_and_kleene_op(
+                    trees,
+                    span.entire(),
+                    sess,
+                    features,
+                    attrs,
+                    edition,
+                    macro_node_id,
+                );
                 // Count the number of captured "names" (i.e., named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
@@ -425,14 +423,9 @@ where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
     match edition {
-        Edition::Edition2015 => parse_sep_and_kleene_op_2015(
-            input,
-            span,
-            sess,
-            features,
-            attrs,
-            macro_node_id,
-        ),
+        Edition::Edition2015 => {
+            parse_sep_and_kleene_op_2015(input, span, sess, features, attrs, macro_node_id)
+        }
         Edition::Edition2018 => parse_sep_and_kleene_op_2018(input, span, sess, features, attrs),
     }
 }

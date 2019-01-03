@@ -177,10 +177,9 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
 
     /// Save the current set of region-bound pairs under the given `body_id`.
     pub fn save_implied_bounds(&mut self, body_id: ast::NodeId) {
-        let old = self.region_bound_pairs_map.insert(
-            body_id,
-            self.region_bound_pairs_accum.clone(),
-        );
+        let old = self
+            .region_bound_pairs_map
+            .insert(body_id, self.region_bound_pairs_accum.clone());
         assert!(old.is_none());
     }
 

@@ -37,12 +37,15 @@ fn main() {
             // Dirty code for borrowing issues
             let mut new = None;
             if let Some(current_as_str) = args[i].to_str() {
-                if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata")) ||
-                   current_as_str.starts_with("-Cmetadata") {
+                if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata"))
+                    || current_as_str.starts_with("-Cmetadata")
+                {
                     new = Some(format!("{}-{}", current_as_str, s));
                 }
             }
-            if let Some(new) = new { args[i] = new.into(); }
+            if let Some(new) = new {
+                args[i] = new.into();
+            }
         }
     }
 
@@ -60,7 +63,8 @@ fn main() {
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2)
+    let target = args
+        .windows(2)
         .find(|w| &*w[0] == "--target")
         .and_then(|w| w[1].to_str());
     let version = args.iter().find(|w| &**w == "-vV");
@@ -93,8 +97,10 @@ fn main() {
     cmd.args(&args)
         .arg("--cfg")
         .arg(format!("stage{}", stage))
-        .env(bootstrap::util::dylib_path_var(),
-             env::join_paths(&dylib_path).unwrap());
+        .env(
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+        );
     let mut maybe_crate = None;
 
     // Print backtrace in case of ICE
@@ -132,9 +138,7 @@ fn main() {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
-        let crate_name = args.windows(2)
-            .find(|a| &*a[0] == "--crate-name")
-            .unwrap();
+        let crate_name = args.windows(2).find(|a| &*a[0] == "--crate-name").unwrap();
         let crate_name = &*crate_name[1];
         maybe_crate = Some(crate_name);
 
@@ -150,8 +154,7 @@ fn main() {
         // `compiler_builtins` are unconditionally compiled with panic=abort to
         // workaround undefined references to `rust_eh_unwind_resume` generated
         // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
-        if crate_name == "panic_abort" ||
-           crate_name == "compiler_builtins" && stage != "0" {
+        if crate_name == "panic_abort" || crate_name == "compiler_builtins" && stage != "0" {
             cmd.arg("-C").arg("panic=abort");
         }
 
@@ -163,7 +166,13 @@ fn main() {
             cmd.arg("-Cdebuginfo=1");
         }
         let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
-            Ok(s) => if s == "true" { "y" } else { "n" },
+            Ok(s) => {
+                if s == "true" {
+                    "y"
+                } else {
+                    "n"
+                }
+            }
             Err(..) => "n",
         };
 
@@ -172,7 +181,8 @@ fn main() {
         if crate_name == "compiler_builtins" {
             cmd.arg("-C").arg("debug-assertions=no");
         } else {
-            cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
+            cmd.arg("-C")
+                .arg(format!("debug-assertions={}", debug_assertions));
         }
 
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
@@ -182,10 +192,12 @@ fn main() {
         // Emit save-analysis info.
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
             cmd.arg("-Zsave-analysis");
-            cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
-                    "{\"output_file\": null,\"full_docs\": false,\
-                     \"pub_only\": true,\"reachable_only\": false,\
-                     \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
+            cmd.env(
+                "RUST_SAVE_ANALYSIS_CONFIG",
+                "{\"output_file\": null,\"full_docs\": false,\
+                 \"pub_only\": true,\"reachable_only\": false,\
+                 \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}",
+            );
         }
 
         // Dealing with rpath here is a little special, so let's go into some
@@ -216,7 +228,6 @@ fn main() {
         // to change a flag in a binary?
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
-
                 // Note that we need to take one extra step on macOS to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
                 // do that we pass a weird flag to the compiler to get it to do
@@ -224,9 +235,10 @@ fn main() {
                 // flesh out rpath support more fully in the future.
                 cmd.arg("-Z").arg("osx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
-            } else if !target.contains("windows") &&
-                      !target.contains("wasm32") &&
-                      !target.contains("fuchsia") {
+            } else if !target.contains("windows")
+                && !target.contains("wasm32")
+                && !target.contains("fuchsia")
+            {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None
@@ -246,7 +258,10 @@ fn main() {
         }
 
         // When running miri tests, we need to generate MIR for all libraries
-        if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
+        if env::var("TEST_MIRI")
+            .ok()
+            .map_or(false, |val| val == "true")
+        {
             // The flags here should be kept in sync with `add_miri_default_args`
             // in miri's `src/lib.rs`.
             cmd.arg("-Zalways-encode-mir");
@@ -310,7 +325,10 @@ fn main() {
             Ok(s) if s.success() => std::process::exit(0),
             e => e,
         };
-        println!("\nDid not run successfully: {:?}\n{:?}\n-------------", e, cmd);
+        println!(
+            "\nDid not run successfully: {:?}\n{:?}\n-------------",
+            e, cmd
+        );
         exec_cmd(&mut on_fail).expect("could not run the backup command");
         std::process::exit(1);
     }
@@ -324,11 +342,13 @@ fn main() {
             let dur = start.elapsed();
 
             let is_test = args.iter().any(|a| a == "--test");
-            eprintln!("[RUSTC-TIMING] {} test:{} {}.{:03}",
-                      krate.to_string_lossy(),
-                      is_test,
-                      dur.as_secs(),
-                      dur.subsec_nanos() / 1_000_000);
+            eprintln!(
+                "[RUSTC-TIMING] {} test:{} {}.{:03}",
+                krate.to_string_lossy(),
+                is_test,
+                dur.as_secs(),
+                dur.subsec_nanos() / 1_000_000
+            );
 
             match status.code() {
                 Some(i) => std::process::exit(i),

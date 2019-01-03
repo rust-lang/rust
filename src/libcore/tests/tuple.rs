@@ -1,4 +1,4 @@
-use std::cmp::Ordering::{Equal, Less, Greater};
+use std::cmp::Ordering::{Equal, Greater, Less};
 
 #[test]
 fn test_clone() {
@@ -11,7 +11,7 @@ fn test_clone() {
 fn test_tuple_cmp() {
     let (small, big) = ((1, 2, 3), (3, 2, 1));
 
-    let nan = 0.0f64/0.0;
+    let nan = 0.0f64 / 0.0;
 
     // PartialEq
     assert_eq!(small, small);

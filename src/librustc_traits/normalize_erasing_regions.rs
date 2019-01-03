@@ -1,5 +1,5 @@
-use rustc::traits::{Normalized, ObligationCause};
 use rustc::traits::query::NoSolution;
+use rustc::traits::{Normalized, ObligationCause};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use std::sync::atomic::Ordering;
@@ -18,7 +18,10 @@ fn normalize_ty_after_erasing_regions<'tcx>(
     debug!("normalize_ty_after_erasing_regions(goal={:#?})", goal);
 
     let ParamEnvAnd { param_env, value } = goal;
-    tcx.sess.perf_stats.normalize_ty_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
+    tcx.sess
+        .perf_stats
+        .normalize_ty_after_erasing_regions
+        .fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::dummy();
         match infcx.at(&cause, param_env).normalize(&value) {

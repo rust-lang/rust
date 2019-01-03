@@ -2,7 +2,7 @@
 
 // FIXME This module's name is a bit unfortunate, since other modules also import `core::num`.
 
-use cmp::Ordering::{self, Less, Equal, Greater};
+use cmp::Ordering::{self, Equal, Greater, Less};
 
 pub use num::bignum::Big32x40 as Big;
 
@@ -36,7 +36,10 @@ pub fn compare_with_half_ulp(f: &Big, ones_place: usize) -> Ordering {
 /// 1. using `FromStr` on `&[u8]` requires `from_utf8_unchecked`, which is bad, and
 /// 2. piecing together the results of `integral.parse()` and `fractional.parse()` is
 ///    more complicated than this entire function.
-pub fn from_str_unchecked<'a, T>(bytes: T) -> u64 where T : IntoIterator<Item=&'a u8> {
+pub fn from_str_unchecked<'a, T>(bytes: T) -> u64
+where
+    T: IntoIterator<Item = &'a u8>,
+{
     let mut result = 0;
     for &c in bytes {
         result = result * 10 + (c - b'0') as u64;
@@ -67,7 +70,6 @@ pub fn to_u64(x: &Big) -> u64 {
         (d[1] as u64) << 32 | d[0] as u64
     }
 }
-
 
 /// Extract a range of bits.
 

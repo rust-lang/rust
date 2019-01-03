@@ -9,9 +9,9 @@
 extern crate tidy;
 use tidy::*;
 
-use std::process;
-use std::path::PathBuf;
 use std::env;
+use std::path::PathBuf;
+use std::process;
 
 fn main() {
     let path: PathBuf = env::args_os().nth(1).expect("need path to src").into();

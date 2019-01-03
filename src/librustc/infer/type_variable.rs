@@ -2,12 +2,12 @@ use syntax::symbol::InternedString;
 use syntax_pos::Span;
 use ty::{self, Ty};
 
-use std::cmp;
-use std::marker::PhantomData;
-use std::u32;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
+use std::cmp;
+use std::marker::PhantomData;
+use std::u32;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate>,
@@ -151,10 +151,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
         debug_assert!(self.probe(vid).is_unknown());
-        debug_assert!(self.eq_relations.probe_value(vid).is_unknown(),
-                      "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
-                      vid, ty, self.eq_relations.probe_value(vid));
-        self.eq_relations.union_value(vid, TypeVariableValue::Known { value: ty });
+        debug_assert!(
+            self.eq_relations.probe_value(vid).is_unknown(),
+            "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
+            vid,
+            ty,
+            self.eq_relations.probe_value(vid)
+        );
+        self.eq_relations
+            .union_value(vid, TypeVariableValue::Known { value: ty });
 
         // Hack: we only need this so that `types_escaping_snapshot`
         // can see what has been unified; see the Delegate impl for
@@ -172,23 +177,26 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// - `origin`: indicates *why* the type variable was created.
     ///   The code in this module doesn't care, but it can be useful
     ///   for improving error messages.
-    pub fn new_var(&mut self,
-                   universe: ty::UniverseIndex,
-                   diverging: bool,
-                   origin: TypeVariableOrigin)
-                   -> ty::TyVid {
-        let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown { universe });
+    pub fn new_var(
+        &mut self,
+        universe: ty::UniverseIndex,
+        diverging: bool,
+        origin: TypeVariableOrigin,
+    ) -> ty::TyVid {
+        let eq_key = self
+            .eq_relations
+            .new_key(TypeVariableValue::Unknown { universe });
 
         let sub_key = self.sub_relations.new_key(());
         assert_eq!(eq_key.vid, sub_key);
 
-        let index = self.values.push(TypeVariableData {
-            origin,
-            diverging,
-        });
+        let index = self.values.push(TypeVariableData { origin, diverging });
         assert_eq!(eq_key.vid.index, index as u32);
 
-        debug!("new_var(index={:?}, diverging={:?}, origin={:?}", eq_key.vid, diverging, origin);
+        debug!(
+            "new_var(index={:?}, diverging={:?}, origin={:?}",
+            eq_key.vid, diverging, origin
+        );
 
         eq_key.vid
     }
@@ -235,12 +243,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// instantiated. Otherwise, returns `t`.
     pub fn replace_if_possible(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::Infer(ty::TyVar(v)) => {
-                match self.probe(v) {
-                    TypeVariableValue::Unknown { .. } => t,
-                    TypeVariableValue::Known { value } => value,
-                }
-            }
+            ty::Infer(ty::TyVar(v)) => match self.probe(v) {
+                TypeVariableValue::Unknown { .. } => t,
+                TypeVariableValue::Known { value } => value,
+            },
             _ => t,
         }
     }
@@ -269,7 +275,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
             }
         });
 
-        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
+        let Snapshot {
+            snapshot,
+            eq_snapshot,
+            sub_snapshot,
+        } = s;
         self.values.rollback_to(snapshot);
         self.eq_relations.rollback_to(eq_snapshot);
         self.sub_relations.rollback_to(sub_snapshot);
@@ -280,7 +290,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// another snapshot). Any snapshots created since that point
     /// must already have been committed or rolled back.
     pub fn commit(&mut self, s: Snapshot<'tcx>) {
-        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
+        let Snapshot {
+            snapshot,
+            eq_snapshot,
+            sub_snapshot,
+        } = s;
         self.values.commit(snapshot);
         self.eq_relations.commit(eq_snapshot);
         self.sub_relations.commit(sub_snapshot);
@@ -296,7 +310,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
         actions_since_snapshot
             .iter()
             .filter_map(|action| match action {
-                &sv::UndoLog::NewElem(index) => Some(ty::TyVid { index: index as u32 }),
+                &sv::UndoLog::NewElem(index) => Some(ty::TyVid {
+                    index: index as u32,
+                }),
                 _ => None,
             })
             .map(|vid| {
@@ -316,7 +332,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
         let mut new_elem_threshold = u32::MAX;
         let mut escaping_types = Vec::new();
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
-        debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
+        debug!(
+            "actions_since_snapshot.len() = {}",
+            actions_since_snapshot.len()
+        );
         for action in actions_since_snapshot {
             match *action {
                 sv::UndoLog::NewElem(index) => {
@@ -326,7 +345,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     // action must precede those variables being
                     // specified.
                     new_elem_threshold = cmp::min(new_elem_threshold, index as u32);
-                    debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
+                    debug!(
+                        "NewElem({}) new_elem_threshold={}",
+                        index, new_elem_threshold
+                    );
                 }
 
                 sv::UndoLog::Other(Instantiate { vid, .. }) => {
@@ -339,10 +361,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
                         };
                         escaping_types.push(escaping_type);
                     }
-                    debug!("SpecifyVar({:?}) new_elem_threshold={}", vid, new_elem_threshold);
+                    debug!(
+                        "SpecifyVar({:?}) new_elem_threshold={}",
+                        vid, new_elem_threshold
+                    );
                 }
 
-                _ => { }
+                _ => {}
             }
         }
 
@@ -399,15 +424,24 @@ struct TyVidEqKey<'tcx> {
 
 impl<'tcx> From<ty::TyVid> for TyVidEqKey<'tcx> {
     fn from(vid: ty::TyVid) -> Self {
-        TyVidEqKey { vid, phantom: PhantomData }
+        TyVidEqKey {
+            vid,
+            phantom: PhantomData,
+        }
     }
 }
 
 impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     type Value = TypeVariableValue<'tcx>;
-    fn index(&self) -> u32 { self.vid.index }
-    fn from_index(i: u32) -> Self { TyVidEqKey::from(ty::TyVid { index: i }) }
-    fn tag() -> &'static str { "TyVidEqKey" }
+    fn index(&self) -> u32 {
+        self.vid.index
+    }
+    fn from_index(i: u32) -> Self {
+        TyVidEqKey::from(ty::TyVid { index: i })
+    }
+    fn tag() -> &'static str {
+        "TyVidEqKey"
+    }
 }
 
 impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
@@ -427,8 +461,14 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
             (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { .. }) => Ok(*value2),
 
             // If both sides are *unknown*, it hardly matters, does it?
-            (&TypeVariableValue::Unknown { universe: universe1 },
-             &TypeVariableValue::Unknown { universe: universe2 }) =>  {
+            (
+                &TypeVariableValue::Unknown {
+                    universe: universe1,
+                },
+                &TypeVariableValue::Unknown {
+                    universe: universe2,
+                },
+            ) => {
                 // If we unify two unbound variables, ?T and ?U, then whatever
                 // value they wind up taking (which must be the same value) must
                 // be nameable by both universes. Therefore, the resulting
@@ -445,8 +485,13 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
 /// they carry no values.
 impl ut::UnifyKey for ty::TyVid {
     type Value = ();
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
-    fn tag() -> &'static str { "TyVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::TyVid {
+        ty::TyVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "TyVid"
+    }
 }
-

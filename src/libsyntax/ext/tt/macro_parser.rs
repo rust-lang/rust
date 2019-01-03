@@ -75,15 +75,15 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeSlice::*;
 
 use ast::Ident;
-use syntax_pos::{self, Span};
 use errors::FatalError;
 use ext::tt::quoted::{self, TokenTree};
-use parse::{Directory, ParseSess};
 use parse::parser::{Parser, PathStyle};
 use parse::token::{self, DocComment, Nonterminal, Token};
+use parse::{Directory, ParseSess};
 use print::pprust;
 use smallvec::SmallVec;
 use symbol::keywords;
+use syntax_pos::{self, Span};
 use tokenstream::{DelimSpan, TokenStream};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -192,7 +192,6 @@ struct MatcherPos<'root, 'tt: 'root> {
 
     // The following fields are used if we are matching a repetition. If we aren't, they should be
     // `None`.
-
     /// The KleeneOp of this sequence if we are in a repetition.
     seq_op: Option<quoted::KleeneOp>,
 
@@ -283,13 +282,14 @@ pub type NamedParseResult = ParseResult<FxHashMap<Ident, Rc<NamedMatch>>>;
 /// Count how many metavars are named in the given matcher `ms`.
 pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
-        count + match *elt {
-            TokenTree::Sequence(_, ref seq) => seq.num_captures,
-            TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
-            TokenTree::MetaVar(..) => 0,
-            TokenTree::MetaVarDecl(..) => 1,
-            TokenTree::Token(..) => 0,
-        }
+        count
+            + match *elt {
+                TokenTree::Sequence(_, ref seq) => seq.num_captures,
+                TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
+                TokenTree::MetaVar(..) => 0,
+                TokenTree::MetaVarDecl(..) => 1,
+                TokenTree::Token(..) => 0,
+            }
     })
 }
 
@@ -300,7 +300,8 @@ fn create_matches(len: usize) -> Box<[Rc<NamedMatchVec>]> {
     } else {
         let empty_matches = Rc::new(SmallVec::new());
         vec![empty_matches; len]
-    }.into_boxed_slice()
+    }
+    .into_boxed_slice()
 }
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
@@ -374,12 +375,16 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         ret_val: &mut FxHashMap<Ident, Rc<NamedMatch>>,
     ) -> Result<(), (syntax_pos::Span, String)> {
         match *m {
-            TokenTree::Sequence(_, ref seq) => for next_m in &seq.tts {
-                n_rec(sess, next_m, res.by_ref(), ret_val)?
-            },
-            TokenTree::Delimited(_, ref delim) => for next_m in &delim.tts {
-                n_rec(sess, next_m, res.by_ref(), ret_val)?;
-            },
+            TokenTree::Sequence(_, ref seq) => {
+                for next_m in &seq.tts {
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?
+                }
+            }
+            TokenTree::Delimited(_, ref delim) => {
+                for next_m in &delim.tts {
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?;
+                }
+            }
             TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                     return Err((span, "missing fragment specifier".to_string()));
@@ -522,7 +527,8 @@ fn inner_parse_loop<'root, 'tt>(
                 if idx == len && item.sep.is_some() {
                     // We have a separator, and it is the current token. We can advance past the
                     // separator token.
-                    if item.sep
+                    if item
+                        .sep
                         .as_ref()
                         .map(|sep| token_name_eq(token, sep))
                         .unwrap_or(false)
@@ -797,8 +803,9 @@ pub fn parse(
 /// We prohibit passing `_` to macros expecting `ident` for now.
 fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
     match *token {
-        token::Ident(ident, is_raw) if ident.name != keywords::Underscore.name() =>
-            Some((ident, is_raw)),
+        token::Ident(ident, is_raw) if ident.name != keywords::Underscore.name() => {
+            Some((ident, is_raw))
+        }
         _ => None,
     }
 }
@@ -918,24 +925,30 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "literal" => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
-            let span = p.span;
-            p.bump();
-            token::NtIdent(Ident::new(ident.name, span), is_raw)
-        } else {
-            let token_str = pprust::token_to_string(&p.token);
-            p.fatal(&format!("expected ident, found {}", &token_str)).emit();
-            FatalError.raise()
+        "ident" => {
+            if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
+                let span = p.span;
+                p.bump();
+                token::NtIdent(Ident::new(ident.name, span), is_raw)
+            } else {
+                let token_str = pprust::token_to_string(&p.token);
+                p.fatal(&format!("expected ident, found {}", &token_str))
+                    .emit();
+                FatalError.raise()
+            }
         }
         "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
-        "lifetime" => if p.check_lifetime() {
-            token::NtLifetime(p.expect_lifetime().ident)
-        } else {
-            let token_str = pprust::token_to_string(&p.token);
-            p.fatal(&format!("expected a lifetime, found `{}`", &token_str)).emit();
-            FatalError.raise();
+        "lifetime" => {
+            if p.check_lifetime() {
+                token::NtLifetime(p.expect_lifetime().ident)
+            } else {
+                let token_str = pprust::token_to_string(&p.token);
+                p.fatal(&format!("expected a lifetime, found `{}`", &token_str))
+                    .emit();
+                FatalError.raise();
+            }
         }
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.

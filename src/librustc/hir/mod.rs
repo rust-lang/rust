@@ -12,27 +12,27 @@ pub use self::UnsafeSource::*;
 
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
-use util::nodemap::{NodeMap, FxHashSet};
 use mir::mono::Linkage;
+use util::nodemap::{FxHashSet, NodeMap};
 
-use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
-use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
+use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{Attribute, FloatTy, IntTy, Lit, StrStyle, UintTy};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::source_map::{self, Spanned};
+use syntax::symbol::{keywords, Symbol};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
-use ty::AdtKind;
+use syntax_pos::{symbol::InternedString, Span, DUMMY_SP};
 use ty::query::Providers;
+use ty::AdtKind;
 
-use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope};
+use rustc_data_structures::sync::{par_iter, scope, ParallelIterator, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 
-use serialize::{self, Encoder, Encodable, Decoder, Decodable};
+use serialize::{self, Decodable, Decoder, Encodable, Encoder};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -89,10 +89,7 @@ impl HirId {
 
 impl serialize::UseSpecializedEncodable for HirId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        let HirId {
-            owner,
-            local_id,
-        } = *self;
+        let HirId { owner, local_id } = *self;
 
         owner.encode(s)?;
         local_id.encode(s)
@@ -104,10 +101,7 @@ impl serialize::UseSpecializedDecodable for HirId {
         let owner = DefIndex::decode(d)?;
         let local_id = ItemLocalId::decode(d)?;
 
-        Ok(HirId {
-            owner,
-            local_id
-        })
+        Ok(HirId { owner, local_id })
     }
 }
 
@@ -132,7 +126,7 @@ pub use self::item_local_id_inner::ItemLocalId;
 /// The `HirId` corresponding to CRATE_NODE_ID and CRATE_DEF_INDEX
 pub const CRATE_HIR_ID: HirId = HirId {
     owner: CRATE_DEF_INDEX,
-    local_id: ItemLocalId::from_u32_const(0)
+    local_id: ItemLocalId::from_u32_const(0),
 };
 
 pub const DUMMY_HIR_ID: HirId = HirId {
@@ -272,10 +266,12 @@ impl fmt::Display for Lifetime {
 
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
-               "lifetime({}: {})",
-               self.id,
-               print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
+        write!(
+            f,
+            "lifetime({}: {})",
+            self.id,
+            print::to_string(print::NO_ANN, |s| s.print_lifetime(self))
+        )
     }
 }
 
@@ -315,7 +311,11 @@ impl fmt::Debug for Path {
 
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", print::to_string(print::NO_ANN, |s| s.print_path(self, false)))
+        write!(
+            f,
+            "{}",
+            print::to_string(print::NO_ANN, |s| s.print_path(self, false))
+        )
     }
 }
 
@@ -371,18 +371,15 @@ impl PathSegment {
             id,
             def,
             infer_types,
-            args: if args.is_empty() {
-                None
-            } else {
-                Some(P(args))
-            }
+            args: if args.is_empty() { None } else { Some(P(args)) },
         }
     }
 
     // FIXME: hack required because you can't create a static
     // `GenericArgs`, so you can't just return a `&GenericArgs`.
     pub fn with_generic_args<F, R>(&self, f: F) -> R
-        where F: FnOnce(&GenericArgs) -> R
+    where
+        F: FnOnce(&GenericArgs) -> R,
     {
         let dummy = GenericArgs::none();
         f(if let Some(ref args) = self.args {
@@ -526,13 +523,11 @@ pub enum LifetimeParamKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericParamKind {
     /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
-    Lifetime {
-        kind: LifetimeParamKind,
-    },
+    Lifetime { kind: LifetimeParamKind },
     Type {
         default: Option<P<Ty>>,
         synthetic: Option<SyntheticTyParamKind>,
-    }
+    },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -604,7 +599,7 @@ impl Generics {
 /// to track the original form they had. Useful for error messages.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum SyntheticTyParamKind {
-    ImplTrait
+    ImplTrait,
 }
 
 /// A `where` clause in a definition
@@ -616,12 +611,12 @@ pub struct WhereClause {
 
 impl WhereClause {
     pub fn span(&self) -> Option<Span> {
-        self.predicates.iter().map(|predicate| predicate.span())
+        self.predicates
+            .iter()
+            .map(|predicate| predicate.span())
             .fold(None, |acc, i| match (acc, i) {
                 (None, i) => Some(i),
-                (Some(acc), i) => {
-                    Some(acc.to(i))
-                }
+                (Some(acc), i) => Some(acc.to(i)),
             })
     }
 }
@@ -732,7 +727,8 @@ impl Crate {
     /// approach. You should override `visit_nested_item` in your
     /// visitor and then call `intravisit::walk_crate` instead.
     pub fn visit_all_item_likes<'hir, V>(&'hir self, visitor: &mut V)
-        where V: itemlikevisit::ItemLikeVisitor<'hir>
+    where
+        V: itemlikevisit::ItemLikeVisitor<'hir>,
     {
         for (_, item) in &self.items {
             visitor.visit_item(item);
@@ -749,7 +745,8 @@ impl Crate {
 
     /// A parallel version of visit_all_item_likes
     pub fn par_visit_all_item_likes<'hir, V>(&'hir self, visitor: &V)
-        where V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send
+    where
+        V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         scope(|s| {
             s.spawn(|_| {
@@ -819,15 +816,20 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id,
-               print::to_string(print::NO_ANN, |s| s.print_pat(self)))
+        write!(
+            f,
+            "pat({}: {})",
+            self.id,
+            print::to_string(print::NO_ANN, |s| s.print_pat(self))
+        )
     }
 }
 
 impl Pat {
     // FIXME(#19596) this is a workaround, but there should be a better way
     fn walk_<G>(&self, it: &mut G) -> bool
-        where G: FnMut(&Pat) -> bool
+    where
+        G: FnMut(&Pat) -> bool,
     {
         if !it(self) {
             return false;
@@ -841,27 +843,23 @@ impl Pat {
             PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
                 s.iter().all(|p| p.walk_(it))
             }
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
-                s.walk_(it)
-            }
-            PatKind::Slice(ref before, ref slice, ref after) => {
-                before.iter()
-                      .chain(slice.iter())
-                      .chain(after.iter())
-                      .all(|p| p.walk_(it))
-            }
-            PatKind::Wild |
-            PatKind::Lit(_) |
-            PatKind::Range(..) |
-            PatKind::Binding(..) |
-            PatKind::Path(_) => {
-                true
-            }
+            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => s.walk_(it),
+            PatKind::Slice(ref before, ref slice, ref after) => before
+                .iter()
+                .chain(slice.iter())
+                .chain(after.iter())
+                .all(|p| p.walk_(it)),
+            PatKind::Wild
+            | PatKind::Lit(_)
+            | PatKind::Range(..)
+            | PatKind::Binding(..)
+            | PatKind::Path(_) => true,
         }
     }
 
     pub fn walk<F>(&self, mut it: F) -> bool
-        where F: FnMut(&Pat) -> bool
+    where
+        F: FnMut(&Pat) -> bool,
     {
         self.walk_(&mut it)
     }
@@ -952,7 +950,9 @@ pub enum PatKind {
     Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(
+    Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug, Copy,
+)]
 pub enum Mutability {
     MutMutable,
     MutImmutable,
@@ -1048,24 +1048,24 @@ impl BinOpKind {
 
     pub fn is_comparison(self) -> bool {
         match self {
-            BinOpKind::Eq |
-            BinOpKind::Lt |
-            BinOpKind::Le |
-            BinOpKind::Ne |
-            BinOpKind::Gt |
-            BinOpKind::Ge => true,
-            BinOpKind::And |
-            BinOpKind::Or |
-            BinOpKind::Add |
-            BinOpKind::Sub |
-            BinOpKind::Mul |
-            BinOpKind::Div |
-            BinOpKind::Rem |
-            BinOpKind::BitXor |
-            BinOpKind::BitAnd |
-            BinOpKind::BitOr |
-            BinOpKind::Shl |
-            BinOpKind::Shr => false,
+            BinOpKind::Eq
+            | BinOpKind::Lt
+            | BinOpKind::Le
+            | BinOpKind::Ne
+            | BinOpKind::Gt
+            | BinOpKind::Ge => true,
+            BinOpKind::And
+            | BinOpKind::Or
+            | BinOpKind::Add
+            | BinOpKind::Sub
+            | BinOpKind::Mul
+            | BinOpKind::Div
+            | BinOpKind::Rem
+            | BinOpKind::BitXor
+            | BinOpKind::BitAnd
+            | BinOpKind::BitOr
+            | BinOpKind::Shl
+            | BinOpKind::Shr => false,
         }
     }
 
@@ -1137,10 +1137,12 @@ impl fmt::Debug for StmtKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Sadness.
         let spanned = source_map::dummy_spanned(self.clone());
-        write!(f,
-               "stmt({}: {})",
-               spanned.node.id(),
-               print::to_string(print::NO_ANN, |s| s.print_stmt(&spanned)))
+        write!(
+            f,
+            "stmt({}: {})",
+            spanned.node.id(),
+            print::to_string(print::NO_ANN, |s| s.print_stmt(&spanned))
+        )
     }
 }
 
@@ -1160,16 +1162,13 @@ impl StmtKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
             StmtKind::Decl(ref d, _) => d.node.attrs(),
-            StmtKind::Expr(ref e, _) |
-            StmtKind::Semi(ref e, _) => &e.attrs,
+            StmtKind::Expr(ref e, _) | StmtKind::Semi(ref e, _) => &e.attrs,
         }
     }
 
     pub fn id(&self) -> NodeId {
         match *self {
-            StmtKind::Decl(_, id) |
-            StmtKind::Expr(_, id) |
-            StmtKind::Semi(_, id) => id,
+            StmtKind::Decl(_, id) | StmtKind::Expr(_, id) | StmtKind::Semi(_, id) => id,
         }
     }
 }
@@ -1202,7 +1201,7 @@ impl DeclKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
             DeclKind::Local(ref l) => &l.attrs,
-            DeclKind::Item(_) => &[]
+            DeclKind::Item(_) => &[],
         }
     }
 
@@ -1251,7 +1250,9 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug,
+)]
 pub struct BodyId {
     pub node_id: NodeId,
 }
@@ -1287,7 +1288,7 @@ pub struct Body {
 impl Body {
     pub fn id(&self) -> BodyId {
         BodyId {
-            node_id: self.value.id
+            node_id: self.value.id,
         }
     }
 }
@@ -1362,64 +1363,57 @@ impl Expr {
     }
 
     pub fn is_place_expr(&self) -> bool {
-         match self.node {
-            ExprKind::Path(QPath::Resolved(_, ref path)) => {
-                match path.def {
-                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
-                    _ => false,
-                }
-            }
+        match self.node {
+            ExprKind::Path(QPath::Resolved(_, ref path)) => match path.def {
+                Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                _ => false,
+            },
 
-            ExprKind::Type(ref e, _) => {
-                e.is_place_expr()
-            }
+            ExprKind::Type(ref e, _) => e.is_place_expr(),
 
-            ExprKind::Unary(UnDeref, _) |
-            ExprKind::Field(..) |
-            ExprKind::Index(..) => {
-                true
-            }
+            ExprKind::Unary(UnDeref, _) | ExprKind::Field(..) | ExprKind::Index(..) => true,
 
             // Partially qualified paths in expressions can only legally
             // refer to associated items which are always rvalues.
-            ExprKind::Path(QPath::TypeRelative(..)) |
-
-            ExprKind::Call(..) |
-            ExprKind::MethodCall(..) |
-            ExprKind::Struct(..) |
-            ExprKind::Tup(..) |
-            ExprKind::If(..) |
-            ExprKind::Match(..) |
-            ExprKind::Closure(..) |
-            ExprKind::Block(..) |
-            ExprKind::Repeat(..) |
-            ExprKind::Array(..) |
-            ExprKind::Break(..) |
-            ExprKind::Continue(..) |
-            ExprKind::Ret(..) |
-            ExprKind::While(..) |
-            ExprKind::Loop(..) |
-            ExprKind::Assign(..) |
-            ExprKind::InlineAsm(..) |
-            ExprKind::AssignOp(..) |
-            ExprKind::Lit(_) |
-            ExprKind::Unary(..) |
-            ExprKind::Box(..) |
-            ExprKind::AddrOf(..) |
-            ExprKind::Binary(..) |
-            ExprKind::Yield(..) |
-            ExprKind::Cast(..) |
-            ExprKind::Err => {
-                false
-            }
+            ExprKind::Path(QPath::TypeRelative(..))
+            | ExprKind::Call(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Tup(..)
+            | ExprKind::If(..)
+            | ExprKind::Match(..)
+            | ExprKind::Closure(..)
+            | ExprKind::Block(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Array(..)
+            | ExprKind::Break(..)
+            | ExprKind::Continue(..)
+            | ExprKind::Ret(..)
+            | ExprKind::While(..)
+            | ExprKind::Loop(..)
+            | ExprKind::Assign(..)
+            | ExprKind::InlineAsm(..)
+            | ExprKind::AssignOp(..)
+            | ExprKind::Lit(_)
+            | ExprKind::Unary(..)
+            | ExprKind::Box(..)
+            | ExprKind::AddrOf(..)
+            | ExprKind::Binary(..)
+            | ExprKind::Yield(..)
+            | ExprKind::Cast(..)
+            | ExprKind::Err => false,
         }
     }
 }
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id,
-               print::to_string(print::NO_ANN, |s| s.print_expr(self)))
+        write!(
+            f,
+            "expr({}: {})",
+            self.id,
+            print::to_string(print::NO_ANN, |s| s.print_expr(self))
+        )
     }
 }
 
@@ -1478,7 +1472,13 @@ pub enum ExprKind {
     ///
     /// This may also be a generator literal, indicated by the final boolean,
     /// in that case there is an GeneratorClause.
-    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
+    Closure(
+        CaptureClause,
+        P<FnDecl>,
+        BodyId,
+        Span,
+        Option<GeneratorMovability>,
+    ),
     /// A block (`'label: { ... }`)
     Block(P<Block>, Option<Label>),
 
@@ -1544,7 +1544,7 @@ pub enum QPath {
     /// UFCS source paths can desugar into this, with `Vec::new` turning into
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
-    TypeRelative(P<Ty>, P<PathSegment>)
+    TypeRelative(P<Ty>, P<PathSegment>),
 }
 
 /// Hints at the original code for a let statement
@@ -1562,9 +1562,7 @@ pub enum MatchSource {
     /// A `match _ { .. }`
     Normal,
     /// An `if let _ = _ { .. }` (optionally with `else { .. }`)
-    IfLetDesugar {
-        contains_else_clause: bool,
-    },
+    IfLetDesugar { contains_else_clause: bool },
     /// A `while let _ = _ { .. }` (which was desugared to a
     /// `loop { match _ { .. } }`)
     WhileLetDesugar,
@@ -1594,12 +1592,16 @@ pub enum LoopIdError {
 
 impl fmt::Display for LoopIdError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-            LoopIdError::OutsideLoopScope => "not inside loop scope",
-            LoopIdError::UnlabeledCfInWhileCondition =>
-                "unlabeled control flow (break or continue) in while condition",
-            LoopIdError::UnresolvedLabel => "label not found",
-        }, f)
+        fmt::Display::fmt(
+            match *self {
+                LoopIdError::OutsideLoopScope => "not inside loop scope",
+                LoopIdError::UnlabeledCfInWhileCondition => {
+                    "unlabeled control flow (break or continue) in while condition"
+                }
+                LoopIdError::UnresolvedLabel => "label not found",
+            },
+            f,
+        )
     }
 }
 
@@ -1613,7 +1615,9 @@ pub struct Destination {
     pub target_id: Result<NodeId, LoopIdError>,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(
+    Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug, Copy,
+)]
 pub enum GeneratorMovability {
     Static,
     Movable,
@@ -1741,8 +1745,11 @@ pub struct Ty {
 
 impl fmt::Debug for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "type({})",
-               print::to_string(print::NO_ANN, |s| s.print_type(self)))
+        write!(
+            f,
+            "type({})",
+            print::to_string(print::NO_ANN, |s| s.print_type(self))
+        )
     }
 }
 
@@ -1865,7 +1872,7 @@ pub enum ImplicitSelfKind {
     MutRef,
     /// Represents when a function does not have a self argument or
     /// when a function has a `self: X` argument.
-    None
+    None,
 }
 
 impl ImplicitSelfKind {
@@ -1882,7 +1889,7 @@ impl ImplicitSelfKind {
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum IsAuto {
     Yes,
-    No
+    No,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
@@ -1891,7 +1898,9 @@ pub enum IsAsync {
     NotAsync,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug,
+)]
 pub enum Unsafety {
     Unsafe,
     Normal,
@@ -1931,11 +1940,13 @@ impl Defaultness {
 
 impl fmt::Display for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-                              Unsafety::Normal => "normal",
-                              Unsafety::Unsafe => "unsafe",
-                          },
-                          f)
+        fmt::Display::fmt(
+            match *self {
+                Unsafety::Normal => "normal",
+                Unsafety::Unsafe => "unsafe",
+            },
+            f,
+        )
     }
 }
 
@@ -1955,7 +1966,6 @@ impl fmt::Debug for ImplPolarity {
         }
     }
 }
-
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FunctionRetTy {
@@ -2070,7 +2080,11 @@ pub type Visibility = Spanned<VisibilityKind>;
 pub enum VisibilityKind {
     Public,
     Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId, hir_id: HirId },
+    Restricted {
+        path: P<Path>,
+        id: NodeId,
+        hir_id: HirId,
+    },
     Inherited,
 }
 
@@ -2078,16 +2092,14 @@ impl VisibilityKind {
     pub fn is_pub(&self) -> bool {
         match *self {
             VisibilityKind::Public => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_pub_restricted(&self) -> bool {
         match *self {
-            VisibilityKind::Public |
-            VisibilityKind::Inherited => false,
-            VisibilityKind::Crate(..) |
-            VisibilityKind::Restricted { .. } => true,
+            VisibilityKind::Public | VisibilityKind::Inherited => false,
+            VisibilityKind::Crate(..) | VisibilityKind::Restricted { .. } => true,
         }
     }
 
@@ -2239,18 +2251,26 @@ pub enum ItemKind {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
     Union(VariantData, Generics),
     /// Represents a Trait Declaration
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
+    Trait(
+        IsAuto,
+        Unsafety,
+        Generics,
+        GenericBounds,
+        HirVec<TraitItemRef>,
+    ),
     /// Represents a Trait Alias Declaration
     TraitAlias(Generics, GenericBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
-    Impl(Unsafety,
-         ImplPolarity,
-         Defaultness,
-         Generics,
-         Option<TraitRef>, // (optional) trait this impl implements
-         P<Ty>, // self
-         HirVec<ImplItemRef>),
+    Impl(
+        Unsafety,
+        ImplPolarity,
+        Defaultness,
+        Generics,
+        Option<TraitRef>, // (optional) trait this impl implements
+        P<Ty>,            // self
+        HirVec<ImplItemRef>,
+    ),
 }
 
 impl ItemKind {
@@ -2286,15 +2306,19 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemKind::Fn(_, _, ref generics, _) |
-            ItemKind::Ty(_, ref generics) |
-            ItemKind::Existential(ExistTy { ref generics, impl_trait_fn: None, .. }) |
-            ItemKind::Enum(_, ref generics) |
-            ItemKind::Struct(_, ref generics) |
-            ItemKind::Union(_, ref generics) |
-            ItemKind::Trait(_, _, ref generics, _, _) |
-            ItemKind::Impl(_, _, _, ref generics, _, _, _)=> generics,
-            _ => return None
+            ItemKind::Fn(_, _, ref generics, _)
+            | ItemKind::Ty(_, ref generics)
+            | ItemKind::Existential(ExistTy {
+                ref generics,
+                impl_trait_fn: None,
+                ..
+            })
+            | ItemKind::Enum(_, ref generics)
+            | ItemKind::Struct(_, ref generics)
+            | ItemKind::Union(_, ref generics)
+            | ItemKind::Trait(_, _, ref generics, _, _)
+            | ItemKind::Impl(_, _, _, ref generics, _, _, _) => generics,
+            _ => return None,
         })
     }
 }
@@ -2377,14 +2401,14 @@ pub struct Freevar {
     pub def: Def,
 
     // First span where it is accessed (there can be multiple).
-    pub span: Span
+    pub span: Span,
 }
 
 impl Freevar {
     pub fn var_id(&self) -> NodeId {
         match self.def {
             Def::Local(id) | Def::Upvar(id, ..) => id,
-            _ => bug!("Freevar::var_id: bad def ({:?})", self.def)
+            _ => bug!("Freevar::var_id: bad def ({:?})", self.def),
         }
     }
 }
@@ -2405,7 +2429,6 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
-
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.describe_def = map::describe_def;
@@ -2498,14 +2521,12 @@ impl CodegenFnAttrs {
     /// * `#[export_name(...)]` is present
     /// * `#[linkage]` is present
     pub fn contains_extern_indicator(&self) -> bool {
-        self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) ||
-            self.export_name.is_some() ||
-            match self.linkage {
+        self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+            || self.export_name.is_some()
+            || match self.linkage {
                 // these are private, make sure we don't try to consider
                 // them external
-                None |
-                Some(Linkage::Internal) |
-                Some(Linkage::Private) => false,
+                None | Some(Linkage::Internal) | Some(Linkage::Private) => false,
                 Some(_) => true,
             }
     }

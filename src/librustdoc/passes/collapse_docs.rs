@@ -4,9 +4,11 @@ use fold::DocFolder;
 use passes::Pass;
 use std::mem::replace;
 
-pub const COLLAPSE_DOCS: Pass =
-    Pass::late("collapse-docs", collapse_docs,
-        "concatenates all document attributes into one document attribute");
+pub const COLLAPSE_DOCS: Pass = Pass::late(
+    "collapse-docs",
+    collapse_docs,
+    "concatenates all document attributes into one document attribute",
+);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum DocFragmentKind {
@@ -50,10 +52,10 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
             if curr_kind == DocFragmentKind::Include || curr_kind != new_kind {
                 match curr_frag {
                     DocFragment::SugaredDoc(_, _, ref mut doc_string)
-                        | DocFragment::RawDoc(_, _, ref mut doc_string) => {
-                            // add a newline for extra padding between segments
-                            doc_string.push('\n');
-                        }
+                    | DocFragment::RawDoc(_, _, ref mut doc_string) => {
+                        // add a newline for extra padding between segments
+                        doc_string.push('\n');
+                    }
                     _ => {}
                 }
                 docs.push(curr_frag);
@@ -61,11 +63,11 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
             } else {
                 match curr_frag {
                     DocFragment::SugaredDoc(_, ref mut span, ref mut doc_string)
-                        | DocFragment::RawDoc(_, ref mut span, ref mut doc_string) => {
-                            doc_string.push('\n');
-                            doc_string.push_str(frag.as_str());
-                            *span = span.to(frag.span());
-                        }
+                    | DocFragment::RawDoc(_, ref mut span, ref mut doc_string) => {
+                        doc_string.push('\n');
+                        doc_string.push_str(frag.as_str());
+                        *span = span.to(frag.span());
+                    }
                     _ => unreachable!(),
                 }
                 last_frag = Some(curr_frag);

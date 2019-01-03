@@ -30,11 +30,12 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![forbid(unsafe_code)]
-
 #![feature(nll)]
 #![feature(try_from)]
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
@@ -47,8 +48,8 @@ extern crate smallvec;
 
 use std::cmp::Ordering;
 use std::fmt;
-use std::ops::{Neg, Add, Sub, Mul, Div, Rem};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
+use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::ops::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
 use std::str::FromStr;
 
 bitflags! {
@@ -108,7 +109,7 @@ macro_rules! unpack {
                 value
             }
         }
-    }
+    };
 }
 
 /// Category of internally-represented number.
@@ -225,8 +226,8 @@ pub struct ParseError(pub &'static str);
 ///
 /// New operations: sqrt, nexttoward.
 ///
-pub trait Float
-    : Copy
+pub trait Float:
+    Copy
     + Default
     + FromStr<Err = ParseError>
     + PartialOrd
@@ -241,7 +242,8 @@ pub trait Float
     + Sub<Output = StatusAnd<Self>>
     + Mul<Output = StatusAnd<Self>>
     + Div<Output = StatusAnd<Self>>
-    + Rem<Output = StatusAnd<Self>> {
+    + Rem<Output = StatusAnd<Self>>
+{
     /// Total number of bits in the in-memory format.
     const BITS: usize;
 
@@ -351,7 +353,11 @@ pub trait Float
     }
 
     fn abs(self) -> Self {
-        if self.is_negative() { -self } else { self }
+        if self.is_negative() {
+            -self
+        } else {
+            self
+        }
     }
     fn copy_sign(self, rhs: Self) -> Self {
         if self.is_negative() != rhs.is_negative() {
@@ -415,9 +421,8 @@ pub trait Float
         } else {
             // Positive case is simpler, can pretend it's a smaller unsigned
             // integer, and `to_u128` will take care of all the edge cases.
-            self.to_u128_r(width - 1, round, is_exact).map(
-                |r| r as i128,
-            )
+            self.to_u128_r(width - 1, round, is_exact)
+                .map(|r| r as i128)
         }
     }
     fn to_i128(self, width: usize) -> StatusAnd<i128> {
@@ -541,9 +546,9 @@ pub trait Float
         if !self.is_finite() {
             return false;
         }
-        self.round_to_integral(Round::TowardZero).value.bitwise_eq(
-            self,
-        )
+        self.round_to_integral(Round::TowardZero)
+            .value
+            .bitwise_eq(self)
     }
 
     /// If this value has an exact multiplicative inverse, return it.
@@ -591,13 +596,19 @@ pub trait FloatConvert<T: Float>: Float {
 
 macro_rules! float_common_impls {
     ($ty:ident<$t:tt>) => {
-        impl<$t> Default for $ty<$t> where Self: Float {
+        impl<$t> Default for $ty<$t>
+        where
+            Self: Float,
+        {
             fn default() -> Self {
                 Self::ZERO
             }
         }
 
-        impl<$t> ::std::str::FromStr for $ty<$t> where Self: Float {
+        impl<$t> ::std::str::FromStr for $ty<$t>
+        where
+            Self: Float,
+        {
             type Err = ParseError;
             fn from_str(s: &str) -> Result<Self, ParseError> {
                 Self::from_str_r(s, Round::NearestTiesToEven).map(|x| x.value)
@@ -606,71 +617,101 @@ macro_rules! float_common_impls {
 
         // Rounding ties to the nearest even, by default.
 
-        impl<$t> ::std::ops::Add for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::Add for $ty<$t>
+        where
+            Self: Float,
+        {
             type Output = StatusAnd<Self>;
             fn add(self, rhs: Self) -> StatusAnd<Self> {
                 self.add_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Sub for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::Sub for $ty<$t>
+        where
+            Self: Float,
+        {
             type Output = StatusAnd<Self>;
             fn sub(self, rhs: Self) -> StatusAnd<Self> {
                 self.sub_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Mul for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::Mul for $ty<$t>
+        where
+            Self: Float,
+        {
             type Output = StatusAnd<Self>;
             fn mul(self, rhs: Self) -> StatusAnd<Self> {
                 self.mul_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Div for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::Div for $ty<$t>
+        where
+            Self: Float,
+        {
             type Output = StatusAnd<Self>;
             fn div(self, rhs: Self) -> StatusAnd<Self> {
                 self.div_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Rem for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::Rem for $ty<$t>
+        where
+            Self: Float,
+        {
             type Output = StatusAnd<Self>;
             fn rem(self, rhs: Self) -> StatusAnd<Self> {
                 self.c_fmod(rhs)
             }
         }
 
-        impl<$t> ::std::ops::AddAssign for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::AddAssign for $ty<$t>
+        where
+            Self: Float,
+        {
             fn add_assign(&mut self, rhs: Self) {
                 *self = (*self + rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::SubAssign for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::SubAssign for $ty<$t>
+        where
+            Self: Float,
+        {
             fn sub_assign(&mut self, rhs: Self) {
                 *self = (*self - rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::MulAssign for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::MulAssign for $ty<$t>
+        where
+            Self: Float,
+        {
             fn mul_assign(&mut self, rhs: Self) {
                 *self = (*self * rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::DivAssign for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::DivAssign for $ty<$t>
+        where
+            Self: Float,
+        {
             fn div_assign(&mut self, rhs: Self) {
                 *self = (*self / rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::RemAssign for $ty<$t> where Self: Float {
+        impl<$t> ::std::ops::RemAssign for $ty<$t>
+        where
+            Self: Float,
+        {
             fn rem_assign(&mut self, rhs: Self) {
                 *self = (*self % rhs).value;
             }
         }
-    }
+    };
 }
 
 pub mod ieee;

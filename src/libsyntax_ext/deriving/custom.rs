@@ -1,10 +1,10 @@
 use errors::FatalError;
-use syntax::ast::{self, ItemKind, Attribute, Mac};
-use syntax::attr::{mark_used, mark_known};
-use syntax::source_map::Span;
+use syntax::ast::{self, Attribute, ItemKind, Mac};
+use syntax::attr::{mark_known, mark_used};
 use syntax::ext::base::*;
 use syntax::parse;
 use syntax::parse::token::{self, Token};
+use syntax::source_map::Span;
 use syntax::tokenstream;
 use syntax::visit::Visitor;
 use syntax_pos::DUMMY_SP;
@@ -32,32 +32,37 @@ pub struct ProcMacroDerive {
 }
 
 impl MultiItemModifier for ProcMacroDerive {
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              span: Span,
-              _meta_item: &ast::MetaItem,
-              item: Annotatable)
-              -> Vec<Annotatable> {
+    fn expand(
+        &self,
+        ecx: &mut ExtCtxt,
+        span: Span,
+        _meta_item: &ast::MetaItem,
+        item: Annotatable,
+    ) -> Vec<Annotatable> {
         let item = match item {
             Annotatable::Item(item) => item,
-            Annotatable::ImplItem(_) |
-            Annotatable::TraitItem(_) |
-            Annotatable::ForeignItem(_) |
-            Annotatable::Stmt(_) |
-            Annotatable::Expr(_) => {
-                ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to a struct, enum, or union");
-                return Vec::new()
+            Annotatable::ImplItem(_)
+            | Annotatable::TraitItem(_)
+            | Annotatable::ForeignItem(_)
+            | Annotatable::Stmt(_)
+            | Annotatable::Expr(_) => {
+                ecx.span_err(
+                    span,
+                    "proc-macro derives may only be \
+                     applied to a struct, enum, or union",
+                );
+                return Vec::new();
             }
         };
         match item.node {
-            ItemKind::Struct(..) |
-            ItemKind::Enum(..) |
-            ItemKind::Union(..) => {},
+            ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..) => {}
             _ => {
-                ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to a struct, enum, or union");
-                return Vec::new()
+                ecx.span_err(
+                    span,
+                    "proc-macro derives may only be \
+                     applied to a struct, enum, or union",
+                );
+                return Vec::new();
             }
         }
 
@@ -91,9 +96,7 @@ impl MultiItemModifier for ProcMacroDerive {
         loop {
             match parser.parse_item() {
                 Ok(None) => break,
-                Ok(Some(item)) => {
-                    items.push(Annotatable::Item(item))
-                }
+                Ok(Some(item)) => items.push(Annotatable::Item(item)),
                 Err(mut err) => {
                     // FIXME: handle this better
                     err.cancel();
@@ -102,7 +105,6 @@ impl MultiItemModifier for ProcMacroDerive {
                 }
             }
         }
-
 
         // fail if there have been errors emitted
         if ecx.parse_sess.span_diagnostic.err_count() > error_count_before {

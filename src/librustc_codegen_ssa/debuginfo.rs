@@ -1,6 +1,6 @@
-use syntax_pos::{BytePos, Span};
 use rustc::hir::def_id::CrateNum;
 use std::cell::Cell;
+use syntax_pos::{BytePos, Span};
 
 pub enum FunctionDebugContext<D> {
     RegularContext(FunctionDebugContextData<D>),
@@ -38,9 +38,7 @@ impl<D> FunctionDebugContext<D> {
 /// first real statement/expression of the function is codegened.
 pub fn start_emitting_source_locations<D>(dbg_context: &FunctionDebugContext<D>) {
     match *dbg_context {
-        FunctionDebugContext::RegularContext(ref data) => {
-            data.source_locations_enabled.set(true)
-        },
+        FunctionDebugContext::RegularContext(ref data) => data.source_locations_enabled.set(true),
         _ => { /* safe to ignore */ }
     }
 }
@@ -53,17 +51,21 @@ pub struct FunctionDebugContextData<D> {
 
 pub enum VariableAccess<'a, V> {
     // The llptr given is an alloca containing the variable's value
-    DirectVariable { alloca: V },
+    DirectVariable {
+        alloca: V,
+    },
     // The llptr given is an alloca containing the start of some pointer chain
     // leading to the variable's content.
-    IndirectVariable { alloca: V, address_operations: &'a [i64] }
+    IndirectVariable {
+        alloca: V,
+        address_operations: &'a [i64],
+    },
 }
 
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct MirDebugScope<D> {

@@ -2,10 +2,11 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
@@ -13,8 +14,7 @@
 #![allow(unused_attributes)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 extern crate flate2;
 #[macro_use]
@@ -22,18 +22,19 @@ extern crate log;
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_target;
+extern crate rustc_incremental;
 extern crate rustc_metadata;
 extern crate rustc_mir;
-extern crate rustc_incremental;
+extern crate rustc_target;
 extern crate syntax;
 extern crate syntax_pos;
-#[macro_use] extern crate rustc_data_structures;
+#[macro_use]
+extern crate rustc_data_structures;
 
 use rustc::ty::TyCtxt;
 
-pub mod link;
 pub mod codegen_backend;
+pub mod link;
 pub mod symbol_names;
 pub mod symbol_names_test;
 

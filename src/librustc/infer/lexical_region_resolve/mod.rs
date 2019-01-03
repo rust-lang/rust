@@ -18,7 +18,7 @@ use std::u32;
 use ty::fold::TypeFoldable;
 use ty::{self, Ty, TyCtxt};
 use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
+use ty::{ReLateBound, RePlaceholder, ReScope, ReVar};
 use ty::{Region, RegionVid};
 
 mod graphviz;
@@ -138,7 +138,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
             error_region: tcx.types.re_static,
-            values: IndexVec::from_elem_n(VarValue::Value(tcx.types.re_empty), self.num_vars())
+            values: IndexVec::from_elem_n(VarValue::Value(tcx.types.re_empty), self.num_vars()),
         }
     }
 
@@ -218,15 +218,15 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         match *a_region {
             // Check if this relationship is implied by a given.
-            ty::ReEarlyBound(_) | ty::ReFree(_) => if self.data.givens.contains(&(a_region, b_vid))
-            {
-                debug!("given");
-                return false;
-            },
+            ty::ReEarlyBound(_) | ty::ReFree(_) => {
+                if self.data.givens.contains(&(a_region, b_vid)) {
+                    debug!("given");
+                    return false;
+                }
+            }
 
             _ => {}
         }
-
 
         match *b_data {
             VarValue::Value(cur_region) => {
@@ -304,15 +304,18 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 // at least as big as fr.scope".  So, we can
                 // reasonably compare free regions and scopes:
                 let fr_scope = match (a, b) {
-                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => self.region_rels
+                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => self
+                        .region_rels
                         .region_scope_tree
                         .early_free_scope(self.tcx(), br),
-                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => self.region_rels
+                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => self
+                        .region_rels
                         .region_scope_tree
                         .free_scope(self.tcx(), fr),
                     _ => bug!(),
                 };
-                let r_id = self.region_rels
+                let r_id = self
+                    .region_rels
                     .region_scope_tree
                     .nearest_common_ancestor(fr_scope, s_id);
                 if r_id == fr_scope {
@@ -335,7 +338,8 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 // The region corresponding to an outer block is a
                 // subtype of the region corresponding to an inner
                 // block.
-                let lub = self.region_rels
+                let lub = self
+                    .region_rels
                     .region_scope_tree
                     .nearest_common_ancestor(a_id, b_id);
                 tcx.mk_region(ReScope(lub))
@@ -348,11 +352,13 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
             // For these types, we cannot define any additional
             // relationship:
-            (&RePlaceholder(..), _) | (_, &RePlaceholder(..)) => if a == b {
-                a
-            } else {
-                tcx.types.re_static
-            },
+            (&RePlaceholder(..), _) | (_, &RePlaceholder(..)) => {
+                if a == b {
+                    a
+                } else {
+                    tcx.types.re_static
+                }
+            }
         }
     }
 
@@ -473,27 +479,27 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
                     /* Inference impossible, this value contains
-                       inconsistent constraints.
+                    inconsistent constraints.
 
-                       I think that in this case we should report an
-                       error now---unlike the case above, we can't
-                       wait to see whether the user needs the result
-                       of this variable.  The reason is that the mere
-                       existence of this variable implies that the
-                       region graph is inconsistent, whether or not it
-                       is used.
+                    I think that in this case we should report an
+                    error now---unlike the case above, we can't
+                    wait to see whether the user needs the result
+                    of this variable.  The reason is that the mere
+                    existence of this variable implies that the
+                    region graph is inconsistent, whether or not it
+                    is used.
 
-                       For example, we may have created a region
-                       variable that is the GLB of two other regions
-                       which do not have a GLB.  Even if that variable
-                       is not used, it implies that those two regions
-                       *should* have a GLB.
+                    For example, we may have created a region
+                    variable that is the GLB of two other regions
+                    which do not have a GLB.  Even if that variable
+                    is not used, it implies that those two regions
+                    *should* have a GLB.
 
-                       At least I think this is true. It may be that
-                       the mere existence of a conflict in a region variable
-                       that is not used is not a problem, so if this rule
-                       starts to create problems we'll have to revisit
-                       this portion of the code and think hard about it. =) */
+                    At least I think this is true. It may be that
+                    the mere existence of a conflict in a region variable
+                    that is not used is not a problem, so if this rule
+                    starts to create problems we'll have to revisit
+                    this portion of the code and think hard about it. =) */
                     self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
@@ -587,7 +593,8 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             };
 
             for upper_bound in &upper_bounds {
-                if !self.region_rels
+                if !self
+                    .region_rels
                     .is_subregion_of(effective_lower_bound, upper_bound.region)
                 {
                     let origin = self.var_infos[node_idx].origin.clone();
@@ -742,16 +749,16 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                     && self.bound_is_met(b, var_values, generic_ty, min)
             }
 
-            VerifyBound::OutlivedBy(r) =>
-                self.region_rels.is_subregion_of(
-                    min,
-                    var_values.normalize(self.tcx(), r),
-                ),
+            VerifyBound::OutlivedBy(r) => self
+                .region_rels
+                .is_subregion_of(min, var_values.normalize(self.tcx(), r)),
 
-            VerifyBound::AnyBound(bs) => bs.iter()
+            VerifyBound::AnyBound(bs) => bs
+                .iter()
                 .any(|b| self.bound_is_met(b, var_values, generic_ty, min)),
 
-            VerifyBound::AllBounds(bs) => bs.iter()
+            VerifyBound::AllBounds(bs) => bs
+                .iter()
                 .all(|b| self.bound_is_met(b, var_values, generic_ty, min)),
         }
     }

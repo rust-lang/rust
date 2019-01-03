@@ -394,14 +394,16 @@ fn resolve_lifetimes<'tcx>(
     }
     for k in named_region_map.late_bound {
         let hir_id = tcx.hir().node_to_hir_id(k);
-        let map = rl.late_bound
+        let map = rl
+            .late_bound
             .entry(hir_id.owner_local_def_id())
             .or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id);
     }
     for (k, v) in named_region_map.object_lifetime_defaults {
         let hir_id = tcx.hir().node_to_hir_id(k);
-        let map = rl.object_lifetime_defaults
+        let map = rl
+            .object_lifetime_defaults
             .entry(hir_id.owner_local_def_id())
             .or_default();
         Lrc::get_mut(map)
@@ -442,8 +444,7 @@ fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
 /// This function returns whether there is such an implicit parameter defined on the given item.
 fn sub_items_have_self_param(node: &hir::ItemKind) -> bool {
     match *node {
-        hir::ItemKind::Trait(..) |
-        hir::ItemKind::TraitAlias(..) => true,
+        hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => true,
         _ => false,
     }
 }
@@ -582,7 +583,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
                 let scope = Scope::Binder {
-                    lifetimes: c.generic_params
+                    lifetimes: c
+                        .generic_params
                         .iter()
                         .filter_map(|param| match param.kind {
                             GenericParamKind::Lifetime { .. } => {
@@ -1020,12 +1022,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     ) {
         debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
-        if !self.trait_ref_hack || trait_ref.bound_generic_params.iter().any(|param| {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => true,
-                _ => false,
-            }
-        }) {
+        if !self.trait_ref_hack
+            || trait_ref
+                .bound_generic_params
+                .iter()
+                .any(|param| match param.kind {
+                    GenericParamKind::Lifetime { .. } => true,
+                    _ => false,
+                })
+        {
             if self.trait_ref_hack {
                 span_err!(
                     self.tcx.sess,
@@ -1131,9 +1136,10 @@ fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_, '_, '_>, params: &P<[hi
             *in_band_span,
             E0688,
             "cannot mix in-band and explicit lifetime definitions"
-        ).span_label(*in_band_span, "in-band lifetime definition here")
-            .span_label(*explicit_span, "explicit lifetime definition here")
-            .emit();
+        )
+        .span_label(*in_band_span, "in-band lifetime definition here")
+        .span_label(*explicit_span, "explicit lifetime definition here")
+        .emit();
     }
 }
 
@@ -1421,8 +1427,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             ..
         } = self;
         let labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
-        let xcrate_object_lifetime_defaults =
-            replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap::default());
+        let xcrate_object_lifetime_defaults = replace(
+            &mut self.xcrate_object_lifetime_defaults,
+            DefIdMap::default(),
+        );
         let mut this = LifetimeContext {
             tcx: *tcx,
             map: map,
@@ -1476,7 +1484,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     // helper method to issue suggestions from `fn rah<'a>(&'a T)` to `fn rah(&T)`
     fn suggest_eliding_single_use_lifetime(
-        &self, err: &mut DiagnosticBuilder<'_>, def_id: DefId, lifetime: &hir::Lifetime
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        def_id: DefId,
+        lifetime: &hir::Lifetime,
     ) {
         // FIXME: future work: also suggest `impl Foo<'_>` for `impl<'a> Foo<'a>`
         let name = lifetime.name.ident();
@@ -1495,8 +1506,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         // include the trailing whitespace between the ampersand and the type name
                         let lt_through_ty_span = lifetime.span.to(input.span.shrink_to_hi());
                         remove_use = Some(
-                            self.tcx.sess.source_map()
-                                .span_until_non_whitespace(lt_through_ty_span)
+                            self.tcx
+                                .sess
+                                .source_map()
+                                .span_until_non_whitespace(lt_through_ty_span),
                         );
                         break;
                     }
@@ -1504,13 +1517,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         if let Node::Lifetime(hir_lifetime) = self.tcx.hir().get(lifetime.id) {
-            if let Some(parent) = self.tcx.hir().find(self.tcx.hir().get_parent(hir_lifetime.id)) {
+            if let Some(parent) = self
+                .tcx
+                .hir()
+                .find(self.tcx.hir().get_parent(hir_lifetime.id))
+            {
                 match parent {
                     Node::Item(item) => {
                         if let hir::ItemKind::Fn(decl, _, _, _) = &item.node {
                             find_arg_use_span(&decl.inputs);
                         }
-                    },
+                    }
                     Node::ImplItem(impl_item) => {
                         if let hir::ImplItemKind::Method(sig, _) = &impl_item.node {
                             find_arg_use_span(&sig.decl.inputs);
@@ -1748,8 +1765,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     next_early_index,
                     abstract_type_parent,
                     ..
-                } if (!only_abstract_type_parent || abstract_type_parent) =>
-                {
+                } if (!only_abstract_type_parent || abstract_type_parent) => {
                     return next_early_index
                 }
 
@@ -1859,8 +1875,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             E0687,
                             "lifetimes used in `fn` or `Fn` syntax must be \
                              explicitly declared using `<...>` binders"
-                        ).span_label(lifetime_ref.span, "in-band lifetime definition")
-                            .emit();
+                        )
+                        .span_label(lifetime_ref.span, "in-band lifetime definition")
+                        .emit();
                     }
 
                     Region::Static
@@ -1881,8 +1898,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 E0261,
                 "use of undeclared lifetime name `{}`",
                 lifetime_ref
-            ).span_label(lifetime_ref.span, "undeclared lifetime")
-                .emit();
+            )
+            .span_label(lifetime_ref.span, "undeclared lifetime")
+            .emit();
         }
     }
 
@@ -1931,7 +1949,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             | Def::Union(def_id)
             | Def::Enum(def_id)
             | Def::TyAlias(def_id)
-            | Def::Trait(def_id) if depth == 0 =>
+            | Def::Trait(def_id)
+                if depth == 0 =>
             {
                 Some(def_id)
             }
@@ -1980,11 +1999,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             unsubst
                 .iter()
                 .map(|set| match *set {
-                    Set1::Empty => if in_body {
-                        None
-                    } else {
-                        Some(Region::Static)
-                    },
+                    Set1::Empty => {
+                        if in_body {
+                            None
+                        } else {
+                            Some(Region::Static)
+                        }
+                    }
                     Set1::One(r) => {
                         let lifetimes = generic_args.args.iter().filter_map(|arg| match arg {
                             GenericArg::Lifetime(lt) => Some(lt),
@@ -2063,7 +2084,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 node: hir::TraitItemKind::Method(_, ref m),
                 ..
             }) => {
-                if let hir::ItemKind::Trait(.., ref trait_items) = self.tcx
+                if let hir::ItemKind::Trait(.., ref trait_items) = self
+                    .tcx
                     .hir()
                     .expect_item(self.tcx.hir().get_parent(parent))
                     .node
@@ -2083,7 +2105,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 node: hir::ImplItemKind::Method(_, body),
                 ..
             }) => {
-                if let hir::ItemKind::Impl(.., ref self_ty, ref impl_items) = self.tcx
+                if let hir::ItemKind::Impl(.., ref self_ty, ref impl_items) = self
+                    .tcx
                     .hir()
                     .expect_item(self.tcx.hir().get_parent(parent))
                     .node
@@ -2348,7 +2371,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 } else if snippet == "'_" {
                     ("'static".to_owned(), Applicability::MachineApplicable)
                 } else {
-                    (format!("{} + 'static", snippet), Applicability::MaybeIncorrect)
+                    (
+                        format!("{} + 'static", snippet),
+                        Applicability::MaybeIncorrect,
+                    )
                 };
                 db.span_suggestion_with_applicability(span, msg, sugg, applicability);
                 false
@@ -2513,9 +2539,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         E0263,
                         "lifetime name `{}` declared twice in the same scope",
                         lifetime_j.name.ident()
-                    ).span_label(lifetime_j.span, "declared twice")
-                        .span_label(lifetime_i.span, "previous declaration here")
-                        .emit();
+                    )
+                    .span_label(lifetime_j.span, "declared twice")
+                    .span_label(lifetime_i.span, "previous declaration here")
+                    .emit();
                 }
             }
 

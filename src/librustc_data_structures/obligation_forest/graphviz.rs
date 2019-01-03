@@ -29,7 +29,9 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         let counter = COUNTER.fetch_add(1, Ordering::AcqRel);
 
-        let file_path = dir.as_ref().join(format!("{:010}_{}.gv", counter, description));
+        let file_path = dir
+            .as_ref()
+            .join(format!("{:010}_{}.gv", counter, description));
 
         let mut gv_file = File::create(file_path).unwrap();
 
@@ -51,7 +53,11 @@ impl<'a, O: ForestObligation + 'a> dot::Labeller<'a> for &'a ObligationForest<O>
 
     fn node_label(&self, index: &Self::Node) -> dot::LabelText {
         let node = &self.nodes[*index];
-        let label = format!("{:?} ({:?})", node.obligation.as_predicate(), node.state.get());
+        let label = format!(
+            "{:?} ({:?})",
+            node.obligation.as_predicate(),
+            node.state.get()
+        );
 
         dot::LabelText::LabelStr(label.into())
     }
@@ -74,7 +80,9 @@ impl<'a, O: ForestObligation + 'a> dot::GraphWalk<'a> for &'a ObligationForest<O
             .flat_map(|i| {
                 let node = &self.nodes[i];
 
-                node.parent.iter().map(|p| p.get())
+                node.parent
+                    .iter()
+                    .map(|p| p.get())
                     .chain(node.dependents.iter().map(|p| p.get()))
                     .map(move |p| (p, i))
             })

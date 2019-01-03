@@ -10,10 +10,7 @@ pub struct Subtype<'tcx> {
 
 impl<'tcx> Subtype<'tcx> {
     pub fn new(sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
-        Self {
-            sub,
-            sup,
-        }
+        Self { sub, sup }
     }
 }
 

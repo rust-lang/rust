@@ -1,8 +1,8 @@
 //! impl char {}
 
+use super::*;
 use slice;
 use str::from_utf8_unchecked_mut;
-use super::*;
 use unicode::printable::is_printable;
 use unicode::tables::{conversions, derived_property, general_category, property};
 
@@ -115,9 +115,9 @@ impl char {
 
         // the code is split up here to improve execution speed for cases where
         // the `radix` is constant and 10 or smaller
-        let val = if radix <= 10  {
+        let val = if radix <= 10 {
             match self {
-                '0' ..= '9' => self as u32 - '0' as u32,
+                '0'..='9' => self as u32 - '0' as u32,
                 _ => return None,
             }
         } else {
@@ -129,8 +129,11 @@ impl char {
             }
         };
 
-        if val < radix { Some(val) }
-        else { None }
+        if val < radix {
+            Some(val)
+        } else {
+            None
+        }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -304,8 +307,8 @@ impl char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            '\x20' ..= '\x7e' => EscapeDefaultState::Char(self),
-            _ => EscapeDefaultState::Unicode(self.escape_unicode())
+            '\x20'..='\x7e' => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode()),
         };
         EscapeDefault { state: init_state }
     }
@@ -393,7 +396,11 @@ impl char {
     #[inline]
     pub fn len_utf16(self) -> usize {
         let ch = self as u32;
-        if (ch & 0xFFFF) == ch { 1 } else { 2 }
+        if (ch & 0xFFFF) == ch {
+            1
+        } else {
+            2
+        }
     }
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -437,30 +444,31 @@ impl char {
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         let code = self as u32;
         unsafe {
-            let len =
-            if code < MAX_ONE_B && !dst.is_empty() {
+            let len = if code < MAX_ONE_B && !dst.is_empty() {
                 *dst.get_unchecked_mut(0) = code as u8;
                 1
             } else if code < MAX_TWO_B && dst.len() >= 2 {
                 *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
                 *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
                 2
-            } else if code < MAX_THREE_B && dst.len() >= 3  {
+            } else if code < MAX_THREE_B && dst.len() >= 3 {
                 *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(1) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
                 *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
                 3
             } else if dst.len() >= 4 {
                 *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
                 *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
                 *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
                 4
             } else {
-                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                panic!(
+                    "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
                     from_u32_unchecked(code).len_utf8(),
                     code,
-                    dst.len())
+                    dst.len()
+                )
             };
             from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
         }
@@ -516,10 +524,12 @@ impl char {
                 *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
                 slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
             } else {
-                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                panic!(
+                    "encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
                     from_u32_unchecked(code).len_utf16(),
                     code,
-                    dst.len())
+                    dst.len()
+                )
             }
         }
     }
@@ -554,9 +564,11 @@ impl char {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to `ID_Start` but modified for closure under `NFKx`.
-    #[unstable(feature = "rustc_private",
-               reason = "mainly needed for compiler internals",
-               issue = "27812")]
+    #[unstable(
+        feature = "rustc_private",
+        reason = "mainly needed for compiler internals",
+        issue = "27812"
+    )]
     #[inline]
     pub fn is_xid_start(self) -> bool {
         derived_property::XID_Start(self)
@@ -568,9 +580,11 @@ impl char {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[unstable(feature = "rustc_private",
-               reason = "mainly needed for compiler internals",
-               issue = "27812")]
+    #[unstable(
+        feature = "rustc_private",
+        reason = "mainly needed for compiler internals",
+        issue = "27812"
+    )]
     #[inline]
     pub fn is_xid_continue(self) -> bool {
         derived_property::XID_Continue(self)

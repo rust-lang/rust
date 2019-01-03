@@ -1,6 +1,6 @@
-use deriving::{self, pathvec_std, path_std};
-use deriving::generic::*;
 use deriving::generic::ty::*;
+use deriving::generic::*;
+use deriving::{self, path_std, pathvec_std};
 
 use syntax::ast::{Expr, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -8,12 +8,13 @@ use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
-pub fn expand_deriving_hash(cx: &mut ExtCtxt,
-                            span: Span,
-                            mitem: &MetaItem,
-                            item: &Annotatable,
-                            push: &mut dyn FnMut(Annotatable)) {
-
+pub fn expand_deriving_hash(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
     let typaram = &*deriving::hygienic_type_parameter(item, "__H");
@@ -28,22 +29,24 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-                          name: "hash",
-                          generics: LifetimeBounds {
-                              lifetimes: Vec::new(),
-                              bounds: vec![(typaram, vec![path_std!(cx, hash::Hasher)])],
-                          },
-                          explicit_self: borrowed_explicit_self(),
-                          args: vec![(Ptr(Box::new(Literal(arg)),
-                                         Borrowed(None, Mutability::Mutable)), "state")],
-                          ret_ty: nil_ty(),
-                          attributes: vec![],
-                          is_unsafe: false,
-                          unify_fieldless_variants: true,
-                          combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                              hash_substructure(a, b, c)
-                          })),
-                      }],
+            name: "hash",
+            generics: LifetimeBounds {
+                lifetimes: Vec::new(),
+                bounds: vec![(typaram, vec![path_std!(cx, hash::Hasher)])],
+            },
+            explicit_self: borrowed_explicit_self(),
+            args: vec![(
+                Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mutable)),
+                "state",
+            )],
+            ret_ty: nil_ty(),
+            attributes: vec![],
+            is_unsafe: false,
+            unify_fieldless_variants: true,
+            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                hash_substructure(a, b, c)
+            })),
+        }],
         associated_types: Vec::new(),
     };
 
@@ -53,10 +56,10 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
 fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let state_expr = match (substr.nonself_args.len(), substr.nonself_args.get(0)) {
         (1, Some(o_f)) => o_f,
-        _ => {
-            cx.span_bug(trait_span,
-                        "incorrect number of arguments in `derive(Hash)`")
-        }
+        _ => cx.span_bug(
+            trait_span,
+            "incorrect number of arguments in `derive(Hash)`",
+        ),
     };
     let call_hash = |span, thing_expr| {
         let hash_path = {
@@ -73,10 +76,12 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     let fields = match *substr.fields {
         Struct(_, ref fs) | EnumMatching(_, 1, .., ref fs) => fs,
         EnumMatching(.., ref fs) => {
-            let variant_value = deriving::call_intrinsic(cx,
-                                                         trait_span,
-                                                         "discriminant_value",
-                                                         vec![cx.expr_self(trait_span)]);
+            let variant_value = deriving::call_intrinsic(
+                cx,
+                trait_span,
+                "discriminant_value",
+                vec![cx.expr_self(trait_span)],
+            );
 
             stmts.push(call_hash(trait_span, variant_value));
 
@@ -85,8 +90,11 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
     };
 
-    stmts.extend(fields.iter().map(|FieldInfo { ref self_, span, .. }|
-        call_hash(*span, self_.clone())));
+    stmts.extend(fields.iter().map(
+        |FieldInfo {
+             ref self_, span, ..
+         }| call_hash(*span, self_.clone()),
+    ));
 
     cx.expr_block(cx.block(trait_span, stmts))
 }

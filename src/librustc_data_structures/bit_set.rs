@@ -97,7 +97,10 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn superset(&self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        self.words
+            .iter()
+            .zip(&other.words)
+            .all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
@@ -154,7 +157,7 @@ impl<T: Idx> BitSet<T> {
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| { a & b })
+        bitwise(&mut self.words, &other.words, |a, b| a & b)
     }
 
     /// Get a slice of the underlying words.
@@ -196,22 +199,20 @@ pub trait SubtractFromBitSet<T: Idx> {
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| { a | b })
+        bitwise(&mut other.words, &self.words, |a, b| a | b)
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| { a & !b })
+        bitwise(&mut other.words, &self.words, |a, b| a & !b)
     }
 }
 
 impl<T: Idx> fmt::Debug for BitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        w.debug_list()
-         .entries(self.iter())
-         .finish()
+        w.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -226,7 +227,8 @@ impl<T: Idx> ToString for BitSet<T> {
         let mut i = 0;
         for word in &self.words {
             let mut word = *word;
-            for _ in 0..WORD_BYTES { // for each byte in `word`:
+            for _ in 0..WORD_BYTES {
+                // for each byte in `word`:
                 let remain = self.domain_size - i;
                 // If less than a byte remains, then mask just that many bits.
                 let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
@@ -235,7 +237,9 @@ impl<T: Idx> ToString for BitSet<T> {
 
                 result.push_str(&format!("{}{:02x}", sep, byte));
 
-                if remain <= 8 { break; }
+                if remain <= 8 {
+                    break;
+                }
                 word >>= 8;
                 i += 8;
                 sep = '-';
@@ -251,7 +255,7 @@ impl<T: Idx> ToString for BitSet<T> {
 pub struct BitIter<'a, T: Idx> {
     cur: Option<(Word, usize)>,
     iter: iter::Enumerate<slice::Iter<'a, Word>>,
-    marker: PhantomData<T>
+    marker: PhantomData<T>,
 }
 
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
@@ -263,7 +267,7 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
                 if bit_pos != WORD_BITS {
                     let bit = 1 << bit_pos;
                     *word ^= bit;
-                    return Some(T::new(bit_pos + offset))
+                    return Some(T::new(bit_pos + offset));
                 }
             }
 
@@ -280,7 +284,8 @@ pub trait BitSetOperator {
 
 #[inline]
 fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
-    where Op: Fn(Word, Word) -> Word
+where
+    Op: Fn(Word, Word) -> Word,
 {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
@@ -311,7 +316,7 @@ impl<T: Idx> SparseBitSet<T> {
     fn new_empty(domain_size: usize) -> Self {
         SparseBitSet {
             domain_size,
-            elems: SmallVec::new()
+            elems: SmallVec::new(),
         }
     }
 
@@ -604,11 +609,15 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: BitSet::new_empty(0) }
+        GrowableBitSet {
+            bit_set: BitSet::new_empty(0),
+        }
     }
 
     pub fn with_capacity(bits: usize) -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: BitSet::new_empty(bits) }
+        GrowableBitSet {
+            bit_set: BitSet::new_empty(bits),
+        }
     }
 
     /// Returns true if the set has changed.
@@ -955,7 +964,10 @@ fn hybrid_bitset() {
         assert!(dense10.insert(i));
     }
     assert!(!dense10.is_empty());
-    assert_eq!(dense10.iter().collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert_eq!(
+        dense10.iter().collect::<Vec<_>>(),
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    );
 
     let mut dense256 = HybridBitSet::new_empty(256);
     assert!(dense256.is_empty());
@@ -965,14 +977,14 @@ fn hybrid_bitset() {
         assert!(dense256.contains(i));
     }
 
-    assert!(sparse038.superset(&sparse038));    // sparse + sparse (self)
-    assert!(sparse01358.superset(&sparse038));  // sparse + sparse
-    assert!(dense10.superset(&sparse038));      // dense + sparse
-    assert!(dense10.superset(&dense10));        // dense + dense (self)
-    assert!(dense256.superset(&dense10));       // dense + dense
+    assert!(sparse038.superset(&sparse038)); // sparse + sparse (self)
+    assert!(sparse01358.superset(&sparse038)); // sparse + sparse
+    assert!(dense10.superset(&sparse038)); // dense + sparse
+    assert!(dense10.superset(&dense10)); // dense + dense (self)
+    assert!(dense256.superset(&dense10)); // dense + dense
 
     let mut hybrid = sparse038;
-    assert!(!sparse01358.union(&hybrid));       // no change
+    assert!(!sparse01358.union(&hybrid)); // no change
     assert!(hybrid.union(&sparse01358));
     assert!(hybrid.superset(&sparse01358) && sparse01358.superset(&hybrid));
     assert!(!dense10.union(&sparse01358));

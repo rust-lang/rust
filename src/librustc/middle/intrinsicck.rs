@@ -1,23 +1,23 @@
 use hir::def::Def;
 use hir::def_id::DefId;
-use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
+use ty::{self, Ty, TyCtxt};
 
-use rustc_target::spec::abi::Abi::RustIntrinsic;
-use rustc_data_structures::indexed_vec::Idx;
-use syntax_pos::Span;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;
+use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_target::spec::abi::Abi::RustIntrinsic;
+use syntax_pos::Span;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut visitor = ItemVisitor {
-        tcx,
-    };
-    tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    let mut visitor = ItemVisitor { tcx };
+    tcx.hir()
+        .krate()
+        .visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
 struct ItemVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 struct ExprVisitor<'a, 'tcx: 'a> {
@@ -28,12 +28,10 @@ struct ExprVisitor<'a, 'tcx: 'a> {
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
-fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                ty: Ty<'tcx>)
-                                -> Ty<'tcx> {
+fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let (def, substs) = match ty.sty {
         ty::Adt(def, substs) => (def, substs),
-        _ => return ty
+        _ => return ty,
     };
 
     if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
@@ -60,8 +58,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        self.tcx.fn_sig(def_id).abi() == RustIntrinsic &&
-        self.tcx.item_name(def_id) == "transmute"
+        self.tcx.fn_sig(def_id).abi() == RustIntrinsic && self.tcx.item_name(def_id) == "transmute"
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
@@ -79,45 +76,55 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
             let from = unpack_option_like(self.tcx.global_tcx(), from);
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
                 if size_to == Pointer.size(&self.tcx) {
-                    struct_span_err!(self.tcx.sess, span, E0591,
-                                     "can't transmute zero-sized type")
-                        .note(&format!("source type: {}", from))
-                        .note(&format!("target type: {}", to))
-                        .help("cast with `as` to a pointer instead")
-                        .emit();
+                    struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0591,
+                        "can't transmute zero-sized type"
+                    )
+                    .note(&format!("source type: {}", from))
+                    .note(&format!("target type: {}", to))
+                    .help("cast with `as` to a pointer instead")
+                    .emit();
                     return;
                 }
             }
         }
 
         // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| {
-            match sk {
-                Ok(SizeSkeleton::Known(size)) => {
-                    format!("{} bits", size.bits())
+        let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
+            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
+            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{}`", tail),
+            Err(LayoutError::Unknown(bad)) => {
+                if bad == ty {
+                    "this type does not have a fixed size".to_owned()
+                } else {
+                    format!("size can vary because of {}", bad)
                 }
-                Ok(SizeSkeleton::Pointer { tail, .. }) => {
-                    format!("pointer to `{}`", tail)
-                }
-                Err(LayoutError::Unknown(bad)) => {
-                    if bad == ty {
-                        "this type does not have a fixed size".to_owned()
-                    } else {
-                        format!("size can vary because of {}", bad)
-                    }
-                }
-                Err(err) => err.to_string()
             }
+            Err(err) => err.to_string(),
         };
 
-        let mut err = struct_span_err!(self.tcx.sess, span, E0512,
-                                       "cannot transmute between types of different sizes, \
-                                        or dependently-sized types");
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0512,
+            "cannot transmute between types of different sizes, \
+             or dependently-sized types"
+        );
         if from == to {
             err.note(&format!("`{}` does not have a fixed size", from));
         } else {
-            err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
-                .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
+            err.note(&format!(
+                "source type: `{}` ({})",
+                from,
+                skeleton_string(from, sk_from)
+            ))
+            .note(&format!(
+                "target type: `{}` ({})",
+                to,
+                skeleton_string(to, sk_to)
+            ));
         }
         err.emit()
     }
@@ -133,7 +140,12 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
         let body = self.tcx.hir().body(body_id);
         let param_env = self.tcx.param_env(owner_def_id);
         let tables = self.tcx.typeck_tables_of(owner_def_id);
-        ExprVisitor { tcx: self.tcx, param_env, tables }.visit_body(body);
+        ExprVisitor {
+            tcx: self.tcx,
+            param_env,
+            tables,
+        }
+        .visit_body(body);
         self.visit_body(body);
     }
 }

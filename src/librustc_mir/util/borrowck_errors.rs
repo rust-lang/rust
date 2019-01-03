@@ -196,7 +196,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         if old_loan_span == new_loan_span {
             err.span_label(
                 old_loan_span,
-                "closures are constructed here in different iterations of loop"
+                "closures are constructed here in different iterations of loop",
             );
         } else {
             err.span_label(old_loan_span, "first closure is constructed here");
@@ -569,7 +569,10 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             OGN = o
         );
         err.span_label(mutate_span, format!("cannot {}", action));
-        err.span_label(match_span, String::from("value is immutable in match guard"));
+        err.span_label(
+            match_span,
+            String::from("value is immutable in match guard"),
+        );
 
         self.cancel_if_wrong_origin(err, o)
     }
@@ -638,14 +641,17 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             span,
             E0515,
             "cannot return {REFERENCE} {LOCAL}{OGN}",
-            REFERENCE=reference_desc,
-            LOCAL=path_desc,
+            REFERENCE = reference_desc,
+            LOCAL = path_desc,
             OGN = o
         );
 
         err.span_label(
             span,
-            format!("returns a {} data owned by the current function", reference_desc),
+            format!(
+                "returns a {} data owned by the current function",
+                reference_desc
+            ),
         );
 
         self.cancel_if_wrong_origin(err, o)

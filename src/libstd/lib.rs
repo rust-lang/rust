@@ -200,27 +200,24 @@
 //! [primitive types]: ../book/ch03-02-data-types.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(deny(warnings))),
-       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+    test(no_crate_inject, attr(deny(warnings))),
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+)]
 // Don't link to std. We are std.
 #![no_std]
-
 #![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
-
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
-
 // std may use features in a platform-specific way
 #![allow(unused_features)]
-
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 #![cfg_attr(test, feature(test, update_panic_count))]
@@ -302,10 +299,17 @@
 #![feature(non_exhaustive)]
 #![feature(alloc_layout_extra)]
 #![feature(maybe_uninit)]
-#![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
-            feature(global_asm, range_contains, slice_index_methods,
-                    decl_macro, coerce_unsized, sgx_platform))]
-
+#![cfg_attr(
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    feature(
+        global_asm,
+        range_contains,
+        slice_index_methods,
+        decl_macro,
+        coerce_unsized,
+        sgx_platform
+    )
+)]
 #![default_lib_allocator]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
@@ -315,14 +319,16 @@
 use prelude::v1::*;
 
 // Access to Bencher, etc.
-#[cfg(test)] extern crate test;
-#[cfg(test)] extern crate rand;
+#[cfg(test)]
+extern crate rand;
+#[cfg(test)]
+extern crate test;
 
 // Re-export a few macros from core
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, try};
+pub use core::{try, unimplemented, unreachable, write, writeln};
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
@@ -345,7 +351,8 @@ extern crate backtrace_sys;
 // would generate duplicate lang item errors), and any globals it defines are
 // _not_ the globals used by "real" std. So this import, defined only during
 // testing gives test-std access to real-std lang items and globals. See #2912
-#[cfg(test)] extern crate std as realstd;
+#[cfg(test)]
+extern crate std as realstd;
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[macro_use]
@@ -362,9 +369,29 @@ pub mod prelude;
 
 // Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::borrow;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::boxed;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::fmt;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::format;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::rc;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::slice;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::str;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::string;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::vec;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::char;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::clone;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -375,8 +402,22 @@ pub use core::convert;
 pub use core::default;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
+#[stable(feature = "core_hint", since = "1.27.0")]
+pub use core::hint;
+#[stable(feature = "i128", since = "1.26.0")]
+pub use core::i128;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i16;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i32;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i64;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -386,29 +427,17 @@ pub use core::mem;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use core::option;
+#[stable(feature = "pin", since = "1.33.0")]
+pub use core::pin;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::option;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::isize;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i8;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i16;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i32;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
-pub use core::i128;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::usize;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::u8;
+pub use core::u128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -416,31 +445,9 @@ pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::boxed;
+pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::rc;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::borrow;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::fmt;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::format;
-#[stable(feature = "pin", since = "1.33.0")]
-pub use core::pin;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::slice;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::str;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::string;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::vec;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char;
-#[stable(feature = "i128", since = "1.26.0")]
-pub use core::u128;
-#[stable(feature = "core_hint", since = "1.27.0")]
-pub use core::hint;
+pub use core::usize;
 
 pub mod f32;
 pub mod f64;
@@ -463,20 +470,24 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
+#[unstable(
+    feature = "futures_api",
+    reason = "futures in libcore are unstable",
+    issue = "50547"
+)]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
     #[doc(inline)]
-    pub use core::task::*;
-    #[doc(inline)]
     pub use alloc_crate::task::*;
+    #[doc(inline)]
+    pub use core::task::*;
 }
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
+#[unstable(
+    feature = "futures_api",
+    reason = "futures in libcore are unstable",
+    issue = "50547"
+)]
 pub mod future;
 
 // Platform-abstraction modules
@@ -487,8 +498,8 @@ mod sys;
 pub mod alloc;
 
 // Private support modules
-mod panicking;
 mod memchr;
+mod panicking;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler

@@ -1,7 +1,7 @@
-use std::prelude::v1::*;
 use super::super::*;
 use core::num::bignum::Big32x40 as Big;
 use core::num::flt2dec::strategy::dragon::*;
+use std::prelude::v1::*;
 
 #[test]
 fn test_mul_pow10() {
@@ -62,4 +62,3 @@ fn test_to_exact_exp_str() {
 fn test_to_exact_fixed_str() {
     to_exact_fixed_str_test(format_exact);
 }
-

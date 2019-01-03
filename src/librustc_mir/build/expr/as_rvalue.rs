@@ -260,7 +260,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 }
                             }
                         }
-                    }).collect();
+                    })
+                    .collect();
                 let result = match substs {
                     UpvarSubsts::Generator(substs) => {
                         let movability = movability.unwrap();
@@ -307,7 +308,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             f.name,
                             unpack!(block = this.as_operand(block, scope, f.expr)),
                         )
-                    }).collect();
+                    })
+                    .collect();
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
@@ -323,7 +325,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
                             None => this.consume_by_copy_or_move(base.clone().field(n, ty)),
-                        }).collect()
+                        })
+                        .collect()
                 } else {
                     field_names
                         .iter()
@@ -331,9 +334,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .collect()
                 };
 
-                let user_ty = user_ty.map(|ty| {
-                    this.canonical_user_type_annotations.push((expr_span, ty))
-                });
+                let user_ty =
+                    user_ty.map(|ty| this.canonical_user_type_annotations.push((expr_span, ty)));
                 let adt = box AggregateKind::Adt(
                     adt_def,
                     variant_index,

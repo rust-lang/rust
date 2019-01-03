@@ -26,10 +26,11 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
@@ -61,42 +62,46 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
-
-#![recursion_limit="512"]
-
+#![recursion_limit = "512"]
 #![warn(elided_lifetimes_in_paths)]
 
 extern crate arena;
-#[macro_use] extern crate bitflags;
+#[macro_use]
+extern crate bitflags;
 extern crate core;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate scoped_tls;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate scoped_tls;
 #[cfg(windows)]
 extern crate libc;
 extern crate polonius_engine;
 extern crate rustc_target;
-#[macro_use] extern crate rustc_data_structures;
-extern crate serialize;
+#[macro_use]
+extern crate rustc_data_structures;
 extern crate parking_lot;
 extern crate rustc_errors as errors;
 extern crate rustc_rayon as rayon;
 extern crate rustc_rayon_core as rayon_core;
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
-extern crate syntax_pos;
+extern crate serialize;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
+extern crate chalk_engine;
 extern crate jobserver;
 extern crate proc_macro;
-extern crate chalk_engine;
 extern crate rustc_fs_util;
+extern crate syntax_pos;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-extern crate rustc_apfloat;
-extern crate byteorder;
 extern crate backtrace;
+extern crate byteorder;
+extern crate rustc_apfloat;
 
 #[macro_use]
 extern crate smallvec;
@@ -125,22 +130,22 @@ pub mod lint;
 pub mod middle {
     pub mod allocator;
     pub mod borrowck;
-    pub mod expr_use_visitor;
     pub mod cstore;
     pub mod dead;
     pub mod dependency_format;
     pub mod entry;
     pub mod exported_symbols;
+    pub mod expr_use_visitor;
     pub mod free_region;
     pub mod intrinsicck;
-    pub mod lib_features;
     pub mod lang_items;
+    pub mod lib_features;
     pub mod liveness;
     pub mod mem_categorization;
     pub mod privacy;
     pub mod reachable;
-    pub mod region;
     pub mod recursion_limit;
+    pub mod region;
     pub mod resolve_lifetime;
     pub mod stability;
     pub mod weak_lang_items;
@@ -152,13 +157,13 @@ pub mod traits;
 pub mod ty;
 
 pub mod util {
+    pub mod bug;
     pub mod captures;
     pub mod common;
-    pub mod ppaux;
     pub mod nodemap;
-    pub mod time_graph;
+    pub mod ppaux;
     pub mod profiling;
-    pub mod bug;
+    pub mod time_graph;
 }
 
 // A private module so that macro-expanded idents like
@@ -181,7 +186,6 @@ mod rustc {
 fn noop() {
     rustc_data_structures::__noop_fix_for_27438();
 }
-
 
 // Build the diagnostics array at the end so that the metadata includes error use sites.
 __build_diagnostic_array! { librustc, DIAGNOSTICS }

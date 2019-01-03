@@ -1,5 +1,5 @@
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::cstore::ForeignModule;
 use rustc::ty::TyCtxt;
 
@@ -9,7 +9,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<ForeignModule> {
         modules: Vec::new(),
     };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
-    return collector.modules
+    return collector.modules;
 }
 
 struct Collector<'a, 'tcx: 'a> {
@@ -24,7 +24,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             _ => return,
         };
 
-        let foreign_items = fm.items.iter()
+        let foreign_items = fm
+            .items
+            .iter()
             .map(|it| self.tcx.hir().local_def_id(it.id))
             .collect();
         self.modules.push(ForeignModule {

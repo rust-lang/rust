@@ -1,5 +1,5 @@
-use {Category, ExpInt, Float, FloatConvert, Round, ParseError, Status, StatusAnd};
 use ieee;
+use {Category, ExpInt, Float, FloatConvert, ParseError, Round, Status, StatusAnd};
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -185,13 +185,13 @@ where
                 }
             }
 
-            (_, Category::Zero) |
-            (Category::NaN, _) |
-            (Category::Infinity, Category::Normal) => Status::OK.and(self),
+            (_, Category::Zero) | (Category::NaN, _) | (Category::Infinity, Category::Normal) => {
+                Status::OK.and(self)
+            }
 
-            (Category::Zero, _) |
-            (_, Category::NaN) |
-            (_, Category::Infinity) => Status::OK.and(rhs),
+            (Category::Zero, _) | (_, Category::NaN) | (_, Category::Infinity) => {
+                Status::OK.and(rhs)
+            }
 
             (Category::Normal, Category::Normal) => {
                 let mut status = Status::OK;
@@ -287,14 +287,13 @@ where
 
             (_, Category::NaN) => Status::OK.and(rhs),
 
-            (Category::Zero, Category::Infinity) |
-            (Category::Infinity, Category::Zero) => Status::OK.and(Self::NAN),
+            (Category::Zero, Category::Infinity) | (Category::Infinity, Category::Zero) => {
+                Status::OK.and(Self::NAN)
+            }
 
-            (Category::Zero, _) |
-            (Category::Infinity, _) => Status::OK.and(self),
+            (Category::Zero, _) | (Category::Infinity, _) => Status::OK.and(self),
 
-            (_, Category::Zero) |
-            (_, Category::Infinity) => Status::OK.and(rhs),
+            (_, Category::Zero) | (_, Category::Infinity) => Status::OK.and(rhs),
 
             (Category::Normal, Category::Normal) => {
                 let mut status = Status::OK;
@@ -343,21 +342,21 @@ where
     }
 
     fn div_r(self, rhs: Self, round: Round) -> StatusAnd<Self> {
-        Fallback::from(self).div_r(Fallback::from(rhs), round).map(
-            Self::from,
-        )
+        Fallback::from(self)
+            .div_r(Fallback::from(rhs), round)
+            .map(Self::from)
     }
 
     fn c_fmod(self, rhs: Self) -> StatusAnd<Self> {
-        Fallback::from(self).c_fmod(Fallback::from(rhs)).map(
-            Self::from,
-        )
+        Fallback::from(self)
+            .c_fmod(Fallback::from(rhs))
+            .map(Self::from)
     }
 
     fn round_to_integral(self, round: Round) -> StatusAnd<Self> {
-        Fallback::from(self).round_to_integral(round).map(
-            Self::from,
-        )
+        Fallback::from(self)
+            .round_to_integral(round)
+            .map(Self::from)
     }
 
     fn next_up(self) -> StatusAnd<Self> {
@@ -394,10 +393,12 @@ where
             if result != Ordering::Equal {
                 let against = self.0.is_negative() ^ self.1.is_negative();
                 let rhs_against = rhs.0.is_negative() ^ rhs.1.is_negative();
-                (!against).cmp(&!rhs_against).then_with(|| if against {
-                    result.reverse()
-                } else {
-                    result
+                (!against).cmp(&!rhs_against).then_with(|| {
+                    if against {
+                        result.reverse()
+                    } else {
+                        result
+                    }
                 })
             } else {
                 result
@@ -414,8 +415,8 @@ where
     }
 
     fn is_denormal(self) -> bool {
-        self.category() == Category::Normal &&
-            (self.0.is_denormal() || self.0.is_denormal() ||
+        self.category() == Category::Normal
+            && (self.0.is_denormal() || self.0.is_denormal() ||
           // (double)(Hi + Lo) == Hi defines a normal number.
           !(self.0 + self.1).value.bitwise_eq(self.0))
     }

@@ -1,10 +1,10 @@
-use rustc::hir;
 use hir::Node;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::fold::TypeFoldable;
 use rustc::util::nodemap::FxHashMap;
 
 use super::explicit::ExplicitPredicatesMap;
@@ -268,11 +268,7 @@ pub fn check_explicit_predicates<'tcx>(
          explicit_map={:?}, \
          required_predicates={:?}, \
          ignore_self_ty={:?})",
-        def_id,
-        substs,
-        explicit_map,
-        required_predicates,
-        ignore_self_ty,
+        def_id, substs, explicit_map, required_predicates, ignore_self_ty,
     );
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, *def_id);
 

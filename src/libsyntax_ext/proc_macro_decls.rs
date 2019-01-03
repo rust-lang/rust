@@ -4,7 +4,6 @@ use errors;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::source_map::{ExpnInfo, MacroAttribute, hygiene, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
@@ -12,8 +11,9 @@ use syntax::ext::hygiene::Mark;
 use syntax::fold::Folder;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::source_map::{hygiene, respan, ExpnInfo, MacroAttribute};
 use syntax::symbol::keywords;
+use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -44,13 +44,15 @@ struct CollectProcMacros<'a> {
     is_test_crate: bool,
 }
 
-pub fn modify(sess: &ParseSess,
-              resolver: &mut dyn (::syntax::ext::base::Resolver),
-              mut krate: ast::Crate,
-              is_proc_macro_crate: bool,
-              is_test_crate: bool,
-              num_crate_types: usize,
-              handler: &errors::Handler) -> ast::Crate {
+pub fn modify(
+    sess: &ParseSess,
+    resolver: &mut dyn (::syntax::ext::base::Resolver),
+    mut krate: ast::Crate,
+    is_proc_macro_crate: bool,
+    is_test_crate: bool,
+    num_crate_types: usize,
+    handler: &errors::Handler,
+) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver);
 
@@ -69,7 +71,7 @@ pub fn modify(sess: &ParseSess,
     };
 
     if !is_proc_macro_crate {
-        return krate
+        return krate;
     }
 
     if num_crate_types > 1 {
@@ -80,7 +82,10 @@ pub fn modify(sess: &ParseSess,
         return krate;
     }
 
-    krate.module.items.push(mk_decls(&mut cx, &derives, &attr_macros, &bang_macros));
+    krate
+        .module
+        .items
+        .push(mk_decls(&mut cx, &derives, &attr_macros, &bang_macros));
 
     krate
 }
@@ -92,10 +97,12 @@ fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate && self.in_root && vis.node.is_pub() {
-            self.handler.span_err(sp,
-                                  "`proc-macro` crate types cannot \
-                                   export any items other than functions \
-                                   tagged with `#[proc_macro_derive]` currently");
+            self.handler.span_err(
+                sp,
+                "`proc-macro` crate types cannot \
+                 export any items other than functions \
+                 tagged with `#[proc_macro_derive]` currently",
+            );
         }
     }
 
@@ -106,16 +113,20 @@ impl<'a> CollectProcMacros<'a> {
         let list = match attr.meta_item_list() {
             Some(list) => list,
             None => {
-                self.handler.span_err(attr.span(),
-                                      "attribute must be of form: \
-                                       #[proc_macro_derive(TraitName)]");
-                return
+                self.handler.span_err(
+                    attr.span(),
+                    "attribute must be of form: \
+                     #[proc_macro_derive(TraitName)]",
+                );
+                return;
             }
         };
         if list.len() != 1 && list.len() != 2 {
-            self.handler.span_err(attr.span(),
-                                  "attribute must have either one or two arguments");
-            return
+            self.handler.span_err(
+                attr.span(),
+                "attribute must have either one or two arguments",
+            );
+            return;
         }
         let trait_attr = &list[0];
         let attributes_attr = list.get(1);
@@ -123,43 +134,53 @@ impl<'a> CollectProcMacros<'a> {
             Some(name) => name,
             _ => {
                 self.handler.span_err(trait_attr.span(), "not a meta item");
-                return
+                return;
             }
         };
         if !trait_attr.is_word() {
-            self.handler.span_err(trait_attr.span(), "must only be one word");
+            self.handler
+                .span_err(trait_attr.span(), "must only be one word");
         }
 
         if deriving::is_builtin_trait(trait_name) {
-            self.handler.span_err(trait_attr.span(),
-                                  "cannot override a built-in #[derive] mode");
+            self.handler.span_err(
+                trait_attr.span(),
+                "cannot override a built-in #[derive] mode",
+            );
         }
 
         let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
             if !attr.check_name("attributes") {
-                self.handler.span_err(attr.span(), "second argument must be `attributes`")
+                self.handler
+                    .span_err(attr.span(), "second argument must be `attributes`")
             }
-            attr.meta_item_list().unwrap_or_else(|| {
-                self.handler.span_err(attr.span(),
-                                      "attribute must be of form: \
-                                       `attributes(foo, bar)`");
-                &[]
-            }).into_iter().filter_map(|attr| {
-                let name = match attr.name() {
-                    Some(name) => name,
-                    _ => {
-                        self.handler.span_err(attr.span(), "not a meta item");
+            attr.meta_item_list()
+                .unwrap_or_else(|| {
+                    self.handler.span_err(
+                        attr.span(),
+                        "attribute must be of form: \
+                         `attributes(foo, bar)`",
+                    );
+                    &[]
+                })
+                .into_iter()
+                .filter_map(|attr| {
+                    let name = match attr.name() {
+                        Some(name) => name,
+                        _ => {
+                            self.handler.span_err(attr.span(), "not a meta item");
+                            return None;
+                        }
+                    };
+
+                    if !attr.is_word() {
+                        self.handler.span_err(attr.span(), "must only be one word");
                         return None;
-                    },
-                };
+                    }
 
-                if !attr.is_word() {
-                    self.handler.span_err(attr.span(), "must only be one word");
-                    return None;
-                }
-
-                Some(name)
-            }).collect()
+                    Some(name)
+                })
+                .collect()
         } else {
             Vec::new()
         };
@@ -184,8 +205,11 @@ impl<'a> CollectProcMacros<'a> {
 
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
         if !attr.is_word() {
-            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute \
-                does not take any arguments");
+            self.handler.span_err(
+                attr.span,
+                "`#[proc_macro_attribute]` attribute \
+                 does not take any arguments",
+            );
             return;
         }
 
@@ -207,8 +231,11 @@ impl<'a> CollectProcMacros<'a> {
 
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
         if !attr.is_word() {
-            self.handler.span_err(attr.span, "`#[proc_macro]` attribute \
-                does not take any arguments");
+            self.handler.span_err(
+                attr.span,
+                "`#[proc_macro]` attribute \
+                 does not take any arguments",
+            );
             return;
         }
 
@@ -254,16 +281,23 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let msg = if attr.path.segments[0].ident.name ==
-                                 prev_attr.path.segments[0].ident.name {
-                        format!("Only one `#[{}]` attribute is allowed on any given function",
-                                attr.path)
+                    let msg = if attr.path.segments[0].ident.name
+                        == prev_attr.path.segments[0].ident.name
+                    {
+                        format!(
+                            "Only one `#[{}]` attribute is allowed on any given function",
+                            attr.path
+                        )
                     } else {
-                        format!("`#[{}]` and `#[{}]` attributes cannot both be applied \
-                                to the same function", attr.path, prev_attr.path)
+                        format!(
+                            "`#[{}]` and `#[{}]` attributes cannot both be applied \
+                             to the same function",
+                            attr.path, prev_attr.path
+                        )
                     };
 
-                    self.handler.struct_span_err(attr.span(), &msg)
+                    self.handler
+                        .struct_span_err(attr.span(), &msg)
                         .span_note(prev_attr.span(), "Previous attribute here")
                         .emit();
 
@@ -281,13 +315,15 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 visit::walk_item(self, item);
                 self.in_root = prev_in_root;
                 return;
-            },
+            }
             Some(attr) => attr,
         };
 
         if !is_fn {
-            let msg = format!("the `#[{}]` attribute may only be used on bare functions",
-                              attr.path);
+            let msg = format!(
+                "the `#[{}]` attribute may only be used on bare functions",
+                attr.path
+            );
 
             self.handler.span_err(attr.span(), &msg);
             return;
@@ -298,8 +334,11 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         }
 
         if !self.is_proc_macro_crate {
-            let msg = format!("the `#[{}]` attribute is only usable with crates of the \
-                              `proc-macro` crate type", attr.path);
+            let msg = format!(
+                "the `#[{}]` attribute is only usable with crates of the \
+                 `proc-macro` crate type",
+                attr.path
+            );
 
             self.handler.span_err(attr.span(), &msg);
             return;
@@ -356,10 +395,12 @@ fn mk_decls(
     let span = DUMMY_SP.apply_mark(mark);
 
     let proc_macro = Ident::from_str("proc_macro");
-    let krate = cx.item(span,
-                        proc_macro,
-                        Vec::new(),
-                        ast::ItemKind::ExternCrate(None));
+    let krate = cx.item(
+        span,
+        proc_macro,
+        Vec::new(),
+        ast::ItemKind::ExternCrate(None),
+    );
 
     let bridge = Ident::from_str("bridge");
     let client = Ident::from_str("client");
@@ -370,61 +411,93 @@ fn mk_decls(
     let crate_kw = Ident::with_empty_ctxt(keywords::Crate.name());
 
     let decls = {
-        let local_path = |sp: Span, name| {
-            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name]))
+        let local_path =
+            |sp: Span, name| cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name]));
+        let proc_macro_ty_method_path = |method| {
+            cx.expr_path(cx.path(
+                span,
+                vec![proc_macro, bridge, client, proc_macro_ty, method],
+            ))
         };
-        let proc_macro_ty_method_path = |method| cx.expr_path(cx.path(span, vec![
-            proc_macro, bridge, client, proc_macro_ty, method,
-        ]));
-        custom_derives.iter().map(|cd| {
-            cx.expr_call(span, proc_macro_ty_method_path(custom_derive), vec![
-                cx.expr_str(cd.span, cd.trait_name),
-                cx.expr_vec_slice(
+        custom_derives
+            .iter()
+            .map(|cd| {
+                cx.expr_call(
                     span,
-                    cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>()
-                ),
-                local_path(cd.span, cd.function_name),
-            ])
-        }).chain(custom_attrs.iter().map(|ca| {
-            cx.expr_call(span, proc_macro_ty_method_path(attr), vec![
-                cx.expr_str(ca.span, ca.function_name.name),
-                local_path(ca.span, ca.function_name),
-            ])
-        })).chain(custom_macros.iter().map(|cm| {
-            cx.expr_call(span, proc_macro_ty_method_path(bang), vec![
-                cx.expr_str(cm.span, cm.function_name.name),
-                local_path(cm.span, cm.function_name),
-            ])
-        })).collect()
+                    proc_macro_ty_method_path(custom_derive),
+                    vec![
+                        cx.expr_str(cd.span, cd.trait_name),
+                        cx.expr_vec_slice(
+                            span,
+                            cd.attrs
+                                .iter()
+                                .map(|&s| cx.expr_str(cd.span, s))
+                                .collect::<Vec<_>>(),
+                        ),
+                        local_path(cd.span, cd.function_name),
+                    ],
+                )
+            })
+            .chain(custom_attrs.iter().map(|ca| {
+                cx.expr_call(
+                    span,
+                    proc_macro_ty_method_path(attr),
+                    vec![
+                        cx.expr_str(ca.span, ca.function_name.name),
+                        local_path(ca.span, ca.function_name),
+                    ],
+                )
+            }))
+            .chain(custom_macros.iter().map(|cm| {
+                cx.expr_call(
+                    span,
+                    proc_macro_ty_method_path(bang),
+                    vec![
+                        cx.expr_str(cm.span, cm.function_name.name),
+                        local_path(cm.span, cm.function_name),
+                    ],
+                )
+            }))
+            .collect()
     };
 
-    let decls_static = cx.item_static(
-        span,
-        Ident::from_str("_DECLS"),
-        cx.ty_rptr(span,
-            cx.ty(span, ast::TyKind::Slice(
-                cx.ty_path(cx.path(span,
-                    vec![proc_macro, bridge, client, proc_macro_ty])))),
-            None, ast::Mutability::Immutable),
-        ast::Mutability::Immutable,
-        cx.expr_vec_slice(span, decls),
-    ).map(|mut i| {
-        let attr = cx.meta_word(span, Symbol::intern("rustc_proc_macro_decls"));
-        i.attrs.push(cx.attribute(span, attr));
-        i.vis = respan(span, ast::VisibilityKind::Public);
-        i
-    });
+    let decls_static = cx
+        .item_static(
+            span,
+            Ident::from_str("_DECLS"),
+            cx.ty_rptr(
+                span,
+                cx.ty(
+                    span,
+                    ast::TyKind::Slice(
+                        cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
+                    ),
+                ),
+                None,
+                ast::Mutability::Immutable,
+            ),
+            ast::Mutability::Immutable,
+            cx.expr_vec_slice(span, decls),
+        )
+        .map(|mut i| {
+            let attr = cx.meta_word(span, Symbol::intern("rustc_proc_macro_decls"));
+            i.attrs.push(cx.attribute(span, attr));
+            i.vis = respan(span, ast::VisibilityKind::Public);
+            i
+        });
 
-    let module = cx.item_mod(
-        span,
-        span,
-        ast::Ident::with_empty_ctxt(Symbol::gensym("decls")),
-        vec![],
-        vec![krate, decls_static],
-    ).map(|mut i| {
-        i.vis = respan(span, ast::VisibilityKind::Public);
-        i
-    });
+    let module = cx
+        .item_mod(
+            span,
+            span,
+            ast::Ident::with_empty_ctxt(Symbol::gensym("decls")),
+            vec![],
+            vec![krate, decls_static],
+        )
+        .map(|mut i| {
+            i.vis = respan(span, ast::VisibilityKind::Public);
+            i
+        });
 
     cx.monotonic_expander().fold_item(module).pop().unwrap()
 }

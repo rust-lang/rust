@@ -15,7 +15,7 @@ use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
-use rustc_serialize::{self as serialize};
+use rustc_serialize as serialize;
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
@@ -27,11 +27,11 @@ use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::subst::{Subst, Substs};
 use ty::layout::VariantIdx;
+use ty::subst::{Subst, Substs};
 use ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
-    UserTypeAnnotationIndex, UserTypeAnnotation,
+    UserTypeAnnotation, UserTypeAnnotationIndex,
 };
 use util::ppaux;
 
@@ -575,7 +575,9 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
-            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+            BorrowKind::Mut {
+                allow_two_phase_borrow,
+            } => allow_two_phase_borrow,
         }
     }
 }
@@ -648,7 +650,7 @@ pub enum ImplicitSelfKind {
     MutRef,
     /// Represents when a function does not have a self argument or
     /// when a function has a `self: X` argument.
-    None
+    None,
 }
 
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
@@ -879,8 +881,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 pat_span: _,
             }))) => true,
 
-            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm)))
-                => true,
+            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm))) => true,
 
             _ => false,
         }
@@ -932,12 +933,7 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 
     #[inline]
-    fn new_local(
-        ty: Ty<'tcx>,
-        mutability: Mutability,
-        internal: bool,
-        span: Span,
-    ) -> Self {
+    fn new_local(ty: Ty<'tcx>, mutability: Mutability, internal: bool, span: Span) -> Self {
         LocalDecl {
             mutability,
             ty,
@@ -1662,13 +1658,15 @@ impl<'tcx> TerminatorKind<'tcx> {
                                 Scalar::Bits {
                                     bits: u,
                                     size: size.bytes() as u8,
-                                }.into(),
+                                }
+                                .into(),
                             ),
                             ty: switch_ty,
                         };
                         fmt_const_val(&mut s, &c).unwrap();
                         s.into()
-                    }).chain(iter::once("otherwise".into()))
+                    })
+                    .chain(iter::once("otherwise".into()))
                     .collect()
             }
             Call {
@@ -1855,16 +1853,17 @@ impl<'tcx> Debug for Statement<'tcx> {
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
-            Retag(ref kind, ref place) =>
-                write!(fmt, "Retag({}{:?})",
-                    match kind {
-                        RetagKind::FnEntry => "[fn entry] ",
-                        RetagKind::TwoPhase => "[2phase] ",
-                        RetagKind::Raw => "[raw] ",
-                        RetagKind::Default => "",
-                    },
-                    place,
-                ),
+            Retag(ref kind, ref place) => write!(
+                fmt,
+                "Retag({}{:?})",
+                match kind {
+                    RetagKind::FnEntry => "[fn entry] ",
+                    RetagKind::TwoPhase => "[2phase] ",
+                    RetagKind::Raw => "[raw] ",
+                    RetagKind::Default => "",
+                },
+                place,
+            ),
             StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
             StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
             SetDiscriminant {
@@ -1876,9 +1875,11 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref outputs,
                 ref inputs,
             } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
-            AscribeUserType(ref place, ref variance, ref c_ty) => {
-                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
-            }
+            AscribeUserType(ref place, ref variance, ref c_ty) => write!(
+                fmt,
+                "AscribeUserType({:?}, {:?}, {:?})",
+                place, variance, c_ty
+            ),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -2015,8 +2016,8 @@ impl<'tcx> Place<'tcx> {
     /// FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local(&self) -> Option<Local> {
         match self {
-            Place::Local(local) |
-            Place::Projection(box Projection {
+            Place::Local(local)
+            | Place::Projection(box Projection {
                 base: Place::Local(local),
                 elem: ProjectionElem::Deref,
             }) => Some(*local),
@@ -2048,9 +2049,11 @@ impl<'tcx> Debug for Place<'tcx> {
             ),
             Promoted(ref promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
             Projection(ref data) => match data.elem {
-                ProjectionElem::Downcast(ref adt_def, index) => {
-                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].ident)
-                }
+                ProjectionElem::Downcast(ref adt_def, index) => write!(
+                    fmt,
+                    "({:?} as {})",
+                    data.base, adt_def.variants[index].ident
+                ),
                 ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
                 ProjectionElem::Field(field, ty) => {
                     write!(fmt, "({:?}.{:?}: {:?})", data.base, field.index(), ty)
@@ -2508,32 +2511,36 @@ impl<'tcx> UserTypeProjections<'tcx> {
         UserTypeProjections { contents: vec![] }
     }
 
-    pub fn from_projections(projs: impl Iterator<Item=(UserTypeProjection<'tcx>, Span)>) -> Self {
-        UserTypeProjections { contents: projs.collect() }
+    pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection<'tcx>, Span)>) -> Self {
+        UserTypeProjections {
+            contents: projs.collect(),
+        }
     }
 
-    pub fn projections_and_spans(&self) -> impl Iterator<Item=&(UserTypeProjection<'tcx>, Span)> {
+    pub fn projections_and_spans(&self) -> impl Iterator<Item = &(UserTypeProjection<'tcx>, Span)> {
         self.contents.iter()
     }
 
-    pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection<'tcx>> {
-        self.contents.iter().map(|&(ref user_type, _span)| user_type)
+    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection<'tcx>> {
+        self.contents
+            .iter()
+            .map(|&(ref user_type, _span)| user_type)
     }
 
-    pub fn push_projection(
-        mut self,
-        user_ty: &UserTypeProjection<'tcx>,
-        span: Span,
-    ) -> Self {
+    pub fn push_projection(mut self, user_ty: &UserTypeProjection<'tcx>, span: Span) -> Self {
         self.contents.push((user_ty.clone(), span));
         self
     }
 
     fn map_projections(
         mut self,
-        mut f: impl FnMut(UserTypeProjection<'tcx>) -> UserTypeProjection<'tcx>
+        mut f: impl FnMut(UserTypeProjection<'tcx>) -> UserTypeProjection<'tcx>,
     ) -> Self {
-        self.contents = self.contents.drain(..).map(|(proj, span)| (f(proj), span)).collect();
+        self.contents = self
+            .contents
+            .drain(..)
+            .map(|(proj, span)| (f(proj), span))
+            .collect();
         self
     }
 
@@ -2553,12 +2560,7 @@ impl<'tcx> UserTypeProjections<'tcx> {
         self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
     }
 
-    pub fn variant(
-        self,
-        adt_def: &'tcx AdtDef,
-        variant_index: VariantIdx,
-        field: Field,
-    ) -> Self {
+    pub fn variant(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx, field: Field) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
     }
 }
@@ -2584,7 +2586,7 @@ pub struct UserTypeProjection<'tcx> {
     pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
 
-impl<'tcx> Copy for ProjectionKind<'tcx> { }
+impl<'tcx> Copy for ProjectionKind<'tcx> {}
 
 impl<'tcx> UserTypeProjection<'tcx> {
     pub(crate) fn index(mut self) -> Self {
@@ -2613,7 +2615,8 @@ impl<'tcx> UserTypeProjection<'tcx> {
         variant_index: VariantIdx,
         field: Field,
     ) -> Self {
-        self.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
+        self.projs
+            .push(ProjectionElem::Downcast(adt_def, variant_index));
         self.projs.push(ProjectionElem::Field(field, ()));
         self
     }
@@ -2626,15 +2629,15 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
         use mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);
-        let projs: Vec<_> = self.projs
+        let projs: Vec<_> = self
+            .projs
             .iter()
-            .map(|elem| {
-                match elem {
-                    Deref => Deref,
-                    Field(f, ()) => Field(f.clone(), ()),
-                    Index(()) => Index(()),
-                    elem => elem.clone(),
-                }})
+            .map(|elem| match elem {
+                Deref => Deref,
+                Field(f, ()) => Field(f.clone(), ()),
+                Index(()) => Index(()),
+                elem => elem.clone(),
+            })
             .collect();
 
         UserTypeProjection { base, projs }
@@ -2960,7 +2963,9 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 /// order of the category, thereby influencing diagnostic output.
 ///
 /// See also [rustc_mir::borrow_check::nll::constraints]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable,
+)]
 pub enum ConstraintCategory {
     Return,
     Yield,
@@ -3403,11 +3408,12 @@ where
     fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
         use mir::ProjectionElem::*;
 
-        self.base.visit_with(visitor) || match self.elem {
-            Field(_, ref ty) => ty.visit_with(visitor),
-            Index(ref v) => v.visit_with(visitor),
-            _ => false,
-        }
+        self.base.visit_with(visitor)
+            || match self.elem {
+                Field(_, ref ty) => ty.visit_with(visitor),
+                Index(ref v) => v.visit_with(visitor),
+                _ => false,
+            }
     }
 }
 

@@ -21,11 +21,12 @@ pub mod usercalls {
 
     /// Lowest-level interfaces to usercalls and usercall ABI type definitions.
     pub mod raw {
-        use sys::abi::usercalls::raw::invoke_with_usercalls;
         pub use sys::abi::usercalls::raw::do_usercall;
-        pub use sys::abi::usercalls::raw::{accept_stream, alloc, async_queues, bind_stream, close,
-                                           connect_stream, exit, flush, free, insecure_time,
-                                           launch_thread, read, read_alloc, send, wait, write};
+        use sys::abi::usercalls::raw::invoke_with_usercalls;
+        pub use sys::abi::usercalls::raw::{
+            accept_stream, alloc, async_queues, bind_stream, close, connect_stream, exit, flush,
+            free, insecure_time, launch_thread, read, read_alloc, send, wait, write,
+        };
 
         macro_rules! define_usercallnrs {
             ($(fn $f:ident($($n:ident: $t:ty),*) $(-> $r:ty)*; )*) => {
@@ -42,12 +43,13 @@ pub mod usercalls {
         invoke_with_usercalls!(define_usercallnrs);
 
         // fortanix-sgx-abi re-exports
-        pub use sys::abi::usercalls::raw::{ByteBuffer, FifoDescriptor, Return, Usercall};
         pub use sys::abi::usercalls::raw::Error;
-        pub use sys::abi::usercalls::raw::{EV_RETURNQ_NOT_EMPTY, EV_UNPARK, EV_USERCALLQ_NOT_FULL,
-                                           FD_STDERR, FD_STDIN, FD_STDOUT, RESULT_SUCCESS,
-                                           USERCALL_USER_DEFINED, WAIT_INDEFINITE, WAIT_NO};
+        pub use sys::abi::usercalls::raw::{ByteBuffer, FifoDescriptor, Return, Usercall};
         pub use sys::abi::usercalls::raw::{Fd, Result, Tcs};
+        pub use sys::abi::usercalls::raw::{
+            EV_RETURNQ_NOT_EMPTY, EV_UNPARK, EV_USERCALLQ_NOT_FULL, FD_STDERR, FD_STDIN, FD_STDOUT,
+            RESULT_SUCCESS, USERCALL_USER_DEFINED, WAIT_INDEFINITE, WAIT_NO,
+        };
     }
 }
 
@@ -56,4 +58,4 @@ pub mod mem {
     pub use sys::abi::mem::*;
 }
 
-pub use sys::ext::{io, arch};
+pub use sys::ext::{arch, io};

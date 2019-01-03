@@ -1,14 +1,13 @@
-use hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use syntax::ast::NodeId;
-use syntax::symbol::{Symbol, InternedString};
-use ty::{Instance, TyCtxt};
-use util::nodemap::FxHashMap;
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
 use rustc_data_structures::base_n;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
-                                           StableHasher};
-use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use std::fmt;
 use std::hash::Hash;
+use syntax::ast::NodeId;
+use syntax::symbol::{InternedString, Symbol};
+use ty::{Instance, TyCtxt};
+use util::nodemap::FxHashMap;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum MonoItem<'tcx> {
@@ -24,19 +23,20 @@ impl<'tcx> MonoItem<'tcx> {
                 // Estimate the size of a function based on how many statements
                 // it contains.
                 tcx.instance_def_size_estimate(instance.def)
-            },
+            }
             // Conservatively estimate the size of a static declaration
             // or assembly to be 1.
-            MonoItem::Static(_) |
-            MonoItem::GlobalAsm(_) => 1,
+            MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'a>,
-                                           hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
@@ -128,9 +128,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         &self.items
     }
 
-    pub fn items_mut(&mut self)
-        -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>
-    {
+    pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
     }
 
@@ -152,7 +150,8 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn size_estimate(&self) -> usize {
         // Should only be called if `estimate_size` has previously been called.
-        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
+        self.size_estimate
+            .expect("estimate_size must be called before getting a size_estimate")
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
@@ -164,9 +163,11 @@ impl<'tcx> CodegenUnit<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'a>,
-                                           hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         let CodegenUnit {
             ref items,
             name,
@@ -176,12 +177,15 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
 
         name.hash_stable(hcx, hasher);
 
-        let mut items: Vec<(Fingerprint, _)> = items.iter().map(|(mono_item, &attrs)| {
-            let mut hasher = StableHasher::new();
-            mono_item.hash_stable(hcx, &mut hasher);
-            let mono_item_fingerprint = hasher.finish();
-            (mono_item_fingerprint, attrs)
-        }).collect();
+        let mut items: Vec<(Fingerprint, _)> = items
+            .iter()
+            .map(|(mono_item, &attrs)| {
+                let mut hasher = StableHasher::new();
+                mono_item.hash_stable(hcx, &mut hasher);
+                let mono_item_fingerprint = hasher.finish();
+                (mono_item_fingerprint, attrs)
+            })
+            .collect();
 
         items.sort_unstable_by_key(|i| i.0);
         items.hash_stable(hcx, hasher);
@@ -237,7 +241,6 @@ pub struct CodegenUnitNameBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
-
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
         CodegenUnitNameBuilder {
             tcx,
@@ -263,18 +266,18 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
     /// The '.' before `<special-suffix>` makes sure that names with a special
     /// suffix can never collide with a name built out of regular Rust
     /// identifiers (e.g., module paths).
-    pub fn build_cgu_name<I, C, S>(&mut self,
-                                   cnum: CrateNum,
-                                   components: I,
-                                   special_suffix: Option<S>)
-                                   -> InternedString
-        where I: IntoIterator<Item=C>,
-              C: fmt::Display,
-              S: fmt::Display,
+    pub fn build_cgu_name<I, C, S>(
+        &mut self,
+        cnum: CrateNum,
+        components: I,
+        special_suffix: Option<S>,
+    ) -> InternedString
+    where
+        I: IntoIterator<Item = C>,
+        C: fmt::Display,
+        S: fmt::Display,
     {
-        let cgu_name = self.build_cgu_name_no_mangle(cnum,
-                                                     components,
-                                                     special_suffix);
+        let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
         if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
             cgu_name
@@ -286,14 +289,16 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
 
     /// Same as `CodegenUnit::build_cgu_name()` but will never mangle the
     /// resulting name.
-    pub fn build_cgu_name_no_mangle<I, C, S>(&mut self,
-                                             cnum: CrateNum,
-                                             components: I,
-                                             special_suffix: Option<S>)
-                                             -> InternedString
-        where I: IntoIterator<Item=C>,
-              C: fmt::Display,
-              S: fmt::Display,
+    pub fn build_cgu_name_no_mangle<I, C, S>(
+        &mut self,
+        cnum: CrateNum,
+        components: I,
+        special_suffix: Option<S>,
+    ) -> InternedString
+    where
+        I: IntoIterator<Item = C>,
+        C: fmt::Display,
+        S: fmt::Display,
     {
         use std::fmt::Write;
 
@@ -306,21 +311,24 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
             // local crate's ID. Otherwise there can be collisions between CGUs
             // instantiating stuff for upstream crates.
             let local_crate_id = if cnum != LOCAL_CRATE {
-                let local_crate_disambiguator =
-                    format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
-                format!("-in-{}.{}",
-                        tcx.crate_name(LOCAL_CRATE),
-                        &local_crate_disambiguator[0 .. 8])
+                let local_crate_disambiguator = format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
+                format!(
+                    "-in-{}.{}",
+                    tcx.crate_name(LOCAL_CRATE),
+                    &local_crate_disambiguator[0..8]
+                )
             } else {
                 String::new()
             };
 
             let crate_disambiguator = tcx.crate_disambiguator(cnum).to_string();
             // Using a shortened disambiguator of about 40 bits
-            format!("{}.{}{}",
+            format!(
+                "{}.{}{}",
                 tcx.crate_name(cnum),
-                &crate_disambiguator[0 .. 8],
-                local_crate_id)
+                &crate_disambiguator[0..8],
+                local_crate_id
+            )
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

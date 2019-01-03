@@ -56,18 +56,15 @@ where
     if var_values.var_values.is_empty() {
         value.clone()
     } else {
-        let fld_r = |br: ty::BoundRegion| {
-            match var_values.var_values[br.assert_bound_var()].unpack() {
+        let fld_r =
+            |br: ty::BoundRegion| match var_values.var_values[br.assert_bound_var()].unpack() {
                 UnpackedKind::Lifetime(l) => l,
                 r => bug!("{:?} is a region but value is {:?}", br, r),
-            }
-        };
+            };
 
-        let fld_t = |bound_ty: ty::BoundTy| {
-            match var_values.var_values[bound_ty.var].unpack() {
-                UnpackedKind::Type(ty) => ty,
-                r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
-            }
+        let fld_t = |bound_ty: ty::BoundTy| match var_values.var_values[bound_ty.var].unpack() {
+            UnpackedKind::Type(ty) => ty,
+            r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
         };
 
         tcx.replace_escaping_bound_vars(value, fld_r, fld_t).0

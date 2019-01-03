@@ -32,7 +32,8 @@ crate enum RichLocation {
 impl LocationTable {
     crate fn new(mir: &Mir<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block = mir.basic_blocks()
+        let statements_before_block = mir
+            .basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -94,7 +95,8 @@ impl LocationTable {
         // the last point where the "first index" (0, 10, or 20)
         // was less than the statement index (22). In our case, this will
         // be (BB2, 20).
-        let (block, &first_index) = self.statements_before_block
+        let (block, &first_index) = self
+            .statements_before_block
             .iter_enumerated()
             .filter(|(_, first_index)| **first_index <= point_index)
             .last()
@@ -102,9 +104,15 @@ impl LocationTable {
 
         let statement_index = (point_index - first_index) / 2;
         if index.is_start() {
-            RichLocation::Start(Location { block, statement_index })
+            RichLocation::Start(Location {
+                block,
+                statement_index,
+            })
         } else {
-            RichLocation::Mid(Location { block, statement_index })
+            RichLocation::Mid(Location {
+                block,
+                statement_index,
+            })
         }
     }
 }

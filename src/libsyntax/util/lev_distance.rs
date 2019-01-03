@@ -40,41 +40,49 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
 ///
 /// Besides Levenshtein, we use case insensitive comparison to improve accuracy on an edge case with
 /// a lower(upper)case letters mismatch.
-pub fn find_best_match_for_name<'a, T>(iter_names: T,
-                                       lookup: &str,
-                                       dist: Option<usize>) -> Option<Symbol>
-    where T: Iterator<Item = &'a Symbol> {
+pub fn find_best_match_for_name<'a, T>(
+    iter_names: T,
+    lookup: &str,
+    dist: Option<usize>,
+) -> Option<Symbol>
+where
+    T: Iterator<Item = &'a Symbol>,
+{
     let max_dist = dist.map_or_else(|| cmp::max(lookup.len(), 3) / 3, |d| d);
 
     let (case_insensitive_match, levenstein_match) = iter_names
-    .filter_map(|&name| {
-        let dist = lev_distance(lookup, &name.as_str());
-        if dist <= max_dist {
-            Some((name, dist))
-        } else {
-            None
-        }
-    })
-    // Here we are collecting the next structure:
-    // (case_insensitive_match, (levenstein_match, levenstein_distance))
-    .fold((None, None), |result, (candidate, dist)| {
-        (
-            if candidate.as_str().to_uppercase() == lookup.to_uppercase() {
-                Some(candidate)
+        .filter_map(|&name| {
+            let dist = lev_distance(lookup, &name.as_str());
+            if dist <= max_dist {
+                Some((name, dist))
             } else {
-                result.0
-            },
-            match result.1 {
-                None => Some((candidate, dist)),
-                Some((c, d)) => Some(if dist < d { (candidate, dist) } else { (c, d) })
+                None
             }
-        )
-    });
+        })
+        // Here we are collecting the next structure:
+        // (case_insensitive_match, (levenstein_match, levenstein_distance))
+        .fold((None, None), |result, (candidate, dist)| {
+            (
+                if candidate.as_str().to_uppercase() == lookup.to_uppercase() {
+                    Some(candidate)
+                } else {
+                    result.0
+                },
+                match result.1 {
+                    None => Some((candidate, dist)),
+                    Some((c, d)) => Some(if dist < d { (candidate, dist) } else { (c, d) }),
+                },
+            )
+        });
 
     if let Some(candidate) = case_insensitive_match {
         Some(candidate) // exact case insensitive match has a higher priority
     } else {
-        if let Some((candidate, _)) = levenstein_match { Some(candidate) } else { None }
+        if let Some((candidate, _)) = levenstein_match {
+            Some(candidate)
+        } else {
+            None
+        }
     }
 }
 
@@ -83,8 +91,9 @@ fn test_lev_distance() {
     use std::char::{from_u32, MAX};
     // Test bytelength agnosticity
     for c in (0..MAX as u32)
-             .filter_map(|i| from_u32(i))
-             .map(|i| i.to_string()) {
+        .filter_map(|i| from_u32(i))
+        .map(|i| i.to_string())
+    {
         assert_eq!(lev_distance(&c[..], &c[..]), 0);
     }
 
@@ -122,10 +131,7 @@ fn test_find_best_match_for_name() {
 
         let input = vec![Symbol::intern("AAAA")];
         // Returns None because `lev_distance > max_dist / 3`
-        assert_eq!(
-            find_best_match_for_name(input.iter(), "aaaa", None),
-            None
-        );
+        assert_eq!(find_best_match_for_name(input.iter(), "aaaa", None), None);
 
         let input = vec![Symbol::intern("AAAA")];
         assert_eq!(

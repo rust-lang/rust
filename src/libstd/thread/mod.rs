@@ -166,13 +166,13 @@ use mem;
 use panic;
 use panicking;
 use str;
-use sync::{Mutex, Condvar, Arc};
 use sync::atomic::AtomicUsize;
 use sync::atomic::Ordering::SeqCst;
+use sync::{Arc, Condvar, Mutex};
 use sys::thread as imp;
 use sys_common::mutex;
-use sys_common::thread_info;
 use sys_common::thread;
+use sys_common::thread_info;
 use sys_common::{AsInner, IntoInner};
 use time::Duration;
 
@@ -180,10 +180,11 @@ use time::Duration;
 // Thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
 
-#[macro_use] mod local;
+#[macro_use]
+mod local;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{LocalKey, AccessError};
+pub use self::local::{AccessError, LocalKey};
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -195,13 +196,16 @@ pub use self::local::{LocalKey, AccessError};
 // where available, but both are needed.
 
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
-#[doc(hidden)] pub use self::local::statik::Key as __StaticLocalKeyInner;
-#[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
-#[doc(hidden)] pub use self::local::fast::Key as __FastLocalKeyInner;
+#[doc(hidden)]
+pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
-#[doc(hidden)] pub use self::local::os::Key as __OsLocalKeyInner;
+#[doc(hidden)]
+pub use self::local::os::Key as __OsLocalKeyInner;
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
+#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#[doc(hidden)]
+pub use self::local::statik::Key as __StaticLocalKeyInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -376,8 +380,11 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
-        F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+    pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
     {
         unsafe { self.spawn_unchecked(f) }
     }
@@ -444,8 +451,11 @@ impl Builder {
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
-    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
-        F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
+    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'a,
+        T: Send + 'a,
     {
         let Builder { name, stack_size } = self;
 
@@ -454,8 +464,7 @@ impl Builder {
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
 
-        let my_packet : Arc<UnsafeCell<Option<Result<T>>>>
-            = Arc::new(UnsafeCell::new(None));
+        let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
         let main = move || {
@@ -487,7 +496,7 @@ impl Builder {
             // returning.
             native: Some(imp::Thread::new(
                 stack_size,
-                mem::transmute::<Box<dyn FnBox() + 'a>, Box<dyn FnBox() + 'static>>(Box::new(main))
+                mem::transmute::<Box<dyn FnBox() + 'a>, Box<dyn FnBox() + 'static>>(Box::new(main)),
             )?),
             thread: my_thread,
             packet: Packet(my_packet),
@@ -604,8 +613,11 @@ impl Builder {
 /// [`Send`]: ../../std/marker/trait.Send.html
 /// [`Sync`]: ../../std/marker/trait.Sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
-    F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+where
+    F: FnOnce() -> T,
+    F: Send + 'static,
+    T: Send + 'static,
 {
     Builder::new().spawn(f).unwrap()
 }
@@ -631,9 +643,11 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
-    thread_info::current_thread().expect("use of std::thread::current() is not \
-                                          possible after the thread's local \
-                                          data has been destroyed")
+    thread_info::current_thread().expect(
+        "use of std::thread::current() is not \
+         possible after the thread's local \
+         data has been destroyed",
+    )
 }
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
@@ -883,13 +897,22 @@ pub fn park() {
 
     // If we were previously notified then we consume this notification and
     // return quickly.
-    if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
-        return
+    if thread
+        .inner
+        .state
+        .compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst)
+        .is_ok()
+    {
+        return;
     }
 
     // Otherwise we need to coordinate going to sleep
     let mut m = thread.inner.lock.lock().unwrap();
-    match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
+    match thread
+        .inner
+        .state
+        .compare_exchange(EMPTY, PARKED, SeqCst, SeqCst)
+    {
         Ok(_) => {}
         Err(NOTIFIED) => {
             // We must read here, even though we know it will be `NOTIFIED`.
@@ -906,9 +929,13 @@ pub fn park() {
     }
     loop {
         m = thread.inner.cvar.wait(m).unwrap();
-        match thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst) {
+        match thread
+            .inner
+            .state
+            .compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst)
+        {
             Ok(_) => return, // got a notification
-            Err(_) => {} // spurious wakeup, go back to sleep
+            Err(_) => {}     // spurious wakeup, go back to sleep
         }
     }
 }
@@ -981,11 +1008,20 @@ pub fn park_timeout(dur: Duration) {
     // Like `park` above we have a fast path for an already-notified thread, and
     // afterwards we start coordinating for a sleep.
     // return quickly.
-    if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
-        return
+    if thread
+        .inner
+        .state
+        .compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst)
+        .is_ok()
+    {
+        return;
     }
     let m = thread.inner.lock.lock().unwrap();
-    match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
+    match thread
+        .inner
+        .state
+        .compare_exchange(EMPTY, PARKED, SeqCst, SeqCst)
+    {
         Ok(_) => {}
         Err(NOTIFIED) => {
             // We must read again here, see `park`.
@@ -1003,7 +1039,7 @@ pub fn park_timeout(dur: Duration) {
     let (_m, _result) = thread.inner.cvar.wait_timeout(m, dur).unwrap();
     match thread.inner.state.swap(EMPTY, SeqCst) {
         NOTIFIED => {} // got a notification, hurray!
-        PARKED => {} // no notification, alas
+        PARKED => {}   // no notification, alas
         n => panic!("inconsistent park_timeout state: {}", n),
     }
 }
@@ -1069,7 +1105,7 @@ impl ThreadId {
 
 /// The internal representation of a `Thread` handle
 struct Inner {
-    name: Option<CString>,      // Guaranteed to be UTF-8
+    name: Option<CString>, // Guaranteed to be UTF-8
     id: ThreadId,
 
     // state for thread park/unpark
@@ -1111,9 +1147,8 @@ impl Thread {
     // Used only internally to construct a thread object without spawning
     // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<String>) -> Thread {
-        let cname = name.map(|n| {
-            CString::new(n).expect("thread name may not contain interior null bytes")
-        });
+        let cname =
+            name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
         Thread {
             inner: Arc::new(Inner {
                 name: cname,
@@ -1121,7 +1156,7 @@ impl Thread {
                 state: AtomicUsize::new(EMPTY),
                 lock: Mutex::new(()),
                 cvar: Condvar::new(),
-            })
+            }),
         }
     }
 
@@ -1166,9 +1201,9 @@ impl Thread {
         // rather than a compare-and-swap that returns if it reads `NOTIFIED`
         // on failure.
         match self.inner.state.swap(NOTIFIED, SeqCst) {
-            EMPTY => return, // no one was waiting
+            EMPTY => return,    // no one was waiting
             NOTIFIED => return, // already unparked
-            PARKED => {} // gotta go wake someone up
+            PARKED => {}        // gotta go wake someone up
             _ => panic!("inconsistent state in unpark"),
         }
 
@@ -1245,7 +1280,8 @@ impl Thread {
     /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
-        self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )
+        self.cname()
+            .map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
     }
 
     fn cname(&self) -> Option<&CStr> {
@@ -1319,9 +1355,7 @@ struct JoinInner<T> {
 impl<T> JoinInner<T> {
     fn join(&mut self) -> Result<T> {
         self.native.take().unwrap().join();
-        unsafe {
-            (*self.packet.0.get()).take().unwrap()
-        }
+        unsafe { (*self.packet.0.get()).take().unwrap() }
     }
 }
 
@@ -1456,11 +1490,15 @@ impl<T> JoinHandle<T> {
 }
 
 impl<T> AsInner<imp::Thread> for JoinHandle<T> {
-    fn as_inner(&self) -> &imp::Thread { self.0.native.as_ref().unwrap() }
+    fn as_inner(&self) -> &imp::Thread {
+        self.0.native.as_ref().unwrap()
+    }
 }
 
 impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
-    fn into_inner(self) -> imp::Thread { self.0.native.unwrap() }
+    fn into_inner(self) -> imp::Thread {
+        self.0.native.unwrap()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1482,10 +1520,10 @@ fn _assert_sync_and_send() {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
+    use super::Builder;
     use any::Any;
-    use sync::mpsc::{channel, Sender};
     use result;
-    use super::{Builder};
+    use sync::mpsc::{channel, Sender};
     use thread;
     use time::Duration;
     use u32;
@@ -1495,28 +1533,38 @@ mod tests {
 
     #[test]
     fn test_unnamed_thread() {
-        thread::spawn(move|| {
+        thread::spawn(move || {
             assert!(thread::current().name().is_none());
-        }).join().ok().unwrap();
+        })
+        .join()
+        .ok()
+        .unwrap();
     }
 
     #[test]
     fn test_named_thread() {
-        Builder::new().name("ada lovelace".to_string()).spawn(move|| {
-            assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
-        }).unwrap().join().unwrap();
+        Builder::new()
+            .name("ada lovelace".to_string())
+            .spawn(move || {
+                assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
+            })
+            .unwrap()
+            .join()
+            .unwrap();
     }
 
     #[test]
     #[should_panic]
     fn test_invalid_named_thread() {
-        let _ = Builder::new().name("ada l\0velace".to_string()).spawn(|| {});
+        let _ = Builder::new()
+            .name("ada l\0velace".to_string())
+            .spawn(|| {});
     }
 
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        thread::spawn(move|| {
+        thread::spawn(move || {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();
@@ -1524,11 +1572,9 @@ mod tests {
 
     #[test]
     fn test_join_panic() {
-        match thread::spawn(move|| {
-            panic!()
-        }).join() {
+        match thread::spawn(move || panic!()).join() {
             result::Result::Err(_) => (),
-            result::Result::Ok(()) => panic!()
+            result::Result::Ok(()) => panic!(),
         }
     }
 
@@ -1538,14 +1584,13 @@ mod tests {
 
         fn f(i: i32, tx: Sender<()>) {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            thread::spawn(move || {
                 if i == 0 {
                     tx.send(()).unwrap();
                 } else {
                     f(i - 1, tx);
                 }
             });
-
         }
         f(10, tx);
         rx.recv().unwrap();
@@ -1555,8 +1600,8 @@ mod tests {
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
-        thread::spawn(move|| {
-            thread::spawn(move|| {
+        thread::spawn(move || {
+            thread::spawn(move || {
                 tx.send(()).unwrap();
             });
         });
@@ -1564,13 +1609,16 @@ mod tests {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<dyn Fn() + Send>) {
+    fn avoid_copying_the_body<F>(spawnfn: F)
+    where
+        F: FnOnce(Box<dyn Fn() + Send>),
+    {
         let (tx, rx) = channel();
 
         let x: Box<_> = box 1;
         let x_in_parent = (&*x) as *const i32 as usize;
 
-        spawnfn(Box::new(move|| {
+        spawnfn(Box::new(move || {
             let x_in_child = (&*x) as *const i32 as usize;
             tx.send(x_in_child).unwrap();
         }));
@@ -1589,7 +1637,7 @@ mod tests {
     #[test]
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
-            thread::spawn(move|| {
+            thread::spawn(move || {
                 f();
             });
         })
@@ -1598,9 +1646,7 @@ mod tests {
     #[test]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
-            let _ = thread::spawn(move|| {
-                f()
-            }).join();
+            let _ = thread::spawn(move || f()).join();
         })
     }
 
@@ -1612,9 +1658,9 @@ mod tests {
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
         fn child_no(x: u32) -> Box<dyn Fn() + Send> {
-            return Box::new(move|| {
+            return Box::new(move || {
                 if x < GENERATIONS {
-                    thread::spawn(move|| child_no(x+1)());
+                    thread::spawn(move || child_no(x + 1)());
                 }
             });
         }
@@ -1628,37 +1674,43 @@ mod tests {
 
     #[test]
     fn test_try_panic_message_static_str() {
-        match thread::spawn(move|| {
+        match thread::spawn(move || {
             panic!("static string");
-        }).join() {
+        })
+        .join()
+        {
             Err(e) => {
                 type T = &'static str;
                 assert!(e.is::<T>());
                 assert_eq!(*e.downcast::<T>().unwrap(), "static string");
             }
-            Ok(()) => panic!()
+            Ok(()) => panic!(),
         }
     }
 
     #[test]
     fn test_try_panic_message_owned_str() {
-        match thread::spawn(move|| {
+        match thread::spawn(move || {
             panic!("owned string".to_string());
-        }).join() {
+        })
+        .join()
+        {
             Err(e) => {
                 type T = String;
                 assert!(e.is::<T>());
                 assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
             }
-            Ok(()) => panic!()
+            Ok(()) => panic!(),
         }
     }
 
     #[test]
     fn test_try_panic_message_any() {
-        match thread::spawn(move|| {
+        match thread::spawn(move || {
             panic!(box 413u16 as Box<dyn Any + Send>);
-        }).join() {
+        })
+        .join()
+        {
             Err(e) => {
                 type T = Box<dyn Any + Send>;
                 assert!(e.is::<T>());
@@ -1666,7 +1718,7 @@ mod tests {
                 assert!(any.is::<u16>());
                 assert_eq!(*any.downcast::<u16>().unwrap(), 413);
             }
-            Ok(()) => panic!()
+            Ok(()) => panic!(),
         }
     }
 
@@ -1674,11 +1726,9 @@ mod tests {
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
-        match thread::spawn(move|| {
-            panic!(Juju)
-        }).join() {
+        match thread::spawn(move || panic!(Juju)).join() {
             Err(ref e) if e.is::<Juju>() => {}
-            Err(_) | Ok(()) => panic!()
+            Err(_) | Ok(()) => panic!(),
         }
     }
 

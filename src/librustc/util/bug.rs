@@ -1,8 +1,8 @@
 // These functions are used by macro expansion for bug! and span_bug!
 
-use ty::tls;
 use std::fmt;
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::{MultiSpan, Span};
+use ty::tls;
 
 #[cold]
 #[inline(never)]

@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
 #[bench]
 fn bench_new(b: &mut Bencher) {

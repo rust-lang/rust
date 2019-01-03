@@ -60,10 +60,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
             break;
         }
 
-        ptr::swap_nonoverlapping(
-            mid.sub(left),
-            mid.add(right - delta),
-            delta);
+        ptr::swap_nonoverlapping(mid.sub(left), mid.add(right - delta), delta);
 
         if left <= right {
             right -= delta;
@@ -80,8 +77,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         ptr::copy_nonoverlapping(mid.sub(left), buf, left);
         ptr::copy(mid, mid.sub(left), right);
         ptr::copy_nonoverlapping(buf, dim, left);
-    }
-    else {
+    } else {
         ptr::copy_nonoverlapping(mid, buf, right);
         ptr::copy(mid.sub(left), dim, left);
         ptr::copy_nonoverlapping(buf, mid.sub(left), right);

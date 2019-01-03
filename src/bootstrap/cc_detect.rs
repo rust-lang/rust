@@ -22,16 +22,16 @@
 //! everything.
 
 use std::collections::HashSet;
-use std::{env, iter};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, iter};
 
 use build_helper::output;
 use cc;
 
-use crate::{Build, GitRepo};
-use crate::config::Target;
 use crate::cache::Interned;
+use crate::config::Target;
+use crate::{Build, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
 // so use some simplified logic here. First we respect the environment variable `AR`, then
@@ -63,14 +63,25 @@ fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
-    let targets = build.targets.iter().chain(&build.hosts).cloned().chain(iter::once(build.build))
-                               .collect::<HashSet<_>>();
+    let targets = build
+        .targets
+        .iter()
+        .chain(&build.hosts)
+        .cloned()
+        .chain(iter::once(build.build))
+        .collect::<HashSet<_>>();
     for target in targets.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false)
-           .target(&target).host(&build.build);
+        cfg.cargo_metadata(false)
+            .opt_level(2)
+            .warnings(false)
+            .debug(false)
+            .target(&target)
+            .host(&build.build);
         match build.crt_static(target) {
-            Some(a) => { cfg.static_crt(a); }
+            Some(a) => {
+                cfg.static_crt(a);
+            }
             None => {
                 if target.contains("msvc") {
                     cfg.static_crt(true);
@@ -97,7 +108,11 @@ pub fn find(build: &mut Build) {
 
         build.cc.insert(target, compiler);
         build.verbose(&format!("CC_{} = {:?}", &target, build.cc(target)));
-        build.verbose(&format!("CFLAGS_{} = {:?}", &target, build.cflags(target, GitRepo::Rustc)));
+        build.verbose(&format!(
+            "CFLAGS_{} = {:?}",
+            &target,
+            build.cflags(target, GitRepo::Rustc)
+        ));
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target, ar));
             build.ar.insert(target, ar);
@@ -105,11 +120,21 @@ pub fn find(build: &mut Build) {
     }
 
     // For all host triples we need to find a C++ compiler as well
-    let hosts = build.hosts.iter().cloned().chain(iter::once(build.build)).collect::<HashSet<_>>();
+    let hosts = build
+        .hosts
+        .iter()
+        .cloned()
+        .chain(iter::once(build.build))
+        .collect::<HashSet<_>>();
     for host in hosts.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false).cpp(true)
-           .target(&host).host(&build.build);
+        cfg.cargo_metadata(false)
+            .opt_level(2)
+            .warnings(false)
+            .debug(false)
+            .cpp(true)
+            .target(&host)
+            .host(&build.build);
         let config = build.config.target_config.get(&host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
@@ -122,21 +147,24 @@ pub fn find(build: &mut Build) {
     }
 }
 
-fn set_compiler(cfg: &mut cc::Build,
-                compiler: Language,
-                target: Interned<String>,
-                config: Option<&Target>,
-                build: &Build) {
+fn set_compiler(
+    cfg: &mut cc::Build,
+    compiler: Language,
+    target: Interned<String>,
+    config: Option<&Target>,
+    build: &Build,
+) {
     match &*target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                let target = target.replace("armv7neon", "arm")
-                                   .replace("armv7", "arm")
-                                   .replace("thumbv7neon", "arm")
-                                   .replace("thumbv7", "arm");
+                let target = target
+                    .replace("armv7neon", "arm")
+                    .replace("armv7", "arm")
+                    .replace("thumbv7neon", "arm")
+                    .replace("thumbv7", "arm");
                 let compiler = format!("{}-{}", target, compiler.clang());
                 cfg.compiler(ndk.join("bin").join(compiler));
             }
@@ -148,7 +176,7 @@ fn set_compiler(cfg: &mut cc::Build,
             let c = cfg.get_compiler();
             let gnu_compiler = compiler.gcc();
             if !c.path().ends_with(gnu_compiler) {
-                return
+                return;
             }
 
             let output = output(c.to_command().arg("--version"));
@@ -157,7 +185,7 @@ fn set_compiler(cfg: &mut cc::Build,
                 None => return,
             };
             match output[i + 3..].chars().next().unwrap() {
-                '0' ... '6' => {}
+                '0'...'6' => {}
                 _ => return,
             }
             let alternative = format!("e{}", gnu_compiler);

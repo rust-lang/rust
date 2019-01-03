@@ -5,9 +5,11 @@ use fold::DocFolder;
 
 use passes::{look_for_tests, Pass};
 
-pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass =
-    Pass::early("check-private-items-doc-tests", check_private_items_doc_tests,
-                "check private items doc tests");
+pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass::early(
+    "check-private-items-doc-tests",
+    check_private_items_doc_tests,
+    "check private items doc tests",
+);
 
 struct PrivateItemDocTestLinter<'a, 'tcx: 'a, 'rcx: 'a> {
     cx: &'a DocContext<'a, 'tcx, 'rcx>,
@@ -15,9 +17,7 @@ struct PrivateItemDocTestLinter<'a, 'tcx: 'a, 'rcx: 'a> {
 
 impl<'a, 'tcx, 'rcx> PrivateItemDocTestLinter<'a, 'tcx, 'rcx> {
     fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
-        PrivateItemDocTestLinter {
-            cx,
-        }
+        PrivateItemDocTestLinter { cx }
     }
 }
 

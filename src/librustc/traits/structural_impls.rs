@@ -1,14 +1,14 @@
 use chalk_engine;
 use smallvec::SmallVec;
+use syntax::symbol::InternedString;
 use traits;
 use traits::project::Normalized;
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::{self, Lift, TyCtxt};
-use syntax::symbol::InternedString;
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::rc::Rc;
-use std::collections::{BTreeSet, BTreeMap};
 
 // structural impls for the structs in traits
 
@@ -168,7 +168,7 @@ impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
         // Bypass ppaux because it does not print out anonymous regions.
         fn write_region_name<'tcx>(
             r: ty::Region<'tcx>,
-            fmt: &mut fmt::Formatter<'_>
+            fmt: &mut fmt::Formatter<'_>,
         ) -> fmt::Result {
             match r {
                 ty::ReLateBound(index, br) => match br {
@@ -181,7 +181,7 @@ impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
                         }
                     }
                     _ => write!(fmt, "'_"),
-                }
+                },
 
                 _ => write!(fmt, "{}", r),
             }
@@ -237,8 +237,7 @@ impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
             Normalize(projection) => write!(
                 fmt,
                 "Normalize({} -> {})",
-                projection.projection_ty,
-                projection.ty
+                projection.projection_ty, projection.ty
             ),
         }
     }
@@ -319,10 +318,10 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
                     bound_ty.var.as_u32(),
                     match bound_ty.kind {
                         ty::BoundTyKind::Param(name) => name,
-                        ty::BoundTyKind::Anon => Symbol::intern(
-                            &format!("^{}", bound_ty.var.as_u32())
-                        ).as_interned_str(),
-                    }
+                        ty::BoundTyKind::Anon => {
+                            Symbol::intern(&format!("^{}", bound_ty.var.as_u32())).as_interned_str()
+                        }
+                    },
                 );
             }
 
@@ -336,21 +335,18 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
         use syntax::symbol::Symbol;
 
         match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => {
-                match br {
-                    ty::BoundRegion::BrNamed(_, name) => {
-                        self.regions.insert(*name);
-                    }
-
-                    ty::BoundRegion::BrAnon(var) => {
-                        self.regions.insert(Symbol::intern(
-                            &format!("'^{}", var)
-                        ).as_interned_str());
-                    }
-
-                    _ => (),
+            ty::ReLateBound(index, br) if *index == self.binder_index => match br {
+                ty::BoundRegion::BrNamed(_, name) => {
+                    self.regions.insert(*name);
                 }
-            }
+
+                ty::BoundRegion::BrAnon(var) => {
+                    self.regions
+                        .insert(Symbol::intern(&format!("'^{}", var)).as_interned_str());
+                }
+
+                _ => (),
+            },
 
             _ => (),
         };
@@ -403,7 +399,9 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
 
 impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let traits::ProgramClause { goal, hypotheses, .. } = self;
+        let traits::ProgramClause {
+            goal, hypotheses, ..
+        } = self;
         write!(fmt, "{}", goal)?;
         if !hypotheses.is_empty() {
             write!(fmt, " :- ")?;
@@ -455,10 +453,10 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
         match *self {
             super::Unimplemented => Some(super::Unimplemented),
             super::OutputTypeParameterMismatch(a, b, ref err) => {
-                tcx.lift(&(a, b)).and_then(|(a, b)|
+                tcx.lift(&(a, b)).and_then(|(a, b)| {
                     tcx.lift(err)
                         .map(|err| super::OutputTypeParameterMismatch(a, b, err))
-                )
+                })
             }
             super::TraitNotObjectSafe(def_id) => Some(super::TraitNotObjectSafe(def_id)),
             super::ConstEvalFailure(err) => Some(super::ConstEvalFailure(err)),
@@ -480,10 +478,10 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::ReferenceOutlivesReferent(ty) => {
                 tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
             }
-            super::ObjectTypeBound(ty, r) => tcx.lift(&ty).and_then(|ty|
+            super::ObjectTypeBound(ty, r) => tcx.lift(&ty).and_then(|ty| {
                 tcx.lift(&r)
-                   .and_then(|r| Some(super::ObjectTypeBound(ty, r)))
-            ),
+                    .and_then(|r| Some(super::ObjectTypeBound(ty, r)))
+            }),
             super::ObjectCastObligation(ty) => tcx.lift(&ty).map(super::ObjectCastObligation),
             super::AssignmentLhsSized => Some(super::AssignmentLhsSized),
             super::TupleInitializerSized => Some(super::TupleInitializerSized),
@@ -532,13 +530,13 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
 impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
     type Lifted = traits::DerivedObligationCause<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.parent_trait_ref).and_then(|trait_ref|
+        tcx.lift(&self.parent_trait_ref).and_then(|trait_ref| {
             tcx.lift(&*self.parent_code)
-               .map(|code| traits::DerivedObligationCause {
-                   parent_trait_ref: trait_ref,
-                   parent_code: Rc::new(code),
-               })
-        )
+                .map(|code| traits::DerivedObligationCause {
+                    parent_trait_ref: trait_ref,
+                    parent_code: Rc::new(code),
+                })
+        })
     }
 }
 
@@ -562,40 +560,40 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 impl_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs|
+            }) => tcx.lift(&substs).map(|substs| {
                 traits::VtableImpl(traits::VtableImplData {
                     impl_def_id,
                     substs,
                     nested,
                 })
-            ),
+            }),
             traits::VtableAutoImpl(t) => Some(traits::VtableAutoImpl(t)),
             traits::VtableGenerator(traits::VtableGeneratorData {
                 generator_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs|
+            }) => tcx.lift(&substs).map(|substs| {
                 traits::VtableGenerator(traits::VtableGeneratorData {
                     generator_def_id: generator_def_id,
                     substs: substs,
                     nested: nested,
                 })
-            ),
+            }),
             traits::VtableClosure(traits::VtableClosureData {
                 closure_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs|
+            }) => tcx.lift(&substs).map(|substs| {
                 traits::VtableClosure(traits::VtableClosureData {
                     closure_def_id,
                     substs,
                     nested,
                 })
-            ),
+            }),
             traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested }) => {
-                tcx.lift(&fn_ty).map(|fn_ty|
+                tcx.lift(&fn_ty).map(|fn_ty| {
                     traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested })
-                )
+                })
             }
             traits::VtableParam(n) => Some(traits::VtableParam(n)),
             traits::VtableBuiltin(n) => Some(traits::VtableBuiltin(n)),
@@ -603,24 +601,24 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 upcast_trait_ref,
                 vtable_base,
                 nested,
-            }) => tcx.lift(&upcast_trait_ref).map(|trait_ref|
+            }) => tcx.lift(&upcast_trait_ref).map(|trait_ref| {
                 traits::VtableObject(traits::VtableObjectData {
                     upcast_trait_ref: trait_ref,
                     vtable_base,
                     nested,
                 })
-            ),
+            }),
             traits::VtableTraitAlias(traits::VtableTraitAliasData {
                 alias_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs|
+            }) => tcx.lift(&substs).map(|substs| {
                 traits::VtableTraitAlias(traits::VtableTraitAliasData {
                     alias_def_id,
                     substs,
                     nested,
                 })
-            ),
+            }),
         }
     }
 }
@@ -677,11 +675,8 @@ EnumLiftImpl! {
 impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
     type Lifted = traits::Environment<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.clauses).map(|clauses| {
-            traits::Environment {
-                clauses,
-            }
-        })
+        tcx.lift(&self.clauses)
+            .map(|clauses| traits::Environment { clauses })
     }
 }
 
@@ -689,12 +684,8 @@ impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
     type Lifted = traits::InEnvironment<'tcx, G::Lifted>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.environment).and_then(|environment| {
-            tcx.lift(&self.goal).map(|goal| {
-                traits::InEnvironment {
-                    environment,
-                    goal,
-                }
-            })
+            tcx.lift(&self.goal)
+                .map(|goal| traits::InEnvironment { environment, goal })
         })
     }
 }
@@ -873,7 +864,8 @@ EnumTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter()
+        let v = self
+            .iter()
             .map(|t| t.fold_with(folder))
             .collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_goals(&v)
@@ -927,7 +919,8 @@ BraceStructTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter()
+        let v = self
+            .iter()
             .map(|t| t.fold_with(folder))
             .collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_clauses(&v)
@@ -945,17 +938,11 @@ where
     C::RegionConstraint: Clone,
 {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        <C as traits::ExClauseFold>::fold_ex_clause_with(
-            self,
-            folder,
-        )
+        <C as traits::ExClauseFold>::fold_ex_clause_with(self, folder)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        <C as traits::ExClauseFold>::visit_ex_clause_with(
-            self,
-            visitor,
-        )
+        <C as traits::ExClauseFold>::visit_ex_clause_with(self, visitor)
     }
 }
 

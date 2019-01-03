@@ -5,9 +5,9 @@
 use cmp;
 use fmt;
 use mem;
-use usize;
-use ptr::{self, NonNull};
 use num::NonZeroUsize;
+use ptr::{self, NonNull};
+use usize;
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
@@ -86,9 +86,7 @@ impl Layout {
             return Err(LayoutErr { private: () });
         }
 
-        unsafe {
-            Ok(Layout::from_size_align_unchecked(size, align))
-        }
+        unsafe { Ok(Layout::from_size_align_unchecked(size, align)) }
     }
 
     /// Creates a layout, bypassing all checks.
@@ -100,18 +98,25 @@ impl Layout {
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
-        Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
+        Layout {
+            size_: size,
+            align_: NonZeroUsize::new_unchecked(align),
+        }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub fn size(&self) -> usize { self.size_ }
+    pub fn size(&self) -> usize {
+        self.size_
+    }
 
     /// The minimum byte alignment for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub fn align(&self) -> usize { self.align_.get() }
+    pub fn align(&self) -> usize {
+        self.align_.get()
+    }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
@@ -123,9 +128,7 @@ impl Layout {
         // result use the unchecked constructor here to avoid inserting code
         // that panics if it isn't optimized well enough.
         debug_assert!(Layout::from_size_align(size, align).is_ok());
-        unsafe {
-            Layout::from_size_align_unchecked(size, align)
-        }
+        unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
     /// Produces layout describing a record that could be used to
@@ -137,9 +140,7 @@ impl Layout {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
         // See rationale in `new` for why this us using an unsafe variant below
         debug_assert!(Layout::from_size_align(size, align).is_ok());
-        unsafe {
-            Layout::from_size_align_unchecked(size, align)
-        }
+        unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
     /// Creates a layout describing the record that can hold a value
@@ -203,8 +204,7 @@ impl Layout {
         // size and padding overflow in the above manner should cause
         // the allocator to yield an error anyway.)
 
-        let len_rounded_up = len.wrapping_add(align).wrapping_sub(1)
-            & !align.wrapping_sub(1);
+        let len_rounded_up = len.wrapping_add(align).wrapping_sub(1) & !align.wrapping_sub(1);
         len_rounded_up.wrapping_sub(len)
     }
 
@@ -219,7 +219,9 @@ impl Layout {
     #[inline]
     pub fn pad_to_align(&self) -> Result<Layout, LayoutErr> {
         let pad = self.padding_needed_for(self.align());
-        let new_size = self.size().checked_add(pad)
+        let new_size = self
+            .size()
+            .checked_add(pad)
             .ok_or(LayoutErr { private: () })?;
 
         Layout::from_size_align(new_size, self.align())
@@ -236,15 +238,21 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
-        let padded_size = self.size().checked_add(self.padding_needed_for(self.align()))
+        let padded_size = self
+            .size()
+            .checked_add(self.padding_needed_for(self.align()))
             .ok_or(LayoutErr { private: () })?;
-        let alloc_size = padded_size.checked_mul(n)
+        let alloc_size = padded_size
+            .checked_mul(n)
             .ok_or(LayoutErr { private: () })?;
 
         unsafe {
             // self.align is already known to be valid and alloc_size has been
             // padded already.
-            Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size))
+            Ok((
+                Layout::from_size_align_unchecked(alloc_size, self.align()),
+                padded_size,
+            ))
         }
     }
 
@@ -268,9 +276,12 @@ impl Layout {
         let new_align = cmp::max(self.align(), next.align());
         let pad = self.padding_needed_for(next.align());
 
-        let offset = self.size().checked_add(pad)
+        let offset = self
+            .size()
+            .checked_add(pad)
             .ok_or(LayoutErr { private: () })?;
-        let new_size = offset.checked_add(next.size())
+        let new_size = offset
+            .checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
 
         let layout = Layout::from_size_align(new_size, new_align)?;
@@ -292,7 +303,10 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
-        let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
+        let size = self
+            .size()
+            .checked_mul(n)
+            .ok_or(LayoutErr { private: () })?;
         Layout::from_size_align(size, self.align())
     }
 
@@ -305,7 +319,9 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutErr> {
-        let new_size = self.size().checked_add(next.size())
+        let new_size = self
+            .size()
+            .checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
         let layout = Layout::from_size_align(new_size, self.align())?;
         Ok(layout)
@@ -317,12 +333,10 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
-        Layout::new::<T>()
-            .repeat(n)
-            .map(|(k, offs)| {
-                debug_assert!(offs == mem::size_of::<T>());
-                k
-            })
+        Layout::new::<T>().repeat(n).map(|(k, offs)| {
+            debug_assert!(offs == mem::size_of::<T>());
+            k
+        })
     }
 }
 
@@ -332,7 +346,7 @@ impl Layout {
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LayoutErr {
-    private: ()
+    private: (),
 }
 
 // (we need this for downstream impl of trait Error)
@@ -568,11 +582,7 @@ pub unsafe trait GlobalAlloc {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let new_ptr = self.alloc(new_layout);
         if !new_ptr.is_null() {
-            ptr::copy_nonoverlapping(
-                ptr,
-                new_ptr,
-                cmp::min(layout.size(), new_size),
-            );
+            ptr::copy_nonoverlapping(ptr, new_ptr, cmp::min(layout.size(), new_size));
             self.dealloc(ptr, layout);
         }
         new_ptr
@@ -660,7 +670,6 @@ pub unsafe trait GlobalAlloc {
 /// the future.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait Alloc {
-
     // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
     // e.g., in C, `malloc` of 0 will either return a null pointer or a
@@ -817,10 +826,12 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<u8>,
-                      layout: Layout,
-                      new_size: usize) -> Result<NonNull<u8>, AllocErr> {
+    unsafe fn realloc(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<u8>, AllocErr> {
         let old_size = layout.size();
 
         if new_size >= old_size {
@@ -837,9 +848,7 @@ pub unsafe trait Alloc {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let result = self.alloc(new_layout);
         if let Ok(new_ptr) = result {
-            ptr::copy_nonoverlapping(ptr.as_ptr(),
-                                     new_ptr.as_ptr(),
-                                     cmp::min(old_size, new_size));
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), cmp::min(old_size, new_size));
             self.dealloc(ptr, layout);
         }
         result
@@ -915,10 +924,12 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn realloc_excess(&mut self,
-                             ptr: NonNull<u8>,
-                             layout: Layout,
-                             new_size: usize) -> Result<Excess, AllocErr> {
+    unsafe fn realloc_excess(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<Excess, AllocErr> {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let usable_size = self.usable_size(&new_layout);
         self.realloc(ptr, layout, new_size)
@@ -960,10 +971,12 @@ pub unsafe trait Alloc {
     /// function; clients are expected either to be able to recover from
     /// `grow_in_place` failures without aborting, or to fall back on
     /// another reallocation method before resorting to an abort.
-    unsafe fn grow_in_place(&mut self,
-                            ptr: NonNull<u8>,
-                            layout: Layout,
-                            new_size: usize) -> Result<(), CannotReallocInPlace> {
+    unsafe fn grow_in_place(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
         debug_assert!(new_size >= layout.size());
         let (_l, u) = self.usable_size(&layout);
@@ -1015,10 +1028,12 @@ pub unsafe trait Alloc {
     /// function; clients are expected either to be able to recover from
     /// `shrink_in_place` failures without aborting, or to fall back
     /// on another reallocation method before resorting to an abort.
-    unsafe fn shrink_in_place(&mut self,
-                              ptr: NonNull<u8>,
-                              layout: Layout,
-                              new_size: usize) -> Result<(), CannotReallocInPlace> {
+    unsafe fn shrink_in_place(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
         debug_assert!(new_size <= layout.size());
         let (l, _u) = self.usable_size(&layout);
@@ -1030,7 +1045,6 @@ pub unsafe trait Alloc {
             Err(CannotReallocInPlace)
         }
     }
-
 
     // == COMMON USAGE PATTERNS ==
     // alloc_one, dealloc_one, alloc_array, realloc_array. dealloc_array
@@ -1065,7 +1079,8 @@ pub unsafe trait Alloc {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn alloc_one<T>(&mut self) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
@@ -1093,7 +1108,8 @@ pub unsafe trait Alloc {
     ///
     /// * the layout of `T` must *fit* that block of memory.
     unsafe fn dealloc_one<T>(&mut self, ptr: NonNull<T>)
-        where Self: Sized
+    where
+        Self: Sized,
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
@@ -1134,14 +1150,13 @@ pub unsafe trait Alloc {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn alloc_array<T>(&mut self, n: usize) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         match Layout::array::<T>(n) {
-            Ok(ref layout) if layout.size() > 0 => {
-                unsafe {
-                    self.alloc(layout.clone()).map(|p| p.cast())
-                }
-            }
+            Ok(ref layout) if layout.size() > 0 => unsafe {
+                self.alloc(layout.clone()).map(|p| p.cast())
+            },
             _ => Err(AllocErr),
         }
     }
@@ -1180,20 +1195,22 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn realloc_array<T>(&mut self,
-                               ptr: NonNull<T>,
-                               n_old: usize,
-                               n_new: usize) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
+    unsafe fn realloc_array<T>(
+        &mut self,
+        ptr: NonNull<T>,
+        n_old: usize,
+        n_new: usize,
+    ) -> Result<NonNull<T>, AllocErr>
+    where
+        Self: Sized,
     {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
             (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
                 debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
+                self.realloc(ptr.cast(), k_old.clone(), k_new.size())
+                    .map(NonNull::cast)
             }
-            _ => {
-                Err(AllocErr)
-            }
+            _ => Err(AllocErr),
         }
     }
 
@@ -1218,15 +1235,12 @@ pub unsafe trait Alloc {
     ///
     /// Always returns `Err` on arithmetic overflow.
     unsafe fn dealloc_array<T>(&mut self, ptr: NonNull<T>, n: usize) -> Result<(), AllocErr>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         match Layout::array::<T>(n) {
-            Ok(ref k) if k.size() > 0 => {
-                Ok(self.dealloc(ptr.cast(), k.clone()))
-            }
-            _ => {
-                Err(AllocErr)
-            }
+            Ok(ref k) if k.size() > 0 => Ok(self.dealloc(ptr.cast(), k.clone())),
+            _ => Err(AllocErr),
         }
     }
 }

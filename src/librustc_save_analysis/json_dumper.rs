@@ -3,8 +3,10 @@ use std::io::Write;
 use rustc_serialize::json::as_json;
 
 use rls_data::config::Config;
-use rls_data::{self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import,
-               MacroRef, Ref, RefKind, Relation};
+use rls_data::{
+    self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import, MacroRef,
+    Ref, RefKind, Relation,
+};
 use rls_span::{Column, Row};
 
 #[derive(Debug)]
@@ -91,8 +93,8 @@ impl<'b, O: DumpOutput + 'b> JsonDumper<O> {
     }
 
     pub fn import(&mut self, access: &Access, import: Import) {
-        if !access.public && self.config.pub_only
-            || !access.reachable && self.config.reachable_only {
+        if !access.public && self.config.pub_only || !access.reachable && self.config.reachable_only
+        {
             return;
         }
         self.result.imports.push(import);
@@ -106,8 +108,8 @@ impl<'b, O: DumpOutput + 'b> JsonDumper<O> {
     }
 
     pub fn dump_def(&mut self, access: &Access, mut data: Def) {
-        if !access.public && self.config.pub_only
-            || !access.reachable && self.config.reachable_only {
+        if !access.public && self.config.pub_only || !access.reachable && self.config.reachable_only
+        {
             return;
         }
         if data.kind == DefKind::Mod && data.span.file_name.to_str().unwrap() != data.value {

@@ -13,43 +13,42 @@
 //!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
-use super::ModuleLlvm;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
-use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use super::LlvmCodegenBackend;
+use super::ModuleLlvm;
+use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 
-use llvm;
-use metadata;
-use rustc::mir::mono::{Linkage, Visibility, Stats};
-use rustc::middle::cstore::{EncodedMetadata};
-use rustc::ty::TyCtxt;
-use rustc::middle::exported_symbols;
-use rustc::session::config::{self, DebugInfo};
 use builder::Builder;
 use common;
 use context::CodegenCx;
+use llvm;
+use metadata;
 use monomorphize::partitioning::CodegenUnitExt;
+use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::exported_symbols;
+use rustc::mir::mono::{Linkage, Stats, Visibility};
+use rustc::session::config::{self, DebugInfo};
+use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_data_structures::small_c_str::SmallCStr;
 
-use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
+use rustc_codegen_ssa::traits::*;
 
+use rustc::hir::CodegenFnAttrs;
 use std::ffi::CString;
 use std::time::Instant;
 use syntax_pos::symbol::InternedString;
-use rustc::hir::CodegenFnAttrs;
 
 use value::Value;
 
-
 pub fn write_metadata<'a, 'gcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    llvm_module: &ModuleLlvm
+    llvm_module: &ModuleLlvm,
 ) -> EncodedMetadata {
-    use std::io::Write;
-    use flate2::Compression;
     use flate2::write::DeflateEncoder;
+    use flate2::Compression;
+    use std::io::Write;
 
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
@@ -57,21 +56,25 @@ pub fn write_metadata<'a, 'gcx>(
     enum MetadataKind {
         None,
         Uncompressed,
-        Compressed
+        Compressed,
     }
 
-    let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
-        match *ty {
-            config::CrateType::Executable |
-            config::CrateType::Staticlib |
-            config::CrateType::Cdylib => MetadataKind::None,
+    let kind = tcx
+        .sess
+        .crate_types
+        .borrow()
+        .iter()
+        .map(|ty| match *ty {
+            config::CrateType::Executable
+            | config::CrateType::Staticlib
+            | config::CrateType::Cdylib => MetadataKind::None,
 
             config::CrateType::Rlib => MetadataKind::Uncompressed,
 
-            config::CrateType::Dylib |
-            config::CrateType::ProcMacro => MetadataKind::Compressed,
-        }
-    }).max().unwrap_or(MetadataKind::None);
+            config::CrateType::Dylib | config::CrateType::ProcMacro => MetadataKind::Compressed,
+        })
+        .max()
+        .unwrap_or(MetadataKind::None);
 
     if kind == MetadataKind::None {
         return EncodedMetadata::new();
@@ -85,15 +88,15 @@ pub fn write_metadata<'a, 'gcx>(
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
     DeflateEncoder::new(&mut compressed, Compression::fast())
-        .write_all(&metadata.raw_data).unwrap();
+        .write_all(&metadata.raw_data)
+        .unwrap();
 
     let llmeta = common::bytes_in_context(metadata_llcx, &compressed);
     let llconst = common::struct_in_context(metadata_llcx, &[llmeta], false);
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
-    let llglobal = unsafe {
-        llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr())
-    };
+    let llglobal =
+        unsafe { llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr()) };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
@@ -136,39 +139,36 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
-                                  cgu_name: InternedString)
-                                  -> Stats {
+pub fn compile_codegen_unit<'ll, 'tcx>(
+    tcx: TyCtxt<'ll, 'tcx, 'tcx>,
+    cgu_name: InternedString,
+) -> Stats {
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
-    let ((stats, module), _) = tcx.dep_graph.with_task(dep_node,
-                                                       tcx,
-                                                       cgu_name,
-                                                       module_codegen);
+    let ((stats, module), _) = tcx
+        .dep_graph
+        .with_task(dep_node, tcx, cgu_name, module_codegen);
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.
-    let cost = time_to_codegen.as_secs() * 1_000_000_000 +
-               time_to_codegen.subsec_nanos() as u64;
+    let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
 
     submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
     return stats;
 
     fn module_codegen<'ll, 'tcx>(
         tcx: TyCtxt<'ll, 'tcx, 'tcx>,
-        cgu_name: InternedString)
-        -> (Stats, ModuleCodegen<ModuleLlvm>)
-    {
+        cgu_name: InternedString,
+    ) -> (Stats, ModuleCodegen<ModuleLlvm>) {
         let backend = LlvmCodegenBackend(());
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = backend.new_metadata(tcx.sess, &cgu_name.as_str());
         let stats = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
-            let mono_items = cx.codegen_unit
-                               .items_in_deterministic_order(cx.tcx);
+            let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine::<Builder>(&cx, linkage, visibility);
             }
@@ -205,11 +205,14 @@ pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
             cx.consume_stats().into_inner()
         };
 
-        (stats, ModuleCodegen {
-            name: cgu_name.to_string(),
-            module_llvm: llvm_module,
-            kind: ModuleKind::Regular,
-        })
+        (
+            stats,
+            ModuleCodegen {
+                name: cgu_name.to_string(),
+                module_llvm: llvm_module,
+                kind: ModuleKind::Regular,
+            },
+        )
     }
 }
 

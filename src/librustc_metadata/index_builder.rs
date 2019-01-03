@@ -47,8 +47,8 @@
 
 use encoder::EncodeContext;
 use index::Index;
-use schema::*;
 use isolated_encoder::IsolatedEncoder;
+use schema::*;
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -102,11 +102,13 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// holds, and that it is therefore not gaining "secret" access to
     /// bits of HIR or other state that would not be trackd by the
     /// content system.
-    pub fn record<'x, DATA>(&'x mut self,
-                            id: DefId,
-                            op: fn(&mut IsolatedEncoder<'x, 'b, 'tcx>, DATA) -> Entry<'tcx>,
-                            data: DATA)
-        where DATA: DepGraphRead
+    pub fn record<'x, DATA>(
+        &'x mut self,
+        id: DefId,
+        op: fn(&mut IsolatedEncoder<'x, 'b, 'tcx>, DATA) -> Entry<'tcx>,
+        data: DATA,
+    ) where
+        DATA: DepGraphRead,
     {
         assert!(id.is_local());
 
@@ -145,7 +147,8 @@ impl DepGraphRead for ast::NodeId {
 }
 
 impl<T> DepGraphRead for Option<T>
-    where T: DepGraphRead
+where
+    T: DepGraphRead,
 {
     fn read(&self, tcx: TyCtxt) {
         match *self {
@@ -156,7 +159,8 @@ impl<T> DepGraphRead for Option<T>
 }
 
 impl<T> DepGraphRead for [T]
-    where T: DepGraphRead
+where
+    T: DepGraphRead,
 {
     fn read(&self, tcx: TyCtxt) {
         for i in self {
@@ -188,7 +192,7 @@ macro_rules! read_hir {
                 tcx.hir().read(self.id);
             }
         }
-    }
+    };
 }
 read_hir!(hir::Item);
 read_hir!(hir::ImplItem);

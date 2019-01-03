@@ -10,7 +10,9 @@ impl NodeIndex {
     #[inline]
     pub fn new(value: usize) -> NodeIndex {
         assert!(value < (u32::MAX as usize));
-        NodeIndex { index: NonZeroU32::new((value as u32) + 1).unwrap() }
+        NodeIndex {
+            index: NonZeroU32::new((value as u32) + 1).unwrap(),
+        }
     }
 
     #[inline]

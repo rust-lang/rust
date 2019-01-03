@@ -1,15 +1,15 @@
 use std::cell::Cell;
-use std::cmp::Ordering::{Equal, Greater, Less};
 use std::cmp::Ordering;
+use std::cmp::Ordering::{Equal, Greater, Less};
 use std::mem;
 use std::panic;
 use std::rc::Rc;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 use std::thread;
 
-use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
 use rand::distributions::Standard;
+use rand::{seq::SliceRandom, thread_rng, Rng, RngCore};
 
 fn square(n: usize) -> usize {
     n * n
@@ -233,7 +233,6 @@ fn test_slice_to() {
     assert_eq!(&vec[..0], b);
 }
 
-
 #[test]
 fn test_pop() {
     let mut v = vec![5];
@@ -396,7 +395,8 @@ fn test_sort() {
     for len in (2..25).chain(500..510) {
         for &modulus in &[5, 10, 100, 1000] {
             for _ in 0..10 {
-                let orig: Vec<_> = rng.sample_iter::<i32, _>(&Standard)
+                let orig: Vec<_> = rng
+                    .sample_iter::<i32, _>(&Standard)
                     .map(|x| x % modulus)
                     .take(len)
                     .collect();
@@ -534,7 +534,7 @@ fn test_rotate_left() {
 
     // non-small prime rotation, has a few rounds of swapping
     v = (389..1000).chain(0..389).collect();
-    v.rotate_left(1000-389);
+    v.rotate_left(1000 - 389);
     assert_eq!(v, expected);
 }
 
@@ -605,7 +605,10 @@ fn test_join_nocopy() {
     let v: [String; 0] = [];
     assert_eq!(v.join(","), "");
     assert_eq!(["a".to_string(), "ab".into()].join(","), "a,ab");
-    assert_eq!(["a".to_string(), "ab".into(), "abc".into()].join(","), "a,ab,abc");
+    assert_eq!(
+        ["a".to_string(), "ab".into(), "abc".into()].join(","),
+        "a,ab,abc"
+    );
     assert_eq!(["a".to_string(), "ab".into(), "".into()].join(","), "a,ab,");
 }
 
@@ -688,7 +691,7 @@ macro_rules! assert_order {
     (Equal, $a:expr, $b:expr) => {
         assert_eq!($a.cmp($b), Equal);
         assert_eq!($a, $b);
-    }
+    };
 }
 
 #[test]
@@ -704,7 +707,6 @@ fn test_total_ord_u8() {
     let c = &[1u8, 2, 3, 4];
     assert_order!(Greater, &[2u8, 2][..], &c[..]);
 }
-
 
 #[test]
 fn test_total_ord_i32() {
@@ -795,7 +797,6 @@ fn test_mut_iterator() {
 
 #[test]
 fn test_rev_iterator() {
-
     let xs = [1, 2, 5, 10, 11];
     let ys = [11, 10, 5, 2, 1];
     let mut i = 0;
@@ -818,15 +819,21 @@ fn test_mut_rev_iterator() {
 #[test]
 fn test_move_iterator() {
     let xs = vec![1, 2, 3, 4, 5];
-    assert_eq!(xs.into_iter().fold(0, |a: usize, b: usize| 10 * a + b),
-               12345);
+    assert_eq!(
+        xs.into_iter().fold(0, |a: usize, b: usize| 10 * a + b),
+        12345
+    );
 }
 
 #[test]
 fn test_move_rev_iterator() {
     let xs = vec![1, 2, 3, 4, 5];
-    assert_eq!(xs.into_iter().rev().fold(0, |a: usize, b: usize| 10 * a + b),
-               54321);
+    assert_eq!(
+        xs.into_iter()
+            .rev()
+            .fold(0, |a: usize, b: usize| 10 * a + b),
+        54321
+    );
 }
 
 #[test]
@@ -870,11 +877,15 @@ fn test_splitnator_mut() {
     let xs = &mut [1, 2, 3, 4, 5];
 
     let splits: &[&mut [_]] = &[&mut [1, 2, 3, 4, 5]];
-    assert_eq!(xs.splitn_mut(1, |x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
+    assert_eq!(
+        xs.splitn_mut(1, |x| *x % 2 == 0).collect::<Vec<_>>(),
+        splits
+    );
     let splits: &[&mut [_]] = &[&mut [1], &mut [3, 4, 5]];
-    assert_eq!(xs.splitn_mut(2, |x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
+    assert_eq!(
+        xs.splitn_mut(2, |x| *x % 2 == 0).collect::<Vec<_>>(),
+        splits
+    );
     let splits: &[&mut [_]] = &[&mut [], &mut [], &mut [], &mut [4, 5]];
     assert_eq!(xs.splitn_mut(4, |_| true).collect::<Vec<_>>(), splits);
 
@@ -1046,11 +1057,11 @@ fn test_reverse_part() {
 #[test]
 fn test_show() {
     macro_rules! test_show_vec {
-        ($x:expr, $x_str:expr) => ({
+        ($x:expr, $x_str:expr) => {{
             let (x, x_str) = ($x, $x_str);
             assert_eq!(format!("{:?}", x), x_str);
             assert_eq!(format!("{:?}", x), x_str);
-        })
+        }};
     }
     let empty = Vec::<i32>::new();
     test_show_vec!(empty, "[]");
@@ -1074,7 +1085,7 @@ fn test_vec_default() {
         ($ty:ty) => {{
             let v: $ty = Default::default();
             assert!(v.is_empty());
-        }}
+        }};
     }
 
     t!(&[i32]);
@@ -1397,8 +1408,8 @@ fn test_box_slice_clone() {
 #[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_box_slice_clone_panics() {
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use std::thread::spawn;
 
     struct Canary {
@@ -1436,15 +1447,21 @@ fn test_box_slice_clone_panics() {
     };
 
     spawn(move || {
-            // When xs is dropped, +5.
-            let xs = vec![canary.clone(), canary.clone(), canary.clone(), panic, canary]
-                .into_boxed_slice();
+        // When xs is dropped, +5.
+        let xs = vec![
+            canary.clone(),
+            canary.clone(),
+            canary.clone(),
+            panic,
+            canary,
+        ]
+        .into_boxed_slice();
 
-            // When panic is cloned, +3.
-            xs.clone();
-        })
-        .join()
-        .unwrap_err();
+        // When panic is cloned, +3.
+        xs.clone();
+    })
+    .join()
+    .unwrap_err();
 
     // Total = 8
     assert_eq!(drop_count.load(Ordering::SeqCst), 8);
@@ -1478,26 +1495,86 @@ const MAX_LEN: usize = 80;
 
 static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
     // FIXME(RFC 1109): AtomicUsize is not Copy.
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
 ];
 
 static VERSIONS: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -1544,7 +1621,10 @@ macro_rules! test {
         // Work out the total number of comparisons required to sort
         // this array...
         let mut count = 0usize;
-        $input.to_owned().$func(|a, b| { count += 1; a.cmp(b) });
+        $input.to_owned().$func(|a, b| {
+            count += 1;
+            a.cmp(b)
+        });
 
         // ... and then panic on each and every single one.
         for panic_countdown in 0..count {
@@ -1566,21 +1646,26 @@ macro_rules! test {
                     panic_countdown -= 1;
                     a.cmp(b)
                 })
-            }).join();
+            })
+            .join();
 
             // Check that the number of things dropped is exactly
             // what we expect (i.e., the contents of `v`).
             for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
                 let count = c.load(Relaxed);
-                assert!(count == 1,
-                        "found drop count == {} for i == {}, len == {}",
-                        count, i, len);
+                assert!(
+                    count == 1,
+                    "found drop count == {} for i == {}, len == {}",
+                    count,
+                    i,
+                    len
+                );
             }
 
             // Check that the most recent versions of values were dropped.
             assert_eq!(VERSIONS.load(Relaxed), 0);
         }
-    }
+    };
 }
 
 thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
@@ -1601,12 +1686,10 @@ fn panic_safe() {
         for &modulus in &[5, 20, 50] {
             for &has_runs in &[false, true] {
                 let mut input = (0..len)
-                    .map(|id| {
-                        DropCounter {
-                            x: rng.next_u32() % modulus,
-                            id: id,
-                            version: Cell::new(0),
-                        }
+                    .map(|id| DropCounter {
+                        x: rng.next_u32() % modulus,
+                        id: id,
+                        version: Cell::new(0),
                     })
                     .collect::<Vec<_>>();
 

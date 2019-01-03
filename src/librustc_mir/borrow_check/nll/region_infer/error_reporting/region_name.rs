@@ -1,4 +1,3 @@
-use std::fmt::{self, Display};
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::universal_regions::DefiningTy;
 use borrow_check::nll::ToRegionVid;
@@ -10,10 +9,11 @@ use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::util::ppaux::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
+use std::fmt::{self, Display};
 use syntax::ast::{Name, DUMMY_NODE_ID};
 use syntax::symbol::keywords;
-use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
+use syntax_pos::Span;
 
 #[derive(Debug)]
 crate struct RegionName {
@@ -38,15 +38,15 @@ impl RegionName {
     #[allow(dead_code)]
     crate fn was_named(&self) -> bool {
         match self.source {
-            RegionNameSource::NamedEarlyBoundRegion(..) |
-            RegionNameSource::NamedFreeRegion(..) |
-            RegionNameSource::Static => true,
-            RegionNameSource::SynthesizedFreeEnvRegion(..) |
-            RegionNameSource::CannotMatchHirTy(..) |
-            RegionNameSource::MatchedHirTy(..) |
-            RegionNameSource::MatchedAdtAndSegment(..) |
-            RegionNameSource::AnonRegionFromUpvar(..) |
-            RegionNameSource::AnonRegionFromOutput(..) => false,
+            RegionNameSource::NamedEarlyBoundRegion(..)
+            | RegionNameSource::NamedFreeRegion(..)
+            | RegionNameSource::Static => true,
+            RegionNameSource::SynthesizedFreeEnvRegion(..)
+            | RegionNameSource::CannotMatchHirTy(..)
+            | RegionNameSource::MatchedHirTy(..)
+            | RegionNameSource::MatchedAdtAndSegment(..)
+            | RegionNameSource::AnonRegionFromUpvar(..)
+            | RegionNameSource::AnonRegionFromOutput(..) => false,
         }
     }
 
@@ -60,50 +60,47 @@ impl RegionName {
         &self.name
     }
 
-    crate fn highlight_region_name(
-        &self,
-        diag: &mut DiagnosticBuilder<'_>
-    ) {
+    crate fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
         match &self.source {
-            RegionNameSource::NamedFreeRegion(span) |
-            RegionNameSource::NamedEarlyBoundRegion(span) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{}` defined here", self),
-                );
-            },
+            RegionNameSource::NamedFreeRegion(span)
+            | RegionNameSource::NamedEarlyBoundRegion(span) => {
+                diag.span_label(*span, format!("lifetime `{}` defined here", self));
+            }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
                 diag.span_label(
                     *span,
                     format!("lifetime `{}` represents this closure's body", self),
                 );
                 diag.note(&note);
-            },
+            }
             RegionNameSource::CannotMatchHirTy(span, type_name) => {
                 diag.span_label(*span, format!("has type `{}`", type_name));
-            },
+            }
             RegionNameSource::MatchedHirTy(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
                 );
-            },
+            }
             RegionNameSource::MatchedAdtAndSegment(span) => {
                 diag.span_label(*span, format!("let's call this `{}`", self));
-            },
+            }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
                 diag.span_label(
                     *span,
-                    format!("lifetime `{}` appears in the type of `{}`", self, upvar_name),
+                    format!(
+                        "lifetime `{}` appears in the type of `{}`",
+                        self, upvar_name
+                    ),
                 );
-            },
+            }
             RegionNameSource::AnonRegionFromOutput(span, mir_description, type_name) => {
                 diag.span_label(
                     *span,
                     format!("return type{} is {}", mir_description, type_name),
                 );
-            },
-            RegionNameSource::Static => {},
+            }
+            RegionNameSource::Static => {}
         }
     }
 }
@@ -152,16 +149,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         assert!(self.universal_regions.is_universal_region(fr));
 
-        let value = self.give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter)
+        let value = self
+            .give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
                     infcx, mir, mir_def_id, fr, counter,
                 )
             })
             .or_else(|| {
-                self.give_name_if_anonymous_region_appears_in_upvars(
-                    infcx.tcx, mir, fr, counter,
-                )
+                self.give_name_if_anonymous_region_appears_in_upvars(infcx.tcx, mir, fr, counter)
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
@@ -193,7 +189,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let span = self.get_named_span(tcx, error_region, &ebr.name);
                     Some(RegionName {
                         name: ebr.name,
-                        source: RegionNameSource::NamedEarlyBoundRegion(span)
+                        source: RegionNameSource::NamedEarlyBoundRegion(span),
                     })
                 } else {
                     None
@@ -202,7 +198,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             ty::ReStatic => Some(RegionName {
                 name: keywords::StaticLifetime.name().as_interned_str(),
-                source: RegionNameSource::Static
+                source: RegionNameSource::Static,
             }),
 
             ty::ReFree(free_region) => match free_region.bound_region {
@@ -212,12 +208,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         name,
                         source: RegionNameSource::NamedFreeRegion(span),
                     })
-                },
+                }
 
                 ty::BoundRegion::BrEnv => {
-                    let mir_node_id = tcx.hir()
-                                         .as_local_node_id(mir_def_id)
-                                         .expect("non-local mir");
+                    let mir_node_id = tcx
+                        .hir()
+                        .as_local_node_id(mir_def_id)
+                        .expect("non-local mir");
                     let def_ty = self.universal_regions.defining_ty;
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
@@ -250,7 +247,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             name: region_name,
                             source: RegionNameSource::SynthesizedFreeEnvRegion(
                                 args_span,
-                                note.to_string()
+                                note.to_string(),
                             ),
                         })
                     } else {
@@ -296,7 +293,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let node = tcx.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
 
         let span = tcx.sess.source_map().def_span(tcx.hir().span(node));
-        if let Some(param) = tcx.hir()
+        if let Some(param) = tcx
+            .hir()
             .get_generics(scope)
             .and_then(|generics| generics.get_named(name))
         {
@@ -495,15 +493,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         // FIXME: We should be able to do something similar to
                         // match_adt_and_segment in this case.
                         hir::def::Def::TyAlias(_) => (),
-                        _ => if let Some(last_segment) = path.segments.last() {
-                            if let Some(name) = self.match_adt_and_segment(
-                                substs,
-                                needle_fr,
-                                last_segment,
-                                counter,
-                                search_stack,
-                            ) {
-                                return Some(name);
+                        _ => {
+                            if let Some(last_segment) = path.segments.last() {
+                                if let Some(name) = self.match_adt_and_segment(
+                                    substs,
+                                    needle_fr,
+                                    last_segment,
+                                    counter,
+                                    search_stack,
+                                ) {
+                                    return Some(name);
+                                }
                             }
                         }
                     }
@@ -549,7 +549,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionName> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
         let args = last_segment.args.as_ref()?;
-        let lifetime = self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
+        let lifetime =
+            self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
         match lifetime.name {
             hir::LifetimeName::Param(_)
             | hir::LifetimeName::Error
@@ -673,11 +674,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        let type_name = RegionHighlightMode::highlighting_region_vid(
-            fr, *counter, || infcx.extract_type_name(&return_ty),
-        );
+        let type_name = RegionHighlightMode::highlighting_region_vid(fr, *counter, || {
+            infcx.extract_type_name(&return_ty)
+        });
 
-        let mir_node_id = tcx.hir().as_local_node_id(mir_def_id).expect("non-local mir");
+        let mir_node_id = tcx
+            .hir()
+            .as_local_node_id(mir_def_id)
+            .expect("non-local mir");
 
         let (return_span, mir_description) = match tcx.hir().get(mir_node_id) {
             hir::Node::Expr(hir::Expr {
@@ -706,7 +710,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             source: RegionNameSource::AnonRegionFromOutput(
                 return_span,
                 mir_description.to_string(),
-                type_name
+                type_name,
             ),
         })
     }

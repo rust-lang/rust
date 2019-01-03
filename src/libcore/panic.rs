@@ -39,17 +39,24 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
-                issue = "0")]
+    #![unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
+                  and related macros",
+        issue = "0"
+    )]
     #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
-                                location: Location<'a>)
-                                -> Self {
+    pub fn internal_constructor(
+        message: Option<&'a fmt::Arguments<'a>>,
+        location: Location<'a>,
+    ) -> Self {
         struct NoPayload;
-        PanicInfo { payload: &NoPayload, location, message }
+        PanicInfo {
+            payload: &NoPayload,
+            location,
+            message,
+        }
     }
 
     #[doc(hidden)]
@@ -171,10 +178,12 @@ pub struct Location<'a> {
 }
 
 impl<'a> Location<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
-                issue = "0")]
+    #![unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` \
+                  and related macros",
+        issue = "0"
+    )]
     #[doc(hidden)]
     pub fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
         Location { file, line, col }

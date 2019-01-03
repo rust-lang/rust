@@ -6,21 +6,20 @@
 //! integer.  It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::ptr;
-use std::borrow::Cow;
 
-use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
-use rustc::ty::layout::{Align, TargetDataLayout, Size, HasDataLayout};
-pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+pub use rustc::mir::interpret::{read_target_uint, truncate, write_target_uint};
+use rustc::ty::layout::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use syntax::ast::Mutability;
 
 use super::{
-    Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
-    EvalResult, Scalar, EvalErrorKind, AllocKind, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
+    AllocId, AllocKind, AllocMap, Allocation, AllocationExtra, ErrorHandled, EvalErrorKind,
+    EvalResult, GlobalId, InboundsCheck, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -39,7 +38,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
         match self {
             MemoryKind::Stack => false,
             MemoryKind::Vtable => true,
-            MemoryKind::Machine(k) => k.may_leak()
+            MemoryKind::Machine(k) => k.may_leak(),
         }
     }
 }
@@ -70,9 +69,7 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(super) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for Memory<'a, 'mir, 'tcx, M>
-{
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout for Memory<'a, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
@@ -81,12 +78,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
 
 // FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
 // carefully copy only the reachable parts.
-impl<'a, 'mir, 'tcx, M>
-    Clone
-for
-    Memory<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M> Clone for Memory<'a, 'mir, 'tcx, M>
 where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
+    M: Machine<'a, 'mir, 'tcx, PointerTag = (), AllocExtra = (), MemoryExtra = ()>,
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     fn clone(&self) -> Self {
@@ -198,13 +192,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         "function".to_string(),
                         format!("{:?}", kind),
                     )),
-                    Some(AllocKind::Static(..)) |
-                    Some(AllocKind::Memory(..)) => err!(DeallocatedWrongMemoryKind(
-                        "static".to_string(),
-                        format!("{:?}", kind),
-                    )),
-                    None => err!(DoubleFree)
-                }
+                    Some(AllocKind::Static(..)) | Some(AllocKind::Memory(..)) => err!(
+                        DeallocatedWrongMemoryKind("static".to_string(), format!("{:?}", kind),)
+                    ),
+                    None => err!(DoubleFree),
+                };
             }
         };
 
@@ -217,10 +209,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         if let Some((size, align)) = size_and_align {
             if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
                 let bytes = Size::from_bytes(alloc.bytes.len() as u64);
-                return err!(IncorrectAllocationInformation(size,
-                                                           bytes,
-                                                           align,
-                                                           alloc.align));
+                return err!(IncorrectAllocationInformation(
+                    size,
+                    bytes,
+                    align,
+                    alloc.align
+                ));
             }
         }
 
@@ -231,7 +225,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
             ptr.alloc_id,
-            (Size::from_bytes(alloc.bytes.len() as u64), alloc.align)
+            (Size::from_bytes(alloc.bytes.len() as u64), alloc.align),
         );
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
@@ -245,7 +239,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn check_align(
         &self,
         ptr: Scalar<M::PointerTag>,
-        required_align: Align
+        required_align: Align,
     ) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
@@ -317,16 +311,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Some(AllocKind::Memory(mem)) => {
                 // We got tcx memory. Let the machine figure out whether and how to
                 // turn that into memory with the right pointer tag.
-                return Ok(M::adjust_static_allocation(mem, memory_extra))
+                return Ok(M::adjust_static_allocation(mem, memory_extra));
             }
-            Some(AllocKind::Function(..)) => {
-                return err!(DerefFunctionPointer)
-            }
-            Some(AllocKind::Static(did)) => {
-                did
-            }
-            None =>
-                return err!(DanglingPointerDeref),
+            Some(AllocKind::Function(..)) => return err!(DerefFunctionPointer),
+            Some(AllocKind::Static(did)) => did,
+            None => return err!(DanglingPointerDeref),
         };
         // We got a "lazy" static that has not been computed yet, do some work
         trace!("static_alloc: Need to compute {:?}", def_id);
@@ -340,19 +329,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         };
         // use the raw query here to break validation cycles. Later uses of the static will call the
         // full query anyway
-        tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-            // no need to report anything, the const_eval call takes care of that for statics
-            assert!(tcx.is_static(def_id).is_some());
-            match err {
-                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
-                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
-            }
-        }).map(|raw_const| {
-            let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
-            // We got tcx memory. Let the machine figure out whether and how to
-            // turn that into memory with the right pointer tag.
-            M::adjust_static_allocation(allocation, memory_extra)
-        })
+        tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid))
+            .map_err(|err| {
+                // no need to report anything, the const_eval call takes care of that for statics
+                assert!(tcx.is_static(def_id).is_some());
+                match err {
+                    ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
+                    ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
+                }
+            })
+            .map(|raw_const| {
+                let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
+                // We got tcx memory. Let the machine figure out whether and how to
+                // turn that into memory with the right pointer tag.
+                M::adjust_static_allocation(allocation, memory_extra)
+            })
     }
 
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
@@ -372,7 +363,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     // Need to put it into the map and return a ref to that
                     let kind = M::STATIC_KIND.expect(
                         "I got an owned allocation that I have to copy but the machine does \
-                            not expect that to happen"
+                         not expect that to happen",
                     );
                     Ok((MemoryKind::Machine(kind), alloc))
                 }
@@ -381,7 +372,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Now unpack that funny error type
         match a {
             Ok(a) => Ok(&a.1),
-            Err(a) => a
+            Err(a) => a,
         }
     }
 
@@ -442,10 +433,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             _ => match liveness {
                 InboundsCheck::MaybeDead => {
                     // Must be a deallocated pointer
-                    Ok(*self.dead_alloc_map.get(&id).expect(
-                        "allocation missing in dead_alloc_map"
-                    ))
-                },
+                    Ok(*self
+                        .dead_alloc_map
+                        .get(&id)
+                        .expect("allocation missing in dead_alloc_map"))
+                }
                 InboundsCheck::Live => err!(DanglingPointerDeref),
             },
         }
@@ -493,7 +485,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 }
                 relocations.push((i, target_id));
             }
-            if alloc.undef_mask.is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
+            if alloc
+                .undef_mask
+                .is_range_defined(i, i + Size::from_bytes(1))
+                .is_ok()
+            {
                 // this `as usize` is fine, since `i` came from a `usize`
                 write!(msg, "{:02x} ", alloc.bytes[i.bytes() as usize]).unwrap();
             } else {
@@ -548,17 +544,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         MemoryKind::Machine(m) => format!(" ({:?})", m),
                     };
                     self.dump_alloc_helper(
-                        &mut allocs_seen, &mut allocs_to_print,
-                        msg, alloc, extra
+                        &mut allocs_seen,
+                        &mut allocs_to_print,
+                        msg,
+                        alloc,
+                        extra,
                     );
-                },
+                }
                 Err(()) => {
                     // static alloc?
                     match self.tcx.alloc_map.lock().get(id) {
                         Some(AllocKind::Memory(alloc)) => {
                             self.dump_alloc_helper(
-                                &mut allocs_seen, &mut allocs_to_print,
-                                msg, alloc, " (immutable)".to_owned()
+                                &mut allocs_seen,
+                                &mut allocs_to_print,
+                                msg,
+                                alloc,
+                                " (immutable)".to_owned(),
                             );
                         }
                         Some(AllocKind::Function(func)) => {
@@ -571,17 +573,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                             trace!("{} (deallocated)", msg);
                         }
                     }
-                },
+                }
             };
-
         }
     }
 
     pub fn leak_report(&self) -> usize {
         trace!("### LEAK REPORT ###");
-        let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
-            if kind.may_leak() { None } else { Some(id) }
-        });
+        let leaks: Vec<_> =
+            self.alloc_map.filter_map_collect(
+                |&id, &(kind, _)| {
+                    if kind.may_leak() {
+                        None
+                    } else {
+                        Some(id)
+                    }
+                },
+            );
         let n = leaks.len();
         self.dump_allocs(leaks);
         n
@@ -595,11 +603,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Byte Accessors
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    pub fn read_bytes(
-        &self,
-        ptr: Scalar<M::PointerTag>,
-        size: Size,
-    ) -> EvalResult<'tcx, &[u8]> {
+    pub fn read_bytes(&self, ptr: Scalar<M::PointerTag>, size: Size) -> EvalResult<'tcx, &[u8]> {
         if size.bytes() == 0 {
             Ok(&[])
         } else {
@@ -612,16 +616,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 /// Interning (for CTFE)
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
+    M: Machine<'a, 'mir, 'tcx, PointerTag = (), AllocExtra = (), MemoryExtra = ()>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     /// mark an allocation as static and initialized, either mutable or not
-    pub fn intern_static(
-        &mut self,
-        alloc_id: AllocId,
-        mutability: Mutability,
-    ) -> EvalResult<'tcx> {
+    pub fn intern_static(&mut self, alloc_id: AllocId, mutability: Mutability) -> EvalResult<'tcx> {
         trace!(
             "mark_static_initialized {:?}, mutability: {:?}",
             alloc_id,
@@ -631,12 +631,15 @@ where
         let (kind, mut alloc) = self.alloc_map.remove(&alloc_id).unwrap();
         match kind {
             MemoryKind::Machine(_) => bug!("Static cannot refer to machine memory"),
-            MemoryKind::Stack | MemoryKind::Vtable => {},
+            MemoryKind::Stack | MemoryKind::Vtable => {}
         }
         // ensure llvm knows not to put this into immutable memory
         alloc.mutability = mutability;
         let alloc = self.tcx.intern_const_alloc(alloc);
-        self.tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
+        self.tcx
+            .alloc_map
+            .lock()
+            .set_alloc_id_memory(alloc_id, alloc);
         // recurse into inner allocations
         for &(_, alloc) in alloc.relocations.values() {
             // FIXME: Reusing the mutability here is likely incorrect.  It is originally
@@ -652,7 +655,7 @@ where
                 // dangling pointer
                 return err!(ValidationFailure(
                     "encountered dangling pointer in final constant".into(),
-                ))
+                ));
             }
         }
         Ok(())
@@ -702,19 +705,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             let relocations = self.get(src.alloc_id)?.relocations(self, src, size);
             let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
             for i in 0..length {
-                new_relocations.extend(
-                    relocations
-                    .iter()
-                    .map(|&(offset, reloc)| {
-                        // compute offset for current repetition
-                        let dest_offset = dest.offset + (i * size);
-                        (
-                            // shift offsets from source allocation to destination allocation
-                            offset + dest_offset - src.offset,
-                            reloc,
-                        )
-                    })
-                );
+                new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
+                    // compute offset for current repetition
+                    let dest_offset = dest.offset + (i * size);
+                    (
+                        // shift offsets from source allocation to destination allocation
+                        offset + dest_offset - src.offset,
+                        reloc,
+                    )
+                }));
             }
 
             new_relocations
@@ -723,10 +722,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let tcx = self.tcx.tcx;
 
         // This checks relocation edges on the src.
-        let src_bytes = self.get(src.alloc_id)?
+        let src_bytes = self
+            .get(src.alloc_id)?
             .get_bytes_with_undef_and_ptr(&tcx, src, size)?
             .as_ptr();
-        let dest_bytes = self.get_mut(dest.alloc_id)?
+        let dest_bytes = self
+            .get_mut(dest.alloc_id)?
             .get_bytes_mut(&tcx, dest, size * length)?
             .as_mut_ptr();
 
@@ -739,8 +740,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             assert_eq!(size.bytes() as usize as u64, size.bytes());
             if src.alloc_id == dest.alloc_id {
                 if nonoverlapping {
-                    if (src.offset <= dest.offset && src.offset + size > dest.offset) ||
-                        (dest.offset <= src.offset && dest.offset + size > src.offset)
+                    if (src.offset <= dest.offset && src.offset + size > dest.offset)
+                        || (dest.offset <= src.offset && dest.offset + size > src.offset)
                     {
                         return err!(Intrinsic(
                             "copy_nonoverlapping called on overlapping ranges".to_string(),
@@ -749,15 +750,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 }
 
                 for i in 0..length {
-                    ptr::copy(src_bytes,
-                              dest_bytes.offset((size.bytes() * i) as isize),
-                              size.bytes() as usize);
+                    ptr::copy(
+                        src_bytes,
+                        dest_bytes.offset((size.bytes() * i) as isize),
+                        size.bytes() as usize,
+                    );
                 }
             } else {
                 for i in 0..length {
-                    ptr::copy_nonoverlapping(src_bytes,
-                                             dest_bytes.offset((size.bytes() * i) as isize),
-                                             size.bytes() as usize);
+                    ptr::copy_nonoverlapping(
+                        src_bytes,
+                        dest_bytes.offset((size.bytes() * i) as isize),
+                        size.bytes() as usize,
+                    );
                 }
             }
         }
@@ -765,7 +770,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // copy definedness to the destination
         self.copy_undef_mask(src, dest, size, length)?;
         // copy the relocations to the destination
-        self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
+        self.get_mut(dest.alloc_id)?
+            .relocations
+            .insert_presorted(relocations);
 
         Ok(())
     }
@@ -793,7 +800,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             for j in 0..repeat {
                 dest_allocation.undef_mask.set(
                     dest.offset + Size::from_bytes(i + (size.bytes() * j)),
-                    defined
+                    defined,
                 );
             }
         }

@@ -3,9 +3,9 @@
 //! state of region inference. This code handles emitting the region
 //! context internal state.
 
+use super::{OutlivesConstraint, RegionInferenceContext};
 use rustc::infer::NLLRegionVariableOrigin;
 use std::io::{self, Write};
-use super::{OutlivesConstraint, RegionInferenceContext};
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like
@@ -82,14 +82,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             } = constraint;
             with_msg(&format!(
                 "{:?}: {:?} due to {:?} at {:?}",
-                sup,
-                sub,
-                category,
-                locations,
+                sup, sub, category, locations,
             ))?;
         }
 
         Ok(())
     }
 }
-

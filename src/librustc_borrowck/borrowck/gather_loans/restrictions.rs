@@ -14,15 +14,16 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum RestrictionResult<'tcx> {
     Safe,
-    SafeIf(Rc<LoanPath<'tcx>>, Vec<Rc<LoanPath<'tcx>>>)
+    SafeIf(Rc<LoanPath<'tcx>>, Vec<Rc<LoanPath<'tcx>>>),
 }
 
-pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      span: Span,
-                                      cause: euv::LoanCause,
-                                      cmt: &mc::cmt_<'tcx>,
-                                      loan_region: ty::Region<'tcx>)
-                                      -> RestrictionResult<'tcx> {
+pub fn compute_restrictions<'a, 'tcx>(
+    bccx: &BorrowckCtxt<'a, 'tcx>,
+    span: Span,
+    cause: euv::LoanCause,
+    cmt: &mc::cmt_<'tcx>,
+    loan_region: ty::Region<'tcx>,
+) -> RestrictionResult<'tcx> {
     let ctxt = RestrictionsContext {
         bccx,
         span,
@@ -44,8 +45,7 @@ struct RestrictionsContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
-    fn restrict(&self,
-                cmt: &mc::cmt_<'tcx>) -> RestrictionResult<'tcx> {
+    fn restrict(&self, cmt: &mc::cmt_<'tcx>) -> RestrictionResult<'tcx> {
         debug!("restrict(cmt={:?})", cmt);
 
         let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
@@ -93,7 +93,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 // needed.
                 let opt_variant_id = match cmt_base.cat {
                     Categorization::Downcast(_, variant_id) => Some(variant_id),
-                    _ => None
+                    _ => None,
                 };
                 let interior = interior.cleaned();
                 let base_ty = cmt_base.ty;
@@ -104,32 +104,37 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         RestrictionResult::Safe => RestrictionResult::Safe,
                         RestrictionResult::SafeIf(base_lp, mut base_vec) => {
                             for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
-                                let field = InteriorKind::InteriorField(
-                                    mc::FieldIndex(i, field.ident.name)
-                                );
+                                let field = InteriorKind::InteriorField(mc::FieldIndex(
+                                    i,
+                                    field.ident.name,
+                                ));
                                 let field_ty = if field == interior {
                                     cmt.ty
                                 } else {
                                     self.bccx.tcx.types.err // Doesn't matter
                                 };
-                                let sibling_lp_kind = LpExtend(base_lp.clone(), cmt.mutbl,
-                                                               LpInterior(opt_variant_id, field));
+                                let sibling_lp_kind = LpExtend(
+                                    base_lp.clone(),
+                                    cmt.mutbl,
+                                    LpInterior(opt_variant_id, field),
+                                );
                                 let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
                                 base_vec.push(sibling_lp);
                             }
 
-                            let lp = new_lp(LpExtend(base_lp, cmt.mutbl,
-                                                     LpInterior(opt_variant_id, interior)));
+                            let lp = new_lp(LpExtend(
+                                base_lp,
+                                cmt.mutbl,
+                                LpInterior(opt_variant_id, interior),
+                            ));
                             RestrictionResult::SafeIf(lp, base_vec)
                         }
                     },
-                    _ => self.extend(result, &cmt, LpInterior(opt_variant_id, interior))
+                    _ => self.extend(result, &cmt, LpInterior(opt_variant_id, interior)),
                 }
             }
 
-            Categorization::StaticItem => {
-                RestrictionResult::Safe
-            }
+            Categorization::StaticItem => RestrictionResult::Safe,
 
             Categorization::Deref(cmt_base, pk) => {
                 match pk {
@@ -148,13 +153,12 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                     mc::BorrowedPtr(bk, lt) => {
                         // R-Deref-[Mut-]Borrowed
                         if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                            self.bccx.report(
-                                BckError {
-                                    span: self.span,
-                                    cause: BorrowViolation(self.cause),
-                                    cmt: &cmt_base,
-                                    code: err_borrowed_pointer_too_short(
-                                        self.loan_region, lt)});
+                            self.bccx.report(BckError {
+                                span: self.span,
+                                cause: BorrowViolation(self.cause),
+                                cmt: &cmt_base,
+                                code: err_borrowed_pointer_too_short(self.loan_region, lt),
+                            });
                             return RestrictionResult::Safe;
                         }
 
@@ -172,16 +176,18 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         }
                     }
                     // Borrowck is not relevant for raw pointers
-                    mc::UnsafePtr(..) => RestrictionResult::Safe
+                    mc::UnsafePtr(..) => RestrictionResult::Safe,
                 }
             }
         }
     }
 
-    fn extend(&self,
-              result: RestrictionResult<'tcx>,
-              cmt: &mc::cmt_<'tcx>,
-              elem: LoanPathElem<'tcx>) -> RestrictionResult<'tcx> {
+    fn extend(
+        &self,
+        result: RestrictionResult<'tcx>,
+        cmt: &mc::cmt_<'tcx>,
+        elem: LoanPathElem<'tcx>,
+    ) -> RestrictionResult<'tcx> {
         match result {
             RestrictionResult::Safe => RestrictionResult::Safe,
             RestrictionResult::SafeIf(base_lp, mut base_vec) => {

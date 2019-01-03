@@ -1,69 +1,63 @@
-use build::Builder;
 use build::matches::MatchPair;
+use build::Builder;
 use hair::*;
 use rustc::mir::*;
-use std::u32;
 use std::convert::TryInto;
+use std::u32;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn field_match_pairs<'pat>(&mut self,
-                                   place: Place<'tcx>,
-                                   subpatterns: &'pat [FieldPattern<'tcx>])
-                                   -> Vec<MatchPair<'pat, 'tcx>> {
-        subpatterns.iter()
-                   .map(|fieldpat| {
-                       let place = place.clone().field(fieldpat.field,
-                                                         fieldpat.pattern.ty);
-                       MatchPair::new(place, &fieldpat.pattern)
-                   })
-                   .collect()
+    pub fn field_match_pairs<'pat>(
+        &mut self,
+        place: Place<'tcx>,
+        subpatterns: &'pat [FieldPattern<'tcx>],
+    ) -> Vec<MatchPair<'pat, 'tcx>> {
+        subpatterns
+            .iter()
+            .map(|fieldpat| {
+                let place = place.clone().field(fieldpat.field, fieldpat.pattern.ty);
+                MatchPair::new(place, &fieldpat.pattern)
+            })
+            .collect()
     }
 
-    pub fn prefix_slice_suffix<'pat>(&mut self,
-                                     match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
-                                     place: &Place<'tcx>,
-                                     prefix: &'pat [Pattern<'tcx>],
-                                     opt_slice: Option<&'pat Pattern<'tcx>>,
-                                     suffix: &'pat [Pattern<'tcx>]) {
+    pub fn prefix_slice_suffix<'pat>(
+        &mut self,
+        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+        place: &Place<'tcx>,
+        prefix: &'pat [Pattern<'tcx>],
+        opt_slice: Option<&'pat Pattern<'tcx>>,
+        suffix: &'pat [Pattern<'tcx>],
+    ) {
         let min_length = prefix.len() + suffix.len();
         let min_length = min_length.try_into().unwrap();
 
-        match_pairs.extend(
-            prefix.iter()
-                  .enumerate()
-                  .map(|(idx, subpattern)| {
-                      let elem = ProjectionElem::ConstantIndex {
-                          offset: idx as u32,
-                          min_length,
-                          from_end: false,
-                      };
-                      let place = place.clone().elem(elem);
-                      MatchPair::new(place, subpattern)
-                  })
-        );
+        match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
+            let elem = ProjectionElem::ConstantIndex {
+                offset: idx as u32,
+                min_length,
+                from_end: false,
+            };
+            let place = place.clone().elem(elem);
+            MatchPair::new(place, subpattern)
+        }));
 
         if let Some(subslice_pat) = opt_slice {
             let subslice = place.clone().elem(ProjectionElem::Subslice {
                 from: prefix.len() as u32,
-                to: suffix.len() as u32
+                to: suffix.len() as u32,
             });
             match_pairs.push(MatchPair::new(subslice, subslice_pat));
         }
 
-        match_pairs.extend(
-            suffix.iter()
-                  .rev()
-                  .enumerate()
-                  .map(|(idx, subpattern)| {
-                      let elem = ProjectionElem::ConstantIndex {
-                          offset: (idx+1) as u32,
-                          min_length,
-                          from_end: true,
-                      };
-                      let place = place.clone().elem(elem);
-                      MatchPair::new(place, subpattern)
-                  })
-        );
+        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
+            let elem = ProjectionElem::ConstantIndex {
+                offset: (idx + 1) as u32,
+                min_length,
+                from_end: true,
+            };
+            let place = place.clone().elem(elem);
+            MatchPair::new(place, subpattern)
+        }));
     }
 }
 

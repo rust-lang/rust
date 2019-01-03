@@ -21,9 +21,9 @@
 //! be indexed by the direction (see the type `Direction`).
 
 use bit_set::BitSet;
+use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use std::fmt::Debug;
 use std::usize;
-use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 
 #[cfg(test)]
 mod tests;

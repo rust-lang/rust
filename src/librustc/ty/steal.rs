@@ -1,4 +1,4 @@
-use rustc_data_structures::sync::{RwLock, ReadGuard, MappedReadGuard};
+use rustc_data_structures::sync::{MappedReadGuard, ReadGuard, RwLock};
 
 /// The `Steal` struct is intended to used as the value for a query.
 /// Specifically, we sometimes have queries (*cough* MIR *cough*)
@@ -21,25 +21,28 @@ use rustc_data_structures::sync::{RwLock, ReadGuard, MappedReadGuard};
 ///
 /// FIXME(#41710) -- what is the best way to model linear queries?
 pub struct Steal<T> {
-    value: RwLock<Option<T>>
+    value: RwLock<Option<T>>,
 }
 
 impl<T> Steal<T> {
     pub fn new(value: T) -> Self {
         Steal {
-            value: RwLock::new(Some(value))
+            value: RwLock::new(Some(value)),
         }
     }
 
     pub fn borrow(&self) -> MappedReadGuard<'_, T> {
         ReadGuard::map(self.value.borrow(), |opt| match *opt {
             None => bug!("attempted to read from stolen value"),
-            Some(ref v) => v
+            Some(ref v) => v,
         })
     }
 
     pub fn steal(&self) -> T {
-        let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
+        let value_ref = &mut *self
+            .value
+            .try_write()
+            .expect("stealing value which is locked");
         let value = value_ref.take();
         value.expect("attempt to read from stolen value")
     }

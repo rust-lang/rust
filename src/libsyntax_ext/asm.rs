@@ -5,15 +5,15 @@ use self::State::*;
 use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast;
+use syntax::ast::AsmDialect;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
-use syntax::ast::AsmDialect;
-use syntax_pos::Span;
 use syntax::tokenstream;
+use syntax_pos::Span;
 
 enum State {
     Asm,
@@ -39,27 +39,29 @@ impl State {
 
 const OPTIONS: &[&str] = &["volatile", "alignstack", "intel"];
 
-pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
-                       sp: Span,
-                       tts: &[tokenstream::TokenTree])
-                       -> Box<dyn base::MacResult + 'cx> {
+pub fn expand_asm<'cx>(
+    cx: &'cx mut ExtCtxt,
+    sp: Span,
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_asm() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       "asm",
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_ASM);
+        feature_gate::emit_feature_err(
+            &cx.parse_sess,
+            "asm",
+            sp,
+            feature_gate::GateIssue::Language,
+            feature_gate::EXPLAIN_ASM,
+        );
     }
 
     // Split the tts before the first colon, to avoid `asm!("x": y)`  being
     // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
-    let first_colon = tts.iter()
-        .position(|tt| {
-            match *tt {
-                tokenstream::TokenTree::Token(_, token::Colon) |
-                tokenstream::TokenTree::Token(_, token::ModSep) => true,
-                _ => false,
-            }
+    let first_colon = tts
+        .iter()
+        .position(|tt| match *tt {
+            tokenstream::TokenTree::Token(_, token::Colon)
+            | tokenstream::TokenTree::Token(_, token::ModSep) => true,
+            _ => false,
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
@@ -85,9 +87,11 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 }
                 // Nested parser, stop before the first colon (see above).
                 let mut p2 = cx.new_parser_from_tts(&tts[..first_colon]);
-                let (s, style) = match expr_to_string(cx,
-                                                      panictry!(p2.parse_expr()),
-                                                      "inline assembly must be a string literal") {
+                let (s, style) = match expr_to_string(
+                    cx,
+                    panictry!(p2.parse_expr()),
+                    "inline assembly must be a string literal",
+                ) {
                     Some((s, st)) => (s, st),
                     // let compilation continue
                     None => return DummyResult::expr(sp),
@@ -105,7 +109,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             }
             Outputs => {
                 while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
-
                     if !outputs.is_empty() {
                         p.eat(&token::Comma);
                     }
@@ -129,12 +132,14 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     let mut ch = constraint_str.chars();
                     let output = match ch.next() {
                         Some('=') => None,
-                        Some('+') => {
-                            Some(Symbol::intern(&format!("={}", ch.as_str())))
-                        }
+                        Some('+') => Some(Symbol::intern(&format!("={}", ch.as_str()))),
                         _ => {
-                            span_err!(cx, span, E0661,
-                                                    "output operand constraint lacks '=' or '+'");
+                            span_err!(
+                                cx,
+                                span,
+                                E0661,
+                                "output operand constraint lacks '=' or '+'"
+                            );
                             None
                         }
                     };
@@ -151,7 +156,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             }
             Inputs => {
                 while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
-
                     if !inputs.is_empty() {
                         p.eat(&token::Comma);
                     }
@@ -159,11 +163,19 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     let (constraint, _str_style) = panictry!(p.parse_str());
 
                     if constraint.as_str().starts_with("=") {
-                        span_err!(cx, p.prev_span, E0662,
-                                                "input operand constraint contains '='");
+                        span_err!(
+                            cx,
+                            p.prev_span,
+                            E0662,
+                            "input operand constraint contains '='"
+                        );
                     } else if constraint.as_str().starts_with("+") {
-                        span_err!(cx, p.prev_span, E0663,
-                                                "input operand constraint contains '+'");
+                        span_err!(
+                            cx,
+                            p.prev_span,
+                            E0663,
+                            "input operand constraint contains '+'"
+                        );
                     }
 
                     panictry!(p.expect(&token::OpenDelim(token::Paren)));
@@ -175,7 +187,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             }
             Clobbers => {
                 while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
-
                     if !clobs.is_empty() {
                         p.eat(&token::Comma);
                     }
@@ -185,8 +196,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
                     } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
-                        span_err!(cx, p.prev_span, E0664,
-                                                "clobber should not be surrounded by braces");
+                        span_err!(
+                            cx,
+                            p.prev_span,
+                            E0664,
+                            "clobber should not be surrounded by braces"
+                        );
                     }
 
                     clobs.push(s);
@@ -218,13 +233,11 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             // MOD_SEP is a double colon '::' without space in between.
             // When encountered, the state must be advanced twice.
             match (&p.token, state.next(), state.next().next()) {
-                (&token::Colon, StateNone, _) |
-                (&token::ModSep, _, StateNone) => {
+                (&token::Colon, StateNone, _) | (&token::ModSep, _, StateNone) => {
                     p.bump();
                     break 'statement;
                 }
-                (&token::Colon, st, _) |
-                (&token::ModSep, _, st) => {
+                (&token::Colon, st, _) | (&token::ModSep, _, st) => {
                     p.bump();
                     state = st;
                 }

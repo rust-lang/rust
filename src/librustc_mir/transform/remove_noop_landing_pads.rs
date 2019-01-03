@@ -1,5 +1,5 @@
-use rustc::ty::TyCtxt;
 use rustc::mir::*;
+use rustc::ty::TyCtxt;
 use rustc_data_structures::bit_set::BitSet;
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
@@ -9,12 +9,9 @@ use util::patch::MirPatch;
 /// code for these.
 pub struct RemoveNoopLandingPads;
 
-pub fn remove_noop_landing_pads<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &mut Mir<'tcx>)
-{
+pub fn remove_noop_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
     if tcx.sess.no_landing_pads() {
-        return
+        return;
     }
     debug!("remove_noop_landing_pads({:?})", mir);
 
@@ -22,10 +19,12 @@ pub fn remove_noop_landing_pads<'a, 'tcx>(
 }
 
 impl MirPass for RemoveNoopLandingPads {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _src: MirSource,
+        mir: &mut Mir<'tcx>,
+    ) {
         remove_noop_landing_pads(tcx, mir);
     }
 }
@@ -39,11 +38,11 @@ impl RemoveNoopLandingPads {
     ) -> bool {
         for stmt in &mir[bb].statements {
             match stmt.kind {
-                StatementKind::FakeRead(..) |
-                StatementKind::StorageLive(_) |
-                StatementKind::StorageDead(_) |
-                StatementKind::AscribeUserType(..) |
-                StatementKind::Nop => {
+                StatementKind::FakeRead(..)
+                | StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::AscribeUserType(..)
+                | StatementKind::Nop => {
                     // These are all nops in a landing pad
                 }
 
@@ -52,10 +51,10 @@ impl RemoveNoopLandingPads {
                     // turn a landing pad to a non-nop
                 }
 
-                StatementKind::Assign { .. } |
-                StatementKind::SetDiscriminant { .. } |
-                StatementKind::InlineAsm { .. } |
-                StatementKind::Retag { .. } => {
+                StatementKind::Assign { .. }
+                | StatementKind::SetDiscriminant { .. }
+                | StatementKind::InlineAsm { .. }
+                | StatementKind::Retag { .. } => {
                     return false;
                 }
             }
@@ -63,26 +62,22 @@ impl RemoveNoopLandingPads {
 
         let terminator = mir[bb].terminator();
         match terminator.kind {
-            TerminatorKind::Goto { .. } |
-            TerminatorKind::Resume |
-            TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::FalseEdges { .. } |
-            TerminatorKind::FalseUnwind { .. } => {
-                terminator.successors().all(|&succ| {
-                    nop_landing_pads.contains(succ)
-                })
-            },
-            TerminatorKind::GeneratorDrop |
-            TerminatorKind::Yield { .. } |
-            TerminatorKind::Return |
-            TerminatorKind::Abort |
-            TerminatorKind::Unreachable |
-            TerminatorKind::Call { .. } |
-            TerminatorKind::Assert { .. } |
-            TerminatorKind::DropAndReplace { .. } |
-            TerminatorKind::Drop { .. } => {
-                false
-            }
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. } => terminator
+                .successors()
+                .all(|&succ| nop_landing_pads.contains(succ)),
+            TerminatorKind::GeneratorDrop
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::Abort
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Drop { .. } => false,
         }
     }
 
@@ -94,7 +89,10 @@ impl RemoveNoopLandingPads {
             patch.apply(mir);
             resume_block
         };
-        debug!("remove_noop_landing_pads: resume block is {:?}", resume_block);
+        debug!(
+            "remove_noop_landing_pads: resume block is {:?}",
+            resume_block
+        );
 
         let mut jumps_folded = 0;
         let mut landing_pads_removed = 0;
@@ -132,6 +130,9 @@ impl RemoveNoopLandingPads {
             debug!("    is_nop_landing_pad({:?}) = {}", bb, is_nop_landing_pad);
         }
 
-        debug!("removed {:?} jumps and {:?} landing pads", jumps_folded, landing_pads_removed);
+        debug!(
+            "removed {:?} jumps and {:?} landing pads",
+            jumps_folded, landing_pads_removed
+        );
     }
 }

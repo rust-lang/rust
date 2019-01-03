@@ -191,7 +191,8 @@ pub trait Hash {
     /// [`Hasher`]: trait.Hasher.html
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
-        where Self: Sized
+    where
+        Self: Sized,
     {
         for piece in data {
             piece.hash(state);
@@ -545,9 +546,9 @@ impl<H> Eq for BuildHasherDefault<H> {}
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
+    use super::*;
     use mem;
     use slice;
-    use super::*;
 
     macro_rules! impl_write {
         ($(($ty:ident, $meth:ident),)*) => {$(
@@ -657,7 +658,6 @@ mod impls {
         }
     }
 
-
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &T {
         fn hash<H: Hasher>(&self, state: &mut H) {
@@ -680,9 +680,7 @@ mod impls {
                 state.write_usize(*self as *const () as usize);
             } else {
                 // Fat pointer
-                let (a, b) = unsafe {
-                    *(self as *const Self as *const (usize, usize))
-                };
+                let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
             }
@@ -697,9 +695,7 @@ mod impls {
                 state.write_usize(*self as *const () as usize);
             } else {
                 // Fat pointer
-                let (a, b) = unsafe {
-                    *(self as *const Self as *const (usize, usize))
-                };
+                let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
             }

@@ -5,10 +5,10 @@
 //! item.
 
 use hir;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use ty::TyCtxt;
+use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use std::fmt::{self, Display};
 use syntax_pos::Span;
+use ty::TyCtxt;
 
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum Target {
@@ -35,27 +35,31 @@ pub(crate) enum Target {
 
 impl Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match *self {
-            Target::ExternCrate => "extern crate",
-            Target::Use => "use",
-            Target::Static => "static item",
-            Target::Const => "constant item",
-            Target::Fn => "function",
-            Target::Closure => "closure",
-            Target::Mod => "module",
-            Target::ForeignMod => "foreign module",
-            Target::GlobalAsm => "global asm",
-            Target::Ty => "type alias",
-            Target::Existential => "existential type",
-            Target::Enum => "enum",
-            Target::Struct => "struct",
-            Target::Union => "union",
-            Target::Trait => "trait",
-            Target::TraitAlias => "trait alias",
-            Target::Impl => "item",
-            Target::Expression => "expression",
-            Target::Statement => "statement",
-        })
+        write!(
+            f,
+            "{}",
+            match *self {
+                Target::ExternCrate => "extern crate",
+                Target::Use => "use",
+                Target::Static => "static item",
+                Target::Const => "constant item",
+                Target::Fn => "function",
+                Target::Closure => "closure",
+                Target::Mod => "module",
+                Target::ForeignMod => "foreign module",
+                Target::GlobalAsm => "global asm",
+                Target::Ty => "type alias",
+                Target::Existential => "existential type",
+                Target::Enum => "enum",
+                Target::Struct => "struct",
+                Target::Union => "union",
+                Target::Trait => "trait",
+                Target::TraitAlias => "trait alias",
+                Target::Impl => "item",
+                Target::Expression => "expression",
+                Target::Statement => "statement",
+            }
+        )
     }
 }
 
@@ -90,9 +94,12 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.id));
+            self.tcx
+                .codegen_fn_attrs(self.tcx.hir().local_def_id(item.id));
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
-            self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
+            self.tcx
+                .sess
+                .struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
                 .emit();
         }
@@ -114,35 +121,36 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check if an `#[inline]` is applied to a function or a closure.
     fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) {
         if target != Target::Fn && target != Target::Closure {
-            struct_span_err!(self.tcx.sess,
-                             attr.span,
-                             E0518,
-                             "attribute should be applied to function or closure")
-                .span_label(*span, "not a function or closure")
-                .emit();
+            struct_span_err!(
+                self.tcx.sess,
+                attr.span,
+                E0518,
+                "attribute should be applied to function or closure"
+            )
+            .span_label(*span, "not a function or closure")
+            .emit();
         }
     }
 
     /// Check if the `#[non_exhaustive]` attribute on an `item` is valid.
     fn check_non_exhaustive(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
         match target {
-            Target::Struct | Target::Enum => { /* Valid */ },
+            Target::Struct | Target::Enum => { /* Valid */ }
             _ => {
-                struct_span_err!(self.tcx.sess,
-                                 attr.span,
-                                 E0701,
-                                 "attribute can only be applied to a struct or enum")
-                    .span_label(item.span, "not a struct or enum")
-                    .emit();
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0701,
+                    "attribute can only be applied to a struct or enum"
+                )
+                .span_label(item.span, "not a struct or enum")
+                .emit();
                 return;
             }
         }
 
         if attr.meta_item_list().is_some() || attr.value_str().is_some() {
-            struct_span_err!(self.tcx.sess,
-                             attr.span,
-                             E0702,
-                             "attribute should be empty")
+            struct_span_err!(self.tcx.sess, attr.span, E0702, "attribute should be empty")
                 .span_label(item.span, "not empty")
                 .emit();
         }
@@ -151,9 +159,10 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check if the `#[marker]` attribute on an `item` is valid.
     fn check_marker(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
         match target {
-            Target::Trait => { /* Valid */ },
+            Target::Trait => { /* Valid */ }
             _ => {
-                self.tcx.sess
+                self.tcx
+                    .sess
                     .struct_span_err(attr.span, "attribute can only be applied to a trait")
                     .span_label(item.span, "not a trait")
                     .emit();
@@ -162,7 +171,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         }
 
         if !attr.is_word() {
-            self.tcx.sess
+            self.tcx
+                .sess
                 .struct_span_err(attr.span, "attribute should be empty")
                 .emit();
         }
@@ -175,7 +185,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let hints: Vec<_> = item.attrs
+        let hints: Vec<_> = item
+            .attrs
             .iter()
             .filter(|attr| attr.name() == "repr")
             .filter_map(|attr| attr.meta_item_list())
@@ -199,20 +210,18 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             let (article, allowed_targets) = match &*name.as_str() {
                 "C" => {
                     is_c = true;
-                    if target != Target::Struct &&
-                            target != Target::Union &&
-                            target != Target::Enum {
-                                ("a", "struct, enum or union")
+                    if target != Target::Struct && target != Target::Union && target != Target::Enum
+                    {
+                        ("a", "struct, enum or union")
                     } else {
-                        continue
+                        continue;
                     }
                 }
                 "packed" => {
-                    if target != Target::Struct &&
-                            target != Target::Union {
-                                ("a", "struct or union")
+                    if target != Target::Struct && target != Target::Union {
+                        ("a", "struct or union")
                     } else {
-                        continue
+                        continue;
                     }
                 }
                 "simd" => {
@@ -220,15 +229,14 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     if target != Target::Struct {
                         ("a", "struct")
                     } else {
-                        continue
+                        continue;
                     }
                 }
                 "align" => {
-                    if target != Target::Struct &&
-                            target != Target::Union {
+                    if target != Target::Struct && target != Target::Union {
                         ("a", "struct or union")
                     } else {
-                        continue
+                        continue;
                     }
                 }
                 "transparent" => {
@@ -236,17 +244,15 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     if target != Target::Struct {
                         ("a", "struct")
                     } else {
-                        continue
+                        continue;
                     }
                 }
-                "i8"  | "u8"  | "i16" | "u16" |
-                "i32" | "u32" | "i64" | "u64" |
-                "isize" | "usize" => {
+                "i8" | "u8" | "i16" | "u16" | "i32" | "u32" | "i64" | "u64" | "isize" | "usize" => {
                     int_reprs += 1;
                     if target != Target::Enum {
                         ("an", "enum")
                     } else {
-                        continue
+                        continue;
                     }
                 }
                 _ => continue,
@@ -266,16 +272,23 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
-            span_err!(self.tcx.sess, hint_spans, E0692,
-                      "transparent struct cannot have other repr hints");
+            span_err!(
+                self.tcx.sess,
+                hint_spans,
+                E0692,
+                "transparent struct cannot have other repr hints"
+            );
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
-        if (int_reprs > 1)
-           || (is_simd && is_c)
-           || (int_reprs == 1 && is_c && is_c_like_enum(item)) {
+        if (int_reprs > 1) || (is_simd && is_c) || (int_reprs == 1 && is_c && is_c_like_enum(item))
+        {
             let hint_spans: Vec<_> = hint_spans.collect();
-            span_warn!(self.tcx.sess, hint_spans, E0566,
-                       "conflicting representation hints");
+            span_warn!(
+                self.tcx.sess,
+                hint_spans,
+                E0566,
+                "conflicting representation hints"
+            );
         }
     }
 
@@ -333,8 +346,10 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     fn check_used(&self, item: &hir::Item, target: Target) {
         for attr in &item.attrs {
             if attr.name() == "used" && target != Target::Static {
-                self.tcx.sess
-                    .span_err(attr.span, "attribute must be applied to a `static` variable");
+                self.tcx.sess.span_err(
+                    attr.span,
+                    "attribute must be applied to a `static` variable",
+                );
             }
         }
     }
@@ -351,7 +366,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
         intravisit::walk_item(self, item)
     }
 
-
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
         self.check_stmt_attributes(stmt);
         intravisit::walk_stmt(self, stmt)
@@ -365,7 +379,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut checker = CheckAttrVisitor { tcx };
-    tcx.hir().krate().visit_all_item_likes(&mut checker.as_deep_visitor());
+    tcx.hir()
+        .krate()
+        .visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {
@@ -373,7 +389,9 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
         for variant in &def.variants {
             match variant.node.data {
                 hir::VariantData::Unit(_) => { /* continue */ }
-                _ => { return false; }
+                _ => {
+                    return false;
+                }
             }
         }
         true

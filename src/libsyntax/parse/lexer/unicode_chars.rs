@@ -1,9 +1,9 @@
 // Characters and their corresponding confusables were collected from
 // http://www.unicode.org/Public/security/10.0.0/confusables.txt
 
-use syntax_pos::{Span, NO_EXPANSION};
-use errors::{Applicability, DiagnosticBuilder};
 use super::StringReader;
+use errors::{Applicability, DiagnosticBuilder};
+use syntax_pos::{Span, NO_EXPANSION};
 
 const UNICODE_ARRAY: &[(char, &str, char)] = &[
     (' ', "Line Separator", ' '),
@@ -24,13 +24,11 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     (' ', "Figure Space", ' '),
     (' ', "Narrow No-Break Space", ' '),
     ('　', "Ideographic Space", ' '),
-
     ('ߺ', "Nko Lajanyalan", '_'),
     ('﹍', "Dashed Low Line", '_'),
     ('﹎', "Centreline Low Line", '_'),
     ('﹏', "Wavy Low Line", '_'),
     ('＿', "Fullwidth Low Line", '_'),
-
     ('‐', "Hyphen", '-'),
     ('‑', "Non-Breaking Hyphen", '-'),
     ('‒', "Figure Dash", '-'),
@@ -54,18 +52,15 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('ㅡ', "Hangul Letter Eu", '-'),
     ('一', "CJK Unified Ideograph-4E00", '-'),
     ('⼀', "Kangxi Radical One", '-'),
-
     ('؍', "Arabic Date Separator", ','),
     ('٫', "Arabic Decimal Separator", ','),
     ('‚', "Single Low-9 Quotation Mark", ','),
     ('¸', "Cedilla", ','),
     ('ꓹ', "Lisu Letter Tone Na Po", ','),
     ('，', "Fullwidth Comma", ','),
-
     (';', "Greek Question Mark", ';'),
     ('；', "Fullwidth Semicolon", ';'),
     ('︔', "Presentation Form For Vertical Semicolon", ';'),
-
     ('ः', "Devanagari Sign Visarga", ':'),
     ('ઃ', "Gujarati Sign Visarga", ':'),
     ('：', "Fullwidth Colon", ':'),
@@ -84,12 +79,14 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('ː', "Modifier Letter Triangular Colon", ':'),
     ('ꓽ', "Lisu Letter Tone Mya Jeu", ':'),
     ('︓', "Presentation Form For Vertical Colon", ':'),
-
     ('！', "Fullwidth Exclamation Mark", '!'),
     ('ǃ', "Latin Letter Retroflex Click", '!'),
     ('ⵑ', "Tifinagh Letter Tuareg Yang", '!'),
-    ('︕', "Presentation Form For Vertical Exclamation Mark", '!'),
-
+    (
+        '︕',
+        "Presentation Form For Vertical Exclamation Mark",
+        '!',
+    ),
     ('ʔ', "Latin Letter Glottal Stop", '?'),
     ('Ɂ', "Latin Capital Letter Glottal Stop", '?'),
     ('ॽ', "Devanagari Letter Glottal Stop", '?'),
@@ -97,7 +94,6 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('ꛫ', "Bamum Letter Ntuu", '?'),
     ('？', "Fullwidth Question Mark", '?'),
     ('︖', "Presentation Form For Vertical Question Mark", '?'),
-
     ('𝅭', "Musical Symbol Combining Augmentation Dot", '.'),
     ('․', "One Dot Leader", '.'),
     ('܁', "Syriac Supralinear Full Stop", '.'),
@@ -123,8 +119,11 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('ᐧ', "Canadian Syllabics Final Middle Dot", '.'),
     ('．', "Fullwidth Full Stop", '.'),
     ('。', "Ideographic Full Stop", '.'),
-    ('︒', "Presentation Form For Vertical Ideographic Full Stop", '.'),
-
+    (
+        '︒',
+        "Presentation Form For Vertical Ideographic Full Stop",
+        '.',
+    ),
     ('՝', "Armenian Comma", '\''),
     ('＇', "Fullwidth Apostrophe", '\''),
     ('‘', "Left Single Quotation Mark", '\''),
@@ -161,7 +160,6 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('ᛌ', "Runic Letter Short-Twig-Sol S", '\''),
     ('𖽑', "Miao Sign Aspiration", '\''),
     ('𖽒', "Miao Sign Reformed Voicing", '\''),
-
     ('᳓', "Vedic Sign Nihshvasa", '"'),
     ('＂', "Fullwidth Quotation Mark", '"'),
     ('“', "Left Double Quotation Mark", '"'),
@@ -178,16 +176,17 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('ˮ', "Modifier Letter Double Apostrophe", '"'),
     ('ײ', "Hebrew Ligature Yiddish Double Yod", '"'),
     ('❞', "Heavy Double Comma Quotation Mark Ornament", '"'),
-    ('❝', "Heavy Double Turned Comma Quotation Mark Ornament", '"'),
-
+    (
+        '❝',
+        "Heavy Double Turned Comma Quotation Mark Ornament",
+        '"',
+    ),
     ('（', "Fullwidth Left Parenthesis", '('),
     ('❨', "Medium Left Parenthesis Ornament", '('),
     ('﴾', "Ornate Left Parenthesis", '('),
-
     ('）', "Fullwidth Right Parenthesis", ')'),
     ('❩', "Medium Right Parenthesis Ornament", ')'),
     ('﴿', "Ornate Right Parenthesis", ')'),
-
     ('［', "Fullwidth Left Square Bracket", '['),
     ('❲', "Light Left Tortoise Shell Bracket Ornament", '['),
     ('「', "Left Corner Bracket", '['),
@@ -197,7 +196,6 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('〖', "Left White Lenticular Bracket", '['),
     ('〘', "Left White Tortoise Shell Bracket", '['),
     ('〚', "Left White Square Bracket", '['),
-
     ('］', "Fullwidth Right Square Bracket", ']'),
     ('❳', "Light Right Tortoise Shell Bracket Ornament", ']'),
     ('」', "Right Corner Bracket", ']'),
@@ -207,25 +205,25 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('〗', "Right White Lenticular Bracket", ']'),
     ('〙', "Right White Tortoise Shell Bracket", ']'),
     ('〛', "Right White Square Bracket", ']'),
-
     ('❴', "Medium Left Curly Bracket Ornament", '{'),
     ('𝄔', "Musical Symbol Brace", '{'),
     ('｛', "Fullwidth Left Curly Bracket", '{'),
-
     ('❵', "Medium Right Curly Bracket Ornament", '}'),
     ('｝', "Fullwidth Right Curly Bracket", '}'),
-
     ('⁎', "Low Asterisk", '*'),
     ('٭', "Arabic Five Pointed Star", '*'),
     ('∗', "Asterisk Operator", '*'),
     ('𐌟', "Old Italic Letter Ess", '*'),
     ('＊', "Fullwidth Asterisk", '*'),
-
     ('᜵', "Philippine Single Punctuation", '/'),
     ('⁁', "Caret Insertion Point", '/'),
     ('∕', "Division Slash", '/'),
     ('⁄', "Fraction Slash", '/'),
-    ('╱', "Box Drawings Light Diagonal Upper Right To Lower Left", '/'),
+    (
+        '╱',
+        "Box Drawings Light Diagonal Upper Right To Lower Left",
+        '/',
+    ),
     ('⟋', "Mathematical Rising Diagonal", '/'),
     ('⧸', "Big Solidus", '/'),
     ('𝈺', "Greek Instrumental Notation Symbol-47", '/'),
@@ -236,7 +234,6 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('丿', "CJK Unified Ideograph-4E3F", '/'),
     ('⼃', "Kangxi Radical Slash", '/'),
     ('／', "Fullwidth Solidus", '/'),
-
     ('＼', "Fullwidth Reverse Solidus", '\\'),
     ('﹨', "Small Reverse Solidus", '\\'),
     ('∖', "Set Minus", '\\'),
@@ -250,18 +247,19 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('⼂', "Kangxi Radical Dot", '\\'),
     ('、', "Ideographic Comma", '\\'),
     ('ヽ', "Katakana Iteration Mark", '\\'),
-
     ('ꝸ', "Latin Small Letter Um", '&'),
     ('＆', "Fullwidth Ampersand", '&'),
-
     ('᛭', "Runic Cross Punctuation", '+'),
     ('➕', "Heavy Plus Sign", '+'),
     ('𐊛', "Lycian Letter H", '+'),
     ('﬩', "Hebrew Letter Alternative Plus Sign", '+'),
     ('＋', "Fullwidth Plus Sign", '+'),
-
     ('‹', "Single Left-Pointing Angle Quotation Mark", '<'),
-    ('❮', "Heavy Left-Pointing Angle Quotation Mark Ornament", '<'),
+    (
+        '❮',
+        "Heavy Left-Pointing Angle Quotation Mark Ornament",
+        '<',
+    ),
     ('˂', "Modifier Letter Left Arrowhead", '<'),
     ('𝈶', "Greek Instrumental Symbol-40", '<'),
     ('ᐸ', "Canadian Syllabics Pa", '<'),
@@ -275,15 +273,17 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('𡿨', "CJK Unified Ideograph-21FE8", '<'),
     ('《', "Left Double Angle Bracket", '<'),
     ('＜', "Fullwidth Less-Than Sign", '<'),
-
     ('᐀', "Canadian Syllabics Hyphen", '='),
     ('⹀', "Double Hyphen", '='),
     ('゠', "Katakana-Hiragana Double Hyphen", '='),
     ('꓿', "Lisu Punctuation Full Stop", '='),
     ('＝', "Fullwidth Equals Sign", '='),
-
     ('›', "Single Right-Pointing Angle Quotation Mark", '>'),
-    ('❯', "Heavy Right-Pointing Angle Quotation Mark Ornament", '>'),
+    (
+        '❯',
+        "Heavy Right-Pointing Angle Quotation Mark Ornament",
+        '>',
+    ),
     ('˃', "Modifier Letter Right Arrowhead", '>'),
     ('𝈷', "Greek Instrumental Symbol-42", '>'),
     ('ᐳ', "Canadian Syllabics Po", '>'),
@@ -293,8 +293,8 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('〉', "Right-Pointing Angle Bracket", '>'),
     ('〉', "Right Angle Bracket", '>'),
     ('》', "Right Double Angle Bracket", '>'),
-    ('＞', "Fullwidth Greater-Than Sign", '>'), ];
-
+    ('＞', "Fullwidth Greater-Than Sign", '>'),
+];
 
 const ASCII_ARRAY: &[(char, &str)] = &[
     (' ', "Space"),
@@ -321,33 +321,39 @@ const ASCII_ARRAY: &[(char, &str)] = &[
     ('+', "Plus Sign"),
     ('<', "Less-Than Sign"),
     ('=', "Equals Sign"),
-    ('>', "Greater-Than Sign"), ];
+    ('>', "Greater-Than Sign"),
+];
 
-crate fn check_for_substitution<'a>(reader: &StringReader<'a>,
-                                  ch: char,
-                                  err: &mut DiagnosticBuilder<'a>) -> bool {
+crate fn check_for_substitution<'a>(
+    reader: &StringReader<'a>,
+    ch: char,
+    err: &mut DiagnosticBuilder<'a>,
+) -> bool {
     UNICODE_ARRAY
-    .iter()
-    .find(|&&(c, _, _)| c == ch)
-    .map(|&(_, u_name, ascii_char)| {
-        let span = Span::new(reader.pos, reader.next_pos, NO_EXPANSION);
-        match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
-            Some(&(ascii_char, ascii_name)) => {
-                let msg =
-                    format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
-                            ch, u_name, ascii_char, ascii_name);
-                err.span_suggestion_with_applicability(
-                    span,
-                    &msg,
-                    ascii_char.to_string(),
-                    Applicability::MaybeIncorrect);
-                true
-            },
-            None => {
-                let msg = format!("substitution character not found for '{}'", ch);
-                reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
-                false
+        .iter()
+        .find(|&&(c, _, _)| c == ch)
+        .map(|&(_, u_name, ascii_char)| {
+            let span = Span::new(reader.pos, reader.next_pos, NO_EXPANSION);
+            match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
+                Some(&(ascii_char, ascii_name)) => {
+                    let msg = format!(
+                        "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
+                        ch, u_name, ascii_char, ascii_name
+                    );
+                    err.span_suggestion_with_applicability(
+                        span,
+                        &msg,
+                        ascii_char.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    true
+                }
+                None => {
+                    let msg = format!("substitution character not found for '{}'", ch);
+                    reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
+                    false
+                }
             }
-        }
-    }).unwrap_or(false)
+        })
+        .unwrap_or(false)
 }

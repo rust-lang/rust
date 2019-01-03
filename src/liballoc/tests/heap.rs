@@ -1,4 +1,4 @@
-use std::alloc::{Global, Alloc, Layout, System};
+use std::alloc::{Alloc, Global, Layout, System};
 
 /// https://github.com/rust-lang/rust/issues/45955
 #[test]
@@ -16,12 +16,19 @@ fn check_overalign_requests<T: Alloc>(mut allocator: T) {
     let align = 16; // greater than size
     let iterations = 100;
     unsafe {
-        let pointers: Vec<_> = (0..iterations).map(|_| {
-            allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
-        }).collect();
+        let pointers: Vec<_> = (0..iterations)
+            .map(|_| {
+                allocator
+                    .alloc(Layout::from_size_align(size, align).unwrap())
+                    .unwrap()
+            })
+            .collect();
         for &ptr in &pointers {
-            assert_eq!((ptr.as_ptr() as usize) % align, 0,
-                       "Got a pointer less aligned than requested")
+            assert_eq!(
+                (ptr.as_ptr() as usize) % align,
+                0,
+                "Got a pointer less aligned than requested"
+            )
         }
 
         // Clean up

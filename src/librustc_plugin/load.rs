@@ -1,9 +1,9 @@
 //! Used by `rustc` when loading a plugin.
 
+use registry::Registry;
 use rustc::session::Session;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
-use registry::Registry;
 
 use std::borrow::ToOwned;
 use std::env;
@@ -13,8 +13,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
-pub type PluginRegistrarFun =
-    fn(&mut Registry);
+pub type PluginRegistrarFun = fn(&mut Registry);
 
 pub struct PluginRegistrar {
     pub fun: PluginRegistrarFun,
@@ -32,11 +31,13 @@ fn call_malformed_plugin_attribute(a: &Session, b: Span) {
 }
 
 /// Read plugin metadata and dynamically load registrar functions.
-pub fn load_plugins(sess: &Session,
-                    cstore: &CStore,
-                    krate: &ast::Crate,
-                    crate_name: &str,
-                    addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrar> {
+pub fn load_plugins(
+    sess: &Session,
+    cstore: &CStore,
+    krate: &ast::Crate,
+    crate_name: &str,
+    addl_plugins: Option<Vec<String>>,
+) -> Vec<PluginRegistrar> {
     let mut loader = PluginLoader::new(sess, cstore, crate_name);
 
     // do not report any error now. since crate attributes are
@@ -62,7 +63,7 @@ pub fn load_plugins(sess: &Session,
                     Some(name) if !plugin.is_value_str() => {
                         let args = plugin.meta_item_list().map(ToOwned::to_owned);
                         loader.load_plugin(plugin.span, &name.as_str(), args.unwrap_or_default());
-                    },
+                    }
                     _ => call_malformed_plugin_attribute(sess, attr.span),
                 }
             }
@@ -93,18 +94,17 @@ impl<'a> PluginLoader<'a> {
         if let Some((lib, disambiguator)) = registrar {
             let symbol = self.sess.generate_plugin_registrar_symbol(disambiguator);
             let fun = self.dylink_registrar(span, lib, symbol);
-            self.plugins.push(PluginRegistrar {
-                fun,
-                args,
-            });
+            self.plugins.push(PluginRegistrar { fun, args });
         }
     }
 
     // Dynamically link a registrar function into the compiler process.
-    fn dylink_registrar(&mut self,
-                        span: Span,
-                        path: PathBuf,
-                        symbol: String) -> PluginRegistrarFun {
+    fn dylink_registrar(
+        &mut self,
+        span: Span,
+        path: PathBuf,
+        symbol: String,
+    ) -> PluginRegistrarFun {
         use rustc_metadata::dynamic_lib::DynamicLibrary;
 
         // Make sure the path contains a / or the linker will search for it.
@@ -115,22 +115,15 @@ impl<'a> PluginLoader<'a> {
             // this is fatal: there are almost certainly macros we need
             // inside this crate, so continue would spew "macro undefined"
             // errors
-            Err(err) => {
-                self.sess.span_fatal(span, &err)
-            }
+            Err(err) => self.sess.span_fatal(span, &err),
         };
 
         unsafe {
-            let registrar =
-                match lib.symbol(&symbol) {
-                    Ok(registrar) => {
-                        mem::transmute::<*mut u8,PluginRegistrarFun>(registrar)
-                    }
-                    // again fatal if we can't register macros
-                    Err(err) => {
-                        self.sess.span_fatal(span, &err)
-                    }
-                };
+            let registrar = match lib.symbol(&symbol) {
+                Ok(registrar) => mem::transmute::<*mut u8, PluginRegistrarFun>(registrar),
+                // again fatal if we can't register macros
+                Err(err) => self.sess.span_fatal(span, &err),
+            };
 
             // Intentionally leak the dynamic library. We can't ever unload it
             // since the library can make things that will live arbitrarily long

@@ -1,15 +1,13 @@
-use rustc_data_structures::bit_set::BitSet;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc::mir::{self, Mir, TerminatorKind};
-use rustc::ty::{AssociatedItem, AssociatedItemContainer, Instance, TyCtxt, TyKind};
 use rustc::ty::subst::Substs;
+use rustc::ty::{AssociatedItem, AssociatedItemContainer, Instance, TyCtxt, TyKind};
+use rustc_data_structures::bit_set::BitSet;
 
-pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-             mir: &Mir<'tcx>,
-             def_id: DefId) {
+pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &Mir<'tcx>, def_id: DefId) {
     let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(node_id)) {
@@ -17,10 +15,12 @@ pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        fn_kind: FnKind,
-                                        mir: &Mir<'tcx>,
-                                        def_id: DefId) {
+fn check_fn_for_unconditional_recursion(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn_kind: FnKind,
+    mir: &Mir<'tcx>,
+    def_id: DefId,
+) {
     if let FnKind::Closure(_) = fn_kind {
         // closures can't recur, so they don't matter.
         return;
@@ -61,14 +61,13 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut visited = BitSet::new_empty(basic_blocks.len());
 
     let param_env = tcx.param_env(def_id);
-    let trait_substs_count =
-        match tcx.opt_associated_item(def_id) {
-            Some(AssociatedItem {
-                container: AssociatedItemContainer::TraitContainer(trait_def_id),
-                ..
-            }) => tcx.generics_of(trait_def_id).count(),
-            _ => 0
-        };
+    let trait_substs_count = match tcx.opt_associated_item(def_id) {
+        Some(AssociatedItem {
+            container: AssociatedItemContainer::TraitContainer(trait_def_id),
+            ..
+        }) => tcx.generics_of(trait_def_id).count(),
+        _ => 0,
+    };
     let caller_substs = &Substs::identity_for_item(tcx, def_id)[..trait_substs_count];
 
     while let Some(bb) = reachable_without_self_call_queue.pop() {
@@ -87,19 +86,16 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let func_ty = func.ty(mir, tcx);
 
                     if let TyKind::FnDef(fn_def_id, substs) = func_ty.sty {
-                        let (call_fn_id, call_substs) =
-                            if let Some(instance) = Instance::resolve(tcx,
-                                                                        param_env,
-                                                                        fn_def_id,
-                                                                        substs) {
-                                (instance.def_id(), instance.substs)
-                            } else {
-                                (fn_def_id, substs)
-                            };
+                        let (call_fn_id, call_substs) = if let Some(instance) =
+                            Instance::resolve(tcx, param_env, fn_def_id, substs)
+                        {
+                            (instance.def_id(), instance.substs)
+                        } else {
+                            (fn_def_id, substs)
+                        };
 
-                        let is_self_call =
-                            call_fn_id == def_id &&
-                                &call_substs[..caller_substs.len()] == caller_substs;
+                        let is_self_call = call_fn_id == def_id
+                            && &call_substs[..caller_substs.len()] == caller_substs;
 
                         if is_self_call {
                             self_call_locations.push(terminator.source_info);
@@ -109,7 +105,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             continue;
                         }
                     }
-                },
+                }
                 TerminatorKind::Abort | TerminatorKind::Return => {
                     //found a path!
                     reached_exit_without_self_call = true;
@@ -131,10 +127,12 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {
         let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
         let sp = tcx.sess.source_map().def_span(tcx.hir().span(node_id));
-        let mut db = tcx.struct_span_lint_node(UNCONDITIONAL_RECURSION,
-                                                node_id,
-                                                sp,
-                                                "function cannot return without recursing");
+        let mut db = tcx.struct_span_lint_node(
+            UNCONDITIONAL_RECURSION,
+            node_id,
+            sp,
+            "function cannot return without recursing",
+        );
         db.span_label(sp, "cannot return without recursing");
         // offer some help to the programmer.
         for location in &self_call_locations {

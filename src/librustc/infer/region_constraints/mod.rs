@@ -834,7 +834,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             .filter_map(|&elt| match elt {
                 AddVar(vid) => Some(vid),
                 _ => None,
-            }).collect()
+            })
+            .collect()
     }
 
     /// See [`RegionInference::region_constraints_added_in_snapshot`]
@@ -844,7 +845,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             .map(|&elt| match elt {
                 AddConstraint(constraint) => Some(constraint.involves_placeholders()),
                 _ => None,
-            }).max()
+            })
+            .max()
             .unwrap_or(None)
     }
 }

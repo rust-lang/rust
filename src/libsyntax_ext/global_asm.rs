@@ -7,34 +7,39 @@
 /// For example, `global_asm!("some assembly here")` codegens to
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
-
 use syntax::ast;
-use syntax::source_map::respan;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
 use syntax::ptr::P;
+use syntax::source_map::respan;
 use syntax::symbol::Symbol;
-use syntax_pos::Span;
 use syntax::tokenstream;
+use syntax_pos::Span;
 
 pub const MACRO: &str = "global_asm";
 
-pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
-                              sp: Span,
-                              tts: &[tokenstream::TokenTree]) -> Box<dyn base::MacResult + 'cx> {
+pub fn expand_global_asm<'cx>(
+    cx: &'cx mut ExtCtxt,
+    sp: Span,
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_global_asm() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       MACRO,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_GLOBAL_ASM);
+        feature_gate::emit_feature_err(
+            &cx.parse_sess,
+            MACRO,
+            sp,
+            feature_gate::GateIssue::Language,
+            feature_gate::EXPLAIN_GLOBAL_ASM,
+        );
     }
 
     let mut p = cx.new_parser_from_tts(tts);
-    let (asm, _) = match expr_to_string(cx,
-                                        panictry!(p.parse_expr()),
-                                        "inline assembly must be a string literal") {
+    let (asm, _) = match expr_to_string(
+        cx,
+        panictry!(p.parse_expr()),
+        "inline assembly must be a string literal",
+    ) {
         Some((s, st)) => (s, st),
         None => return DummyResult::any(sp),
     };

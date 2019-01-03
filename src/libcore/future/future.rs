@@ -5,7 +5,7 @@
 use marker::Unpin;
 use ops;
 use pin::Pin;
-use task::{Poll, LocalWaker};
+use task::{LocalWaker, Poll};
 
 /// A future represents an asynchronous computation.
 ///

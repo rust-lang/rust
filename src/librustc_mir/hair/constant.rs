@@ -1,7 +1,7 @@
-use syntax::ast;
-use rustc::ty::{self, Ty, TyCtxt, ParamEnv};
-use syntax_pos::symbol::Symbol;
 use rustc::mir::interpret::{ConstValue, Scalar};
+use rustc::ty::{self, ParamEnv, Ty, TyCtxt};
+use syntax::ast;
+use syntax_pos::symbol::Symbol;
 
 #[derive(PartialEq)]
 crate enum LitToConstError {
@@ -19,8 +19,16 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
 
     let trunc = |n| {
         let param_ty = ParamEnv::reveal_all().and(tcx.lift_to_global(&ty).unwrap());
-        let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
-        trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
+        let width = tcx
+            .layout_of(param_ty)
+            .map_err(|_| LitToConstError::Reported)?
+            .size;
+        trace!(
+            "trunc {} with size {} and shift {}",
+            n,
+            width.bits(),
+            128 - width.bits()
+        );
         let shift = 128 - width.bits();
         let result = (n << shift) >> shift;
         trace!("trunc result: {}", result);
@@ -36,11 +44,11 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
             ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, &tcx)
-        },
+        }
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
-        },
+        }
         LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
             bits: n as u128,
             size: 1,
@@ -49,7 +57,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
             let n = n as i128;
             let n = n.overflowing_neg().0;
             trunc(n as u128)?
-        },
+        }
         LitKind::Int(n, _) => trunc(n)?,
         LitKind::Float(n, fty) => {
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
@@ -57,7 +65,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
                 ty::Float(fty) => fty,
-                _ => bug!()
+                _ => bug!(),
             };
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
         }
@@ -67,13 +75,9 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
     Ok(ty::Const::from_const_value(tcx, lit, ty))
 }
 
-fn parse_float<'tcx>(
-    num: Symbol,
-    fty: ast::FloatTy,
-    neg: bool,
-) -> Result<ConstValue<'tcx>, ()> {
+fn parse_float<'tcx>(num: Symbol, fty: ast::FloatTy, neg: bool) -> Result<ConstValue<'tcx>, ()> {
     let num = num.as_str();
-    use rustc_apfloat::ieee::{Single, Double};
+    use rustc_apfloat::ieee::{Double, Single};
     use rustc_apfloat::Float;
     let (bits, size) = match fty {
         ast::FloatTy::F32 => {

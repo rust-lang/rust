@@ -1,6 +1,6 @@
-use deriving::{path_local, path_std};
-use deriving::generic::*;
 use deriving::generic::ty::*;
+use deriving::generic::*;
+use deriving::{path_local, path_std};
 
 use syntax::ast::{BinOpKind, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -9,21 +9,23 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
-                                  span: Span,
-                                  mitem: &MetaItem,
-                                  item: &Annotatable,
-                                  push: &mut dyn FnMut(Annotatable)) {
+pub fn expand_deriving_partial_eq(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
-    fn cs_op(cx: &mut ExtCtxt,
-             span: Span,
-             substr: &Substructure,
-             op: BinOpKind,
-             combiner: BinOpKind,
-             base: bool)
-             -> P<Expr>
-    {
+    fn cs_op(
+        cx: &mut ExtCtxt,
+        span: Span,
+        substr: &Substructure,
+        op: BinOpKind,
+        combiner: BinOpKind,
+        base: bool,
+    ) -> P<Expr> {
         let op = |cx: &mut ExtCtxt, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
             let other_f = match (other_fs.len(), other_fs.get(0)) {
                 (1, Some(o_f)) => o_f,
@@ -33,7 +35,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
             cx.expr_binary(span, op, self_f, other_f.clone())
         };
 
-        cs_fold1(true, // use foldl
+        cs_fold1(
+            true, // use foldl
             |cx, span, subexpr, self_f, other_fs| {
                 let eq = op(cx, span, self_f, other_fs);
                 cx.expr_binary(span, combiner, subexpr, eq)
@@ -50,7 +53,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
             Box::new(|cx, span, _, _| cx.expr_bool(span, !base)),
             cx,
             span,
-            substr)
+            substr,
+        )
     }
 
     fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
@@ -61,7 +65,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
     }
 
     macro_rules! md {
-        ($name:expr, $f:ident) => { {
+        ($name:expr, $f:ident) => {{
             let inline = cx.meta_word(span, Symbol::intern("inline"));
             let attrs = vec![cx.attribute(span, inline)];
             MethodDef {
@@ -73,11 +77,9 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                 attributes: attrs,
                 is_unsafe: false,
                 unify_fieldless_variants: true,
-                combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    $f(a, b, c)
-                }))
+                combine_substructure: combine_substructure(Box::new(|a, b, c| $f(a, b, c))),
             }
-        } }
+        }};
     }
 
     // avoid defining `ne` if we can

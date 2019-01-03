@@ -25,22 +25,22 @@ pub use mem::drop;
 pub use clone::Clone;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
+pub use cmp::{Eq, Ord, PartialEq, PartialOrd};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use convert::{AsRef, AsMut, Into, From};
+pub use convert::{AsMut, AsRef, From, Into};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use default::Default;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use iter::{Iterator, Extend, IntoIterator};
-#[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)]
 pub use iter::{DoubleEndedIterator, ExactSizeIterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use option::Option::{self, Some, None};
+pub use iter::{Extend, IntoIterator, Iterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use result::Result::{self, Ok, Err};
+pub use option::Option::{self, None, Some};
+#[stable(feature = "core_prelude", since = "1.4.0")]
+#[doc(no_inline)]
+pub use result::Result::{self, Err, Ok};

@@ -57,13 +57,12 @@ pub trait ControlFlowGraph:
     // convenient trait
 }
 
-impl<T> ControlFlowGraph for T
-where
+impl<T> ControlFlowGraph for T where
     T: DirectedGraph
         + WithStartNode
         + WithPredecessors
         + WithStartNode
         + WithSuccessors
-        + WithNumNodes,
+        + WithNumNodes
 {
 }

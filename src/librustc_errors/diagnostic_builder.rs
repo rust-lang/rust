@@ -1,14 +1,14 @@
+use Applicability;
 use Diagnostic;
 use DiagnosticId;
 use DiagnosticStyledString;
-use Applicability;
 
-use Level;
-use Handler;
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
 use syntax_pos::{MultiSpan, Span};
+use Handler;
+use Level;
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///
@@ -206,66 +206,59 @@ impl<'a> DiagnosticBuilder<'a> {
                                      suggestions: Vec<String>,
                                      ) -> &mut Self);
 
-    pub fn multipart_suggestion_with_applicability(&mut self,
-                                              msg: &str,
-                                              suggestion: Vec<(Span, String)>,
-                                              applicability: Applicability,
-                                              ) -> &mut Self {
+    pub fn multipart_suggestion_with_applicability(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
-            return self
+            return self;
         }
-        self.diagnostic.multipart_suggestion_with_applicability(
-            msg,
-            suggestion,
-            applicability,
-        );
+        self.diagnostic
+            .multipart_suggestion_with_applicability(msg, suggestion, applicability);
         self
     }
 
-    pub fn span_suggestion_with_applicability(&mut self,
-                                              sp: Span,
-                                              msg: &str,
-                                              suggestion: String,
-                                              applicability: Applicability)
-                                              -> &mut Self {
+    pub fn span_suggestion_with_applicability(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
-            return self
+            return self;
         }
-        self.diagnostic.span_suggestion_with_applicability(
-            sp,
-            msg,
-            suggestion,
-            applicability,
-        );
+        self.diagnostic
+            .span_suggestion_with_applicability(sp, msg, suggestion, applicability);
         self
     }
 
-    pub fn span_suggestions_with_applicability(&mut self,
-                                               sp: Span,
-                                               msg: &str,
-                                               suggestions: impl Iterator<Item = String>,
-                                               applicability: Applicability)
-                                               -> &mut Self {
+    pub fn span_suggestions_with_applicability(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestions: impl Iterator<Item = String>,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
-            return self
+            return self;
         }
-        self.diagnostic.span_suggestions_with_applicability(
-            sp,
-            msg,
-            suggestions,
-            applicability,
-        );
+        self.diagnostic
+            .span_suggestions_with_applicability(sp, msg, suggestions, applicability);
         self
     }
 
-    pub fn span_suggestion_short_with_applicability(&mut self,
-                                                    sp: Span,
-                                                    msg: &str,
-                                                    suggestion: String,
-                                                    applicability: Applicability)
-                                                    -> &mut Self {
+    pub fn span_suggestion_short_with_applicability(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
-            return self
+            return self;
         }
         self.diagnostic.span_suggestion_short_with_applicability(
             sp,
@@ -291,19 +284,19 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new_with_code(handler: &'a Handler,
-                         level: Level,
-                         code: Option<DiagnosticId>,
-                         message: &str)
-                         -> DiagnosticBuilder<'a> {
+    pub fn new_with_code(
+        handler: &'a Handler,
+        level: Level,
+        code: Option<DiagnosticId>,
+        message: &str,
+    ) -> DiagnosticBuilder<'a> {
         let diagnostic = Diagnostic::new_with_code(level, code, message);
         DiagnosticBuilder::new_diagnostic(handler, diagnostic)
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
-    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic)
-                         -> DiagnosticBuilder<'a> {
+    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder {
             handler,
             diagnostic,
@@ -323,9 +316,11 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {
-            let mut db = DiagnosticBuilder::new(self.handler,
-                                                Level::Bug,
-                                                "Error constructed but not emitted");
+            let mut db = DiagnosticBuilder::new(
+                self.handler,
+                Level::Bug,
+                "Error constructed but not emitted",
+            );
             db.emit();
             panic!();
         }

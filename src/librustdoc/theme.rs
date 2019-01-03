@@ -6,7 +6,7 @@ use std::path::Path;
 use errors::Handler;
 
 macro_rules! try_something {
-    ($e:expr, $diag:expr, $out:expr) => ({
+    ($e:expr, $diag:expr, $out:expr) => {{
         match $e {
             Ok(c) => c,
             Err(e) => {
@@ -14,7 +14,7 @@ macro_rules! try_something {
                 return $out;
             }
         }
-    })
+    }};
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -73,19 +73,17 @@ enum Events {
 impl Events {
     fn get_pos(&self) -> usize {
         match *self {
-            Events::StartLineComment(p) |
-            Events::StartComment(p) |
-            Events::EndComment(p) |
-            Events::InBlock(p) |
-            Events::OutBlock(p) => p,
+            Events::StartLineComment(p)
+            | Events::StartComment(p)
+            | Events::EndComment(p)
+            | Events::InBlock(p)
+            | Events::OutBlock(p) => p,
         }
     }
 
     fn is_comment(&self) -> bool {
         match *self {
-            Events::StartLineComment(_) |
-            Events::StartComment(_) |
-            Events::EndComment(_) => true,
+            Events::StartLineComment(_) | Events::StartComment(_) | Events::EndComment(_) => true,
             _ => false,
         }
     }
@@ -130,14 +128,14 @@ fn load_css_events(v: &[u8]) -> Vec<Events> {
             b'{' if !previous_is_line_comment(&events) => {
                 if let Some(&Events::StartComment(_)) = events.last() {
                     pos += 1;
-                    continue
+                    continue;
                 }
                 events.push(Events::InBlock(pos + 1));
             }
             b'}' if !previous_is_line_comment(&events) => {
                 if let Some(&Events::StartComment(_)) = events.last() {
                     pos += 1;
-                    continue
+                    continue;
                 }
                 events.push(Events::OutBlock(pos + 1));
             }
@@ -173,7 +171,7 @@ fn get_previous_positions(events: &[Events], mut pos: usize) -> Vec<usize> {
             } else {
                 ret.push(0);
             }
-            break
+            break;
         }
         ret.push(events[pos].get_pos());
         pos -= 1;
@@ -185,19 +183,20 @@ fn get_previous_positions(events: &[Events], mut pos: usize) -> Vec<usize> {
 }
 
 fn build_rule(v: &[u8], positions: &[usize]) -> String {
-    positions.chunks(2)
-             .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
-             .collect::<String>()
-             .trim()
-             .replace("\n", " ")
-             .replace("/", "")
-             .replace("\t", " ")
-             .replace("{", "")
-             .replace("}", "")
-             .split(' ')
-             .filter(|s| s.len() > 0)
-             .collect::<Vec<&str>>()
-             .join(" ")
+    positions
+        .chunks(2)
+        .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
+        .collect::<String>()
+        .trim()
+        .replace("\n", " ")
+        .replace("/", "")
+        .replace("\t", " ")
+        .replace("{", "")
+        .replace("}", "")
+        .split(' ')
+        .filter(|s| s.len() > 0)
+        .collect::<Vec<&str>>()
+        .join(" ")
 }
 
 fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
@@ -206,10 +205,13 @@ fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
     while *pos < events.len() {
         if let Some(Events::OutBlock(_)) = get_useful_next(events, pos) {
             *pos += 1;
-            break
+            break;
         }
         if let Some(Events::InBlock(_)) = get_useful_next(events, pos) {
-            paths.push(CssPath::new(build_rule(v, &get_previous_positions(events, *pos))));
+            paths.push(CssPath::new(build_rule(
+                v,
+                &get_previous_positions(events, *pos),
+            )));
             *pos += 1;
         }
         while let Some(Events::InBlock(_)) = get_useful_next(events, pos) {
@@ -237,7 +239,7 @@ pub fn load_css_paths(v: &[u8]) -> CssPath {
 
 pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
     if against.name != other.name {
-        return
+        return;
     } else {
         for child in &against.children {
             let mut found = false;
@@ -252,7 +254,7 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
                         found_working = true;
                     }
                     found = true;
-                    break
+                    break;
                 }
             }
             if found == false {
@@ -264,9 +266,11 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
     }
 }
 
-pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath, diag: &Handler)
-    -> (bool, Vec<String>)
-{
+pub fn test_theme_against<P: AsRef<Path>>(
+    f: &P,
+    against: &CssPath,
+    diag: &Handler,
+) -> (bool, Vec<String>) {
     let data = try_something!(fs::read(f), diag, (false, vec![]));
     let paths = load_css_paths(&data);
     let mut ret = vec![];
@@ -322,9 +326,11 @@ rule j end {}
 "#;
 
         let mut ret = Vec::new();
-        get_differences(&load_css_paths(against.as_bytes()),
-                        &load_css_paths(text.as_bytes()),
-                        &mut ret);
+        get_differences(
+            &load_css_paths(against.as_bytes()),
+            &load_css_paths(text.as_bytes()),
+            &mut ret,
+        );
         assert!(ret.is_empty());
     }
 

@@ -12,13 +12,13 @@ use std::error::Error;
 /// `z`.
 #[derive(Debug)]
 pub struct DepNodeFilter {
-    text: String
+    text: String,
 }
 
 impl DepNodeFilter {
     pub fn new(text: &str) -> Self {
         DepNodeFilter {
-            text: text.trim().to_string()
+            text: text.trim().to_string(),
         }
     }
 
@@ -30,9 +30,10 @@ impl DepNodeFilter {
     /// Tests whether `node` meets the filter, returning true if so.
     pub fn test(&self, node: &DepNode) -> bool {
         let debug_str = format!("{:?}", node);
-        self.text.split('&')
-                 .map(|s| s.trim())
-                 .all(|f| debug_str.contains(f))
+        self.text
+            .split('&')
+            .map(|s| s.trim())
+            .all(|f| debug_str.contains(f))
     }
 }
 
@@ -56,10 +57,7 @@ impl EdgeFilter {
         }
     }
 
-    pub fn test(&self,
-                source: &DepNode,
-                target: &DepNode)
-                -> bool {
+    pub fn test(&self, source: &DepNode, target: &DepNode) -> bool {
         self.source.test(source) && self.target.test(target)
     }
 }

@@ -1,19 +1,19 @@
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::mir::{self, BindingForm, Constant, ClearCrossCrate, Local, Location, Mir};
-use rustc::mir::{Mutability, Operand, Place, Projection, ProjectionElem, Static, Terminator};
 use rustc::mir::TerminatorKind;
-use rustc::ty::{self, Const, DefIdTree, TyS, TyKind, TyCtxt};
+use rustc::mir::{self, BindingForm, ClearCrossCrate, Constant, Local, Location, Mir};
+use rustc::mir::{Mutability, Operand, Place, Projection, ProjectionElem, Static, Terminator};
+use rustc::ty::{self, Const, DefIdTree, TyCtxt, TyKind, TyS};
 use rustc_data_structures::indexed_vec::Idx;
-use syntax_pos::Span;
 use syntax_pos::symbol::keywords;
+use syntax_pos::Span;
 
-use dataflow::move_paths::InitLocation;
 use borrow_check::MirBorrowckCtxt;
+use dataflow::move_paths::InitLocation;
+use rustc_errors::Applicability;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 use util::collect_writes::FindAssignments;
 use util::suggest_ref_mut;
-use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) enum AccessKind {
@@ -33,8 +33,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     ) {
         debug!(
             "report_mutability_error(\
-                access_place={:?}, span={:?}, the_place_err={:?}, error_access={:?}, location={:?},\
-            )",
+             access_place={:?}, span={:?}, the_place_err={:?}, error_access={:?}, location={:?},\
+             )",
             access_place, span, the_place_err, error_access, location,
         );
 
@@ -42,7 +42,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let item_msg;
         let reason;
         let access_place_desc = self.describe_place(access_place);
-        debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
+        debug!(
+            "report_mutability_error: access_place_desc={:?}",
+            access_place_desc
+        );
 
         match the_place_err {
             Place::Local(local) => {
@@ -66,7 +69,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if access_place.is_upvar_field_projection(self.mir, &self.infcx.tcx).is_some() {
+                if access_place
+                    .is_upvar_field_projection(self.mir, &self.infcx.tcx)
+                    .is_some()
+                {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.mir.upvar_decls[upvar_index.index()].debug_name;
@@ -82,20 +88,25 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
-                        the_place_err.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
+                        the_place_err
+                            .ty(self.mir, self.infcx.tcx)
+                            .to_ty(self.infcx.tcx)
                     ));
 
-                    reason = if access_place.is_upvar_field_projection(self.mir,
-                                                                       &self.infcx.tcx).is_some() {
+                    reason = if access_place
+                        .is_upvar_field_projection(self.mir, &self.infcx.tcx)
+                        .is_some()
+                    {
                         ", as it is a captured variable in a `Fn` closure".to_string()
                     } else {
                         ", as `Fn` closures cannot mutate their captured variables".to_string()
                     }
                 } else if {
                     if let Place::Local(local) = *base {
-                        if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
-                            = self.mir.local_decls[local].is_user_variable {
-                                true
+                        if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
+                            self.mir.local_decls[local].is_user_variable
+                        {
+                            true
                         } else {
                             false
                         }
@@ -106,17 +117,21 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
-                    let pointer_type =
-                        if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_region_ptr() {
-                            "`&` reference"
-                        } else {
-                            "`*const` pointer"
-                        };
+                    let pointer_type = if base
+                        .ty(self.mir, self.infcx.tcx)
+                        .to_ty(self.infcx.tcx)
+                        .is_region_ptr()
+                    {
+                        "`&` reference"
+                    } else {
+                        "`*const` pointer"
+                    };
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
-                            AccessKind::Move |
-                            AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
+                            AccessKind::Move | AccessKind::Mutate => {
+                                format!(" which is behind a {}", pointer_type)
+                            }
                             AccessKind::MutableBorrow => {
                                 format!(", as it is behind a {}", pointer_type)
                             }
@@ -159,7 +174,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }) => bug!("Unexpected immutable place."),
         }
 
-        debug!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);
+        debug!(
+            "report_mutability_error: item_msg={:?}, reason={:?}",
+            item_msg, reason
+        );
 
         // `act` and `acted_on` are strings that let us abstract over
         // the verbs used in some diagnostic messages.
@@ -168,14 +186,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
         let span = match error_access {
             AccessKind::Move => {
-                err = self.infcx.tcx
+                err = self
+                    .infcx
+                    .tcx
                     .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
                 err.span_label(span, "cannot move");
                 err.buffer(&mut self.errors_buffer);
                 return;
             }
             AccessKind::Mutate => {
-                err = self.infcx.tcx
+                err = self
+                    .infcx
+                    .tcx
                     .cannot_assign(span, &(item_msg + &reason), Origin::Mir);
                 act = "assign";
                 acted_on = "written";
@@ -199,13 +221,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         "mutable borrow occurs due to use of `{}` in closure",
                         // always Some() if the message is printed.
                         self.describe_place(access_place).unwrap_or_default(),
-                    )
+                    ),
                 );
                 borrow_span
             }
         };
 
-        debug!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
+        debug!(
+            "report_mutability_error: act={:?}, acted_on={:?}",
+            act, acted_on
+        );
 
         match the_place_err {
             // Suggest making an existing shared borrow in a struct definition a mutable borrow.
@@ -215,13 +240,15 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             // struct we've got a field access of (it must be a reference since there's a deref
             // after the field access).
             Place::Projection(box Projection {
-                base: Place::Projection(box Projection {
-                    base: Place::Projection(box Projection {
-                        base,
-                        elem: ProjectionElem::Deref,
+                base:
+                    Place::Projection(box Projection {
+                        base:
+                            Place::Projection(box Projection {
+                                base,
+                                elem: ProjectionElem::Deref,
+                            }),
+                        elem: ProjectionElem::Field(field, _),
                     }),
-                    elem: ProjectionElem::Field(field, _),
-                }),
                 elem: ProjectionElem::Deref,
             }) => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -238,41 +265,45 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         Applicability::MaybeIncorrect,
                     );
                 }
-            },
+            }
 
             // Suggest removing a `&mut` from the use of a mutable reference.
             Place::Local(local)
                 if {
-                    self.mir.local_decls.get(*local).map(|local_decl| {
-                        if let ClearCrossCrate::Set(
-                            mir::BindingForm::ImplicitSelf(kind)
-                        ) = local_decl.is_user_variable.as_ref().unwrap() {
-                            // Check if the user variable is a `&mut self` and we can therefore
-                            // suggest removing the `&mut`.
-                            //
-                            // Deliberately fall into this case for all implicit self types,
-                            // so that we don't fall in to the next case with them.
-                            *kind == mir::ImplicitSelfKind::MutRef
-                        } else if Some(keywords::SelfLower.name()) == local_decl.name {
-                            // Otherwise, check if the name is the self kewyord - in which case
-                            // we have an explicit self. Do the same thing in this case and check
-                            // for a `self: &mut Self` to suggest removing the `&mut`.
-                            if let ty::TyKind::Ref(
-                                _, _, hir::Mutability::MutMutable
-                            ) = local_decl.ty.sty {
-                                true
+                    self.mir
+                        .local_decls
+                        .get(*local)
+                        .map(|local_decl| {
+                            if let ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(kind)) =
+                                local_decl.is_user_variable.as_ref().unwrap()
+                            {
+                                // Check if the user variable is a `&mut self` and we can therefore
+                                // suggest removing the `&mut`.
+                                //
+                                // Deliberately fall into this case for all implicit self types,
+                                // so that we don't fall in to the next case with them.
+                                *kind == mir::ImplicitSelfKind::MutRef
+                            } else if Some(keywords::SelfLower.name()) == local_decl.name {
+                                // Otherwise, check if the name is the self kewyord - in which case
+                                // we have an explicit self. Do the same thing in this case and check
+                                // for a `self: &mut Self` to suggest removing the `&mut`.
+                                if let ty::TyKind::Ref(_, _, hir::Mutability::MutMutable) =
+                                    local_decl.ty.sty
+                                {
+                                    true
+                                } else {
+                                    false
+                                }
                             } else {
                                 false
                             }
-                        } else {
-                            false
-                        }
-                    }).unwrap_or(false)
+                        })
+                        .unwrap_or(false)
                 } =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_label(span, "try removing `&mut` here");
-            },
+            }
 
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
@@ -369,8 +400,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             Place::Projection(box Projection {
                 base: Place::Local(local),
                 elem: ProjectionElem::Deref,
-            }) if self.mir.local_decls[*local].is_user_variable.is_some() =>
-            {
+            }) if self.mir.local_decls[*local].is_user_variable.is_some() => {
                 let local_decl = &self.mir.local_decls[*local];
                 let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
                     ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_)) => {
@@ -446,42 +476,44 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             Place::Projection(box Projection {
                 base,
                 elem: ProjectionElem::Deref,
-            }) if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() =>
-            {
+            }) if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_help(
                     self.mir.span,
-                    "consider changing this to accept closures that implement `FnMut`"
+                    "consider changing this to accept closures that implement `FnMut`",
                 );
             }
 
             Place::Projection(box Projection {
                 base: Place::Local(local),
                 elem: ProjectionElem::Deref,
-            })  if error_access == AccessKind::MutableBorrow => {
+            }) if error_access == AccessKind::MutableBorrow => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
                 let mpi = self.move_data.rev_lookup.find_local(*local);
                 for i in self.move_data.init_path_map[mpi].iter() {
                     if let InitLocation::Statement(location) = self.move_data.inits[*i].location {
-                        if let Some(
-                            Terminator {
-                                kind: TerminatorKind::Call {
-                                    func: Operand::Constant(box Constant {
-                                        literal: Const {
-                                            ty: &TyS {
-                                                sty: TyKind::FnDef(id, substs),
-                                                ..
-                                            },
+                        if let Some(Terminator {
+                            kind:
+                                TerminatorKind::Call {
+                                    func:
+                                        Operand::Constant(box Constant {
+                                            literal:
+                                                Const {
+                                                    ty:
+                                                        &TyS {
+                                                            sty: TyKind::FnDef(id, substs),
+                                                            ..
+                                                        },
+                                                    ..
+                                                },
                                             ..
-                                        },
-                                        ..
-                                    }),
+                                        }),
                                     ..
                                 },
-                                ..
-                            }
-                        ) = &self.mir.basic_blocks()[location.block].terminator {
+                            ..
+                        }) = &self.mir.basic_blocks()[location.block].terminator
+                        {
                             let index_trait = self.infcx.tcx.lang_items().index_trait();
                             if self.infcx.tcx.parent(id) == index_trait {
                                 let mut found = false;
@@ -490,22 +522,22 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     substs.type_at(0),
                                     |_relevant_impl| {
                                         found = true;
-                                    }
+                                    },
                                 );
 
                                 let extra = if found {
                                     String::new()
                                 } else {
-                                    format!(", but it is not implemented for `{}`",
-                                            substs.type_at(0))
+                                    format!(
+                                        ", but it is not implemented for `{}`",
+                                        substs.type_at(0)
+                                    )
                                 };
 
-                                err.help(
-                                    &format!(
-                                        "trait `IndexMut` is required to modify indexed content{}",
-                                         extra,
-                                    ),
-                                );
+                                err.help(&format!(
+                                    "trait `IndexMut` is required to modify indexed content{}",
+                                    extra,
+                                ));
                             }
                         }
                     }
@@ -526,17 +558,20 @@ fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
     local_decl: &mir::LocalDecl<'tcx>,
 ) -> (Span, String) {
     let sp = local_decl.source_info.span;
-    (sp, match tcx.sess.source_map().span_to_snippet(sp) {
-        Ok(snippet) => {
-            let lt_pos = snippet.find('\'');
-            if let Some(lt_pos) = lt_pos {
-                format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
-            } else {
-                "&mut self".to_string()
+    (
+        sp,
+        match tcx.sess.source_map().span_to_snippet(sp) {
+            Ok(snippet) => {
+                let lt_pos = snippet.find('\'');
+                if let Some(lt_pos) = lt_pos {
+                    format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
+                } else {
+                    "&mut self".to_string()
+                }
             }
-        }
-        _ => "&mut self".to_string()
-    })
+            _ => "&mut self".to_string(),
+        },
+    )
 }
 
 // When we want to suggest a user change a local variable to be a `&mut`, there
@@ -602,12 +637,14 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::MutImmutable);
-    (highlight_span,
-     if local_decl.ty.is_region_ptr() {
-         format!("&mut {}", ty_mut.ty)
-     } else {
-         format!("*mut {}", ty_mut.ty)
-     })
+    (
+        highlight_span,
+        if local_decl.ty.is_region_ptr() {
+            format!("&mut {}", ty_mut.ty)
+        } else {
+            format!("*mut {}", ty_mut.ty)
+        },
+    )
 }
 
 fn is_closure_or_generator(ty: ty::Ty) -> bool {
@@ -636,26 +673,30 @@ fn annotate_struct_field(
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {
-                if let hir::TyKind::Rptr(lifetime, hir::MutTy {
-                    mutbl: hir::Mutability::MutImmutable,
-                    ref ty
-                }) = field.ty.node {
+                if let hir::TyKind::Rptr(
+                    lifetime,
+                    hir::MutTy {
+                        mutbl: hir::Mutability::MutImmutable,
+                        ref ty,
+                    },
+                ) = field.ty.node
+                {
                     // Get the snippets in two parts - the named lifetime (if there is one) and
                     // type being referenced, that way we can reconstruct the snippet without loss
                     // of detail.
                     let type_snippet = tcx.sess.source_map().span_to_snippet(ty.span).ok()?;
                     let lifetime_snippet = if !lifetime.is_elided() {
-                        format!("{} ", tcx.sess.source_map().span_to_snippet(lifetime.span).ok()?)
+                        format!(
+                            "{} ",
+                            tcx.sess.source_map().span_to_snippet(lifetime.span).ok()?
+                        )
                     } else {
                         String::new()
                     };
 
                     return Some((
                         field.ty.span,
-                        format!(
-                            "&{}mut {}",
-                            lifetime_snippet, &*type_snippet,
-                        ),
+                        format!("&{}mut {}", lifetime_snippet, &*type_snippet,),
                     ));
                 }
             }

@@ -23,7 +23,7 @@ impl FromStr for Mode {
             "expr" => Mode::Expression,
             "pat" => Mode::Pattern,
             "ty" => Mode::Type,
-            _ => return Err(())
+            _ => return Err(()),
         };
         Ok(mode)
     }
@@ -61,12 +61,10 @@ impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
     }
 }
 
-pub fn run(span_diagnostic: &errors::Handler,
-           mode: &str,
-           krate: &ast::Crate) {
+pub fn run(span_diagnostic: &errors::Handler, mode: &str, krate: &ast::Crate) {
     let mode = match mode.parse().ok() {
         Some(mode) => mode,
-        None => return
+        None => return,
     };
     let mut v = ShowSpanVisitor {
         span_diagnostic,

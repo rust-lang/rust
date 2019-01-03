@@ -99,7 +99,7 @@
 
 use fmt;
 use marker::{Sized, Unpin};
-use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
+use ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 
 /// A pinned pointer.
 ///
@@ -196,7 +196,8 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     #[stable(feature = "pin", since = "1.33.0")]
-    pub unsafe fn map_unchecked<U, F>(self: Pin<&'a T>, func: F) -> Pin<&'a U> where
+    pub unsafe fn map_unchecked<U, F>(self: Pin<&'a T>, func: F) -> Pin<&'a U>
+    where
         F: FnOnce(&T) -> &U,
     {
         let pointer = &*self.pointer;
@@ -223,7 +224,9 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn into_ref(self: Pin<&'a mut T>) -> Pin<&'a T> {
-        Pin { pointer: self.pointer }
+        Pin {
+            pointer: self.pointer,
+        }
     }
 
     /// Get a mutable reference to the data inside of this `Pin`.
@@ -238,7 +241,8 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn get_mut(self: Pin<&'a mut T>) -> &'a mut T
-        where T: Unpin,
+    where
+        T: Unpin,
     {
         self.pointer
     }
@@ -271,7 +275,8 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     #[stable(feature = "pin", since = "1.33.0")]
-    pub unsafe fn map_unchecked_mut<U, F>(self: Pin<&'a mut T>, func: F) -> Pin<&'a mut U> where
+    pub unsafe fn map_unchecked_mut<U, F>(self: Pin<&'a mut T>, func: F) -> Pin<&'a mut U>
+    where
         F: FnOnce(&mut T) -> &mut U,
     {
         let pointer = Pin::get_unchecked_mut(self);
@@ -291,7 +296,7 @@ impl<P: Deref> Deref for Pin<P> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P: DerefMut> DerefMut for Pin<P>
 where
-    P::Target: Unpin
+    P::Target: Unpin,
 {
     fn deref_mut(&mut self) -> &mut P::Target {
         Pin::get_mut(Pin::as_mut(self))
@@ -328,13 +333,7 @@ impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P, U> CoerceUnsized<Pin<U>> for Pin<P>
-where
-    P: CoerceUnsized<U>,
-{}
+impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<'a, P, U> DispatchFromDyn<Pin<U>> for Pin<P>
-where
-    P: DispatchFromDyn<U>,
-{}
+impl<'a, P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}

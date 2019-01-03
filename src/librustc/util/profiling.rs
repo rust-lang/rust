@@ -150,7 +150,7 @@ impl SelfProfiler {
         match self.timer_stack.last().cloned() {
             None => {
                 self.current_timer = Instant::now();
-            },
+            }
             Some(current_category) if current_category == category => {
                 //since the current category is the same as the new activity's category,
                 //we don't need to do anything with the timer, we just need to push it on the stack
@@ -181,10 +181,10 @@ impl SelfProfiler {
     pub fn end_activity(&mut self, category: ProfileCategory) {
         match self.timer_stack.pop() {
             None => bug!("end_activity() was called but there was no running activity"),
-            Some(c) =>
-                assert!(
-                    c == category,
-                    "end_activity() was called but a different activity was running"),
+            Some(c) => assert!(
+                c == category,
+                "end_activity() was called but a different activity was running"
+            ),
         }
 
         //check if the new running timer is in the same category as this one
@@ -228,13 +228,14 @@ impl SelfProfiler {
 
         assert!(
             self.timer_stack.is_empty(),
-            "there were timers running when print_results() was called");
+            "there were timers running when print_results() was called"
+        );
 
         let out = io::stderr();
         let mut lock = out.lock();
 
-        let crate_name =
-            opts.crate_name
+        let crate_name = opts
+            .crate_name
             .as_ref()
             .map(|n| format!(" for {}", n))
             .unwrap_or_default();
@@ -247,20 +248,30 @@ impl SelfProfiler {
         writeln!(lock).unwrap();
         writeln!(lock, "Optimization level: {:?}", opts.optimize).unwrap();
 
-        let incremental = if opts.incremental.is_some() { "on" } else { "off" };
+        let incremental = if opts.incremental.is_some() {
+            "on"
+        } else {
+            "off"
+        };
         writeln!(lock, "Incremental: {}", incremental).unwrap();
     }
 
     pub fn save_results(&self, opts: &Options) {
         let category_data = self.data.json();
-        let compilation_options =
-            format!("{{ \"optimization_level\": \"{:?}\", \"incremental\": {} }}",
-                    opts.optimize,
-                    if opts.incremental.is_some() { "true" } else { "false" });
+        let compilation_options = format!(
+            "{{ \"optimization_level\": \"{:?}\", \"incremental\": {} }}",
+            opts.optimize,
+            if opts.incremental.is_some() {
+                "true"
+            } else {
+                "false"
+            }
+        );
 
-        let json = format!("{{ \"category_data\": {}, \"compilation_options\": {} }}",
-                        category_data,
-                        compilation_options);
+        let json = format!(
+            "{{ \"category_data\": {}, \"compilation_options\": {} }}",
+            category_data, compilation_options
+        );
 
         fs::write("self_profiler_results.json", json).unwrap();
     }

@@ -1,10 +1,10 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use rustc::hir;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir;
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut orphan = OrphanChecker { tcx };
@@ -25,8 +25,10 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
         let def_id = self.tcx.hir().local_def_id(item.id);
         // "Trait" impl
         if let hir::ItemKind::Impl(.., Some(_), _, _) = item.node {
-            debug!("coherence2::orphan check: trait impl {}",
-                   self.tcx.hir().node_to_string(item.id));
+            debug!(
+                "coherence2::orphan check: trait impl {}",
+                self.tcx.hir().node_to_string(item.id)
+            );
             let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
             let trait_def_id = trait_ref.def_id;
             let cm = self.tcx.sess.source_map();
@@ -34,31 +36,42 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
             match traits::orphan_check(self.tcx, def_id) {
                 Ok(()) => {}
                 Err(traits::OrphanCheckErr::NoLocalInputType) => {
-                    struct_span_err!(self.tcx.sess,
-                                     sp,
-                                     E0117,
-                                     "only traits defined in the current crate can be \
-                                      implemented for arbitrary types")
-                        .span_label(sp, "impl doesn't use types inside crate")
-                        .note("the impl does not reference any types defined in this crate")
-                        .note("define and implement a trait or new type instead")
-                        .emit();
+                    struct_span_err!(
+                        self.tcx.sess,
+                        sp,
+                        E0117,
+                        "only traits defined in the current crate can be \
+                         implemented for arbitrary types"
+                    )
+                    .span_label(sp, "impl doesn't use types inside crate")
+                    .note("the impl does not reference any types defined in this crate")
+                    .note("define and implement a trait or new type instead")
+                    .emit();
                     return;
                 }
                 Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
-                    struct_span_err!(self.tcx.sess,
-                                     sp,
-                                     E0210,
-                                     "type parameter `{}` must be used as the type parameter \
-                                      for some local type (e.g., `MyStruct<{}>`)",
-                                     param_ty,
-                                     param_ty)
-                        .span_label(sp,
-                                    format!("type parameter `{}` must be used as the type \
-                                             parameter for some local type", param_ty))
-                        .note("only traits defined in the current crate can be implemented \
-                               for a type parameter")
-                        .emit();
+                    struct_span_err!(
+                        self.tcx.sess,
+                        sp,
+                        E0210,
+                        "type parameter `{}` must be used as the type parameter \
+                         for some local type (e.g., `MyStruct<{}>`)",
+                        param_ty,
+                        param_ty
+                    )
+                    .span_label(
+                        sp,
+                        format!(
+                            "type parameter `{}` must be used as the type \
+                             parameter for some local type",
+                            param_ty
+                        ),
+                    )
+                    .note(
+                        "only traits defined in the current crate can be implemented \
+                         for a type parameter",
+                    )
+                    .emit();
                     return;
                 }
             }
@@ -95,12 +108,13 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
             // This final impl is legal according to the orpan
             // rules, but it invalidates the reasoning from
             // `two_foos` above.
-            debug!("trait_ref={:?} trait_def_id={:?} trait_is_auto={}",
-                   trait_ref,
-                   trait_def_id,
-                   self.tcx.trait_is_auto(trait_def_id));
-            if self.tcx.trait_is_auto(trait_def_id) &&
-               !trait_def_id.is_local() {
+            debug!(
+                "trait_ref={:?} trait_def_id={:?} trait_is_auto={}",
+                trait_ref,
+                trait_def_id,
+                self.tcx.trait_is_auto(trait_def_id)
+            );
+            if self.tcx.trait_is_auto(trait_def_id) && !trait_def_id.is_local() {
                 let self_ty = trait_ref.self_ty();
                 let opt_self_def_id = match self_ty.sty {
                     ty::Adt(self_def, _) => Some(self_def.did),
@@ -118,22 +132,26 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                             None
                         } else {
                             Some((
-                                format!("cross-crate traits with a default impl, like `{}`, \
-                                         can only be implemented for a struct/enum type \
-                                         defined in the current crate",
-                                        self.tcx.item_path_str(trait_def_id)),
-                                "can't implement cross-crate trait for type in another crate"
+                                format!(
+                                    "cross-crate traits with a default impl, like `{}`, \
+                                     can only be implemented for a struct/enum type \
+                                     defined in the current crate",
+                                    self.tcx.item_path_str(trait_def_id)
+                                ),
+                                "can't implement cross-crate trait for type in another crate",
                             ))
                         }
                     }
-                    _ => {
-                        Some((format!("cross-crate traits with a default impl, like `{}`, can \
-                                       only be implemented for a struct/enum type, not `{}`",
-                                      self.tcx.item_path_str(trait_def_id),
-                                      self_ty),
-                              "can't implement cross-crate trait with a default impl for \
-                               non-struct/enum type"))
-                    }
+                    _ => Some((
+                        format!(
+                            "cross-crate traits with a default impl, like `{}`, can \
+                             only be implemented for a struct/enum type, not `{}`",
+                            self.tcx.item_path_str(trait_def_id),
+                            self_ty
+                        ),
+                        "can't implement cross-crate trait with a default impl for \
+                         non-struct/enum type",
+                    )),
                 };
 
                 if let Some((msg, label)) = msg {
@@ -146,9 +164,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-    }
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
 }

@@ -30,13 +30,14 @@
 //! [win]: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682010%28v=vs.85%29.aspx
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/",
-       test(attr(deny(warnings))))]
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    test(attr(deny(warnings)))
+)]
 #![deny(missing_docs)]
-
 #![cfg_attr(windows, feature(libc))]
 // Handle rustfmt skips
 #![feature(custom_attribute)]
@@ -49,7 +50,7 @@ pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]
 pub use win::WinConsole;
 
-use std::io::{self, Stdout, Stderr};
+use std::io::{self, Stderr, Stdout};
 
 pub mod terminfo;
 
@@ -74,7 +75,11 @@ pub fn stdout() -> Option<Box<StdoutTerminal>> {
 pub fn stdout() -> Option<Box<StdoutTerminal>> {
     TerminfoTerminal::new(io::stdout())
         .map(|t| Box::new(t) as Box<StdoutTerminal>)
-        .or_else(|| WinConsole::new(io::stdout()).ok().map(|t| Box::new(t) as Box<StdoutTerminal>))
+        .or_else(|| {
+            WinConsole::new(io::stdout())
+                .ok()
+                .map(|t| Box::new(t) as Box<StdoutTerminal>)
+        })
 }
 
 #[cfg(not(windows))]
@@ -90,9 +95,12 @@ pub fn stderr() -> Option<Box<StderrTerminal>> {
 pub fn stderr() -> Option<Box<StderrTerminal>> {
     TerminfoTerminal::new(io::stderr())
         .map(|t| Box::new(t) as Box<StderrTerminal>)
-        .or_else(|| WinConsole::new(io::stderr()).ok().map(|t| Box::new(t) as Box<StderrTerminal>))
+        .or_else(|| {
+            WinConsole::new(io::stderr())
+                .ok()
+                .map(|t| Box::new(t) as Box<StderrTerminal>)
+        })
 }
-
 
 /// Terminal color definitions
 #[allow(missing_docs)]
@@ -199,5 +207,7 @@ pub trait Terminal: Write {
     fn get_mut(&mut self) -> &mut Self::Output;
 
     /// Returns the contained stream, destroying the `Terminal`
-    fn into_inner(self) -> Self::Output where Self: Sized;
+    fn into_inner(self) -> Self::Output
+    where
+        Self: Sized;
 }

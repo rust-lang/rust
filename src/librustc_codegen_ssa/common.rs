@@ -1,11 +1,11 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::{Span, DUMMY_SP};
 
+use base;
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
-use base;
 use traits::*;
 
 use rustc::hir;
@@ -33,9 +33,8 @@ pub enum IntPredicate {
     IntSGT,
     IntSGE,
     IntSLT,
-    IntSLE
+    IntSLE,
 }
-
 
 #[allow(dead_code)]
 pub enum RealPredicate {
@@ -54,7 +53,7 @@ pub enum RealPredicate {
     RealULT,
     RealULE,
     RealUNE,
-    RealPredicateTrue
+    RealPredicateTrue,
 }
 
 pub enum AtomicRmwBinOp {
@@ -68,7 +67,7 @@ pub enum AtomicRmwBinOp {
     AtomicMax,
     AtomicMin,
     AtomicUMax,
-    AtomicUMin
+    AtomicUMin,
 }
 
 pub enum AtomicOrdering {
@@ -121,24 +120,17 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op HashStable
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
-                                               HashStable};
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
     use ModuleCodegen;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
-        fn hash_stable<W: StableHasherResult>(&self,
-                                              _: &mut HCX,
-                                              _: &mut StableHasher<W>) {
+        fn hash_stable<W: StableHasherResult>(&self, _: &mut HCX, _: &mut StableHasher<W>) {
             // do nothing
         }
     }
 }
 
-pub fn langcall(tcx: TyCtxt,
-                span: Option<Span>,
-                msg: &str,
-                li: LangItem)
-                -> DefId {
+pub fn langcall(tcx: TyCtxt, span: Option<Span>, msg: &str, li: LangItem) -> DefId {
     tcx.lang_items().require(li).unwrap_or_else(|s| {
         let msg = format!("{} {}", msg, s);
         match span {
@@ -156,7 +148,7 @@ pub fn langcall(tcx: TyCtxt,
 pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -168,7 +160,7 @@ pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs_t: Ty<'tcx>,
     lhs: Bx::Value,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -183,7 +175,7 @@ pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     let rhs_llty = bx.val_ty(rhs);
     let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
@@ -194,7 +186,7 @@ pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     llty: Bx::Type,
     mask_llty: Bx::Type,
-    invert: bool
+    invert: bool,
 ) -> Bx::Value {
     let kind = bx.type_kind(llty);
     match kind {
@@ -206,16 +198,19 @@ pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             } else {
                 bx.const_uint(mask_llty, val)
             }
-        },
+        }
         TypeKind::Vector => {
             let mask = shift_mask_val(
                 bx,
                 bx.element_type(llty),
                 bx.element_type(mask_llty),
-                invert
+                invert,
             );
             bx.vector_splat(bx.vector_length(mask_llty), mask)
-        },
-        _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
+        }
+        _ => bug!(
+            "shift_mask_val: expected Integer or Vector, found {:?}",
+            kind
+        ),
     }
 }

@@ -12,13 +12,13 @@ use super::elaborate_predicates;
 
 use hir::def_id::DefId;
 use lint;
-use traits::{self, Obligation, ObligationCause};
-use ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
-use ty::subst::{Subst, Substs};
 use std::borrow::Cow;
-use std::iter::{self};
+use std::iter;
 use syntax::ast::{self, Name};
 use syntax_pos::Span;
+use traits::{self, Obligation, ObligationCause};
+use ty::subst::{Subst, Substs};
+use ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
@@ -39,25 +39,40 @@ pub enum ObjectSafetyViolation {
 impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match *self {
-            ObjectSafetyViolation::SizedSelf =>
-                "the trait cannot require that `Self : Sized`".into(),
-            ObjectSafetyViolation::SupertraitSelf =>
+            ObjectSafetyViolation::SizedSelf => {
+                "the trait cannot require that `Self : Sized`".into()
+            }
+            ObjectSafetyViolation::SupertraitSelf => {
                 "the trait cannot use `Self` as a type parameter \
-                 in the supertraits or where-clauses".into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod) =>
-                format!("method `{}` has no receiver", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) =>
-                format!("method `{}` references the `Self` type \
-                         in its arguments or return type", name).into(),
-            ObjectSafetyViolation::Method(name,
-                                            MethodViolationCode::WhereClauseReferencesSelf(_)) =>
-                format!("method `{}` references the `Self` type in where clauses", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
-                format!("method `{}` has generic type parameters", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>
-                format!("method `{}`'s receiver cannot be dispatched on", name).into(),
-            ObjectSafetyViolation::AssociatedConst(name) =>
-                format!("the trait cannot contain associated consts like `{}`", name).into(),
+                 in the supertraits or where-clauses"
+                    .into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod) => {
+                format!("method `{}` has no receiver", name).into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) => format!(
+                "method `{}` references the `Self` type \
+                 in its arguments or return type",
+                name
+            )
+            .into(),
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::WhereClauseReferencesSelf(_),
+            ) => format!(
+                "method `{}` references the `Self` type in where clauses",
+                name
+            )
+            .into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) => {
+                format!("method `{}` has generic type parameters", name).into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) => {
+                format!("method `{}`'s receiver cannot be dispatched on", name).into()
+            }
+            ObjectSafetyViolation::AssociatedConst(name) => {
+                format!("the trait cannot contain associated consts like `{}`", name).into()
+            }
         }
     }
 }
@@ -82,29 +97,28 @@ pub enum MethodViolationCode {
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-
     /// Returns the object safety violations that affect
     /// astconv - currently, Self in supertraits. This is needed
     /// because `object_safety_violations` can't be used during
     /// type collection.
-    pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
-                                            -> Vec<ObjectSafetyViolation>
-    {
+    pub fn astconv_object_safety_violations(
+        self,
+        trait_def_id: DefId,
+    ) -> Vec<ObjectSafetyViolation> {
         let violations = traits::supertrait_def_ids(self, trait_def_id)
             .filter(|&def_id| self.predicates_reference_self(def_id, true))
             .map(|_| ObjectSafetyViolation::SupertraitSelf)
             .collect();
 
-        debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
-               trait_def_id,
-               violations);
+        debug!(
+            "astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
+            trait_def_id, violations
+        );
 
         violations
     }
 
-    pub fn object_safety_violations(self, trait_def_id: DefId)
-                                    -> Vec<ObjectSafetyViolation>
-    {
+    pub fn object_safety_violations(self, trait_def_id: DefId) -> Vec<ObjectSafetyViolation> {
         debug!("object_safety_violations: {:?}", trait_def_id);
 
         traits::supertrait_def_ids(self, trait_def_id)
@@ -112,18 +126,20 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             .collect()
     }
 
-    fn object_safety_violations_for_trait(self, trait_def_id: DefId)
-                                          -> Vec<ObjectSafetyViolation>
-    {
+    fn object_safety_violations_for_trait(self, trait_def_id: DefId) -> Vec<ObjectSafetyViolation> {
         // Check methods for violations.
-        let mut violations: Vec<_> = self.associated_items(trait_def_id)
+        let mut violations: Vec<_> = self
+            .associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssociatedKind::Method)
-            .filter_map(|item|
+            .filter_map(|item| {
                 self.object_safety_violation_for_method(trait_def_id, &item)
                     .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
-            ).filter(|violation| {
-                if let ObjectSafetyViolation::Method(_,
-                    MethodViolationCode::WhereClauseReferencesSelf(span)) = violation
+            })
+            .filter(|violation| {
+                if let ObjectSafetyViolation::Method(
+                    _,
+                    MethodViolationCode::WhereClauseReferencesSelf(span),
+                ) = violation
                 {
                     // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                     // It's also hard to get a use site span, so we use the method definition span.
@@ -131,14 +147,18 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                         lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY,
                         ast::CRATE_NODE_ID,
                         *span,
-                        &format!("the trait `{}` cannot be made into an object",
-                                 self.item_path_str(trait_def_id)),
-                        &violation.error_msg());
+                        &format!(
+                            "the trait `{}` cannot be made into an object",
+                            self.item_path_str(trait_def_id)
+                        ),
+                        &violation.error_msg(),
+                    );
                     false
                 } else {
                     true
                 }
-            }).collect();
+            })
+            .collect();
 
         // Check the trait itself.
         if self.trait_has_sized_self(trait_def_id) {
@@ -148,22 +168,21 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             violations.push(ObjectSafetyViolation::SupertraitSelf);
         }
 
-        violations.extend(self.associated_items(trait_def_id)
-            .filter(|item| item.kind == ty::AssociatedKind::Const)
-            .map(|item| ObjectSafetyViolation::AssociatedConst(item.ident.name)));
+        violations.extend(
+            self.associated_items(trait_def_id)
+                .filter(|item| item.kind == ty::AssociatedKind::Const)
+                .map(|item| ObjectSafetyViolation::AssociatedConst(item.ident.name)),
+        );
 
-        debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
-               trait_def_id,
-               violations);
+        debug!(
+            "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
+            trait_def_id, violations
+        );
 
         violations
     }
 
-    fn predicates_reference_self(
-        self,
-        trait_def_id: DefId,
-        supertraits_only: bool) -> bool
-    {
+    fn predicates_reference_self(self, trait_def_id: DefId, supertraits_only: bool) -> bool {
         let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(self, trait_def_id));
         let predicates = if supertraits_only {
             self.super_predicates_of(trait_def_id)
@@ -178,7 +197,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Trait(ref data) => {
                         // In the case of a trait predicate, we can skip the "self" type.
-                        data.skip_binder().input_types().skip(1).any(|t| t.has_self_ty())
+                        data.skip_binder()
+                            .input_types()
+                            .skip(1)
+                            .any(|t| t.has_self_ty())
                     }
                     ty::Predicate::Projection(ref data) => {
                         // And similarly for projections. This should be redundant with
@@ -200,15 +222,13 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                             .skip(1)
                             .any(|t| t.has_self_ty())
                     }
-                    ty::Predicate::WellFormed(..) |
-                    ty::Predicate::ObjectSafe(..) |
-                    ty::Predicate::TypeOutlives(..) |
-                    ty::Predicate::RegionOutlives(..) |
-                    ty::Predicate::ClosureKind(..) |
-                    ty::Predicate::Subtype(..) |
-                    ty::Predicate::ConstEvaluatable(..) => {
-                        false
-                    }
+                    ty::Predicate::WellFormed(..)
+                    | ty::Predicate::ObjectSafe(..)
+                    | ty::Predicate::TypeOutlives(..)
+                    | ty::Predicate::RegionOutlives(..)
+                    | ty::Predicate::ClosureKind(..)
+                    | ty::Predicate::Subtype(..)
+                    | ty::Predicate::ConstEvaluatable(..) => false,
                 }
             })
     }
@@ -220,38 +240,36 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     fn generics_require_sized_self(self, def_id: DefId) -> bool {
         let sized_def_id = match self.lang_items().sized_trait() {
             Some(def_id) => def_id,
-            None => { return false; /* No Sized trait, can't require it! */ }
+            None => {
+                return false; /* No Sized trait, can't require it! */
+            }
         };
 
         // Search for a predicate like `Self : Sized` amongst the trait bounds.
         let predicates = self.predicates_of(def_id);
         let predicates = predicates.instantiate_identity(self).predicates;
-        elaborate_predicates(self, predicates)
-            .any(|predicate| match predicate {
-                ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    trait_pred.skip_binder().self_ty().is_self()
-                }
-                ty::Predicate::Projection(..) |
-                ty::Predicate::Trait(..) |
-                ty::Predicate::Subtype(..) |
-                ty::Predicate::RegionOutlives(..) |
-                ty::Predicate::WellFormed(..) |
-                ty::Predicate::ObjectSafe(..) |
-                ty::Predicate::ClosureKind(..) |
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::ConstEvaluatable(..) => {
-                    false
-                }
+        elaborate_predicates(self, predicates).any(|predicate| match predicate {
+            ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
+                trait_pred.skip_binder().self_ty().is_self()
             }
-        )
+            ty::Predicate::Projection(..)
+            | ty::Predicate::Trait(..)
+            | ty::Predicate::Subtype(..)
+            | ty::Predicate::RegionOutlives(..)
+            | ty::Predicate::WellFormed(..)
+            | ty::Predicate::ObjectSafe(..)
+            | ty::Predicate::ClosureKind(..)
+            | ty::Predicate::TypeOutlives(..)
+            | ty::Predicate::ConstEvaluatable(..) => false,
+        })
     }
 
     /// Returns `Some(_)` if this method makes the containing trait not object safe.
-    fn object_safety_violation_for_method(self,
-                                          trait_def_id: DefId,
-                                          method: &ty::AssociatedItem)
-                                          -> Option<MethodViolationCode>
-    {
+    fn object_safety_violation_for_method(
+        self,
+        trait_def_id: DefId,
+        method: &ty::AssociatedItem,
+    ) -> Option<MethodViolationCode> {
         // Any method that has a `Self : Sized` requisite is otherwise
         // exempt from the regulations.
         if self.generics_require_sized_self(method.def_id) {
@@ -265,11 +283,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// object.  Note that object-safe traits can have some
     /// non-vtable-safe methods, so long as they require `Self:Sized` or
     /// otherwise ensure that they cannot be used when `Self=Trait`.
-    pub fn is_vtable_safe_method(self,
-                                 trait_def_id: DefId,
-                                 method: &ty::AssociatedItem)
-                                 -> bool
-    {
+    pub fn is_vtable_safe_method(self, trait_def_id: DefId, method: &ty::AssociatedItem) -> bool {
         // Any method that has a `Self : Sized` requisite can't be called.
         if self.generics_require_sized_self(method.def_id) {
             return false;
@@ -285,11 +299,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// object; this does not necessarily imply that the enclosing trait
     /// is not object safe, because the method might have a where clause
     /// `Self:Sized`.
-    fn virtual_call_violation_for_method(self,
-                                         trait_def_id: DefId,
-                                         method: &ty::AssociatedItem)
-                                         -> Option<MethodViolationCode>
-    {
+    fn virtual_call_violation_for_method(
+        self,
+        trait_def_id: DefId,
+        method: &ty::AssociatedItem,
+    ) -> Option<MethodViolationCode> {
         // The method's first parameter must be named `self`
         if !method.method_has_self_argument {
             return Some(MethodViolationCode::StaticMethod);
@@ -311,23 +325,25 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return Some(MethodViolationCode::Generic);
         }
 
-        if self.predicates_of(method.def_id).predicates.iter()
-                // A trait object can't claim to live more than the concrete type,
-                // so outlives predicates will always hold.
-                .cloned()
-                .filter(|(p, _)| p.to_opt_type_outlives().is_none())
-                .collect::<Vec<_>>()
-                // Do a shallow visit so that `contains_illegal_self_type_reference`
-                // may apply it's custom visiting.
-                .visit_tys_shallow(|t| self.contains_illegal_self_type_reference(trait_def_id, t)) {
+        if self
+            .predicates_of(method.def_id)
+            .predicates
+            .iter()
+            // A trait object can't claim to live more than the concrete type,
+            // so outlives predicates will always hold.
+            .cloned()
+            .filter(|(p, _)| p.to_opt_type_outlives().is_none())
+            .collect::<Vec<_>>()
+            // Do a shallow visit so that `contains_illegal_self_type_reference`
+            // may apply it's custom visiting.
+            .visit_tys_shallow(|t| self.contains_illegal_self_type_reference(trait_def_id, t))
+        {
             let span = self.def_span(method.def_id);
             return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
         }
 
-        let receiver_ty = self.liberate_late_bound_regions(
-            method.def_id,
-            &sig.map_bound(|sig| sig.inputs()[0]),
-        );
+        let receiver_ty =
+            self.liberate_late_bound_regions(method.def_id, &sig.map_bound(|sig| sig.inputs()[0]));
 
         // until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
         // However, this is already considered object-safe. We allow it as a special case here.
@@ -346,37 +362,38 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 let abi_of_ty = |ty: Ty<'tcx>| -> &Abi {
                     match self.layout_of(param_env.and(ty)) {
                         Ok(layout) => &layout.abi,
-                        Err(err) => bug!(
-                            "Error: {}\n while computing layout for type {:?}", err, ty
-                        )
+                        Err(err) => {
+                            bug!("Error: {}\n while computing layout for type {:?}", err, ty)
+                        }
                     }
                 };
 
                 // e.g., Rc<()>
-                let unit_receiver_ty = self.receiver_for_self_ty(
-                    receiver_ty, self.mk_unit(), method.def_id
-                );
+                let unit_receiver_ty =
+                    self.receiver_for_self_ty(receiver_ty, self.mk_unit(), method.def_id);
 
                 match abi_of_ty(unit_receiver_ty) {
                     &Abi::Scalar(..) => (),
-                    abi => bug!("Receiver when Self = () should have a Scalar ABI, found {:?}", abi)
+                    abi => bug!(
+                        "Receiver when Self = () should have a Scalar ABI, found {:?}",
+                        abi
+                    ),
                 }
 
-                let trait_object_ty = self.object_ty_for_trait(
-                    trait_def_id, self.mk_region(ty::ReStatic)
-                );
+                let trait_object_ty =
+                    self.object_ty_for_trait(trait_def_id, self.mk_region(ty::ReStatic));
 
                 // e.g., Rc<dyn Trait>
-                let trait_object_receiver = self.receiver_for_self_ty(
-                    receiver_ty, trait_object_ty, method.def_id
-                );
+                let trait_object_receiver =
+                    self.receiver_for_self_ty(receiver_ty, trait_object_ty, method.def_id);
 
                 match abi_of_ty(trait_object_receiver) {
                     &Abi::ScalarPair(..) => (),
                     abi => bug!(
                         "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
-                        trait_object_ty, abi
-                    )
+                        trait_object_ty,
+                        abi
+                    ),
                 }
             }
         }
@@ -387,7 +404,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// performs a type substitution to produce the version of receiver_ty when `Self = self_ty`
     /// e.g., for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`
     fn receiver_for_self_ty(
-        self, receiver_ty: Ty<'tcx>, self_ty: Ty<'tcx>, method_def_id: DefId
+        self,
+        receiver_ty: Ty<'tcx>,
+        self_ty: Ty<'tcx>,
+        method_def_id: DefId,
     ) -> Ty<'tcx> {
         let substs = Substs::for_item(self, method_def_id, |param, _| {
             if param.index == 0 {
@@ -409,7 +429,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let trait_ref = ty::TraitRef::identity(self, trait_def_id);
 
         let trait_predicate = ty::ExistentialPredicate::Trait(
-            ty::ExistentialTraitRef::erase_self_ty(self, trait_ref)
+            ty::ExistentialTraitRef::erase_self_ty(self, trait_ref),
         );
 
         let mut associated_types = traits::supertraits(self, ty::Binder::dummy(trait_ref))
@@ -428,14 +448,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             })
         });
 
-        let existential_predicates = self.mk_existential_predicates(
-            iter::once(trait_predicate).chain(projection_predicates)
-        );
+        let existential_predicates = self
+            .mk_existential_predicates(iter::once(trait_predicate).chain(projection_predicates));
 
-        let object_ty = self.mk_dynamic(
-            ty::Binder::dummy(existential_predicates),
-            lifetime,
-        );
+        let object_ty = self.mk_dynamic(ty::Binder::dummy(existential_predicates), lifetime);
 
         debug!("object_ty_for_trait: object_ty=`{}`", object_ty);
 
@@ -485,15 +501,16 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     // fallback query: `Receiver: Unsize<Receiver[Self => U]>` to support receivers like
     // `self: Wrapper<Self>`.
     #[allow(dead_code)]
-    fn receiver_is_dispatchable(
-        self,
-        method: &ty::AssociatedItem,
-        receiver_ty: Ty<'tcx>,
-    ) -> bool {
-        debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
+    fn receiver_is_dispatchable(self, method: &ty::AssociatedItem, receiver_ty: Ty<'tcx>) -> bool {
+        debug!(
+            "receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}",
+            method, receiver_ty
+        );
 
-        let traits = (self.lang_items().unsize_trait(),
-                      self.lang_items().dispatch_from_dyn_trait());
+        let traits = (
+            self.lang_items().unsize_trait(),
+            self.lang_items().dispatch_from_dyn_trait(),
+        );
         let (unsize_did, dispatch_from_dyn_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
@@ -511,9 +528,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         );
 
         // `Receiver[Self => U]`
-        let unsized_receiver_ty = self.receiver_for_self_ty(
-            receiver_ty, unsized_self_ty, method.def_id
-        );
+        let unsized_receiver_ty =
+            self.receiver_for_self_ty(receiver_ty, unsized_self_ty, method.def_id);
 
         // create a modified param env, with `Self: Unsize<U>` and `U: Trait` added to caller bounds
         // `U: ?Sized` is already implied here
@@ -524,7 +540,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             let unsize_predicate = ty::TraitRef {
                 def_id: unsize_did,
                 substs: self.mk_substs_trait(self.mk_self_type(), &[unsized_self_ty.into()]),
-            }.to_predicate();
+            }
+            .to_predicate();
 
             // U: Trait<Arg1, ..., ArgN>
             let trait_predicate = {
@@ -539,10 +556,14 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 ty::TraitRef {
                     def_id: unsize_did,
                     substs,
-                }.to_predicate()
+                }
+                .to_predicate()
             };
 
-            let caller_bounds: Vec<Predicate<'tcx>> = param_env.caller_bounds.iter().cloned()
+            let caller_bounds: Vec<Predicate<'tcx>> = param_env
+                .caller_bounds
+                .iter()
+                .cloned()
                 .chain(iter::once(unsize_predicate))
                 .chain(iter::once(trait_predicate))
                 .collect();
@@ -557,13 +578,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             let predicate = ty::TraitRef {
                 def_id: dispatch_from_dyn_did,
                 substs: self.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
-            }.to_predicate();
+            }
+            .to_predicate();
 
-            Obligation::new(
-                ObligationCause::dummy(),
-                param_env,
-                predicate,
-            )
+            Obligation::new(ObligationCause::dummy(), param_env, predicate)
         };
 
         self.infer_ctxt().enter(|ref infcx| {
@@ -572,11 +590,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         })
     }
 
-    fn contains_illegal_self_type_reference(self,
-                                            trait_def_id: DefId,
-                                            ty: Ty<'tcx>)
-                                            -> bool
-    {
+    fn contains_illegal_self_type_reference(self, trait_def_id: DefId, ty: Ty<'tcx>) -> bool {
         // This is somewhat subtle. In general, we want to forbid
         // references to `Self` in the argument and return types,
         // since the value of `Self` is erased. However, there is one
@@ -633,9 +647,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
                     // Compute supertraits of current trait lazily.
                     if supertraits.is_none() {
-                        let trait_ref = ty::Binder::bind(
-                            ty::TraitRef::identity(self, trait_def_id),
-                        );
+                        let trait_ref =
+                            ty::Binder::bind(ty::TraitRef::identity(self, trait_def_id));
                         supertraits = Some(traits::supertraits(self, trait_ref).collect());
                     }
 
@@ -648,8 +661,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                     // are part of the formal parameter listing, and
                     // hence there should be no inference variables.
                     let projection_trait_ref = ty::Binder::bind(data.trait_ref(self));
-                    let is_supertrait_of_current_trait =
-                        supertraits.as_ref().unwrap().contains(&projection_trait_ref);
+                    let is_supertrait_of_current_trait = supertraits
+                        .as_ref()
+                        .unwrap()
+                        .contains(&projection_trait_ref);
 
                     if is_supertrait_of_current_trait {
                         false // do not walk contained types, do not report error, do collect $200
@@ -666,7 +681,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 }
 
-pub(super) fn is_object_safe_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                trait_def_id: DefId) -> bool {
+pub(super) fn is_object_safe_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_def_id: DefId,
+) -> bool {
     tcx.object_safety_violations(trait_def_id).is_empty()
 }

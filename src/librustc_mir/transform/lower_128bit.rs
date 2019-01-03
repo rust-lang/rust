@@ -4,21 +4,23 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use rustc::mir::*;
 use rustc::ty::{List, Ty, TyCtxt, TyKind};
-use rustc_data_structures::indexed_vec::{Idx};
-use transform::{MirPass, MirSource};
+use rustc_data_structures::indexed_vec::Idx;
 use syntax;
+use transform::{MirPass, MirSource};
 
 pub struct Lower128Bit;
 
 impl MirPass for Lower128Bit {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _src: MirSource,
+        mir: &mut Mir<'tcx>,
+    ) {
         let debugging_override = tcx.sess.opts.debugging_opts.lower_128bit_ops;
         let target_default = tcx.sess.host.options.i128_lowering;
         if !debugging_override.unwrap_or(target_default) {
-            return
+            return;
         }
 
         self.lower_128bit_ops(tcx, mir);
@@ -33,35 +35,33 @@ impl Lower128Bit {
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
             for i in (0..block.statements.len()).rev() {
-                let (lang_item, rhs_kind) =
-                    if let Some((lang_item, rhs_kind)) =
-                        lower_to(&block.statements[i], local_decls, tcx)
-                    {
-                        (lang_item, rhs_kind)
-                    } else {
-                        continue;
-                    };
+                let (lang_item, rhs_kind) = if let Some((lang_item, rhs_kind)) =
+                    lower_to(&block.statements[i], local_decls, tcx)
+                {
+                    (lang_item, rhs_kind)
+                } else {
+                    continue;
+                };
 
                 let rhs_override_ty = rhs_kind.ty(tcx);
-                let cast_local =
-                    match rhs_override_ty {
-                        None => None,
-                        Some(ty) => {
-                            let local_decl = LocalDecl::new_internal(
-                                ty, block.statements[i].source_info.span);
-                            Some(local_decls.push(local_decl))
-                        },
-                    };
-
-                let storage_dead = cast_local.map(|local| {
-                    Statement {
-                        source_info: block.statements[i].source_info,
-                        kind: StatementKind::StorageDead(local),
+                let cast_local = match rhs_override_ty {
+                    None => None,
+                    Some(ty) => {
+                        let local_decl =
+                            LocalDecl::new_internal(ty, block.statements[i].source_info.span);
+                        Some(local_decls.push(local_decl))
                     }
+                };
+
+                let storage_dead = cast_local.map(|local| Statement {
+                    source_info: block.statements[i].source_info,
+                    kind: StatementKind::StorageDead(local),
                 });
                 let after_call = BasicBlockData {
-                    statements: storage_dead.into_iter()
-                        .chain(block.statements.drain((i+1)..)).collect(),
+                    statements: storage_dead
+                        .into_iter()
+                        .chain(block.statements.drain((i + 1)..))
+                        .collect(),
                     is_cleanup: block.is_cleanup,
                     terminator: block.terminator.take(),
                 };
@@ -69,14 +69,13 @@ impl Lower128Bit {
                 let bin_statement = block.statements.pop().unwrap();
                 let source_info = bin_statement.source_info;
                 let (place, lhs, mut rhs) = match bin_statement.kind {
-                    StatementKind::Assign(place, box rvalue) => {
-                        match rvalue {
-                            Rvalue::BinaryOp(_, lhs, rhs)
-                            | Rvalue::CheckedBinaryOp(_, lhs, rhs) => (place, lhs, rhs),
-                            _ => bug!(),
+                    StatementKind::Assign(place, box rvalue) => match rvalue {
+                        Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+                            (place, lhs, rhs)
                         }
-                    }
-                    _ => bug!()
+                        _ => bug!(),
+                    },
+                    _ => bug!(),
                 };
 
                 if let Some(local) = cast_local {
@@ -88,32 +87,33 @@ impl Lower128Bit {
                         source_info: source_info,
                         kind: StatementKind::Assign(
                             Place::Local(local),
-                            box Rvalue::Cast(
-                                CastKind::Misc,
-                                rhs,
-                                rhs_override_ty.unwrap())),
+                            box Rvalue::Cast(CastKind::Misc, rhs, rhs_override_ty.unwrap()),
+                        ),
                     });
                     rhs = Operand::Move(Place::Local(local));
                 }
 
-                let call_did = check_lang_item_type(
-                    lang_item, &place, &lhs, &rhs, local_decls, tcx);
+                let call_did =
+                    check_lang_item_type(lang_item, &place, &lhs, &rhs, local_decls, tcx);
 
                 let bb = BasicBlock::new(cur_len + new_blocks.len());
                 new_blocks.push(after_call);
 
-                block.terminator =
-                    Some(Terminator {
-                        source_info,
-                        kind: TerminatorKind::Call {
-                            func: Operand::function_handle(tcx, call_did,
-                                List::empty(), source_info.span),
-                            args: vec![lhs, rhs],
-                            destination: Some((place, bb)),
-                            cleanup: None,
-                            from_hir_call: false,
-                        },
-                    });
+                block.terminator = Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Call {
+                        func: Operand::function_handle(
+                            tcx,
+                            call_did,
+                            List::empty(),
+                            source_info.span,
+                        ),
+                        args: vec![lhs, rhs],
+                        destination: Some((place, bb)),
+                        cleanup: None,
+                        from_hir_call: false,
+                    },
+                });
             }
         }
 
@@ -127,9 +127,10 @@ fn check_lang_item_type<'a, 'tcx, D>(
     lhs: &Operand<'tcx>,
     rhs: &Operand<'tcx>,
     local_decls: &D,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>)
--> DefId
-    where D: HasLocalDecls<'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+) -> DefId
+where
+    D: HasLocalDecls<'tcx>,
 {
     let did = tcx.require_lang_item(lang_item);
     let poly_sig = tcx.fn_sig(did);
@@ -138,14 +139,22 @@ fn check_lang_item_type<'a, 'tcx, D>(
     let rhs_ty = rhs.ty(local_decls, tcx);
     let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
     let expected = [lhs_ty, rhs_ty, place_ty];
-    assert_eq!(sig.inputs_and_output[..], expected,
-        "lang item {}", tcx.def_symbol_name(did));
+    assert_eq!(
+        sig.inputs_and_output[..],
+        expected,
+        "lang item {}",
+        tcx.def_symbol_name(did)
+    );
     did
 }
 
-fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-    -> Option<(LangItem, RhsKind)>
-    where D: HasLocalDecls<'tcx>
+fn lower_to<'a, 'tcx, D>(
+    statement: &Statement<'tcx>,
+    local_decls: &D,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+) -> Option<(LangItem, RhsKind)>
+where
+    D: HasLocalDecls<'tcx>,
 {
     match statement.kind {
         StatementKind::Assign(_, box Rvalue::BinaryOp(bin_op, ref lhs, _)) => {
@@ -153,14 +162,14 @@ fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCt
             if let Some(is_signed) = sign_of_128bit(ty) {
                 return item_for_op(bin_op, is_signed);
             }
-        },
+        }
         StatementKind::Assign(_, box Rvalue::CheckedBinaryOp(bin_op, ref lhs, _)) => {
             let ty = lhs.ty(local_decls, tcx);
             if let Some(is_signed) = sign_of_128bit(ty) {
                 return item_for_checked_op(bin_op, is_signed);
             }
-        },
-        _ => {},
+        }
+        _ => {}
     }
     None
 }

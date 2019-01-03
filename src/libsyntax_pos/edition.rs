@@ -5,12 +5,10 @@ use std::str::FromStr;
 #[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable, Eq)]
 pub enum Edition {
     // editions must be kept in order, oldest to newest
-
     /// The 2015 edition
     Edition2015,
     /// The 2018 edition
     Edition2018,
-
     // when adding new editions, be sure to update:
     //
     // - Update the `ALL_EDITIONS` const
@@ -65,7 +63,7 @@ impl FromStr for Edition {
         match s {
             "2015" => Ok(Edition::Edition2015),
             "2018" => Ok(Edition::Edition2018),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

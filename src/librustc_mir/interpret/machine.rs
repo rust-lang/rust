@@ -10,8 +10,8 @@ use rustc::mir;
 use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 
 use super::{
-    Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
-    EvalContext, PlaceTy, MPlaceTy, OpTy, Pointer, MemoryKind,
+    AllocId, Allocation, AllocationExtra, EvalContext, EvalResult, MPlaceTy, MemoryKind, OpTy,
+    PlaceTy, Pointer, Scalar,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -25,14 +25,16 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Deliberately takes `&mut` because that is sufficient, and some implementations
     /// can be more efficient then (using `RefCell::get_mut`).
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
-        where K: Borrow<Q>;
+    where
+        K: Borrow<Q>;
 
     /// Insert new entry into the map.
     fn insert(&mut self, k: K, v: V) -> Option<V>;
 
     /// Remove entry from the map.
     fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
-        where K: Borrow<Q>;
+    where
+        K: Borrow<Q>;
 
     /// Return data based the keys and values in the map.
     fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
@@ -40,20 +42,12 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Return a reference to entry `k`.  If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
-    fn get_or<E>(
-        &self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&V, E>;
+    fn get_or<E>(&self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&V, E>;
 
     /// Return a mutable reference to entry `k`.  If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
-    fn get_mut_or<E>(
-        &mut self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&mut V, E>;
+    fn get_mut_or<E>(&mut self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&mut V, E>;
 }
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
@@ -79,13 +73,14 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra> + 'static;
 
     /// Memory's allocation map
-    type MemoryMap:
-        AllocMap<
+    type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>)
-        > +
-        Default +
-        Clone;
+            (
+                MemoryKind<Self::MemoryKinds>,
+                Allocation<Self::PointerTag, Self::AllocExtra>,
+            ),
+        > + Default
+        + Clone;
 
     /// The memory kind to use for copied statics -- or None if statics should not be mutated
     /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.

@@ -49,14 +49,62 @@ impl Variables {
     /// Return a new zero-initialized Variables
     pub fn new() -> Variables {
         Variables {
-            sta: [Number(0), Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                  Number(0), Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                  Number(0), Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                  Number(0), Number(0), Number(0), Number(0), Number(0)],
-            dyn: [Number(0), Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                  Number(0), Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                  Number(0), Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                  Number(0), Number(0), Number(0), Number(0), Number(0)],
+            sta: [
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+            ],
+            dyn: [
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+                Number(0),
+            ],
         }
     }
 }
@@ -79,8 +127,17 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
     let mut stack: Vec<Param> = Vec::new();
 
     // Copy parameters into a local vector for mutability
-    let mut mparams = [Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
-                       Number(0), Number(0), Number(0)];
+    let mut mparams = [
+        Number(0),
+        Number(0),
+        Number(0),
+        Number(0),
+        Number(0),
+        Number(0),
+        Number(0),
+        Number(0),
+        Number(0),
+    ];
     for (dst, src) in mparams.iter_mut().zip(params.iter()) {
         *dst = (*src).clone();
     }
@@ -117,81 +174,67 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     'g' => state = GetVar,
                     '\'' => state = CharConstant,
                     '{' => state = IntConstant(0),
-                    'l' => {
-                        match stack.pop() {
-                            Some(Words(s)) => stack.push(Number(s.len() as i32)),
-                            Some(_) => return Err("a non-str was used with %l".to_string()),
-                            None => return Err("stack is empty".to_string()),
-                        }
-                    }
+                    'l' => match stack.pop() {
+                        Some(Words(s)) => stack.push(Number(s.len() as i32)),
+                        Some(_) => return Err("a non-str was used with %l".to_string()),
+                        None => return Err("stack is empty".to_string()),
+                    },
                     '+' | '-' | '/' | '*' | '^' | '&' | '|' | 'm' => {
                         match (stack.pop(), stack.pop()) {
-                            (Some(Number(y)), Some(Number(x))) => {
-                                stack.push(Number(match cur {
-                                    '+' => x + y,
-                                    '-' => x - y,
-                                    '*' => x * y,
-                                    '/' => x / y,
-                                    '|' => x | y,
-                                    '&' => x & y,
-                                    '^' => x ^ y,
-                                    'm' => x % y,
-                                    _ => unreachable!("All cases handled"),
-                                }))
-                            }
+                            (Some(Number(y)), Some(Number(x))) => stack.push(Number(match cur {
+                                '+' => x + y,
+                                '-' => x - y,
+                                '*' => x * y,
+                                '/' => x / y,
+                                '|' => x | y,
+                                '&' => x & y,
+                                '^' => x ^ y,
+                                'm' => x % y,
+                                _ => unreachable!("All cases handled"),
+                            })),
                             (Some(_), Some(_)) => {
                                 return Err(format!("non-numbers on stack with {}", cur))
                             }
                             _ => return Err("stack is empty".to_string()),
                         }
                     }
-                    '=' | '>' | '<' | 'A' | 'O' => {
-                        match (stack.pop(), stack.pop()) {
-                            (Some(Number(y)), Some(Number(x))) => {
-                                stack.push(Number(if match cur {
-                                    '=' => x == y,
-                                    '<' => x < y,
-                                    '>' => x > y,
-                                    'A' => x > 0 && y > 0,
-                                    'O' => x > 0 || y > 0,
-                                    _ => unreachable!(),
-                                } {
-                                    1
-                                } else {
-                                    0
-                                }))
-                            }
-                            (Some(_), Some(_)) => {
-                                return Err(format!("non-numbers on stack with {}", cur))
-                            }
-                            _ => return Err("stack is empty".to_string()),
+                    '=' | '>' | '<' | 'A' | 'O' => match (stack.pop(), stack.pop()) {
+                        (Some(Number(y)), Some(Number(x))) => stack.push(Number(
+                            if match cur {
+                                '=' => x == y,
+                                '<' => x < y,
+                                '>' => x > y,
+                                'A' => x > 0 && y > 0,
+                                'O' => x > 0 || y > 0,
+                                _ => unreachable!(),
+                            } {
+                                1
+                            } else {
+                                0
+                            },
+                        )),
+                        (Some(_), Some(_)) => {
+                            return Err(format!("non-numbers on stack with {}", cur))
                         }
-                    }
-                    '!' | '~' => {
-                        match stack.pop() {
-                            Some(Number(x)) => {
-                                stack.push(Number(match cur {
-                                    '!' if x > 0 => 0,
-                                    '!' => 1,
-                                    '~' => !x,
-                                    _ => unreachable!(),
-                                }))
-                            }
-                            Some(_) => return Err(format!("non-numbers on stack with {}", cur)),
-                            None => return Err("stack is empty".to_string()),
+                        _ => return Err("stack is empty".to_string()),
+                    },
+                    '!' | '~' => match stack.pop() {
+                        Some(Number(x)) => stack.push(Number(match cur {
+                            '!' if x > 0 => 0,
+                            '!' => 1,
+                            '~' => !x,
+                            _ => unreachable!(),
+                        })),
+                        Some(_) => return Err(format!("non-numbers on stack with {}", cur)),
+                        None => return Err("stack is empty".to_string()),
+                    },
+                    'i' => match (&mparams[0], &mparams[1]) {
+                        (&Number(x), &Number(y)) => {
+                            mparams[0] = Number(x + 1);
+                            mparams[1] = Number(y + 1);
                         }
-                    }
-                    'i' => {
-                        match (&mparams[0], &mparams[1]) {
-                            (&Number(x), &Number(y)) => {
-                                mparams[0] = Number(x + 1);
-                                mparams[1] = Number(y + 1);
-                            }
-                            _ => {
-                                return Err("first two params not numbers with %i".to_string())
-                            }
-                        }
-                    }
+                        _ => return Err("first two params not numbers with %i".to_string()),
+                    },
 
                     // printf-style support for %doxXs
                     'd' | 'o' | 'x' | 'X' | 's' => {
@@ -222,16 +265,12 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
 
                     // conditionals
                     '?' => (),
-                    't' => {
-                        match stack.pop() {
-                            Some(Number(0)) => state = SeekIfElse(0),
-                            Some(Number(_)) => (),
-                            Some(_) => {
-                                return Err("non-number on stack with conditional".to_string())
-                            }
-                            None => return Err("stack is empty".to_string()),
-                        }
-                    }
+                    't' => match stack.pop() {
+                        Some(Number(0)) => state = SeekIfElse(0),
+                        Some(Number(_)) => (),
+                        Some(_) => return Err("non-number on stack with conditional".to_string()),
+                        None => return Err("stack is empty".to_string()),
+                    },
                     'e' => state = SeekIfEnd(0),
                     ';' => (),
                     _ => return Err(format!("unrecognized format option {}", cur)),
@@ -239,11 +278,13 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
             }
             PushParam => {
                 // params are 1-indexed
-                stack.push(mparams[match cur.to_digit(10) {
-                               Some(d) => d as usize - 1,
-                               None => return Err("bad param number".to_string()),
-                           }]
-                           .clone());
+                stack.push(
+                    mparams[match cur.to_digit(10) {
+                        Some(d) => d as usize - 1,
+                        None => return Err("bad param number".to_string()),
+                    }]
+                    .clone(),
+                );
             }
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
@@ -289,7 +330,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     stack.push(Number(i));
                     state = Nothing;
                 } else if let Some(digit) = cur.to_digit(10) {
-                    match i.checked_mul(10).and_then(|i_ten| i_ten.checked_add(digit as i32)) {
+                    match i
+                        .checked_mul(10)
+                        .and_then(|i_ten| i_ten.checked_add(digit as i32))
+                    {
                         Some(i) => {
                             state = IntConstant(i);
                             old_state = Nothing;
@@ -496,18 +540,16 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
             }
             .into_bytes()
         }
-        Words(s) => {
-            match op {
-                FormatOp::String => {
-                    let mut s = s.into_bytes();
-                    if flags.precision > 0 && flags.precision < s.len() {
-                        s.truncate(flags.precision);
-                    }
-                    s
+        Words(s) => match op {
+            FormatOp::String => {
+                let mut s = s.into_bytes();
+                if flags.precision > 0 && flags.precision < s.len() {
+                    s.truncate(flags.precision);
                 }
-                _ => return Err(format!("non-string on stack with %{}", op.to_char())),
+                s
             }
-        }
+            _ => return Err(format!("non-string on stack with %{}", op.to_char())),
+        },
     };
     if flags.width > s.len() {
         let n = flags.width - s.len();
@@ -525,43 +567,54 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
 
 #[cfg(test)]
 mod test {
+    use super::Param::{self, Number, Words};
     use super::{expand, Variables};
-    use super::Param::{self, Words, Number};
     use std::result::Result::Ok;
 
     #[test]
     fn test_basic_setabf() {
         let s = b"\\E[48;5;%p1%dm";
-        assert_eq!(expand(s, &[Number(1)], &mut Variables::new()).unwrap(),
-                   "\\E[48;5;1m".bytes().collect::<Vec<_>>());
+        assert_eq!(
+            expand(s, &[Number(1)], &mut Variables::new()).unwrap(),
+            "\\E[48;5;1m".bytes().collect::<Vec<_>>()
+        );
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(b"%{1}%{2}%d%d", &[], &mut Variables::new()).unwrap(),
-                   "21".bytes().collect::<Vec<_>>());
+        assert_eq!(
+            expand(b"%{1}%{2}%d%d", &[], &mut Variables::new()).unwrap(),
+            "21".bytes().collect::<Vec<_>>()
+        );
     }
 
     #[test]
     fn test_op_i() {
         let mut vars = Variables::new();
-        assert_eq!(expand(b"%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d",
-                          &[Number(1), Number(2), Number(3)],
-                          &mut vars),
-                   Ok("123233".bytes().collect::<Vec<_>>()));
-        assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", &[], &mut vars),
-                   Ok("0011".bytes().collect::<Vec<_>>()));
+        assert_eq!(
+            expand(
+                b"%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d",
+                &[Number(1), Number(2), Number(3)],
+                &mut vars
+            ),
+            Ok("123233".bytes().collect::<Vec<_>>())
+        );
+        assert_eq!(
+            expand(b"%p1%d%p2%d%i%p1%d%p2%d", &[], &mut vars),
+            Ok("0011".bytes().collect::<Vec<_>>())
+        );
     }
 
     #[test]
     fn test_param_stack_failure_conditions() {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
-        fn get_res(fmt: &str,
-                   cap: &str,
-                   params: &[Param],
-                   vars: &mut Variables)
-                   -> Result<Vec<u8>, String> {
+        fn get_res(
+            fmt: &str,
+            cap: &str,
+            params: &[Param],
+            vars: &mut Variables,
+        ) -> Result<Vec<u8>, String> {
             let mut u8v: Vec<_> = fmt.bytes().collect();
             u8v.extend(cap.as_bytes().iter().map(|&b| b));
             expand(&u8v, params, vars)
@@ -570,35 +623,45 @@ mod test {
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
         for &cap in caps.iter() {
             let res = get_res("", cap, &[], vars);
-            assert!(res.is_err(),
-                    "Op {} succeeded incorrectly with 0 stack entries",
-                    cap);
+            assert!(
+                res.is_err(),
+                "Op {} succeeded incorrectly with 0 stack entries",
+                cap
+            );
             let p = if cap == "%s" || cap == "%l" {
                 Words("foo".to_string())
             } else {
                 Number(97)
             };
             let res = get_res("%p1", cap, &[p], vars);
-            assert!(res.is_ok(),
-                    "Op {} failed with 1 stack entry: {}",
-                    cap,
-                    res.unwrap_err());
+            assert!(
+                res.is_ok(),
+                "Op {} failed with 1 stack entry: {}",
+                cap,
+                res.unwrap_err()
+            );
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for &cap in caps.iter() {
             let res = expand(cap.as_bytes(), &[], vars);
-            assert!(res.is_err(),
-                    "Binop {} succeeded incorrectly with 0 stack entries",
-                    cap);
+            assert!(
+                res.is_err(),
+                "Binop {} succeeded incorrectly with 0 stack entries",
+                cap
+            );
             let res = get_res("%{1}", cap, &[], vars);
-            assert!(res.is_err(),
-                    "Binop {} succeeded incorrectly with 1 stack entry",
-                    cap);
+            assert!(
+                res.is_err(),
+                "Binop {} succeeded incorrectly with 1 stack entry",
+                cap
+            );
             let res = get_res("%{1}%{2}", cap, &[], vars);
-            assert!(res.is_ok(),
-                    "Binop {} failed with 2 stack entries: {}",
-                    cap,
-                    res.unwrap_err());
+            assert!(
+                res.is_ok(),
+                "Binop {} failed with 2 stack entries: {}",
+                cap,
+                res.unwrap_err()
+            );
         }
     }
 
@@ -609,7 +672,11 @@ mod test {
 
     #[test]
     fn test_comparison_ops() {
-        let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
+        let v = [
+            ('<', [1u8, 0u8, 0u8]),
+            ('=', [0u8, 1u8, 0u8]),
+            ('>', [0u8, 0u8, 1u8]),
+        ];
         for &(op, bs) in v.iter() {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
@@ -645,21 +712,35 @@ mod test {
     fn test_format() {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
-        assert_eq!(expand(b"%p1%s%p2%2s%p3%2s%p4%.2s",
-                          &[Words("foo".to_string()),
-                            Words("foo".to_string()),
-                            Words("f".to_string()),
-                            Words("foo".to_string())],
-                          vars),
-                   Ok("foofoo ffo".bytes().collect::<Vec<_>>()));
-        assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
-                   Ok("fo  ".bytes().collect::<Vec<_>>()));
+        assert_eq!(
+            expand(
+                b"%p1%s%p2%2s%p3%2s%p4%.2s",
+                &[
+                    Words("foo".to_string()),
+                    Words("foo".to_string()),
+                    Words("f".to_string()),
+                    Words("foo".to_string())
+                ],
+                vars
+            ),
+            Ok("foofoo ffo".bytes().collect::<Vec<_>>())
+        );
+        assert_eq!(
+            expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
+            Ok("fo  ".bytes().collect::<Vec<_>>())
+        );
 
-        assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
-                   Ok("1001    1+1".bytes().collect::<Vec<_>>()));
-        assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X",
-                          &[Number(15), Number(27)],
-                          vars),
-                   Ok("17017  001b0X001B".bytes().collect::<Vec<_>>()));
+        assert_eq!(
+            expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
+            Ok("1001    1+1".bytes().collect::<Vec<_>>())
+        );
+        assert_eq!(
+            expand(
+                b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X",
+                &[Number(15), Number(27)],
+                vars
+            ),
+            Ok("17017  001b0X001B".bytes().collect::<Vec<_>>())
+        );
     }
 }

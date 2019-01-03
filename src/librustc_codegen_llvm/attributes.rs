@@ -2,23 +2,23 @@
 
 use std::ffi::CString;
 
-use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::session::Session;
+use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::session::config::Sanitizer;
-use rustc::ty::{self, TyCtxt, PolyFnSig};
+use rustc::session::Session;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
+use rustc::ty::{self, PolyFnSig, TyCtxt};
+use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
-use rustc_codegen_ssa::traits::*;
 
 use abi::Abi;
 use attributes;
-use llvm::{self, Attribute};
 use llvm::AttributePlace::Function;
+use llvm::{self, Attribute};
 use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
 
@@ -30,18 +30,18 @@ use value::Value;
 pub fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
-        Hint   => Attribute::InlineHint.apply_llfn(Function, val),
+        Hint => Attribute::InlineHint.apply_llfn(Function, val),
         Always => Attribute::AlwaysInline.apply_llfn(Function, val),
-        Never  => {
+        Never => {
             if cx.tcx().sess.target.target.arch != "amdgpu" {
                 Attribute::NoInline.apply_llfn(Function, val);
             }
-        },
-        None   => {
+        }
+        None => {
             Attribute::InlineHint.unapply_llfn(Function, val);
             Attribute::AlwaysInline.unapply_llfn(Function, val);
             Attribute::NoInline.unapply_llfn(Function, val);
-        },
+        }
     };
 }
 
@@ -73,8 +73,11 @@ pub fn naked(val: &'ll Value, is_naked: bool) {
 pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
-            llfn, llvm::AttributePlace::Function,
-            const_cstr!("no-frame-pointer-elim"), const_cstr!("true"));
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("no-frame-pointer-elim"),
+            const_cstr!("true"),
+        );
     }
 }
 
@@ -85,8 +88,11 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
         llvm::AddFunctionAttrStringValue(
-            llfn, llvm::AttributePlace::Function,
-            const_cstr!("instrument-function-entry-inlined"), const_cstr!("mcount"));
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("instrument-function-entry-inlined"),
+            const_cstr!("mcount"),
+        );
     }
 }
 
@@ -94,14 +100,14 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !cx.sess().target.target.options.stack_probes {
-        return
+        return;
     }
 
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer. With asan we're already protected from stack overflow anyway
     // so we don't really need stack probes regardless.
     if let Some(Sanitizer::Address) = cx.sess().opts.debugging_opts.sanitizer {
-        return
+        return;
     }
 
     // probestack doesn't play nice either with pgo-gen.
@@ -117,18 +123,27 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Flag our internal `__rust_probestack` function as the stack probe symbol.
     // This is defined in the `compiler-builtins` crate for each architecture.
     llvm::AddFunctionAttrStringValue(
-        llfn, llvm::AttributePlace::Function,
-        const_cstr!("probe-stack"), const_cstr!("__rust_probestack"));
+        llfn,
+        llvm::AttributePlace::Function,
+        const_cstr!("probe-stack"),
+        const_cstr!("__rust_probestack"),
+    );
 }
 
 pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
-    const RUSTC_SPECIFIC_FEATURES: &[&str] = &[
-        "crt-static",
-    ];
+    const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
-    let cmdline = sess.opts.cg.target_feature.split(',')
+    let cmdline = sess
+        .opts
+        .cg
+        .target_feature
+        .split(',')
         .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
-    sess.target.target.options.features.split(',')
+    sess.target
+        .target
+        .options
+        .features
+        .split(',')
         .chain(cmdline)
         .filter(|l| !l.is_empty())
 }
@@ -136,10 +151,11 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
     llvm::AddFunctionAttrStringValue(
-            llfn,
-            llvm::AttributePlace::Function,
-            const_cstr!("target-cpu"),
-            target_cpu.as_c_str());
+        llfn,
+        llvm::AttributePlace::Function,
+        const_cstr!("target-cpu"),
+        target_cpu.as_c_str(),
+    );
 }
 
 /// Sets the `NonLazyBind` LLVM attribute on a given function,
@@ -159,7 +175,8 @@ pub fn from_fn_attrs(
     id: Option<DefId>,
     sig: PolyFnSig<'tcx>,
 ) {
-    let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
+    let codegen_fn_attrs = id
+        .map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or_else(|| CodegenFnAttrs::new());
 
     inline(cx, llfn, codegen_fn_attrs.inline);
@@ -180,8 +197,7 @@ pub fn from_fn_attrs(
     //
     // You can also find more info on why Windows is whitelisted here in:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
-    if !cx.sess().no_landing_pads() ||
-       cx.sess().target.target.options.requires_uwtable {
+    if !cx.sess().no_landing_pads() || cx.sess().target.target.options.requires_uwtable {
         attributes::emit_uwtable(llfn, true);
     }
 
@@ -195,42 +211,52 @@ pub fn from_fn_attrs(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         naked(llfn, true);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
-        Attribute::NoAlias.apply_llfn(
-            llvm::AttributePlace::ReturnValue, llfn);
+    if codegen_fn_attrs
+        .flags
+        .contains(CodegenFnAttrFlags::ALLOCATOR)
+    {
+        Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
 
-    unwind(llfn, if cx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        // In panic=abort mode we assume nothing can unwind anywhere, so
-        // optimize based on this!
-        false
-    } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that
-        true
-    } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind
-        false
-    } else if let Some(id) = id {
-        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if cx.tcx.is_foreign_item(id) {
-            // Foreign items like `extern "C" { fn foo(); }` are assumed not to
-            // unwind
+    unwind(
+        llfn,
+        if cx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
+            // In panic=abort mode we assume nothing can unwind anywhere, so
+            // optimize based on this!
             false
-        } else if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
-            // Any items defined in Rust that *don't* have the `extern` ABI are
-            // defined to not unwind. We insert shims to abort if an unwind
-            // happens to enforce this.
-            false
-        } else {
-            // Anything else defined in Rust is assumed that it can possibly
-            // unwind
+        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
+            // If a specific #[unwind] attribute is present, use that
             true
-        }
-    } else {
-        // assume this can possibly unwind, avoiding the application of a
-        // `nounwind` attribute below.
-        true
-    });
+        } else if codegen_fn_attrs
+            .flags
+            .contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND)
+        {
+            // Special attribute for allocator functions, which can't unwind
+            false
+        } else if let Some(id) = id {
+            let sig = cx
+                .tcx
+                .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+            if cx.tcx.is_foreign_item(id) {
+                // Foreign items like `extern "C" { fn foo(); }` are assumed not to
+                // unwind
+                false
+            } else if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
+                // Any items defined in Rust that *don't* have the `extern` ABI are
+                // defined to not unwind. We insert shims to abort if an unwind
+                // happens to enforce this.
+                false
+            } else {
+                // Anything else defined in Rust is assumed that it can possibly
+                // unwind
+                true
+            }
+        } else {
+            // assume this can possibly unwind, avoiding the application of a
+            // `nounwind` attribute below.
+            true
+        },
+    );
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
@@ -239,22 +265,21 @@ pub fn from_fn_attrs(
 
     let features = llvm_target_features(cx.tcx.sess)
         .map(|s| s.to_string())
-        .chain(
-            codegen_fn_attrs.target_features
-                .iter()
-                .map(|f| {
-                    let feature = &*f.as_str();
-                    format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
-                })
-        )
+        .chain(codegen_fn_attrs.target_features.iter().map(|f| {
+            let feature = &*f.as_str();
+            format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+        }))
         .collect::<Vec<String>>()
         .join(",");
 
     if !features.is_empty() {
         let val = CString::new(features).unwrap();
         llvm::AddFunctionAttrStringValue(
-            llfn, llvm::AttributePlace::Function,
-            const_cstr!("target-features"), &val);
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("target-features"),
+            &val,
+        );
     }
 
     // Note that currently the `wasm-import-module` doesn't do anything, but
@@ -280,14 +305,18 @@ pub fn provide(providers: &mut Providers) {
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
             // whitelist them all
-            Lrc::new(llvm_util::all_known_features()
-                .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
-                .collect())
+            Lrc::new(
+                llvm_util::all_known_features()
+                    .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
+                    .collect(),
+            )
         } else {
-            Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
-                .iter()
-                .map(|&(a, b)| (a.to_string(), b.map(|s| s.to_string())))
-                .collect())
+            Lrc::new(
+                llvm_util::target_feature_whitelist(tcx.sess)
+                    .iter()
+                    .map(|&(a, b)| (a.to_string(), b.map(|s| s.to_string())))
+                    .collect(),
+            )
         }
     };
 
@@ -301,13 +330,16 @@ pub fn provide_extern(providers: &mut Providers) {
         // `#[link(wasm_import_module = "...")]` for example.
         let native_libs = tcx.native_libraries(cnum);
 
-        let def_id_to_native_lib = native_libs.iter().filter_map(|lib|
-            if let Some(id) = lib.foreign_module {
-                Some((id, lib))
-            } else {
-                None
-            }
-        ).collect::<FxHashMap<_, _>>();
+        let def_id_to_native_lib = native_libs
+            .iter()
+            .filter_map(|lib| {
+                if let Some(id) = lib.foreign_module {
+                    Some((id, lib))
+                } else {
+                    None
+                }
+            })
+            .collect::<FxHashMap<_, _>>();
 
         let mut ret = FxHashMap::default();
         for lib in tcx.foreign_modules(cnum).iter() {

@@ -1,9 +1,7 @@
 use mir;
 use ty::layout::{self, HasDataLayout, Size};
 
-use super::{
-    AllocId, EvalResult, InboundsCheck,
-};
+use super::{AllocId, EvalResult, InboundsCheck};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -27,7 +25,11 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     #[inline]
     fn offset<'tcx>(&self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
         let (res, over) = self.overflowing_offset(val, i);
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+        if over {
+            err!(Overflow(mir::BinOp::Add))
+        } else {
+            Ok(res)
+        }
     }
 
     #[inline]
@@ -40,7 +42,11 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     #[inline]
     fn signed_offset<'tcx>(&self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
         let (res, over) = self.overflowing_signed_offset(val, i128::from(i));
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+        if over {
+            err!(Overflow(mir::BinOp::Add))
+        } else {
+            Ok(res)
+        }
     }
 
     // Overflow checking only works properly on the range from -u64 to +u64.
@@ -60,7 +66,6 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
-
 /// Pointer is generic over the type that represents a reference to Allocations,
 /// thus making it possible for the most convenient representation to be used in
 /// each context.
@@ -69,8 +74,10 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 ///
 /// Pointer is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub struct Pointer<Tag=(),Id=AllocId> {
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash,
+)]
+pub struct Pointer<Tag = (), Id = AllocId> {
     pub alloc_id: Id,
     pub offset: Size,
     pub tag: Tag,
@@ -87,12 +94,17 @@ impl From<AllocId> for Pointer {
 impl<'tcx> Pointer<()> {
     #[inline(always)]
     pub fn new(alloc_id: AllocId, offset: Size) -> Self {
-        Pointer { alloc_id, offset, tag: () }
+        Pointer {
+            alloc_id,
+            offset,
+            tag: (),
+        }
     }
 
     #[inline(always)]
     pub fn with_default_tag<Tag>(self) -> Pointer<Tag>
-        where Tag: Default
+    where
+        Tag: Default,
     {
         Pointer::new_with_tag(self.alloc_id, self.offset, Default::default())
     }
@@ -101,7 +113,11 @@ impl<'tcx> Pointer<()> {
 impl<'tcx, Tag> Pointer<Tag> {
     #[inline(always)]
     pub fn new_with_tag(alloc_id: AllocId, offset: Size, tag: Tag) -> Self {
-        Pointer { alloc_id, offset, tag }
+        Pointer {
+            alloc_id,
+            offset,
+            tag,
+        }
     }
 
     #[inline]
@@ -109,14 +125,19 @@ impl<'tcx, Tag> Pointer<Tag> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
-            self.tag
+            self.tag,
         ))
     }
 
     #[inline]
     pub fn overflowing_offset(self, i: Size, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
+        let (res, over) = cx
+            .data_layout()
+            .overflowing_offset(self.offset.bytes(), i.bytes());
+        (
+            Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag),
+            over,
+        )
     }
 
     #[inline(always)]
@@ -135,8 +156,13 @@ impl<'tcx, Tag> Pointer<Tag> {
 
     #[inline]
     pub fn overflowing_signed_offset(self, i: i128, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
+        let (res, over) = cx
+            .data_layout()
+            .overflowing_signed_offset(self.offset.bytes(), i);
+        (
+            Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag),
+            over,
+        )
     }
 
     #[inline(always)]
@@ -146,7 +172,11 @@ impl<'tcx, Tag> Pointer<Tag> {
 
     #[inline(always)]
     pub fn erase_tag(self) -> Pointer {
-        Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
+        Pointer {
+            alloc_id: self.alloc_id,
+            offset: self.offset,
+            tag: (),
+        }
     }
 
     #[inline(always)]

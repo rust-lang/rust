@@ -1,26 +1,23 @@
+use rustc::hir::def_id::CrateNum;
+use rustc::middle::cstore::LibSource;
+use rustc::middle::dependency_format::Linkage;
+use rustc::session::search_paths::PathKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
-
-use rustc::session::{Session, config};
-use rustc::session::search_paths::PathKind;
-use rustc::middle::dependency_format::Linkage;
-use rustc::middle::cstore::LibSource;
+use rustc::session::{config, Session};
 use rustc_target::spec::LinkerFlavor;
-use rustc::hir::def_id::CrateNum;
 
 use super::command::Command;
 use CrateInfo;
 
 use cc::windows_registry;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::env;
 
 pub fn remove(sess: &Session, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
-        sess.err(&format!("failed to remove {}: {}",
-                          path.display(),
-                          e));
+        sess.err(&format!("failed to remove {}: {}", path.display(), e));
     }
 }
 
@@ -46,15 +43,14 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
                 if sess.opts.cg.linker.is_none() && sess.target.target.options.linker.is_none() =>
             {
                 Command::new(msvc_tool.as_ref().map(|t| t.path()).unwrap_or(linker))
-            },
+            }
             _ => Command::new(linker),
-        }
+        },
     };
 
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All)
-                           .get_tools_search_paths();
+    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths();
     let mut msvc_changed_path = false;
     if sess.target.target.options.is_like_msvc {
         if let Some(ref tool) = msvc_tool {
@@ -80,36 +76,38 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
     (linker.to_path_buf(), cmd)
 }
 
-pub fn each_linked_rlib(sess: &Session,
-                               info: &CrateInfo,
-                               f: &mut dyn FnMut(CrateNum, &Path)) -> Result<(), String> {
+pub fn each_linked_rlib(
+    sess: &Session,
+    info: &CrateInfo,
+    f: &mut dyn FnMut(CrateNum, &Path),
+) -> Result<(), String> {
     let crates = info.used_crates_static.iter();
     let fmts = sess.dependency_formats.borrow();
-    let fmts = fmts.get(&config::CrateType::Executable)
-                   .or_else(|| fmts.get(&config::CrateType::Staticlib))
-                   .or_else(|| fmts.get(&config::CrateType::Cdylib))
-                   .or_else(|| fmts.get(&config::CrateType::ProcMacro));
+    let fmts = fmts
+        .get(&config::CrateType::Executable)
+        .or_else(|| fmts.get(&config::CrateType::Staticlib))
+        .or_else(|| fmts.get(&config::CrateType::Cdylib))
+        .or_else(|| fmts.get(&config::CrateType::ProcMacro));
     let fmts = match fmts {
         Some(f) => f,
-        None => return Err("could not find formats for rlibs".to_string())
+        None => return Err("could not find formats for rlibs".to_string()),
     };
     for &(cnum, ref path) in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked) |
-            Some(&Linkage::IncludedFromDylib) => continue,
+            Some(&Linkage::NotLinked) | Some(&Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
-            None => return Err("could not find formats for rlibs".to_string())
+            None => return Err("could not find formats for rlibs".to_string()),
         }
         let name = &info.crate_name[&cnum];
         let path = match *path {
             LibSource::Some(ref p) => p,
             LibSource::MetadataOnly => {
-                return Err(format!("could not find rlib for: `{}`, found rmeta (metadata) file",
-                                   name))
+                return Err(format!(
+                    "could not find rlib for: `{}`, found rmeta (metadata) file",
+                    name
+                ))
             }
-            LibSource::None => {
-                return Err(format!("could not find rlib for: `{}`", name))
-            }
+            LibSource::None => return Err(format!("could not find rlib for: `{}`", name)),
         };
         f(cnum, &path);
     }
@@ -130,8 +128,8 @@ pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool
     // If our target enables builtin function lowering in LLVM then the
     // crates providing these functions don't participate in LTO (e.g.
     // no_builtins or compiler builtins crates).
-    !sess.target.target.options.no_builtins &&
-        (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
+    !sess.target.target.options.no_builtins
+        && (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
 pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
@@ -143,21 +141,32 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         match (linker, flavor) {
             (Some(linker), Some(flavor)) => Some((linker, flavor)),
             // only the linker flavor is known; use the default linker for the selected flavor
-            (None, Some(flavor)) => Some((PathBuf::from(match flavor {
-                LinkerFlavor::Em  => if cfg!(windows) { "emcc.bat" } else { "emcc" },
-                LinkerFlavor::Gcc => "cc",
-                LinkerFlavor::Ld => "ld",
-                LinkerFlavor::Msvc => "link.exe",
-                LinkerFlavor::Lld(_) => "lld",
-            }), flavor)),
+            (None, Some(flavor)) => Some((
+                PathBuf::from(match flavor {
+                    LinkerFlavor::Em => {
+                        if cfg!(windows) {
+                            "emcc.bat"
+                        } else {
+                            "emcc"
+                        }
+                    }
+                    LinkerFlavor::Gcc => "cc",
+                    LinkerFlavor::Ld => "ld",
+                    LinkerFlavor::Msvc => "link.exe",
+                    LinkerFlavor::Lld(_) => "lld",
+                }),
+                flavor,
+            )),
             (Some(linker), None) => {
                 let stem = if linker.extension().and_then(|ext| ext.to_str()) == Some("exe") {
                     linker.file_stem().and_then(|stem| stem.to_str())
                 } else {
                     linker.to_str()
-                }.unwrap_or_else(|| {
+                }
+                .unwrap_or_else(|| {
                     sess.fatal("couldn't extract file stem from specified linker");
-                }).to_owned();
+                })
+                .to_owned();
 
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::Em
@@ -175,14 +184,18 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 };
 
                 Some((linker, flavor))
-            },
+            }
             (None, None) => None,
         }
     }
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
+    if let Some(ret) = infer_from(
+        sess,
+        sess.opts.cg.linker.clone(),
+        sess.opts.cg.linker_flavor,
+    ) {
         return ret;
     }
 

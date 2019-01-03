@@ -11,7 +11,9 @@ pub struct Lazy<T> {
 }
 
 #[inline]
-const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
+const fn done<T>() -> *mut Arc<T> {
+    1_usize as *mut _
+}
 
 unsafe impl<T> Sync for Lazy<T> {}
 

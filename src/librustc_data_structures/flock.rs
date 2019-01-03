@@ -350,11 +350,7 @@ cfg_if! {
 }
 
 impl Lock {
-    pub fn panicking_new(p: &Path,
-                         wait: bool,
-                         create: bool,
-                         exclusive: bool)
-                         -> Lock {
+    pub fn panicking_new(p: &Path, wait: bool, create: bool, exclusive: bool) -> Lock {
         Lock::new(p, wait, create, exclusive).unwrap_or_else(|err| {
             panic!("could not lock `{}`: {}", p.display(), err);
         })

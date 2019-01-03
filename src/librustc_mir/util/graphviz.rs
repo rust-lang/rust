@@ -8,11 +8,13 @@ use std::io::{self, Write};
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
-                                   single: Option<DefId>,
-                                   w: &mut W)
-                                   -> io::Result<()>
-    where W: Write
+pub fn write_mir_graphviz<'tcx, W>(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    single: Option<DefId>,
+    w: &mut W,
+) -> io::Result<()>
+where
+    W: Write,
 {
     for def_id in dump_mir_def_ids(tcx, single) {
         let mir = &tcx.optimized_mir(def_id);
@@ -22,13 +24,20 @@ pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
 }
 
 /// Write a graphviz DOT graph of the MIR.
-pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
-                                      def_id: DefId,
-                                      mir: &Mir,
-                                      w: &mut W) -> io::Result<()>
-    where W: Write
+pub fn write_mir_fn_graphviz<'tcx, W>(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    def_id: DefId,
+    mir: &Mir,
+    w: &mut W,
+) -> io::Result<()>
+where
+    W: Write,
 {
-    writeln!(w, "digraph Mir_{} {{", tcx.hir().as_local_node_id(def_id).unwrap())?;
+    writeln!(
+        w,
+        "digraph Mir_{} {{",
+        tcx.hir().as_local_node_id(def_id).unwrap()
+    )?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;
@@ -57,24 +66,30 @@ pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
 ///
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).
-pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
-                                              mir: &Mir,
-                                              w: &mut W,
-                                              num_cols: u32,
-                                              init: INIT,
-                                              fini: FINI) -> io::Result<()>
-    where INIT: Fn(&mut W) -> io::Result<()>,
-          FINI: Fn(&mut W) -> io::Result<()>
+pub fn write_node_label<W: Write, INIT, FINI>(
+    block: BasicBlock,
+    mir: &Mir,
+    w: &mut W,
+    num_cols: u32,
+    init: INIT,
+    fini: FINI,
+) -> io::Result<()>
+where
+    INIT: Fn(&mut W) -> io::Result<()>,
+    FINI: Fn(&mut W) -> io::Result<()>,
 {
     let data = &mir[block];
 
     write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
     // Basic block number at the top.
-    write!(w, r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
-           attrs=r#"bgcolor="gray" align="center""#,
-           colspan=num_cols,
-           blk=block.index())?;
+    write!(
+        w,
+        r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
+        attrs = r#"bgcolor="gray" align="center""#,
+        colspan = num_cols,
+        blk = block.index()
+    )?;
 
     init(w)?;
 
@@ -90,8 +105,15 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
     // Terminator head at the bottom, not including the list of successor blocks. Those will be
     // displayed as labels on the edges between blocks.
     let mut terminator_head = String::new();
-    data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
-    write!(w, r#"<tr><td align="left">{}</td></tr>"#, dot::escape_html(&terminator_head))?;
+    data.terminator()
+        .kind
+        .fmt_head(&mut terminator_head)
+        .unwrap();
+    write!(
+        w,
+        r#"<tr><td align="left">{}</td></tr>"#,
+        dot::escape_html(&terminator_head)
+    )?;
 
     fini(w)?;
 
@@ -114,7 +136,13 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
     let labels = terminator.kind.fmt_successor_labels();
 
     for (&target, label) in terminator.successors().zip(labels) {
-        writeln!(w, r#"    {} -> {} [label="{}"];"#, node(source), node(target), label)?;
+        writeln!(
+            w,
+            r#"    {} -> {} [label="{}"];"#,
+            node(source),
+            node(target),
+            label
+        )?;
     }
 
     Ok(())
@@ -123,19 +151,29 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                               def_id: DefId,
-                                               mir: &Mir,
-                                               w: &mut W)
-                                               -> io::Result<()> {
-    write!(w, "    label=<fn {}(", dot::escape_html(&tcx.item_path_str(def_id)))?;
+fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    def_id: DefId,
+    mir: &Mir,
+    w: &mut W,
+) -> io::Result<()> {
+    write!(
+        w,
+        "    label=<fn {}(",
+        dot::escape_html(&tcx.item_path_str(def_id))
+    )?;
 
     // fn argument types.
     for (i, arg) in mir.args_iter().enumerate() {
         if i > 0 {
             write!(w, ", ")?;
         }
-        write!(w, "{:?}: {}", Place::Local(arg), escape(&mir.local_decls[arg].ty))?;
+        write!(
+            w,
+            "{:?}: {}",
+            Place::Local(arg),
+            escape(&mir.local_decls[arg].ty)
+        )?;
     }
 
     write!(w, ") -&gt; {}", escape(mir.return_ty()))?;
@@ -150,11 +188,20 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         }
 
         if let Some(name) = decl.name {
-            write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Place::Local(local), escape(&decl.ty), name)?;
+            write!(
+                w,
+                r#"{:?}: {}; // {}<br align="left"/>"#,
+                Place::Local(local),
+                escape(&decl.ty),
+                name
+            )?;
         } else {
-            write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                   Place::Local(local), escape(&decl.ty))?;
+            write!(
+                w,
+                r#"let mut {:?}: {};<br align="left"/>"#,
+                Place::Local(local),
+                escape(&decl.ty)
+            )?;
         }
     }
 

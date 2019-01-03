@@ -34,7 +34,7 @@ const WASM_EXTERNAL_KIND_GLOBAL: u8 = 3;
 /// needs to be added, tracked at https://bugs.llvm.org/show_bug.cgi?id=37168
 pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
     if import_map.is_empty() {
-        return
+        return;
     }
 
     let wasm = fs::read(path).expect("failed to read wasm output");
@@ -46,10 +46,7 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
         ret.byte(id);
         if id == WASM_IMPORT_SECTION_ID {
             info!("rewriting import section");
-            let data = rewrite_import_section(
-                &mut WasmDecoder::new(raw),
-                import_map,
-            );
+            let data = rewrite_import_section(&mut WasmDecoder::new(raw), import_map);
             ret.bytes(&data);
         } else {
             info!("carry forward section {}, {} bytes long", id, raw.len());
@@ -62,9 +59,7 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
     fn rewrite_import_section(
         wasm: &mut WasmDecoder,
         import_map: &FxHashMap<String, String>,
-    )
-        -> Vec<u8>
-    {
+    ) -> Vec<u8> {
         let mut dst = WasmEncoder::new();
         let n = wasm.u32();
         dst.u32(n);
@@ -72,12 +67,14 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
         for _ in 0..n {
             rewrite_import_entry(wasm, &mut dst, import_map);
         }
-        return dst.data
+        return dst.data;
     }
 
-    fn rewrite_import_entry(wasm: &mut WasmDecoder,
-                            dst: &mut WasmEncoder,
-                            import_map: &FxHashMap<String, String>) {
+    fn rewrite_import_entry(
+        wasm: &mut WasmDecoder,
+        dst: &mut WasmEncoder,
+        import_map: &FxHashMap<String, String>,
+    ) {
         // More info about the binary format here is available at:
         // https://webassembly.github.io/spec/core/binary/modules.html#import-section
         //
@@ -114,11 +111,7 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
 
 /// Add or augment the existing `producers` section to encode information about
 /// the Rust compiler used to produce the wasm file.
-pub fn add_producer_section(
-    path: &Path,
-    rust_version: &str,
-    rustc_version: &str,
-) {
+pub fn add_producer_section(path: &Path, rust_version: &str, rustc_version: &str) {
     struct Field<'a> {
         name: &'a str,
         values: Vec<FieldValue<'a>>,
@@ -153,13 +146,13 @@ pub fn add_producer_section(
         if id != WASM_CUSTOM_SECTION_ID {
             ret.byte(id);
             ret.bytes(raw);
-            continue
+            continue;
         }
         let mut decoder = WasmDecoder::new(raw);
         if decoder.str() != "producers" {
             ret.byte(id);
             ret.bytes(raw);
-            continue
+            continue;
         }
 
         // Read off the producers section into our fields outside the loop,
@@ -225,7 +218,7 @@ impl<'a> Iterator for WasmSections<'a> {
 
     fn next(&mut self) -> Option<(u8, &'a [u8])> {
         if self.0.data.is_empty() {
-            return None
+            return None;
         }
 
         // see https://webassembly.github.io/spec/core/binary/modules.html#sections
@@ -253,7 +246,7 @@ impl<'a> WasmDecoder<'a> {
     fn u32(&mut self) -> u32 {
         let (n, l1) = leb128::read_u32_leb128(self.data);
         self.data = &self.data[l1..];
-        return n
+        return n;
     }
 
     fn skip(&mut self, amt: usize) -> &'a [u8] {

@@ -49,21 +49,20 @@
 //
 // This cfg won't affect doc tests.
 #![cfg(not(test))]
-
 #![stable(feature = "core", since = "1.6.0")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(deny(warnings))),
-       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+    test(no_crate_inject, attr(deny(warnings))),
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+)]
 #![no_core]
 #![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
-
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
@@ -140,22 +139,36 @@ mod int_macros;
 #[macro_use]
 mod uint_macros;
 
-#[path = "num/isize.rs"] pub mod isize;
-#[path = "num/i8.rs"]    pub mod i8;
-#[path = "num/i16.rs"]   pub mod i16;
-#[path = "num/i32.rs"]   pub mod i32;
-#[path = "num/i64.rs"]   pub mod i64;
-#[path = "num/i128.rs"]  pub mod i128;
+#[path = "num/i128.rs"]
+pub mod i128;
+#[path = "num/i16.rs"]
+pub mod i16;
+#[path = "num/i32.rs"]
+pub mod i32;
+#[path = "num/i64.rs"]
+pub mod i64;
+#[path = "num/i8.rs"]
+pub mod i8;
+#[path = "num/isize.rs"]
+pub mod isize;
 
-#[path = "num/usize.rs"] pub mod usize;
-#[path = "num/u8.rs"]    pub mod u8;
-#[path = "num/u16.rs"]   pub mod u16;
-#[path = "num/u32.rs"]   pub mod u32;
-#[path = "num/u64.rs"]   pub mod u64;
-#[path = "num/u128.rs"]  pub mod u128;
+#[path = "num/u128.rs"]
+pub mod u128;
+#[path = "num/u16.rs"]
+pub mod u16;
+#[path = "num/u32.rs"]
+pub mod u32;
+#[path = "num/u64.rs"]
+pub mod u64;
+#[path = "num/u8.rs"]
+pub mod u8;
+#[path = "num/usize.rs"]
+pub mod usize;
 
-#[path = "num/f32.rs"]   pub mod f32;
-#[path = "num/f64.rs"]   pub mod f64;
+#[path = "num/f32.rs"]
+pub mod f32;
+#[path = "num/f64.rs"]
+pub mod f64;
 
 #[macro_use]
 pub mod num;
@@ -166,42 +179,42 @@ pub mod prelude;
 
 /* Core modules for ownership management */
 
+pub mod hint;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
-pub mod hint;
 
 /* Core language traits */
 
+pub mod borrow;
+pub mod clone;
+pub mod cmp;
+pub mod convert;
+pub mod default;
 pub mod marker;
 pub mod ops;
-pub mod cmp;
-pub mod clone;
-pub mod default;
-pub mod convert;
-pub mod borrow;
 
 /* Core types and methods on primitives */
 
 pub mod any;
 pub mod array;
 pub mod ascii;
-pub mod sync;
 pub mod cell;
 pub mod char;
+pub mod ffi;
+pub mod iter;
+pub mod option;
 pub mod panic;
 pub mod panicking;
 pub mod pin;
-pub mod iter;
-pub mod option;
 pub mod raw;
 pub mod result;
-pub mod ffi;
+pub mod sync;
 
+pub mod fmt;
+pub mod hash;
 pub mod slice;
 pub mod str;
-pub mod hash;
-pub mod fmt;
 pub mod time;
 
 pub mod unicode;
@@ -225,17 +238,29 @@ mod unit;
 // different repository, rust-lang-nursery/stdsimd. That's why the setup here is
 // a bit wonky.
 #[allow(unused_macros)]
-macro_rules! test_v16 { ($item:item) => {}; }
+macro_rules! test_v16 {
+    ($item:item) => {};
+}
 #[allow(unused_macros)]
-macro_rules! test_v32 { ($item:item) => {}; }
+macro_rules! test_v32 {
+    ($item:item) => {};
+}
 #[allow(unused_macros)]
-macro_rules! test_v64 { ($item:item) => {}; }
+macro_rules! test_v64 {
+    ($item:item) => {};
+}
 #[allow(unused_macros)]
-macro_rules! test_v128 { ($item:item) => {}; }
+macro_rules! test_v128 {
+    ($item:item) => {};
+}
 #[allow(unused_macros)]
-macro_rules! test_v256 { ($item:item) => {}; }
+macro_rules! test_v256 {
+    ($item:item) => {};
+}
 #[allow(unused_macros)]
-macro_rules! test_v512 { ($item:item) => {}; }
+macro_rules! test_v512 {
+    ($item:item) => {};
+}
 #[allow(unused_macros)]
 macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
 #[path = "../stdsimd/coresimd/mod.rs"]

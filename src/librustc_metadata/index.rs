@@ -13,14 +13,13 @@ use std::u32;
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
 pub struct Index {
-    positions: [Vec<u32>; 2]
+    positions: [Vec<u32>; 2],
 }
 
 impl Index {
     pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Index {
         Index {
-            positions: [vec![u32::MAX; max_index_lo],
-                        vec![u32::MAX; max_index_hi]],
+            positions: [vec![u32::MAX; max_index_lo], vec![u32::MAX; max_index_hi]],
         }
     }
 
@@ -35,11 +34,13 @@ impl Index {
         let space_index = item.address_space().index();
         let array_index = item.as_array_index();
 
-        assert!(self.positions[space_index][array_index] == u32::MAX,
-                "recorded position for item {:?} twice, first at {:?} and now at {:?}",
-                item,
-                self.positions[space_index][array_index],
-                position);
+        assert!(
+            self.positions[space_index][array_index] == u32::MAX,
+            "recorded position for item {:?} twice, first at {:?} and now at {:?}",
+            item,
+            self.positions[space_index][array_index],
+            position
+        );
 
         self.positions[space_index][array_index] = position.to_le();
     }
@@ -53,8 +54,10 @@ impl Index {
         buf.emit_raw_bytes(words_to_bytes(&self.positions[0][..]));
         // ... then the values in the higher range.
         buf.emit_raw_bytes(words_to_bytes(&self.positions[1][..]));
-        LazySeq::with_position_and_length(pos as usize,
-            self.positions[0].len() + self.positions[1].len() + 1)
+        LazySeq::with_position_and_length(
+            pos as usize,
+            self.positions[0].len() + self.positions[1].len() + 1,
+        )
     }
 }
 
@@ -65,9 +68,11 @@ impl<'tcx> LazySeq<Index> {
     pub fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         let words = &bytes_to_words(&bytes[self.position..])[..self.len];
 
-        debug!("Index::lookup: index={:?} words.len={:?}",
-               def_index,
-               words.len());
+        debug!(
+            "Index::lookup: index={:?} words.len={:?}",
+            def_index,
+            words.len()
+        );
 
         let positions = match def_index.address_space() {
             DefIndexAddressSpace::Low => &words[1..],
@@ -75,7 +80,7 @@ impl<'tcx> LazySeq<Index> {
                 // This is a DefIndex in the higher range, so find out where
                 // that starts:
                 let lo_count = u32::from_le(words[0].get()) as usize;
-                &words[lo_count + 1 .. ]
+                &words[lo_count + 1..]
             }
         };
 
@@ -104,7 +109,9 @@ impl<T: Copy> Clone for Unaligned<T> {
 }
 
 impl<T> Unaligned<T> {
-    fn get(self) -> T { self.0 }
+    fn get(self) -> T {
+        self.0
+    }
 }
 
 fn bytes_to_words(b: &[u8]) -> &[Unaligned<u32>] {

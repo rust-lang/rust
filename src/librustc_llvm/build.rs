@@ -1,9 +1,9 @@
-extern crate cc;
 extern crate build_helper;
+extern crate cc;
 
-use std::process::Command;
 use std::env;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use build_helper::output;
 
@@ -29,7 +29,8 @@ fn main() {
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
-                let to_test = dir.parent()
+                let to_test = dir
+                    .parent()
                     .unwrap()
                     .parent()
                     .unwrap()
@@ -70,21 +71,33 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
-    let mut optional_components =
-        vec!["x86", "arm", "aarch64", "amdgpu", "mips", "powerpc",
-             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
+    let mut optional_components = vec![
+        "x86",
+        "arm",
+        "aarch64",
+        "amdgpu",
+        "mips",
+        "powerpc",
+        "systemz",
+        "jsbackend",
+        "webassembly",
+        "msp430",
+        "sparc",
+        "nvptx",
+    ];
 
     let mut version_cmd = Command::new(&llvm_config);
     version_cmd.arg("--version");
     let version_output = output(&mut version_cmd);
-    let mut parts = version_output.split('.').take(2)
+    let mut parts = version_output
+        .split('.')
+        .take(2)
         .filter_map(|s| s.parse::<u32>().ok());
-    let (major, _minor) =
-        if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
-            (major, minor)
-        } else {
-            (3, 9)
-        };
+    let (major, _minor) = if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
+        (major, minor)
+    } else {
+        (3, 9)
+    };
 
     if major > 3 {
         optional_components.push("hexagon");
@@ -96,15 +109,17 @@ fn main() {
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.
-    let required_components = &["ipo",
-                                "bitreader",
-                                "bitwriter",
-                                "linker",
-                                "asmparser",
-                                "mcjit",
-                                "lto",
-                                "interpreter",
-                                "instrumentation"];
+    let required_components = &[
+        "ipo",
+        "bitreader",
+        "bitwriter",
+        "linker",
+        "asmparser",
+        "mcjit",
+        "lto",
+        "interpreter",
+        "instrumentation",
+    ];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
@@ -153,12 +168,12 @@ fn main() {
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
-       .file("../rustllvm/RustWrapper.cpp")
-       .file("../rustllvm/ArchiveWrapper.cpp")
-       .file("../rustllvm/Linker.cpp")
-       .cpp(true)
-       .cpp_link_stdlib(None) // we handle this below
-       .compile("rustllvm");
+        .file("../rustllvm/RustWrapper.cpp")
+        .file("../rustllvm/ArchiveWrapper.cpp")
+        .file("../rustllvm/Linker.cpp")
+        .cpp(true)
+        .cpp_link_stdlib(None) // we handle this below
+        .compile("rustllvm");
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link();
 
@@ -221,8 +236,10 @@ fn main() {
             println!("cargo:rustc-link-search=native={}", &lib[9..]);
         } else if is_crossed {
             if lib.starts_with("-L") {
-                println!("cargo:rustc-link-search=native={}",
-                         lib[2..].replace(&host, &target));
+                println!(
+                    "cargo:rustc-link-search=native={}",
+                    lib[2..].replace(&host, &target)
+                );
             }
         } else if lib.starts_with("-l") {
             println!("cargo:rustc-link-lib={}", &lib[2..]);
@@ -250,8 +267,10 @@ fn main() {
         if let Some(s) = llvm_static_stdcpp {
             assert!(!cxxflags.contains("stdlib=libc++"));
             let path = PathBuf::from(s);
-            println!("cargo:rustc-link-search=native={}",
-                     path.parent().unwrap().display());
+            println!(
+                "cargo:rustc-link-search=native={}",
+                path.parent().unwrap().display()
+            );
             println!("cargo:rustc-link-lib=static={}", stdcppname);
         } else if cxxflags.contains("stdlib=libc++") {
             println!("cargo:rustc-link-lib=c++");

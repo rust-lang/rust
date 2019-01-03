@@ -19,28 +19,26 @@ use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
-use std::path::Path;
 use std::env;
+use std::path::Path;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
 use syntax::parse::token;
-use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{
-    bounds_to_string,
-    generic_params_to_string,
-    ty_to_string
-};
+use syntax::print::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use syntax::ptr::P;
-use syntax::source_map::{Spanned, DUMMY_SP, respan};
+use syntax::source_map::{respan, Spanned, DUMMY_SP};
+use syntax::visit::{self, Visitor};
 use syntax_pos::*;
 
-use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
 use json_dumper::{Access, DumpOutput, JsonDumper};
-use span_utils::SpanUtils;
 use sig;
+use span_utils::SpanUtils;
+use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
 
-use rls_data::{CompilationOptions, CratePreludeData, Def, DefKind, GlobalCrateId, Import,
-               ImportKind, Ref, RefKind, Relation, RelationKind, SpanData};
+use rls_data::{
+    CompilationOptions, CratePreludeData, Def, DefKind, GlobalCrateId, Import, ImportKind, Ref,
+    RefKind, Relation, RelationKind, SpanData,
+};
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -76,7 +74,6 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     span: SpanUtils<'l>,
 
     cur_scope: NodeId,
-
     // Set of macro definition (callee) spans, and the set
     // of macro use (callsite) spans. We store these to ensure
     // we only write one macro def per unique macro definition, and
@@ -139,13 +136,15 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display(),
                 None => source_file.display(),
-            }.to_string()
+            }
+            .to_string()
         });
 
         let data = CratePreludeData {
             crate_id: GlobalCrateId {
                 name: name.into(),
-                disambiguator: self.tcx
+                disambiguator: self
+                    .tcx
                     .sess
                     .local_crate_disambiguator()
                     .to_fingerprint()
@@ -180,18 +179,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             let mut args = env::args()
                 .enumerate()
                 .filter(|(i, _)| !remap_arg_indices.contains(i))
-                .map(|(_, arg)| {
-                    match input {
-                        Input::File(ref path) if path == Path::new(&arg) => {
-                            let mapped = &self.tcx.sess.local_crate_source_file;
-                            mapped
-                                .as_ref()
-                                .unwrap()
-                                .to_string_lossy()
-                                .into()
-                        },
-                        _ => arg,
+                .map(|(_, arg)| match input {
+                    Input::File(ref path) if path == Path::new(&arg) => {
+                        let mapped = &self.tcx.sess.local_crate_source_file;
+                        mapped.as_ref().unwrap().to_string_lossy().into()
                     }
+                    _ => arg,
                 });
 
             (args.next().unwrap(), args.collect())
@@ -288,17 +281,17 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         if let Some(mut method_data) = self.save_ctxt.get_method_data(id, ident, span) {
             let sig_str = ::make_signature(&sig.decl, &generics);
             if body.is_some() {
-                self.nest_tables(
-                    id,
-                    |v| v.process_formals(&sig.decl.inputs, &method_data.qualname),
-                );
+                self.nest_tables(id, |v| {
+                    v.process_formals(&sig.decl.inputs, &method_data.qualname)
+                });
             }
 
             self.process_generic_params(&generics, &method_data.qualname, id);
 
             method_data.value = sig_str;
             method_data.sig = sig::method_signature(id, ident, generics, sig, &self.save_ctxt);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, vis, id), method_data);
+            self.dumper
+                .dump_def(&access_from!(self.save_ctxt, vis, id), method_data);
         }
 
         // walk arg and return types
@@ -319,17 +312,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            self.dumper.dump_def(&access_from!(self.save_ctxt, field), field_data);
+            self.dumper
+                .dump_def(&access_from!(self.save_ctxt, field), field_data);
         }
     }
 
     // Dump generic params bindings, then visit_generics
-    fn process_generic_params(
-        &mut self,
-        generics: &'l ast::Generics,
-        prefix: &str,
-        id: NodeId,
-    ) {
+    fn process_generic_params(&mut self, generics: &'l ast::Generics, prefix: &str, id: NodeId) {
         for param in &generics.params {
             match param.kind {
                 ast::GenericParamKind::Lifetime { .. } => {}
@@ -378,12 +367,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ) {
         if let Some(fn_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(fn_data, DefData, item.span);
-            self.nest_tables(
-                item.id,
-                |v| v.process_formals(&decl.inputs, &fn_data.qualname),
-            );
+            self.nest_tables(item.id, |v| {
+                v.process_formals(&decl.inputs, &fn_data.qualname)
+            });
             self.process_generic_params(ty_params, &fn_data.qualname, item.id);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item), fn_data);
+            self.dumper
+                .dump_def(&access_from!(self.save_ctxt, item), fn_data);
         }
 
         for arg in &decl.inputs {
@@ -406,7 +395,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.nest_tables(item.id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item), var_data);
+                v.dumper
+                    .dump_def(&access_from!(v.save_ctxt, item), var_data);
             }
             v.visit_ty(&typ);
             v.visit_expr(expr);
@@ -473,8 +463,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
 
         let (value, fields) = match item.node {
-            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) |
-            ast::ItemKind::Union(ast::VariantData::Struct(ref fields, _), _) => {
+            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _)
+            | ast::ItemKind::Union(ast::VariantData::Struct(ref fields, _), _) => {
                 let include_priv_fields = !self.save_ctxt.config.pub_only;
                 let fields_str = fields
                     .iter()
@@ -557,7 +547,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         .iter()
                         .enumerate()
                         .map(|(i, f)| {
-                            f.ident.map(|i| i.to_string()).unwrap_or_else(|| i.to_string())
+                            f.ident
+                                .map(|i| i.to_string())
+                                .unwrap_or_else(|| i.to_string())
                         })
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -593,11 +585,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     let mut value = format!("{}::{}", enum_data.name, name);
                     if let &ast::VariantData::Tuple(ref fields, _) = v {
                         value.push('(');
-                        value.push_str(&fields
-                            .iter()
-                            .map(|f| ty_to_string(&f.ty))
-                            .collect::<Vec<_>>()
-                            .join(", "));
+                        value.push_str(
+                            &fields
+                                .iter()
+                                .map(|f| ty_to_string(&f.ty))
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                        );
                         value.push(')');
                     }
                     if !self.span.filter_generated(name_span) {
@@ -628,7 +622,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     }
                 }
             }
-
 
             for field in variant.node.data.fields() {
                 self.process_struct_field_def(field, variant.node.data.id());
@@ -751,7 +744,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_mod(&mut self, item: &ast::Item) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item), mod_data);
+            self.dumper
+                .dump_def(&access_from!(self.save_ctxt, item), mod_data);
         }
     }
 
@@ -866,7 +860,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
                 let variant = adt.variant_of_def(self.save_ctxt.get_path_def(p.id));
 
-                for &Spanned { node: ref field, .. } in fields {
+                for &Spanned {
+                    node: ref field, ..
+                } in fields
+                {
                     if let Some(index) = self.tcx.find_field_index(field.ident, variant) {
                         if !self.span.filter_generated(field.ident.span) {
                             let span = self.span_from_span(field.ident.span);
@@ -902,7 +899,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         "<mutable>".to_owned()
                     };
                     let hir_id = self.tcx.hir().node_to_hir_id(id);
-                    let typ = self.save_ctxt
+                    let typ = self
+                        .save_ctxt
                         .tables
                         .node_id_to_type_opt(hir_id)
                         .map(|t| t.to_string())
@@ -937,15 +935,15 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         );
                     }
                 }
-                HirDef::StructCtor(..) |
-                HirDef::VariantCtor(..) |
-                HirDef::Const(..) |
-                HirDef::AssociatedConst(..) |
-                HirDef::Struct(..) |
-                HirDef::Variant(..) |
-                HirDef::TyAlias(..) |
-                HirDef::AssociatedTy(..) |
-                HirDef::SelfTy(..) => {
+                HirDef::StructCtor(..)
+                | HirDef::VariantCtor(..)
+                | HirDef::Const(..)
+                | HirDef::AssociatedConst(..)
+                | HirDef::Struct(..)
+                | HirDef::Variant(..)
+                | HirDef::TyAlias(..)
+                | HirDef::AssociatedTy(..)
+                | HirDef::SelfTy(..) => {
                     self.dump_path_ref(id, &ast::Path::from_ident(ident));
                 }
                 def => error!(
@@ -1182,11 +1180,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ///
     /// If `use_tree` is a simple or glob import, it is dumped into the analysis data. Otherwise,
     /// each child use tree is dumped recursively.
-    fn process_use_tree(&mut self,
-                         use_tree: &'l ast::UseTree,
-                         id: NodeId,
-                         root_item: &'l ast::Item,
-                         prefix: &ast::Path) {
+    fn process_use_tree(
+        &mut self,
+        use_tree: &'l ast::UseTree,
+        id: NodeId,
+        root_item: &'l ast::Item,
+        prefix: &ast::Path,
+    ) {
         let path = &use_tree.prefix;
 
         // The access is calculated using the current tree ID, but with the root tree's visibility
@@ -1194,7 +1194,11 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let access = access_from!(self.save_ctxt, root_item.vis, id);
 
         // The parent def id of a given use tree is always the enclosing item.
-        let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
+        let parent = self
+            .save_ctxt
+            .tcx
+            .hir()
+            .opt_local_def_id(id)
             .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
             .map(::id_from_def_id);
 
@@ -1202,7 +1206,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             ast::UseTreeKind::Simple(alias, ..) => {
                 let ident = use_tree.ident();
                 let path = ast::Path {
-                    segments: prefix.segments
+                    segments: prefix
+                        .segments
                         .iter()
                         .chain(path.segments.iter())
                         .cloned()
@@ -1215,21 +1220,25 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     let ref_id = self.lookup_def_id(id).map(|id| ::id_from_def_id(id));
                     let alias_span = alias.map(|i| self.span_from_span(i.span));
                     let span = self.span_from_span(sub_span);
-                    self.dumper.import(&access, Import {
-                        kind: ImportKind::Use,
-                        ref_id,
-                        span,
-                        alias_span,
-                        name: ident.to_string(),
-                        value: String::new(),
-                        parent,
-                    });
+                    self.dumper.import(
+                        &access,
+                        Import {
+                            kind: ImportKind::Use,
+                            ref_id,
+                            span,
+                            alias_span,
+                            name: ident.to_string(),
+                            value: String::new(),
+                            parent,
+                        },
+                    );
                     self.write_sub_paths_truncated(&path);
                 }
             }
             ast::UseTreeKind::Glob => {
                 let path = ast::Path {
-                    segments: prefix.segments
+                    segments: prefix
+                        .segments
                         .iter()
                         .chain(path.segments.iter())
                         .cloned()
@@ -1241,35 +1250,45 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 let glob_map = &self.save_ctxt.analysis.glob_map;
                 let glob_map = glob_map.as_ref().unwrap();
                 let names = if glob_map.contains_key(&id) {
-                    glob_map.get(&id).unwrap().iter().map(|n| n.to_string()).collect()
+                    glob_map
+                        .get(&id)
+                        .unwrap()
+                        .iter()
+                        .map(|n| n.to_string())
+                        .collect()
                 } else {
                     Vec::new()
                 };
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`
-                if let Some(sub_span) =
-                    self.span.sub_span_of_token(use_tree.span, token::BinOp(token::Star))
+                if let Some(sub_span) = self
+                    .span
+                    .sub_span_of_token(use_tree.span, token::BinOp(token::Star))
                 {
                     if !self.span.filter_generated(use_tree.span) {
                         let span = self.span_from_span(sub_span);
 
-                        self.dumper.import(&access, Import {
-                            kind: ImportKind::GlobUse,
-                            ref_id: None,
-                            span,
-                            alias_span: None,
-                            name: "*".to_owned(),
-                            value: names.join(", "),
-                            parent,
-                        });
+                        self.dumper.import(
+                            &access,
+                            Import {
+                                kind: ImportKind::GlobUse,
+                                ref_id: None,
+                                span,
+                                alias_span: None,
+                                name: "*".to_owned(),
+                                value: names.join(", "),
+                                parent,
+                            },
+                        );
                         self.write_sub_paths(&path);
                     }
                 }
             }
             ast::UseTreeKind::Nested(ref nested_items) => {
                 let prefix = ast::Path {
-                    segments: prefix.segments
+                    segments: prefix
+                        .segments
                         .iter()
                         .chain(path.segments.iter())
                         .cloned()
@@ -1303,7 +1322,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         let cm = self.tcx.sess.source_map();
         let filename = cm.span_to_filename(span);
         let data_id = ::id_from_node_id(id, &self.save_ctxt);
-        let children = m.items
+        let children = m
+            .items
             .iter()
             .map(|i| ::id_from_node_id(i.id, &self.save_ctxt))
             .collect();
@@ -1347,7 +1367,11 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 let name_span = item.ident.span;
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
-                    let parent = self.save_ctxt.tcx.hir().opt_local_def_id(item.id)
+                    let parent = self
+                        .save_ctxt
+                        .tcx
+                        .hir()
+                        .opt_local_def_id(item.id)
                         .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
                         .map(::id_from_def_id);
                     self.dumper.import(
@@ -1602,7 +1626,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_local(&mut self, l: &'l ast::Local) {
         self.process_macro_use(l.span);
-        let value = l.init
+        let value = l
+            .init
             .as_ref()
             .map(|i| self.span.snippet(i.span))
             .unwrap_or_default();

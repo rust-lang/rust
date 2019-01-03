@@ -1,14 +1,14 @@
+use lint::{EarlyContext, LateContext, LintArray, LintContext};
+use lint::{EarlyLintPass, LateLintPass, LintPass};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::adjustment;
-use lint::{LateContext, EarlyContext, LintContext, LintArray};
-use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::Applicability;
-use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
+use syntax::feature_gate::{AttributeType, BUILTIN_ATTRIBUTES};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 use syntax::util::parser;
@@ -51,7 +51,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let t = cx.tables.expr_ty(&expr);
         let type_permits_lack_of_use = if t.is_unit()
-            || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir().get_module_parent(expr.id), t) {
+            || cx
+                .tcx
+                .is_ty_uninhabited_from(cx.tcx.hir().get_module_parent(expr.id), t)
+        {
             true
         } else {
             match t.sty {
@@ -96,16 +99,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                             Def::Fn(_) | Def::Method(_) => Some(def),
                             // `Def::Local` if it was a closure, for which we
                             // do not currently support must-use linting
-                            _ => None
+                            _ => None,
                         }
-                    },
-                    _ => None
+                    }
+                    _ => None,
                 }
-            },
+            }
             hir::ExprKind::MethodCall(..) => {
                 cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
-            },
-            _ => None
+            }
+            _ => None,
         };
         if let Some(def) = maybe_def {
             let def_id = def.def_id();
@@ -120,42 +123,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             // Hardcoding operators here seemed more expedient than the
             // refactoring that would be needed to look up the `#[must_use]`
             // attribute which does exist on the comparison trait methods
-            hir::ExprKind::Binary(bin_op, ..)  => {
-                match bin_op.node {
-                    hir::BinOpKind::Eq |
-                    hir::BinOpKind::Lt |
-                    hir::BinOpKind::Le |
-                    hir::BinOpKind::Ne |
-                    hir::BinOpKind::Ge |
-                    hir::BinOpKind::Gt => {
-                        Some("comparison")
-                    },
-                    hir::BinOpKind::Add |
-                    hir::BinOpKind::Sub |
-                    hir::BinOpKind::Div |
-                    hir::BinOpKind::Mul |
-                    hir::BinOpKind::Rem => {
-                        Some("arithmetic operation")
-                    },
-                    hir::BinOpKind::And | hir::BinOpKind::Or => {
-                        Some("logical operation")
-                    },
-                    hir::BinOpKind::BitXor |
-                    hir::BinOpKind::BitAnd |
-                    hir::BinOpKind::BitOr |
-                    hir::BinOpKind::Shl |
-                    hir::BinOpKind::Shr => {
-                        Some("bitwise operation")
-                    },
-                }
+            hir::ExprKind::Binary(bin_op, ..) => match bin_op.node {
+                hir::BinOpKind::Eq
+                | hir::BinOpKind::Lt
+                | hir::BinOpKind::Le
+                | hir::BinOpKind::Ne
+                | hir::BinOpKind::Ge
+                | hir::BinOpKind::Gt => Some("comparison"),
+                hir::BinOpKind::Add
+                | hir::BinOpKind::Sub
+                | hir::BinOpKind::Div
+                | hir::BinOpKind::Mul
+                | hir::BinOpKind::Rem => Some("arithmetic operation"),
+                hir::BinOpKind::And | hir::BinOpKind::Or => Some("logical operation"),
+                hir::BinOpKind::BitXor
+                | hir::BinOpKind::BitAnd
+                | hir::BinOpKind::BitOr
+                | hir::BinOpKind::Shl
+                | hir::BinOpKind::Shr => Some("bitwise operation"),
             },
             hir::ExprKind::Unary(..) => Some("unary operation"),
-            _ => None
+            _ => None,
         };
 
         if let Some(must_use_op) = must_use_op {
-            cx.span_lint(UNUSED_MUST_USE, expr.span,
-                         &format!("unused {} that must be used", must_use_op));
+            cx.span_lint(
+                UNUSED_MUST_USE,
+                expr.span,
+                &format!("unused {} that must be used", must_use_op),
+            );
             op_warned = true;
         }
 
@@ -172,8 +168,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name("must_use") {
-                    let msg = format!("unused {}`{}`{} that must be used",
-                        descr_pre_path, cx.tcx.item_path_str(def_id), descr_post_path);
+                    let msg = format!(
+                        "unused {}`{}`{} that must be used",
+                        descr_pre_path,
+                        cx.tcx.item_path_str(def_id),
+                        descr_post_path
+                    );
                     let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
                     // check for #[must_use = "..."]
                     if let Some(note) = attr.value_str() {
@@ -255,13 +255,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = BUILTIN_ATTRIBUTES.iter()
+            let known_crate = BUILTIN_ATTRIBUTES
+                .iter()
                 .find(|&&(builtin, ty, _)| name == builtin && ty == AttributeType::CrateLevel)
                 .is_some();
 
             // Has a plugin registered this attribute as one that must be used at
             // the crate level?
-            let plugin_crate = plugin_attributes.iter()
+            let plugin_crate = plugin_attributes
+                .iter()
                 .find(|&&(ref x, t)| name == &**x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
@@ -290,19 +292,22 @@ declare_lint! {
 pub struct UnusedParens;
 
 impl UnusedParens {
-    fn check_unused_parens_expr(&self,
-                                cx: &EarlyContext,
-                                value: &ast::Expr,
-                                msg: &str,
-                                followed_by_block: bool) {
+    fn check_unused_parens_expr(
+        &self,
+        cx: &EarlyContext,
+        value: &ast::Expr,
+        msg: &str,
+        followed_by_block: bool,
+    ) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = followed_by_block && match inner.node {
-                ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
-                _ => parser::contains_exterior_struct_lit(&inner),
-            };
+            let necessary = followed_by_block
+                && match inner.node {
+                    ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
+                    _ => parser::contains_exterior_struct_lit(&inner),
+                };
             if !necessary {
-                let expr_text = if let Ok(snippet) = cx.sess().source_map()
-                    .span_to_snippet(value.span) {
+                let expr_text =
+                    if let Ok(snippet) = cx.sess().source_map().span_to_snippet(value.span) {
                         snippet
                     } else {
                         pprust::expr_to_string(value)
@@ -312,13 +317,10 @@ impl UnusedParens {
         }
     }
 
-    fn check_unused_parens_pat(&self,
-                                cx: &EarlyContext,
-                                value: &ast::Pat,
-                                msg: &str) {
+    fn check_unused_parens_pat(&self, cx: &EarlyContext, value: &ast::Pat, msg: &str) {
         if let ast::PatKind::Paren(_) = value.node {
-            let pattern_text = if let Ok(snippet) = cx.sess().source_map()
-                .span_to_snippet(value.span) {
+            let pattern_text =
+                if let Ok(snippet) = cx.sess().source_map().span_to_snippet(value.span) {
                     snippet
                 } else {
                     pprust::pat_to_string(value)
@@ -333,33 +335,32 @@ impl UnusedParens {
         let mut ate_left_paren = false;
         let mut ate_right_paren = false;
         let parens_removed = pattern
-            .trim_matches(|c| {
-                match c {
-                    '(' => {
-                        if ate_left_paren {
-                            false
-                        } else {
-                            ate_left_paren = true;
-                            true
-                        }
-                    },
-                    ')' => {
-                        if ate_right_paren {
-                            false
-                        } else {
-                            ate_right_paren = true;
-                            true
-                        }
-                    },
-                    _ => false,
+            .trim_matches(|c| match c {
+                '(' => {
+                    if ate_left_paren {
+                        false
+                    } else {
+                        ate_left_paren = true;
+                        true
+                    }
                 }
-            }).to_owned();
+                ')' => {
+                    if ate_right_paren {
+                        false
+                    } else {
+                        ate_right_paren = true;
+                        true
+                    }
+                }
+                _ => false,
+            })
+            .to_owned();
         err.span_suggestion_short_with_applicability(
-                span,
-                "remove these parentheses",
-                parens_removed,
-                Applicability::MachineApplicable
-            );
+            span,
+            "remove these parentheses",
+            parens_removed,
+            Applicability::MachineApplicable,
+        );
         err.emit();
     }
 }
@@ -398,10 +399,10 @@ impl EarlyLintPass for UnusedParens {
                 // trigger in situations that macro authors shouldn't have to care about, e.g.,
                 // when a parenthesized token tree matched in one macro expansion is matched as
                 // an expression in another and used as a fn/method argument (Issue #47775)
-                if e.span.ctxt().outer().expn_info()
-                    .map_or(false, |info| info.call_site.ctxt().outer()
-                            .expn_info().is_some()) {
-                        return;
+                if e.span.ctxt().outer().expn_info().map_or(false, |info| {
+                    info.call_site.ctxt().outer().expn_info().is_some()
+                }) {
+                    return;
                 }
                 let msg = format!("{} argument", call_kind);
                 for arg in args_to_check {
@@ -422,7 +423,7 @@ impl EarlyLintPass for UnusedParens {
         if let Paren(ref pat) = p.node {
             match pat.node {
                 Range(..) => {}
-                _ => self.check_unused_parens_pat(cx, &p, "pattern")
+                _ => self.check_unused_parens_pat(cx, &p, "pattern"),
             }
         }
     }
@@ -521,10 +522,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
         for adj in cx.tables.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 let msg = match m {
-                    adjustment::AutoBorrowMutability::Immutable =>
-                        "unnecessary allocation, use & instead",
-                    adjustment::AutoBorrowMutability::Mutable { .. }=>
+                    adjustment::AutoBorrowMutability::Immutable => {
+                        "unnecessary allocation, use & instead"
+                    }
+                    adjustment::AutoBorrowMutability::Mutable { .. } => {
                         "unnecessary allocation, use &mut instead"
+                    }
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
             }

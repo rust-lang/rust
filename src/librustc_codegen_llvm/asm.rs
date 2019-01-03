@@ -1,25 +1,24 @@
-use llvm;
-use context::CodegenCx;
-use type_of::LayoutLlvmExt;
 use builder::Builder;
+use context::CodegenCx;
+use llvm;
+use type_of::LayoutLlvmExt;
 use value::Value;
 
 use rustc::hir;
 use rustc_codegen_ssa::traits::*;
 
-use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::place::PlaceRef;
 
+use libc::{c_char, c_uint};
 use std::ffi::CString;
-use libc::{c_uint, c_char};
-
 
 impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_inline_asm(
         &mut self,
         ia: &hir::InlineAsm,
         outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
-        mut inputs: Vec<&'ll Value>
+        mut inputs: Vec<&'ll Value>,
     ) -> bool {
         let mut ext_constraints = vec![];
         let mut output_types = vec![];
@@ -42,24 +41,26 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             inputs = indirect_outputs;
         }
 
-        let clobbers = ia.clobbers.iter()
-                                  .map(|s| format!("~{{{}}}", &s));
+        let clobbers = ia.clobbers.iter().map(|s| format!("~{{{}}}", &s));
 
         // Default per-arch clobbers
         // Basically what clang does
         let arch_clobbers = match &self.sess().target.target.arch[..] {
-            "x86" | "x86_64"  => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
+            "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
             "mips" | "mips64" => vec!["~{$1}"],
-            _                 => Vec::new()
+            _ => Vec::new(),
         };
 
-        let all_constraints =
-            ia.outputs.iter().map(|out| out.constraint.to_string())
-              .chain(ia.inputs.iter().map(|s| s.to_string()))
-              .chain(ext_constraints)
-              .chain(clobbers)
-              .chain(arch_clobbers.iter().map(|s| s.to_string()))
-              .collect::<Vec<String>>().join(",");
+        let all_constraints = ia
+            .outputs
+            .iter()
+            .map(|out| out.constraint.to_string())
+            .chain(ia.inputs.iter().map(|s| s.to_string()))
+            .chain(ext_constraints)
+            .chain(clobbers)
+            .chain(arch_clobbers.iter().map(|s| s.to_string()))
+            .collect::<Vec<String>>()
+            .join(",");
 
         debug!("Asm Constraints: {}", &all_constraints);
 
@@ -68,7 +69,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let output_type = match num_outputs {
             0 => self.type_void(),
             1 => output_types[0],
-            _ => self.type_struct(&output_types, false)
+            _ => self.type_struct(&output_types, false),
         };
 
         let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
@@ -80,7 +81,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             output_type,
             ia.volatile,
             ia.alignstack,
-            ia.dialect
+            ia.dialect,
         );
         if r.is_none() {
             return false;
@@ -88,9 +89,17 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let r = r.unwrap();
 
         // Again, based on how many outputs we have
-        let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
+        let outputs = ia
+            .outputs
+            .iter()
+            .zip(&outputs)
+            .filter(|&(ref o, _)| !o.is_indirect);
         for (i, (_, &place)) in outputs.enumerate() {
-            let v = if num_outputs == 1 { r } else { self.extract_value(r, i as u64) };
+            let v = if num_outputs == 1 {
+                r
+            } else {
+                self.extract_value(r, i as u64)
+            };
             OperandValue::Immediate(v).store(self, place);
         }
 
@@ -98,13 +107,15 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // back to source locations.  See #17552.
         unsafe {
             let key = "srcloc";
-            let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,
-                key.as_ptr() as *const c_char, key.len() as c_uint);
+            let kind = llvm::LLVMGetMDKindIDInContext(
+                self.llcx,
+                key.as_ptr() as *const c_char,
+                key.len() as c_uint,
+            );
 
             let val: &'ll Value = self.const_i32(ia.ctxt.outer().as_u32() as i32);
 
-            llvm::LLVMSetMetadata(r, kind,
-                llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
+            llvm::LLVMSetMetadata(r, kind, llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
         }
 
         true

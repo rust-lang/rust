@@ -4,16 +4,19 @@ use syntax::print;
 use syntax::tokenstream;
 use syntax_pos;
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
-                              sp: syntax_pos::Span,
-                              tts: &[tokenstream::TokenTree])
-                              -> Box<dyn base::MacResult + 'cx> {
+pub fn expand_syntax_ext<'cx>(
+    cx: &'cx mut base::ExtCtxt,
+    sp: syntax_pos::Span,
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_log_syntax() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       "log_syntax",
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_LOG_SYNTAX);
+        feature_gate::emit_feature_err(
+            &cx.parse_sess,
+            "log_syntax",
+            sp,
+            feature_gate::GateIssue::Language,
+            feature_gate::EXPLAIN_LOG_SYNTAX,
+        );
     }
 
     println!("{}", print::pprust::tts_to_string(tts));

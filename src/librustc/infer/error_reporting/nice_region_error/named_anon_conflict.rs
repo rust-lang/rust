@@ -1,9 +1,9 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
+use errors::Applicability;
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use ty;
 use util::common::ErrorReported;
-use errors::Applicability;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -13,8 +13,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         debug!(
             "try_report_named_anon_conflict(sub={:?}, sup={:?})",
-            sub,
-            sup
+            sub, sup
         );
 
         // Determine whether the sub and sup consist of one named region ('a)
@@ -33,7 +32,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 self.find_arg_with_region(sup, sub).unwrap(),
                 self.tcx.is_suitable_region(sup).unwrap(),
             )
-        } else if self.is_named_region(sup) && self.tcx.is_suitable_region(sub).is_some()
+        } else if self.is_named_region(sup)
+            && self.tcx.is_suitable_region(sub).is_some()
             && self.find_arg_with_region(sub, sup).is_some()
         {
             (
@@ -102,7 +102,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             E0621,
             "explicit lifetime required in {}",
             error_var
-        ).span_suggestion_with_applicability(
+        )
+        .span_suggestion_with_applicability(
             new_ty_span,
             &format!("add explicit lifetime `{}` to {}", named, span_label_var),
             new_ty.to_string(),

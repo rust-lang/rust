@@ -1,7 +1,7 @@
-use infer::InferCtxt;
-use ty::{self, Ty, TyCtxt, ToPredicate};
-use traits::Obligation;
 use hir::def_id::DefId;
+use infer::InferCtxt;
+use traits::Obligation;
+use ty::{self, ToPredicate, Ty, TyCtxt};
 
 use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation};
@@ -30,12 +30,15 @@ pub trait TraitEngine<'tcx>: 'tcx {
             def_id,
             substs: infcx.tcx.mk_substs_trait(ty, &[]),
         };
-        self.register_predicate_obligation(infcx, Obligation {
-            cause,
-            recursion_depth: 0,
-            param_env,
-            predicate: trait_ref.to_predicate()
-        });
+        self.register_predicate_obligation(
+            infcx,
+            Obligation {
+                cause,
+                recursion_depth: 0,
+                param_env,
+                predicate: trait_ref.to_predicate(),
+            },
+        );
     }
 
     fn register_predicate_obligation(

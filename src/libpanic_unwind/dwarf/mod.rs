@@ -14,7 +14,7 @@ pub struct DwarfReader {
     pub ptr: *const u8,
 }
 
-#[repr(C,packed)]
+#[repr(C, packed)]
 struct Unaligned<T>(T);
 
 impl DwarfReader {
@@ -71,7 +71,9 @@ impl DwarfReader {
 
 #[test]
 fn dwarf_reader() {
-    let encoded: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 0xE5, 0x8E, 0x26, 0x9B, 0xF1, 0x59, 0xFF, 0xFF];
+    let encoded: &[u8] = &[
+        1, 2, 3, 4, 5, 6, 7, 0xE5, 0x8E, 0x26, 0x9B, 0xF1, 0x59, 0xFF, 0xFF,
+    ];
 
     let mut reader = DwarfReader::new(encoded.as_ptr());
 

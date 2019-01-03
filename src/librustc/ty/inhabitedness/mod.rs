@@ -1,8 +1,8 @@
 use ty::context::TyCtxt;
-use ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
-use ty::{DefId, Substs};
-use ty::{AdtKind, Visibility};
 use ty::TyKind::*;
+use ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
+use ty::{AdtKind, Visibility};
+use ty::{DefId, Substs};
 
 pub use self::def_id_forest::DefIdForest;
 
@@ -105,25 +105,31 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty.uninhabited_from(self)
     }
 
-    pub fn is_enum_variant_uninhabited_from(self,
-                                            module: DefId,
-                                            variant: &'tcx VariantDef,
-                                            substs: &'tcx Substs<'tcx>)
-                                            -> bool
-    {
-        self.variant_inhabitedness_forest(variant, substs).contains(self, module)
+    pub fn is_enum_variant_uninhabited_from(
+        self,
+        module: DefId,
+        variant: &'tcx VariantDef,
+        substs: &'tcx Substs<'tcx>,
+    ) -> bool {
+        self.variant_inhabitedness_forest(variant, substs)
+            .contains(self, module)
     }
 
-    pub fn is_variant_uninhabited_from_all_modules(self,
-                                                   variant: &'tcx VariantDef,
-                                                   substs: &'tcx Substs<'tcx>)
-                                                   -> bool
-    {
-        !self.variant_inhabitedness_forest(variant, substs).is_empty()
+    pub fn is_variant_uninhabited_from_all_modules(
+        self,
+        variant: &'tcx VariantDef,
+        substs: &'tcx Substs<'tcx>,
+    ) -> bool {
+        !self
+            .variant_inhabitedness_forest(variant, substs)
+            .is_empty()
     }
 
-    fn variant_inhabitedness_forest(self, variant: &'tcx VariantDef, substs: &'tcx Substs<'tcx>)
-                                    -> DefIdForest {
+    fn variant_inhabitedness_forest(
+        self,
+        variant: &'tcx VariantDef,
+        substs: &'tcx Substs<'tcx>,
+    ) -> DefIdForest {
         // Determine the ADT kind:
         let adt_def_id = self.adt_def_id_of_variant(variant);
         let adt_kind = self.adt_def(adt_def_id).adt_kind();
@@ -138,11 +144,14 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     fn uninhabited_from(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        substs: &'tcx Substs<'tcx>) -> DefIdForest
-    {
-        DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
-            v.uninhabited_from(tcx, substs, self.adt_kind())
-        }))
+        substs: &'tcx Substs<'tcx>,
+    ) -> DefIdForest {
+        DefIdForest::intersection(
+            tcx,
+            self.variants
+                .iter()
+                .map(|v| v.uninhabited_from(tcx, substs, self.adt_kind())),
+        )
     }
 }
 
@@ -152,8 +161,8 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         substs: &'tcx Substs<'tcx>,
-        adt_kind: AdtKind) -> DefIdForest
-    {
+        adt_kind: AdtKind,
+    ) -> DefIdForest {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
             // The precise semantics of inhabitedness with respect to unions is currently undecided.
@@ -161,9 +170,12 @@ impl<'a, 'gcx, 'tcx> VariantDef {
             AdtKind::Enum => true,
             AdtKind::Struct => false,
         };
-        DefIdForest::union(tcx, self.fields.iter().map(|f| {
-            f.uninhabited_from(tcx, substs, is_enum)
-        }))
+        DefIdForest::union(
+            tcx,
+            self.fields
+                .iter()
+                .map(|f| f.uninhabited_from(tcx, substs, is_enum)),
+        )
     }
 }
 
@@ -175,9 +187,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
         substs: &'tcx Substs<'tcx>,
         is_enum: bool,
     ) -> DefIdForest {
-        let data_uninhabitedness = move || {
-            self.ty(tcx, substs).uninhabited_from(tcx)
-        };
+        let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx);
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
         // Visibility::Invisible so we need to override self.vis if we're
         // dealing with an enum.
@@ -190,7 +200,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
                     let forest = DefIdForest::from_id(from);
                     let iter = Some(forest).into_iter().chain(Some(data_uninhabitedness()));
                     DefIdForest::intersection(tcx, iter)
-                },
+                }
                 Visibility::Public => data_uninhabitedness(),
             }
         }
@@ -199,17 +209,14 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Calculate the forest of DefIds from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
-    {
+    fn uninhabited_from(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest {
         match self.sty {
             Adt(def, substs) => def.uninhabited_from(tcx, substs),
 
             Never => DefIdForest::full(tcx),
 
             Tuple(ref tys) => {
-                DefIdForest::union(tcx, tys.iter().map(|ty| {
-                    ty.uninhabited_from(tcx)
-                }))
+                DefIdForest::union(tcx, tys.iter().map(|ty| ty.uninhabited_from(tcx)))
             }
 
             Array(ty, len) => {
@@ -217,7 +224,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
                     Some(n) if n != 0 => ty.uninhabited_from(tcx),
-                    _ => DefIdForest::empty()
+                    _ => DefIdForest::empty(),
                 }
             }
 
@@ -232,4 +239,3 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 }
-

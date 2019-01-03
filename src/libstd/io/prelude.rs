@@ -11,4 +11,4 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use super::{Read, Write, BufRead, Seek};
+pub use super::{BufRead, Read, Seek, Write};

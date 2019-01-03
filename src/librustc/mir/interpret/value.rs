@@ -1,9 +1,13 @@
 use std::fmt;
 
-use crate::ty::{Ty, subst::Substs, layout::{HasDataLayout, Size}};
 use crate::hir::def_id::DefId;
+use crate::ty::{
+    layout::{HasDataLayout, Size},
+    subst::Substs,
+    Ty,
+};
 
-use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
+use super::{sign_extend, truncate, AllocId, Allocation, EvalResult, Pointer, PointerArithmetic};
 
 /// Represents the result of a raw const operation, pre-validation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
@@ -16,7 +20,9 @@ pub struct RawConst<'tcx> {
 
 /// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash,
+)]
 pub enum ConstValue<'tcx> {
     /// Never returned from the `const_eval` query, but the HIR contains these frequently in order
     /// to allow HIR creation to happen for everything before needing to be able to run constant
@@ -43,9 +49,9 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::Unevaluated(..) |
-            ConstValue::ByRef(..) |
-            ConstValue::ScalarPair(..) => None,
+            ConstValue::Unevaluated(..) | ConstValue::ByRef(..) | ConstValue::ScalarPair(..) => {
+                None
+            }
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -61,15 +67,14 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn new_slice(
-        val: Scalar,
-        len: u64,
-        cx: &impl HasDataLayout
-    ) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Bits {
-            bits: len as u128,
-            size: cx.data_layout().pointer_size.bytes() as u8,
-        })
+    pub fn new_slice(val: Scalar, len: u64, cx: &impl HasDataLayout) -> Self {
+        ConstValue::ScalarPair(
+            val,
+            Scalar::Bits {
+                bits: len as u128,
+                size: cx.data_layout().pointer_size.bytes() as u8,
+            },
+        )
     }
 
     #[inline]
@@ -82,8 +87,10 @@ impl<'tcx> ConstValue<'tcx> {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum Scalar<Tag=(), Id=AllocId> {
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash,
+)]
+pub enum Scalar<Tag = (), Id = AllocId> {
     /// The raw bytes of a simple value.
     Bits {
         /// The first `size` bytes are the value.
@@ -110,7 +117,8 @@ impl<Tag> fmt::Display for Scalar<Tag> {
 impl<'tcx> Scalar<()> {
     #[inline]
     pub fn with_default_tag<Tag>(self) -> Scalar<Tag>
-        where Tag: Default
+    where
+        Tag: Default,
     {
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.with_default_tag()),
@@ -131,7 +139,10 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn with_tag(self, new_tag: Tag) -> Self {
         match self {
-            Scalar::Ptr(ptr) => Scalar::Ptr(Pointer { tag: new_tag, ..ptr }),
+            Scalar::Ptr(ptr) => Scalar::Ptr(Pointer {
+                tag: new_tag,
+                ..ptr
+            }),
             Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
         }
     }
@@ -228,27 +239,41 @@ impl<'tcx, Tag> Scalar<Tag> {
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, cx.data_layout().pointer_size.bytes());
                 bits == 0
-            },
+            }
             Scalar::Ptr(_) => false,
         }
     }
 
     #[inline]
     pub fn from_bool(b: bool) -> Self {
-        Scalar::Bits { bits: b as u128, size: 1 }
+        Scalar::Bits {
+            bits: b as u128,
+            size: 1,
+        }
     }
 
     #[inline]
     pub fn from_char(c: char) -> Self {
-        Scalar::Bits { bits: c as u128, size: 4 }
+        Scalar::Bits {
+            bits: c as u128,
+            size: 4,
+        }
     }
 
     #[inline]
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i = i.into();
-        debug_assert_eq!(truncate(i, size), i,
-                         "Unsigned value {} does not fit in {} bits", i, size.bits());
-        Scalar::Bits { bits: i, size: size.bytes() as u8 }
+        debug_assert_eq!(
+            truncate(i, size),
+            i,
+            "Unsigned value {} does not fit in {} bits",
+            i,
+            size.bits()
+        );
+        Scalar::Bits {
+            bits: i,
+            size: size.bytes() as u8,
+        }
     }
 
     #[inline]
@@ -256,19 +281,33 @@ impl<'tcx, Tag> Scalar<Tag> {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
         let truncated = truncate(i as u128, size);
-        debug_assert_eq!(sign_extend(truncated, size) as i128, i,
-                         "Signed value {} does not fit in {} bits", i, size.bits());
-        Scalar::Bits { bits: truncated, size: size.bytes() as u8 }
+        debug_assert_eq!(
+            sign_extend(truncated, size) as i128,
+            i,
+            "Signed value {} does not fit in {} bits",
+            i,
+            size.bits()
+        );
+        Scalar::Bits {
+            bits: truncated,
+            size: size.bytes() as u8,
+        }
     }
 
     #[inline]
     pub fn from_f32(f: f32) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, size: 4 }
+        Scalar::Bits {
+            bits: f.to_bits() as u128,
+            size: 4,
+        }
     }
 
     #[inline]
     pub fn from_f64(f: f64) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, size: 8 }
+        Scalar::Bits {
+            bits: f.to_bits() as u128,
+            size: 8,
+        }
     }
 
     #[inline]
@@ -400,8 +439,10 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash,
+)]
+pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
 }
@@ -425,7 +466,8 @@ impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
 impl<'tcx> ScalarMaybeUndef<()> {
     #[inline]
     pub fn with_default_tag<Tag>(self) -> ScalarMaybeUndef<Tag>
-        where Tag: Default
+    where
+        Tag: Default,
     {
         match self {
             ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.with_default_tag()),
@@ -436,8 +478,7 @@ impl<'tcx> ScalarMaybeUndef<()> {
 
 impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     #[inline]
-    pub fn erase_tag(self) -> ScalarMaybeUndef
-    {
+    pub fn erase_tag(self) -> ScalarMaybeUndef {
         match self {
             ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
             ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,

@@ -1,17 +1,17 @@
 //! Validity checking for weak lang items
 
-use session::config;
 use middle::lang_items;
+use session::config;
 
+use hir;
+use hir::def_id::DefId;
+use hir::intravisit;
+use hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use hir::def_id::DefId;
-use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::intravisit;
-use hir;
 use ty::TyCtxt;
 
 macro_rules! weak_lang_items {

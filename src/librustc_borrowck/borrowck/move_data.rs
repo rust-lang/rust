@@ -3,19 +3,19 @@
 
 pub use self::MoveKind::*;
 
-use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
+use dataflow::{BitwiseOperator, DataFlowContext, DataFlowOperator, KillFrom};
 
 use borrowck::*;
 use rustc::cfg;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 
+use rustc::hir;
+use rustc::hir::intravisit::IdRange;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::usize;
 use syntax_pos::Span;
-use rustc::hir;
-use rustc::hir::intravisit::IdRange;
 
 #[derive(Default)]
 pub struct MoveData<'tcx> {
@@ -47,7 +47,7 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
     // We could (and maybe should, for efficiency) combine both move
     // and assign data flow into one, but this way it's easier to
     // distinguish the bits that correspond to moves and assignments.
-    pub dfcx_assign: AssignDataFlow<'a, 'tcx>
+    pub dfcx_assign: AssignDataFlow<'a, 'tcx>,
 }
 
 /// Index into `MoveData.paths`, used like a pointer
@@ -56,7 +56,8 @@ pub struct MovePathIndex(usize);
 
 impl MovePathIndex {
     fn get(&self) -> usize {
-        let MovePathIndex(v) = *self; v
+        let MovePathIndex(v) = *self;
+        v
     }
 }
 
@@ -75,7 +76,8 @@ pub struct MoveIndex(usize);
 
 impl MoveIndex {
     fn get(&self) -> usize {
-        let MoveIndex(v) = *self; v
+        let MoveIndex(v) = *self;
+        v
     }
 }
 
@@ -103,10 +105,10 @@ pub struct MovePath<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MoveKind {
-    Declared,   // When declared, variables start out "moved".
-    MoveExpr,   // Expression or binding that moves a variable
-    MovePat,    // By-move binding
-    Captured    // Closure creation that moves a value
+    Declared, // When declared, variables start out "moved".
+    MoveExpr, // Expression or binding that moves a variable
+    MovePat,  // By-move binding
+    Captured, // Closure creation that moves a value
 }
 
 #[derive(Copy, Clone)]
@@ -121,7 +123,7 @@ pub struct Move {
     pub kind: MoveKind,
 
     /// Next node in linked list of moves from `path`, or `InvalidMoveIndex`
-    pub next_move: MoveIndex
+    pub next_move: MoveIndex,
 }
 
 #[derive(Copy, Clone)]
@@ -148,9 +150,7 @@ pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOper
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     match loan_path.kind {
-        LpVar(_) | LpUpvar(_) => {
-            true
-        }
+        LpVar(_) | LpUpvar(_) => true,
         LpExtend(.., LpInterior(_, InteriorKind::InteriorElement)) => {
             // Paths involving element accesses a[i] do not refer to a unique
             // location, as there is no accurate tracking of the indices.
@@ -160,10 +160,7 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
             // work. For now, continue claiming that they are imprecise.)
             false
         }
-        LpDowncast(ref lp_base, _) |
-        LpExtend(ref lp_base, ..) => {
-            loan_path_is_precise(&lp_base)
-        }
+        LpDowncast(ref lp_base, _) | LpExtend(ref lp_base, ..) => loan_path_is_precise(&lp_base),
     }
 }
 
@@ -172,9 +169,9 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// in this move data - that means that there is nothing that
     /// could cause a borrow error.
     pub fn is_empty(&self) -> bool {
-        self.moves.borrow().is_empty() &&
-            self.path_assignments.borrow().is_empty() &&
-            self.var_assignments.borrow().is_empty()
+        self.moves.borrow().is_empty()
+            && self.path_assignments.borrow().is_empty()
+            && self.var_assignments.borrow().is_empty()
     }
 
     pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath<'tcx>> {
@@ -199,15 +196,11 @@ impl<'a, 'tcx> MoveData<'tcx> {
         (*self.paths.borrow())[index.get()].next_sibling
     }
 
-    fn set_path_first_move(&self,
-                           index: MovePathIndex,
-                           first_move: MoveIndex) {
+    fn set_path_first_move(&self, index: MovePathIndex, first_move: MoveIndex) {
         (*self.paths.borrow_mut())[index.get()].first_move = first_move
     }
 
-    fn set_path_first_child(&self,
-                            index: MovePathIndex,
-                            first_child: MovePathIndex) {
+    fn set_path_first_child(&self, index: MovePathIndex, first_child: MovePathIndex) {
         (*self.paths.borrow_mut())[index.get()].first_child = first_child
     }
 
@@ -223,8 +216,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Returns the existing move path index for `lp`, if any, and otherwise adds a new index for
     /// `lp` and any of its base paths that do not yet have an index.
-    pub fn move_path(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
+    pub fn move_path(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
         if let Some(&index) = self.path_map.borrow().get(&lp) {
             return index;
         }
@@ -244,8 +236,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 index
             }
 
-            LpDowncast(ref base, _) |
-            LpExtend(ref base, ..) => {
+            LpDowncast(ref base, _) | LpExtend(ref base, ..) => {
                 let parent_index = self.move_path(tcx, base.clone());
 
                 let index = MovePathIndex(self.paths.borrow().len());
@@ -265,22 +256,18 @@ impl<'a, 'tcx> MoveData<'tcx> {
             }
         };
 
-        debug!("move_path(lp={:?}, index={:?})",
-               lp,
-               index);
+        debug!("move_path(lp={:?}, index={:?})", lp, index);
 
         assert_eq!(index.get(), self.paths.borrow().len() - 1);
         self.path_map.borrow_mut().insert(lp, index);
         return index;
     }
 
-    fn existing_move_path(&self, lp: &Rc<LoanPath<'tcx>>)
-                          -> Option<MovePathIndex> {
+    fn existing_move_path(&self, lp: &Rc<LoanPath<'tcx>>) -> Option<MovePathIndex> {
         self.path_map.borrow().get(lp).cloned()
     }
 
-    fn existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>)
-                           -> Vec<MovePathIndex> {
+    fn existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>) -> Vec<MovePathIndex> {
         let mut result = vec![];
         self.add_existing_base_paths(lp, &mut result);
         result
@@ -288,8 +275,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Adds any existing move path indices for `lp` and any base paths of `lp` to `result`, but
     /// does not add new move paths
-    fn add_existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>,
-                               result: &mut Vec<MovePathIndex>) {
+    fn add_existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>, result: &mut Vec<MovePathIndex>) {
         match self.path_map.borrow().get(lp).cloned() {
             Some(index) => {
                 self.each_base_path(index, |p| {
@@ -297,30 +283,30 @@ impl<'a, 'tcx> MoveData<'tcx> {
                     true
                 });
             }
-            None => {
-                match lp.kind {
-                    LpVar(..) | LpUpvar(..) => { }
-                    LpDowncast(ref b, _) |
-                    LpExtend(ref b, ..) => {
-                        self.add_existing_base_paths(b, result);
-                    }
+            None => match lp.kind {
+                LpVar(..) | LpUpvar(..) => {}
+                LpDowncast(ref b, _) | LpExtend(ref b, ..) => {
+                    self.add_existing_base_paths(b, result);
                 }
-            }
+            },
         }
-
     }
 
     /// Adds a new move entry for a move of `lp` that occurs at location `id` with kind `kind`.
-    pub fn add_move(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    orig_lp: Rc<LoanPath<'tcx>>,
-                    id: hir::ItemLocalId,
-                    kind: MoveKind) {
+    pub fn add_move(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        orig_lp: Rc<LoanPath<'tcx>>,
+        id: hir::ItemLocalId,
+        kind: MoveKind,
+    ) {
         // Moving one union field automatically moves all its fields. Also move siblings of
         // all parent union fields, moves do not propagate upwards automatically.
         let mut lp = orig_lp.clone();
         while let LpExtend(ref base_lp, mutbl, lp_elem) = lp.clone().kind {
-            if let (&ty::Adt(adt_def, _), LpInterior(opt_variant_id, interior))
-                    = (&base_lp.ty.sty, lp_elem) {
+            if let (&ty::Adt(adt_def, _), LpInterior(opt_variant_id, interior)) =
+                (&base_lp.ty.sty, lp_elem)
+            {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
                         let field =
@@ -340,14 +326,14 @@ impl<'a, 'tcx> MoveData<'tcx> {
         self.add_move_helper(tcx, orig_lp, id, kind);
     }
 
-    fn add_move_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       lp: Rc<LoanPath<'tcx>>,
-                       id: hir::ItemLocalId,
-                       kind: MoveKind) {
-        debug!("add_move(lp={:?}, id={:?}, kind={:?})",
-               lp,
-               id,
-               kind);
+    fn add_move_helper(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        lp: Rc<LoanPath<'tcx>>,
+        id: hir::ItemLocalId,
+        kind: MoveKind,
+    ) {
+        debug!("add_move(lp={:?}, id={:?}, kind={:?})", lp, id, kind);
 
         let path_index = self.move_path(tcx, lp);
         let move_index = MoveIndex(self.moves.borrow().len());
@@ -365,10 +351,13 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Adds a new record for an assignment to `lp` that occurs at location `id` with the given
     /// `span`.
-    pub fn add_assignment(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          lp: Rc<LoanPath<'tcx>>,
-                          assign_id: hir::ItemLocalId,
-                          span: Span) {
+    pub fn add_assignment(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        lp: Rc<LoanPath<'tcx>>,
+        assign_id: hir::ItemLocalId,
+        span: Span,
+    ) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
             if let ty::Adt(adt_def, _) = base_lp.ty.sty {
@@ -381,11 +370,10 @@ impl<'a, 'tcx> MoveData<'tcx> {
                         } else {
                             tcx.types.err // Doesn't matter
                         };
-                        let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
-                                                    LpInterior(opt_variant_id, field));
+                        let sibling_lp_kind =
+                            LpExtend(base_lp.clone(), mutbl, LpInterior(opt_variant_id, field));
                         let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
-                        self.add_assignment_helper(tcx, sibling_lp, assign_id,
-                                                   span);
+                        self.add_assignment_helper(tcx, sibling_lp, assign_id, span);
                     }
                     return;
                 }
@@ -395,10 +383,13 @@ impl<'a, 'tcx> MoveData<'tcx> {
         self.add_assignment_helper(tcx, lp, assign_id, span);
     }
 
-    fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             lp: Rc<LoanPath<'tcx>>,
-                             assign_id: hir::ItemLocalId,
-                             span: Span) {
+    fn add_assignment_helper(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        lp: Rc<LoanPath<'tcx>>,
+        assign_id: hir::ItemLocalId,
+        span: Span,
+    ) {
         debug!("add_assignment(lp={:?}, assign_id={:?}", lp, assign_id);
 
         let path_index = self.move_path(tcx, lp.clone());
@@ -410,13 +401,19 @@ impl<'a, 'tcx> MoveData<'tcx> {
         };
 
         if self.is_var_path(path_index) {
-            debug!("add_assignment[var](lp={:?}, assignment={}, path_index={:?})",
-                   lp, self.var_assignments.borrow().len(), path_index);
+            debug!(
+                "add_assignment[var](lp={:?}, assignment={}, path_index={:?})",
+                lp,
+                self.var_assignments.borrow().len(),
+                path_index
+            );
 
             self.var_assignments.borrow_mut().push(assignment);
         } else {
-            debug!("add_assignment[path](lp={:?}, path_index={:?})",
-                   lp, path_index);
+            debug!(
+                "add_assignment[path](lp={:?}, path_index={:?})",
+                lp, path_index
+            );
 
             self.path_assignments.borrow_mut().push(assignment);
         }
@@ -427,23 +424,33 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// Moves are generated by moves and killed by assignments and
     /// scoping. Assignments are generated by assignment to variables and
     /// killed by scoping. See `README.md` for more details.
-    fn add_gen_kills(&self,
-                     bccx: &BorrowckCtxt<'a, 'tcx>,
-                     dfcx_moves: &mut MoveDataFlow,
-                     dfcx_assign: &mut AssignDataFlow) {
+    fn add_gen_kills(
+        &self,
+        bccx: &BorrowckCtxt<'a, 'tcx>,
+        dfcx_moves: &mut MoveDataFlow,
+        dfcx_assign: &mut AssignDataFlow,
+    ) {
         for (i, the_move) in self.moves.borrow().iter().enumerate() {
             dfcx_moves.add_gen(the_move.id, i);
         }
 
         for (i, assignment) in self.var_assignments.borrow().iter().enumerate() {
             dfcx_assign.add_gen(assignment.id, i);
-            self.kill_moves(assignment.path, assignment.id,
-                            KillFrom::Execution, dfcx_moves);
+            self.kill_moves(
+                assignment.path,
+                assignment.id,
+                KillFrom::Execution,
+                dfcx_moves,
+            );
         }
 
         for assignment in self.path_assignments.borrow().iter() {
-            self.kill_moves(assignment.path, assignment.id,
-                            KillFrom::Execution, dfcx_moves);
+            self.kill_moves(
+                assignment.path,
+                assignment.id,
+                KillFrom::Execution,
+                dfcx_moves,
+            );
         }
 
         // Kill all moves related to a variable `x` when
@@ -453,23 +460,28 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(bccx);
                     let path = *self.path_map.borrow().get(&path.loan_path).unwrap();
-                    self.kill_moves(path, kill_scope.item_local_id(),
-                                    KillFrom::ScopeEnd, dfcx_moves);
+                    self.kill_moves(
+                        path,
+                        kill_scope.item_local_id(),
+                        KillFrom::ScopeEnd,
+                        dfcx_moves,
+                    );
                 }
                 LpExtend(..) => {}
             }
         }
 
         // Kill all assignments when the variable goes out of scope:
-        for (assignment_index, assignment) in
-                self.var_assignments.borrow().iter().enumerate() {
+        for (assignment_index, assignment) in self.var_assignments.borrow().iter().enumerate() {
             let lp = self.path_loan_path(assignment.path);
             match lp.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = lp.kill_scope(bccx);
-                    dfcx_assign.add_kill(KillFrom::ScopeEnd,
-                                         kill_scope.item_local_id(),
-                                         assignment_index);
+                    dfcx_assign.add_kill(
+                        KillFrom::ScopeEnd,
+                        kill_scope.item_local_id(),
+                        assignment_index,
+                    );
                 }
                 LpExtend(..) => {
                     bug!("var assignment for non var path");
@@ -478,7 +490,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
         }
     }
 
-    fn each_base_path<F>(&self, index: MovePathIndex, mut f: F) -> bool where
+    fn each_base_path<F>(&self, index: MovePathIndex, mut f: F) -> bool
+    where
         F: FnMut(MovePathIndex) -> bool,
     {
         let mut p = index;
@@ -492,7 +505,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
     }
 
     // FIXME(#19596) This is a workaround, but there should be better way to do this
-    fn each_extending_path_<F>(&self, index: MovePathIndex, f: &mut F) -> bool where
+    fn each_extending_path_<F>(&self, index: MovePathIndex, f: &mut F) -> bool
+    where
         F: FnMut(MovePathIndex) -> bool,
     {
         if !(*f)(index) {
@@ -510,13 +524,15 @@ impl<'a, 'tcx> MoveData<'tcx> {
         return true;
     }
 
-    fn each_extending_path<F>(&self, index: MovePathIndex, mut f: F) -> bool where
+    fn each_extending_path<F>(&self, index: MovePathIndex, mut f: F) -> bool
+    where
         F: FnMut(MovePathIndex) -> bool,
     {
         self.each_extending_path_(index, &mut f)
     }
 
-    fn each_applicable_move<F>(&self, index0: MovePathIndex, mut f: F) -> bool where
+    fn each_applicable_move<F>(&self, index0: MovePathIndex, mut f: F) -> bool
+    where
         F: FnMut(MoveIndex) -> bool,
     {
         let mut ret = true;
@@ -534,11 +550,13 @@ impl<'a, 'tcx> MoveData<'tcx> {
         ret
     }
 
-    fn kill_moves(&self,
-                  path: MovePathIndex,
-                  kill_id: hir::ItemLocalId,
-                  kill_kind: KillFrom,
-                  dfcx_moves: &mut MoveDataFlow) {
+    fn kill_moves(
+        &self,
+        path: MovePathIndex,
+        kill_id: hir::ItemLocalId,
+        kill_kind: KillFrom,
+        dfcx_moves: &mut MoveDataFlow,
+    ) {
         // We can only perform kills for paths that refer to a unique location,
         // since otherwise we may kill a move from one location with an
         // assignment referring to another location.
@@ -546,8 +564,12 @@ impl<'a, 'tcx> MoveData<'tcx> {
         let loan_path = self.path_loan_path(path);
         if loan_path_is_precise(&loan_path) {
             self.each_applicable_move(path, |move_index| {
-                debug!("kill_moves add_kill {:?} kill_id={:?} move_index={}",
-                       kill_kind, kill_id, move_index.get());
+                debug!(
+                    "kill_moves add_kill {:?} kill_id={:?} move_index={}",
+                    kill_kind,
+                    kill_id,
+                    move_index.get()
+                );
                 dfcx_moves.add_kill(kill_kind, kill_id, move_index.get());
                 true
             });
@@ -556,34 +578,35 @@ impl<'a, 'tcx> MoveData<'tcx> {
 }
 
 impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
-    pub fn new(move_data: MoveData<'tcx>,
-               bccx: &BorrowckCtxt<'a, 'tcx>,
-               cfg: &cfg::CFG,
-               id_range: IdRange,
-               body: &hir::Body)
-               -> FlowedMoveData<'a, 'tcx> {
+    pub fn new(
+        move_data: MoveData<'tcx>,
+        bccx: &BorrowckCtxt<'a, 'tcx>,
+        cfg: &cfg::CFG,
+        id_range: IdRange,
+        body: &hir::Body,
+    ) -> FlowedMoveData<'a, 'tcx> {
         let tcx = bccx.tcx;
 
-        let mut dfcx_moves =
-            DataFlowContext::new(tcx,
-                                 "flowed_move_data_moves",
-                                 Some(body),
-                                 cfg,
-                                 MoveDataFlowOperator,
-                                 id_range,
-                                 move_data.moves.borrow().len());
-        let mut dfcx_assign =
-            DataFlowContext::new(tcx,
-                                 "flowed_move_data_assigns",
-                                 Some(body),
-                                 cfg,
-                                 AssignDataFlowOperator,
-                                 id_range,
-                                 move_data.var_assignments.borrow().len());
+        let mut dfcx_moves = DataFlowContext::new(
+            tcx,
+            "flowed_move_data_moves",
+            Some(body),
+            cfg,
+            MoveDataFlowOperator,
+            id_range,
+            move_data.moves.borrow().len(),
+        );
+        let mut dfcx_assign = DataFlowContext::new(
+            tcx,
+            "flowed_move_data_assigns",
+            Some(body),
+            cfg,
+            AssignDataFlowOperator,
+            id_range,
+            move_data.var_assignments.borrow().len(),
+        );
 
-        move_data.add_gen_kills(bccx,
-                                &mut dfcx_moves,
-                                &mut dfcx_assign);
+        move_data.add_gen_kills(bccx, &mut dfcx_moves, &mut dfcx_assign);
 
         dfcx_moves.add_kills_from_flow_exits(cfg);
         dfcx_assign.add_kills_from_flow_exits(cfg);
@@ -598,10 +621,11 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         }
     }
 
-    pub fn kind_of_move_of_path(&self,
-                                id: hir::ItemLocalId,
-                                loan_path: &Rc<LoanPath<'tcx>>)
-                                -> Option<MoveKind> {
+    pub fn kind_of_move_of_path(
+        &self,
+        id: hir::ItemLocalId,
+        loan_path: &Rc<LoanPath<'tcx>>,
+    ) -> Option<MoveKind> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
         let mut ret = None;
@@ -623,11 +647,13 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// Iterates through each move of `loan_path` (or some base path of `loan_path`) that *may*
     /// have occurred on entry to `id` without an intervening assignment. In other words, any moves
     /// that would invalidate a reference to `loan_path` at location `id`.
-    pub fn each_move_of<F>(&self,
-                           id: hir::ItemLocalId,
-                           loan_path: &Rc<LoanPath<'tcx>>,
-                           mut f: F)
-                           -> bool where
+    pub fn each_move_of<F>(
+        &self,
+        id: hir::ItemLocalId,
+        loan_path: &Rc<LoanPath<'tcx>>,
+        mut f: F,
+    ) -> bool
+    where
         F: FnMut(&Move, &LoanPath<'tcx>) -> bool,
     {
         // Bad scenarios:
@@ -665,13 +691,14 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
                             // was moved
-                            f(the_move,
-                              &self.move_data.path_loan_path(moved_path))
+                            f(the_move, &self.move_data.path_loan_path(moved_path))
                         } else {
                             true
                         }
                     });
-                    if !cont { ret = false; }
+                    if !cont {
+                        ret = false;
+                    }
                 }
             }
             ret
@@ -680,11 +707,13 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
     /// Iterates through every assignment to `loan_path` that may have occurred on entry to `id`.
     /// `loan_path` must be a single variable.
-    pub fn each_assignment_of<F>(&self,
-                                 id: hir::ItemLocalId,
-                                 loan_path: &Rc<LoanPath<'tcx>>,
-                                 mut f: F)
-                                 -> bool where
+    pub fn each_assignment_of<F>(
+        &self,
+        id: hir::ItemLocalId,
+        loan_path: &Rc<LoanPath<'tcx>>,
+        mut f: F,
+    ) -> bool
+    where
         F: FnMut(&Assignment) -> bool,
     {
         let loan_path_index = {

@@ -1,65 +1,64 @@
 use dep_graph::{DepConstructor, DepNode};
 use errors::DiagnosticBuilder;
-use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
-use hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
-use rustc_data_structures::svh::Svh;
+use hir::def_id::{CrateNum, DefId, DefIndex};
+use hir::{self, CodegenFnAttrs, ItemLocalId, TraitCandidate};
 use infer::canonical::{self, Canonical};
 use lint;
 use middle::borrowck::BorrowCheckResult;
-use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
-use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
+use middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
+use middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};
+use middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use middle::lang_items::{LangItem, LanguageItems};
+use middle::lib_features::LibFeatures;
 use middle::privacy::AccessLevels;
 use middle::reachable::ReachableSet;
 use middle::region;
-use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
+use middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use middle::stability::{self, DeprecationEntry};
-use middle::lib_features::LibFeatures;
-use middle::lang_items::{LanguageItems, LangItem};
-use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use mir::interpret::{ConstEvalRawResult, ConstEvalResult};
-use mir::mono::CodegenUnit;
 use mir;
 use mir::interpret::GlobalId;
-use session::{CompileResult, CrateDisambiguator};
+use mir::interpret::{ConstEvalRawResult, ConstEvalResult};
+use mir::mono::CodegenUnit;
+use rustc_data_structures::svh::Svh;
 use session::config::OutputFilenames;
-use traits::{self, Vtable};
-use traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
-    CanonicalTypeOpNormalizeGoal, NoSolution,
-};
+use session::{CompileResult, CrateDisambiguator};
+use traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use traits::query::method_autoderef::MethodAutoderefStepsResult;
-use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::query::outlives_bounds::OutlivesBound;
+use traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+};
 use traits::specialization_graph;
 use traits::Clauses;
-use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use traits::{self, Vtable};
 use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
-use util::common::{ErrorReported};
+use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use util::common::ErrorReported;
+use util::nodemap::{DefIdMap, DefIdSet, ItemLocalSet};
 use util::profiling::ProfileCategory::*;
 
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::PanicStrategy;
 
 use std::borrow::Cow;
+use std::intrinsics::type_name;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::intrinsics::type_name;
-use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::symbol::InternedString;
-use syntax::attr;
 use syntax::ast;
+use syntax::attr;
 use syntax::feature_gate;
 use syntax::symbol::Symbol;
+use syntax_pos::symbol::InternedString;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[macro_use]
 mod plumbing;
@@ -67,9 +66,9 @@ use self::plumbing::*;
 pub use self::plumbing::{force_from_dep_node, CycleError};
 
 mod job;
-pub use self::job::{QueryJob, QueryInfo};
 #[cfg(parallel_queries)]
 pub use self::job::handle_deadlock;
+pub use self::job::{QueryInfo, QueryJob};
 
 mod keys;
 use self::keys::Key;
@@ -731,7 +730,6 @@ impl<'a, 'tcx, 'lcx> TyCtxt<'a, 'tcx, 'lcx> {
 // These functions are little shims used to find the dep-node for a
 // given query when there is not a *direct* mapping:
 
-
 fn features_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::Features
 }
@@ -745,17 +743,15 @@ fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
-    DepConstructor::TypeParamPredicates {
-        item_id,
-        param_id
-    }
+    DepConstructor::TypeParamPredicates { item_id, param_id }
 }
 
-fn fulfill_obligation_dep_node<'tcx>((param_env, trait_ref):
-    (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> DepConstructor<'tcx> {
+fn fulfill_obligation_dep_node<'tcx>(
+    (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
+) -> DepConstructor<'tcx> {
     DepConstructor::FulfillObligation {
         param_env,
-        trait_ref
+        trait_ref,
     }
 }
 
@@ -772,9 +768,7 @@ fn reachability_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 }
 
 fn mir_shim_dep_node<'tcx>(instance_def: ty::InstanceDef<'tcx>) -> DepConstructor<'tcx> {
-    DepConstructor::MirShim {
-        instance_def
-    }
+    DepConstructor::MirShim { instance_def }
 }
 
 fn symbol_name_dep_node<'tcx>(instance: ty::Instance<'tcx>) -> DepConstructor<'tcx> {
@@ -785,12 +779,14 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-                             -> DepConstructor<'tcx> {
+fn const_eval_dep_node<'tcx>(
+    param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+) -> DepConstructor<'tcx> {
     DepConstructor::ConstEval { param_env }
 }
-fn const_eval_raw_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-                             -> DepConstructor<'tcx> {
+fn const_eval_raw_dep_node<'tcx>(
+    param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+) -> DepConstructor<'tcx> {
     DepConstructor::ConstEvalRaw { param_env }
 }
 
@@ -830,9 +826,9 @@ fn specializes_node<'tcx>((a, b): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::Specializes { impl1: a, impl2: b }
 }
 
-fn implementations_of_trait_node<'tcx>((krate, trait_id): (CrateNum, DefId))
-    -> DepConstructor<'tcx>
-{
+fn implementations_of_trait_node<'tcx>(
+    (krate, trait_id): (CrateNum, DefId),
+) -> DepConstructor<'tcx> {
     DepConstructor::ImplementationsOfTrait { krate, trait_id }
 }
 
@@ -881,11 +877,12 @@ fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 }
 
 fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructor<'tcx> {
-    DepConstructor::VtableMethods{ trait_ref }
+    DepConstructor::VtableMethods { trait_ref }
 }
 
-fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))
-                                            -> DepConstructor<'tcx> {
+fn substitute_normalize_and_test_predicates_node<'tcx>(
+    key: (DefId, &'tcx Substs<'tcx>),
+) -> DepConstructor<'tcx> {
     DepConstructor::SubstituteNormalizeAndTestPredicates { key }
 }
 
@@ -893,9 +890,8 @@ fn target_features_whitelist_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TargetFeaturesWhitelist
 }
 
-fn instance_def_size_estimate_dep_node<'tcx>(instance_def: ty::InstanceDef<'tcx>)
-                                              -> DepConstructor<'tcx> {
-    DepConstructor::InstanceDefSizeEstimate {
-        instance_def
-    }
+fn instance_def_size_estimate_dep_node<'tcx>(
+    instance_def: ty::InstanceDef<'tcx>,
+) -> DepConstructor<'tcx> {
+    DepConstructor::InstanceDefSizeEstimate { instance_def }
 }

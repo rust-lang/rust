@@ -1,15 +1,15 @@
-use super::{FnCtxt, PlaceOp, Needs};
 use super::method::MethodCallee;
+use super::{FnCtxt, Needs, PlaceOp};
 
 use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
 use rustc::traits::{self, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, TraitRef};
+use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
+use rustc::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc::ty::{ToPredicate, TypeFoldable};
-use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
-use syntax_pos::Span;
 use syntax::ast::{self, Ident};
+use syntax_pos::Span;
 
 use std::iter;
 
@@ -30,7 +30,7 @@ pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     include_raw_pointers: bool,
     span: Span,
     silence_errors: bool,
-    reached_recursion_limit: bool
+    reached_recursion_limit: bool,
 }
 
 impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
@@ -39,9 +39,10 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
     fn next(&mut self) -> Option<Self::Item> {
         let tcx = self.infcx.tcx;
 
-        debug!("autoderef: steps={:?}, cur_ty={:?}",
-               self.steps,
-               self.cur_ty);
+        debug!(
+            "autoderef: steps={:?}, cur_ty={:?}",
+            self.steps, self.cur_ty
+        );
         if self.at_start {
             self.at_start = false;
             debug!("autoderef stage #0 is {:?}", self.cur_ty);
@@ -61,23 +62,25 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
         }
 
         // Otherwise, deref if type is derefable:
-        let (kind, new_ty) =
-            if let Some(mt) = self.cur_ty.builtin_deref(self.include_raw_pointers) {
-                (AutoderefKind::Builtin, mt.ty)
-            } else {
-                let ty = self.overloaded_deref_ty(self.cur_ty)?;
-                (AutoderefKind::Overloaded, ty)
-            };
+        let (kind, new_ty) = if let Some(mt) = self.cur_ty.builtin_deref(self.include_raw_pointers)
+        {
+            (AutoderefKind::Builtin, mt.ty)
+        } else {
+            let ty = self.overloaded_deref_ty(self.cur_ty)?;
+            (AutoderefKind::Overloaded, ty)
+        };
 
         if new_ty.references_error() {
             return None;
         }
 
         self.steps.push((self.cur_ty, kind));
-        debug!("autoderef stage #{:?} is {:?} from {:?}",
-               self.steps.len(),
-               new_ty,
-               (self.cur_ty, kind));
+        debug!(
+            "autoderef stage #{:?} is {:?} from {:?}",
+            self.steps.len(),
+            new_ty,
+            (self.cur_ty, kind)
+        );
         self.cur_ty = new_ty;
 
         Some((self.cur_ty, self.steps.len()))
@@ -85,13 +88,13 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               param_env: ty::ParamEnv<'tcx>,
-               body_id: ast::NodeId,
-               span: Span,
-               base_ty: Ty<'tcx>)
-               -> Autoderef<'a, 'gcx, 'tcx>
-    {
+    pub fn new(
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: ast::NodeId,
+        span: Span,
+        base_ty: Ty<'tcx>,
+    ) -> Autoderef<'a, 'gcx, 'tcx> {
         Autoderef {
             infcx,
             body_id,
@@ -120,9 +123,8 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
-        let obligation = traits::Obligation::new(cause.clone(),
-                                                 self.param_env,
-                                                 trait_ref.to_predicate());
+        let obligation =
+            traits::Obligation::new(cause.clone(), self.param_env, trait_ref.to_predicate());
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
@@ -132,23 +134,24 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         let normalized_ty = fulfillcx.normalize_projection_type(
             &self.infcx,
             self.param_env,
-            ty::ProjectionTy::from_ref_and_name(
-                tcx,
-                trait_ref,
-                Ident::from_str("Target"),
-            ),
-            cause);
+            ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, Ident::from_str("Target")),
+            cause,
+        );
         if let Err(e) = fulfillcx.select_where_possible(&self.infcx) {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
             // by design).
-            debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling",
-                   e);
+            debug!(
+                "overloaded_deref_ty: encountered errors {:?} while fulfilling",
+                e
+            );
             return None;
         }
         let obligations = fulfillcx.pending_obligations();
-        debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})",
-               ty, normalized_ty, obligations);
+        debug!(
+            "overloaded_deref_ty({:?}) = ({:?}, {:?})",
+            ty, normalized_ty, obligations
+        );
         self.obligations.extend(obligations);
 
         Some(self.infcx.resolve_type_vars_if_possible(&normalized_ty))
@@ -171,43 +174,58 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     }
 
     /// Returns the adjustment steps.
-    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, needs: Needs)
-                        -> Vec<Adjustment<'tcx>> {
+    pub fn adjust_steps(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        needs: Needs,
+    ) -> Vec<Adjustment<'tcx>> {
         fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(fcx, needs))
     }
 
-    pub fn adjust_steps_as_infer_ok(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, needs: Needs)
-                                    -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
+    pub fn adjust_steps_as_infer_ok(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        needs: Needs,
+    ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let mut obligations = vec![];
-        let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty)
+        let targets = self
+            .steps
+            .iter()
+            .skip(1)
+            .map(|&(ty, _)| ty)
             .chain(iter::once(self.cur_ty));
-        let steps: Vec<_> = self.steps.iter().map(|&(source, kind)| {
-            if let AutoderefKind::Overloaded = kind {
-                fcx.try_overloaded_deref(self.span, source, needs)
-                    .and_then(|InferOk { value: method, obligations: o }| {
-                        obligations.extend(o);
-                        if let ty::Ref(region, _, mutbl) = method.sig.output().sty {
-                            Some(OverloadedDeref {
-                                region,
-                                mutbl,
-                            })
-                        } else {
-                            None
-                        }
-                    })
-            } else {
-                None
-            }
-        }).zip(targets).map(|(autoderef, target)| {
-            Adjustment {
+        let steps: Vec<_> = self
+            .steps
+            .iter()
+            .map(|&(source, kind)| {
+                if let AutoderefKind::Overloaded = kind {
+                    fcx.try_overloaded_deref(self.span, source, needs).and_then(
+                        |InferOk {
+                             value: method,
+                             obligations: o,
+                         }| {
+                            obligations.extend(o);
+                            if let ty::Ref(region, _, mutbl) = method.sig.output().sty {
+                                Some(OverloadedDeref { region, mutbl })
+                            } else {
+                                None
+                            }
+                        },
+                    )
+                } else {
+                    None
+                }
+            })
+            .zip(targets)
+            .map(|(autoderef, target)| Adjustment {
                 kind: Adjust::Deref(autoderef),
-                target
-            }
-        }).collect();
+                target,
+            })
+            .collect();
 
         InferOk {
             obligations,
-            value: steps
+            value: steps,
         }
     }
 
@@ -239,25 +257,32 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 }
 
 pub fn report_autoderef_recursion_limit_error<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>, span: Span, ty: Ty<'tcx>)
-{
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    span: Span,
+    ty: Ty<'tcx>,
+) {
     // We've reached the recursion limit, error gracefully.
     let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
-    let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",
-                      ty);
+    let msg = format!(
+        "reached the recursion limit while auto-dereferencing `{:?}`",
+        ty
+    );
     let error_id = (DiagnosticMessageId::ErrorId(55), Some(span), msg);
     let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
     if fresh {
-        struct_span_err!(tcx.sess,
-                         span,
-                         E0055,
-                         "reached the recursion limit while auto-dereferencing `{:?}`",
-                         ty)
-            .span_label(span, "deref recursion limit reached")
-            .help(&format!(
-                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                suggested_limit))
-            .emit();
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0055,
+            "reached the recursion limit while auto-dereferencing `{:?}`",
+            ty
+        )
+        .span_label(span, "deref recursion limit reached")
+        .help(&format!(
+            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+            suggested_limit
+        ))
+        .emit();
     }
 }
 
@@ -266,11 +291,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Autoderef::new(self, self.param_env, self.body_id, span, base_ty)
     }
 
-    pub fn try_overloaded_deref(&self,
-                                span: Span,
-                                base_ty: Ty<'tcx>,
-                                needs: Needs)
-                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+    pub fn try_overloaded_deref(
+        &self,
+        span: Span,
+        base_ty: Ty<'tcx>,
+        needs: Needs,
+    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         self.try_overloaded_place_op(span, base_ty, &[], needs, PlaceOp::Deref)
     }
 }

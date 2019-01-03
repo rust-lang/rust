@@ -1,31 +1,30 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use std::fmt;
-use std::error::Error;
 use std::borrow::{Borrow, Cow};
-use std::hash::Hash;
 use std::collections::hash_map::Entry;
+use std::error::Error;
+use std::fmt;
+use std::hash::Hash;
 
-use rustc::hir::{self, def_id::DefId};
 use rustc::hir::def::Def;
-use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
+use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
+use rustc::traits::Reveal;
 use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::subst::Subst;
-use rustc::traits::Reveal;
-use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::fx::FxHashMap;
+use rustc::ty::{self, query::TyCtxtAt, Instance, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexed_vec::IndexVec;
 
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
-use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, RawConst, ConstValue, Pointer,
-    EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
-    Allocation, AllocId, MemoryKind,
-    snapshot, RefTracking,
+use crate::interpret::{
+    self, snapshot, AllocId, Allocation, ConstValue, EvalContext, EvalError, EvalErrorKind,
+    EvalResult, GlobalId, Immediate, MPlaceTy, MemPlace, MemoryKind, OpTy, Operand, PlaceTy,
+    Pointer, RawConst, RefTracking, Scalar, StackPopCleanup,
 };
 
 /// Number of steps until the detector even starts doing anything.
@@ -103,7 +102,7 @@ pub fn op_to_const<'tcx>(
             layout::Abi::ScalarPair(..) => {
                 // Must be a fat pointer
                 op.layout.ty.builtin_deref(true).is_some()
-            },
+            }
             _ => false,
         };
     let normalized_op = if normalize {
@@ -111,7 +110,7 @@ pub fn op_to_const<'tcx>(
     } else {
         match op.op {
             Operand::Indirect(mplace) => Err(mplace),
-            Operand::Immediate(val) => Ok(val)
+            Operand::Immediate(val) => Ok(val),
         }
     };
     let val = match normalized_op {
@@ -128,11 +127,9 @@ pub fn op_to_const<'tcx>(
             // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
             let alloc = ecx.tcx.intern_const_alloc(alloc);
             ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset)
-        },
-        Ok(Immediate::Scalar(x)) =>
-            ConstValue::Scalar(x.not_undef()?),
-        Ok(Immediate::ScalarPair(a, b)) =>
-            ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
+        }
+        Ok(Immediate::Scalar(x)) => ConstValue::Scalar(x.not_undef()?),
+        Ok(Immediate::ScalarPair(a, b)) => ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
 }
@@ -141,7 +138,10 @@ pub fn const_to_op<'tcx>(
     cnst: &ty::Const<'tcx>,
 ) -> EvalResult<'tcx, OpTy<'tcx>> {
     let op = ecx.const_value_to_op(cnst.val)?;
-    Ok(OpTy { op, layout: ecx.layout_of(cnst.ty)? })
+    Ok(OpTy {
+        op,
+        layout: ecx.layout_of(cnst.ty)?,
+    })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -149,7 +149,10 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
+) -> (
+    EvalResult<'tcx, MPlaceTy<'tcx>>,
+    CompileTimeEvalContext<'a, 'mir, 'tcx>,
+) {
     // we start out with the best span we have
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
@@ -180,8 +183,14 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
     let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-    let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
-    trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
+    let prom = cid
+        .promoted
+        .map_or(String::new(), |p| format!("::promoted[{:?}]", p));
+    trace!(
+        "eval_body_using_ecx: pushing stack frame for global: {}{}",
+        name,
+        prom
+    );
     assert!(mir.arg_count == 0);
     ecx.push_stack_frame(
         cid.instance,
@@ -202,7 +211,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     } else {
         Mutability::Immutable
     };
-    ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
+    ecx.memory
+        .intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -223,13 +233,11 @@ impl fmt::Display for ConstEvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::ConstEvalError::*;
         match *self {
-            NeedsRfc(ref msg) => {
-                write!(
-                    f,
-                    "\"{}\" needs an rfc before being allowed inside constants",
-                    msg
-                )
-            }
+            NeedsRfc(ref msg) => write!(
+                f,
+                "\"{}\" needs an rfc before being allowed inside constants",
+                msg
+            ),
         }
     }
 }
@@ -248,7 +256,7 @@ impl Error for ConstEvalError {
 }
 
 // Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a+'mir> {
+pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a + 'mir> {
     /// When this value is negative, it indicates the number of interpreter
     /// steps *until* the loop detector is enabled. When it is positive, it is
     /// the number of steps after the detector has been enabled modulo the loop
@@ -271,38 +279,32 @@ impl<'a, 'mir, 'tcx> CompileTimeInterpreter<'a, 'mir, 'tcx> {
 impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     #[inline(always)]
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
-        where K: Borrow<Q>
+    where
+        K: Borrow<Q>,
     {
         FxHashMap::contains_key(self, k)
     }
 
     #[inline(always)]
-    fn insert(&mut self, k: K, v: V) -> Option<V>
-    {
+    fn insert(&mut self, k: K, v: V) -> Option<V> {
         FxHashMap::insert(self, k, v)
     }
 
     #[inline(always)]
     fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
-        where K: Borrow<Q>
+    where
+        K: Borrow<Q>,
     {
         FxHashMap::remove(self, k)
     }
 
     #[inline(always)]
     fn filter_map_collect<T>(&self, mut f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T> {
-        self.iter()
-            .filter_map(move |(k, v)| f(k, &*v))
-            .collect()
+        self.iter().filter_map(move |(k, v)| f(k, &*v)).collect()
     }
 
     #[inline(always)]
-    fn get_or<E>(
-        &self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&V, E>
-    {
+    fn get_or<E>(&self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&V, E> {
         match self.get(&k) {
             Some(v) => Ok(v),
             None => {
@@ -313,12 +315,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 
     #[inline(always)]
-    fn get_mut_or<E>(
-        &mut self,
-        k: K,
-        vacant: impl FnOnce() -> Result<V, E>
-    ) -> Result<&mut V, E>
-    {
+    fn get_mut_or<E>(&mut self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&mut V, E> {
         match self.entry(k) {
             Entry::Occupied(e) => Ok(e.into_mut()),
             Entry::Vacant(e) => {
@@ -340,9 +337,7 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
-    for CompileTimeInterpreter<'a, 'mir, 'tcx>
-{
+impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx> for CompileTimeInterpreter<'a, 'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
 
@@ -378,7 +373,10 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
                 ecx.goto_block(ret)?; // fully evaluated and done
                 Ok(None)
             } else {
-                err!(MachineError(format!("calling non-const function `{}`", instance)))
+                err!(MachineError(format!(
+                    "calling non-const function `{}`",
+                    instance
+                )))
             };
         }
         // This is a const fn. Call it.
@@ -386,10 +384,11 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
             Ok(mir) => mir,
             Err(err) => {
                 if let EvalErrorKind::NoMirFor(ref path) = err.kind {
-                    return Err(
-                        ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
-                            .into(),
-                    );
+                    return Err(ConstEvalError::NeedsRfc(format!(
+                        "calling extern function `{}`",
+                        path
+                    ))
+                    .into());
                 }
                 return Err(err);
             }
@@ -407,9 +406,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         }
         // An intrinsic that we do not support
         let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
-        Err(
-            ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
-        )
+        Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into())
     }
 
     fn ptr_op(
@@ -420,9 +417,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _right: Scalar,
         _right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
-        Err(
-            ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
-        )
+        Err(ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
     }
 
     fn find_foreign_static(
@@ -446,9 +441,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        Err(
-            ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into(),
-        )
+        Err(ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into())
     }
 
     fn before_terminator(ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
@@ -467,12 +460,9 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         }
 
         let span = ecx.frame().span;
-        ecx.machine.loop_detector.observe_and_analyze(
-            &ecx.tcx,
-            span,
-            &ecx.memory,
-            &ecx.stack[..],
-        )
+        ecx.machine
+            .loop_detector
+            .observe_and_analyze(&ecx.tcx, span, &ecx.memory, &ecx.stack[..])
     }
 
     #[inline(always)]
@@ -485,18 +475,13 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn stack_push(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-    ) -> EvalResult<'tcx> {
+    fn stack_push(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a stack frame gets popped
     #[inline(always)]
-    fn stack_pop(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _extra: (),
-    ) -> EvalResult<'tcx> {
+    fn stack_pop(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>, _extra: ()) -> EvalResult<'tcx> {
         Ok(())
     }
 }
@@ -518,7 +503,7 @@ pub fn const_field<'a, 'tcx>(
         // downcast
         let down = match variant {
             None => op,
-            Some(variant) => ecx.operand_downcast(op, variant)?
+            Some(variant) => ecx.operand_downcast(op, variant)?,
         };
         // then project
         let field = ecx.operand_field(down, field.index() as u64)?;
@@ -547,11 +532,15 @@ pub fn const_variant_index<'a, 'tcx>(
 
 pub fn error_to_const_error<'a, 'mir, 'tcx>(
     ecx: &EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-    mut error: EvalError<'tcx>
+    mut error: EvalError<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace(None);
-    ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
+    ConstEvalErr {
+        error: error.kind,
+        stacktrace,
+        span: ecx.tcx.span,
+    }
 }
 
 fn validate_and_turn_into_const<'a, 'tcx>(
@@ -584,9 +573,10 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
+                diag.note(
+                    "The rules on what exactly is undefined behavior aren't clear, \
+                     so this check might be overzealous. Please open an issue on the rust compiler \
+                     repository if you believe it should not be considered undefined behavior",
                 );
                 diag.emit();
                 ErrorHandled::Reported
@@ -610,14 +600,13 @@ pub fn const_eval_provider<'a, 'tcx>(
                 // Promoteds should never be "too generic" when getting evaluated.
                 // They either don't get evaluated, or we are in a monomorphic context
                 assert!(key.value.promoted.is_none());
-            },
+            }
             // dedupliate calls
             other => return other,
         }
     }
-    tcx.const_eval_raw(key).and_then(|val| {
-        validate_and_turn_into_const(tcx, val, key)
-    })
+    tcx.const_eval_raw(key)
+        .and_then(|val| validate_and_turn_into_const(tcx, val, key))
 }
 
 pub fn const_eval_raw_provider<'a, 'tcx>(
@@ -637,7 +626,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {},
+            Err(ErrorHandled::TooGeneric) => {}
             // dedupliate calls
             other => return other,
         }
@@ -659,7 +648,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
 
         // Do match-check before building MIR
         if let Err(ErrorReported) = tcx.check_match(def_id) {
-            return Err(ErrorHandled::Reported)
+            return Err(ErrorHandled::Reported);
         }
 
         if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(id) {
@@ -668,7 +657,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
 
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
-            return Err(ErrorHandled::Reported)
+            return Err(ErrorHandled::Reported);
         }
     };
 
@@ -676,20 +665,25 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     res.and_then(|place| {
         Ok(RawConst {
             alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
-            ty: place.layout.ty
+            ty: place.layout.ty,
         })
-    }).map_err(|error| {
+    })
+    .map_err(|error| {
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
         if tcx.is_static(def_id).is_some() {
-            let reported_err = err.report_as_error(ecx.tcx,
-                                                   "could not evaluate static initializer");
+            let reported_err =
+                err.report_as_error(ecx.tcx, "could not evaluate static initializer");
             // Ensure that if the above error was either `TooGeneric` or `Reported`
             // an error must be reported.
             if tcx.sess.err_count() == 0 {
-                tcx.sess.delay_span_bug(err.span,
-                                        &format!("static eval failure did not emit an error: {:#?}",
-                                                 reported_err));
+                tcx.sess.delay_span_bug(
+                    err.span,
+                    &format!(
+                        "static eval failure did not emit an error: {:#?}",
+                        reported_err
+                    ),
+                );
             }
             reported_err
         } else if def_id.is_local() {
@@ -708,31 +702,30 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                         "any use of this value will cause an error",
                         node_id,
                     )
-                },
+                }
                 // promoting runtime code is only allowed to error if it references broken constants
                 // any other kind of error will be reported to the user as a deny-by-default lint
-                _ => if let Some(p) = cid.promoted {
-                    let span = tcx.optimized_mir(def_id).promoted[p].span;
-                    if let EvalErrorKind::ReferencedConstant = err.error {
-                        err.report_as_error(
-                            tcx.at(span),
-                            "evaluation of constant expression failed",
-                        )
+                _ => {
+                    if let Some(p) = cid.promoted {
+                        let span = tcx.optimized_mir(def_id).promoted[p].span;
+                        if let EvalErrorKind::ReferencedConstant = err.error {
+                            err.report_as_error(
+                                tcx.at(span),
+                                "evaluation of constant expression failed",
+                            )
+                        } else {
+                            err.report_as_lint(
+                                tcx.at(span),
+                                "reaching this expression at runtime will panic or abort",
+                                tcx.hir().as_local_node_id(def_id).unwrap(),
+                            )
+                        }
+                    // anything else (array lengths, enum initializers, constant patterns) are reported
+                    // as hard errors
                     } else {
-                        err.report_as_lint(
-                            tcx.at(span),
-                            "reaching this expression at runtime will panic or abort",
-                            tcx.hir().as_local_node_id(def_id).unwrap(),
-                        )
+                        err.report_as_error(ecx.tcx, "evaluation of constant value failed")
                     }
-                // anything else (array lengths, enum initializers, constant patterns) are reported
-                // as hard errors
-                } else {
-                    err.report_as_error(
-                        ecx.tcx,
-                        "evaluation of constant value failed",
-                    )
-                },
+                }
             }
         } else {
             // use of broken constant from other crate

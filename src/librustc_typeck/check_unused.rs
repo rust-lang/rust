@@ -5,10 +5,10 @@ use errors::Applicability;
 use syntax::ast;
 use syntax_pos::Span;
 
+use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::print::visibility_qualified;
-use rustc::hir;
 use rustc::util::nodemap::DefIdSet;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -18,11 +18,17 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &body_id in tcx.hir().krate().bodies.keys() {
         let item_def_id = tcx.hir().body_owner_def_id(body_id);
         let imports = tcx.used_trait_imports(item_def_id);
-        debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
+        debug!(
+            "GatherVisitor: item_def_id={:?} with imports {:#?}",
+            item_def_id, imports
+        );
         used_trait_imports.extend(imports.iter());
     }
 
-    let mut visitor = CheckVisitor { tcx, used_trait_imports };
+    let mut visitor = CheckVisitor {
+        tcx,
+        used_trait_imports,
+    };
     tcx.hir().krate().visit_all_item_likes(&mut visitor);
 
     unused_crates_lint(tcx);
@@ -38,11 +44,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-    }
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
 }
 
 struct CheckVisitor<'a, 'tcx: 'a> {
@@ -67,7 +71,8 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
         } else {
             "unused import".to_owned()
         };
-        self.tcx.lint_node(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
+        self.tcx
+            .lint_node(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
     }
 }
 
@@ -77,8 +82,8 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
     // Collect first the crates that are completely unused.  These we
     // can always suggest removing (no matter which edition we are
     // in).
-    let unused_extern_crates: FxHashMap<DefId, Span> =
-        tcx.maybe_unused_extern_crates(LOCAL_CRATE)
+    let unused_extern_crates: FxHashMap<DefId, Span> = tcx
+        .maybe_unused_extern_crates(LOCAL_CRATE)
         .iter()
         .filter(|&&(def_id, _)| {
             // The `def_id` here actually was calculated during resolution (at least
@@ -104,10 +109,10 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
         })
         .filter(|&&(def_id, _)| {
             tcx.extern_mod_stmt_cnum(def_id).map_or(true, |cnum| {
-                !tcx.is_compiler_builtins(cnum) &&
-                !tcx.is_panic_runtime(cnum) &&
-                !tcx.has_global_allocator(cnum) &&
-                !tcx.has_panic_handler(cnum)
+                !tcx.is_compiler_builtins(cnum)
+                    && !tcx.is_panic_runtime(cnum)
+                    && !tcx.has_global_allocator(cnum)
+                    && !tcx.has_panic_handler(cnum)
             })
         })
         .cloned()
@@ -115,10 +120,12 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
 
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
-    tcx.hir().krate().visit_all_item_likes(&mut CollectExternCrateVisitor {
-        tcx,
-        crates_to_lint: &mut crates_to_lint,
-    });
+    tcx.hir()
+        .krate()
+        .visit_all_item_likes(&mut CollectExternCrateVisitor {
+            tcx,
+            crates_to_lint: &mut crates_to_lint,
+        });
 
     for extern_crate in &crates_to_lint {
         let id = tcx.hir().as_local_node_id(extern_crate.def_id).unwrap();
@@ -131,7 +138,9 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
                 let msg = "unused extern crate";
 
                 // Removal suggestion span needs to include attributes (Issue #54400)
-                let span_with_attrs = tcx.get_attrs(extern_crate.def_id).iter()
+                let span_with_attrs = tcx
+                    .get_attrs(extern_crate.def_id)
+                    .iter()
                     .map(|attr| attr.span)
                     .fold(span, |acc, attr_span| acc.to(attr_span));
 
@@ -140,7 +149,8 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
                         span_with_attrs,
                         "remove it",
                         String::new(),
-                        Applicability::MachineApplicable)
+                        Applicability::MachineApplicable,
+                    )
                     .emit();
                 continue;
             }
@@ -155,7 +165,11 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
         // If the extern crate isn't in the extern prelude,
         // there is no way it can be written as an `use`.
         let orig_name = extern_crate.orig_name.unwrap_or(item.ident.name);
-        if !tcx.extern_prelude.get(&orig_name).map_or(false, |from_item| !from_item) {
+        if !tcx
+            .extern_prelude
+            .get(&orig_name)
+            .map_or(false, |from_item| !from_item)
+        {
             continue;
         }
 
@@ -214,20 +228,16 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.node {
             let extern_crate_def_id = self.tcx.hir().local_def_id(item.id);
-            self.crates_to_lint.push(
-                ExternCrateToLint {
-                    def_id: extern_crate_def_id,
-                    span: item.span,
-                    orig_name,
-                    warn_if_unused: !item.ident.as_str().starts_with('_'),
-                }
-            );
+            self.crates_to_lint.push(ExternCrateToLint {
+                def_id: extern_crate_def_id,
+                span: item.span,
+                orig_name,
+                warn_if_unused: !item.ident.as_str().starts_with('_'),
+            });
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-    }
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
 }

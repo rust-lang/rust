@@ -1,7 +1,6 @@
 use hir::def_id::DefId;
 use ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
-                                           HashStable};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
@@ -18,9 +17,12 @@ pub type SimplifiedType = SimplifiedTypeGen<DefId>;
 /// because we sometimes need to use SimplifiedTypeGen values as stable sorting
 /// keys (in which case we use a DefPathHash as id-type) but in the general case
 /// the non-stable but fast to construct DefId-version is the better choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, RustcEncodable, RustcDecodable,
+)]
 pub enum SimplifiedTypeGen<D>
-    where D: Copy + Debug + Ord + Eq + Hash
+where
+    D: Copy + Debug + Ord + Eq + Hash,
 {
     BoolSimplifiedType,
     CharSimplifiedType,
@@ -55,11 +57,11 @@ pub enum SimplifiedTypeGen<D>
 /// then we can't say much about whether two types would unify. Put another way,
 /// `can_simplify_params` should be true if type parameters appear free in `ty` and `false` if they
 /// are to be considered bound.
-pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                     ty: Ty<'_>,
-                                     can_simplify_params: bool)
-                                     -> Option<SimplifiedType>
-{
+pub fn simplify_type<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ty: Ty<'_>,
+    can_simplify_params: bool,
+) -> Option<SimplifiedType> {
     match ty.sty {
         ty::Bool => Some(BoolSimplifiedType),
         ty::Char => Some(CharSimplifiedType),
@@ -84,23 +86,14 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             // view of possibly unifying
             simplify_type(tcx, ty, can_simplify_params)
         }
-        ty::FnDef(def_id, _) |
-        ty::Closure(def_id, _) => {
-            Some(ClosureSimplifiedType(def_id))
-        }
-        ty::Generator(def_id, _, _) => {
-            Some(GeneratorSimplifiedType(def_id))
-        }
+        ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
+        ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
         ty::GeneratorWitness(ref tys) => {
             Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
         }
         ty::Never => Some(NeverSimplifiedType),
-        ty::Tuple(ref tys) => {
-            Some(TupleSimplifiedType(tys.len()))
-        }
-        ty::FnPtr(ref f) => {
-            Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
-        }
+        ty::Tuple(ref tys) => Some(TupleSimplifiedType(tys.len())),
+        ty::FnPtr(ref f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
         ty::Projection(_) | ty::Param(_) => {
             if can_simplify_params {
@@ -114,20 +107,17 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 None
             }
         }
-        ty::Opaque(def_id, _) => {
-            Some(OpaqueSimplifiedType(def_id))
-        }
-        ty::Foreign(def_id) => {
-            Some(ForeignSimplifiedType(def_id))
-        }
+        ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
+        ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error => None,
     }
 }
 
 impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
     pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
-        where F: Fn(D) -> U,
-              U: Copy + Debug + Ord + Eq + Hash,
+    where
+        F: Fn(D) -> U,
+        U: Copy + Debug + Ord + Eq + Hash,
     {
         match self {
             BoolSimplifiedType => BoolSimplifiedType,
@@ -155,22 +145,24 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
 }
 
 impl<'a, 'gcx, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
-    where D: Copy + Debug + Ord + Eq + Hash +
-             HashStable<StableHashingContext<'a>>,
+where
+    D: Copy + Debug + Ord + Eq + Hash + HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            BoolSimplifiedType |
-            CharSimplifiedType |
-            StrSimplifiedType |
-            ArraySimplifiedType |
-            PtrSimplifiedType |
-            NeverSimplifiedType |
-            ParameterSimplifiedType |
-            MarkerTraitObjectSimplifiedType => {
+            BoolSimplifiedType
+            | CharSimplifiedType
+            | StrSimplifiedType
+            | ArraySimplifiedType
+            | PtrSimplifiedType
+            | NeverSimplifiedType
+            | ParameterSimplifiedType
+            | MarkerTraitObjectSimplifiedType => {
                 // nothing to do
             }
             IntSimplifiedType(t) => t.hash_stable(hcx, hasher),

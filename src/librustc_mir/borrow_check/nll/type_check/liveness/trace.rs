@@ -488,12 +488,11 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
 
         if let Some(data) = &drop_data.region_constraint_data {
             for &drop_location in drop_locations {
-                self.typeck
-                    .push_region_constraints(
-                        drop_location.to_locations(),
-                        ConstraintCategory::Boring,
-                        data,
-                    );
+                self.typeck.push_region_constraints(
+                    drop_location.to_locations(),
+                    ConstraintCategory::Boring,
+                    data,
+                );
             }
         }
 
@@ -543,8 +542,12 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
             if let Some(facts) = borrowck_context.all_facts {
                 for point in live_at.iter() {
                     let loc = elements.to_location(point);
-                    facts.region_live_at.push((live_region_vid, location_table.start_index(loc)));
-                    facts.region_live_at.push((live_region_vid, location_table.mid_index(loc)));
+                    facts
+                        .region_live_at
+                        .push((live_region_vid, location_table.start_index(loc)));
+                    facts
+                        .region_live_at
+                        .push((live_region_vid, location_table.mid_index(loc)));
                 }
             }
         });

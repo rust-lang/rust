@@ -12,14 +12,14 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
 use ext::base;
 use ext::tt::{macro_parser, quoted};
-use parse::Directory;
 use parse::token::{self, DelimToken, Token};
+use parse::Directory;
 use print::pprust;
 use rustc_data_structures::sync::Lrc;
-use serialize::{Decoder, Decodable, Encoder, Encodable};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
+use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
 
 use std::borrow::Cow;
 use std::{fmt, iter, mem};
@@ -46,8 +46,11 @@ pub enum TokenTree {
 
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt, mtch: &[quoted::TokenTree], tts: TokenStream)
-                 -> macro_parser::NamedParseResult {
+    pub fn parse(
+        cx: &base::ExtCtxt,
+        mtch: &[quoted::TokenTree],
+        tts: TokenStream,
+    ) -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {
             path: Cow::from(cx.current_expansion.module.directory.as_path()),
@@ -60,11 +63,10 @@ impl TokenTree {
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
-            (&TokenTree::Delimited(_, delim, ref tts),
-             &TokenTree::Delimited(_, delim2, ref tts2)) => {
-                delim == delim2 &&
-                tts.stream().eq_unspanned(&tts2.stream())
-            }
+            (
+                &TokenTree::Delimited(_, delim, ref tts),
+                &TokenTree::Delimited(_, delim2, ref tts2),
+            ) => delim == delim2 && tts.stream().eq_unspanned(&tts2.stream()),
             (_, _) => false,
         }
     }
@@ -79,11 +81,10 @@ impl TokenTree {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => {
                 tk.probably_equal_for_proc_macro(tk2)
             }
-            (&TokenTree::Delimited(_, delim, ref tts),
-             &TokenTree::Delimited(_, delim2, ref tts2)) => {
-                delim == delim2 &&
-                tts.stream().probably_equal_for_proc_macro(&tts2.stream())
-            }
+            (
+                &TokenTree::Delimited(_, delim, ref tts),
+                &TokenTree::Delimited(_, delim2, ref tts2),
+            ) => delim == delim2 && tts.stream().probably_equal_for_proc_macro(&tts2.stream()),
             (_, _) => false,
         }
     }
@@ -157,7 +158,7 @@ static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 32);
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IsJoint {
     Joint,
-    NonJoint
+    NonJoint,
 }
 
 use self::IsJoint::*;
@@ -173,12 +174,18 @@ impl TokenStream {
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
                     let sp = match (&ts, &next) {
-                        (TokenStream::Tree(TokenTree::Token(_, token::Token::Comma), NonJoint), _) |
-                        (_, TokenStream::Tree(TokenTree::Token(_, token::Token::Comma), NonJoint))
-                          => continue,
+                        (
+                            TokenStream::Tree(TokenTree::Token(_, token::Token::Comma), NonJoint),
+                            _,
+                        )
+                        | (
+                            _,
+                            TokenStream::Tree(TokenTree::Token(_, token::Token::Comma), NonJoint),
+                        ) => continue,
                         (TokenStream::Tree(TokenTree::Token(sp, _), NonJoint), _) => *sp,
-                        (TokenStream::Tree(TokenTree::Delimited(sp, ..), NonJoint), _) =>
-                            sp.entire(),
+                        (TokenStream::Tree(TokenTree::Delimited(sp, ..), NonJoint), _) => {
+                            sp.entire()
+                        }
                         _ => continue,
                     };
                     let sp = sp.shrink_to_hi();
@@ -250,7 +257,7 @@ impl Extend<TokenStream> for TokenStream {
                     vec.extend_from_slice(&rc_vec);
                     vec
                 }
-            }
+            },
         };
 
         // Perform the extend, joining tokens as needed along the way.
@@ -378,7 +385,7 @@ impl TokenStream {
         while let Some(stream) = trees.next_as_stream() {
             result.push(match stream {
                 TokenStream::Tree(tree, is_joint) => TokenStream::Tree(f(i, tree), is_joint),
-                _ => unreachable!()
+                _ => unreachable!(),
             });
             i += 1;
         }
@@ -391,7 +398,7 @@ impl TokenStream {
         while let Some(stream) = trees.next_as_stream() {
             result.push(match stream {
                 TokenStream::Tree(tree, is_joint) => TokenStream::Tree(f(tree), is_joint),
-                _ => unreachable!()
+                _ => unreachable!(),
             });
         }
         TokenStream::new(result)
@@ -435,7 +442,7 @@ impl TokenStreamBuilder {
                     let glued_tokenstream = TokenStream::Tree(glued_tt, is_joint);
                     self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);
-                    return
+                    return;
                 }
             }
         }
@@ -457,7 +464,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[0].clone().into()),
-                _ => self.0.push(TokenStream::new(streams[0 .. len - 1].to_vec())),
+                _ => self.0.push(TokenStream::new(streams[0..len - 1].to_vec())),
             }
             self.push_all_but_last_tree(&streams[len - 1])
         }
@@ -469,7 +476,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[1].clone().into()),
-                _ => self.0.push(TokenStream::new(streams[1 .. len].to_vec())),
+                _ => self.0.push(TokenStream::new(streams[1..len].to_vec())),
             }
             self.push_all_but_first_tree(&streams[0])
         }
@@ -495,7 +502,11 @@ struct StreamCursor {
 
 impl StreamCursor {
     fn new(stream: Lrc<Vec<TokenStream>>) -> Self {
-        StreamCursor { stream: stream, index: 0, stack: Vec::new() }
+        StreamCursor {
+            stream: stream,
+            index: 0,
+            stack: Vec::new(),
+        }
     }
 
     fn next_as_stream(&mut self) -> Option<TokenStream> {
@@ -518,8 +529,10 @@ impl StreamCursor {
     }
 
     fn insert(&mut self, stream: Lrc<Vec<TokenStream>>) {
-        self.stack.push((mem::replace(&mut self.stream, stream),
-                         mem::replace(&mut self.index, 0)));
+        self.stack.push((
+            mem::replace(&mut self.stream, stream),
+            mem::replace(&mut self.index, 0),
+        ));
     }
 }
 
@@ -529,7 +542,7 @@ impl Iterator for Cursor {
     fn next(&mut self) -> Option<TokenTree> {
         self.next_as_stream().map(|stream| match stream {
             TokenStream::Tree(tree, _) => tree,
-            _ => unreachable!()
+            _ => unreachable!(),
         })
     }
 }
@@ -545,8 +558,9 @@ impl Cursor {
 
     pub fn next_as_stream(&mut self) -> Option<TokenStream> {
         let (stream, consumed) = match self.0 {
-            CursorKind::Tree(ref tree, ref is_joint, ref mut consumed @ false) =>
-                (TokenStream::Tree(tree.clone(), *is_joint), consumed),
+            CursorKind::Tree(ref tree, ref is_joint, ref mut consumed @ false) => {
+                (TokenStream::Tree(tree.clone(), *is_joint), consumed)
+            }
             CursorKind::Stream(ref mut cursor) => return cursor.next_as_stream(),
             _ => return None,
         };
@@ -574,11 +588,16 @@ impl Cursor {
     pub fn original_stream(&self) -> TokenStream {
         match self.0 {
             CursorKind::Empty => TokenStream::empty(),
-            CursorKind::Tree(ref tree, ref is_joint, _) =>
-                TokenStream::Tree(tree.clone(), *is_joint),
+            CursorKind::Tree(ref tree, ref is_joint, _) => {
+                TokenStream::Tree(tree.clone(), *is_joint)
+            }
             CursorKind::Stream(ref cursor) => TokenStream::Stream(
-                cursor.stack.get(0).cloned().map(|(stream, _)| stream)
-                    .unwrap_or_else(|| cursor.stream.clone())
+                cursor
+                    .stack
+                    .get(0)
+                    .cloned()
+                    .map(|(stream, _)| stream)
+                    .unwrap_or_else(|| cursor.stream.clone()),
             ),
         }
     }
@@ -600,11 +619,10 @@ impl Cursor {
         }
 
         match self.0 {
-            CursorKind::Empty |
-            CursorKind::Tree(_, _, true) => Err(n),
+            CursorKind::Empty | CursorKind::Tree(_, _, true) => Err(n),
             CursorKind::Tree(ref tree, _, false) => look_ahead(&[tree.clone().into()], n),
-            CursorKind::Stream(ref cursor) => {
-                look_ahead(&cursor.stream[cursor.index ..], n).or_else(|mut n| {
+            CursorKind::Stream(ref cursor) => look_ahead(&cursor.stream[cursor.index..], n)
+                .or_else(|mut n| {
                     for &(ref stream, index) in cursor.stack.iter().rev() {
                         n = match look_ahead(&stream[index..], n) {
                             Ok(tree) => return Ok(tree),
@@ -613,9 +631,9 @@ impl Cursor {
                     }
 
                     Err(n)
-                })
-            }
-        }.ok()
+                }),
+        }
+        .ok()
     }
 }
 
@@ -643,7 +661,10 @@ impl From<TokenStream> for ThinTokenStream {
 
 impl From<ThinTokenStream> for TokenStream {
     fn from(stream: ThinTokenStream) -> TokenStream {
-        stream.0.map(TokenStream::Stream).unwrap_or_else(TokenStream::empty)
+        stream
+            .0
+            .map(TokenStream::Stream)
+            .unwrap_or_else(TokenStream::empty)
     }
 }
 
@@ -722,11 +743,11 @@ impl DelimSpan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syntax::ast::Ident;
-    use with_globals;
-    use syntax_pos::{Span, BytePos, NO_EXPANSION};
     use parse::token::Token;
+    use syntax::ast::Ident;
+    use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use util::parser_testing::string_to_stream;
+    use with_globals;
 
     fn string_to_ts(string: &str) -> TokenStream {
         string_to_stream(string.to_owned())

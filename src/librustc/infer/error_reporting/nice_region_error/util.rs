@@ -2,10 +2,10 @@
 //! anonymous regions.
 
 use hir;
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use ty::{self, Region, Ty};
 use hir::def_id::DefId;
+use infer::error_reporting::nice_region_error::NiceRegionError;
 use syntax_pos::Span;
+use ty::{self, Region, Ty};
 
 // The struct contains the information about the anonymous region
 // we are searching for.
@@ -18,7 +18,7 @@ pub(super) struct AnonymousArgInfo<'tcx> {
     // the ty::BoundRegion corresponding to the anonymous region
     pub bound_region: ty::BoundRegion,
     // arg_ty_span contains span of argument type
-    pub arg_ty_span : Span,
+    pub arg_ty_span: Span,
     // corresponds to id the argument is the first parameter
     // in the declaration
     pub is_first: bool,
@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                                 Some(AnonymousArgInfo {
                                     arg: arg,
                                     arg_ty: new_arg_ty,
-                                    arg_ty_span : arg_ty_span,
+                                    arg_ty_span: arg_ty_span,
                                     bound_region: bound_region,
                                     is_first: is_first,
                                 })
@@ -111,7 +111,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let ret_ty = self.tcx.type_of(scope_def_id);
         if let ty::FnDef(_, _) = ret_ty.sty {
             let sig = ret_ty.fn_sig(self.tcx);
-            let late_bound_regions = self.tcx
+            let late_bound_regions = self
+                .tcx
                 .collect_referenced_late_bound_regions(&sig.output());
             if late_bound_regions.iter().any(|r| *r == br) {
                 return Some(decl.output.span());
@@ -126,9 +127,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     // enable E0621 for it.
     pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
         is_first
-            && self.tcx
-                   .opt_associated_item(scope_def_id)
-                   .map(|i| i.method_has_self_argument) == Some(true)
+            && self
+                .tcx
+                .opt_associated_item(scope_def_id)
+                .map(|i| i.method_has_self_argument)
+                == Some(true)
     }
-
 }

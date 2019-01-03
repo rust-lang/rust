@@ -7,23 +7,23 @@
 //! [arc]: struct.Arc.html
 
 use core::any::Any;
-use core::sync::atomic;
-use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
-use core::fmt;
 use core::cmp::Ordering;
+use core::convert::From;
+use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
+use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem::{self, align_of_val, size_of_val};
-use core::ops::{Deref, Receiver};
 use core::ops::{CoerceUnsized, DispatchFromDyn};
+use core::ops::{Deref, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::marker::{Unpin, Unsize, PhantomData};
-use core::hash::{Hash, Hasher};
+use core::sync::atomic;
+use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::{isize, usize};
-use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use alloc::{box_free, handle_alloc_error, Alloc, Global, Layout};
 use boxed::Box;
 use rc::is_dangling;
 use string::String;
@@ -290,7 +290,10 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
+        Arc {
+            ptr: Box::into_raw_non_null(x),
+            phantom: PhantomData,
+        }
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -325,7 +328,12 @@ impl<T> Arc<T> {
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         // See `drop` for why all these atomics are like this
-        if this.inner().strong.compare_exchange(1, 0, Release, Relaxed).is_err() {
+        if this
+            .inner()
+            .strong
+            .compare_exchange(1, 0, Release, Relaxed)
+            .is_err()
+        {
             return Err(this);
         }
 
@@ -446,7 +454,11 @@ impl<T: ?Sized> Arc<T> {
             // Unlike with Clone(), we need this to be an Acquire read to
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
-            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
+            match this
+                .inner()
+                .weak
+                .compare_exchange_weak(cur, cur + 1, Acquire, Relaxed)
+            {
                 Ok(_) => {
                     // Make sure we do not create a dangling Weak
                     debug_assert!(!is_dangling(this.ptr));
@@ -485,7 +497,11 @@ impl<T: ?Sized> Arc<T> {
         let cnt = this.inner().weak.load(SeqCst);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
-        if cnt == usize::MAX { 0 } else { cnt - 1 }
+        if cnt == usize::MAX {
+            0
+        } else {
+            cnt - 1
+        }
     }
 
     /// Gets the number of strong (`Arc`) pointers to this value.
@@ -567,10 +583,14 @@ impl<T: ?Sized> Arc<T> {
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>()
-            .extend(Layout::for_value(&*ptr)).unwrap().0
-            .pad_to_align().unwrap();
+            .extend(Layout::for_value(&*ptr))
+            .unwrap()
+            .0
+            .pad_to_align()
+            .unwrap();
 
-        let mem = Global.alloc(layout)
+        let mem = Global
+            .alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the ArcInner
@@ -595,12 +615,16 @@ impl<T: ?Sized> Arc<T> {
             ptr::copy_nonoverlapping(
                 bptr as *const T as *const u8,
                 &mut (*ptr).data as *mut _ as *mut u8,
-                value_size);
+                value_size,
+            );
 
             // Free the allocation without dropping its contents
             box_free(box_unique);
 
-            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Arc {
+                ptr: NonNull::new_unchecked(ptr),
+                phantom: PhantomData,
+            }
         }
     }
 }
@@ -622,12 +646,12 @@ impl<T> Arc<[T]> {
         let v_ptr = v as *const [T];
         let ptr = Self::allocate_for_ptr(v_ptr);
 
-        ptr::copy_nonoverlapping(
-            v.as_ptr(),
-            &mut (*ptr).data as *mut [T] as *mut T,
-            v.len());
+        ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
 
-        Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+        Arc {
+            ptr: NonNull::new_unchecked(ptr),
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -672,7 +696,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             // Pointer to first element
             let elems = &mut (*ptr).data as *mut [T] as *mut T;
 
-            let mut guard = Guard{
+            let mut guard = Guard {
                 mem: NonNull::new_unchecked(mem),
                 elems: elems,
                 layout: layout,
@@ -687,7 +711,10 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             // All clear. Forget the guard so it doesn't free the new ArcInner.
             mem::forget(guard);
 
-            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Arc {
+                ptr: NonNull::new_unchecked(ptr),
+                phantom: PhantomData,
+            }
         }
     }
 }
@@ -745,7 +772,10 @@ impl<T: ?Sized> Clone for Arc<T> {
             }
         }
 
-        Arc { ptr: self.ptr, phantom: PhantomData }
+        Arc {
+            ptr: self.ptr,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -803,7 +833,12 @@ impl<T: Clone> Arc<T> {
         // before release writes (i.e., decrements) to `strong`. Since we hold a
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
-        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
+        if this
+            .inner()
+            .strong
+            .compare_exchange(1, 0, Acquire, Relaxed)
+            .is_err()
+        {
             // Another strong pointer exists; clone
             *this = Arc::new((**this).clone());
         } else if this.inner().weak.load(Relaxed) != 1 {
@@ -841,9 +876,7 @@ impl<T: Clone> Arc<T> {
 
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
-        unsafe {
-            &mut this.ptr.as_mut().data
-        }
+        unsafe { &mut this.ptr.as_mut().data }
     }
 }
 
@@ -883,9 +916,7 @@ impl<T: ?Sized> Arc<T> {
             // reference count is guaranteed to be 1 at this point, and we required
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
-            unsafe {
-                Some(&mut this.ptr.as_mut().data)
-            }
+            unsafe { Some(&mut this.ptr.as_mut().data) }
         } else {
             None
         }
@@ -903,7 +934,12 @@ impl<T: ?Sized> Arc<T> {
         // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
         // of the `weak` count (via `Weak::drop`, which uses release).  If the upgraded
         // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
-        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+        if self
+            .inner()
+            .weak
+            .compare_exchange(1, usize::MAX, Acquire, Relaxed)
+            .is_ok()
+        {
             // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
             // counter in `drop` -- the only access that happens when any but the last reference
             // is being dropped.
@@ -1024,7 +1060,10 @@ impl Arc<dyn Any + Send + Sync> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<ArcInner<T>>();
             mem::forget(self);
-            Ok(Arc { ptr, phantom: PhantomData })
+            Ok(Arc {
+                ptr,
+                phantom: PhantomData,
+            })
         } else {
             Err(self)
         }
@@ -1106,12 +1145,17 @@ impl<T: ?Sized> Weak<T> {
             }
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
-            match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
-                Ok(_) => return Some(Arc {
-                    // null checked above
-                    ptr: self.ptr,
-                    phantom: PhantomData,
-                }),
+            match inner
+                .strong
+                .compare_exchange_weak(n, n + 1, Relaxed, Relaxed)
+            {
+                Ok(_) => {
+                    return Some(Arc {
+                        // null checked above
+                        ptr: self.ptr,
+                        phantom: PhantomData,
+                    })
+                }
                 Err(old) => n = old,
             }
         }
@@ -1273,14 +1317,12 @@ impl<T: ?Sized> Drop for Weak<T> {
         let inner = if let Some(inner) = self.inner() {
             inner
         } else {
-            return
+            return;
         };
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            unsafe {
-                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
-            }
+            unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
         }
     }
 }
@@ -1576,16 +1618,16 @@ impl<T> From<Vec<T>> for Arc<[T]> {
 mod tests {
     use std::boxed::Box;
     use std::clone::Clone;
-    use std::sync::mpsc::channel;
+    use std::convert::From;
     use std::mem::drop;
     use std::ops::Drop;
     use std::option::Option;
     use std::option::Option::{None, Some};
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
-    use std::thread;
+    use std::sync::mpsc::channel;
     use std::sync::Mutex;
-    use std::convert::From;
+    use std::thread;
 
     use super::{Arc, Weak};
     use vec::Vec;
@@ -1768,7 +1810,9 @@ mod tests {
             x: Mutex<Option<Weak<Cycle>>>,
         }
 
-        let a = Arc::new(Cycle { x: Mutex::new(None) });
+        let a = Arc::new(Cycle {
+            x: Mutex::new(None),
+        });
         let b = Arc::downgrade(&a.clone());
         *a.x.lock().unwrap() = Some(b);
 
@@ -2043,4 +2087,4 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized> Unpin for Arc<T> { }
+impl<T: ?Sized> Unpin for Arc<T> {}

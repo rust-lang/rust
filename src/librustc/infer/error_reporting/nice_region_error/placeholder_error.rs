@@ -34,19 +34,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
-                    cause,
-                    Some(sub_placeholder),
-                    Some(sup_placeholder),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx.mk_region(ty::ReVar(*vid))),
+                cause,
+                Some(sub_placeholder),
+                Some(sup_placeholder),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
@@ -58,19 +54,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 _,
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
-                    cause,
-                    Some(sub_placeholder),
-                    None,
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx.mk_region(ty::ReVar(*vid))),
+                cause,
+                Some(sub_placeholder),
+                None,
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
@@ -82,19 +74,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 _,
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
-                    cause,
-                    None,
-                    Some(*sup_placeholder),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx.mk_region(ty::ReVar(*vid))),
+                cause,
+                None,
+                Some(*sup_placeholder),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -103,19 +91,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 sub_region @ ty::RePlaceholder(_),
                 sup_region @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    None,
-                    cause,
-                    Some(*sub_region),
-                    Some(*sup_region),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                None,
+                cause,
+                Some(*sub_region),
+                Some(*sup_region),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -124,19 +108,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 sub_region @ ty::RePlaceholder(_),
                 sup_region,
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(sup_region),
-                    cause,
-                    Some(*sub_region),
-                    None,
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(sup_region),
+                cause,
+                Some(*sub_region),
+                None,
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -145,19 +125,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 sub_region,
                 sup_region @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(sub_region),
-                    cause,
-                    None,
-                    Some(*sup_region),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(sub_region),
+                cause,
+                None,
+                Some(*sup_region),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             _ => None,
         }

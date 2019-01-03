@@ -10,13 +10,11 @@ use std::hash::{Hash, Hasher};
 use rustc::ich::StableHashingContextProvider;
 use rustc::mir;
 use rustc::mir::interpret::{
-    AllocId, Pointer, Scalar,
-    Relocations, Allocation, UndefMask,
-    EvalResult, EvalErrorKind,
+    AllocId, Allocation, EvalErrorKind, EvalResult, Pointer, Relocations, Scalar, UndefMask,
 };
 
-use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::Align;
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -24,7 +22,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef};
+use super::{Frame, Immediate, MemPlace, Memory, Operand, Place, ScalarMaybeUndef};
 use const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -43,8 +41,7 @@ pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
     snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
-{
+impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx> {
     pub fn observe_and_analyze<'b>(
         &mut self,
         tcx: &TyCtxt<'b, 'tcx, 'tcx>,
@@ -61,12 +58,14 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
         // Check if we know that hash already
         if self.hashes.is_empty() {
             // FIXME(#49980): make this warning a lint
-            tcx.sess.span_warn(span,
-                "Constant evaluating a complex constant, this might take some time");
+            tcx.sess.span_warn(
+                span,
+                "Constant evaluating a complex constant, this might take some time",
+            );
         }
         if self.hashes.insert(hash) {
             // No collision
-            return Ok(())
+            return Ok(());
         }
 
         // We need to make a full copy. NOW things that to get really expensive.
@@ -74,7 +73,7 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
 
         if self.snapshots.insert(EvalSnapshot::new(memory, stack)) {
             // Spurious collision or first cycle
-            return Ok(())
+            return Ok(());
         }
 
         // Second cycle
@@ -94,8 +93,12 @@ trait Snapshot<'a, Ctx: SnapshotContext<'a>> {
 }
 
 macro_rules! __impl_snapshot_field {
-    ($field:ident, $ctx:expr) => ($field.snapshot($ctx));
-    ($field:ident, $ctx:expr, $delegate:expr) => ($delegate);
+    ($field:ident, $ctx:expr) => {
+        $field.snapshot($ctx)
+    };
+    ($field:ident, $ctx:expr, $delegate:expr) => {
+        $delegate
+    };
 }
 
 // This assumes the type has two type parameters, first for the tag (set to `()`),
@@ -147,8 +150,9 @@ macro_rules! impl_snapshot_for {
 }
 
 impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
-    where Ctx: SnapshotContext<'a>,
-          T: Snapshot<'a, Ctx>
+where
+    Ctx: SnapshotContext<'a>,
+    T: Snapshot<'a, Ctx>,
 {
     type Item = Option<<T as Snapshot<'a, Ctx>>::Item>;
 
@@ -164,7 +168,8 @@ impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
 struct AllocIdSnapshot<'a>(Option<AllocationSnapshot<'a>>);
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for AllocId
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = AllocIdSnapshot<'a>;
 
@@ -180,14 +185,15 @@ impl_snapshot_for!(struct Pointer {
 });
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = Scalar<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
             Scalar::Ptr(p) => Scalar::Ptr(p.snapshot(ctx)),
-            Scalar::Bits{ size, bits } => Scalar::Bits {
+            Scalar::Bits { size, bits } => Scalar::Bits {
                 size: *size,
                 bits: *bits,
             },
@@ -195,10 +201,12 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
     }
 }
 
-impl_snapshot_for!(enum ScalarMaybeUndef {
-    Scalar(s),
-    Undef,
-});
+impl_snapshot_for!(
+    enum ScalarMaybeUndef {
+        Scalar(s),
+        Undef,
+    }
+);
 
 impl_stable_hash_for!(struct ::interpret::MemPlace {
     ptr,
@@ -216,7 +224,8 @@ impl_stable_hash_for!(enum ::interpret::Place {
     Local { frame, local },
 });
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = Place<(), AllocIdSnapshot<'a>>;
 
@@ -224,7 +233,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
         match self {
             Place::Ptr(p) => Place::Ptr(p.snapshot(ctx)),
 
-            Place::Local{ frame, local } => Place::Local{
+            Place::Local { frame, local } => Place::Local {
                 frame: *frame,
                 local: *local,
             },
@@ -236,38 +245,47 @@ impl_stable_hash_for!(enum ::interpret::Immediate {
     Scalar(x),
     ScalarPair(x, y),
 });
-impl_snapshot_for!(enum Immediate {
-    Scalar(s),
-    ScalarPair(s, t),
-});
+impl_snapshot_for!(
+    enum Immediate {
+        Scalar(s),
+        ScalarPair(s, t),
+    }
+);
 
 impl_stable_hash_for!(enum ::interpret::Operand {
     Immediate(x),
     Indirect(x),
 });
-impl_snapshot_for!(enum Operand {
-    Immediate(v),
-    Indirect(m),
-});
+impl_snapshot_for!(
+    enum Operand {
+        Immediate(v),
+        Indirect(m),
+    }
+);
 
 impl_stable_hash_for!(enum ::interpret::LocalValue {
     Dead,
     Live(x),
 });
-impl_snapshot_for!(enum LocalValue {
-    Live(v),
-    Dead,
-});
+impl_snapshot_for!(
+    enum LocalValue {
+        Live(v),
+        Dead,
+    }
+);
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = Relocations<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        Relocations::from_presorted(self.iter()
-            .map(|(size, ((), id))| (*size, ((), id.snapshot(ctx))))
-            .collect())
+        Relocations::from_presorted(
+            self.iter()
+                .map(|(size, ((), id))| (*size, ((), id.snapshot(ctx))))
+                .collect(),
+        )
     }
 }
 
@@ -281,12 +299,20 @@ struct AllocationSnapshot<'a> {
 }
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = AllocationSnapshot<'a>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let Allocation { bytes, relocations, undef_mask, align, mutability, extra: () } = self;
+        let Allocation {
+            bytes,
+            relocations,
+            undef_mask,
+            align,
+            mutability,
+            extra: (),
+        } = self;
 
         AllocationSnapshot {
             bytes,
@@ -327,7 +353,8 @@ impl_stable_hash_for!(impl<'tcx, 'mir: 'tcx> for struct Frame<'mir, 'tcx> {
 });
 
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
-    where Ctx: SnapshotContext<'a>,
+where
+    Ctx: SnapshotContext<'a>,
 {
     type Item = FrameSnapshot<'a, 'tcx>;
 
@@ -356,7 +383,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
     }
 }
 
-impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
+impl<'a, 'b, 'mir, 'tcx: 'a + 'mir> SnapshotContext<'b>
     for Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>
 {
     fn resolve(&'b self, id: &AllocId) -> Option<&'b Allocation> {
@@ -372,11 +399,10 @@ struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir> {
     stack: Vec<Frame<'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
-{
+impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx> {
     fn new(
         memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-        stack: &[Frame<'mir, 'tcx>]
+        stack: &[Frame<'mir, 'tcx>],
     ) -> Self {
         EvalSnapshot {
             memory: memory.clone(),
@@ -385,17 +411,16 @@ impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
     }
 
     // Used to compare two snapshots
-    fn snapshot(&'b self)
-        -> Vec<FrameSnapshot<'b, 'tcx>>
-    {
+    fn snapshot(&'b self) -> Vec<FrameSnapshot<'b, 'tcx>> {
         // Start with the stack, iterate and recursively snapshot
-        self.stack.iter().map(|frame| frame.snapshot(&self.memory)).collect()
+        self.stack
+            .iter()
+            .map(|frame| frame.snapshot(&self.memory))
+            .collect()
     }
-
 }
 
-impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx>
-{
+impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
         let mut hcx = self.memory.tcx.get_stable_hashing_context();
@@ -411,11 +436,9 @@ impl_stable_hash_for!(impl<'tcx, 'b, 'mir> for struct EvalSnapshot<'b, 'mir, 'tc
     stack,
 });
 
-impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx>
-{}
+impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx> {}
 
-impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx>
-{
+impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx> {
     fn eq(&self, other: &Self) -> bool {
         // FIXME: This looks to be a *ridicolously expensive* comparison operation.
         // Doesn't this make tons of copies?  Either `snapshot` is very badly named,

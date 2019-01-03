@@ -1,17 +1,17 @@
 //! Defines the set of legal keys that can be used in queries.
 
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use infer::canonical::Canonical;
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
-use traits;
-use ty::{self, Ty, TyCtxt};
-use ty::subst::Substs;
-use ty::fast_reject::SimplifiedType;
 use mir;
+use traits;
+use ty::fast_reject::SimplifiedType;
+use ty::subst::Substs;
+use ty::{self, Ty, TyCtxt};
 
 use std::fmt::Debug;
 use std::hash::Hash;
-use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
+use syntax_pos::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
@@ -127,7 +127,7 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for ty::PolyTraitRef<'tcx>{
+impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     fn query_crate(&self) -> CrateNum {
         self.def_id().krate
     }

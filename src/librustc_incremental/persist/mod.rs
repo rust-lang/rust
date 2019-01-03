@@ -4,11 +4,11 @@
 
 mod data;
 mod dirty_clean;
+mod file_format;
 mod fs;
 mod load;
 mod save;
 mod work_product;
-mod file_format;
 
 pub use self::fs::finalize_session_directory;
 pub use self::fs::garbage_collect_session_directories;

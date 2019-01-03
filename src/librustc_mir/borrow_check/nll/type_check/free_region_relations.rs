@@ -73,7 +73,8 @@ crate fn create(
             outlives: Default::default(),
             inverse_outlives: Default::default(),
         },
-    }.create()
+    }
+    .create()
 }
 
 impl UniversalRegionRelations<'tcx> {
@@ -232,9 +233,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                     .unwrap_or_else(|_| bug!("failed to normalize {:?}", ty));
                 let constraints2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);
-                constraints1
-                    .into_iter()
-                    .chain(constraints2)
+                constraints1.into_iter().chain(constraints2)
             })
             .collect();
 
@@ -269,7 +268,8 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                 Locations::All(DUMMY_SP),
                 ConstraintCategory::Internal,
                 &mut self.constraints,
-            ).convert_all(&data);
+            )
+            .convert_all(&data);
         }
 
         CreateResult {
@@ -285,8 +285,8 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
     /// from this local.
     fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<Vec<QueryRegionConstraint<'tcx>>>> {
         debug!("add_implied_bounds(ty={:?})", ty);
-        let (bounds, constraints) =
-            self.param_env
+        let (bounds, constraints) = self
+            .param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx)
             .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));

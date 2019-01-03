@@ -23,19 +23,23 @@ macro_rules! rtabort {
 }
 
 macro_rules! rtassert {
-    ($e:expr) => (if !$e {
-        rtabort!(concat!("assertion failed: ", stringify!($e)));
-    })
+    ($e:expr) => {
+        if !$e {
+            rtabort!(concat!("assertion failed: ", stringify!($e)));
+        }
+    };
 }
 
 pub mod alloc;
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
+pub mod bytestring;
 pub mod condvar;
 pub mod io;
 pub mod mutex;
 pub mod poison;
+pub mod process;
 pub mod remutex;
 pub mod rwlock;
 pub mod thread;
@@ -43,8 +47,6 @@ pub mod thread_info;
 pub mod thread_local;
 pub mod util;
 pub mod wtf8;
-pub mod bytestring;
-pub mod process;
 
 cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
@@ -59,9 +61,11 @@ cfg_if! {
 }
 
 #[cfg(feature = "backtrace")]
-#[cfg(any(all(unix, not(target_os = "emscripten")),
-          all(windows, target_env = "gnu"),
-          target_os = "redox"))]
+#[cfg(any(
+    all(unix, not(target_os = "emscripten")),
+    all(windows, target_env = "gnu"),
+    target_os = "redox"
+))]
 pub mod gnu;
 
 // common error constructors
@@ -101,7 +105,11 @@ pub trait FromInner<Inner> {
 /// that the closure could not be registered, meaning that it is not scheduled
 /// to be run.
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
-    if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
+    if at_exit_imp::push(Box::new(f)) {
+        Ok(())
+    } else {
+        Err(())
+    }
 }
 
 /// One-time runtime cleanup.
@@ -129,6 +137,8 @@ pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
 
 #[test]
 fn test_muldiv() {
-    assert_eq!(mul_div_u64( 1_000_000_000_001, 1_000_000_000, 1_000_000),
-               1_000_000_000_001_000);
+    assert_eq!(
+        mul_div_u64(1_000_000_000_001, 1_000_000_000, 1_000_000),
+        1_000_000_000_001_000
+    );
 }

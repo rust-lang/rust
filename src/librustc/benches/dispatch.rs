@@ -3,7 +3,7 @@ use test::Bencher;
 // Static/dynamic method dispatch
 
 struct Struct {
-    field: isize
+    field: isize,
 }
 
 trait Trait {
@@ -20,15 +20,11 @@ impl Trait for Struct {
 fn trait_vtable_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
     let t = &s as &Trait;
-    b.iter(|| {
-        t.method()
-    });
+    b.iter(|| t.method());
 }
 
 #[bench]
 fn trait_static_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
-    b.iter(|| {
-        s.method()
-    });
+    b.iter(|| s.method());
 }

@@ -2,15 +2,15 @@
 //! process.
 
 use rustc::hir::def_id::DefId;
-use rustc::lint as lint;
+use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
-use std::mem;
 use std::fmt;
+use std::mem;
 use syntax::ast::NodeId;
 
 use clean::{self, GetDefId, Item};
-use core::{DocContext, DocAccessLevels};
+use core::{DocAccessLevels, DocContext};
 use fold;
 use fold::StripItem;
 
@@ -71,40 +71,50 @@ impl fmt::Debug for Pass {
         };
 
         dbg.field("name", &self.name())
-           .field("pass", &"...")
-           .field("description", &self.description())
-           .finish()
+            .field("pass", &"...")
+            .field("description", &self.description())
+            .finish()
     }
 }
 
 impl Pass {
     /// Constructs a new early pass.
-    pub const fn early(name: &'static str,
-                       pass: fn(clean::Crate, &DocContext) -> clean::Crate,
-                       description: &'static str) -> Pass {
-        Pass::EarlyPass { name, pass, description }
+    pub const fn early(
+        name: &'static str,
+        pass: fn(clean::Crate, &DocContext) -> clean::Crate,
+        description: &'static str,
+    ) -> Pass {
+        Pass::EarlyPass {
+            name,
+            pass,
+            description,
+        }
     }
 
     /// Constructs a new late pass.
-    pub const fn late(name: &'static str,
-                      pass: fn(clean::Crate) -> clean::Crate,
-                      description: &'static str) -> Pass {
-        Pass::LatePass { name, pass, description }
+    pub const fn late(
+        name: &'static str,
+        pass: fn(clean::Crate) -> clean::Crate,
+        description: &'static str,
+    ) -> Pass {
+        Pass::LatePass {
+            name,
+            pass,
+            description,
+        }
     }
 
     /// Returns the name of this pass.
     pub fn name(self) -> &'static str {
         match self {
-            Pass::EarlyPass { name, .. } |
-                Pass::LatePass { name, .. } => name,
+            Pass::EarlyPass { name, .. } | Pass::LatePass { name, .. } => name,
         }
     }
 
     /// Returns the description of this pass.
     pub fn description(self) -> &'static str {
         match self {
-            Pass::EarlyPass { description, .. } |
-                Pass::LatePass { description, .. } => description,
+            Pass::EarlyPass { description, .. } | Pass::LatePass { description, .. } => description,
         }
     }
 
@@ -197,7 +207,11 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
                 // items to the `retained` set.
-                debug!("Stripper: recursing into stripped {} {:?}", i.type_(), i.name);
+                debug!(
+                    "Stripper: recursing into stripped {} {:?}",
+                    i.type_(),
+                    i.name
+                );
                 let old = mem::replace(&mut self.update_retained, false);
                 let ret = self.fold_item_recur(i);
                 self.update_retained = old;
@@ -324,8 +338,10 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
                 for typaram in generics {
                     if let Some(did) = typaram.def_id() {
                         if did.is_local() && !self.retained.contains(&did) {
-                            debug!("ImplStripper: stripped item in trait's generics; \
-                                    removing impl");
+                            debug!(
+                                "ImplStripper: stripped item in trait's generics; \
+                                 removing impl"
+                            );
                             return None;
                         }
                     }
@@ -372,9 +388,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
         }
     }
 
-    let mut tests = Tests {
-        found_tests: 0,
-    };
+    let mut tests = Tests { found_tests: 0 };
 
     if find_testable_code(&dox, &mut tests, ErrorCodes::No).is_ok() {
         if check_missing_code == true && tests.found_tests == 0 {
@@ -382,16 +396,23 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
                 lint::builtin::MISSING_DOC_CODE_EXAMPLES,
                 NodeId::from_u32(0),
                 span_of_attrs(&item.attrs),
-                "Missing code example in this documentation");
+                "Missing code example in this documentation",
+            );
             diag.emit();
-        } else if check_missing_code == false &&
-                  tests.found_tests > 0 &&
-                  !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
+        } else if check_missing_code == false
+            && tests.found_tests > 0
+            && !cx
+                .renderinfo
+                .borrow()
+                .access_levels
+                .is_doc_reachable(item.def_id)
+        {
             let mut diag = cx.tcx.struct_span_lint_node(
                 lint::builtin::PRIVATE_DOC_TESTS,
                 NodeId::from_u32(0),
                 span_of_attrs(&item.attrs),
-                "Documentation test in private item");
+                "Documentation test in private item",
+            );
             diag.emit();
         }
     }

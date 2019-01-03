@@ -9,8 +9,8 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
 use rustc::mir::*;
-use rustc::ty::{self, Ty};
 use rustc::ty::layout::VariantIdx;
+use rustc::ty::{self, Ty};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Name, NodeId};
@@ -58,20 +58,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // check safety.
 
         let source_info = self.source_info(discriminant_span);
-        self.cfg.push(block, Statement {
-            source_info,
-            kind: StatementKind::FakeRead(
-                FakeReadCause::ForMatchedPlace,
-                discriminant_place.clone(),
-            ),
-        });
+        self.cfg.push(
+            block,
+            Statement {
+                source_info,
+                kind: StatementKind::FakeRead(
+                    FakeReadCause::ForMatchedPlace,
+                    discriminant_place.clone(),
+                ),
+            },
+        );
 
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter().map(|_| self.cfg.start_new_block()).collect(),
         };
 
         // Get the arm bodies and their scopes, while declaring bindings.
-        let arm_bodies: Vec<_> = arms.iter()
+        let arm_bodies: Vec<_> = arms
+            .iter()
             .map(|arm| {
                 // BUG: use arm lint level
                 let body = self.hir.mirror(arm.body.clone());
@@ -101,7 +105,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // highest priority candidate comes first in the list.
         // (i.e., same order as in source)
 
-        let candidates: Vec<_> = arms.iter()
+        let candidates: Vec<_> = arms
+            .iter()
             .enumerate()
             .flat_map(|(arm_index, arm)| {
                 arm.patterns
@@ -117,7 +122,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             .map(
                 |(
                     (arm_index, pat_index, pattern, guard),
-                    (pre_binding_block, next_candidate_pre_binding_block)
+                    (pre_binding_block, next_candidate_pre_binding_block),
                 )| {
                     has_guard |= guard.is_some();
 
@@ -250,7 +255,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
 
-
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
@@ -274,15 +278,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // dubious way, so it may be that the test is kind of
             // broken.
             PatternKind::AscribeUserType {
-                subpattern: Pattern {
-                    kind: box PatternKind::Binding {
-                        mode: BindingMode::ByValue,
-                        var,
-                        subpattern: None,
+                subpattern:
+                    Pattern {
+                        kind:
+                            box PatternKind::Binding {
+                                mode: BindingMode::ByValue,
+                                var,
+                                subpattern: None,
+                                ..
+                            },
                         ..
                     },
-                    ..
-                },
                 user_ty: pat_ascription_ty,
                 user_ty_span,
             } => {
@@ -302,7 +308,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let ty_source_info = self.source_info(user_ty_span);
                 let user_ty = box pat_ascription_ty.user_ty(
-                    &mut self.canonical_user_type_annotations, ty_source_info.span
+                    &mut self.canonical_user_type_annotations,
+                    ty_source_info.span,
                 );
                 self.cfg.push(
                     block,
@@ -499,7 +506,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             UserTypeProjections<'tcx>,
         ),
     ) {
-        debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
+        debug!(
+            "visit_bindings: pattern={:?} pattern_user_ty={:?}",
+            pattern, pattern_user_ty
+        );
         match *pattern.kind {
             PatternKind::Binding {
                 mutability,
@@ -510,7 +520,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref subpattern,
                 ..
             } => {
-                f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
+                f(
+                    self,
+                    mutability,
+                    name,
+                    mode,
+                    var,
+                    pattern.span,
+                    ty,
+                    pattern_user_ty.clone(),
+                );
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_bindings(subpattern, pattern_user_ty, f);
                 }
@@ -541,7 +560,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
             }
-            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType {
+                ref subpattern,
+                ref user_ty,
+                user_ty_span,
+            } => {
                 // This corresponds to something like
                 //
                 // ```
@@ -559,15 +582,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
-                    debug!("visit_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
+                    debug!(
+                        "visit_bindings: subpattern_user_ty={:?}",
+                        subpattern_user_ty
+                    );
                     self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
 
-            PatternKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
+            PatternKind::Variant {
+                adt_def,
+                substs: _,
+                variant_index,
+                ref subpatterns,
+            } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty = pattern_user_ty.clone().variant(
-                        adt_def, variant_index, subpattern.field);
+                    let subpattern_user_ty =
+                        pattern_user_ty
+                            .clone()
+                            .variant(adt_def, variant_index, subpattern.field);
                     self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
@@ -746,8 +779,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Insert a *Shared* borrow of any places that are bound.
         if let Some(fake_borrows) = fake_borrows {
-            for Binding { source, .. }
-                in candidates.iter().flat_map(|candidate| &candidate.bindings)
+            for Binding { source, .. } in
+                candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
                 fake_borrows.insert(source.clone(), BorrowKind::Shared);
             }
@@ -1005,7 +1038,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Insert a Shallow borrow of any places that is switched on.
         fake_borrows.as_mut().map(|fb| {
-            fb.entry(match_pair.place.clone()).or_insert(BorrowKind::Shallow)
+            fb.entry(match_pair.place.clone())
+                .or_insert(BorrowKind::Shallow)
         });
 
         // perform the test, branching to one of N blocks. For each of
@@ -1187,7 +1221,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         //      match input itself; it is up to us to create a place
         //      holding a `&` or `&mut` that we can then borrow).
 
-        let autoref = self.hir
+        let autoref = self
+            .hir
             .tcx()
             .all_pat_vars_are_implicit_refs_within_guards();
         if let Some(guard) = candidate.guard {
@@ -1297,24 +1332,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Append `AscribeUserType` statements onto the end of `block`
     /// for each ascription
-    fn ascribe_types<'pat>(
-        &mut self,
-        block: BasicBlock,
-        ascriptions: &[Ascription<'tcx>],
-    ) {
+    fn ascribe_types<'pat>(&mut self, block: BasicBlock, ascriptions: &[Ascription<'tcx>]) {
         for ascription in ascriptions {
             let source_info = self.source_info(ascription.span);
 
             debug!(
                 "adding user ascription at span {:?} of place {:?} and {:?}",
-                source_info.span,
-                ascription.source,
-                ascription.user_ty,
+                source_info.span, ascription.source, ascription.user_ty,
             );
 
-            let user_ty = box ascription.user_ty.clone().user_ty(
-                &mut self.canonical_user_type_annotations, source_info.span
-            );
+            let user_ty = box ascription
+                .user_ty
+                .clone()
+                .user_ty(&mut self.canonical_user_type_annotations, source_info.span);
             self.cfg.push(
                 block,
                 Statement {
@@ -1398,9 +1428,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // borrow of the whole match input. See additional
                     // discussion on rust-lang/rust#49870.
                     let borrow_kind = match borrow_kind {
-                        BorrowKind::Shared
-                        | BorrowKind::Shallow
-                        | BorrowKind::Unique => borrow_kind,
+                        BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => {
+                            borrow_kind
+                        }
                         BorrowKind::Mut { .. } => BorrowKind::Mut {
                             allow_two_phase_borrow: true,
                         },
@@ -1554,14 +1584,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ) {
         let tcx = self.hir.tcx();
 
-        debug!("add_fake_borrows pre_binding_blocks = {:?}, fake_borrows = {:?}",
-               pre_binding_blocks, fake_borrows);
+        debug!(
+            "add_fake_borrows pre_binding_blocks = {:?}, fake_borrows = {:?}",
+            pre_binding_blocks, fake_borrows
+        );
 
         let mut all_fake_borrows = Vec::with_capacity(fake_borrows.len());
 
         // Insert a Shallow borrow of the prefixes of any fake borrows.
-        for (place, borrow_kind) in fake_borrows
-        {
+        for (place, borrow_kind) in fake_borrows {
             {
                 let mut prefix_cursor = &place;
                 while let Place::Projection(box Projection { base, elem }) = prefix_cursor {
@@ -1597,7 +1628,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 start_block,
                 source_info,
                 &borrowed_input_temp,
-                borrowed_input
+                borrowed_input,
             );
             borrowed_input_temps.push(borrowed_input_temp);
         }
@@ -1613,13 +1644,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             for &(pre_binding_block, span) in pre_binding_blocks {
                 let pattern_source_info = self.source_info(span);
                 for temp in &borrowed_input_temps {
-                    self.cfg.push(pre_binding_block, Statement {
-                        source_info: pattern_source_info,
-                        kind: StatementKind::FakeRead(
-                            FakeReadCause::ForMatchGuard,
-                            temp.clone(),
-                        ),
-                    });
+                    self.cfg.push(
+                        pre_binding_block,
+                        Statement {
+                            source_info: pattern_source_info,
+                            kind: StatementKind::FakeRead(
+                                FakeReadCause::ForMatchGuard,
+                                temp.clone(),
+                            ),
+                        },
+                    );
                 }
             }
         }

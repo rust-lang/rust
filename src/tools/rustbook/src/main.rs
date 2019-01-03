@@ -6,10 +6,10 @@ extern crate clap;
 use std::env;
 use std::path::{Path, PathBuf};
 
-use clap::{App, ArgMatches, SubCommand, AppSettings};
+use clap::{App, AppSettings, ArgMatches, SubCommand};
 
-use mdbook::MDBook;
 use mdbook::errors::Result;
+use mdbook::MDBook;
 
 fn main() {
     let d_message = "-d, --dest-dir=[dest-dir]
@@ -18,15 +18,17 @@ fn main() {
 'A directory for your book{n}(Defaults to Current Directory when omitted)'";
 
     let matches = App::new("rustbook")
-                    .about("Build a book with mdBook")
-                    .author("Steve Klabnik <steve@steveklabnik.com>")
-                    .version(&*format!("v{}", crate_version!()))
-                    .setting(AppSettings::SubcommandRequired)
-                    .subcommand(SubCommand::with_name("build")
-                        .about("Build the book from the markdown files")
-                        .arg_from_usage(d_message)
-                        .arg_from_usage(dir_message))
-                    .get_matches();
+        .about("Build a book with mdBook")
+        .author("Steve Klabnik <steve@steveklabnik.com>")
+        .version(&*format!("v{}", crate_version!()))
+        .setting(AppSettings::SubcommandRequired)
+        .subcommand(
+            SubCommand::with_name("build")
+                .about("Build the book from the markdown files")
+                .arg_from_usage(d_message)
+                .arg_from_usage(dir_message),
+        )
+        .get_matches();
 
     // Check which subcomamnd the user ran...
     let res = match matches.subcommand() {

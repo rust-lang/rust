@@ -1,7 +1,7 @@
 #![allow(warnings)] // not used on emscripten
 
 use env;
-use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 use sync::atomic::{AtomicUsize, Ordering};
 
 static PORT: AtomicUsize = AtomicUsize::new(0);
@@ -13,8 +13,12 @@ pub fn next_test_ip4() -> SocketAddr {
 
 pub fn next_test_ip6() -> SocketAddr {
     let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
-    SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
-                                     port, 0, 0))
+    SocketAddr::V6(SocketAddrV6::new(
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
+        port,
+        0,
+        0,
+    ))
 }
 
 pub fn sa4(a: Ipv4Addr, p: u16) -> SocketAddr {
@@ -37,11 +41,24 @@ pub fn tsa<A: ToSocketAddrs>(a: A) -> Result<Vec<SocketAddr>, String> {
 // it is running in and assigns a port range based on it.
 fn base_port() -> u16 {
     let cwd = env::current_dir().unwrap();
-    let dirs = ["32-opt", "32-nopt",
-                "musl-64-opt", "cross-opt",
-                "64-opt", "64-nopt", "64-opt-vg", "64-debug-opt",
-                "all-opt", "snap3", "dist"];
-    dirs.iter().enumerate().find(|&(_, dir)| {
-        cwd.to_str().unwrap().contains(dir)
-    }).map(|p| p.0).unwrap_or(0) as u16 * 1000 + 19600
+    let dirs = [
+        "32-opt",
+        "32-nopt",
+        "musl-64-opt",
+        "cross-opt",
+        "64-opt",
+        "64-nopt",
+        "64-opt-vg",
+        "64-debug-opt",
+        "all-opt",
+        "snap3",
+        "dist",
+    ];
+    dirs.iter()
+        .enumerate()
+        .find(|&(_, dir)| cwd.to_str().unwrap().contains(dir))
+        .map(|p| p.0)
+        .unwrap_or(0) as u16
+        * 1000
+        + 19600
 }

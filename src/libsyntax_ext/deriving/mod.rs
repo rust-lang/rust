@@ -2,7 +2,7 @@
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver};
+use syntax::ext::base::{Annotatable, ExtCtxt, Resolver, SyntaxExtension};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ptr::P;
@@ -23,22 +23,21 @@ macro path_std($($x:tt)*) {
 
 pub mod bounds;
 pub mod clone;
-pub mod encodable;
-pub mod decodable;
-pub mod hash;
-pub mod debug;
-pub mod default;
 pub mod custom;
+pub mod debug;
+pub mod decodable;
+pub mod default;
+pub mod encodable;
+pub mod hash;
 
-#[path="cmp/partial_eq.rs"]
-pub mod partial_eq;
-#[path="cmp/eq.rs"]
+#[path = "cmp/eq.rs"]
 pub mod eq;
-#[path="cmp/partial_ord.rs"]
-pub mod partial_ord;
-#[path="cmp/ord.rs"]
+#[path = "cmp/ord.rs"]
 pub mod ord;
-
+#[path = "cmp/partial_eq.rs"]
+pub mod partial_eq;
+#[path = "cmp/partial_ord.rs"]
+pub mod partial_ord;
 
 pub mod generic;
 
@@ -96,10 +95,13 @@ fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
         "Decodable" => Some("RustcDecodable"),
         _ => None,
     } {
-        ecx.span_warn(sp,
-                      &format!("derive({}) is deprecated in favor of derive({})",
-                               name,
-                               replacement));
+        ecx.span_warn(
+            sp,
+            &format!(
+                "derive({}) is deprecated in favor of derive({})",
+                name, replacement
+            ),
+        );
     }
 }
 
@@ -111,8 +113,8 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
     let mut typaram = String::from(base);
     if let Annotatable::Item(ref item) = *item {
         match item.node {
-            ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
-            ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
+            ast::ItemKind::Struct(_, ast::Generics { ref params, .. })
+            | ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
                 for param in params {
                     match param.kind {
                         ast::GenericParamKind::Type { .. } => {
@@ -131,14 +133,22 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
 }
 
 /// Constructs an expression that calls an intrinsic
-fn call_intrinsic(cx: &ExtCtxt,
-                  mut span: Span,
-                  intrinsic: &str,
-                  args: Vec<P<ast::Expr>>)
-                  -> P<ast::Expr> {
-    if cx.current_expansion.mark.expn_info().unwrap().allow_internal_unstable {
+fn call_intrinsic(
+    cx: &ExtCtxt,
+    mut span: Span,
+    intrinsic: &str,
+    args: Vec<P<ast::Expr>>,
+) -> P<ast::Expr> {
+    if cx
+        .current_expansion
+        .mark
+        .expn_info()
+        .unwrap()
+        .allow_internal_unstable
+    {
         span = span.with_ctxt(cx.backtrace());
-    } else { // Avoid instability errors with user defined curstom derives, cc #36316
+    } else {
+        // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
         info.allow_internal_unstable = true;
         let mark = Mark::fresh(Mark::root());

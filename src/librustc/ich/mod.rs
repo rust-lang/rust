@@ -1,9 +1,10 @@
 //! ICH - Incremental Compilation Hash
 
-crate use rustc_data_structures::fingerprint::Fingerprint;
 pub use self::caching_source_map_view::CachingSourceMapView;
-pub use self::hcx::{StableHashingContextProvider, StableHashingContext, NodeIdHashingMode,
-                    hash_stable_trait_impls};
+pub use self::hcx::{
+    hash_stable_trait_impls, NodeIdHashingMode, StableHashingContext, StableHashingContextProvider,
+};
+crate use rustc_data_structures::fingerprint::Fingerprint;
 mod caching_source_map_view;
 mod hcx;
 
@@ -11,8 +12,8 @@ mod impls_cstore;
 mod impls_hir;
 mod impls_mir;
 mod impls_misc;
-mod impls_ty;
 mod impls_syntax;
+mod impls_ty;
 
 pub const ATTR_DIRTY: &str = "rustc_dirty";
 pub const ATTR_CLEAN: &str = "rustc_clean";

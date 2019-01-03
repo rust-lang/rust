@@ -7,10 +7,11 @@
 //! more 'stuff' here in the future.  It does not have a dependency on
 //! LLVM.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![feature(box_syntax)]
 #![feature(nll)]
 #![feature(rustc_attrs)]
@@ -20,7 +21,8 @@
 #[macro_use]
 extern crate bitflags;
 extern crate serialize;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

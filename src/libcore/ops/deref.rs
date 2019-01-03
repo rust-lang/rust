@@ -76,14 +76,18 @@ pub trait Deref {
 impl<T: ?Sized> Deref for &T {
     type Target = T;
 
-    fn deref(&self) -> &T { *self }
+    fn deref(&self) -> &T {
+        *self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 
-    fn deref(&self) -> &T { *self }
+    fn deref(&self) -> &T {
+        *self
+    }
 }
 
 /// Used for mutable dereferencing operations, like in `*v = 1;`.
@@ -165,7 +169,9 @@ pub trait DerefMut: Deref {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for &mut T {
-    fn deref_mut(&mut self) -> &mut T { *self }
+    fn deref_mut(&mut self) -> &mut T {
+        *self
+    }
 }
 
 /// Indicates that a struct can be used as a method receiver, without the

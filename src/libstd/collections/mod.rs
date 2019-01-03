@@ -410,24 +410,24 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
-#[doc(hidden)]
-pub use ops::Bound;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::collections::{BinaryHeap, BTreeMap, BTreeSet};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::collections::{LinkedList, VecDeque};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{binary_heap, btree_map, btree_set};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{linked_list, vec_deque};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::collections::{BTreeMap, BTreeSet, BinaryHeap};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::collections::{LinkedList, VecDeque};
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
+#[doc(hidden)]
+pub use ops::Bound;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_map::HashMap;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_set::HashSet;
 
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 pub use alloc_crate::collections::CollectionAllocErr;
 
 mod hash;

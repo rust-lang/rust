@@ -13,7 +13,7 @@ use borrow::{Borrow, BorrowMut};
 use cmp::Ordering;
 use convert::TryFrom;
 use fmt;
-use hash::{Hash, self};
+use hash::{self, Hash};
 use marker::Unsize;
 use slice::{Iter, IterMut};
 
@@ -61,10 +61,12 @@ impl fmt::Display for TryFromSliceError {
 }
 
 impl TryFromSliceError {
-    #[unstable(feature = "array_error_internals",
-           reason = "available through Error trait and this method should not \
-                     be exposed publicly",
-           issue = "0")]
+    #[unstable(
+        feature = "array_error_internals",
+        reason = "available through Error trait and this method should not \
+                  be exposed publicly",
+        issue = "0"
+    )]
     #[inline]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
@@ -78,13 +80,20 @@ macro_rules! __impl_slice_eq1 {
     };
     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs
+        where
+            A: PartialEq<B>,
+        {
             #[inline]
-            fn eq(&self, other: &$Rhs) -> bool { self[..] == other[..] }
+            fn eq(&self, other: &$Rhs) -> bool {
+                self[..] == other[..]
+            }
             #[inline]
-            fn ne(&self, other: &$Rhs) -> bool { self[..] != other[..] }
+            fn ne(&self, other: &$Rhs) -> bool {
+                self[..] != other[..]
+            }
         }
-    }
+    };
 }
 
 macro_rules! __impl_slice_eq2 {
@@ -95,13 +104,20 @@ macro_rules! __impl_slice_eq2 {
         __impl_slice_eq1!($Lhs, $Rhs, $Bound);
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, 'b, A: $Bound, B> PartialEq<$Lhs> for $Rhs where B: PartialEq<A> {
+        impl<'a, 'b, A: $Bound, B> PartialEq<$Lhs> for $Rhs
+        where
+            B: PartialEq<A>,
+        {
             #[inline]
-            fn eq(&self, other: &$Lhs) -> bool { self[..] == other[..] }
+            fn eq(&self, other: &$Lhs) -> bool {
+                self[..] == other[..]
+            }
             #[inline]
-            fn ne(&self, other: &$Lhs) -> bool { self[..] != other[..] }
+            fn ne(&self, other: &$Lhs) -> bool {
+                self[..] != other[..]
+            }
         }
-    }
+    };
 }
 
 // macro for implementing n-element array functions and operations
@@ -283,4 +299,4 @@ macro_rules! array_impl_default {
     };
 }
 
-array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}

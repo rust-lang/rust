@@ -23,7 +23,8 @@ pub enum Poll<T> {
 impl<T> Poll<T> {
     /// Change the ready value of this `Poll` with the closure provided
     pub fn map<U, F>(self, f: F) -> Poll<U>
-        where F: FnOnce(T) -> U
+    where
+        F: FnOnce(T) -> U,
     {
         match self {
             Poll::Ready(t) => Poll::Ready(f(t)),
@@ -50,7 +51,8 @@ impl<T> Poll<T> {
 impl<T, E> Poll<Result<T, E>> {
     /// Change the success value of this `Poll` with the closure provided
     pub fn map_ok<U, F>(self, f: F) -> Poll<Result<U, E>>
-        where F: FnOnce(T) -> U
+    where
+        F: FnOnce(T) -> U,
     {
         match self {
             Poll::Ready(Ok(t)) => Poll::Ready(Ok(f(t))),
@@ -61,7 +63,8 @@ impl<T, E> Poll<Result<T, E>> {
 
     /// Change the error value of this `Poll` with the closure provided
     pub fn map_err<U, F>(self, f: F) -> Poll<Result<T, U>>
-        where F: FnOnce(E) -> U
+    where
+        F: FnOnce(E) -> U,
     {
         match self {
             Poll::Ready(Ok(t)) => Poll::Ready(Ok(t)),

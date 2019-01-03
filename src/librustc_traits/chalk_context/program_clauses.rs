@@ -1,50 +1,35 @@
-use rustc::traits::{
-    WellFormed,
-    FromEnv,
-    DomainGoal,
-    GoalKind,
-    Clause,
-    Clauses,
-    ProgramClause,
-    ProgramClauseCategory,
-    Environment,
-};
-use rustc::ty;
-use rustc::ty::subst::{Substs, Subst};
+use super::ChalkInferenceContext;
+use crate::generic_types;
+use crate::lowering::Lower;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::traits::{
+    Clause, Clauses, DomainGoal, Environment, FromEnv, GoalKind, ProgramClause,
+    ProgramClauseCategory, WellFormed,
+};
+use rustc::ty;
+use rustc::ty::subst::{Subst, Substs};
 use rustc_target::spec::abi;
-use super::ChalkInferenceContext;
-use crate::lowering::Lower;
-use crate::generic_types;
 use std::iter;
 
 fn assemble_clauses_from_impls<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     trait_def_id: DefId,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     tcx.for_each_impl(trait_def_id, |impl_def_id| {
-        clauses.extend(
-            tcx.program_clauses_for(impl_def_id)
-                .into_iter()
-                .cloned()
-        );
+        clauses.extend(tcx.program_clauses_for(impl_def_id).into_iter().cloned());
     });
 }
 
 fn assemble_clauses_from_assoc_ty_values<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     trait_def_id: DefId,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     tcx.for_each_impl(trait_def_id, |impl_def_id| {
         for def_id in tcx.associated_item_def_ids(impl_def_id).iter() {
-            clauses.extend(
-                tcx.program_clauses_for(*def_id)
-                    .into_iter()
-                    .cloned()
-            );
+            clauses.extend(tcx.program_clauses_for(*def_id).into_iter().cloned());
         }
     });
 }
@@ -53,7 +38,7 @@ fn assemble_builtin_sized_impls<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     sized_def_id: DefId,
     ty: ty::Ty<'tcx>,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[ty::Ty<'tcx>]| {
         let clause = ProgramClause {
@@ -62,9 +47,11 @@ fn assemble_builtin_sized_impls<'tcx>(
                     def_id: sized_def_id,
                     substs: tcx.mk_substs_trait(ty, &[]),
                 },
-            }.lower(),
+            }
+            .lower(),
             hypotheses: tcx.mk_goals(
-                nested.iter()
+                nested
+                    .iter()
                     .cloned()
                     .map(|nested_ty| ty::TraitRef {
                         def_id: sized_def_id,
@@ -72,7 +59,7 @@ fn assemble_builtin_sized_impls<'tcx>(
                     })
                     .map(|trait_ref| ty::TraitPredicate { trait_ref })
                     .map(|pred| GoalKind::DomainGoal(pred.lower()))
-                    .map(|goal_kind| tcx.mk_goal(goal_kind))
+                    .map(|goal_kind| tcx.mk_goal(goal_kind)),
             ),
             category: ProgramClauseCategory::Other,
         };
@@ -82,17 +69,20 @@ fn assemble_builtin_sized_impls<'tcx>(
 
     match &ty.sty {
         // Non parametric primitive types.
-        ty::Bool |
-        ty::Char |
-        ty::Int(..) |
-        ty::Uint(..) |
-        ty::Float(..) |
-        ty::Error |
-        ty::Never => push_builtin_impl(ty, &[]),
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Error
+        | ty::Never => push_builtin_impl(ty, &[]),
 
         // These ones are always `Sized`.
         &ty::Array(_, length) => {
-            push_builtin_impl(tcx.mk_ty(ty::Array(generic_types::bound(tcx, 0), length)), &[]);
+            push_builtin_impl(
+                tcx.mk_ty(ty::Array(generic_types::bound(tcx, 0), length)),
+                &[],
+            );
         }
         ty::RawPtr(ptr) => {
             push_builtin_impl(generic_types::raw_ptr(tcx, ptr.mutbl), &[]);
@@ -107,7 +97,7 @@ fn assemble_builtin_sized_impls<'tcx>(
                 fn_ptr.inputs_and_output.len(),
                 fn_ptr.variadic,
                 fn_ptr.unsafety,
-                fn_ptr.abi
+                fn_ptr.abi,
             );
             push_builtin_impl(fn_ptr, &[]);
         }
@@ -131,7 +121,8 @@ fn assemble_builtin_sized_impls<'tcx>(
         ty::Adt(adt_def, _) => {
             let substs = Substs::bound_vars_for_item(tcx, adt_def.did);
             let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
-            let sized_constraint = adt_def.sized_constraint(tcx)
+            let sized_constraint = adt_def
+                .sized_constraint(tcx)
                 .iter()
                 .map(|ty| ty.subst(tcx, substs))
                 .collect::<Vec<_>>();
@@ -154,25 +145,18 @@ fn assemble_builtin_sized_impls<'tcx>(
         }
 
         // The `Sized` bound can only come from the environment.
-        ty::Param(..) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) => (),
+        ty::Param(..) | ty::Placeholder(..) | ty::UnnormalizedProjection(..) => (),
 
         // Definitely not `Sized`.
-        ty::Foreign(..) |
-        ty::Str |
-        ty::Slice(..) |
-        ty::Dynamic(..) |
-        ty::Opaque(..) => (),
+        ty::Foreign(..) | ty::Str | ty::Slice(..) | ty::Dynamic(..) | ty::Opaque(..) => (),
 
-        ty::Bound(..) |
-        ty::GeneratorWitness(..) => bug!("unexpected type {:?}", ty),
+        ty::Bound(..) | ty::GeneratorWitness(..) => bug!("unexpected type {:?}", ty),
     }
 }
 
 fn wf_clause_for_raw_ptr<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    mutbl: hir::Mutability
+    mutbl: hir::Mutability,
 ) -> Clauses<'tcx> {
     let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
 
@@ -192,7 +176,7 @@ fn wf_clause_for_fn_ptr<'tcx>(
     arity_and_output: usize,
     variadic: bool,
     unsafety: hir::Unsafety,
-    abi: abi::Abi
+    abi: abi::Abi,
 ) -> Clauses<'tcx> {
     let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, variadic, unsafety, abi);
 
@@ -221,14 +205,15 @@ fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
         substs: tcx.mk_substs_trait(ty, ty::List::empty()),
     };
     let sized_implemented: DomainGoal = ty::TraitPredicate {
-        trait_ref: sized_implemented
-    }.lower();
+        trait_ref: sized_implemented,
+    }
+    .lower();
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(slice_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))
-        ),
+        hypotheses: tcx.mk_goals(iter::once(
+            tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)),
+        )),
         category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
@@ -239,7 +224,7 @@ fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
 
 fn wf_clause_for_array<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    length: &'tcx ty::Const<'tcx>
+    length: &'tcx ty::Const<'tcx>,
 ) -> Clauses<'tcx> {
     let ty = generic_types::bound(tcx, 0);
     let array_ty = tcx.mk_ty(ty::Array(ty, length));
@@ -253,14 +238,15 @@ fn wf_clause_for_array<'tcx>(
         substs: tcx.mk_substs_trait(ty, ty::List::empty()),
     };
     let sized_implemented: DomainGoal = ty::TraitPredicate {
-        trait_ref: sized_implemented
-    }.lower();
+        trait_ref: sized_implemented,
+    }
+    .lower();
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(array_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))
-        ),
+        hypotheses: tcx.mk_goals(iter::once(
+            tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)),
+        )),
         category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
@@ -269,10 +255,7 @@ fn wf_clause_for_array<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn wf_clause_for_tuple<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    arity: usize
-) -> Clauses<'tcx> {
+fn wf_clause_for_tuple<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>, arity: usize) -> Clauses<'tcx> {
     let type_list = generic_types::type_list(tcx, arity);
     let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
 
@@ -283,7 +266,8 @@ fn wf_clause_for_tuple<'tcx>(
 
     // If `arity == 0` (i.e. the unit type) or `arity == 1`, this list of
     // hypotheses is actually empty.
-    let sized_implemented = type_list[0 .. std::cmp::max(arity, 1) - 1].iter()
+    let sized_implemented = type_list[0..std::cmp::max(arity, 1) - 1]
+        .iter()
         .map(|ty| ty::TraitRef {
             def_id: sized_trait,
             substs: tcx.mk_substs_trait(*ty, ty::List::empty()),
@@ -294,9 +278,7 @@ fn wf_clause_for_tuple<'tcx>(
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(tuple_ty)),
         hypotheses: tcx.mk_goals(
-            sized_implemented.map(|domain_goal| {
-                tcx.mk_goal(GoalKind::DomainGoal(domain_goal))
-            })
+            sized_implemented.map(|domain_goal| tcx.mk_goal(GoalKind::DomainGoal(domain_goal))),
         ),
         category: ProgramClauseCategory::WellFormed,
     };
@@ -313,18 +295,10 @@ fn wf_clause_for_tuple<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn wf_clause_for_ref<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    mutbl: hir::Mutability
-) -> Clauses<'tcx> {
-    let region = tcx.mk_region(
-        ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
-    );
+fn wf_clause_for_ref<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>, mutbl: hir::Mutability) -> Clauses<'tcx> {
+    let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0)));
     let ty = generic_types::bound(tcx, 1);
-    let ref_ty = tcx.mk_ref(region, ty::TypeAndMut {
-        ty,
-        mutbl,
-    });
+    let ref_ty = tcx.mk_ref(region, ty::TypeAndMut { ty, mutbl });
 
     let _outlives: DomainGoal = ty::OutlivesPredicate(ty, region).lower();
     let wf_clause = ProgramClause {
@@ -343,10 +317,7 @@ fn wf_clause_for_ref<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn wf_clause_for_fn_def<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    def_id: DefId
-) -> Clauses<'tcx> {
+fn wf_clause_for_fn_def<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     let fn_def = generic_types::fn_def(tcx, def_id);
 
     let wf_clause = ProgramClause {
@@ -367,8 +338,8 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
         environment: &Environment<'tcx>,
         goal: &DomainGoal<'tcx>,
     ) -> Vec<Clause<'tcx>> {
-        use rustc::traits::WhereClause::*;
         use rustc::infer::canonical::OriginalQueryValues;
+        use rustc::traits::WhereClause::*;
 
         let goal = self.infcx.resolve_type_vars_if_possible(goal);
 
@@ -382,18 +353,14 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
 
                 let mut clauses = vec![];
 
-                assemble_clauses_from_impls(
-                    self.infcx.tcx,
-                    trait_predicate.def_id(),
-                    &mut clauses
-                );
+                assemble_clauses_from_impls(self.infcx.tcx, trait_predicate.def_id(), &mut clauses);
 
                 if Some(trait_predicate.def_id()) == self.infcx.tcx.lang_items().sized_trait() {
                     assemble_builtin_sized_impls(
                         self.infcx.tcx,
                         trait_predicate.def_id(),
                         trait_predicate.self_ty(),
-                        &mut clauses
+                        &mut clauses,
                     );
                 }
 
@@ -417,13 +384,13 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                 // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
                 // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
 
-                let clauses = self.infcx.tcx.program_clauses_for(
-                    projection_predicate.projection_ty.item_def_id
-                ).into_iter()
-
+                let clauses = self
+                    .infcx
+                    .tcx
+                    .program_clauses_for(projection_predicate.projection_ty.item_def_id)
+                    .into_iter()
                     // only select `ProjectionEq-Placeholder` and `ProjectionEq-Normalize`
                     .filter(|clause| clause.category() == ProgramClauseCategory::Other)
-
                     .cloned()
                     .collect::<Vec<_>>();
 
@@ -452,12 +419,12 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
 
             DomainGoal::WellFormed(WellFormed::Trait(trait_predicate)) => {
                 // These come from -- the trait decl (rule `WellFormed-TraitRef`).
-                self.infcx.tcx.program_clauses_for(trait_predicate.def_id())
+                self.infcx
+                    .tcx
+                    .program_clauses_for(trait_predicate.def_id())
                     .into_iter()
-
                     // only select `WellFormed-TraitRef`
                     .filter(|clause| clause.category() == ProgramClauseCategory::WellFormed)
-
                     .cloned()
                     .collect()
             }
@@ -469,21 +436,19 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                 // * custom rules for built-in types
                 // * the type definition otherwise (rule `WellFormed-Type`)
                 let clauses = match ty.sty {
-                    ty::Projection(data) => {
-                        self.infcx.tcx.program_clauses_for(data.item_def_id)
-                    }
+                    ty::Projection(data) => self.infcx.tcx.program_clauses_for(data.item_def_id),
 
                     // These types are always WF.
-                    ty::Bool |
-                    ty::Char |
-                    ty::Int(..) |
-                    ty::Uint(..) |
-                    ty::Float(..) |
-                    ty::Str |
-                    ty::Param(..) |
-                    ty::Placeholder(..) |
-                    ty::Error |
-                    ty::Never => {
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(..)
+                    | ty::Uint(..)
+                    | ty::Float(..)
+                    | ty::Str
+                    | ty::Param(..)
+                    | ty::Placeholder(..)
+                    | ty::Error
+                    | ty::Never => {
                         let wf_clause = ProgramClause {
                             goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
                             hypotheses: ty::List::empty(),
@@ -505,7 +470,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                             fn_ptr.inputs_and_output.len(),
                             fn_ptr.variadic,
                             fn_ptr.unsafety,
-                            fn_ptr.abi
+                            fn_ptr.abi,
                         )
                     }
 
@@ -516,10 +481,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     ty::Array(_, length) => wf_clause_for_array(self.infcx.tcx, length),
 
                     // WF if all types but the last one are `Sized`.
-                    ty::Tuple(types) => wf_clause_for_tuple(
-                        self.infcx.tcx,
-                        types.len()
-                    ),
+                    ty::Tuple(types) => wf_clause_for_tuple(self.infcx.tcx, types.len()),
 
                     // WF if `sub_ty` outlives `region`.
                     ty::Ref(_, _, mutbl) => wf_clause_for_ref(self.infcx.tcx, mutbl),
@@ -531,23 +493,20 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                         ty::List::empty()
                     }
 
-                    ty::Adt(def, ..) => {
-                        self.infcx.tcx.program_clauses_for(def.did)
-                    }
+                    ty::Adt(def, ..) => self.infcx.tcx.program_clauses_for(def.did),
 
                     // FIXME: these are probably wrong
-                    ty::Foreign(def_id) |
-                    ty::Closure(def_id, ..) |
-                    ty::Generator(def_id, ..) |
-                    ty::Opaque(def_id, ..) => {
-                        self.infcx.tcx.program_clauses_for(def_id)
-                    }
+                    ty::Foreign(def_id)
+                    | ty::Closure(def_id, ..)
+                    | ty::Generator(def_id, ..)
+                    | ty::Opaque(def_id, ..) => self.infcx.tcx.program_clauses_for(def_id),
 
                     // Artificially trigger an ambiguity.
                     ty::Infer(..) => {
                         let tcx = self.infcx.tcx;
                         let types = [tcx.types.i32, tcx.types.u32, tcx.types.f32, tcx.types.f64];
-                        let clauses = types.iter()
+                        let clauses = types
+                            .iter()
                             .cloned()
                             .map(|ty| ProgramClause {
                                 goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
@@ -558,14 +517,13 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                         tcx.mk_clauses(clauses)
                     }
 
-                    ty::GeneratorWitness(..) |
-                    ty::UnnormalizedProjection(..) |
-                    ty::Bound(..) => {
+                    ty::GeneratorWitness(..) | ty::UnnormalizedProjection(..) | ty::Bound(..) => {
                         bug!("unexpected type {:?}", ty)
                     }
                 };
 
-                clauses.into_iter()
+                clauses
+                    .into_iter()
                     .filter(|clause| clause.category() == ProgramClauseCategory::WellFormed)
                     .cloned()
                     .collect()
@@ -594,8 +552,11 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
 
                 assemble_clauses_from_assoc_ty_values(
                     self.infcx.tcx,
-                    projection_predicate.projection_ty.trait_ref(self.infcx.tcx).def_id,
-                    &mut clauses
+                    projection_predicate
+                        .projection_ty
+                        .trait_ref(self.infcx.tcx)
+                        .def_id,
+                    &mut clauses,
                 );
 
                 clauses
@@ -603,14 +564,20 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
         };
 
         debug!("program_clauses: clauses = {:?}", clauses);
-        debug!("program_clauses: adding clauses from environment = {:?}", environment);
+        debug!(
+            "program_clauses: adding clauses from environment = {:?}",
+            environment
+        );
 
         let mut _orig_query_values = OriginalQueryValues::default();
-        let canonical_environment = self.infcx.canonicalize_query(
-            environment,
-            &mut _orig_query_values
-        ).value;
-        let env_clauses = self.infcx.tcx.program_clauses_for_env(canonical_environment);
+        let canonical_environment = self
+            .infcx
+            .canonicalize_query(environment, &mut _orig_query_values)
+            .value;
+        let env_clauses = self
+            .infcx
+            .tcx
+            .program_clauses_for_env(canonical_environment);
 
         debug!("program_clauses: env_clauses = {:?}", env_clauses);
 

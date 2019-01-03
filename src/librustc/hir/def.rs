@@ -1,10 +1,10 @@
+use hir;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, DefIdMap};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax_pos::Span;
-use hir;
 use ty;
+use util::nodemap::{DefIdMap, NodeMap};
 
 use self::Namespace::*;
 
@@ -52,7 +52,10 @@ pub enum Def {
     AssociatedExistential(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
-    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
+    SelfTy(
+        Option<DefId>, /* trait */
+        Option<DefId>, /* impl */
+    ),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
@@ -66,9 +69,11 @@ pub enum Def {
     AssociatedConst(DefId),
 
     Local(ast::NodeId),
-    Upvar(ast::NodeId,  // `NodeId` of closed over local
-          usize,        // index in the `freevars` list of the closure
-          ast::NodeId), // expr node that creates the closure
+    Upvar(
+        ast::NodeId, // `NodeId` of closed over local
+        usize,       // index in the `freevars` list of the closure
+        ast::NodeId,
+    ), // expr node that creates the closure
     Label(ast::NodeId),
 
     // Macro namespace
@@ -101,12 +106,20 @@ pub struct PathResolution {
 
 impl PathResolution {
     pub fn new(def: Def) -> Self {
-        PathResolution { base_def: def, unresolved_segments: 0 }
+        PathResolution {
+            base_def: def,
+            unresolved_segments: 0,
+        }
     }
 
     pub fn with_unresolved_segments(def: Def, mut unresolved_segments: usize) -> Self {
-        if def == Def::Err { unresolved_segments = 0 }
-        PathResolution { base_def: def, unresolved_segments: unresolved_segments }
+        if def == Def::Err {
+            unresolved_segments = 0
+        }
+        PathResolution {
+            base_def: def,
+            unresolved_segments: unresolved_segments,
+        }
     }
 
     #[inline]
@@ -187,7 +200,7 @@ impl<T> PerNS<Option<T>> {
     }
 
     /// Returns an iterator over the items which are `Some`.
-    pub fn present_items(self) -> impl Iterator<Item=T> {
+    pub fn present_items(self) -> impl Iterator<Item = T> {
         use std::iter::once;
 
         once(self.type_ns)
@@ -253,34 +266,43 @@ impl NonMacroAttrKind {
 
 impl Def {
     pub fn def_id(&self) -> DefId {
-        self.opt_def_id().unwrap_or_else(|| {
-            bug!("attempted .def_id() on invalid def: {:?}", self)
-        })
+        self.opt_def_id()
+            .unwrap_or_else(|| bug!("attempted .def_id() on invalid def: {:?}", self))
     }
 
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
-            Def::TyAlias(id) | Def::TraitAlias(id) |
-            Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
-            Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) => {
-                Some(id)
-            }
+            Def::Fn(id)
+            | Def::Mod(id)
+            | Def::Static(id, _)
+            | Def::Variant(id)
+            | Def::VariantCtor(id, ..)
+            | Def::Enum(id)
+            | Def::TyAlias(id)
+            | Def::TraitAlias(id)
+            | Def::AssociatedTy(id)
+            | Def::TyParam(id)
+            | Def::Struct(id)
+            | Def::StructCtor(id, ..)
+            | Def::Union(id)
+            | Def::Trait(id)
+            | Def::Method(id)
+            | Def::Const(id)
+            | Def::AssociatedConst(id)
+            | Def::Macro(id, ..)
+            | Def::Existential(id)
+            | Def::AssociatedExistential(id)
+            | Def::ForeignTy(id) => Some(id),
 
-            Def::Local(..) |
-            Def::Upvar(..) |
-            Def::Label(..)  |
-            Def::PrimTy(..) |
-            Def::SelfTy(..) |
-            Def::SelfCtor(..) |
-            Def::ToolMod |
-            Def::NonMacroAttr(..) |
-            Def::Err => {
-                None
-            }
+            Def::Local(..)
+            | Def::Upvar(..)
+            | Def::Label(..)
+            | Def::PrimTy(..)
+            | Def::SelfTy(..)
+            | Def::SelfCtor(..)
+            | Def::ToolMod
+            | Def::NonMacroAttr(..)
+            | Def::Err => None,
         }
     }
 
@@ -326,8 +348,12 @@ impl Def {
 
     pub fn article(&self) -> &'static str {
         match *self {
-            Def::AssociatedTy(..) | Def::AssociatedConst(..) | Def::AssociatedExistential(..) |
-            Def::Enum(..) | Def::Existential(..) | Def::Err => "an",
+            Def::AssociatedTy(..)
+            | Def::AssociatedConst(..)
+            | Def::AssociatedExistential(..)
+            | Def::Enum(..)
+            | Def::Existential(..)
+            | Def::Err => "an",
             Def::Macro(.., macro_kind) => macro_kind.article(),
             _ => "a",
         }

@@ -1,9 +1,9 @@
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
-use traits::query::Fallible;
 use hir::def_id::DefId;
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use mir::ProjectionKind;
-use ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use traits::query::Fallible;
 use ty::subst::UserSubsts;
+use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct AscribeUserType<'tcx> {
@@ -22,7 +22,13 @@ impl<'tcx> AscribeUserType<'tcx> {
         user_substs: UserSubsts<'tcx>,
         projs: &'tcx ty::List<ProjectionKind<'tcx>>,
     ) -> Self {
-        Self { mir_ty, variance, def_id, user_substs, projs }
+        Self {
+            mir_ty,
+            variance,
+            def_id,
+            user_substs,
+            projs,
+        }
     }
 }
 

@@ -1,16 +1,16 @@
 use ast::{self, Ident};
-use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
-use source_map::{SourceMap, FilePathMapping};
-use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
-use parse::{token, ParseSess};
-use symbol::{Symbol, keywords};
 use core::unicode::property::Pattern_White_Space;
+use errors::{Applicability, Diagnostic, DiagnosticBuilder, FatalError};
+use parse::{token, ParseSess};
+use source_map::{FilePathMapping, SourceMap};
+use symbol::{keywords, Symbol};
+use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
 
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::char;
 use std::iter;
 use std::mem::replace;
-use rustc_data_structures::sync::Lrc;
 
 pub mod comments;
 mod tokentrees;
@@ -95,7 +95,10 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+    fn next_token(&mut self) -> TokenAndSpan
+    where
+        Self: Sized,
+    {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
@@ -145,8 +148,10 @@ impl<'a> StringReader<'a> {
         err.span_label(self.mk_sp(pos, pos), "unterminated raw string");
 
         if hash_count > 0 {
-            err.note(&format!("this raw string should be terminated with `\"{}`",
-                              "#".repeat(hash_count as usize)));
+            err.note(&format!(
+                "this raw string should be terminated with `\"{}`",
+                "#".repeat(hash_count as usize)
+            ));
         }
 
         err.emit();
@@ -184,21 +189,27 @@ impl<'a> StringReader<'a> {
     }
 
     /// For comments.rs, which hackily pokes into next_pos and ch
-    fn new_raw(sess: &'a ParseSess,
-               source_file: Lrc<syntax_pos::SourceFile>,
-               override_span: Option<Span>) -> Self {
+    fn new_raw(
+        sess: &'a ParseSess,
+        source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>,
+    ) -> Self {
         let mut sr = StringReader::new_raw_internal(sess, source_file, override_span);
         sr.bump();
 
         sr
     }
 
-    fn new_raw_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
-        override_span: Option<Span>) -> Self
-    {
+    fn new_raw_internal(
+        sess: &'a ParseSess,
+        source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>,
+    ) -> Self {
         if source_file.src.is_none() {
-            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
-                                              source_file.name));
+            sess.span_diagnostic.bug(&format!(
+                "Cannot lex source_file without source: {}",
+                source_file.name
+            ));
         }
 
         let src = (*source_file.src.as_ref().unwrap()).clone();
@@ -226,9 +237,11 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn new(sess: &'a ParseSess,
-               source_file: Lrc<syntax_pos::SourceFile>,
-               override_span: Option<Span>) -> Self {
+    pub fn new(
+        sess: &'a ParseSess,
+        source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>,
+    ) -> Self {
         let mut sr = StringReader::new_raw(sess, source_file, override_span);
         if sr.advance_token().is_err() {
             sr.emit_fatal_errors();
@@ -238,10 +251,12 @@ impl<'a> StringReader<'a> {
         sr
     }
 
-    pub fn new_without_err(sess: &'a ParseSess,
-                           source_file: Lrc<syntax_pos::SourceFile>,
-                           override_span: Option<Span>,
-                           prepend_error_text: &str) -> Result<Self, ()> {
+    pub fn new_without_err(
+        sess: &'a ParseSess,
+        source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>,
+        prepend_error_text: &str,
+    ) -> Result<Self, ()> {
         let mut sr = StringReader::new_raw(sess, source_file, override_span);
         if sr.advance_token().is_err() {
             eprintln!("{}", prepend_error_text);
@@ -251,9 +266,11 @@ impl<'a> StringReader<'a> {
         Ok(sr)
     }
 
-    pub fn new_or_buffered_errs(sess: &'a ParseSess,
-                                source_file: Lrc<syntax_pos::SourceFile>,
-                                override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
+    pub fn new_or_buffered_errs(
+        sess: &'a ParseSess,
+        source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>,
+    ) -> Result<Self, Vec<Diagnostic>> {
         let mut sr = StringReader::new_raw(sess, source_file, override_span);
         if sr.advance_token().is_err() {
             Err(sr.buffer_fatal_errors())
@@ -302,7 +319,6 @@ impl<'a> StringReader<'a> {
         self.sess.span_diagnostic.span_err(sp, m)
     }
 
-
     /// Report a fatal error spanning [`from_pos`, `to_pos`).
     fn fatal_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) -> FatalError {
         self.fatal_span(self.mk_sp(from_pos, to_pos), m)
@@ -336,20 +352,31 @@ impl<'a> StringReader<'a> {
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
 
-    fn struct_span_fatal(&self, from_pos: BytePos, to_pos: BytePos, m: &str)
-        -> DiagnosticBuilder<'a>
-    {
-        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
+    fn struct_span_fatal(
+        &self,
+        from_pos: BytePos,
+        to_pos: BytePos,
+        m: &str,
+    ) -> DiagnosticBuilder<'a> {
+        self.sess
+            .span_diagnostic
+            .struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
     }
 
-    fn struct_fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char)
-        -> DiagnosticBuilder<'a>
-    {
+    fn struct_fatal_span_char(
+        &self,
+        from_pos: BytePos,
+        to_pos: BytePos,
+        m: &str,
+        c: char,
+    ) -> DiagnosticBuilder<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         Self::push_escaped_char_for_msg(&mut m, c);
 
-        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
+        self.sess
+            .span_diagnostic
+            .struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -361,14 +388,20 @@ impl<'a> StringReader<'a> {
         self.err_span_(from_pos, to_pos, &m[..]);
     }
 
-    fn struct_err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char)
-        -> DiagnosticBuilder<'a>
-    {
+    fn struct_err_span_char(
+        &self,
+        from_pos: BytePos,
+        to_pos: BytePos,
+        m: &str,
+        c: char,
+    ) -> DiagnosticBuilder<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         Self::push_escaped_char_for_msg(&mut m, c);
 
-        self.sess.span_diagnostic.struct_span_err(self.mk_sp(from_pos, to_pos), &m[..])
+        self.sess
+            .span_diagnostic
+            .struct_span_err(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -392,10 +425,8 @@ impl<'a> StringReader<'a> {
             None => {
                 if self.is_eof() {
                     self.peek_tok = token::Eof;
-                    let (real, raw) = self.mk_sp_and_raw(
-                        self.source_file.end_pos,
-                        self.source_file.end_pos,
-                    );
+                    let (real, raw) =
+                        self.mk_sp_and_raw(self.source_file.end_pos, self.source_file.end_pos);
                     self.peek_span = real;
                     self.peek_span_src_raw = raw;
                 } else {
@@ -420,7 +451,8 @@ impl<'a> StringReader<'a> {
     /// up to but excluding `self.pos`, meaning the slice does not include
     /// the character `self.ch`.
     fn with_str_from<T, F>(&self, start: BytePos, f: F) -> T
-        where F: FnOnce(&str) -> T
+    where
+        F: FnOnce(&str) -> T,
     {
         self.with_str_from_to(start, self.pos, f)
     }
@@ -442,7 +474,8 @@ impl<'a> StringReader<'a> {
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `end`.
     fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T
-        where F: FnOnce(&str) -> T
+    where
+        F: FnOnce(&str) -> T,
     {
         f(&self.src[self.src_index(start)..self.src_index(end)])
     }
@@ -462,16 +495,17 @@ impl<'a> StringReader<'a> {
         }
         return s.into();
 
-        fn translate_crlf_(rdr: &StringReader,
-                           start: BytePos,
-                           s: &str,
-                           mut j: usize,
-                           mut chars: iter::Peekable<impl Iterator<Item = (usize, char)>>,
-                           errmsg: &str)
-                           -> String {
+        fn translate_crlf_(
+            rdr: &StringReader,
+            start: BytePos,
+            s: &str,
+            mut j: usize,
+            mut chars: iter::Peekable<impl Iterator<Item = (usize, char)>>,
+            errmsg: &str,
+        ) -> String {
             let mut buf = String::with_capacity(s.len());
             // Skip first CR
-            buf.push_str(&s[.. j - 1]);
+            buf.push_str(&s[..j - 1]);
             while let Some((i, ch)) = chars.next() {
                 if ch == '\r' {
                     if j < i {
@@ -555,14 +589,21 @@ impl<'a> StringReader<'a> {
 
         self.with_str_from(start, |string| {
             if string == "_" {
-                self.sess.span_diagnostic
-                    .struct_span_warn(self.mk_sp(start, self.pos),
-                                      "underscore literal suffix is not allowed")
-                    .warn("this was previously accepted by the compiler but is \
-                          being phased out; it will become a hard error in \
-                          a future release!")
-                    .note("for more information, see issue #42326 \
-                          <https://github.com/rust-lang/rust/issues/42326>")
+                self.sess
+                    .span_diagnostic
+                    .struct_span_warn(
+                        self.mk_sp(start, self.pos),
+                        "underscore literal suffix is not allowed",
+                    )
+                    .warn(
+                        "this was previously accepted by the compiler but is \
+                         being phased out; it will become a hard error in \
+                         a future release!",
+                    )
+                    .note(
+                        "for more information, see issue #42326 \
+                         <https://github.com/rust-lang/rust/issues/42326>",
+                    )
                     .emit();
                 None
             } else {
@@ -577,7 +618,9 @@ impl<'a> StringReader<'a> {
         if let Some(c) = self.ch {
             if c.is_whitespace() {
                 let msg = "called consume_any_line_comment, but there was whitespace";
-                self.sess.span_diagnostic.span_err(self.mk_sp(self.pos, self.pos), msg);
+                self.sess
+                    .span_diagnostic
+                    .span_err(self.mk_sp(self.pos, self.pos), msg);
             }
         }
 
@@ -599,9 +642,11 @@ impl<'a> StringReader<'a> {
                                     // CRLF
                                     break;
                                 } else if doc_comment {
-                                    self.err_span_(self.pos,
-                                                   self.next_pos,
-                                                   "bare CR not allowed in doc-comment");
+                                    self.err_span_(
+                                        self.pos,
+                                        self.next_pos,
+                                        "bare CR not allowed in doc-comment",
+                                    );
                                 }
                             }
                             _ => (),
@@ -639,7 +684,6 @@ impl<'a> StringReader<'a> {
             }
         } else if self.ch_is('#') {
             if self.nextch_is('!') {
-
                 // Parse an inner attribute.
                 if self.nextnextch_is('[') {
                     return None;
@@ -648,7 +692,10 @@ impl<'a> StringReader<'a> {
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
                 let smap = SourceMap::new(FilePathMapping::empty());
-                smap.files.borrow_mut().source_files.push(self.source_file.clone());
+                smap.files
+                    .borrow_mut()
+                    .source_files
+                    .push(self.source_file.clone());
                 let loc = smap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
                 if loc.line == 1 && loc.col == CharPos(0) {
@@ -679,7 +726,7 @@ impl<'a> StringReader<'a> {
                 let c = self.scan_comment();
                 debug!("scanning a comment {:?}", c);
                 c
-            },
+            }
             c if is_pattern_whitespace(Some(c)) => {
                 let start_bpos = self.pos;
                 while is_pattern_whitespace(self.ch) {
@@ -736,9 +783,11 @@ impl<'a> StringReader<'a> {
             // but comments with only "*"s between two "/"s are not
             let tok = if is_block_doc_comment(string) {
                 let string = if has_cr {
-                    self.translate_crlf(start_bpos,
-                                        string,
-                                        "bare CR not allowed in block doc-comment")
+                    self.translate_crlf(
+                        start_bpos,
+                        string,
+                        "bare CR not allowed in block doc-comment",
+                    )
                 } else {
                     string.into()
                 };
@@ -777,9 +826,11 @@ impl<'a> StringReader<'a> {
                     // check that the hypothetical digit is actually
                     // in range for the true radix
                     if c.unwrap().to_digit(real_radix).is_none() {
-                        self.err_span_(self.pos,
-                                       self.next_pos,
-                                       &format!("invalid digit for a base {} literal", real_radix));
+                        self.err_span_(
+                            self.pos,
+                            self.next_pos,
+                            &format!("invalid digit for a base {} literal", real_radix),
+                        );
                     }
                     len += 1;
                     self.bump();
@@ -812,9 +863,7 @@ impl<'a> StringReader<'a> {
                     base = 16;
                     self.scan_digits(16, 16)
                 }
-                '0'..='9' | '_' | '.' | 'e' | 'E' => {
-                    self.scan_digits(10, 10) + 1
-                }
+                '0'..='9' | '_' | '.' | 'e' | 'E' => self.scan_digits(10, 10) + 1,
                 _ => {
                     // just a 0
                     return token::Integer(self.name_from(start_bpos));
@@ -835,8 +884,7 @@ impl<'a> StringReader<'a> {
         // might be a float, but don't be greedy if this is actually an
         // integer literal followed by field/method access or a range pattern
         // (`0..2` and `12.foo()`)
-        if self.ch_is('.') && !self.nextch_is('.') &&
-           !ident_start(self.nextch()) {
+        if self.ch_is('.') && !self.nextch_is('.') && !ident_start(self.nextch()) {
             // might have stuff after the ., and if it does, it needs to start
             // with a number
             self.bump();
@@ -872,25 +920,32 @@ impl<'a> StringReader<'a> {
         for _ in 0..n_digits {
             if self.is_eof() {
                 let last_bpos = self.pos;
-                self.fatal_span_(start_bpos,
-                                 last_bpos,
-                                 "unterminated numeric character escape").raise();
+                self.fatal_span_(
+                    start_bpos,
+                    last_bpos,
+                    "unterminated numeric character escape",
+                )
+                .raise();
             }
             if self.ch_is(delim) {
                 let last_bpos = self.pos;
-                self.err_span_(start_bpos,
-                               last_bpos,
-                               "numeric character escape is too short");
+                self.err_span_(
+                    start_bpos,
+                    last_bpos,
+                    "numeric character escape is too short",
+                );
                 valid = false;
                 break;
             }
             let c = self.ch.unwrap_or('\x00');
             accum_int *= 16;
             accum_int += c.to_digit(16).unwrap_or_else(|| {
-                self.err_span_char(self.pos,
-                                   self.next_pos,
-                                   "invalid character in numeric character escape",
-                                   c);
+                self.err_span_char(
+                    self.pos,
+                    self.next_pos,
+                    "invalid character in numeric character escape",
+                    c,
+                );
 
                 valid = false;
                 0
@@ -899,10 +954,12 @@ impl<'a> StringReader<'a> {
         }
 
         if below_0x7f_only && accum_int >= 0x80 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "this form of character escape may only be used with characters in \
-                            the range [\\x00-\\x7f]");
+            self.err_span_(
+                start_bpos,
+                self.pos,
+                "this form of character escape may only be used with characters in \
+                 the range [\\x00-\\x7f]",
+            );
             valid = false;
         }
 
@@ -921,13 +978,13 @@ impl<'a> StringReader<'a> {
     /// `start` is the position of `first_source_char`, which is already consumed.
     ///
     /// Returns true if there was a valid char/byte, false otherwise.
-    fn scan_char_or_byte(&mut self,
-                         start: BytePos,
-                         first_source_char: char,
-                         ascii_only: bool,
-                         delim: char)
-                         -> bool
-    {
+    fn scan_char_or_byte(
+        &mut self,
+        start: BytePos,
+        first_source_char: char,
+        ascii_only: bool,
+        delim: char,
+    ) -> bool {
         match first_source_char {
             '\\' => {
                 // '\X' for some X must be a character constant:
@@ -935,7 +992,7 @@ impl<'a> StringReader<'a> {
                 let escaped_pos = self.pos;
                 self.bump();
                 match escaped {
-                    None => {}  // EOF here is an error that will be checked later.
+                    None => {} // EOF here is an error that will be checked later.
                     Some(e) => {
                         return match e {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
@@ -946,10 +1003,10 @@ impl<'a> StringReader<'a> {
                                 } else {
                                     let span = self.mk_sp(start, self.pos);
                                     let mut suggestion = "\\u{".to_owned();
-                                    let mut err = self.sess.span_diagnostic.struct_span_err(
-                                        span,
-                                        "incorrect unicode escape sequence",
-                                    );
+                                    let mut err = self
+                                        .sess
+                                        .span_diagnostic
+                                        .struct_span_err(span, "incorrect unicode escape sequence");
                                     let mut i = 0;
                                     while let (Some(ch), true) = (self.ch, i < 6) {
                                         if ch.is_digit(16) {
@@ -978,13 +1035,14 @@ impl<'a> StringReader<'a> {
                                     false
                                 };
                                 if ascii_only {
-                                    self.err_span_(start,
-                                                   self.pos,
-                                                   "unicode escape sequences cannot be used as a \
-                                                    byte or in a byte string");
+                                    self.err_span_(
+                                        start,
+                                        self.pos,
+                                        "unicode escape sequences cannot be used as a \
+                                         byte or in a byte string",
+                                    );
                                 }
                                 valid
-
                             }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
@@ -996,25 +1054,31 @@ impl<'a> StringReader<'a> {
                             }
                             c => {
                                 let pos = self.pos;
-                                let mut err = self.struct_err_span_char(escaped_pos,
-                                                                        pos,
-                                                                        if ascii_only {
-                                                                            "unknown byte escape"
-                                                                        } else {
-                                                                            "unknown character \
-                                                                             escape"
-                                                                        },
-                                                                        c);
+                                let mut err = self.struct_err_span_char(
+                                    escaped_pos,
+                                    pos,
+                                    if ascii_only {
+                                        "unknown byte escape"
+                                    } else {
+                                        "unknown character \
+                                         escape"
+                                    },
+                                    c,
+                                );
                                 if e == '\r' {
-                                    err.span_help(self.mk_sp(escaped_pos, pos),
-                                                  "this is an isolated carriage return; consider \
-                                                   checking your editor and version control \
-                                                   settings");
+                                    err.span_help(
+                                        self.mk_sp(escaped_pos, pos),
+                                        "this is an isolated carriage return; consider \
+                                         checking your editor and version control \
+                                         settings",
+                                    );
                                 }
                                 if (e == '{' || e == '}') && !ascii_only {
-                                    err.span_help(self.mk_sp(escaped_pos, pos),
-                                                  "if used in a formatting string, curly braces \
-                                                   are escaped with `{{` and `}}`");
+                                    err.span_help(
+                                        self.mk_sp(escaped_pos, pos),
+                                        "if used in a formatting string, curly braces \
+                                         are escaped with `{{` and `}}`",
+                                    );
                                 }
                                 err.emit();
                                 false
@@ -1025,14 +1089,16 @@ impl<'a> StringReader<'a> {
             }
             '\t' | '\n' | '\r' | '\'' if delim == '\'' => {
                 let pos = self.pos;
-                self.err_span_char(start,
-                                   pos,
-                                   if ascii_only {
-                                       "byte constant must be escaped"
-                                   } else {
-                                       "character constant must be escaped"
-                                   },
-                                   first_source_char);
+                self.err_span_char(
+                    start,
+                    pos,
+                    if ascii_only {
+                        "byte constant must be escaped"
+                    } else {
+                        "character constant must be escaped"
+                    },
+                    first_source_char,
+                );
                 return false;
             }
             '\r' => {
@@ -1040,19 +1106,23 @@ impl<'a> StringReader<'a> {
                     self.bump();
                     return true;
                 } else {
-                    self.err_span_(start,
-                                   self.pos,
-                                   "bare CR not allowed in string, use \\r instead");
+                    self.err_span_(
+                        start,
+                        self.pos,
+                        "bare CR not allowed in string, use \\r instead",
+                    );
                     return false;
                 }
             }
             _ => {
                 if ascii_only && first_source_char > '\x7F' {
                     let pos = self.pos;
-                    self.err_span_(start,
-                                   pos,
-                                   "byte constant must be ASCII. Use a \\xHH escape for a \
-                                    non-ASCII byte");
+                    self.err_span_(
+                        start,
+                        pos,
+                        "byte constant must be ASCII. Use a \\xHH escape for a \
+                         non-ASCII byte",
+                    );
                     return false;
                 }
             }
@@ -1072,18 +1142,18 @@ impl<'a> StringReader<'a> {
 
         if let Some('_') = self.ch {
             // disallow leading `_`
-            self.err_span_(self.pos,
-                           self.next_pos,
-                           "invalid start of unicode escape");
+            self.err_span_(self.pos, self.next_pos, "invalid start of unicode escape");
             valid = false;
         }
 
         let count = self.scan_digits(16, 16);
 
         if count > 6 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "overlong unicode escape (must have at most 6 hex digits)");
+            self.err_span_(
+                start_bpos,
+                self.pos,
+                "overlong unicode escape (must have at most 6 hex digits)",
+            );
             valid = false;
         }
 
@@ -1091,33 +1161,42 @@ impl<'a> StringReader<'a> {
             match self.ch {
                 Some('}') => {
                     if valid && count == 0 {
-                        self.err_span_(start_bpos,
-                                       self.pos,
-                                       "empty unicode escape (must have at least 1 hex digit)");
+                        self.err_span_(
+                            start_bpos,
+                            self.pos,
+                            "empty unicode escape (must have at least 1 hex digit)",
+                        );
                         valid = false;
                     }
                     self.bump(); // past the ending `}`
                     break;
-                },
+                }
                 Some(c) => {
                     if c == delim {
-                        self.err_span_(self.pos,
-                                       self.pos,
-                                       "unterminated unicode escape (needed a `}`)");
+                        self.err_span_(
+                            self.pos,
+                            self.pos,
+                            "unterminated unicode escape (needed a `}`)",
+                        );
                         valid = false;
                         break;
                     } else if valid {
-                        self.err_span_char(start_bpos,
-                                           self.pos,
-                                           "invalid character in unicode escape",
-                                           c);
+                        self.err_span_char(
+                            start_bpos,
+                            self.pos,
+                            "invalid character in unicode escape",
+                            c,
+                        );
                         valid = false;
                     }
-                },
+                }
                 None => {
-                    self.fatal_span_(start_bpos,
-                                     self.pos,
-                                     "unterminated unicode escape (found EOF)").raise();
+                    self.fatal_span_(
+                        start_bpos,
+                        self.pos,
+                        "unterminated unicode escape (found EOF)",
+                    )
+                    .raise();
                 }
             }
             self.bump();
@@ -1137,8 +1216,9 @@ impl<'a> StringReader<'a> {
 
             if self.scan_digits(10, 10) == 0 {
                 let mut err = self.struct_span_fatal(
-                    self.pos, self.next_pos,
-                    "expected at least one digit in exponent"
+                    self.pos,
+                    self.next_pos,
+                    "expected at least one digit in exponent",
                 );
                 if let Some(ch) = self.ch {
                     // check for e.g., Unicode minus '−' (Issue #49746)
@@ -1156,21 +1236,21 @@ impl<'a> StringReader<'a> {
     /// error if it isn't.
     fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: usize) {
         match base {
-            16 => {
-                self.err_span_(start_bpos,
-                               last_bpos,
-                               "hexadecimal float literal is not supported")
-            }
-            8 => {
-                self.err_span_(start_bpos,
-                               last_bpos,
-                               "octal float literal is not supported")
-            }
-            2 => {
-                self.err_span_(start_bpos,
-                               last_bpos,
-                               "binary float literal is not supported")
-            }
+            16 => self.err_span_(
+                start_bpos,
+                last_bpos,
+                "hexadecimal float literal is not supported",
+            ),
+            8 => self.err_span_(
+                start_bpos,
+                last_bpos,
+                "octal float literal is not supported",
+            ),
+            2 => self.err_span_(
+                start_bpos,
+                last_bpos,
+                "binary float literal is not supported",
+            ),
             _ => (),
         }
     }
@@ -1199,12 +1279,12 @@ impl<'a> StringReader<'a> {
                     // r as in r" or r#" is part of a raw string literal.
                     // b as in b' is part of a byte literal.
                     // They are not identifiers, and are handled further down.
-                    ('r', Some('"'), _) |
-                    ('r', Some('#'), _) |
-                    ('b', Some('"'), _) |
-                    ('b', Some('\''), _) |
-                    ('b', Some('r'), Some('"')) |
-                    ('b', Some('r'), Some('#')) => (false, false),
+                    ('r', Some('"'), _)
+                    | ('r', Some('#'), _)
+                    | ('b', Some('"'), _)
+                    | ('b', Some('\''), _)
+                    | ('b', Some('r'), Some('"'))
+                    | ('b', Some('r'), Some('#')) => (false, false),
                     _ => (true, false),
                 };
 
@@ -1227,11 +1307,16 @@ impl<'a> StringReader<'a> {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
                     let ident = self.mk_ident(string);
 
-                    if is_raw_ident && (ident.is_path_segment_keyword() ||
-                                        ident.name == keywords::Underscore.name()) {
-                        self.fatal_span_(raw_start, self.pos,
-                            &format!("`r#{}` is not currently supported.", ident.name)
-                        ).raise();
+                    if is_raw_ident
+                        && (ident.is_path_segment_keyword()
+                            || ident.name == keywords::Underscore.name())
+                    {
+                        self.fatal_span_(
+                            raw_start,
+                            self.pos,
+                            &format!("`r#{}` is not currently supported.", ident.name),
+                        )
+                        .raise();
                     }
 
                     if is_raw_ident {
@@ -1362,16 +1447,12 @@ impl<'a> StringReader<'a> {
                         self.bump();
                         Ok(token::Le)
                     }
-                    '<' => {
-                        Ok(self.binop(token::Shl))
-                    }
+                    '<' => Ok(self.binop(token::Shl)),
                     '-' => {
                         self.bump();
                         Ok(token::LArrow)
                     }
-                    _ => {
-                        Ok(token::Lt)
-                    }
+                    _ => Ok(token::Lt),
                 }
             }
             '>' => {
@@ -1381,12 +1462,8 @@ impl<'a> StringReader<'a> {
                         self.bump();
                         Ok(token::Ge)
                     }
-                    '>' => {
-                        Ok(self.binop(token::Shr))
-                    }
-                    _ => {
-                        Ok(token::Gt)
-                    }
+                    '>' => Ok(self.binop(token::Shr)),
+                    _ => Ok(token::Gt),
                 }
             }
             '\'' => {
@@ -1408,10 +1485,12 @@ impl<'a> StringReader<'a> {
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        self.fatal_span_verbose(start_with_quote, self.next_pos,
-                                String::from("character literal may only contain one codepoint"))
-                            .raise();
-
+                        self.fatal_span_verbose(
+                            start_with_quote,
+                            self.next_pos,
+                            String::from("character literal may only contain one codepoint"),
+                        )
+                        .raise();
                     }
 
                     // Include the leading `'` in the real identifier, for macro
@@ -1436,16 +1515,20 @@ impl<'a> StringReader<'a> {
                             let end = self.src_index(self.pos);
                             self.bump();
                             let span = self.mk_sp(start_with_quote, self.pos);
-                            self.sess.span_diagnostic
-                                .struct_span_err(span,
-                                                 "character literal may only contain one codepoint")
+                            self.sess
+                                .span_diagnostic
+                                .struct_span_err(
+                                    span,
+                                    "character literal may only contain one codepoint",
+                                )
                                 .span_suggestion_with_applicability(
                                     span,
                                     "if you meant to write a `str` literal, use double quotes",
                                     format!("\"{}\"", &self.src[start..end]),
-                                    Applicability::MachineApplicable
-                                ).emit();
-                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
+                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None));
                         }
                         if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
                             // Only attempt to infer single line string literals. If we encounter
@@ -1455,8 +1538,12 @@ impl<'a> StringReader<'a> {
                         }
                     }
 
-                    self.fatal_span_verbose(start_with_quote, pos,
-                        String::from("character literal may only contain one codepoint")).raise();
+                    self.fatal_span_verbose(
+                        start_with_quote,
+                        pos,
+                        String::from("character literal may only contain one codepoint"),
+                    )
+                    .raise();
                 }
 
                 let id = if valid {
@@ -1476,7 +1563,7 @@ impl<'a> StringReader<'a> {
                     Some('\'') => self.scan_byte(),
                     Some('"') => self.scan_byte_string(),
                     Some('r') => self.scan_raw_byte_string(),
-                    _ => unreachable!(),  // Should have been a token::Ident above.
+                    _ => unreachable!(), // Should have been a token::Ident above.
                 };
                 let suffix = self.scan_optional_raw_name();
 
@@ -1490,9 +1577,8 @@ impl<'a> StringReader<'a> {
                 while !self.ch_is('"') {
                     if self.is_eof() {
                         let last_bpos = self.pos;
-                        self.fatal_span_(start_bpos,
-                                         last_bpos,
-                                         "unterminated double quote string").raise();
+                        self.fatal_span_(start_bpos, last_bpos, "unterminated double quote string")
+                            .raise();
                     }
 
                     let ch_start = self.pos;
@@ -1518,10 +1604,13 @@ impl<'a> StringReader<'a> {
                 while self.ch_is('#') {
                     if hash_count == 65535 {
                         let bpos = self.next_pos;
-                        self.fatal_span_(start_bpos,
-                                         bpos,
-                                         "too many `#` symbols: raw strings may be \
-                                         delimited by up to 65535 `#` symbols").raise();
+                        self.fatal_span_(
+                            start_bpos,
+                            bpos,
+                            "too many `#` symbols: raw strings may be \
+                             delimited by up to 65535 `#` symbols",
+                        )
+                        .raise();
                     }
                     self.bump();
                     hash_count += 1;
@@ -1532,11 +1621,14 @@ impl<'a> StringReader<'a> {
                 } else if !self.ch_is('"') {
                     let last_bpos = self.pos;
                     let curr_char = self.ch.unwrap();
-                    self.fatal_span_char(start_bpos,
-                                         last_bpos,
-                                         "found invalid character; only `#` is allowed \
-                                         in raw string delimitation",
-                                         curr_char).raise();
+                    self.fatal_span_char(
+                        start_bpos,
+                        last_bpos,
+                        "found invalid character; only `#` is allowed \
+                         in raw string delimitation",
+                        curr_char,
+                    )
+                    .raise();
                 }
                 self.bump();
                 let content_start_bpos = self.pos;
@@ -1567,10 +1659,12 @@ impl<'a> StringReader<'a> {
                         '\r' => {
                             if !self.nextch_is('\n') {
                                 let last_bpos = self.pos;
-                                self.err_span_(start_bpos,
-                                               last_bpos,
-                                               "bare CR not allowed in raw string, use \\r \
-                                                instead");
+                                self.err_span_(
+                                    start_bpos,
+                                    last_bpos,
+                                    "bare CR not allowed in raw string, use \\r \
+                                     instead",
+                                );
                                 valid = false;
                             }
                         }
@@ -1607,40 +1701,24 @@ impl<'a> StringReader<'a> {
                     Ok(self.binop(token::And))
                 }
             }
-            '|' => {
-                match self.nextch() {
-                    Some('|') => {
-                        self.bump();
-                        self.bump();
-                        Ok(token::OrOr)
-                    }
-                    _ => {
-                        Ok(self.binop(token::Or))
-                    }
+            '|' => match self.nextch() {
+                Some('|') => {
+                    self.bump();
+                    self.bump();
+                    Ok(token::OrOr)
                 }
-            }
-            '+' => {
-                Ok(self.binop(token::Plus))
-            }
-            '*' => {
-                Ok(self.binop(token::Star))
-            }
-            '/' => {
-                Ok(self.binop(token::Slash))
-            }
-            '^' => {
-                Ok(self.binop(token::Caret))
-            }
-            '%' => {
-                Ok(self.binop(token::Percent))
-            }
+                _ => Ok(self.binop(token::Or)),
+            },
+            '+' => Ok(self.binop(token::Plus)),
+            '*' => Ok(self.binop(token::Star)),
+            '/' => Ok(self.binop(token::Slash)),
+            '^' => Ok(self.binop(token::Caret)),
+            '%' => Ok(self.binop(token::Percent)),
             c => {
                 let last_bpos = self.pos;
                 let bpos = self.next_pos;
-                let mut err = self.struct_fatal_span_char(last_bpos,
-                                                          bpos,
-                                                          "unknown start of token",
-                                                          c);
+                let mut err =
+                    self.struct_fatal_span_char(last_bpos, bpos, "unknown start of token", c);
                 unicode_chars::check_for_substitution(self, c, &mut err);
                 self.fatal_errs.push(err);
 
@@ -1671,8 +1749,10 @@ impl<'a> StringReader<'a> {
 
     fn read_one_line_comment(&mut self) -> String {
         let val = self.read_to_eol();
-        assert!((val.as_bytes()[0] == b'/' && val.as_bytes()[1] == b'/') ||
-                (val.as_bytes()[0] == b'#' && val.as_bytes()[1] == b'!'));
+        assert!(
+            (val.as_bytes()[0] == b'/' && val.as_bytes()[1] == b'/')
+                || (val.as_bytes()[0] == b'#' && val.as_bytes()[1] == b'!')
+        );
         val
     }
 
@@ -1696,19 +1776,21 @@ impl<'a> StringReader<'a> {
         let c2 = self.ch.unwrap_or('\x00');
         self.bump();
 
-        let valid = self.scan_char_or_byte(start,
-                                           c2,
-                                           // ascii_only =
-                                           true,
-                                           '\'');
+        let valid = self.scan_char_or_byte(
+            start, c2, // ascii_only =
+            true, '\'',
+        );
         if !self.ch_is('\'') {
             // Byte offsetting here is okay because the
             // character before position `start` are an
             // ascii single quote and ascii 'b'.
             let pos = self.pos;
-            self.fatal_span_verbose(start - BytePos(2),
-                                    pos,
-                                    "unterminated byte constant".to_string()).raise();
+            self.fatal_span_verbose(
+                start - BytePos(2),
+                pos,
+                "unterminated byte constant".to_string(),
+            )
+            .raise();
         }
 
         let id = if valid {
@@ -1734,17 +1816,17 @@ impl<'a> StringReader<'a> {
         while !self.ch_is('"') {
             if self.is_eof() {
                 let pos = self.pos;
-                self.fatal_span_(start, pos, "unterminated double quote byte string").raise();
+                self.fatal_span_(start, pos, "unterminated double quote byte string")
+                    .raise();
             }
 
             let ch_start = self.pos;
             let ch = self.ch.unwrap();
             self.bump();
-            valid &= self.scan_char_or_byte(ch_start,
-                                            ch,
-                                            // ascii_only =
-                                            true,
-                                            '"');
+            valid &= self.scan_char_or_byte(
+                ch_start, ch, // ascii_only =
+                true, '"',
+            );
         }
 
         let id = if valid {
@@ -1764,10 +1846,13 @@ impl<'a> StringReader<'a> {
         while self.ch_is('#') {
             if hash_count == 65535 {
                 let bpos = self.next_pos;
-                self.fatal_span_(start_bpos,
-                                 bpos,
-                                 "too many `#` symbols: raw byte strings may be \
-                                 delimited by up to 65535 `#` symbols").raise();
+                self.fatal_span_(
+                    start_bpos,
+                    bpos,
+                    "too many `#` symbols: raw byte strings may be \
+                     delimited by up to 65535 `#` symbols",
+                )
+                .raise();
             }
             self.bump();
             hash_count += 1;
@@ -1778,11 +1863,14 @@ impl<'a> StringReader<'a> {
         } else if !self.ch_is('"') {
             let pos = self.pos;
             let ch = self.ch.unwrap();
-            self.fatal_span_char(start_bpos,
-                                        pos,
-                                        "found invalid character; only `#` is allowed in raw \
-                                         string delimitation",
-                                        ch).raise();
+            self.fatal_span_char(
+                start_bpos,
+                pos,
+                "found invalid character; only `#` is allowed in raw \
+                 string delimitation",
+                ch,
+            )
+            .raise();
         }
         self.bump();
         let content_start_bpos = self.pos;
@@ -1814,7 +1902,10 @@ impl<'a> StringReader<'a> {
 
         self.bump();
 
-        token::ByteStrRaw(self.name_from_to(content_start_bpos, content_end_bpos), hash_count)
+        token::ByteStrRaw(
+            self.name_from_to(content_start_bpos, content_end_bpos),
+            hash_count,
+        )
     }
 }
 
@@ -1836,16 +1927,17 @@ fn is_dec_digit(c: Option<char>) -> bool {
 }
 
 fn is_doc_comment(s: &str) -> bool {
-    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/') ||
-              s.starts_with("//!");
+    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
+        || s.starts_with("//!");
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 
 fn is_block_doc_comment(s: &str) -> bool {
     // Prevent `/**/` from being parsed as a doc comment
-    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*') ||
-               s.starts_with("/*!")) && s.len() >= 5;
+    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
+        || s.starts_with("/*!"))
+        && s.len() >= 5;
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }
@@ -1865,8 +1957,11 @@ fn ident_continue(c: Option<char>) -> bool {
         None => return false,
     };
 
-    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' ||
-    (c > '\x7f' && c.is_xid_continue())
+    (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9')
+        || c == '_'
+        || (c > '\x7f' && c.is_xid_continue())
 }
 
 #[inline]
@@ -1878,24 +1973,26 @@ fn char_at(s: &str, byte: usize) -> char {
 mod tests {
     use super::*;
 
-    use ast::{Ident, CrateConfig};
-    use symbol::Symbol;
-    use syntax_pos::{BytePos, Span, NO_EXPANSION};
-    use source_map::SourceMap;
+    use ast::{CrateConfig, Ident};
+    use diagnostics::plugin::ErrorMap;
     use errors;
     use feature_gate::UnstableFeatures;
     use parse::token;
-    use std::io;
-    use std::path::PathBuf;
-    use diagnostics::plugin::ErrorMap;
     use rustc_data_structures::fx::FxHashSet;
     use rustc_data_structures::sync::Lock;
+    use source_map::SourceMap;
+    use std::io;
+    use std::path::PathBuf;
+    use symbol::Symbol;
+    use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use with_globals;
     fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
-        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                          Some(sm.clone()),
-                                                          false,
-                                                          false);
+        let emitter = errors::emitter::EmitterWriter::new(
+            Box::new(io::sink()),
+            Some(sm.clone()),
+            false,
+            false,
+        );
         ParseSess {
             span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),
@@ -1910,10 +2007,7 @@ mod tests {
     }
 
     // open a string reader for the given string
-    fn setup<'a>(sm: &SourceMap,
-                 sess: &'a ParseSess,
-                 teststr: String)
-                 -> StringReader<'a> {
+    fn setup<'a>(sm: &SourceMap, sess: &'a ParseSess, teststr: String) -> StringReader<'a> {
         let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
         StringReader::new(sess, sf, None)
     }
@@ -1923,10 +2017,11 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            let mut string_reader = setup(&sm,
-                                        &sh,
-                                        "/* my source file */ fn main() { println!(\"zebra\"); }\n"
-                                            .to_string());
+            let mut string_reader = setup(
+                &sm,
+                &sh,
+                "/* my source file */ fn main() { println!(\"zebra\"); }\n".to_string(),
+            );
             let id = Ident::from_str("fn");
             assert_eq!(string_reader.next_token().tok, token::Comment);
             assert_eq!(string_reader.next_token().tok, token::Whitespace);
@@ -1971,8 +2066,10 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a b".to_string()),
-                            vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
+            check_tokenization(
+                setup(&sm, &sh, "a b".to_string()),
+                vec![mk_ident("a"), token::Whitespace, mk_ident("b")],
+            );
         })
     }
 
@@ -1981,8 +2078,10 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a::b".to_string()),
-                            vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
+            check_tokenization(
+                setup(&sm, &sh, "a::b".to_string()),
+                vec![mk_ident("a"), token::ModSep, mk_ident("b")],
+            );
         })
     }
 
@@ -1991,8 +2090,15 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a ::b".to_string()),
-                            vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
+            check_tokenization(
+                setup(&sm, &sh, "a ::b".to_string()),
+                vec![
+                    mk_ident("a"),
+                    token::Whitespace,
+                    token::ModSep,
+                    mk_ident("b"),
+                ],
+            );
         })
     }
 
@@ -2001,8 +2107,15 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a:: b".to_string()),
-                            vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
+            check_tokenization(
+                setup(&sm, &sh, "a:: b".to_string()),
+                vec![
+                    mk_ident("a"),
+                    token::ModSep,
+                    token::Whitespace,
+                    mk_ident("b"),
+                ],
+            );
         })
     }
 
@@ -2011,8 +2124,10 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().tok,
-                    token::Literal(token::Char(Symbol::intern("a")), None));
+            assert_eq!(
+                setup(&sm, &sh, "'a'".to_string()).next_token().tok,
+                token::Literal(token::Char(Symbol::intern("a")), None)
+            );
         })
     }
 
@@ -2021,8 +2136,10 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().tok,
-                    token::Literal(token::Char(Symbol::intern(" ")), None));
+            assert_eq!(
+                setup(&sm, &sh, "' '".to_string()).next_token().tok,
+                token::Literal(token::Char(Symbol::intern(" ")), None)
+            );
         })
     }
 
@@ -2031,8 +2148,10 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
-                    token::Literal(token::Char(Symbol::intern("\\n")), None));
+            assert_eq!(
+                setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
+                token::Literal(token::Char(Symbol::intern("\\n")), None)
+            );
         })
     }
 
@@ -2041,8 +2160,10 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().tok,
-                    token::Lifetime(Ident::from_str("'abc")));
+            assert_eq!(
+                setup(&sm, &sh, "'abc".to_string()).next_token().tok,
+                token::Lifetime(Ident::from_str("'abc"))
+            );
         })
     }
 
@@ -2051,10 +2172,12 @@ mod tests {
         with_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
-                        .next_token()
-                        .tok,
-                    token::Literal(token::StrRaw(Symbol::intern("\"#a\\b\x00c\""), 3), None));
+            assert_eq!(
+                setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
+                    .next_token()
+                    .tok,
+                token::Literal(token::StrRaw(Symbol::intern("\"#a\\b\x00c\""), 3), None)
+            );
         })
     }
 
@@ -2065,14 +2188,23 @@ mod tests {
             let sh = mk_sess(sm.clone());
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().tok,
-                            token::Literal(token::$tok_type(Symbol::intern($tok_contents)),
-                                            Some(Symbol::intern("suffix"))));
+                    assert_eq!(
+                        setup(&sm, &sh, format!("{}suffix", $input))
+                            .next_token()
+                            .tok,
+                        token::Literal(
+                            token::$tok_type(Symbol::intern($tok_contents)),
+                            Some(Symbol::intern("suffix"))
+                        )
+                    );
                     // with a whitespace separator:
-                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().tok,
-                            token::Literal(token::$tok_type(Symbol::intern($tok_contents)),
-                                            None));
-                }}
+                    assert_eq!(
+                        setup(&sm, &sh, format!("{} suffix", $input))
+                            .next_token()
+                            .tok,
+                        token::Literal(token::$tok_type(Symbol::intern($tok_contents)), None)
+                    );
+                }};
             }
 
             test!("'a'", Char, "a");
@@ -2085,15 +2217,31 @@ mod tests {
             test!("1.0", Float, "1.0");
             test!("1.0e10", Float, "1.0e10");
 
-            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().tok,
-                    token::Literal(token::Integer(Symbol::intern("2")),
-                                    Some(Symbol::intern("us"))));
-            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
-                    token::Literal(token::StrRaw(Symbol::intern("raw"), 3),
-                                    Some(Symbol::intern("suffix"))));
-            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
-                    token::Literal(token::ByteStrRaw(Symbol::intern("raw"), 3),
-                                    Some(Symbol::intern("suffix"))));
+            assert_eq!(
+                setup(&sm, &sh, "2us".to_string()).next_token().tok,
+                token::Literal(
+                    token::Integer(Symbol::intern("2")),
+                    Some(Symbol::intern("us"))
+                )
+            );
+            assert_eq!(
+                setup(&sm, &sh, "r###\"raw\"###suffix".to_string())
+                    .next_token()
+                    .tok,
+                token::Literal(
+                    token::StrRaw(Symbol::intern("raw"), 3),
+                    Some(Symbol::intern("suffix"))
+                )
+            );
+            assert_eq!(
+                setup(&sm, &sh, "br###\"raw\"###suffix".to_string())
+                    .next_token()
+                    .tok,
+                token::Literal(
+                    token::ByteStrRaw(Symbol::intern("raw"), 3),
+                    Some(Symbol::intern("suffix"))
+                )
+            );
         })
     }
 
@@ -2114,8 +2262,10 @@ mod tests {
                 token::Comment => {}
                 _ => panic!("expected a comment!"),
             }
-            assert_eq!(lexer.next_token().tok,
-                    token::Literal(token::Char(Symbol::intern("a")), None));
+            assert_eq!(
+                lexer.next_token().tok,
+                token::Literal(token::Char(Symbol::intern("a")), None)
+            );
         })
     }
 
@@ -2129,8 +2279,10 @@ mod tests {
             assert_eq!(comment.tok, token::Comment);
             assert_eq!((comment.sp.lo(), comment.sp.hi()), (BytePos(0), BytePos(7)));
             assert_eq!(lexer.next_token().tok, token::Whitespace);
-            assert_eq!(lexer.next_token().tok,
-                    token::DocComment(Symbol::intern("/// test")));
+            assert_eq!(
+                lexer.next_token().tok,
+                token::DocComment(Symbol::intern("/// test"))
+            );
         })
     }
 }

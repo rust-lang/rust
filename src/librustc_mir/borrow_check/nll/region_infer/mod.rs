@@ -338,9 +338,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         debug!(
                             "init_free_and_bound_regions: placeholder {:?} is \
                              not compatible with universe {:?} of its SCC {:?}",
-                            placeholder,
-                            scc_universe,
-                            scc,
+                            placeholder, scc_universe, scc,
                         );
                         self.add_incompatible_universe(scc);
                     }
@@ -469,7 +467,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints.sort();
             constraints
                 .into_iter()
-                .map(|c| (c, self.constraint_sccs.scc(c.sup), self.constraint_sccs.scc(c.sub)))
+                .map(|c| {
+                    (
+                        c,
+                        self.constraint_sccs.scc(c.sup),
+                        self.constraint_sccs.scc(c.sub),
+                    )
+                })
                 .collect::<Vec<_>>()
         });
 
@@ -672,7 +676,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// to find a good name from that. Returns `None` if we can't find
     /// one (e.g., this is just some random part of the CFG).
     pub fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
-        self.to_error_region_vid(r).and_then(|r| self.definitions[r].external_name)
+        self.to_error_region_vid(r)
+            .and_then(|r| self.definitions[r].external_name)
     }
 
     /// Returns the [RegionVid] corresponding to the region returned by
@@ -1048,7 +1053,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // now). Therefore, the sup-region outlives the sub-region if,
         // for each universal region R1 in the sub-region, there
         // exists some region R2 in the sup-region that outlives R1.
-        let universal_outlives = self.scc_values
+        let universal_outlives = self
+            .scc_values
             .universal_regions_outlived_by(sub_region_scc)
             .all(|r1| {
                 self.scc_values
@@ -1148,18 +1154,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Because this free region must be in the ROOT universe, we
         // know it cannot contain any bound universes.
         assert!(self.scc_universes[longer_fr_scc] == ty::UniverseIndex::ROOT);
-        debug_assert!(
-            self.scc_values
-                .placeholders_contained_in(longer_fr_scc)
-                .next()
-                .is_none()
-        );
+        debug_assert!(self
+            .scc_values
+            .placeholders_contained_in(longer_fr_scc)
+            .next()
+            .is_none());
 
         // Find every region `o` such that `fr: o`
         // (because `fr` includes `end(o)`).
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
             // If it is known that `fr: o`, carry on.
-            if self.universal_region_relations
+            if self
+                .universal_region_relations
                 .outlives(longer_fr, shorter_fr)
             {
                 continue;
@@ -1175,7 +1181,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
                 // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-                if let Some(fr_minus) = self.universal_region_relations
+                if let Some(fr_minus) = self
+                    .universal_region_relations
                     .non_local_lower_bound(longer_fr)
                 {
                     debug!("check_universal_region: fr_minus={:?}", fr_minus);
@@ -1184,7 +1191,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // region. (We always will.)  We'll call that
                     // `shorter_fr+` -- it's ever so slightly larger than
                     // `fr`.
-                    let shorter_fr_plus = self.universal_region_relations
+                    let shorter_fr_plus = self
+                        .universal_region_relations
                         .non_local_upper_bound(shorter_fr);
                     debug!(
                         "check_universal_region: shorter_fr_plus={:?}",
@@ -1248,13 +1256,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Some(v) => v,
             None => return,
         };
-        debug!("check_bound_universal_region: error_element = {:?}", error_element);
+        debug!(
+            "check_bound_universal_region: error_element = {:?}",
+            error_element
+        );
 
         // Find the region that introduced this `error_element`.
         let error_region = match error_element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::PlaceholderRegion(error_placeholder) => self.definitions
+            RegionElement::PlaceholderRegion(error_placeholder) => self
+                .definitions
                 .iter_enumerated()
                 .filter_map(|(r, definition)| match definition.origin {
                     NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),

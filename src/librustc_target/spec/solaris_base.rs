@@ -9,6 +9,6 @@ pub fn opts() -> TargetOptions {
         target_family: Some("unix".to_string()),
         is_like_solaris: true,
 
-        .. Default::default()
+        ..Default::default()
     }
 }

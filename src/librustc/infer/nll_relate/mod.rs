@@ -22,12 +22,12 @@
 //!   constituents)
 
 use crate::infer::InferCtxt;
+use crate::traits::DomainGoal;
+use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::error::TypeError;
-use crate::traits::DomainGoal;
 use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -265,7 +265,7 @@ where
     fn relate_projection_ty(
         &mut self,
         projection_ty: ty::ProjectionTy<'tcx>,
-        value_ty: ty::Ty<'tcx>
+        value_ty: ty::Ty<'tcx>,
     ) -> Ty<'tcx> {
         use crate::infer::type_variable::TypeVariableOrigin;
         use crate::traits::WhereClause;
@@ -273,7 +273,9 @@ where
 
         match value_ty.sty {
             ty::Projection(other_projection_ty) => {
-                let var = self.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+                let var = self
+                    .infcx
+                    .next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
                 self.relate_projection_ty(projection_ty, var);
                 self.relate_projection_ty(other_projection_ty, var);
                 var
@@ -284,9 +286,8 @@ where
                     projection_ty,
                     ty: value_ty,
                 };
-                self.delegate.push_domain_goal(
-                    DomainGoal::Holds(WhereClause::ProjectionEq(projection))
-                );
+                self.delegate
+                    .push_domain_goal(DomainGoal::Holds(WhereClause::ProjectionEq(projection)));
                 value_ty
             }
         }
@@ -296,20 +297,21 @@ where
     fn relate_ty_var(
         &mut self,
         vid: ty::TyVid,
-        value_ty: Ty<'tcx>
+        value_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("relate_ty_var(vid={:?}, value_ty={:?})", vid, value_ty);
 
         match value_ty.sty {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
-                self.infcx.type_variables.borrow_mut().equate(vid, value_vid);
+                self.infcx
+                    .type_variables
+                    .borrow_mut()
+                    .equate(vid, value_vid);
                 return Ok(value_ty);
             }
 
-            ty::Projection(projection_ty)
-                if D::normalization() == NormalizationStrategy::Lazy =>
-            {
+            ty::Projection(projection_ty) if D::normalization() == NormalizationStrategy::Lazy => {
                 return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_var(vid)));
             }
 
@@ -326,7 +328,10 @@ where
             assert!(!generalized_ty.has_infer_types());
         }
 
-        self.infcx.type_variables.borrow_mut().instantiate(vid, generalized_ty);
+        self.infcx
+            .type_variables
+            .borrow_mut()
+            .instantiate(vid, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
@@ -347,7 +352,7 @@ where
     fn generalize_value<T: Relate<'tcx>>(
         &mut self,
         value: T,
-        for_vid: ty::TyVid
+        for_vid: ty::TyVid,
     ) -> RelateResult<'tcx, T> {
         let universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
 
@@ -374,8 +379,10 @@ where
 
     fn trait_object_mode(&self) -> relate::TraitObjectMode {
         // squashing should only be done in coherence, not NLL
-        assert_eq!(self.infcx.trait_object_mode(),
-                   relate::TraitObjectMode::NoSquash);
+        assert_eq!(
+            self.infcx.trait_object_mode(),
+            relate::TraitObjectMode::NoSquash
+        );
         relate::TraitObjectMode::NoSquash
     }
 
@@ -695,8 +702,10 @@ where
 
     fn trait_object_mode(&self) -> relate::TraitObjectMode {
         // squashing should only be done in coherence, not NLL
-        assert_eq!(self.infcx.trait_object_mode(),
-                   relate::TraitObjectMode::NoSquash);
+        assert_eq!(
+            self.infcx.trait_object_mode(),
+            relate::TraitObjectMode::NoSquash
+        );
         relate::TraitObjectMode::NoSquash
     }
 
@@ -766,7 +775,9 @@ where
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        TypeVariableValue::Unknown { universe: _universe } => {
+                        TypeVariableValue::Unknown {
+                            universe: _universe,
+                        } => {
                             if self.ambient_variance == ty::Bivariant {
                                 // FIXME: we may need a WF predicate (related to #54105).
                             }
@@ -781,8 +792,7 @@ where
                             let u = self.tcx().mk_var(new_var_id);
                             debug!(
                                 "generalize: replacing original vid={:?} with new={:?}",
-                                vid,
-                                u
+                                vid, u
                             );
                             return Ok(u);
                         }
@@ -790,8 +800,7 @@ where
                 }
             }
 
-            ty::Infer(ty::IntVar(_)) |
-            ty::Infer(ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.
@@ -802,9 +811,8 @@ where
                 if self.universe.cannot_name(placeholder.universe) {
                     debug!(
                         "TypeGeneralizer::tys: root universe {:?} cannot name\
-                        placeholder in universe {:?}",
-                        self.universe,
-                        placeholder.universe
+                         placeholder in universe {:?}",
+                        self.universe, placeholder.universe
                     );
                     Err(TypeError::Mismatch)
                 } else {
@@ -812,9 +820,7 @@ where
                 }
             }
 
-            _ => {
-                relate::super_relate_tys(self, a, a)
-            }
+            _ => relate::super_relate_tys(self, a, a),
         }
     }
 

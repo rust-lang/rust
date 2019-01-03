@@ -140,8 +140,9 @@ impl FromInternal<(TokenStream, &'_ ParseSess, &'_ mut Vec<Self>)>
             Question => op!('?'),
             SingleQuote => op!('\''),
 
-            Ident(ident, false) if ident.name == keywords::DollarCrate.name() =>
-                tt!(Ident::dollar_crate()),
+            Ident(ident, false) if ident.name == keywords::DollarCrate.name() => {
+                tt!(Ident::dollar_crate())
+            }
             Ident(ident, is_raw) => tt!(Ident::new(ident.name, is_raw)),
             Lifetime(ident) => {
                 let ident = ident.without_first_quote();
@@ -307,8 +308,10 @@ pub struct Punct {
 
 impl Punct {
     fn new(ch: char, joint: bool, span: Span) -> Punct {
-        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^',
-                                       '&', '|', '@', '.', ',', ';', ':', '#', '$', '?', '\''];
+        const LEGAL_CHARS: &[char] = &[
+            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
+            ':', '#', '$', '?', '\'',
+        ];
         if !LEGAL_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch)
         }
@@ -340,8 +343,9 @@ impl Ident {
         }
         if is_raw {
             let normalized_sym = Symbol::intern(string);
-            if normalized_sym == keywords::Underscore.name() ||
-               ast::Ident::with_empty_ctxt(normalized_sym).is_path_segment_keyword() {
+            if normalized_sym == keywords::Underscore.name()
+                || ast::Ident::with_empty_ctxt(normalized_sym).is_path_segment_keyword()
+            {
                 panic!("`{:?}` is not a valid raw identifier", string)
             }
         }
@@ -349,7 +353,11 @@ impl Ident {
     }
     fn dollar_crate(span: Span) -> Ident {
         // `$crate` is accepted as an ident only if it comes from the compiler.
-        Ident { sym: keywords::DollarCrate.name(), is_raw: false, span }
+        Ident {
+            sym: keywords::DollarCrate.name(),
+            is_raw: false,
+            span,
+        }
     }
 }
 

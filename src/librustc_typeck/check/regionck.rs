@@ -1002,7 +1002,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(hir_id);
 
-        let ty = self.tables
+        let ty = self
+            .tables
             .borrow()
             .adjustments()
             .get(hir_id)
@@ -1090,9 +1091,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         for arg in args {
             let arg_ty = self.node_ty(arg.hir_id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
-            let arg_cmt = self.with_mc(|mc| {
-                Rc::new(mc.cat_rvalue(arg.hir_id, arg.pat.span, re_scope, arg_ty))
-            });
+            let arg_cmt = self
+                .with_mc(|mc| Rc::new(mc.cat_rvalue(arg.hir_id, arg.pat.span, re_scope, arg_ty)));
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}", arg_ty, arg_cmt, arg);
             self.link_pattern(arg_cmt, &arg.pat);
         }
@@ -1200,8 +1200,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 borrow_region, borrow_kind, borrow_cmt
             );
             match borrow_cmt_cat {
-                Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => {
-                    match self.link_reborrowed_region(
+                Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => match self
+                    .link_reborrowed_region(
                         span,
                         borrow_region,
                         borrow_kind,
@@ -1210,15 +1210,14 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                         ref_kind,
                         borrow_cmt.note,
                     ) {
-                        Some((c, k)) => {
-                            borrow_cmt_cat = c.cat.clone();
-                            borrow_kind = k;
-                        }
-                        None => {
-                            return;
-                        }
+                    Some((c, k)) => {
+                        borrow_cmt_cat = c.cat.clone();
+                        borrow_kind = k;
                     }
-                }
+                    None => {
+                        return;
+                    }
+                },
 
                 Categorization::Downcast(cmt_base, _)
                 | Categorization::Deref(cmt_base, mc::Unique)

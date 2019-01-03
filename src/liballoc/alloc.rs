@@ -21,10 +21,7 @@ extern "Rust" {
     #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_allocator_nounwind]
-    fn __rust_realloc(ptr: *mut u8,
-                      old_size: usize,
-                      align: usize,
-                      new_size: usize) -> *mut u8;
+    fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
@@ -154,12 +151,12 @@ unsafe impl Alloc for Global {
     }
 
     #[inline]
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<u8>,
-                      layout: Layout,
-                      new_size: usize)
-                      -> Result<NonNull<u8>, AllocErr>
-    {
+    unsafe fn realloc(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
@@ -228,14 +225,15 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 mod tests {
     extern crate test;
     use self::test::Bencher;
+    use alloc::{handle_alloc_error, Alloc, Global, Layout};
     use boxed::Box;
-    use alloc::{Global, Alloc, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {
         unsafe {
             let layout = Layout::from_size_align(1024, 1).unwrap();
-            let ptr = Global.alloc_zeroed(layout.clone())
+            let ptr = Global
+                .alloc_zeroed(layout.clone())
                 .unwrap_or_else(|_| handle_alloc_error(layout));
 
             let mut i = ptr.cast::<u8>().as_ptr();

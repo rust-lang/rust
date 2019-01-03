@@ -1,15 +1,15 @@
-use hir::def_id::DefId;
 use hir;
+use hir::def_id::DefId;
 use hir::Node;
-use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use infer::outlives::free_region_map::FreeRegionRelations;
+use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, PredicateObligation};
-use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use ty::outlives::Component;
 use ty::subst::{Kind, Substs, UnpackedKind};
+use ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
@@ -102,9 +102,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
-        debug!("instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
-                param_env={:?})",
-               value, parent_def_id, body_id, param_env,
+        debug!(
+            "instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
+             param_env={:?})",
+            value, parent_def_id, body_id, param_env,
         );
         let mut instantiator = Instantiator {
             infcx: self,
@@ -307,7 +308,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for param in &abstract_type_generics.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
-                _ => continue
+                _ => continue,
             }
             // Get the value supplied for this region from the substs.
             let subst_arg = opaque_defn.substs.region_at(param.index as usize);
@@ -448,14 +449,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty =
-            instantiated_ty.fold_with(&mut ReverseMapper::new(
-                self.tcx,
-                self.is_tainted_by_errors(),
-                def_id,
-                map,
-                instantiated_ty,
-            ));
+        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper::new(
+            self.tcx,
+            self.is_tainted_by_errors(),
+            def_id,
+            map,
+            instantiated_ty,
+        ));
         debug!(
             "infer_opaque_definition_from_instantiation: definition_ty={:?}",
             definition_ty
@@ -570,14 +570,14 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                             &mut err,
                             &format!("hidden type `{}` captures ", hidden_ty),
                             r,
-                            ""
+                            "",
                         );
 
                         err.emit();
                     }
                 }
                 self.tcx.types.re_empty
-            },
+            }
         }
     }
 
@@ -609,17 +609,17 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                 // during codegen.
 
                 let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
-                    |(index, &kind)| {
-                        if index < generics.parent_count {
-                            // Accommodate missing regions in the parent kinds...
-                            self.fold_kind_mapping_missing_regions_to_empty(kind)
-                        } else {
-                            // ...but not elsewhere.
-                            self.fold_kind_normally(kind)
-                        }
-                    },
-                ));
+                let substs =
+                    self.tcx
+                        .mk_substs(substs.substs.iter().enumerate().map(|(index, &kind)| {
+                            if index < generics.parent_count {
+                                // Accommodate missing regions in the parent kinds...
+                                self.fold_kind_mapping_missing_regions_to_empty(kind)
+                            } else {
+                                // ...but not elsewhere.
+                                self.fold_kind_normally(kind)
+                            }
+                        }));
 
                 self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
             }
@@ -759,10 +759,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let ty_var = infcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
 
         let predicates_of = tcx.predicates_of(def_id);
-        debug!(
-            "instantiate_opaque_types: predicates: {:#?}",
-            predicates_of,
-        );
+        debug!("instantiate_opaque_types: predicates: {:#?}", predicates_of,);
         let bounds = predicates_of.instantiate(tcx, substs);
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
@@ -775,10 +772,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         // make sure that we are in fact defining the *entire* type
         // e.g., `existential type Foo<T: Bound>: Bar;` needs to be
         // defined by a function like `fn foo<T: Bound>() -> Foo<T>`.
-        debug!(
-            "instantiate_opaque_types: param_env: {:#?}",
-            self.param_env,
-        );
+        debug!("instantiate_opaque_types: param_env: {:#?}", self.param_env,);
         debug!(
             "instantiate_opaque_types: generics: {:#?}",
             tcx.generics_of(def_id),
@@ -837,10 +831,7 @@ pub fn may_define_existential_type(
     def_id: DefId,
     opaque_node_id: ast::NodeId,
 ) -> bool {
-    let mut node_id = tcx
-        .hir()
-        .as_local_node_id(def_id)
-        .unwrap();
+    let mut node_id = tcx.hir().as_local_node_id(def_id).unwrap();
     // named existential types can be defined by any siblings or
     // children of siblings
     let mod_id = tcx.hir().get_parent(opaque_node_id);

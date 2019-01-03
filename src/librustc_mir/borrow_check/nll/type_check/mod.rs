@@ -28,21 +28,21 @@ use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
+use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{
     self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserTypeAnnotation,
     UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::ty::layout::VariantIdx;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::rc::Rc;
 use std::{fmt, iter};
 use syntax_pos::{Span, DUMMY_SP};
@@ -279,7 +279,10 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.ty,
                 ty::Variance::Invariant,
-                &UserTypeProjection { base: annotation_index, projs: vec![], },
+                &UserTypeProjection {
+                    base: annotation_index,
+                    projs: vec![],
+                },
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
@@ -313,7 +316,11 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 if let ty::Ref(_, rty, _) = local_decl.ty.sty {
                     rty
                 } else {
-                    bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
+                    bug!(
+                        "{:?} with ref binding has wrong type {}",
+                        local,
+                        local_decl.ty
+                    );
                 }
             } else {
                 local_decl.ty
@@ -617,21 +624,23 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Field(field, fty) => {
                 let fty = self.sanitize_type(place, fty);
                 match self.field_ty(place, base, field, location) {
-                    Ok(ty) => if let Err(terr) = self.cx.eq_types(
-                        ty,
-                        fty,
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                    ) {
-                        span_mirbug!(
-                            self,
-                            place,
-                            "bad field access ({:?}: {:?}): {:?}",
+                    Ok(ty) => {
+                        if let Err(terr) = self.cx.eq_types(
                             ty,
                             fty,
-                            terr
-                        );
-                    },
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                place,
+                                "bad field access ({:?}: {:?}): {:?}",
+                                ty,
+                                fty,
+                                terr
+                            );
+                        }
+                    }
                     Err(FieldAccessError::OutOfRange { field_count }) => span_mirbug!(
                         self,
                         place,
@@ -666,8 +675,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
             PlaceTy::Ty { ty } => match ty.sty {
-                ty::Adt(adt_def, substs) if !adt_def.is_enum() =>
-                    (&adt_def.variants[VariantIdx::new(0)], substs),
+                ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
+                    (&adt_def.variants[VariantIdx::new(0)], substs)
+                }
                 ty::Closure(def_id, substs) => {
                     return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
@@ -912,19 +922,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn instantiate_user_type_annotations(&mut self) {
         debug!(
             "instantiate_user_type_annotations: user_type_annotations={:?}",
-             self.mir.user_type_annotations
+            self.mir.user_type_annotations
         );
         for annotation_index in self.mir.user_type_annotations.indices() {
             let (span, canonical_annotation) = &self.mir.user_type_annotations[annotation_index];
-            let (mut annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                *span, &canonical_annotation
-            );
+            let (mut annotation, _) = self
+                .infcx
+                .instantiate_canonical_with_fresh_inference_vars(*span, &canonical_annotation);
             match annotation {
-                UserTypeAnnotation::Ty(ref mut ty) =>
-                    *ty = self.normalize(ty, Locations::All(*span)),
-                _ => {},
+                UserTypeAnnotation::Ty(ref mut ty) => {
+                    *ty = self.normalize(ty, Locations::All(*span))
+                }
+                _ => {}
             }
-            self.instantiated_type_annotations.insert(annotation_index, annotation);
+            self.instantiated_type_annotations
+                .insert(annotation_index, annotation);
         }
         debug!(
             "instantiate_user_type_annotations: instantiated_type_annotations={:?}",
@@ -978,7 +990,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 locations,
                 category,
                 &mut borrowck_context.constraints,
-            ).convert_all(&data);
+            )
+            .convert_all(&data);
         }
     }
 
@@ -1074,7 +1087,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 //
                 // if we hit a ty var as we descend, then just skip the
                 // attempt to relate the mir local with any type.
-                #[derive(Debug)] struct HitTyVar;
+                #[derive(Debug)]
+                struct HitTyVar;
                 let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
 
                 curr_projected_ty = Ok(PlaceTy::from_ty(ty));
@@ -1084,8 +1098,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     } else {
                         break;
                     };
-                    curr_projected_ty = projected_ty.projection_ty_core(
-                        tcx, proj, |this, field, &()| {
+                    curr_projected_ty =
+                        projected_ty.projection_ty_core(tcx, proj, |this, field, &()| {
                             if this.to_ty(tcx).is_ty_var() {
                                 Err(HitTyVar)
                             } else {
@@ -1094,8 +1108,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             }
                         });
                 }
-                debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
-                       user_ty.base, ty, user_ty.projs, curr_projected_ty);
+                debug!(
+                    "user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
+                    user_ty.base, ty, user_ty.projs, curr_projected_ty
+                );
 
                 if let Ok(projected_ty) = curr_projected_ty {
                     let ty = projected_ty.to_ty(tcx);
@@ -1107,9 +1123,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.fully_perform_op(
                     locations,
                     category,
-                    self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        a, v, def_id, user_substs, projs,
-                    )),
+                    self.param_env
+                        .and(type_op::ascribe_user_type::AscribeUserType::new(
+                            a,
+                            v,
+                            def_id,
+                            user_substs,
+                            projs,
+                        )),
                 )?;
             }
         }
@@ -1157,9 +1178,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                          revealed_ty={:?}",
                         output_ty, opaque_type_map, revealed_ty
                     );
-                    obligations.add(infcx
-                        .at(&ObligationCause::dummy(), param_env)
-                        .eq(output_ty, revealed_ty)?);
+                    obligations.add(
+                        infcx
+                            .at(&ObligationCause::dummy(), param_env)
+                            .eq(output_ty, revealed_ty)?,
+                    );
 
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
                         let opaque_defn_ty = tcx.type_of(opaque_def_id);
@@ -1171,9 +1194,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             infcx.resolve_type_vars_if_possible(&opaque_decl.concrete_ty),
                             opaque_defn_ty
                         );
-                        obligations.add(infcx
-                            .at(&ObligationCause::dummy(), param_env)
-                            .eq(opaque_decl.concrete_ty, opaque_defn_ty)?);
+                        obligations.add(
+                            infcx
+                                .at(&ObligationCause::dummy(), param_env)
+                                .eq(opaque_decl.concrete_ty, opaque_defn_ty)?,
+                        );
                     }
 
                     debug!("eq_opaque_type_and_type: equated");
@@ -1235,23 +1260,25 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let category = match *place {
-                    Place::Local(RETURN_PLACE) => if let Some(BorrowCheckContext {
-                        universal_regions:
-                            UniversalRegions {
-                                defining_ty: DefiningTy::Const(def_id, _),
-                                ..
-                            },
-                        ..
-                    }) = self.borrowck_context
-                    {
-                        if tcx.is_static(*def_id).is_some() {
-                            ConstraintCategory::UseAsStatic
+                    Place::Local(RETURN_PLACE) => {
+                        if let Some(BorrowCheckContext {
+                            universal_regions:
+                                UniversalRegions {
+                                    defining_ty: DefiningTy::Const(def_id, _),
+                                    ..
+                                },
+                            ..
+                        }) = self.borrowck_context
+                        {
+                            if tcx.is_static(*def_id).is_some() {
+                                ConstraintCategory::UseAsStatic
+                            } else {
+                                ConstraintCategory::UseAsConst
+                            }
                         } else {
-                            ConstraintCategory::UseAsConst
+                            ConstraintCategory::Return
                         }
-                    } else {
-                        ConstraintCategory::Return
-                    },
+                    }
                     Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -1277,7 +1304,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
                         ty::Variance::Invariant,
-                        &UserTypeProjection { base: annotation_index, projs: vec![], },
+                        &UserTypeProjection {
+                            base: annotation_index,
+                            projs: vec![],
+                        },
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {
@@ -1456,7 +1486,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_call_dest(mir, term, &sig, destination, term_location);
 
                 self.prove_predicates(
-                    sig.inputs_and_output.iter().map(|ty| ty::Predicate::WellFormed(ty)),
+                    sig.inputs_and_output
+                        .iter()
+                        .map(|ty| ty::Predicate::WellFormed(ty)),
                     term_location.to_locations(),
                     ConstraintCategory::Boring,
                 );
@@ -1586,7 +1618,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             None => {
-                if !sig.output().conservative_is_privately_uninhabited(self.tcx()) {
+                if !sig
+                    .output()
+                    .conservative_is_privately_uninhabited(self.tcx())
+                {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1636,21 +1671,31 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.assert_iscleanup(mir, block_data, target, is_cleanup)
             }
-            TerminatorKind::SwitchInt { ref targets, .. } => for target in targets {
-                self.assert_iscleanup(mir, block_data, *target, is_cleanup);
-            },
-            TerminatorKind::Resume => if !is_cleanup {
-                span_mirbug!(self, block_data, "resume on non-cleanup block!")
-            },
-            TerminatorKind::Abort => if !is_cleanup {
-                span_mirbug!(self, block_data, "abort on non-cleanup block!")
-            },
-            TerminatorKind::Return => if is_cleanup {
-                span_mirbug!(self, block_data, "return on cleanup block")
-            },
-            TerminatorKind::GeneratorDrop { .. } => if is_cleanup {
-                span_mirbug!(self, block_data, "generator_drop in cleanup block")
-            },
+            TerminatorKind::SwitchInt { ref targets, .. } => {
+                for target in targets {
+                    self.assert_iscleanup(mir, block_data, *target, is_cleanup);
+                }
+            }
+            TerminatorKind::Resume => {
+                if !is_cleanup {
+                    span_mirbug!(self, block_data, "resume on non-cleanup block!")
+                }
+            }
+            TerminatorKind::Abort => {
+                if !is_cleanup {
+                    span_mirbug!(self, block_data, "abort on non-cleanup block!")
+                }
+            }
+            TerminatorKind::Return => {
+                if is_cleanup {
+                    span_mirbug!(self, block_data, "return on cleanup block")
+                }
+            }
+            TerminatorKind::GeneratorDrop { .. } => {
+                if is_cleanup {
+                    span_mirbug!(self, block_data, "generator_drop in cleanup block")
+                }
+            }
             TerminatorKind::Yield { resume, drop, .. } => {
                 if is_cleanup {
                     span_mirbug!(self, block_data, "yield in cleanup block")
@@ -1851,20 +1896,22 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_aggregate_rvalue(mir, rvalue, ak, ops, location)
             }
 
-            Rvalue::Repeat(operand, len) => if *len > 1 {
-                let operand_ty = operand.ty(mir, tcx);
+            Rvalue::Repeat(operand, len) => {
+                if *len > 1 {
+                    let operand_ty = operand.ty(mir, tcx);
 
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.lang_items().copy_trait().unwrap(),
-                    substs: tcx.mk_substs_trait(operand_ty, &[]),
-                };
+                    let trait_ref = ty::TraitRef {
+                        def_id: tcx.lang_items().copy_trait().unwrap(),
+                        substs: tcx.mk_substs_trait(operand_ty, &[]),
+                    };
 
-                self.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::CopyBound,
-                );
-            },
+                    self.prove_trait_ref(
+                        trait_ref,
+                        location.to_locations(),
+                        ConstraintCategory::CopyBound,
+                    );
+                }
+            }
 
             Rvalue::NullaryOp(_, ty) => {
                 // Even with unsized locals cannot box an unsized value.
@@ -2377,7 +2424,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             locations,
             category,
             param_env.and(type_op::prove_predicate::ProvePredicate::new(predicate)),
-        ).unwrap_or_else(|NoSolution| {
+        )
+        .unwrap_or_else(|NoSolution| {
             span_mirbug!(self, NoSolution, "could not prove {:?}", predicate);
         })
     }
@@ -2418,7 +2466,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             location.to_locations(),
             ConstraintCategory::Boring,
             param_env.and(type_op::normalize::Normalize::new(value)),
-        ).unwrap_or_else(|NoSolution| {
+        )
+        .unwrap_or_else(|NoSolution| {
             span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
             value
         })

@@ -17,8 +17,8 @@
             issue = "0")]
 #![macro_use]
 
-use mem;
 use intrinsics;
+use mem;
 
 /// Arithmetic operations required by bignums.
 pub trait FullOps: Sized {
@@ -36,10 +36,8 @@ pub trait FullOps: Sized {
 
     /// Returns `(quo, rem)` such that `borrow * 2^W + self = quo * other + rem`
     /// and `0 <= rem < other`, where `W` is the number of bits in `Self`.
-    fn full_div_rem(self,
-                    other: Self,
-                    borrow: Self)
-                    -> (Self /* quotient */, Self /* remainder */);
+    fn full_div_rem(self, other: Self, borrow: Self)
+        -> (Self /* quotient */, Self /* remainder */);
 }
 
 macro_rules! impl_full_ops {
@@ -96,7 +94,7 @@ impl_full_ops! {
 const SMALL_POW5: [(u64, usize); 3] = [(125, 3), (15625, 6), (1_220_703_125, 13)];
 
 macro_rules! define_bignum {
-    ($name:ident: type=$ty:ty, n=$n:expr) => (
+    ($name:ident: type=$ty:ty, n=$n:expr) => {
         /// Stack-allocated arbitrary-precision (up to certain limit) integer.
         ///
         /// This is backed by a fixed-size array of given type ("digit").
@@ -113,7 +111,7 @@ macro_rules! define_bignum {
             size: usize,
             /// Digits. `[a, b, c, ...]` represents `a + b*2^W + c*2^(2W) + ...`
             /// where `W` is the number of bits in the digit type.
-            base: [$ty; $n]
+            base: [$ty; $n],
         }
 
         impl $name {
@@ -121,7 +119,10 @@ macro_rules! define_bignum {
             pub fn from_small(v: $ty) -> $name {
                 let mut base = [0; $n];
                 base[0] = v;
-                $name { size: 1, base: base }
+                $name {
+                    size: 1,
+                    base: base,
+                }
             }
 
             /// Makes a bignum from `u64` value.
@@ -135,7 +136,10 @@ macro_rules! define_bignum {
                     v >>= mem::size_of::<$ty>() * 8;
                     sz += 1;
                 }
-                $name { size: sz, base: base }
+                $name {
+                    size: sz,
+                    base: base,
+                }
             }
 
             /// Returns the internal digits as a slice `[a, b, c, ...]` such that the numeric
@@ -178,7 +182,7 @@ macro_rules! define_bignum {
                 }
                 // This could be optimized with leading_zeros() and bit shifts, but that's
                 // probably not worth the hassle.
-                let digitbits = mem::size_of::<$ty>()* 8;
+                let digitbits = mem::size_of::<$ty>() * 8;
                 let mut i = nonzero.len() * digitbits - 1;
                 while self.get_bit(i) == 0 {
                     i -= 1;
@@ -270,12 +274,12 @@ macro_rules! define_bignum {
                 let bits = bits % digitbits;
 
                 assert!(digits < $n);
-                debug_assert!(self.base[$n-digits..].iter().all(|&v| v == 0));
-                debug_assert!(bits == 0 || (self.base[$n-digits-1] >> (digitbits - bits)) == 0);
+                debug_assert!(self.base[$n - digits..].iter().all(|&v| v == 0));
+                debug_assert!(bits == 0 || (self.base[$n - digits - 1] >> (digitbits - bits)) == 0);
 
                 // shift by `digits * digitbits` bits
                 for i in (0..self.size).rev() {
-                    self.base[i+digits] = self.base[i];
+                    self.base[i + digits] = self.base[i];
                 }
                 for i in 0..digits {
                     self.base[i] = 0;
@@ -285,14 +289,14 @@ macro_rules! define_bignum {
                 let mut sz = self.size + digits;
                 if bits > 0 {
                     let last = sz;
-                    let overflow = self.base[last-1] >> (digitbits - bits);
+                    let overflow = self.base[last - 1] >> (digitbits - bits);
                     if overflow > 0 {
                         self.base[last] = overflow;
                         sz += 1;
                     }
-                    for i in (digits+1..last).rev() {
-                        self.base[i] = (self.base[i] << bits) |
-                                       (self.base[i-1] >> (digitbits - bits));
+                    for i in (digits + 1..last).rev() {
+                        self.base[i] =
+                            (self.base[i] << bits) | (self.base[i - 1] >> (digitbits - bits));
                     }
                     self.base[digits] <<= bits;
                     // self.base[..digits] is zero, no need to shift
@@ -329,7 +333,6 @@ macro_rules! define_bignum {
                 self
             }
 
-
             /// Multiplies itself by a number described by `other[0] + other[1] * 2^W +
             /// other[2] * 2^(2W) + ...` (where `W` is the number of bits in the digit type)
             /// and returns its own mutable reference.
@@ -340,7 +343,9 @@ macro_rules! define_bignum {
 
                     let mut retsz = 0;
                     for (i, &a) in aa.iter().enumerate() {
-                        if a == 0 { continue; }
+                        if a == 0 {
+                            continue;
+                        }
                         let mut sz = bb.len();
                         let mut carry = 0;
                         for (j, &b) in bb.iter().enumerate() {
@@ -428,11 +433,12 @@ macro_rules! define_bignum {
         }
 
         impl ::cmp::PartialEq for $name {
-            fn eq(&self, other: &$name) -> bool { self.base[..] == other.base[..] }
+            fn eq(&self, other: &$name) -> bool {
+                self.base[..] == other.base[..]
+            }
         }
 
-        impl ::cmp::Eq for $name {
-        }
+        impl ::cmp::Eq for $name {}
 
         impl ::cmp::PartialOrd for $name {
             fn partial_cmp(&self, other: &$name) -> ::option::Option<::cmp::Ordering> {
@@ -452,7 +458,10 @@ macro_rules! define_bignum {
 
         impl ::clone::Clone for $name {
             fn clone(&self) -> $name {
-                $name { size: self.size, base: self.base }
+                $name {
+                    size: self.size,
+                    base: self.base,
+                }
             }
         }
 
@@ -460,17 +469,17 @@ macro_rules! define_bignum {
             fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
                 use mem;
 
-                let sz = if self.size < 1 {1} else {self.size};
+                let sz = if self.size < 1 { 1 } else { self.size };
                 let digitlen = mem::size_of::<$ty>() * 2;
 
-                write!(f, "{:#x}", self.base[sz-1])?;
-                for &v in self.base[..sz-1].iter().rev() {
+                write!(f, "{:#x}", self.base[sz - 1])?;
+                for &v in self.base[..sz - 1].iter().rev() {
                     write!(f, "_{:01$x}", v, digitlen)?;
                 }
                 ::result::Result::Ok(())
             }
         }
-    )
+    };
 }
 
 /// The digit type for `Big32x40`.

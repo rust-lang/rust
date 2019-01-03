@@ -1,13 +1,14 @@
 //! UTF-8 and UTF-16 decoding iterators
 
-use fmt;
 use super::from_u32_unchecked;
+use fmt;
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 #[derive(Clone, Debug)]
 pub struct DecodeUtf16<I>
-    where I: Iterator<Item = u16>
+where
+    I: Iterator<Item = u16>,
 {
     iter: I,
     buf: Option<u16>,
@@ -80,7 +81,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     fn next(&mut self) -> Option<Result<char, DecodeUtf16Error>> {
         let u = match self.buf.take() {
             Some(buf) => buf,
-            None => self.iter.next()?
+            None => self.iter.next()?,
         };
 
         if u < 0xD800 || 0xDFFF < u {

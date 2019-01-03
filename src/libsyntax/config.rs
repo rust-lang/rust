@@ -1,19 +1,14 @@
-use attr::HasAttrs;
-use feature_gate::{
-    feature_err,
-    EXPLAIN_STMT_ATTR_SYNTAX,
-    Features,
-    get_features,
-    GateIssue,
-    emit_feature_err,
-};
-use {fold, attr};
 use ast;
-use source_map::Spanned;
+use attr::HasAttrs;
 use edition::Edition;
+use errors::Applicability;
+use feature_gate::{
+    emit_feature_err, feature_err, get_features, Features, GateIssue, EXPLAIN_STMT_ATTR_SYNTAX,
+};
 use parse::{token, ParseSess};
 use smallvec::SmallVec;
-use errors::Applicability;
+use source_map::Spanned;
+use {attr, fold};
 
 use ptr::P;
 
@@ -24,8 +19,11 @@ pub struct StripUnconfigured<'a> {
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition)
-                -> (ast::Crate, Features) {
+pub fn features(
+    mut krate: ast::Crate,
+    sess: &ParseSess,
+    edition: Edition,
+) -> (ast::Crate, Features) {
     let features;
     {
         let mut strip_unconfigured = StripUnconfigured {
@@ -37,7 +35,8 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition)
         let err_count = sess.span_diagnostic.err_count();
         if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
             krate.attrs = attrs;
-        } else { // the entire crate is unconfigured
+        } else {
+            // the entire crate is unconfigured
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
             return (krate, Features::new());
@@ -61,13 +60,17 @@ macro_rules! configure {
             Some(node) => node,
             None => return Default::default(),
         }
-    }
+    };
 }
 
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         let node = self.process_cfg_attrs(node);
-        if self.in_cfg(node.attrs()) { Some(node) } else { None }
+        if self.in_cfg(node.attrs()) {
+            Some(node)
+        } else {
+            None
+        }
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -78,7 +81,10 @@ impl<'a> StripUnconfigured<'a> {
     /// the syntax of any `cfg_attr` is incorrect.
     pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: T) -> T {
         node.map_attrs(|attrs| {
-            attrs.into_iter().flat_map(|attr| self.process_cfg_attr(attr)).collect()
+            attrs
+                .into_iter()
+                .flat_map(|attr| self.process_cfg_attr(attr))
+                .collect()
         })
     }
 
@@ -133,8 +139,8 @@ impl<'a> StripUnconfigured<'a> {
         match (expanded_attrs.len(), gate_cfg_attr_multi) {
             (0, false) => {
                 // FIXME: Emit unused attribute lint here.
-            },
-            (1, _) => {},
+            }
+            (1, _) => {}
             (_, true) => {
                 emit_feature_err(
                     self.sess,
@@ -143,7 +149,7 @@ impl<'a> StripUnconfigured<'a> {
                     GateIssue::Language,
                     "cfg_attr with zero or more than one attributes is experimental",
                 );
-            },
+            }
             (_, false) => {}
         }
 
@@ -151,16 +157,19 @@ impl<'a> StripUnconfigured<'a> {
             // We call `process_cfg_attr` recursively in case there's a
             // `cfg_attr` inside of another `cfg_attr`. E.g.
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
-            expanded_attrs.into_iter()
-            .flat_map(|(path, tokens, span)| self.process_cfg_attr(ast::Attribute {
-                id: attr::mk_attr_id(),
-                style: attr.style,
-                path,
-                tokens,
-                is_sugared_doc: false,
-                span,
-            }))
-            .collect()
+            expanded_attrs
+                .into_iter()
+                .flat_map(|(path, tokens, span)| {
+                    self.process_cfg_attr(ast::Attribute {
+                        id: attr::mk_attr_id(),
+                        style: attr.style,
+                        path,
+                        tokens,
+                        is_sugared_doc: false,
+                        span,
+                    })
+                })
+                .collect()
         } else {
             Vec::new()
         }
@@ -191,27 +200,39 @@ impl<'a> StripUnconfigured<'a> {
                 meta_item
             } else {
                 // Not a well-formed meta-item. Why? We don't know.
-                return error(attr.span, "`cfg` is not a well-formed meta-item",
-                                        "#[cfg(/* predicate */)]");
+                return error(
+                    attr.span,
+                    "`cfg` is not a well-formed meta-item",
+                    "#[cfg(/* predicate */)]",
+                );
             };
             let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
                 nested_meta_items
             } else {
-                return error(meta_item.span, "`cfg` is not followed by parentheses",
-                                             "cfg(/* predicate */)");
+                return error(
+                    meta_item.span,
+                    "`cfg` is not followed by parentheses",
+                    "cfg(/* predicate */)",
+                );
             };
 
             if nested_meta_items.is_empty() {
                 return error(meta_item.span, "`cfg` predicate is not specified", "");
             } else if nested_meta_items.len() > 1 {
-                return error(nested_meta_items.last().unwrap().span,
-                             "multiple `cfg` predicates are specified", "");
+                return error(
+                    nested_meta_items.last().unwrap().span,
+                    "multiple `cfg` predicates are specified",
+                    "",
+                );
             }
 
             match nested_meta_items[0].meta_item() {
                 Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
-                None => error(nested_meta_items[0].span,
-                              "`cfg` predicate key cannot be a literal", ""),
+                None => error(
+                    nested_meta_items[0].span,
+                    "`cfg` predicate key cannot be a literal",
+                    "",
+                ),
             }
         })
     }
@@ -226,12 +247,18 @@ impl<'a> StripUnconfigured<'a> {
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
     pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
-        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-            let mut err = feature_err(self.sess,
-                                      "stmt_expr_attributes",
-                                      attr.span,
-                                      GateIssue::Language,
-                                      EXPLAIN_STMT_ATTR_SYNTAX);
+        if !self
+            .features
+            .map(|features| features.stmt_expr_attributes)
+            .unwrap_or(true)
+        {
+            let mut err = feature_err(
+                self.sess,
+                "stmt_expr_attributes",
+                attr.span,
+                GateIssue::Language,
+                EXPLAIN_STMT_ATTR_SYNTAX,
+            );
 
             if attr.is_sugared_doc {
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
@@ -244,7 +271,11 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         ast::ForeignMod {
             abi: foreign_mod.abi,
-            items: foreign_mod.items.into_iter().filter_map(|item| self.configure(item)).collect(),
+            items: foreign_mod
+                .items
+                .into_iter()
+                .filter_map(|item| self.configure(item))
+                .collect(),
         }
     }
 
@@ -258,7 +289,7 @@ impl<'a> StripUnconfigured<'a> {
                 let fields = fields.into_iter().filter_map(|field| self.configure(field));
                 ast::VariantData::Tuple(fields.collect(), id)
             }
-            ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
+            ast::VariantData::Unit(id) => ast::VariantData::Unit(id),
         }
     }
 
@@ -272,21 +303,22 @@ impl<'a> StripUnconfigured<'a> {
             }
             ast::ItemKind::Enum(def, generics) => {
                 let variants = def.variants.into_iter().filter_map(|v| {
-                    self.configure(v).map(|v| {
-                        Spanned {
-                            node: ast::Variant_ {
-                                ident: v.node.ident,
-                                attrs: v.node.attrs,
-                                data: self.configure_variant_data(v.node.data),
-                                disr_expr: v.node.disr_expr,
-                            },
-                            span: v.span
-                        }
+                    self.configure(v).map(|v| Spanned {
+                        node: ast::Variant_ {
+                            ident: v.node.ident,
+                            attrs: v.node.attrs,
+                            data: self.configure_variant_data(v.node.data),
+                            disr_expr: v.node.disr_expr,
+                        },
+                        span: v.span,
                     })
                 });
-                ast::ItemKind::Enum(ast::EnumDef {
-                    variants: variants.collect(),
-                }, generics)
+                ast::ItemKind::Enum(
+                    ast::EnumDef {
+                        variants: variants.collect(),
+                    },
+                    generics,
+                )
             }
             item => item,
         }
@@ -299,10 +331,9 @@ impl<'a> StripUnconfigured<'a> {
                 ast::ExprKind::Match(m, arms)
             }
             ast::ExprKind::Struct(path, fields, base) => {
-                let fields = fields.into_iter()
-                    .filter_map(|field| {
-                        self.configure(field)
-                    })
+                let fields = fields
+                    .into_iter()
+                    .filter_map(|field| self.configure(field))
                     .collect();
                 ast::ExprKind::Struct(path, fields, base)
             }
@@ -339,10 +370,9 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
         pattern.map(|mut pattern| {
             if let ast::PatKind::Struct(path, fields, etc) = pattern.node {
-                let fields = fields.into_iter()
-                    .filter_map(|field| {
-                        self.configure(field)
-                    })
+                let fields = fields
+                    .into_iter()
+                    .filter_map(|field| self.configure(field))
                     .collect();
                 pattern.node = ast::PatKind::Struct(path, fields, etc);
             }
@@ -361,7 +391,10 @@ impl<'a> StripUnconfigured<'a> {
             } else {
                 continue;
             };
-            let msg = format!("#[{}] cannot be applied on a generic parameter", offending_attr);
+            let msg = format!(
+                "#[{}] cannot be applied on a generic parameter",
+                offending_attr
+            );
             self.sess.span_diagnostic.span_err(attr.span, &msg);
         }
     }
@@ -401,8 +434,7 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         fold::noop_fold_item(configure!(self, item), self)
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]>
-    {
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         fold::noop_fold_impl_item(configure!(self, item), self)
     }
 

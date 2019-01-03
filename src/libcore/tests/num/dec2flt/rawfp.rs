@@ -1,8 +1,8 @@
+use core::num::dec2flt::rawfp::RawFloat;
+use core::num::dec2flt::rawfp::{fp_to_float, next_float, prev_float, round_normal};
+use core::num::diy_float::Fp;
 use std::f32;
 use std::f64;
-use core::num::diy_float::Fp;
-use core::num::dec2flt::rawfp::{fp_to_float, prev_float, next_float, round_normal};
-use core::num::dec2flt::rawfp::RawFloat;
 
 fn integer_decode(f: f64) -> (u64, i16, i8) {
     RawFloat::integer_decode(f)
@@ -49,27 +49,40 @@ fn fp_to_float_half_to_even() {
 fn integers_to_f64() {
     assert_eq!(fp_to_float::<f64>(Fp { f: 1, e: 0 }), 1.0);
     assert_eq!(fp_to_float::<f64>(Fp { f: 42, e: 7 }), (42 << 7) as f64);
-    assert_eq!(fp_to_float::<f64>(Fp { f: 1 << 20, e: 30 }), (1u64 << 50) as f64);
+    assert_eq!(
+        fp_to_float::<f64>(Fp { f: 1 << 20, e: 30 }),
+        (1u64 << 50) as f64
+    );
     assert_eq!(fp_to_float::<f64>(Fp { f: 4, e: -3 }), 0.5);
 }
 
-const SOME_FLOATS: [f64; 9] =
-    [0.1f64, 33.568, 42.1e-5, 777.0e9, 1.1111, 0.347997,
-     9843579834.35892, 12456.0e-150, 54389573.0e-150];
-
+const SOME_FLOATS: [f64; 9] = [
+    0.1f64,
+    33.568,
+    42.1e-5,
+    777.0e9,
+    1.1111,
+    0.347997,
+    9843579834.35892,
+    12456.0e-150,
+    54389573.0e-150,
+];
 
 #[test]
 fn human_f64_roundtrip() {
     for &x in &SOME_FLOATS {
         let (f, e, _) = integer_decode(x);
-        let fp = Fp { f: f, e: e};
+        let fp = Fp { f: f, e: e };
         assert_eq!(fp_to_float::<f64>(fp), x);
     }
 }
 
 #[test]
 fn rounding_overflow() {
-    let x = Fp { f: 0xFF_FF_FF_FF_FF_FF_FF_00u64, e: 42 };
+    let x = Fp {
+        f: 0xFF_FF_FF_FF_FF_FF_FF_00u64,
+        e: 42,
+    };
     let rounded = round_normal::<f64>(x);
     let adjusted_k = x.e + 64 - 53;
     assert_eq!(rounded.sig, 1 << 52);
@@ -155,13 +168,22 @@ fn test_f32_integer_decode() {
 
 #[test]
 fn test_f64_integer_decode() {
-    assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
-    assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
+    assert_eq!(
+        3.14159265359f64.integer_decode(),
+        (7074237752028906, -51, 1)
+    );
+    assert_eq!(
+        (-8573.5918555f64).integer_decode(),
+        (4713381968463931, -39, -1)
+    );
     assert_eq!(2f64.powf(100.0).integer_decode(), (4503599627370496, 48, 1));
     assert_eq!(0f64.integer_decode(), (0, -1075, 1));
     assert_eq!((-0f64).integer_decode(), (0, -1075, -1));
     assert_eq!(f64::INFINITY.integer_decode(), (4503599627370496, 972, 1));
-    assert_eq!(f64::NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
+    assert_eq!(
+        f64::NEG_INFINITY.integer_decode(),
+        (4503599627370496, 972, -1)
+    );
 
     // Ignore the "sign" (quiet / signalling flag) of NAN.
     // It can vary between runtime operations and LLVM folding.

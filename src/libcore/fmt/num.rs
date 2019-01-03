@@ -4,15 +4,16 @@
 
 
 use fmt;
-use ops::{Div, Rem, Sub};
-use str;
-use slice;
-use ptr;
 use mem;
+use ops::{Div, Rem, Sub};
+use ptr;
+use slice;
+use str;
 
 #[doc(hidden)]
-trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
-           Sub<Output=Self> + Copy {
+trait Int:
+    PartialEq + PartialOrd + Div<Output = Self> + Rem<Output = Self> + Sub<Output = Self> + Copy
+{
     fn zero() -> Self;
     fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;
@@ -60,25 +61,25 @@ trait GenericRadix {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
             for byte in buf.iter_mut().rev() {
-                let n = x % base;               // Get the current place value.
-                x = x / base;                   // Deaccumulate the number.
+                let n = x % base; // Get the current place value.
+                x = x / base; // Deaccumulate the number.
                 *byte = Self::digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
-                    break
+                    break;
                 };
             }
         } else {
             // Do the same as above, but accounting for two's complement.
             for byte in buf.iter_mut().rev() {
-                let n = zero - (x % base);      // Get the current place value.
-                x = x / base;                   // Deaccumulate the number.
+                let n = zero - (x % base); // Get the current place value.
+                x = x / base; // Deaccumulate the number.
                 *byte = Self::digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
-                    break
+                    break;
                 };
             }
         }
@@ -121,9 +122,9 @@ macro_rules! radix {
 radix! { Binary,    2, "0b", x @  0 ..=  1 => b'0' + x }
 radix! { Octal,     8, "0o", x @  0 ..=  7 => b'0' + x }
 radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
-                             x @ 10 ..= 15 => b'a' + (x - 10) }
+x @ 10 ..= 15 => b'a' + (x - 10) }
 radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
-                             x @ 10 ..= 15 => b'A' + (x - 10) }
+x @ 10 ..= 15 => b'A' + (x - 10) }
 
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
@@ -133,7 +134,7 @@ macro_rules! int_base {
                 $Radix.fmt_int(*self as $U, f)
             }
         }
-    }
+    };
 }
 
 macro_rules! debug {
@@ -151,7 +152,7 @@ macro_rules! debug {
                 }
             }
         }
-    }
+    };
 }
 
 macro_rules! integer {
@@ -167,7 +168,7 @@ macro_rules! integer {
         int_base! { LowerHex for $Uint as $Uint -> LowerHex }
         int_base! { UpperHex for $Uint as $Uint -> UpperHex }
         debug! { $Uint }
-    }
+    };
 }
 integer! { isize, usize }
 integer! { i8, u8 }
@@ -176,8 +177,7 @@ integer! { i32, u32 }
 integer! { i64, u64 }
 integer! { i128, u128 }
 
-const DEC_DIGITS_LUT: &'static[u8] =
-    b"0001020304050607080910111213141516171819\
+const DEC_DIGITS_LUT: &'static [u8] = b"0001020304050607080910111213141516171819\
       2021222324252627282930313233343536373839\
       4041424344454647484950515253545556575859\
       6061626364656667686970717273747576777879\

@@ -78,7 +78,9 @@ pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// [`std::env::vars`]: fn.vars.html
 #[stable(feature = "env", since = "1.0.0")]
-pub struct Vars { inner: VarsOs }
+pub struct Vars {
+    inner: VarsOs,
+}
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
@@ -87,7 +89,9 @@ pub struct Vars { inner: VarsOs }
 ///
 /// [`std::env::vars_os`]: fn.vars_os.html
 #[stable(feature = "env", since = "1.0.0")]
-pub struct VarsOs { inner: os_imp::Env }
+pub struct VarsOs {
+    inner: os_imp::Env,
+}
 
 /// Returns an iterator of (variable, value) pairs of strings, for all the
 /// environment variables of the current process.
@@ -140,18 +144,22 @@ pub fn vars() -> Vars {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars_os() -> VarsOs {
-    VarsOs { inner: os_imp::env() }
+    VarsOs {
+        inner: os_imp::env(),
+    }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for Vars {
     type Item = (String, String);
     fn next(&mut self) -> Option<(String, String)> {
-        self.inner.next().map(|(a, b)| {
-            (a.into_string().unwrap(), b.into_string().unwrap())
-        })
+        self.inner
+            .next()
+            .map(|(a, b)| (a.into_string().unwrap(), b.into_string().unwrap()))
     }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -164,8 +172,12 @@ impl fmt::Debug for Vars {
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for VarsOs {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> { self.inner.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -227,9 +239,8 @@ pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
 }
 
 fn _var_os(key: &OsStr) -> Option<OsString> {
-    os_imp::getenv(key).unwrap_or_else(|e| {
-        panic!("failed to get environment variable `{:?}`: {}", key, e)
-    })
+    os_imp::getenv(key)
+        .unwrap_or_else(|e| panic!("failed to get environment variable `{:?}`: {}", key, e))
 }
 
 /// The error type for operations interacting with environment variables.
@@ -309,8 +320,10 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
 
 fn _set_var(k: &OsStr, v: &OsStr) {
     os_imp::setenv(k, v).unwrap_or_else(|e| {
-        panic!("failed to set environment variable `{:?}` to `{:?}`: {}",
-               k, v, e)
+        panic!(
+            "failed to set environment variable `{:?}` to `{:?}`: {}",
+            k, v, e
+        )
     })
 }
 
@@ -351,9 +364,8 @@ pub fn remove_var<K: AsRef<OsStr>>(k: K) {
 }
 
 fn _remove_var(k: &OsStr) {
-    os_imp::unsetenv(k).unwrap_or_else(|e| {
-        panic!("failed to remove environment variable `{:?}`: {}", k, e)
-    })
+    os_imp::unsetenv(k)
+        .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", k, e))
 }
 
 /// An iterator that splits an environment variable into paths according to
@@ -364,7 +376,9 @@ fn _remove_var(k: &OsStr) {
 ///
 /// [`std::env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
-pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
+pub struct SplitPaths<'a> {
+    inner: os_imp::SplitPaths<'a>,
+}
 
 /// Parses input according to platform conventions for the `PATH`
 /// environment variable.
@@ -388,14 +402,20 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths {
-    SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
+    SplitPaths {
+        inner: os_imp::split_paths(unparsed.as_ref()),
+    }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
-    fn next(&mut self) -> Option<PathBuf> { self.inner.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn next(&mut self) -> Option<PathBuf> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -412,7 +432,7 @@ impl<'a> fmt::Debug for SplitPaths<'a> {
 #[derive(Debug)]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
-    inner: os_imp::JoinPathsError
+    inner: os_imp::JoinPathsError,
 }
 
 /// Joins a collection of [`Path`]s appropriately for the `PATH`
@@ -479,11 +499,11 @@ pub struct JoinPathsError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: IntoIterator<Item=T>, T: AsRef<OsStr>
+where
+    I: IntoIterator<Item = T>,
+    T: AsRef<OsStr>,
 {
-    os_imp::join_paths(paths.into_iter()).map_err(|e| {
-        JoinPathsError { inner: e }
-    })
+    os_imp::join_paths(paths.into_iter()).map_err(|e| JoinPathsError { inner: e })
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -495,7 +515,9 @@ impl fmt::Display for JoinPathsError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
-    fn description(&self) -> &str { self.inner.description() }
+    fn description(&self) -> &str {
+        self.inner.description()
+    }
 }
 
 /// Returns the path of the current user's home directory if known.
@@ -529,9 +551,11 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
-#[rustc_deprecated(since = "1.29.0",
+#[rustc_deprecated(
+    since = "1.29.0",
     reason = "This function's behavior is unexpected and probably not what you want. \
-              Consider using the home_dir function from https://crates.io/crates/dirs instead.")]
+              Consider using the home_dir function from https://crates.io/crates/dirs instead."
+)]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
@@ -654,7 +678,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// [`String`]: ../string/struct.String.html
 /// [`std::env::args`]: ./fn.args.html
 #[stable(feature = "env", since = "1.0.0")]
-pub struct Args { inner: ArgsOs }
+pub struct Args {
+    inner: ArgsOs,
+}
 
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
@@ -669,7 +695,9 @@ pub struct Args { inner: ArgsOs }
 /// [`OsString`]: ../ffi/struct.OsString.html
 /// [`std::env::args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
-pub struct ArgsOs { inner: sys::args::Args }
+pub struct ArgsOs {
+    inner: sys::args::Args,
+}
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
@@ -724,7 +752,9 @@ pub fn args() -> Args {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args_os() -> ArgsOs {
-    ArgsOs { inner: sys::args::args() }
+    ArgsOs {
+        inner: sys::args::args(),
+    }
 }
 
 #[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
@@ -739,13 +769,19 @@ impl Iterator for Args {
     fn next(&mut self) -> Option<String> {
         self.inner.next().map(|s| s.into_string().unwrap())
     }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for Args {
-    fn len(&self) -> usize { self.inner.len() }
-    fn is_empty(&self) -> bool { self.inner.is_empty() }
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
 #[stable(feature = "env_iterators", since = "1.12.0")]
@@ -773,19 +809,29 @@ impl !Sync for ArgsOs {}
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> { self.inner.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn next(&mut self) -> Option<OsString> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for ArgsOs {
-    fn len(&self) -> usize { self.inner.len() }
-    fn is_empty(&self) -> bool { self.inner.is_empty() }
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
 #[stable(feature = "env_iterators", since = "1.12.0")]
 impl DoubleEndedIterator for ArgsOs {
-    fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<OsString> {
+        self.inner.next_back()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -998,8 +1044,8 @@ mod tests {
         use path::PathBuf;
 
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
-            split_paths(unparsed).collect::<Vec<_>>() ==
-                parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
+            split_paths(unparsed).collect::<Vec<_>>()
+                == parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
         }
 
         assert!(check_parse("", &mut [""]));
@@ -1007,11 +1053,15 @@ mod tests {
         assert!(check_parse(";;", &mut ["", "", ""]));
         assert!(check_parse(r"c:\", &mut [r"c:\"]));
         assert!(check_parse(r"c:\;", &mut [r"c:\", ""]));
-        assert!(check_parse(r"c:\;c:\Program Files\",
-                            &mut [r"c:\", r"c:\Program Files\"]));
+        assert!(check_parse(
+            r"c:\;c:\Program Files\",
+            &mut [r"c:\", r"c:\Program Files\"]
+        ));
         assert!(check_parse(r#"c:\;c:\"foo"\"#, &mut [r"c:\", r"c:\foo\"]));
-        assert!(check_parse(r#"c:\;c:\"foo;bar"\;c:\baz"#,
-                            &mut [r"c:\", r"c:\foo;bar\", r"c:\baz"]));
+        assert!(check_parse(
+            r#"c:\;c:\"foo;bar"\;c:\baz"#,
+            &mut [r"c:\", r"c:\foo;bar\", r"c:\baz"]
+        ));
     }
 
     #[test]
@@ -1020,8 +1070,8 @@ mod tests {
         use path::PathBuf;
 
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
-            split_paths(unparsed).collect::<Vec<_>>() ==
-                parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
+            split_paths(unparsed).collect::<Vec<_>>()
+                == parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
         }
 
         assert!(check_parse("", &mut [""]));
@@ -1037,15 +1087,18 @@ mod tests {
         use ffi::OsStr;
 
         fn test_eq(input: &[&str], output: &str) -> bool {
-            &*join_paths(input.iter().cloned()).unwrap() ==
-                OsStr::new(output)
+            &*join_paths(input.iter().cloned()).unwrap() == OsStr::new(output)
         }
 
         assert!(test_eq(&[], ""));
-        assert!(test_eq(&["/bin", "/usr/bin", "/usr/local/bin"],
-                         "/bin:/usr/bin:/usr/local/bin"));
-        assert!(test_eq(&["", "/bin", "", "", "/usr/bin", ""],
-                         ":/bin:::/usr/bin:"));
+        assert!(test_eq(
+            &["/bin", "/usr/bin", "/usr/local/bin"],
+            "/bin:/usr/bin:/usr/local/bin"
+        ));
+        assert!(test_eq(
+            &["", "/bin", "", "", "/usr/bin", ""],
+            ":/bin:::/usr/bin:"
+        ));
         assert!(join_paths(["/te:st"].iter().cloned()).is_err());
     }
 
@@ -1055,17 +1108,16 @@ mod tests {
         use ffi::OsStr;
 
         fn test_eq(input: &[&str], output: &str) -> bool {
-            &*join_paths(input.iter().cloned()).unwrap() ==
-                OsStr::new(output)
+            &*join_paths(input.iter().cloned()).unwrap() == OsStr::new(output)
         }
 
         assert!(test_eq(&[], ""));
-        assert!(test_eq(&[r"c:\windows", r"c:\"],
-                        r"c:\windows;c:\"));
-        assert!(test_eq(&["", r"c:\windows", "", "", r"c:\", ""],
-                        r";c:\windows;;;c:\;"));
-        assert!(test_eq(&[r"c:\te;st", r"c:\"],
-                        r#""c:\te;st";c:\"#));
+        assert!(test_eq(&[r"c:\windows", r"c:\"], r"c:\windows;c:\"));
+        assert!(test_eq(
+            &["", r"c:\windows", "", "", r"c:\", ""],
+            r";c:\windows;;;c:\;"
+        ));
+        assert!(test_eq(&[r"c:\te;st", r"c:\"], r#""c:\te;st";c:\"#));
         assert!(join_paths([r#"c:\te"st"#].iter().cloned()).is_err());
     }
 
@@ -1073,9 +1125,11 @@ mod tests {
     fn args_debug() {
         assert_eq!(
             format!("Args {{ inner: {:?} }}", args().collect::<Vec<_>>()),
-            format!("{:?}", args()));
+            format!("{:?}", args())
+        );
         assert_eq!(
             format!("ArgsOs {{ inner: {:?} }}", args_os().collect::<Vec<_>>()),
-            format!("{:?}", args_os()));
+            format!("{:?}", args_os())
+        );
     }
 }

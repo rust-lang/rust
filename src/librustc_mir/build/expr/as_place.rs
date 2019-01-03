@@ -112,10 +112,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::SelfRef => block.and(Place::Local(Local::new(1))),
             ExprKind::VarRef { id } => {
-                let place = if this.is_bound_var_in_guard(id) && this
-                    .hir
-                    .tcx()
-                    .all_pat_vars_are_implicit_refs_within_guards()
+                let place = if this.is_bound_var_in_guard(id)
+                    && this
+                        .hir
+                        .tcx()
+                        .all_pat_vars_are_implicit_refs_within_guards()
                 {
                     let index = this.var_local_id(id, RefWithinGuard);
                     Place::Local(index).deref()
@@ -133,9 +134,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place = unpack!(block = this.as_place(block, source));
                 if let Some(user_ty) = user_ty {
-                    let annotation_index = this.canonical_user_type_annotations.push(
-                        (source_info.span, user_ty)
-                    );
+                    let annotation_index = this
+                        .canonical_user_type_annotations
+                        .push((source_info.span, user_ty));
                     this.cfg.push(
                         block,
                         Statement {
@@ -143,7 +144,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             kind: StatementKind::AscribeUserType(
                                 place.clone(),
                                 Variance::Invariant,
-                                box UserTypeProjection { base: annotation_index, projs: vec![], },
+                                box UserTypeProjection {
+                                    base: annotation_index,
+                                    projs: vec![],
+                                },
                             ),
                         },
                     );
@@ -152,13 +156,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
                 let source = this.hir.mirror(source);
-                let temp = unpack!(
-                    block = this.as_temp(block, source.temp_lifetime, source, mutability)
-                );
+                let temp =
+                    unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
                 if let Some(user_ty) = user_ty {
-                    let annotation_index = this.canonical_user_type_annotations.push(
-                        (source_info.span, user_ty)
-                    );
+                    let annotation_index = this
+                        .canonical_user_type_annotations
+                        .push((source_info.span, user_ty));
                     this.cfg.push(
                         block,
                         Statement {
@@ -166,7 +169,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             kind: StatementKind::AscribeUserType(
                                 Place::Local(temp.clone()),
                                 Variance::Invariant,
-                                box UserTypeProjection { base: annotation_index, projs: vec![], },
+                                box UserTypeProjection {
+                                    base: annotation_index,
+                                    projs: vec![],
+                                },
                             ),
                         },
                     );

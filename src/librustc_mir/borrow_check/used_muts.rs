@@ -37,8 +37,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // Take the union of the existed `used_mut` set with those variables we've found were
         // never initialized.
-        debug!("gather_used_muts: never_initialized_mut_locals={:?}", never_initialized_mut_locals);
-        self.used_mut = self.used_mut.union(&never_initialized_mut_locals).cloned().collect();
+        debug!(
+            "gather_used_muts: never_initialized_mut_locals={:?}",
+            never_initialized_mut_locals
+        );
+        self.used_mut = self
+            .used_mut
+            .union(&never_initialized_mut_locals)
+            .cloned()
+            .collect();
     }
 }
 
@@ -59,7 +66,10 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
     ) {
         debug!("visit_terminator_kind: kind={:?}", kind);
         match &kind {
-            TerminatorKind::Call { destination: Some((into, _)), .. } => {
+            TerminatorKind::Call {
+                destination: Some((into, _)),
+                ..
+            } => {
                 if let Some(local) = into.base_local() {
                     debug!(
                         "visit_terminator_kind: kind={:?} local={:?} \
@@ -68,8 +78,8 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
                     );
                     let _ = self.never_initialized_mut_locals.remove(&local);
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -94,8 +104,8 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
                     );
                     let _ = self.never_initialized_mut_locals.remove(&local);
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

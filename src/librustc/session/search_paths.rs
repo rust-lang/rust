@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
-use session::{early_error, config};
 use session::filesearch::make_target_lib_path;
+use session::{config, early_error};
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
 pub struct SearchPath {
@@ -58,16 +58,12 @@ impl SearchPath {
     fn new(kind: PathKind, dir: PathBuf) -> Self {
         // Get the files within the directory.
         let files = match std::fs::read_dir(&dir) {
-            Ok(files) => {
-                files.filter_map(|p| {
-                    p.ok().map(|s| s.path())
-                })
-                .collect::<Vec<_>>()
-            }
+            Ok(files) => files
+                .filter_map(|p| p.ok().map(|s| s.path()))
+                .collect::<Vec<_>>(),
             Err(..) => vec![],
         };
 
         SearchPath { kind, dir, files }
     }
 }
-

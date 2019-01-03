@@ -61,9 +61,9 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
+use core::ptr::NonNull;
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
-use core::ptr::NonNull;
 use sys_common::util::dumb_print;
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
@@ -151,10 +151,12 @@ unsafe impl Alloc for System {
     }
 
     #[inline]
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<u8>,
-                      layout: Layout,
-                      new_size: usize) -> Result<NonNull<u8>, AllocErr> {
+    unsafe fn realloc(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 }
@@ -193,7 +195,10 @@ pub fn take_alloc_error_hook() -> fn(Layout) {
 }
 
 fn default_alloc_error_hook(layout: Layout) {
-    dumb_print(format_args!("memory allocation of {} bytes failed", layout.size()));
+    dumb_print(format_args!(
+        "memory allocation of {} bytes failed",
+        layout.size()
+    ));
 }
 
 #[cfg(not(test))]
@@ -208,7 +213,9 @@ pub fn rust_oom(layout: Layout) -> ! {
         unsafe { mem::transmute(hook) }
     };
     hook(layout);
-    unsafe { ::sys::abort_internal(); }
+    unsafe {
+        ::sys::abort_internal();
+    }
 }
 
 #[cfg(not(test))]
@@ -216,7 +223,7 @@ pub fn rust_oom(layout: Layout) -> ! {
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "0")]
 pub mod __default_lib_allocator {
-    use super::{System, Layout, GlobalAlloc};
+    use super::{GlobalAlloc, Layout, System};
     // These magic symbol names are used as a fallback for implementing the
     // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs) when there is
     // no `#[global_allocator]` attribute.
@@ -228,29 +235,29 @@ pub mod __default_lib_allocator {
     // ABI
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
+    pub unsafe extern "C" fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         System.alloc(layout)
     }
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
-                                       size: usize,
-                                       align: usize) {
+    pub unsafe extern "C" fn __rdl_dealloc(ptr: *mut u8, size: usize, align: usize) {
         System.dealloc(ptr, Layout::from_size_align_unchecked(size, align))
     }
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_realloc(ptr: *mut u8,
-                                       old_size: usize,
-                                       align: usize,
-                                       new_size: usize) -> *mut u8 {
+    pub unsafe extern "C" fn __rdl_realloc(
+        ptr: *mut u8,
+        old_size: usize,
+        align: usize,
+        new_size: usize,
+    ) -> *mut u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, align);
         System.realloc(ptr, old_layout, new_size)
     }
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+    pub unsafe extern "C" fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         System.alloc_zeroed(layout)
     }

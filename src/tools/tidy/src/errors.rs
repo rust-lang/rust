@@ -11,54 +11,57 @@ use std::path::Path;
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
     let mut map: HashMap<_, Vec<_>> = HashMap::new();
-    super::walk(path,
-                &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |file| {
-        let filename = file.file_name().unwrap().to_string_lossy();
-        if filename != "diagnostics.rs" && filename != "diagnostic_list.rs" {
-            return
-        }
-
-        contents.truncate(0);
-        t!(t!(File::open(file)).read_to_string(&mut contents));
-
-        // In the register_long_diagnostics! macro, entries look like this:
-        //
-        // EXXXX: r##"
-        // <Long diagnostic message>
-        // "##,
-        //
-        // and these long messages often have error codes themselves inside
-        // them, but we don't want to report duplicates in these cases. This
-        // variable keeps track of whether we're currently inside one of these
-        // long diagnostic messages.
-        let mut inside_long_diag = false;
-        for (num, line) in contents.lines().enumerate() {
-            if inside_long_diag {
-                inside_long_diag = !line.contains("\"##");
-                continue
+    super::walk(
+        path,
+        &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
+        &mut |file| {
+            let filename = file.file_name().unwrap().to_string_lossy();
+            if filename != "diagnostics.rs" && filename != "diagnostic_list.rs" {
+                return;
             }
 
-            let mut search = line;
-            while let Some(i) = search.find('E') {
-                search = &search[i + 1..];
-                let code = if search.len() > 4 {
-                    search[..4].parse::<u32>()
-                } else {
-                    continue
-                };
-                let code = match code {
-                    Ok(n) => n,
-                    Err(..) => continue,
-                };
-                map.entry(code).or_default()
-                   .push((file.to_owned(), num + 1, line.to_owned()));
-                break
-            }
+            contents.truncate(0);
+            t!(t!(File::open(file)).read_to_string(&mut contents));
 
-            inside_long_diag = line.contains("r##\"");
-        }
-    });
+            // In the register_long_diagnostics! macro, entries look like this:
+            //
+            // EXXXX: r##"
+            // <Long diagnostic message>
+            // "##,
+            //
+            // and these long messages often have error codes themselves inside
+            // them, but we don't want to report duplicates in these cases. This
+            // variable keeps track of whether we're currently inside one of these
+            // long diagnostic messages.
+            let mut inside_long_diag = false;
+            for (num, line) in contents.lines().enumerate() {
+                if inside_long_diag {
+                    inside_long_diag = !line.contains("\"##");
+                    continue;
+                }
+
+                let mut search = line;
+                while let Some(i) = search.find('E') {
+                    search = &search[i + 1..];
+                    let code = if search.len() > 4 {
+                        search[..4].parse::<u32>()
+                    } else {
+                        continue;
+                    };
+                    let code = match code {
+                        Ok(n) => n,
+                        Err(..) => continue,
+                    };
+                    map.entry(code)
+                        .or_default()
+                        .push((file.to_owned(), num + 1, line.to_owned()));
+                    break;
+                }
+
+                inside_long_diag = line.contains("r##\"");
+            }
+        },
+    );
 
     let mut max = 0;
     for (&code, entries) in map.iter() {
@@ -66,7 +69,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             max = code;
         }
         if entries.len() == 1 {
-            continue
+            continue;
         }
 
         tidy_error!(bad, "duplicate error code: {}", code);

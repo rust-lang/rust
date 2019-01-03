@@ -1,5 +1,4 @@
 #![allow(nonstandard_style)]
-
 #![feature(nll)]
 
 pub struct Intrinsic {
@@ -96,12 +95,12 @@ static I64x4_F64: Type = Type::Vector(&I64, Some(&F64), 4);
 
 static VOID: Type = Type::Void;
 
-mod x86;
-mod arm;
 mod aarch64;
-mod nvptx;
+mod arm;
 mod hexagon;
+mod nvptx;
 mod powerpc;
+mod x86;
 
 impl Intrinsic {
     pub fn find(name: &str) -> Option<Intrinsic> {

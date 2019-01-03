@@ -18,22 +18,24 @@ fn extend_integer_width_mips<Ty>(arg: &mut ArgType<Ty>, bits: u64) {
 }
 
 fn float_reg<'a, Ty, C>(cx: &C, ret: &ArgType<'a, Ty>, i: usize) -> Option<Reg>
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     match ret.layout.field(cx, i).abi {
         abi::Abi::Scalar(ref scalar) => match scalar.value {
             abi::Float(abi::FloatTy::F32) => Some(Reg::f32()),
             abi::Float(abi::FloatTy::F64) => Some(Reg::f64()),
-            _ => None
+            _ => None,
         },
-        _ => None
+        _ => None,
     }
 }
 
 fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
         extend_integer_width_mips(ret, 64);
@@ -66,7 +68,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
         // Cast to a uniform int structure
         ret.cast_to(Uniform {
             unit: Reg::i64(),
-            total: size
+            total: size,
         });
     } else {
         ret.make_indirect();
@@ -74,8 +76,9 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
 }
 
 fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !arg.layout.is_aggregate() {
         extend_integer_width_mips(arg, 64);
@@ -95,7 +98,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
         }
         abi::FieldPlacement::Union(_) => {
             // Unions and are always treated as a series of 64-bit integer chunks
-        },
+        }
         abi::FieldPlacement::Arbitrary { .. } => {
             // Structures are split up into a series of 64-bit integer chunks, but any aligned
             // doubles not part of another aggregate are passed as floats.
@@ -112,8 +115,8 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_aligned(dl.f64_align.abi));
                             for _ in 0..((offset - last_offset).bits() / 64)
-                                .min((prefix.len() - prefix_index) as u64) {
-
+                                .min((prefix.len() - prefix_index) as u64)
+                            {
                                 prefix[prefix_index] = Some(RegKind::Integer);
                                 prefix_index += 1;
                             }
@@ -137,20 +140,26 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
     arg.cast_to(CastTarget {
         prefix,
         prefix_chunk: Size::from_bytes(8),
-        rest: Uniform { unit: Reg::i64(), total: rest_size }
+        rest: Uniform {
+            unit: Reg::i64(),
+            total: rest_size,
+        },
     });
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg_ty(cx, arg);
     }
 }

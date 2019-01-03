@@ -28,20 +28,20 @@ impl<'a> SpanUtils<'a> {
         match &file.name {
             FileName::Real(path) if !file.name_was_remapped => {
                 if path.is_absolute() {
-                    self.sess.source_map().path_mapping()
-                        .map_prefix(path.clone()).0
+                    self.sess
+                        .source_map()
+                        .path_mapping()
+                        .map_prefix(path.clone())
+                        .0
                         .display()
                         .to_string()
                 } else {
-                    self.sess.working_dir.0
-                        .join(&path)
-                        .display()
-                        .to_string()
+                    self.sess.working_dir.0.join(&path).display().to_string()
                 }
-            },
+            }
             // If the file name is already remapped, we assume the user
             // configured it the way they wanted to, so use that directly
-            filename => filename.to_string()
+            filename => filename.to_string(),
         }
     }
 
@@ -119,7 +119,8 @@ impl<'a> SpanUtils<'a> {
         }
 
         //If the span comes from a fake source_file, filter it.
-        !self.sess
+        !self
+            .sess
             .source_map()
             .lookup_char_pos(span.lo())
             .file

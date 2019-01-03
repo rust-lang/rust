@@ -1,5 +1,5 @@
-use rustc::ty::TyCtxt;
 use rustc::mir::*;
+use rustc::ty::TyCtxt;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use transform::{MirPass, MirSource};
 
@@ -31,18 +31,19 @@ pub use self::AddCallGuards::*;
  */
 
 impl MirPass for AddCallGuards {
-    fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _src: MirSource,
+        mir: &mut Mir<'tcx>,
+    ) {
         self.add_call_guards(mir);
     }
 }
 
 impl AddCallGuards {
     pub fn add_call_guards(&self, mir: &mut Mir) {
-        let pred_count: IndexVec<_, _> =
-            mir.predecessors().iter().map(|ps| ps.len()).collect();
+        let pred_count: IndexVec<_, _> = mir.predecessors().iter().map(|ps| ps.len()).collect();
 
         // We need a place to store the new blocks generated
         let mut new_blocks = Vec::new();
@@ -52,13 +53,15 @@ impl AddCallGuards {
         for block in mir.basic_blocks_mut() {
             match block.terminator {
                 Some(Terminator {
-                    kind: TerminatorKind::Call {
-                        destination: Some((_, ref mut destination)),
-                        cleanup,
-                        ..
-                    }, source_info
-                }) if pred_count[*destination] > 1 &&
-                      (cleanup.is_some() || self == &AllCallEdges) =>
+                    kind:
+                        TerminatorKind::Call {
+                            destination: Some((_, ref mut destination)),
+                            cleanup,
+                            ..
+                        },
+                    source_info,
+                }) if pred_count[*destination] > 1
+                    && (cleanup.is_some() || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
@@ -66,8 +69,10 @@ impl AddCallGuards {
                         is_cleanup: block.is_cleanup,
                         terminator: Some(Terminator {
                             source_info,
-                            kind: TerminatorKind::Goto { target: *destination }
-                        })
+                            kind: TerminatorKind::Goto {
+                                target: *destination,
+                            },
+                        }),
                     };
 
                     // Get the index it will be when inserted into the MIR

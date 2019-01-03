@@ -30,17 +30,17 @@
 
 use super::FnCtxt;
 
-use errors::{DiagnosticBuilder,Applicability};
+use errors::{Applicability, DiagnosticBuilder};
 use hir::def_id::DefId;
 use lint;
 use rustc::hir;
+use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::traits;
-use rustc::ty::{self, Ty, TypeFoldable, TypeAndMut};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::subst::Substs;
-use rustc::middle::lang_items;
+use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use syntax::ast;
 use syntax_pos::Span;
 use util::common::ErrorReported;
@@ -77,9 +77,11 @@ enum PointerKind<'tcx> {
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Returns the kind of unsize information of t, or None
     /// if t is unknown.
-    fn pointer_kind(&self, t: Ty<'tcx>, span: Span) ->
-        Result<Option<PointerKind<'tcx>>, ErrorReported>
-    {
+    fn pointer_kind(
+        &self,
+        t: Ty<'tcx>,
+        span: Span,
+    ) -> Result<Option<PointerKind<'tcx>>, ErrorReported> {
         debug!("pointer_kind({:?}, {:?})", t, span);
 
         let t = self.resolve_type_vars_if_possible(&t);
@@ -94,20 +96,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         Ok(match t.sty {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
-            ty::Dynamic(ref tty, ..) =>
-                Some(PointerKind::Vtable(tty.principal().def_id())),
-            ty::Adt(def, substs) if def.is_struct() => {
-                match def.non_enum_variant().fields.last() {
-                    None => Some(PointerKind::Thin),
-                    Some(f) => {
-                        let field_ty = self.field_ty(span, f, substs);
-                        self.pointer_kind(field_ty, span)?
-                    }
+            ty::Dynamic(ref tty, ..) => Some(PointerKind::Vtable(tty.principal().def_id())),
+            ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
+                None => Some(PointerKind::Thin),
+                Some(f) => {
+                    let field_ty = self.field_ty(span, f, substs);
+                    self.pointer_kind(field_ty, span)?
                 }
-            }
+            },
             ty::Tuple(fields) => match fields.last() {
                 None => Some(PointerKind::Thin),
-                Some(f) => self.pointer_kind(f, span)?
+                Some(f) => self.pointer_kind(f, span)?,
             },
 
             // Pointers to foreign types are thin, despite being unsized
@@ -120,13 +119,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
 
-            ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-            ty::Float(_) | ty::Array(..) | ty::GeneratorWitness(..) |
-            ty::RawPtr(_) | ty::Ref(..) | ty::FnDef(..) |
-            ty::FnPtr(..) | ty::Closure(..) | ty::Generator(..) |
-            ty::Adt(..) | ty::Never | ty::Error => {
-                self.tcx.sess.delay_span_bug(
-                    span, &format!("`{:?}` should be sized but is not?", t));
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(_)
+            | ty::Array(..)
+            | ty::GeneratorWitness(..)
+            | ty::RawPtr(_)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::Adt(..)
+            | ty::Never
+            | ty::Error => {
+                self.tcx
+                    .sess
+                    .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
                 return Err(ErrorReported);
             }
         })
@@ -158,26 +169,33 @@ impl From<ErrorReported> for CastError {
     }
 }
 
-fn make_invalid_casting_error<'a, 'gcx, 'tcx>(sess: &'a Session,
-                                              span: Span,
-                                              expr_ty: Ty<'tcx>,
-                                              cast_ty: Ty<'tcx>,
-                                              fcx: &FnCtxt<'a, 'gcx, 'tcx>)
-                                              -> DiagnosticBuilder<'a> {
-    type_error_struct!(sess, span, expr_ty, E0606,
-                       "casting `{}` as `{}` is invalid",
-                       fcx.ty_to_string(expr_ty),
-                       fcx.ty_to_string(cast_ty))
+fn make_invalid_casting_error<'a, 'gcx, 'tcx>(
+    sess: &'a Session,
+    span: Span,
+    expr_ty: Ty<'tcx>,
+    cast_ty: Ty<'tcx>,
+    fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+) -> DiagnosticBuilder<'a> {
+    type_error_struct!(
+        sess,
+        span,
+        expr_ty,
+        E0606,
+        "casting `{}` as `{}` is invalid",
+        fcx.ty_to_string(expr_ty),
+        fcx.ty_to_string(cast_ty)
+    )
 }
 
 impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
-    pub fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-               expr: &'tcx hir::Expr,
-               expr_ty: Ty<'tcx>,
-               cast_ty: Ty<'tcx>,
-               cast_span: Span,
-               span: Span)
-               -> Result<CastCheck<'tcx>, ErrorReported> {
+    pub fn new(
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        expr: &'tcx hir::Expr,
+        expr_ty: Ty<'tcx>,
+        cast_ty: Ty<'tcx>,
+        cast_span: Span,
+        span: Span,
+    ) -> Result<CastCheck<'tcx>, ErrorReported> {
         let check = CastCheck {
             expr,
             expr_ty,
@@ -205,50 +223,84 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::NeedDeref => {
                 let error_span = self.span;
-                let mut err = make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty,
-                                                         self.cast_ty, fcx);
+                let mut err = make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                );
                 let cast_ty = fcx.ty_to_string(self.cast_ty);
-                err.span_label(error_span,
-                               format!("cannot cast `{}` as `{}`",
-                                       fcx.ty_to_string(self.expr_ty),
-                                       cast_ty));
+                err.span_label(
+                    error_span,
+                    format!(
+                        "cannot cast `{}` as `{}`",
+                        fcx.ty_to_string(self.expr_ty),
+                        cast_ty
+                    ),
+                );
                 if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr.span) {
-                    err.span_help(self.expr.span,
-                        &format!("did you mean `*{}`?", snippet));
+                    err.span_help(self.expr.span, &format!("did you mean `*{}`?", snippet));
                 }
                 err.emit();
             }
-            CastError::NeedViaThinPtr |
-            CastError::NeedViaPtr => {
-                let mut err = make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty,
-                                                         self.cast_ty, fcx);
+            CastError::NeedViaThinPtr | CastError::NeedViaPtr => {
+                let mut err = make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                );
                 if self.cast_ty.is_integral() {
-                    err.help(&format!("cast through {} first",
-                                      match e {
-                                          CastError::NeedViaPtr => "a raw pointer",
-                                          CastError::NeedViaThinPtr => "a thin pointer",
-                                          _ => bug!(),
-                                      }));
+                    err.help(&format!(
+                        "cast through {} first",
+                        match e {
+                            CastError::NeedViaPtr => "a raw pointer",
+                            CastError::NeedViaThinPtr => "a thin pointer",
+                            _ => bug!(),
+                        }
+                    ));
                 }
                 err.emit();
             }
             CastError::NeedViaInt => {
-                make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty, self.cast_ty, fcx)
-                   .help(&format!("cast through {} first",
-                                  match e {
-                                      CastError::NeedViaInt => "an integer",
-                                      _ => bug!(),
-                                  }))
-                   .emit();
+                make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                )
+                .help(&format!(
+                    "cast through {} first",
+                    match e {
+                        CastError::NeedViaInt => "an integer",
+                        _ => bug!(),
+                    }
+                ))
+                .emit();
             }
             CastError::IllegalCast => {
-                make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty, self.cast_ty, fcx)
-                    .emit();
+                make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                )
+                .emit();
             }
             CastError::DifferingKinds => {
-                make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty, self.cast_ty, fcx)
-                    .note("vtable kinds may not match")
-                    .emit();
+                make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                )
+                .note("vtable kinds may not match")
+                .emit();
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`")
@@ -257,38 +309,60 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     .emit();
             }
             CastError::CastToChar => {
-                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0604,
-                    "only `u8` can be cast as `char`, not `{}`", self.expr_ty).emit();
+                type_error_struct!(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    E0604,
+                    "only `u8` can be cast as `char`, not `{}`",
+                    self.expr_ty
+                )
+                .emit();
             }
             CastError::NonScalar => {
-                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0605,
-                                   "non-primitive cast: `{}` as `{}`",
-                                   self.expr_ty,
-                                   fcx.ty_to_string(self.cast_ty))
-                                  .note("an `as` expression can only be used to convert between \
-                                         primitive types. Consider using the `From` trait")
-                                  .emit();
+                type_error_struct!(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    E0605,
+                    "non-primitive cast: `{}` as `{}`",
+                    self.expr_ty,
+                    fcx.ty_to_string(self.cast_ty)
+                )
+                .note(
+                    "an `as` expression can only be used to convert between \
+                     primitive types. Consider using the `From` trait",
+                )
+                .emit();
             }
             CastError::SizedUnsizedCast => {
                 use structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
-                SizedUnsizedCastError::new(&fcx.tcx.sess,
-                                           self.span,
-                                           self.expr_ty,
-                                           fcx.ty_to_string(self.cast_ty))
-                    .diagnostic().emit();
+                SizedUnsizedCastError::new(
+                    &fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    fcx.ty_to_string(self.cast_ty),
+                )
+                .diagnostic()
+                .emit();
             }
-            CastError::UnknownCastPtrKind |
-            CastError::UnknownExprPtrKind => {
+            CastError::UnknownCastPtrKind | CastError::UnknownExprPtrKind => {
                 let unknown_cast_to = match e {
                     CastError::UnknownCastPtrKind => true,
                     CastError::UnknownExprPtrKind => false,
                     _ => bug!(),
                 };
-                let mut err = struct_span_err!(fcx.tcx.sess, self.span, E0641,
-                                               "cannot cast {} a pointer of an unknown kind",
-                                               if unknown_cast_to { "to" } else { "from" });
-                err.note("The type information given here is insufficient to check whether \
-                          the pointer cast is valid");
+                let mut err = struct_span_err!(
+                    fcx.tcx.sess,
+                    self.span,
+                    E0641,
+                    "cannot cast {} a pointer of an unknown kind",
+                    if unknown_cast_to { "to" } else { "from" }
+                );
+                err.note(
+                    "The type information given here is insufficient to check whether \
+                     the pointer cast is valid",
+                );
                 if unknown_cast_to {
                     err.span_suggestion_short_with_applicability(
                         self.cast_span,
@@ -308,10 +382,15 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
 
         let tstr = fcx.ty_to_string(self.cast_ty);
-        let mut err = type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0620,
-                                         "cast to unsized type: `{}` as `{}`",
-                                         fcx.resolve_type_vars_if_possible(&self.expr_ty),
-                                         tstr);
+        let mut err = type_error_struct!(
+            fcx.tcx.sess,
+            self.span,
+            self.expr_ty,
+            E0620,
+            "cast to unsized type: `{}` as `{}`",
+            fcx.resolve_type_vars_if_possible(&self.expr_ty),
+            tstr
+        );
         match self.expr_ty.sty {
             ty::Ref(_, _, mt) => {
                 let mtstr = match mt {
@@ -333,11 +412,13 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                         }
                     }
                 } else {
-                    span_help!(err,
-                               self.span,
-                               "consider using an implicit coercion to `&{}{}` instead",
-                               mtstr,
-                               tstr);
+                    span_help!(
+                        err,
+                        self.span,
+                        "consider using an implicit coercion to `&{}{}` instead",
+                        mtstr,
+                        tstr
+                    );
                 }
             }
             ty::Adt(def, ..) if def.is_box() => {
@@ -354,9 +435,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 }
             }
             _ => {
-                span_help!(err,
-                           self.expr.span,
-                           "consider using a box or reference as appropriate");
+                span_help!(
+                    err,
+                    self.expr.span,
+                    "consider using a box or reference as appropriate"
+                );
             }
         }
         err.emit();
@@ -379,12 +462,18 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             lint,
             self.expr.id,
             self.span,
-            &format!("trivial {}cast: `{}` as `{}`",
-                     adjective,
-                     fcx.ty_to_string(t_expr),
-                     fcx.ty_to_string(t_cast)));
-        err.help(&format!("cast can be replaced by coercion; this might \
-                           require {}a temporary variable", type_asc_or));
+            &format!(
+                "trivial {}cast: `{}` as `{}`",
+                adjective,
+                fcx.ty_to_string(t_expr),
+                fcx.ty_to_string(t_cast)
+            ),
+        );
+        err.help(&format!(
+            "cast can be replaced by coercion; this might \
+             require {}a temporary variable",
+            type_asc_or
+        ));
         err.emit();
     }
 
@@ -392,10 +481,10 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 
-        debug!("check_cast({}, {:?} as {:?})",
-               self.expr.id,
-               self.expr_ty,
-               self.cast_ty);
+        debug!(
+            "check_cast({}, {:?} as {:?})",
+            self.expr.id, self.expr_ty, self.cast_ty
+        );
 
         if !fcx.type_is_known_to_be_sized_modulo_regions(self.cast_ty, self.span) {
             self.report_cast_to_unsized_type(fcx);
@@ -404,13 +493,18 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         } else if self.try_coercion_cast(fcx) {
             self.trivial_cast_lint(fcx);
             debug!(" -> CoercionCast");
-            fcx.tables.borrow_mut().cast_kinds_mut().insert(self.expr.hir_id,
-                                                            CastKind::CoercionCast);
+            fcx.tables
+                .borrow_mut()
+                .cast_kinds_mut()
+                .insert(self.expr.hir_id, CastKind::CoercionCast);
         } else {
             match self.do_check(fcx) {
                 Ok(k) => {
                     debug!(" -> {:?}", k);
-                    fcx.tables.borrow_mut().cast_kinds_mut().insert(self.expr.hir_id, k);
+                    fcx.tables
+                        .borrow_mut()
+                        .cast_kinds_mut()
+                        .insert(self.expr.hir_id, k);
                 }
                 Err(e) => self.report_cast_error(fcx, e),
             };
@@ -421,21 +515,23 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
     fn do_check(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Result<CastKind, CastError> {
-        use rustc::ty::cast::IntTy::*;
         use rustc::ty::cast::CastTy::*;
+        use rustc::ty::cast::IntTy::*;
 
-        let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty),
-                                      CastTy::from_ty(self.cast_ty)) {
+        let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
+        {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
                 if let ty::FnDef(..) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
                     let f = self.expr_ty.fn_sig(fcx.tcx);
-                    let res = fcx.try_coerce(self.expr,
-                                             self.expr_ty,
-                                             fcx.tcx.mk_fn_ptr(f),
-                                             AllowTwoPhase::No);
+                    let res = fcx.try_coerce(
+                        self.expr,
+                        self.expr_ty,
+                        fcx.tcx.mk_fn_ptr(f),
+                        AllowTwoPhase::No,
+                    );
                     if res.is_err() {
                         return Err(CastError::NonScalar);
                     }
@@ -459,39 +555,29 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (_, Int(Char)) => Err(CastError::CastToChar),
 
             // prim -> float,ptr
-            (Int(Bool), Float) |
-            (Int(CEnum), Float) |
-            (Int(Char), Float) => Err(CastError::NeedViaInt),
+            (Int(Bool), Float) | (Int(CEnum), Float) | (Int(Char), Float) => {
+                Err(CastError::NeedViaInt)
+            }
 
-            (Int(Bool), Ptr(_)) |
-            (Int(CEnum), Ptr(_)) |
-            (Int(Char), Ptr(_)) |
-            (Ptr(_), Float) |
-            (FnPtr, Float) |
-            (Float, Ptr(_)) => Err(CastError::IllegalCast),
+            (Int(Bool), Ptr(_))
+            | (Int(CEnum), Ptr(_))
+            | (Int(Char), Ptr(_))
+            | (Ptr(_), Float)
+            | (FnPtr, Float)
+            | (Float, Ptr(_)) => Err(CastError::IllegalCast),
 
             // ptr -> *
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
             (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr), // ptr-addr-cast
             (FnPtr, Int(_)) => Ok(CastKind::FnPtrAddrCast),
-            (RPtr(p), Int(_)) |
-            (RPtr(p), Float) => {
-                match p.ty.sty {
-                    ty::Int(_) |
-                    ty::Uint(_) |
-                    ty::Float(_) => {
-                        Err(CastError::NeedDeref)
-                    }
-                    ty::Infer(t) => {
-                        match t {
-                            ty::InferTy::IntVar(_) |
-                            ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),
-                            _ => Err(CastError::NeedViaPtr),
-                        }
-                    }
+            (RPtr(p), Int(_)) | (RPtr(p), Float) => match p.ty.sty {
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) => Err(CastError::NeedDeref),
+                ty::Infer(t) => match t {
+                    ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),
                     _ => Err(CastError::NeedViaPtr),
-                }
-            }
+                },
+                _ => Err(CastError::NeedViaPtr),
+            },
             // * -> ptr
             (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt), // addr-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
@@ -499,8 +585,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
             // prim -> prim
             (Int(CEnum), Int(_)) => Ok(CastKind::EnumCast),
-            (Int(Char), Int(_)) |
-            (Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
+            (Int(Char), Int(_)) | (Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_), Int(_)) | (Int(_), Float) | (Float, Int(_)) | (Float, Float) => {
                 Ok(CastKind::NumericCast)
@@ -508,11 +593,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_ptr_ptr_cast(&self,
-                          fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                          m_expr: ty::TypeAndMut<'tcx>,
-                          m_cast: ty::TypeAndMut<'tcx>)
-                          -> Result<CastKind, CastError> {
+    fn check_ptr_ptr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        m_expr: ty::TypeAndMut<'tcx>,
+        m_cast: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
         // ptr-ptr cast. vtables must match.
 
@@ -549,10 +635,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_fptr_ptr_cast(&self,
-                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                           m_cast: ty::TypeAndMut<'tcx>)
-                           -> Result<CastKind, CastError> {
+    fn check_fptr_ptr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        m_cast: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // fptr-ptr cast. must be to thin ptr
 
         match fcx.pointer_kind(m_cast.ty, self.span)? {
@@ -562,10 +649,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_ptr_addr_cast(&self,
-                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                           m_expr: ty::TypeAndMut<'tcx>)
-                           -> Result<CastKind, CastError> {
+    fn check_ptr_addr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        m_expr: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // ptr-addr cast. must be from thin ptr
 
         match fcx.pointer_kind(m_expr.ty, self.span)? {
@@ -575,11 +663,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_ref_cast(&self,
-                      fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                      m_expr: ty::TypeAndMut<'tcx>,
-                      m_cast: ty::TypeAndMut<'tcx>)
-                      -> Result<CastKind, CastError> {
+    fn check_ref_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        m_expr: ty::TypeAndMut<'tcx>,
+        m_cast: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
         if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
@@ -600,10 +689,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         Err(CastError::IllegalCast)
     }
 
-    fn check_addr_ptr_cast(&self,
-                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                           m_cast: TypeAndMut<'tcx>)
-                           -> Result<CastKind, CastError> {
+    fn check_addr_ptr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        m_cast: TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // ptr-addr cast. pointer must be thin.
         match fcx.pointer_kind(m_cast.ty, self.span)? {
             None => Err(CastError::UnknownCastPtrKind),
@@ -613,7 +703,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
-        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No).is_ok()
+        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No)
+            .is_ok()
     }
 }
 

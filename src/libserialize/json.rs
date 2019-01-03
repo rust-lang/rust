@@ -182,24 +182,24 @@
 //! }
 //! ```
 
-use self::JsonEvent::*;
-use self::ErrorCode::*;
-use self::ParserError::*;
 use self::DecoderError::*;
-use self::ParserState::*;
+use self::ErrorCode::*;
 use self::InternalStackElement::*;
+use self::JsonEvent::*;
+use self::ParserError::*;
+use self::ParserState::*;
 
+use std;
 use std::borrow::Cow;
-use std::collections::{HashMap, BTreeMap};
-use std::io::prelude::*;
+use std::collections::{BTreeMap, HashMap};
 use std::io;
+use std::io::prelude::*;
 use std::mem::swap;
 use std::num::FpCategory as Fp;
 use std::ops::Index;
 use std::str::FromStr;
 use std::string;
 use std::{char, f64, fmt, str};
-use std;
 
 use Encodable;
 
@@ -219,10 +219,17 @@ pub enum Json {
 pub type Array = Vec<Json>;
 pub type Object = BTreeMap<string::String, Json>;
 
-pub struct PrettyJson<'a> { inner: &'a Json }
+pub struct PrettyJson<'a> {
+    inner: &'a Json,
+}
 
-pub struct AsJson<'a, T: 'a> { inner: &'a T }
-pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<usize> }
+pub struct AsJson<'a, T: 'a> {
+    inner: &'a T,
+}
+pub struct AsPrettyJson<'a, T: 'a> {
+    inner: &'a T,
+    indent: Option<usize>,
+}
 
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -262,7 +269,7 @@ pub enum DecoderError {
     ExpectedError(string::String, string::String),
     MissingFieldError(string::String),
     UnknownVariantError(string::String),
-    ApplicationError(string::String)
+    ApplicationError(string::String),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -298,7 +305,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
-        Err(e) => return Err(ParseError(e))
+        Err(e) => return Err(ParseError(e)),
     };
 
     let mut decoder = Decoder::new(json);
@@ -340,7 +347,9 @@ impl fmt::Display for DecoderError {
 }
 
 impl std::error::Error for DecoderError {
-    fn description(&self) -> &str { "decoder error" }
+    fn description(&self) -> &str {
+        "decoder error"
+    }
 }
 
 impl fmt::Display for EncoderError {
@@ -351,14 +360,18 @@ impl fmt::Display for EncoderError {
 }
 
 impl std::error::Error for EncoderError {
-    fn description(&self) -> &str { "encoder error" }
+    fn description(&self) -> &str {
+        "encoder error"
+    }
 }
 
 impl From<fmt::Error> for EncoderError {
     /// Converts a [`fmt::Error`] into `EncoderError`
     ///
     /// This conversion does not allocate memory.
-    fn from(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
+    fn from(err: fmt::Error) -> EncoderError {
+        EncoderError::FmtError(err)
+    }
 }
 
 pub type EncodeResult = Result<(), EncoderError>;
@@ -406,7 +419,9 @@ fn escape_str(wr: &mut dyn fmt::Write, v: &str) -> EncodeResult {
             b'\x1e' => "\\u001e",
             b'\x1f' => "\\u001f",
             b'\x7f' => "\\u007f",
-            _ => { continue; }
+            _ => {
+                continue;
+            }
         };
 
         if start < i {
@@ -454,7 +469,7 @@ fn fmt_number_or_null(v: f64) -> string::String {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
-    writer: &'a mut (dyn fmt::Write+'a),
+    writer: &'a mut (dyn fmt::Write + 'a),
     is_emitting_map_key: bool,
 }
 
@@ -462,46 +477,77 @@ impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
-        Encoder { writer: writer, is_emitting_map_key: false, }
+        Encoder {
+            writer: writer,
+            is_emitting_map_key: false,
+        }
     }
 }
 
 macro_rules! emit_enquoted_if_mapkey {
-    ($enc:ident,$e:expr) => ({
+    ($enc:ident,$e:expr) => {{
         if $enc.is_emitting_map_key {
             write!($enc.writer, "\"{}\"", $e)?;
         } else {
             write!($enc.writer, "{}", $e)?;
         }
         Ok(())
-    })
+    }};
 }
 
 impl<'a> ::Encoder for Encoder<'a> {
     type Error = EncoderError;
 
     fn emit_unit(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "null")?;
         Ok(())
     }
 
-    fn emit_usize(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u128(&mut self, v: u128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_usize(&mut self, v: usize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u128(&mut self, v: u128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
-    fn emit_isize(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i128(&mut self, v: i128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_isize(&mut self, v: isize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i128(&mut self, v: i128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if v {
             write!(self.writer, "true")?;
         } else {
@@ -524,17 +570,15 @@ impl<'a> ::Encoder for Encoder<'a> {
         escape_str(self.writer, v)
     }
 
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult where
+    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         f(self)
     }
 
-    fn emit_enum_variant<F>(&mut self,
-                            name: &str,
-                            _id: usize,
-                            cnt: usize,
-                            f: F) -> EncodeResult where
+    fn emit_enum_variant<F>(&mut self, name: &str, _id: usize, cnt: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         // enums are encoded as strings or objects
@@ -543,7 +587,9 @@ impl<'a> ::Encoder for Encoder<'a> {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
-            if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+            if self.is_emitting_map_key {
+                return Err(EncoderError::BadHashmapKey);
+            }
             write!(self.writer, "{{\"variant\":")?;
             escape_str(self.writer, name)?;
             write!(self.writer, ",\"fields\":[")?;
@@ -553,145 +599,198 @@ impl<'a> ::Encoder for Encoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx != 0 {
             write!(self.writer, ",")?;
         }
         f(self)
     }
 
-    fn emit_enum_struct_variant<F>(&mut self,
-                                   name: &str,
-                                   id: usize,
-                                   cnt: usize,
-                                   f: F) -> EncodeResult where
+    fn emit_enum_struct_variant<F>(
+        &mut self,
+        name: &str,
+        id: usize,
+        cnt: usize,
+        f: F,
+    ) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant(name, id, cnt, f)
     }
 
-    fn emit_enum_struct_variant_field<F>(&mut self,
-                                         _: &str,
-                                         idx: usize,
-                                         f: F) -> EncodeResult where
+    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant_arg(idx, f)
     }
 
-    fn emit_struct<F>(&mut self, _: &str, _: usize, f: F) -> EncodeResult where
+    fn emit_struct<F>(&mut self, _: &str, _: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "{{")?;
         f(self)?;
         write!(self.writer, "}}")?;
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult where
+    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        if idx != 0 { write!(self.writer, ",")?; }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
+        if idx != 0 {
+            write!(self.writer, ",")?;
+        }
         escape_str(self.writer, name)?;
         write!(self.writer, ":")?;
         f(self)
     }
 
-    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_unit()
     }
-    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
 
-    fn emit_seq<F>(&mut self, _len: usize, f: F) -> EncodeResult where
+    fn emit_seq<F>(&mut self, _len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "[")?;
         f(self)?;
         write!(self.writer, "]")?;
         Ok(())
     }
 
-    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx != 0 {
             write!(self.writer, ",")?;
         }
         f(self)
     }
 
-    fn emit_map<F>(&mut self, _len: usize, f: F) -> EncodeResult where
+    fn emit_map<F>(&mut self, _len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "{{")?;
         f(self)?;
         write!(self.writer, "}}")?;
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        if idx != 0 { write!(self.writer, ",")? }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
+        if idx != 0 {
+            write!(self.writer, ",")?
+        }
         self.is_emitting_map_key = true;
         f(self)?;
         self.is_emitting_map_key = false;
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, ":")?;
         f(self)
     }
@@ -700,7 +799,7 @@ impl<'a> ::Encoder for Encoder<'a> {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder<'a> {
-    writer: &'a mut (dyn fmt::Write+'a),
+    writer: &'a mut (dyn fmt::Write + 'a),
     curr_indent: usize,
     indent: usize,
     is_emitting_map_key: bool,
@@ -731,27 +830,55 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     type Error = EncoderError;
 
     fn emit_unit(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, "null")?;
         Ok(())
     }
 
-    fn emit_usize(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u128(&mut self, v: u128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_usize(&mut self, v: usize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u128(&mut self, v: u128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
-    fn emit_isize(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i128(&mut self, v: i128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_isize(&mut self, v: isize) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i128(&mut self, v: i128) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult {
+        emit_enquoted_if_mapkey!(self, v)
+    }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if v {
             write!(self.writer, "true")?;
         } else {
@@ -774,24 +901,23 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         escape_str(self.writer, v)
     }
 
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult where
+    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         f(self)
     }
 
-    fn emit_enum_variant<F>(&mut self,
-                            name: &str,
-                            _id: usize,
-                            cnt: usize,
-                            f: F)
-                            -> EncodeResult where
+    fn emit_enum_variant<F>(&mut self, name: &str, _id: usize, cnt: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
-            if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+            if self.is_emitting_map_key {
+                return Err(EncoderError::BadHashmapKey);
+            }
             writeln!(self.writer, "{{")?;
             self.curr_indent += self.indent;
             spaces(self.writer, self.curr_indent)?;
@@ -813,10 +939,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx != 0 {
             writeln!(self.writer, ",")?;
         }
@@ -824,32 +953,39 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_enum_struct_variant<F>(&mut self,
-                                   name: &str,
-                                   id: usize,
-                                   cnt: usize,
-                                   f: F) -> EncodeResult where
+    fn emit_enum_struct_variant<F>(
+        &mut self,
+        name: &str,
+        id: usize,
+        cnt: usize,
+        f: F,
+    ) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant(name, id, cnt, f)
     }
 
-    fn emit_enum_struct_variant_field<F>(&mut self,
-                                         _: &str,
-                                         idx: usize,
-                                         f: F) -> EncodeResult where
+    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_enum_variant_arg(idx, f)
     }
 
-
-    fn emit_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult where
+    fn emit_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if len == 0 {
             write!(self.writer, "{{}}")?;
         } else {
@@ -864,10 +1000,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult where
+    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx == 0 {
             writeln!(self.writer)?;
         } else {
@@ -879,53 +1018,76 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         self.emit_unit()
     }
-    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
+    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         f(self)
     }
 
-    fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if len == 0 {
             write!(self.writer, "[]")?;
         } else {
@@ -940,10 +1102,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx == 0 {
             writeln!(self.writer)?;
         } else {
@@ -953,10 +1118,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult where
+    fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if len == 0 {
             write!(self.writer, "{{}}")?;
         } else {
@@ -971,10 +1139,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         if idx == 0 {
             writeln!(self.writer)?;
         } else {
@@ -987,10 +1158,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult where
+    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
+    where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
-        if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
+        if self.is_emitting_map_key {
+            return Err(EncoderError::BadHashmapKey);
+        }
         write!(self.writer, ": ")?;
         f(self)
     }
@@ -1020,7 +1194,10 @@ pub fn as_json<T>(t: &T) -> AsJson<T> {
 /// Create an `AsPrettyJson` wrapper which can be used to print a value as JSON
 /// on-the-fly via `write!`
 pub fn as_pretty_json<T>(t: &T) -> AsPrettyJson<T> {
-    AsPrettyJson { inner: t, indent: None }
+    AsPrettyJson {
+        inner: t,
+        indent: None,
+    }
 }
 
 impl Json {
@@ -1030,19 +1207,19 @@ impl Json {
         PrettyJson { inner: self }
     }
 
-     /// If the Json value is an Object, returns the value associated with the provided key.
+    /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
-    pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
+    pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json> {
         match *self {
             Json::Object(ref map) => map.get(key),
-            _ => None
+            _ => None,
         }
     }
 
     /// Attempts to get a nested Json Object for each key in `keys`.
     /// If any key is found not to exist, find_path will return None.
     /// Otherwise, it will return the Json value associated with the final key.
-    pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json>{
+    pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json> {
         let mut target = self;
         for key in keys {
             target = target.find(*key)?;
@@ -1055,21 +1232,19 @@ impl Json {
     /// or the Json value is not an Object, returns None.
     pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
         match self {
-            &Json::Object(ref map) => {
-                match map.get(key) {
-                    Some(json_value) => Some(json_value),
-                    None => {
-                        for (_, v) in map {
-                            match v.search(key) {
-                                x if x.is_some() => return x,
-                                _ => ()
-                            }
+            &Json::Object(ref map) => match map.get(key) {
+                Some(json_value) => Some(json_value),
+                None => {
+                    for (_, v) in map {
+                        match v.search(key) {
+                            x if x.is_some() => return x,
+                            _ => (),
                         }
-                        None
                     }
+                    None
                 }
             },
-            _ => None
+            _ => None,
         }
     }
 
@@ -1083,7 +1258,7 @@ impl Json {
     pub fn as_object(&self) -> Option<&Object> {
         match *self {
             Json::Object(ref map) => Some(map),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1097,7 +1272,7 @@ impl Json {
     pub fn as_array(&self) -> Option<&Array> {
         match *self {
             Json::Array(ref array) => Some(&*array),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1111,7 +1286,7 @@ impl Json {
     pub fn as_string(&self) -> Option<&str> {
         match *self {
             Json::String(ref s) => Some(&s[..]),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1153,7 +1328,7 @@ impl Json {
         match *self {
             Json::I64(n) => Some(n),
             Json::U64(n) => Some(n as i64),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1163,7 +1338,7 @@ impl Json {
         match *self {
             Json::I64(n) => Some(n as u64),
             Json::U64(n) => Some(n),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1174,7 +1349,7 @@ impl Json {
             Json::I64(n) => Some(n as f64),
             Json::U64(n) => Some(n as f64),
             Json::F64(n) => Some(n),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1188,7 +1363,7 @@ impl Json {
     pub fn as_boolean(&self) -> Option<bool> {
         match *self {
             Json::Boolean(b) => Some(b),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1202,12 +1377,12 @@ impl Json {
     pub fn as_null(&self) -> Option<()> {
         match *self {
             Json::Null => Some(()),
-            _ => None
+            _ => None,
         }
     }
 }
 
-impl<'a> Index<&'a str>  for Json {
+impl<'a> Index<&'a str> for Json {
     type Output = Json;
 
     fn index(&self, idx: &'a str) -> &Json {
@@ -1221,7 +1396,7 @@ impl Index<usize> for Json {
     fn index(&self, idx: usize) -> &Json {
         match *self {
             Json::Array(ref v) => &v[idx],
-            _ => panic!("can only index Json with usize if it is an array")
+            _ => panic!("can only index Json with usize if it is an array"),
         }
     }
 }
@@ -1288,14 +1463,21 @@ enum InternalStackElement {
 
 impl Stack {
     pub fn new() -> Stack {
-        Stack { stack: Vec::new(), str_buffer: Vec::new() }
+        Stack {
+            stack: Vec::new(),
+            str_buffer: Vec::new(),
+        }
     }
 
     /// Returns The number of elements in the Stack.
-    pub fn len(&self) -> usize { self.stack.len() }
+    pub fn len(&self) -> usize {
+        self.stack.len()
+    }
 
     /// Returns true if the stack is empty.
-    pub fn is_empty(&self) -> bool { self.stack.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
 
     /// Provides access to the StackElement at a given index.
     /// lower indices are at the bottom of the stack while higher indices are
@@ -1303,19 +1485,22 @@ impl Stack {
     pub fn get(&self, idx: usize) -> StackElement {
         match self.stack[idx] {
             InternalIndex(i) => StackElement::Index(i),
-            InternalKey(start, size) => {
-                StackElement::Key(str::from_utf8(
-                    &self.str_buffer[start as usize .. start as usize + size as usize])
-                        .unwrap())
-            }
+            InternalKey(start, size) => StackElement::Key(
+                str::from_utf8(&self.str_buffer[start as usize..start as usize + size as usize])
+                    .unwrap(),
+            ),
         }
     }
 
     /// Compares this stack with an array of StackElements.
     pub fn is_equal_to(&self, rhs: &[StackElement]) -> bool {
-        if self.stack.len() != rhs.len() { return false; }
+        if self.stack.len() != rhs.len() {
+            return false;
+        }
         for (i, r) in rhs.iter().enumerate() {
-            if self.get(i) != *r { return false; }
+            if self.get(i) != *r {
+                return false;
+            }
         }
         true
     }
@@ -1323,9 +1508,13 @@ impl Stack {
     /// Returns true if the bottom-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
-        if self.stack.len() < rhs.len() { return false; }
+        if self.stack.len() < rhs.len() {
+            return false;
+        }
         for (i, r) in rhs.iter().enumerate() {
-            if self.get(i) != *r { return false; }
+            if self.get(i) != *r {
+                return false;
+            }
         }
         true
     }
@@ -1333,10 +1522,14 @@ impl Stack {
     /// Returns true if the top-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn ends_with(&self, rhs: &[StackElement]) -> bool {
-        if self.stack.len() < rhs.len() { return false; }
+        if self.stack.len() < rhs.len() {
+            return false;
+        }
         let offset = self.stack.len() - rhs.len();
         for (i, r) in rhs.iter().enumerate() {
-            if self.get(i + offset) != *r { return false; }
+            if self.get(i + offset) != *r {
+                return false;
+            }
         }
         true
     }
@@ -1346,17 +1539,16 @@ impl Stack {
         match self.stack.last() {
             None => None,
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
-            Some(&InternalKey(start, size)) => {
-                Some(StackElement::Key(str::from_utf8(
-                    &self.str_buffer[start as usize .. (start+size) as usize]
-                ).unwrap()))
-            }
+            Some(&InternalKey(start, size)) => Some(StackElement::Key(
+                str::from_utf8(&self.str_buffer[start as usize..(start + size) as usize]).unwrap(),
+            )),
         }
     }
 
     // Used by Parser to insert StackElement::Key elements at the top of the stack.
     fn push_key(&mut self, key: string::String) {
-        self.stack.push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
+        self.stack
+            .push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
         self.str_buffer.extend(key.as_bytes());
     }
 
@@ -1390,8 +1582,10 @@ impl Stack {
     fn bump_index(&mut self) {
         let len = self.stack.len();
         let idx = match *self.stack.last().unwrap() {
-            InternalIndex(i) => { i + 1 }
-            _ => { panic!(); }
+            InternalIndex(i) => i + 1,
+            _ => {
+                panic!();
+            }
         };
         self.stack[len - 1] = InternalIndex(idx);
     }
@@ -1411,7 +1605,7 @@ pub struct Parser<T> {
     state: ParserState,
 }
 
-impl<T: Iterator<Item=char>> Iterator for Parser<T> {
+impl<T: Iterator<Item = char>> Iterator for Parser<T> {
     type Item = JsonEvent;
 
     fn next(&mut self) -> Option<JsonEvent> {
@@ -1434,7 +1628,7 @@ impl<T: Iterator<Item=char>> Iterator for Parser<T> {
     }
 }
 
-impl<T: Iterator<Item=char>> Parser<T> {
+impl<T: Iterator<Item = char>> Parser<T> {
     /// Creates the JSON parser.
     pub fn new(rdr: T) -> Parser<T> {
         let mut p = Parser {
@@ -1455,8 +1649,12 @@ impl<T: Iterator<Item=char>> Parser<T> {
         &self.stack
     }
 
-    fn eof(&self) -> bool { self.ch.is_none() }
-    fn ch_or_null(&self) -> char { self.ch.unwrap_or('\x00') }
+    fn eof(&self) -> bool {
+        self.ch.is_none()
+    }
+    fn ch_or_null(&self) -> char {
+        self.ch.unwrap_or('\x00')
+    }
     fn bump(&mut self) {
         self.ch = self.rdr.next();
 
@@ -1481,10 +1679,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     fn parse_whitespace(&mut self) {
-        while self.ch_is(' ') ||
-              self.ch_is('\n') ||
-              self.ch_is('\t') ||
-              self.ch_is('\r') { self.bump(); }
+        while self.ch_is(' ') || self.ch_is('\n') || self.ch_is('\t') || self.ch_is('\r') {
+            self.bump();
+        }
     }
 
     fn parse_number(&mut self) -> JsonEvent {
@@ -1497,7 +1694,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
         let res = match self.parse_u64() {
             Ok(res) => res,
-            Err(e) => { return Error(e); }
+            Err(e) => {
+                return Error(e);
+            }
         };
 
         if self.ch_is('.') || self.ch_is('e') || self.ch_is('E') {
@@ -1506,14 +1705,18 @@ impl<T: Iterator<Item=char>> Parser<T> {
             if self.ch_is('.') {
                 res = match self.parse_decimal(res) {
                     Ok(res) => res,
-                    Err(e) => { return Error(e); }
+                    Err(e) => {
+                        return Error(e);
+                    }
                 };
             }
 
             if self.ch_is('e') || self.ch_is('E') {
                 res = match self.parse_exponent(res) {
                     Ok(res) => res,
-                    Err(e) => { return Error(e); }
+                    Err(e) => {
+                        return Error(e);
+                    }
                 };
             }
 
@@ -1545,19 +1748,21 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 self.bump();
 
                 // A leading '0' must be the only digit before the decimal point.
-                if let '0' ..= '9' = self.ch_or_null() {
-                    return self.error(InvalidNumber)
+                if let '0'..='9' = self.ch_or_null() {
+                    return self.error(InvalidNumber);
                 }
-            },
-            '1' ..= '9' => {
+            }
+            '1'..='9' => {
                 while !self.eof() {
                     match self.ch_or_null() {
-                        c @ '0' ..= '9' => {
+                        c @ '0'..='9' => {
                             accum = accum.wrapping_mul(10);
                             accum = accum.wrapping_add((c as u64) - ('0' as u64));
 
                             // Detect overflow by comparing to the last value.
-                            if accum <= last_accum { return self.error(InvalidNumber); }
+                            if accum <= last_accum {
+                                return self.error(InvalidNumber);
+                            }
 
                             self.bump();
                         }
@@ -1576,14 +1781,14 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
         // Make sure a digit follows the decimal place.
         match self.ch_or_null() {
-            '0' ..= '9' => (),
-             _ => return self.error(InvalidNumber)
+            '0'..='9' => (),
+            _ => return self.error(InvalidNumber),
         }
 
         let mut dec = 1.0;
         while !self.eof() {
             match self.ch_or_null() {
-                c @ '0' ..= '9' => {
+                c @ '0'..='9' => {
                     dec /= 10.0;
                     res += (((c as isize) - ('0' as isize)) as f64) * dec;
                     self.bump();
@@ -1610,18 +1815,18 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
         // Make sure a digit follows the exponent place.
         match self.ch_or_null() {
-            '0' ..= '9' => (),
-            _ => return self.error(InvalidNumber)
+            '0'..='9' => (),
+            _ => return self.error(InvalidNumber),
         }
         while !self.eof() {
             match self.ch_or_null() {
-                c @ '0' ..= '9' => {
+                c @ '0'..='9' => {
                     exp *= 10;
                     exp += (c as usize) - ('0' as usize);
 
                     self.bump();
                 }
-                _ => break
+                _ => break,
             }
         }
 
@@ -1641,14 +1846,14 @@ impl<T: Iterator<Item=char>> Parser<T> {
         while i < 4 && !self.eof() {
             self.bump();
             n = match self.ch_or_null() {
-                c @ '0' ..= '9' => n * 16 + ((c as u16) - ('0' as u16)),
+                c @ '0'..='9' => n * 16 + ((c as u16) - ('0' as u16)),
                 'a' | 'A' => n * 16 + 10,
                 'b' | 'B' => n * 16 + 11,
                 'c' | 'C' => n * 16 + 12,
                 'd' | 'D' => n * 16 + 13,
                 'e' | 'E' => n * 16 + 14,
                 'f' | 'F' => n * 16 + 15,
-                _ => return self.error(InvalidEscape)
+                _ => return self.error(InvalidEscape),
             };
 
             i += 1;
@@ -1683,13 +1888,11 @@ impl<T: Iterator<Item=char>> Parser<T> {
                     'r' => res.push('\r'),
                     't' => res.push('\t'),
                     'u' => match self.decode_hex_escape()? {
-                        0xDC00 ..= 0xDFFF => {
-                            return self.error(LoneLeadingSurrogateInHexEscape)
-                        }
+                        0xDC00..=0xDFFF => return self.error(LoneLeadingSurrogateInHexEscape),
 
                         // Non-BMP characters are encoded as a sequence of
                         // two hex escapes, representing UTF-16 surrogates.
-                        n1 @ 0xD800 ..= 0xDBFF => {
+                        n1 @ 0xD800..=0xDBFF => {
                             match (self.next_char(), self.next_char()) {
                                 (Some('\\'), Some('u')) => (),
                                 _ => return self.error(UnexpectedEndOfHexEscape),
@@ -1697,10 +1900,10 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
                             let n2 = self.decode_hex_escape()?;
                             if n2 < 0xDC00 || n2 > 0xDFFF {
-                                return self.error(LoneLeadingSurrogateInHexEscape)
+                                return self.error(LoneLeadingSurrogateInHexEscape);
                             }
-                            let c = (((n1 - 0xD800) as u32) << 10 |
-                                     (n2 - 0xDC00) as u32) + 0x1_0000;
+                            let c =
+                                (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
                             res.push(char::from_u32(c).unwrap());
                         }
 
@@ -1719,9 +1922,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
                     Some('"') => {
                         self.bump();
                         return Ok(res);
-                    },
+                    }
                     Some(c) => res.push(c),
-                    None => unreachable!()
+                    None => unreachable!(),
                 }
             }
         }
@@ -1911,12 +2114,14 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     fn parse_value(&mut self) -> JsonEvent {
-        if self.eof() { return self.error_event(EOFWhileParsingValue); }
+        if self.eof() {
+            return self.error_event(EOFWhileParsingValue);
+        }
         match self.ch_or_null() {
-            'n' => { self.parse_ident("ull", NullValue) }
-            't' => { self.parse_ident("rue", BooleanValue(true)) }
-            'f' => { self.parse_ident("alse", BooleanValue(false)) }
-            '0' ..= '9' | '-' => self.parse_number(),
+            'n' => self.parse_ident("ull", NullValue),
+            't' => self.parse_ident("rue", BooleanValue(true)),
+            'f' => self.parse_ident("alse", BooleanValue(false)),
+            '0'..='9' | '-' => self.parse_number(),
             '"' => match self.parse_str() {
                 Ok(s) => StringValue(s),
                 Err(e) => Error(e),
@@ -1929,7 +2134,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 self.bump();
                 ObjectStart
             }
-            _ => { self.error_event(InvalidSyntax) }
+            _ => self.error_event(InvalidSyntax),
         }
     }
 
@@ -1954,10 +2159,13 @@ pub struct Builder<T> {
     token: Option<JsonEvent>,
 }
 
-impl<T: Iterator<Item=char>> Builder<T> {
+impl<T: Iterator<Item = char>> Builder<T> {
     /// Create a JSON Builder.
     pub fn new(src: T) -> Builder<T> {
-        Builder { parser: Parser::new(src), token: None, }
+        Builder {
+            parser: Parser::new(src),
+            token: None,
+        }
     }
 
     // Decode a Json value from a Parser.
@@ -1967,8 +2175,12 @@ impl<T: Iterator<Item=char>> Builder<T> {
         self.bump();
         match self.token {
             None => {}
-            Some(Error(ref e)) => { return Err(e.clone()); }
-            ref tok => { panic!("unexpected token {:?}", tok.clone()); }
+            Some(Error(ref e)) => {
+                return Err(e.clone());
+            }
+            ref tok => {
+                panic!("unexpected token {:?}", tok.clone());
+            }
         }
         result
     }
@@ -2008,7 +2220,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
             }
             match self.build_value() {
                 Ok(v) => values.push(v),
-                Err(e) => { return Err(e) }
+                Err(e) => return Err(e),
             }
             self.bump();
         }
@@ -2021,18 +2233,30 @@ impl<T: Iterator<Item=char>> Builder<T> {
 
         loop {
             match self.token {
-                Some(ObjectEnd) => { return Ok(Json::Object(values)); }
-                Some(Error(ref e)) => { return Err(e.clone()); }
-                None => { break; }
+                Some(ObjectEnd) => {
+                    return Ok(Json::Object(values));
+                }
+                Some(Error(ref e)) => {
+                    return Err(e.clone());
+                }
+                None => {
+                    break;
+                }
                 _ => {}
             }
             let key = match self.parser.stack().top() {
-                Some(StackElement::Key(k)) => { k.to_owned() }
-                _ => { panic!("invalid state"); }
+                Some(StackElement::Key(k)) => k.to_owned(),
+                _ => {
+                    panic!("invalid state");
+                }
             };
             match self.build_value() {
-                Ok(value) => { values.insert(key, value); }
-                Err(e) => { return Err(e); }
+                Ok(value) => {
+                    values.insert(key, value);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
             self.bump();
         }
@@ -2044,12 +2268,12 @@ impl<T: Iterator<Item=char>> Builder<T> {
 pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
     let mut contents = Vec::new();
     match rdr.read_to_end(&mut contents) {
-        Ok(c)  => c,
-        Err(e) => return Err(io_error_to_error(e))
+        Ok(c) => c,
+        Err(e) => return Err(io_error_to_error(e)),
     };
     let s = match str::from_utf8(&contents).ok() {
         Some(s) => s,
-        _       => return Err(SyntaxError(NotUtf8, 0, 0))
+        _ => return Err(SyntaxError(NotUtf8, 0, 0)),
     };
     let mut builder = Builder::new(s.chars());
     builder.build()
@@ -2078,22 +2302,18 @@ impl Decoder {
 }
 
 macro_rules! expect {
-    ($e:expr, Null) => ({
+    ($e:expr, Null) => {{
         match $e {
             Json::Null => Ok(()),
-            other => Err(ExpectedError("Null".to_owned(),
-                                       other.to_string()))
+            other => Err(ExpectedError("Null".to_owned(), other.to_string())),
         }
-    });
-    ($e:expr, $t:ident) => ({
+    }};
+    ($e:expr, $t:ident) => {{
         match $e {
             Json::$t(v) => Ok(v),
-            other => {
-                Err(ExpectedError(stringify!($t).to_owned(),
-                                  other.to_string()))
-            }
+            other => Err(ExpectedError(stringify!($t).to_owned(), other.to_string())),
         }
-    })
+    }};
 }
 
 macro_rules! read_primitive {
@@ -2135,7 +2355,9 @@ impl ::Decoder for Decoder {
     read_primitive! { read_i64, i64 }
     read_primitive! { read_i128, i128 }
 
-    fn read_f32(&mut self) -> DecodeResult<f32> { self.read_f64().map(|x| x as f32) }
+    fn read_f32(&mut self) -> DecodeResult<f32> {
+        self.read_f64().map(|x| x as f32)
+    }
 
     fn read_f64(&mut self) -> DecodeResult<f64> {
         match self.pop() {
@@ -2149,9 +2371,9 @@ impl ::Decoder for Decoder {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_owned(), s)),
                 }
-            },
+            }
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_owned(), value.to_string()))
+            value => Err(ExpectedError("Number".to_owned(), value.to_string())),
         }
     }
 
@@ -2166,86 +2388,89 @@ impl ::Decoder for Decoder {
             match (it.next(), it.next()) {
                 // exactly one character
                 (Some(c), None) => return Ok(c),
-                _ => ()
+                _ => (),
             }
         }
-        Err(ExpectedError("single character string".to_owned(), s.to_string()))
+        Err(ExpectedError(
+            "single character string".to_owned(),
+            s.to_string(),
+        ))
     }
 
     fn read_str(&mut self) -> DecodeResult<Cow<str>> {
         expect!(self.pop(), String).map(Cow::Owned)
     }
 
-    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T> where
+    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_enum_variant<T, F>(&mut self, names: &[&str],
-                               mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
+    fn read_enum_variant<T, F>(&mut self, names: &[&str], mut f: F) -> DecodeResult<T>
+    where
+        F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let name = match self.pop() {
             Json::String(s) => s,
             Json::Object(mut o) => {
                 let n = match o.remove(&"variant".to_owned()) {
                     Some(Json::String(s)) => s,
-                    Some(val) => {
-                        return Err(ExpectedError("String".to_owned(), val.to_string()))
-                    }
-                    None => {
-                        return Err(MissingFieldError("variant".to_owned()))
-                    }
+                    Some(val) => return Err(ExpectedError("String".to_owned(), val.to_string())),
+                    None => return Err(MissingFieldError("variant".to_owned())),
                 };
                 match o.remove(&"fields".to_string()) {
                     Some(Json::Array(l)) => {
                         self.stack.extend(l.into_iter().rev());
-                    },
-                    Some(val) => {
-                        return Err(ExpectedError("Array".to_owned(), val.to_string()))
                     }
-                    None => {
-                        return Err(MissingFieldError("fields".to_owned()))
-                    }
+                    Some(val) => return Err(ExpectedError("Array".to_owned(), val.to_string())),
+                    None => return Err(MissingFieldError("fields".to_owned())),
                 }
                 n
             }
             json => {
-                return Err(ExpectedError("String or Object".to_owned(), json.to_string()))
+                return Err(ExpectedError(
+                    "String or Object".to_owned(),
+                    json.to_string(),
+                ))
             }
         };
         let idx = match names.iter().position(|n| *n == &name[..]) {
             Some(idx) => idx,
-            None => return Err(UnknownVariantError(name))
+            None => return Err(UnknownVariantError(name)),
         };
         f(self, idx)
     }
 
-    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
+    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
+    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T>
+    where
         F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
     {
         self.read_enum_variant(names, f)
     }
 
-
-    fn read_enum_struct_variant_field<T, F>(&mut self,
-                                         _name: &str,
-                                         idx: usize,
-                                         f: F)
-                                         -> DecodeResult<T> where
+    fn read_enum_struct_variant_field<T, F>(
+        &mut self,
+        _name: &str,
+        idx: usize,
+        f: F,
+    ) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_enum_variant_arg(idx, f)
     }
 
-    fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T> where
+    fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         let value = f(self)?;
@@ -2253,11 +2478,8 @@ impl ::Decoder for Decoder {
         Ok(value)
     }
 
-    fn read_struct_field<T, F>(&mut self,
-                               name: &str,
-                               _idx: usize,
-                               f: F)
-                               -> DecodeResult<T> where
+    fn read_struct_field<T, F>(&mut self, name: &str, _idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         let mut obj = expect!(self.pop(), Object)?;
@@ -2271,7 +2493,7 @@ impl ::Decoder for Decoder {
                     Ok(x) => x,
                     Err(_) => return Err(MissingFieldError(name.to_string())),
                 }
-            },
+            }
             Some(json) => {
                 self.stack.push(json);
                 f(self)?
@@ -2281,53 +2503,58 @@ impl ::Decoder for Decoder {
         Ok(value)
     }
 
-    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T> where
+    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_seq(move |d, len| {
             if len == tuple_len {
                 f(d)
             } else {
-                Err(ExpectedError(format!("Tuple{}", tuple_len), format!("Tuple{}", len)))
+                Err(ExpectedError(
+                    format!("Tuple{}", tuple_len),
+                    format!("Tuple{}", len),
+                ))
             }
         })
     }
 
-    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where
+    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_seq_elt(idx, f)
     }
 
-    fn read_tuple_struct<T, F>(&mut self,
-                               _name: &str,
-                               len: usize,
-                               f: F)
-                               -> DecodeResult<T> where
+    fn read_tuple_struct<T, F>(&mut self, _name: &str, len: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_tuple(len, f)
     }
 
-    fn read_tuple_struct_arg<T, F>(&mut self,
-                                   idx: usize,
-                                   f: F)
-                                   -> DecodeResult<T> where
+    fn read_tuple_struct_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_tuple_arg(idx, f)
     }
 
-    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
+    where
         F: FnMut(&mut Decoder, bool) -> DecodeResult<T>,
     {
         match self.pop() {
             Json::Null => f(self, false),
-            value => { self.stack.push(value); f(self, true) }
+            value => {
+                self.stack.push(value);
+                f(self, true)
+            }
         }
     }
 
-    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where
+    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let array = expect!(self.pop(), Array)?;
@@ -2336,13 +2563,15 @@ impl ::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
+    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where
+    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T>
+    where
         F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let obj = expect!(self.pop(), Object)?;
@@ -2354,14 +2583,16 @@ impl ::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
-       F: FnOnce(&mut Decoder) -> DecodeResult<T>,
+    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
+        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
-       F: FnOnce(&mut Decoder) -> DecodeResult<T>,
+    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    where
+        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
@@ -2402,36 +2633,48 @@ macro_rules! to_json_impl_u64 {
 to_json_impl_u64! { usize, u8, u16, u32, u64 }
 
 impl ToJson for Json {
-    fn to_json(&self) -> Json { self.clone() }
+    fn to_json(&self) -> Json {
+        self.clone()
+    }
 }
 
 impl ToJson for f32 {
-    fn to_json(&self) -> Json { (*self as f64).to_json() }
+    fn to_json(&self) -> Json {
+        (*self as f64).to_json()
+    }
 }
 
 impl ToJson for f64 {
     fn to_json(&self) -> Json {
         match self.classify() {
             Fp::Nan | Fp::Infinite => Json::Null,
-            _                  => Json::F64(*self)
+            _ => Json::F64(*self),
         }
     }
 }
 
 impl ToJson for () {
-    fn to_json(&self) -> Json { Json::Null }
+    fn to_json(&self) -> Json {
+        Json::Null
+    }
 }
 
 impl ToJson for bool {
-    fn to_json(&self) -> Json { Json::Boolean(*self) }
+    fn to_json(&self) -> Json {
+        Json::Boolean(*self)
+    }
 }
 
 impl ToJson for str {
-    fn to_json(&self) -> Json { Json::String(self.to_string()) }
+    fn to_json(&self) -> Json {
+        Json::String(self.to_string())
+    }
 }
 
 impl ToJson for string::String {
-    fn to_json(&self) -> Json { Json::String((*self).clone()) }
+    fn to_json(&self) -> Json {
+        Json::String((*self).clone())
+    }
 }
 
 macro_rules! tuple_impl {
@@ -2453,25 +2696,29 @@ macro_rules! tuple_impl {
     }
 }
 
-tuple_impl!{A}
-tuple_impl!{A, B}
-tuple_impl!{A, B, C}
-tuple_impl!{A, B, C, D}
-tuple_impl!{A, B, C, D, E}
-tuple_impl!{A, B, C, D, E, F}
-tuple_impl!{A, B, C, D, E, F, G}
-tuple_impl!{A, B, C, D, E, F, G, H}
-tuple_impl!{A, B, C, D, E, F, G, H, I}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
+tuple_impl! {A}
+tuple_impl! {A, B}
+tuple_impl! {A, B, C}
+tuple_impl! {A, B, C, D}
+tuple_impl! {A, B, C, D, E}
+tuple_impl! {A, B, C, D, E, F}
+tuple_impl! {A, B, C, D, E, F, G}
+tuple_impl! {A, B, C, D, E, F, G, H}
+tuple_impl! {A, B, C, D, E, F, G, H, I}
+tuple_impl! {A, B, C, D, E, F, G, H, I, J}
+tuple_impl! {A, B, C, D, E, F, G, H, I, J, K}
+tuple_impl! {A, B, C, D, E, F, G, H, I, J, K, L}
 
 impl<A: ToJson> ToJson for [A] {
-    fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
 }
 
 impl<A: ToJson> ToJson for Vec<A> {
-    fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
 }
 
 impl<A: ToJson> ToJson for BTreeMap<string::String, A> {
@@ -2494,11 +2741,11 @@ impl<A: ToJson> ToJson for HashMap<string::String, A> {
     }
 }
 
-impl<A:ToJson> ToJson for Option<A> {
+impl<A: ToJson> ToJson for Option<A> {
     fn to_json(&self) -> Json {
         match *self {
             None => Json::Null,
-            Some(ref value) => value.to_json()
+            Some(ref value) => value.to_json(),
         }
     }
 }
@@ -2511,7 +2758,7 @@ impl<'a, 'b> fmt::Write for FormatShim<'a, 'b> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         match self.inner.write_str(s) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2523,7 +2770,7 @@ impl fmt::Display for Json {
         let mut encoder = Encoder::new(&mut shim);
         match self.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2535,7 +2782,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
         let mut encoder = PrettyEncoder::new(&mut shim);
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2547,7 +2794,7 @@ impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
         let mut encoder = Encoder::new(&mut shim);
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2570,7 +2817,7 @@ impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
         }
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            Err(_) => Err(fmt::Error),
         }
     }
 }
@@ -2585,20 +2832,22 @@ impl FromStr for Json {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::Animal::*;
     use self::test::Bencher;
-    use {Encodable, Decodable};
-    use super::Json::*;
-    use super::ErrorCode::*;
-    use super::ParserError::*;
+    use self::Animal::*;
     use super::DecoderError::*;
+    use super::ErrorCode::*;
+    use super::Json::*;
     use super::JsonEvent::*;
-    use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
-                StackElement, Stack, Decoder, Encoder, EncoderError};
-    use std::{i64, u64, f32, f64};
-    use std::io::prelude::*;
+    use super::ParserError::*;
+    use super::{
+        from_str, DecodeResult, Decoder, DecoderError, Encoder, EncoderError, Json, JsonEvent,
+        Parser, Stack, StackElement,
+    };
     use std::collections::BTreeMap;
+    use std::io::prelude::*;
     use std::string;
+    use std::{f32, f64, i64, u64};
+    use {Decodable, Encodable};
 
     #[derive(RustcDecodable, Eq, PartialEq, Debug)]
     struct OptionData {
@@ -2607,7 +2856,7 @@ mod tests {
 
     #[test]
     fn test_decode_option_none() {
-        let s ="{}";
+        let s = "{}";
         let obj: OptionData = super::decode(s).unwrap();
         assert_eq!(obj, OptionData { opt: None });
     }
@@ -2621,16 +2870,20 @@ mod tests {
 
     #[test]
     fn test_decode_option_malformed() {
-        check_err::<OptionData>("{ \"opt\": [] }",
-                                ExpectedError("Number".to_string(), "[]".to_string()));
-        check_err::<OptionData>("{ \"opt\": false }",
-                                ExpectedError("Number".to_string(), "false".to_string()));
+        check_err::<OptionData>(
+            "{ \"opt\": [] }",
+            ExpectedError("Number".to_string(), "[]".to_string()),
+        );
+        check_err::<OptionData>(
+            "{ \"opt\": false }",
+            ExpectedError("Number".to_string(), "false".to_string()),
+        );
     }
 
     #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     enum Animal {
         Dog,
-        Frog(string::String, isize)
+        Frog(string::String, isize),
     }
 
     #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -2650,9 +2903,11 @@ mod tests {
 
         for item in items {
             match *item {
-                (ref key, ref value) => { d.insert((*key).clone(), (*value).clone()); },
+                (ref key, ref value) => {
+                    d.insert((*key).clone(), (*value).clone());
+                }
             }
-        };
+        }
 
         Object(d)
     }
@@ -2681,7 +2936,10 @@ mod tests {
         assert_eq!(I64(-5678).pretty().to_string(), "-5678");
 
         assert_eq!(U64(7650007200025252000).to_string(), "7650007200025252000");
-        assert_eq!(U64(7650007200025252000).pretty().to_string(), "7650007200025252000");
+        assert_eq!(
+            U64(7650007200025252000).pretty().to_string(),
+            "7650007200025252000"
+        );
     }
 
     #[test]
@@ -2714,7 +2972,10 @@ mod tests {
         assert_eq!(String("".to_string()).pretty().to_string(), "\"\"");
 
         assert_eq!(String("homura".to_string()).to_string(), "\"homura\"");
-        assert_eq!(String("madoka".to_string()).pretty().to_string(), "\"madoka\"");
+        assert_eq!(
+            String("madoka".to_string()).pretty().to_string(),
+            "\"madoka\""
+        );
     }
 
     #[test]
@@ -2735,29 +2996,32 @@ mod tests {
         assert_eq!(
             Array(vec![Boolean(true)]).pretty().to_string(),
             "\
-            [\n  \
-                true\n\
-            ]"
+             [\n  \
+             true\n\
+             ]"
         );
 
         let long_test_array = Array(vec![
             Boolean(false),
             Null,
-            Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
+            Array(vec![String("foo\nbar".to_string()), F64(3.5)]),
+        ]);
 
-        assert_eq!(long_test_array.to_string(),
-            "[false,null,[\"foo\\nbar\",3.5]]");
+        assert_eq!(
+            long_test_array.to_string(),
+            "[false,null,[\"foo\\nbar\",3.5]]"
+        );
         assert_eq!(
             long_test_array.pretty().to_string(),
             "\
-            [\n  \
-                false,\n  \
-                null,\n  \
-                [\n    \
-                    \"foo\\nbar\",\n    \
-                    3.5\n  \
-                ]\n\
-            ]"
+             [\n  \
+             false,\n  \
+             null,\n  \
+             [\n    \
+             \"foo\\nbar\",\n    \
+             3.5\n  \
+             ]\n\
+             ]"
         );
     }
 
@@ -2767,56 +3031,60 @@ mod tests {
         assert_eq!(mk_object(&[]).pretty().to_string(), "{}");
 
         assert_eq!(
-            mk_object(&[
-                ("a".to_string(), Boolean(true))
-            ]).to_string(),
+            mk_object(&[("a".to_string(), Boolean(true))]).to_string(),
             "{\"a\":true}"
         );
         assert_eq!(
-            mk_object(&[("a".to_string(), Boolean(true))]).pretty().to_string(),
+            mk_object(&[("a".to_string(), Boolean(true))])
+                .pretty()
+                .to_string(),
             "\
-            {\n  \
-                \"a\": true\n\
-            }"
+             {\n  \
+             \"a\": true\n\
+             }"
         );
 
-        let complex_obj = mk_object(&[
-                ("b".to_string(), Array(vec![
-                    mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
-                    mk_object(&[("d".to_string(), String("".to_string()))])
-                ]))
-            ]);
+        let complex_obj = mk_object(&[(
+            "b".to_string(),
+            Array(vec![
+                mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
+                mk_object(&[("d".to_string(), String("".to_string()))]),
+            ]),
+        )]);
 
         assert_eq!(
             complex_obj.to_string(),
             "{\
-                \"b\":[\
-                    {\"c\":\"\\f\\r\"},\
-                    {\"d\":\"\"}\
-                ]\
-            }"
+             \"b\":[\
+             {\"c\":\"\\f\\r\"},\
+             {\"d\":\"\"}\
+             ]\
+             }"
         );
         assert_eq!(
             complex_obj.pretty().to_string(),
             "\
-            {\n  \
-                \"b\": [\n    \
-                    {\n      \
-                        \"c\": \"\\f\\r\"\n    \
-                    },\n    \
-                    {\n      \
-                        \"d\": \"\"\n    \
-                    }\n  \
-                ]\n\
-            }"
+             {\n  \
+             \"b\": [\n    \
+             {\n      \
+             \"c\": \"\\f\\r\"\n    \
+             },\n    \
+             {\n      \
+             \"d\": \"\"\n    \
+             }\n  \
+             ]\n\
+             }"
         );
 
         let a = mk_object(&[
             ("a".to_string(), Boolean(true)),
-            ("b".to_string(), Array(vec![
-                mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
-                mk_object(&[("d".to_string(), String("".to_string()))])
-            ]))
+            (
+                "b".to_string(),
+                Array(vec![
+                    mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
+                    mk_object(&[("d".to_string(), String("".to_string()))]),
+                ]),
+            ),
         ]);
 
         // We can't compare the strings directly because the object fields be
@@ -2828,14 +3096,8 @@ mod tests {
     #[test]
     fn test_write_enum() {
         let animal = Dog;
-        assert_eq!(
-            super::as_json(&animal).to_string(),
-            "\"Dog\""
-        );
-        assert_eq!(
-            super::as_pretty_json(&animal).to_string(),
-            "\"Dog\""
-        );
+        assert_eq!(super::as_json(&animal).to_string(), "\"Dog\"");
+        assert_eq!(super::as_pretty_json(&animal).to_string(), "\"Dog\"");
 
         let animal = Frog("Henry".to_string(), 349);
         assert_eq!(
@@ -2845,23 +3107,23 @@ mod tests {
         assert_eq!(
             super::as_pretty_json(&animal).to_string(),
             "{\n  \
-               \"variant\": \"Frog\",\n  \
-               \"fields\": [\n    \
-                 \"Henry\",\n    \
-                 349\n  \
-               ]\n\
+             \"variant\": \"Frog\",\n  \
+             \"fields\": [\n    \
+             \"Henry\",\n    \
+             349\n  \
+             ]\n\
              }"
         );
     }
 
     macro_rules! check_encoder_for_simple {
-        ($value:expr, $expected:expr) => ({
+        ($value:expr, $expected:expr) => {{
             let s = super::as_json(&$value).to_string();
             assert_eq!(s, $expected);
 
             let s = super::as_pretty_json(&$value).to_string();
             assert_eq!(s, $expected);
-        })
+        }};
     }
 
     #[test]
@@ -2888,22 +3150,31 @@ mod tests {
 
     #[test]
     fn test_trailing_characters() {
-        assert_eq!(from_str("nulla"),  Err(SyntaxError(TrailingCharacters, 1, 5)));
-        assert_eq!(from_str("truea"),  Err(SyntaxError(TrailingCharacters, 1, 5)));
-        assert_eq!(from_str("falsea"), Err(SyntaxError(TrailingCharacters, 1, 6)));
-        assert_eq!(from_str("1a"),     Err(SyntaxError(TrailingCharacters, 1, 2)));
-        assert_eq!(from_str("[]a"),    Err(SyntaxError(TrailingCharacters, 1, 3)));
-        assert_eq!(from_str("{}a"),    Err(SyntaxError(TrailingCharacters, 1, 3)));
+        assert_eq!(
+            from_str("nulla"),
+            Err(SyntaxError(TrailingCharacters, 1, 5))
+        );
+        assert_eq!(
+            from_str("truea"),
+            Err(SyntaxError(TrailingCharacters, 1, 5))
+        );
+        assert_eq!(
+            from_str("falsea"),
+            Err(SyntaxError(TrailingCharacters, 1, 6))
+        );
+        assert_eq!(from_str("1a"), Err(SyntaxError(TrailingCharacters, 1, 2)));
+        assert_eq!(from_str("[]a"), Err(SyntaxError(TrailingCharacters, 1, 3)));
+        assert_eq!(from_str("{}a"), Err(SyntaxError(TrailingCharacters, 1, 3)));
     }
 
     #[test]
     fn test_read_identifiers() {
-        assert_eq!(from_str("n"),    Err(SyntaxError(InvalidSyntax, 1, 2)));
-        assert_eq!(from_str("nul"),  Err(SyntaxError(InvalidSyntax, 1, 4)));
-        assert_eq!(from_str("t"),    Err(SyntaxError(InvalidSyntax, 1, 2)));
+        assert_eq!(from_str("n"), Err(SyntaxError(InvalidSyntax, 1, 2)));
+        assert_eq!(from_str("nul"), Err(SyntaxError(InvalidSyntax, 1, 4)));
+        assert_eq!(from_str("t"), Err(SyntaxError(InvalidSyntax, 1, 2)));
         assert_eq!(from_str("truz"), Err(SyntaxError(InvalidSyntax, 1, 4)));
-        assert_eq!(from_str("f"),    Err(SyntaxError(InvalidSyntax, 1, 2)));
-        assert_eq!(from_str("faz"),  Err(SyntaxError(InvalidSyntax, 1, 3)));
+        assert_eq!(from_str("f"), Err(SyntaxError(InvalidSyntax, 1, 2)));
+        assert_eq!(from_str("faz"), Err(SyntaxError(InvalidSyntax, 1, 3)));
 
         assert_eq!(from_str("null"), Ok(Null));
         assert_eq!(from_str("true"), Ok(Boolean(true)));
@@ -2927,17 +3198,23 @@ mod tests {
 
     #[test]
     fn test_read_number() {
-        assert_eq!(from_str("+"),   Err(SyntaxError(InvalidSyntax, 1, 1)));
-        assert_eq!(from_str("."),   Err(SyntaxError(InvalidSyntax, 1, 1)));
+        assert_eq!(from_str("+"), Err(SyntaxError(InvalidSyntax, 1, 1)));
+        assert_eq!(from_str("."), Err(SyntaxError(InvalidSyntax, 1, 1)));
         assert_eq!(from_str("NaN"), Err(SyntaxError(InvalidSyntax, 1, 1)));
-        assert_eq!(from_str("-"),   Err(SyntaxError(InvalidNumber, 1, 2)));
-        assert_eq!(from_str("00"),  Err(SyntaxError(InvalidNumber, 1, 2)));
-        assert_eq!(from_str("1."),  Err(SyntaxError(InvalidNumber, 1, 3)));
-        assert_eq!(from_str("1e"),  Err(SyntaxError(InvalidNumber, 1, 3)));
+        assert_eq!(from_str("-"), Err(SyntaxError(InvalidNumber, 1, 2)));
+        assert_eq!(from_str("00"), Err(SyntaxError(InvalidNumber, 1, 2)));
+        assert_eq!(from_str("1."), Err(SyntaxError(InvalidNumber, 1, 3)));
+        assert_eq!(from_str("1e"), Err(SyntaxError(InvalidNumber, 1, 3)));
         assert_eq!(from_str("1e+"), Err(SyntaxError(InvalidNumber, 1, 4)));
 
-        assert_eq!(from_str("18446744073709551616"), Err(SyntaxError(InvalidNumber, 1, 20)));
-        assert_eq!(from_str("-9223372036854775809"), Err(SyntaxError(InvalidNumber, 1, 21)));
+        assert_eq!(
+            from_str("18446744073709551616"),
+            Err(SyntaxError(InvalidNumber, 1, 20))
+        );
+        assert_eq!(
+            from_str("-9223372036854775809"),
+            Err(SyntaxError(InvalidNumber, 1, 21))
+        );
 
         assert_eq!(from_str("3"), Ok(U64(3)));
         assert_eq!(from_str("3.1"), Ok(F64(3.1)));
@@ -2989,14 +3266,22 @@ mod tests {
         assert_eq!(v, i64::MAX);
 
         let res: DecodeResult<i64> = super::decode("765.25");
-        assert_eq!(res, Err(ExpectedError("Integer".to_string(),
-                                          "765.25".to_string())));
+        assert_eq!(
+            res,
+            Err(ExpectedError("Integer".to_string(), "765.25".to_string()))
+        );
     }
 
     #[test]
     fn test_read_str() {
-        assert_eq!(from_str("\""),    Err(SyntaxError(EOFWhileParsingString, 1, 2)));
-        assert_eq!(from_str("\"lol"), Err(SyntaxError(EOFWhileParsingString, 1, 5)));
+        assert_eq!(
+            from_str("\""),
+            Err(SyntaxError(EOFWhileParsingString, 1, 2))
+        );
+        assert_eq!(
+            from_str("\"lol"),
+            Err(SyntaxError(EOFWhileParsingString, 1, 5))
+        );
 
         assert_eq!(from_str("\"\""), Ok(String("".to_string())));
         assert_eq!(from_str("\"foo\""), Ok(String("foo".to_string())));
@@ -3012,15 +3297,17 @@ mod tests {
 
     #[test]
     fn test_decode_str() {
-        let s = [("\"\"", ""),
-                 ("\"foo\"", "foo"),
-                 ("\"\\\"\"", "\""),
-                 ("\"\\b\"", "\x08"),
-                 ("\"\\n\"", "\n"),
-                 ("\"\\r\"", "\r"),
-                 ("\"\\t\"", "\t"),
-                 ("\"\\u12ab\"", "\u{12ab}"),
-                 ("\"\\uAB12\"", "\u{AB12}")];
+        let s = [
+            ("\"\"", ""),
+            ("\"foo\"", "foo"),
+            ("\"\\\"\"", "\""),
+            ("\"\\b\"", "\x08"),
+            ("\"\\n\"", "\n"),
+            ("\"\\r\"", "\r"),
+            ("\"\\t\"", "\t"),
+            ("\"\\u12ab\"", "\u{12ab}"),
+            ("\"\\uAB12\"", "\u{AB12}"),
+        ];
 
         for &(i, o) in &s {
             let v: string::String = super::decode(i).unwrap();
@@ -3030,23 +3317,26 @@ mod tests {
 
     #[test]
     fn test_read_array() {
-        assert_eq!(from_str("["),     Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
-        assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
-        assert_eq!(from_str("[1,"),   Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
-        assert_eq!(from_str("[1,]"),  Err(SyntaxError(InvalidSyntax,        1, 4)));
-        assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax,        1, 4)));
+        assert_eq!(from_str("["), Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
+        assert_eq!(from_str("[1"), Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
+        assert_eq!(
+            from_str("[1,"),
+            Err(SyntaxError(EOFWhileParsingValue, 1, 4))
+        );
+        assert_eq!(from_str("[1,]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
+        assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
 
         assert_eq!(from_str("[]"), Ok(Array(vec![])));
         assert_eq!(from_str("[ ]"), Ok(Array(vec![])));
         assert_eq!(from_str("[true]"), Ok(Array(vec![Boolean(true)])));
         assert_eq!(from_str("[ false ]"), Ok(Array(vec![Boolean(false)])));
         assert_eq!(from_str("[null]"), Ok(Array(vec![Null])));
-        assert_eq!(from_str("[3, 1]"),
-                     Ok(Array(vec![U64(3), U64(1)])));
-        assert_eq!(from_str("\n[3, 2]\n"),
-                     Ok(Array(vec![U64(3), U64(2)])));
-        assert_eq!(from_str("[2, [4, 1]]"),
-               Ok(Array(vec![U64(2), Array(vec![U64(4), U64(1)])])));
+        assert_eq!(from_str("[3, 1]"), Ok(Array(vec![U64(3), U64(1)])));
+        assert_eq!(from_str("\n[3, 2]\n"), Ok(Array(vec![U64(3), U64(2)])));
+        assert_eq!(
+            from_str("[2, [4, 1]]"),
+            Ok(Array(vec![U64(2), Array(vec![U64(4), U64(1)])]))
+        );
     }
 
     #[test]
@@ -3088,57 +3378,88 @@ mod tests {
 
     #[test]
     fn test_read_object() {
-        assert_eq!(from_str("{"),       Err(SyntaxError(EOFWhileParsingObject, 1, 2)));
-        assert_eq!(from_str("{ "),      Err(SyntaxError(EOFWhileParsingObject, 1, 3)));
-        assert_eq!(from_str("{1"),      Err(SyntaxError(KeyMustBeAString,      1, 2)));
-        assert_eq!(from_str("{ \"a\""), Err(SyntaxError(EOFWhileParsingObject, 1, 6)));
-        assert_eq!(from_str("{\"a\""),  Err(SyntaxError(EOFWhileParsingObject, 1, 5)));
-        assert_eq!(from_str("{\"a\" "), Err(SyntaxError(EOFWhileParsingObject, 1, 6)));
+        assert_eq!(from_str("{"), Err(SyntaxError(EOFWhileParsingObject, 1, 2)));
+        assert_eq!(
+            from_str("{ "),
+            Err(SyntaxError(EOFWhileParsingObject, 1, 3))
+        );
+        assert_eq!(from_str("{1"), Err(SyntaxError(KeyMustBeAString, 1, 2)));
+        assert_eq!(
+            from_str("{ \"a\""),
+            Err(SyntaxError(EOFWhileParsingObject, 1, 6))
+        );
+        assert_eq!(
+            from_str("{\"a\""),
+            Err(SyntaxError(EOFWhileParsingObject, 1, 5))
+        );
+        assert_eq!(
+            from_str("{\"a\" "),
+            Err(SyntaxError(EOFWhileParsingObject, 1, 6))
+        );
 
-        assert_eq!(from_str("{\"a\" 1"),   Err(SyntaxError(ExpectedColon,         1, 6)));
-        assert_eq!(from_str("{\"a\":"),    Err(SyntaxError(EOFWhileParsingValue,  1, 6)));
-        assert_eq!(from_str("{\"a\":1"),   Err(SyntaxError(EOFWhileParsingObject, 1, 7)));
-        assert_eq!(from_str("{\"a\":1 1"), Err(SyntaxError(InvalidSyntax,         1, 8)));
-        assert_eq!(from_str("{\"a\":1,"),  Err(SyntaxError(EOFWhileParsingObject, 1, 8)));
+        assert_eq!(from_str("{\"a\" 1"), Err(SyntaxError(ExpectedColon, 1, 6)));
+        assert_eq!(
+            from_str("{\"a\":"),
+            Err(SyntaxError(EOFWhileParsingValue, 1, 6))
+        );
+        assert_eq!(
+            from_str("{\"a\":1"),
+            Err(SyntaxError(EOFWhileParsingObject, 1, 7))
+        );
+        assert_eq!(
+            from_str("{\"a\":1 1"),
+            Err(SyntaxError(InvalidSyntax, 1, 8))
+        );
+        assert_eq!(
+            from_str("{\"a\":1,"),
+            Err(SyntaxError(EOFWhileParsingObject, 1, 8))
+        );
 
         assert_eq!(from_str("{}").unwrap(), mk_object(&[]));
-        assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object(&[("a".to_string(), U64(3))]));
+        assert_eq!(
+            from_str("{\"a\": 3}").unwrap(),
+            mk_object(&[("a".to_string(), U64(3))])
+        );
 
-        assert_eq!(from_str(
-                      "{ \"a\": null, \"b\" : true }").unwrap(),
-                  mk_object(&[
-                      ("a".to_string(), Null),
-                      ("b".to_string(), Boolean(true))]));
-        assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
-                  mk_object(&[
-                      ("a".to_string(), Null),
-                      ("b".to_string(), Boolean(true))]));
-        assert_eq!(from_str(
-                      "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
-                  mk_object(&[
-                      ("a".to_string(), F64(1.0)),
-                      ("b".to_string(), Array(vec![Boolean(true)]))
-                  ]));
-        assert_eq!(from_str(
-                      "{\
-                          \"a\": 1.0, \
-                          \"b\": [\
-                              true,\
-                              \"foo\\nbar\", \
-                              { \"c\": {\"d\": null} } \
-                          ]\
-                      }").unwrap(),
-                  mk_object(&[
-                      ("a".to_string(), F64(1.0)),
-                      ("b".to_string(), Array(vec![
-                          Boolean(true),
-                          String("foo\nbar".to_string()),
-                          mk_object(&[
-                              ("c".to_string(), mk_object(&[("d".to_string(), Null)]))
-                          ])
-                      ]))
-                  ]));
+        assert_eq!(
+            from_str("{ \"a\": null, \"b\" : true }").unwrap(),
+            mk_object(&[("a".to_string(), Null), ("b".to_string(), Boolean(true))])
+        );
+        assert_eq!(
+            from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
+            mk_object(&[("a".to_string(), Null), ("b".to_string(), Boolean(true))])
+        );
+        assert_eq!(
+            from_str("{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
+            mk_object(&[
+                ("a".to_string(), F64(1.0)),
+                ("b".to_string(), Array(vec![Boolean(true)]))
+            ])
+        );
+        assert_eq!(
+            from_str(
+                "{\
+                 \"a\": 1.0, \
+                 \"b\": [\
+                 true,\
+                 \"foo\\nbar\", \
+                 { \"c\": {\"d\": null} } \
+                 ]\
+                 }"
+            )
+            .unwrap(),
+            mk_object(&[
+                ("a".to_string(), F64(1.0)),
+                (
+                    "b".to_string(),
+                    Array(vec![
+                        Boolean(true),
+                        String("foo\nbar".to_string()),
+                        mk_object(&[("c".to_string(), mk_object(&[("d".to_string(), Null)]))])
+                    ])
+                )
+            ])
+        );
     }
 
     #[test]
@@ -3153,9 +3474,11 @@ mod tests {
         assert_eq!(
             v,
             Outer {
-                inner: vec![
-                    Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
-                ]
+                inner: vec![Inner {
+                    a: (),
+                    b: 2,
+                    c: vec!["abc".to_string(), "xyz".to_string()]
+                }]
             }
         );
     }
@@ -3163,7 +3486,7 @@ mod tests {
     #[derive(RustcDecodable)]
     struct FloatStruct {
         f: f64,
-        a: Vec<f64>
+        a: Vec<f64>,
     }
     #[test]
     fn test_decode_struct_with_nan() {
@@ -3196,17 +3519,22 @@ mod tests {
     #[test]
     fn test_decode_map() {
         let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
-                  \"fields\":[\"Henry\", 349]}}";
+                 \"fields\":[\"Henry\", 349]}}";
         let mut map: BTreeMap<string::String, Animal> = super::decode(s).unwrap();
 
         assert_eq!(map.remove(&"a".to_string()), Some(Dog));
-        assert_eq!(map.remove(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
+        assert_eq!(
+            map.remove(&"b".to_string()),
+            Some(Frog("Henry".to_string(), 349))
+        );
     }
 
     #[test]
     fn test_multiline_errors() {
-        assert_eq!(from_str("{\n  \"foo\":\n \"bar\""),
-            Err(SyntaxError(EOFWhileParsingObject, 3, 8)));
+        assert_eq!(
+            from_str("{\n  \"foo\":\n \"bar\""),
+            Err(SyntaxError(EOFWhileParsingObject, 3, 8))
+        );
     }
 
     #[derive(RustcDecodable)]
@@ -3215,23 +3543,24 @@ mod tests {
         x: f64,
         y: bool,
         z: string::String,
-        w: Vec<DecodeStruct>
+        w: Vec<DecodeStruct>,
     }
     #[derive(RustcDecodable)]
     enum DecodeEnum {
         A(f64),
-        B(string::String)
+        B(string::String),
     }
     fn check_err<T: Decodable>(to_parse: &'static str, expected: DecoderError) {
         let res: DecodeResult<T> = match from_str(to_parse) {
             Err(e) => Err(ParseError(e)),
-            Ok(json) => Decodable::decode(&mut Decoder::new(json))
+            Ok(json) => Decodable::decode(&mut Decoder::new(json)),
         };
         match res {
-            Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`",
-                              to_parse, expected),
-            Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}",
-                                           to_parse, e),
+            Ok(_) => panic!(
+                "`{:?}` parsed & decoded ok, expecting error `{:?}`",
+                to_parse, expected
+            ),
+            Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}", to_parse, e),
             Err(e) => {
                 assert_eq!(e, expected);
             }
@@ -3240,54 +3569,71 @@ mod tests {
     #[test]
     fn test_decode_errors_struct() {
         check_err::<DecodeStruct>("[]", ExpectedError("Object".to_string(), "[]".to_string()));
-        check_err::<DecodeStruct>("{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
-                                  ExpectedError("Number".to_string(), "true".to_string()));
-        check_err::<DecodeStruct>("{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
-                                  ExpectedError("Boolean".to_string(), "[]".to_string()));
-        check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
-                                  ExpectedError("String".to_string(), "{}".to_string()));
-        check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-                                  ExpectedError("Array".to_string(), "null".to_string()));
-        check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\"}",
-                                  MissingFieldError("w".to_string()));
+        check_err::<DecodeStruct>(
+            "{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
+            ExpectedError("Number".to_string(), "true".to_string()),
+        );
+        check_err::<DecodeStruct>(
+            "{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
+            ExpectedError("Boolean".to_string(), "[]".to_string()),
+        );
+        check_err::<DecodeStruct>(
+            "{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
+            ExpectedError("String".to_string(), "{}".to_string()),
+        );
+        check_err::<DecodeStruct>(
+            "{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
+            ExpectedError("Array".to_string(), "null".to_string()),
+        );
+        check_err::<DecodeStruct>(
+            "{\"x\": 1, \"y\": true, \"z\": \"\"}",
+            MissingFieldError("w".to_string()),
+        );
     }
     #[test]
     fn test_decode_errors_enum() {
-        check_err::<DecodeEnum>("{}",
-                                MissingFieldError("variant".to_string()));
-        check_err::<DecodeEnum>("{\"variant\": 1}",
-                                ExpectedError("String".to_string(), "1".to_string()));
-        check_err::<DecodeEnum>("{\"variant\": \"A\"}",
-                                MissingFieldError("fields".to_string()));
-        check_err::<DecodeEnum>("{\"variant\": \"A\", \"fields\": null}",
-                                ExpectedError("Array".to_string(), "null".to_string()));
-        check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
-                                UnknownVariantError("C".to_string()));
+        check_err::<DecodeEnum>("{}", MissingFieldError("variant".to_string()));
+        check_err::<DecodeEnum>(
+            "{\"variant\": 1}",
+            ExpectedError("String".to_string(), "1".to_string()),
+        );
+        check_err::<DecodeEnum>(
+            "{\"variant\": \"A\"}",
+            MissingFieldError("fields".to_string()),
+        );
+        check_err::<DecodeEnum>(
+            "{\"variant\": \"A\", \"fields\": null}",
+            ExpectedError("Array".to_string(), "null".to_string()),
+        );
+        check_err::<DecodeEnum>(
+            "{\"variant\": \"C\", \"fields\": []}",
+            UnknownVariantError("C".to_string()),
+        );
     }
 
     #[test]
-    fn test_find(){
+    fn test_find() {
         let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
         let found_str = json_value.find("dog");
         assert!(found_str.unwrap().as_string().unwrap() == "cat");
     }
 
     #[test]
-    fn test_find_path(){
+    fn test_find_path() {
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
         let found_str = json_value.find_path(&["dog", "cat", "mouse"]);
         assert!(found_str.unwrap().as_string().unwrap() == "cheese");
     }
 
     #[test]
-    fn test_search(){
+    fn test_search() {
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
         let found_str = json_value.search("mouse").and_then(|j| j.as_string());
         assert!(found_str.unwrap() == "cheese");
     }
 
     #[test]
-    fn test_index(){
+    fn test_index() {
         let json_value = from_str("{\"animals\":[\"dog\",\"cat\",\"mouse\"]}").unwrap();
         let ref array = json_value["animals"];
         assert_eq!(array[0].as_string().unwrap(), "dog");
@@ -3296,26 +3642,26 @@ mod tests {
     }
 
     #[test]
-    fn test_is_object(){
+    fn test_is_object() {
         let json_value = from_str("{}").unwrap();
         assert!(json_value.is_object());
     }
 
     #[test]
-    fn test_as_object(){
+    fn test_as_object() {
         let json_value = from_str("{}").unwrap();
         let json_object = json_value.as_object();
         assert!(json_object.is_some());
     }
 
     #[test]
-    fn test_is_array(){
+    fn test_is_array() {
         let json_value = from_str("[1, 2, 3]").unwrap();
         assert!(json_value.is_array());
     }
 
     #[test]
-    fn test_as_array(){
+    fn test_as_array() {
         let json_value = from_str("[1, 2, 3]").unwrap();
         let json_array = json_value.as_array();
         let expected_length = 3;
@@ -3323,13 +3669,13 @@ mod tests {
     }
 
     #[test]
-    fn test_is_string(){
+    fn test_is_string() {
         let json_value = from_str("\"dog\"").unwrap();
         assert!(json_value.is_string());
     }
 
     #[test]
-    fn test_as_string(){
+    fn test_as_string() {
         let json_value = from_str("\"dog\"").unwrap();
         let json_str = json_value.as_string();
         let expected_str = "dog";
@@ -3337,13 +3683,13 @@ mod tests {
     }
 
     #[test]
-    fn test_is_number(){
+    fn test_is_number() {
         let json_value = from_str("12").unwrap();
         assert!(json_value.is_number());
     }
 
     #[test]
-    fn test_is_i64(){
+    fn test_is_i64() {
         let json_value = from_str("-12").unwrap();
         assert!(json_value.is_i64());
 
@@ -3355,7 +3701,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_u64(){
+    fn test_is_u64() {
         let json_value = from_str("12").unwrap();
         assert!(json_value.is_u64());
 
@@ -3367,7 +3713,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_f64(){
+    fn test_is_f64() {
         let json_value = from_str("12").unwrap();
         assert!(!json_value.is_f64());
 
@@ -3382,34 +3728,34 @@ mod tests {
     }
 
     #[test]
-    fn test_as_i64(){
+    fn test_as_i64() {
         let json_value = from_str("-12").unwrap();
         let json_num = json_value.as_i64();
         assert_eq!(json_num, Some(-12));
     }
 
     #[test]
-    fn test_as_u64(){
+    fn test_as_u64() {
         let json_value = from_str("12").unwrap();
         let json_num = json_value.as_u64();
         assert_eq!(json_num, Some(12));
     }
 
     #[test]
-    fn test_as_f64(){
+    fn test_as_f64() {
         let json_value = from_str("12.0").unwrap();
         let json_num = json_value.as_f64();
         assert_eq!(json_num, Some(12f64));
     }
 
     #[test]
-    fn test_is_boolean(){
+    fn test_is_boolean() {
         let json_value = from_str("false").unwrap();
         assert!(json_value.is_boolean());
     }
 
     #[test]
-    fn test_as_boolean(){
+    fn test_as_boolean() {
         let json_value = from_str("false").unwrap();
         let json_bool = json_value.as_boolean();
         let expected_bool = false;
@@ -3417,13 +3763,13 @@ mod tests {
     }
 
     #[test]
-    fn test_is_null(){
+    fn test_is_null() {
         let json_value = from_str("null").unwrap();
         assert!(json_value.is_null());
     }
 
     #[test]
-    fn test_as_null(){
+    fn test_as_null() {
         let json_value = from_str("null").unwrap();
         let json_null = json_value.as_null();
         let expected_null = ();
@@ -3432,8 +3778,8 @@ mod tests {
 
     #[test]
     fn test_encode_hashmap_with_numeric_key() {
-        use std::str::from_utf8;
         use std::collections::HashMap;
+        use std::str::from_utf8;
         let mut hm: HashMap<usize, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
@@ -3447,8 +3793,8 @@ mod tests {
 
     #[test]
     fn test_prettyencode_hashmap_with_numeric_key() {
-        use std::str::from_utf8;
         use std::collections::HashMap;
+        use std::str::from_utf8;
         let mut hm: HashMap<usize, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
@@ -3462,8 +3808,8 @@ mod tests {
 
     #[test]
     fn test_prettyencoder_indent_level_param() {
-        use std::str::from_utf8;
         use std::collections::BTreeMap;
+        use std::str::from_utf8;
 
         let mut tree = BTreeMap::new();
 
@@ -3473,12 +3819,12 @@ mod tests {
         let json = Array(
             // The following layout below should look a lot like
             // the pretty-printed JSON (indent * x)
-            vec!
-            ( // 0x
+            vec![
+                // 0x
                 String("greetings".to_string()), // 1x
-                Object(tree), // 1x + 2x + 2x + 1x
-            ) // 0x
-            // End JSON array (7 lines)
+                Object(tree),                    // 1x + 2x + 2x + 1x
+            ], // 0x
+               // End JSON array (7 lines)
         );
 
         // Helper function for counting indents
@@ -3490,8 +3836,7 @@ mod tests {
         // Test up to 4 spaces of indents (more?)
         for i in 0..4 {
             let mut writer = Vec::new();
-            write!(&mut writer, "{}",
-                   super::as_pretty_json(&json).indent(i)).unwrap();
+            write!(&mut writer, "{}", super::as_pretty_json(&json).indent(i)).unwrap();
 
             let printed = from_utf8(&writer[..]).unwrap();
 
@@ -3508,14 +3853,16 @@ mod tests {
             assert_eq!(indents(lines[6]), 0 * i); // ]
 
             // Finally, test that the pretty-printed JSON is valid
-            from_str(printed).ok().expect("Pretty-printed JSON is invalid!");
+            from_str(printed)
+                .ok()
+                .expect("Pretty-printed JSON is invalid!");
         }
     }
 
     #[test]
     fn test_hashmap_with_enum_key() {
-        use std::collections::HashMap;
         use json;
+        use std::collections::HashMap;
         #[derive(RustcEncodable, Eq, Hash, PartialEq, RustcDecodable, Debug)]
         enum Enum {
             Foo,
@@ -3537,7 +3884,7 @@ mod tests {
         let json_str = "{\"1\":true}";
         let json_obj = match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
-            Ok(o) => o
+            Ok(o) => o,
         };
         let mut decoder = Decoder::new(json_obj);
         let _hm: HashMap<usize, bool> = Decodable::decode(&mut decoder).unwrap();
@@ -3550,28 +3897,32 @@ mod tests {
         let json_str = "{\"a\":true}";
         let json_obj = match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
-            Ok(o) => o
+            Ok(o) => o,
         };
         let mut decoder = Decoder::new(json_obj);
         let result: Result<HashMap<usize, bool>, DecoderError> = Decodable::decode(&mut decoder);
-        assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
+        assert_eq!(
+            result,
+            Err(ExpectedError("Number".to_string(), "a".to_string()))
+        );
     }
 
-    fn assert_stream_equal(src: &str,
-                           expected: Vec<(JsonEvent, Vec<StackElement>)>) {
+    fn assert_stream_equal(src: &str, expected: Vec<(JsonEvent, Vec<StackElement>)>) {
         let mut parser = Parser::new(src.chars());
         let mut i = 0;
         loop {
             let evt = match parser.next() {
                 Some(e) => e,
-                None => { break; }
+                None => {
+                    break;
+                }
             };
             let (ref expected_evt, ref expected_stack) = expected[i];
             if !parser.stack().is_equal_to(expected_stack) {
                 panic!("Parser stack is not equal to {:?}", expected_stack);
             }
             assert_eq!(&evt, expected_evt);
-            i+=1;
+            i += 1;
         }
     }
     #[test]
@@ -3579,26 +3930,53 @@ mod tests {
         assert_stream_equal(
             r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
             vec![
-                (ObjectStart,             vec![]),
-                  (StringValue("bar".to_string()),   vec![StackElement::Key("foo")]),
-                  (ArrayStart,            vec![StackElement::Key("array")]),
-                    (U64Value(0),         vec![StackElement::Key("array"), StackElement::Index(0)]),
-                    (U64Value(1),         vec![StackElement::Key("array"), StackElement::Index(1)]),
-                    (U64Value(2),         vec![StackElement::Key("array"), StackElement::Index(2)]),
-                    (U64Value(3),         vec![StackElement::Key("array"), StackElement::Index(3)]),
-                    (U64Value(4),         vec![StackElement::Key("array"), StackElement::Index(4)]),
-                    (U64Value(5),         vec![StackElement::Key("array"), StackElement::Index(5)]),
-                  (ArrayEnd,              vec![StackElement::Key("array")]),
-                  (ArrayStart,            vec![StackElement::Key("idents")]),
-                    (NullValue,           vec![StackElement::Key("idents"),
-                                               StackElement::Index(0)]),
-                    (BooleanValue(true),  vec![StackElement::Key("idents"),
-                                               StackElement::Index(1)]),
-                    (BooleanValue(false), vec![StackElement::Key("idents"),
-                                               StackElement::Index(2)]),
-                  (ArrayEnd,              vec![StackElement::Key("idents")]),
-                (ObjectEnd,               vec![]),
-            ]
+                (ObjectStart, vec![]),
+                (
+                    StringValue("bar".to_string()),
+                    vec![StackElement::Key("foo")],
+                ),
+                (ArrayStart, vec![StackElement::Key("array")]),
+                (
+                    U64Value(0),
+                    vec![StackElement::Key("array"), StackElement::Index(0)],
+                ),
+                (
+                    U64Value(1),
+                    vec![StackElement::Key("array"), StackElement::Index(1)],
+                ),
+                (
+                    U64Value(2),
+                    vec![StackElement::Key("array"), StackElement::Index(2)],
+                ),
+                (
+                    U64Value(3),
+                    vec![StackElement::Key("array"), StackElement::Index(3)],
+                ),
+                (
+                    U64Value(4),
+                    vec![StackElement::Key("array"), StackElement::Index(4)],
+                ),
+                (
+                    U64Value(5),
+                    vec![StackElement::Key("array"), StackElement::Index(5)],
+                ),
+                (ArrayEnd, vec![StackElement::Key("array")]),
+                (ArrayStart, vec![StackElement::Key("idents")]),
+                (
+                    NullValue,
+                    vec![StackElement::Key("idents"), StackElement::Index(0)],
+                ),
+                (
+                    BooleanValue(true),
+                    vec![StackElement::Key("idents"), StackElement::Index(1)],
+                ),
+                (
+                    BooleanValue(false),
+                    vec![StackElement::Key("idents"), StackElement::Index(2)],
+                ),
+                (ArrayEnd, vec![StackElement::Key("idents")]),
+                (ObjectEnd, vec![]),
+            ],
         );
     }
     fn last_event(src: &str) -> JsonEvent {
@@ -3614,50 +3992,80 @@ mod tests {
 
     #[test]
     fn test_read_object_streaming() {
-        assert_eq!(last_event("{ "),      Error(SyntaxError(EOFWhileParsingObject, 1, 3)));
-        assert_eq!(last_event("{1"),      Error(SyntaxError(KeyMustBeAString,      1, 2)));
-        assert_eq!(last_event("{ \"a\""), Error(SyntaxError(EOFWhileParsingObject, 1, 6)));
-        assert_eq!(last_event("{\"a\""),  Error(SyntaxError(EOFWhileParsingObject, 1, 5)));
-        assert_eq!(last_event("{\"a\" "), Error(SyntaxError(EOFWhileParsingObject, 1, 6)));
-
-        assert_eq!(last_event("{\"a\" 1"),   Error(SyntaxError(ExpectedColon,         1, 6)));
-        assert_eq!(last_event("{\"a\":"),    Error(SyntaxError(EOFWhileParsingValue,  1, 6)));
-        assert_eq!(last_event("{\"a\":1"),   Error(SyntaxError(EOFWhileParsingObject, 1, 7)));
-        assert_eq!(last_event("{\"a\":1 1"), Error(SyntaxError(InvalidSyntax,         1, 8)));
-        assert_eq!(last_event("{\"a\":1,"),  Error(SyntaxError(EOFWhileParsingObject, 1, 8)));
-        assert_eq!(last_event("{\"a\":1,}"), Error(SyntaxError(TrailingComma, 1, 8)));
-
-        assert_stream_equal(
-            "{}",
-            vec![(ObjectStart, vec![]), (ObjectEnd, vec![])]
+        assert_eq!(
+            last_event("{ "),
+            Error(SyntaxError(EOFWhileParsingObject, 1, 3))
         );
+        assert_eq!(last_event("{1"), Error(SyntaxError(KeyMustBeAString, 1, 2)));
+        assert_eq!(
+            last_event("{ \"a\""),
+            Error(SyntaxError(EOFWhileParsingObject, 1, 6))
+        );
+        assert_eq!(
+            last_event("{\"a\""),
+            Error(SyntaxError(EOFWhileParsingObject, 1, 5))
+        );
+        assert_eq!(
+            last_event("{\"a\" "),
+            Error(SyntaxError(EOFWhileParsingObject, 1, 6))
+        );
+
+        assert_eq!(
+            last_event("{\"a\" 1"),
+            Error(SyntaxError(ExpectedColon, 1, 6))
+        );
+        assert_eq!(
+            last_event("{\"a\":"),
+            Error(SyntaxError(EOFWhileParsingValue, 1, 6))
+        );
+        assert_eq!(
+            last_event("{\"a\":1"),
+            Error(SyntaxError(EOFWhileParsingObject, 1, 7))
+        );
+        assert_eq!(
+            last_event("{\"a\":1 1"),
+            Error(SyntaxError(InvalidSyntax, 1, 8))
+        );
+        assert_eq!(
+            last_event("{\"a\":1,"),
+            Error(SyntaxError(EOFWhileParsingObject, 1, 8))
+        );
+        assert_eq!(
+            last_event("{\"a\":1,}"),
+            Error(SyntaxError(TrailingComma, 1, 8))
+        );
+
+        assert_stream_equal("{}", vec![(ObjectStart, vec![]), (ObjectEnd, vec![])]);
         assert_stream_equal(
             "{\"a\": 3}",
             vec![
-                (ObjectStart,        vec![]),
-                  (U64Value(3),      vec![StackElement::Key("a")]),
-                (ObjectEnd,          vec![]),
-            ]
+                (ObjectStart, vec![]),
+                (U64Value(3), vec![StackElement::Key("a")]),
+                (ObjectEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "{ \"a\": null, \"b\" : true }",
             vec![
-                (ObjectStart,           vec![]),
-                  (NullValue,           vec![StackElement::Key("a")]),
-                  (BooleanValue(true),  vec![StackElement::Key("b")]),
-                (ObjectEnd,             vec![]),
-            ]
+                (ObjectStart, vec![]),
+                (NullValue, vec![StackElement::Key("a")]),
+                (BooleanValue(true), vec![StackElement::Key("b")]),
+                (ObjectEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "{\"a\" : 1.0 ,\"b\": [ true ]}",
             vec![
-                (ObjectStart,           vec![]),
-                  (F64Value(1.0),       vec![StackElement::Key("a")]),
-                  (ArrayStart,          vec![StackElement::Key("b")]),
-                    (BooleanValue(true),vec![StackElement::Key("b"), StackElement::Index(0)]),
-                  (ArrayEnd,            vec![StackElement::Key("b")]),
-                (ObjectEnd,             vec![]),
-            ]
+                (ObjectStart, vec![]),
+                (F64Value(1.0), vec![StackElement::Key("a")]),
+                (ArrayStart, vec![StackElement::Key("b")]),
+                (
+                    BooleanValue(true),
+                    vec![StackElement::Key("b"), StackElement::Index(0)],
+                ),
+                (ArrayEnd, vec![StackElement::Key("b")]),
+                (ObjectEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             r#"{
@@ -3669,133 +4077,176 @@ mod tests {
                 ]
             }"#,
             vec![
-                (ObjectStart,                   vec![]),
-                  (F64Value(1.0),               vec![StackElement::Key("a")]),
-                  (ArrayStart,                  vec![StackElement::Key("b")]),
-                    (BooleanValue(true),        vec![StackElement::Key("b"),
-                                                     StackElement::Index(0)]),
-                    (StringValue("foo\nbar".to_string()),  vec![StackElement::Key("b"),
-                                                                StackElement::Index(1)]),
-                    (ObjectStart,               vec![StackElement::Key("b"),
-                                                     StackElement::Index(2)]),
-                      (ObjectStart,             vec![StackElement::Key("b"),
-                                                     StackElement::Index(2),
-                                                     StackElement::Key("c")]),
-                        (NullValue,             vec![StackElement::Key("b"),
-                                                     StackElement::Index(2),
-                                                     StackElement::Key("c"),
-                                                     StackElement::Key("d")]),
-                      (ObjectEnd,               vec![StackElement::Key("b"),
-                                                     StackElement::Index(2),
-                                                     StackElement::Key("c")]),
-                    (ObjectEnd,                 vec![StackElement::Key("b"),
-                                                     StackElement::Index(2)]),
-                  (ArrayEnd,                    vec![StackElement::Key("b")]),
-                (ObjectEnd,                     vec![]),
-            ]
+                (ObjectStart, vec![]),
+                (F64Value(1.0), vec![StackElement::Key("a")]),
+                (ArrayStart, vec![StackElement::Key("b")]),
+                (
+                    BooleanValue(true),
+                    vec![StackElement::Key("b"), StackElement::Index(0)],
+                ),
+                (
+                    StringValue("foo\nbar".to_string()),
+                    vec![StackElement::Key("b"), StackElement::Index(1)],
+                ),
+                (
+                    ObjectStart,
+                    vec![StackElement::Key("b"), StackElement::Index(2)],
+                ),
+                (
+                    ObjectStart,
+                    vec![
+                        StackElement::Key("b"),
+                        StackElement::Index(2),
+                        StackElement::Key("c"),
+                    ],
+                ),
+                (
+                    NullValue,
+                    vec![
+                        StackElement::Key("b"),
+                        StackElement::Index(2),
+                        StackElement::Key("c"),
+                        StackElement::Key("d"),
+                    ],
+                ),
+                (
+                    ObjectEnd,
+                    vec![
+                        StackElement::Key("b"),
+                        StackElement::Index(2),
+                        StackElement::Key("c"),
+                    ],
+                ),
+                (
+                    ObjectEnd,
+                    vec![StackElement::Key("b"), StackElement::Index(2)],
+                ),
+                (ArrayEnd, vec![StackElement::Key("b")]),
+                (ObjectEnd, vec![]),
+            ],
         );
     }
     #[test]
     fn test_read_array_streaming() {
-        assert_stream_equal(
-            "[]",
-            vec![
-                (ArrayStart, vec![]),
-                (ArrayEnd,   vec![]),
-            ]
-        );
-        assert_stream_equal(
-            "[ ]",
-            vec![
-                (ArrayStart, vec![]),
-                (ArrayEnd,   vec![]),
-            ]
-        );
+        assert_stream_equal("[]", vec![(ArrayStart, vec![]), (ArrayEnd, vec![])]);
+        assert_stream_equal("[ ]", vec![(ArrayStart, vec![]), (ArrayEnd, vec![])]);
         assert_stream_equal(
             "[true]",
             vec![
-                (ArrayStart,             vec![]),
-                    (BooleanValue(true), vec![StackElement::Index(0)]),
-                (ArrayEnd,               vec![]),
-            ]
+                (ArrayStart, vec![]),
+                (BooleanValue(true), vec![StackElement::Index(0)]),
+                (ArrayEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "[ false ]",
             vec![
-                (ArrayStart,              vec![]),
-                    (BooleanValue(false), vec![StackElement::Index(0)]),
-                (ArrayEnd,                vec![]),
-            ]
+                (ArrayStart, vec![]),
+                (BooleanValue(false), vec![StackElement::Index(0)]),
+                (ArrayEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "[null]",
             vec![
-                (ArrayStart,    vec![]),
-                    (NullValue, vec![StackElement::Index(0)]),
-                (ArrayEnd,      vec![]),
-            ]
+                (ArrayStart, vec![]),
+                (NullValue, vec![StackElement::Index(0)]),
+                (ArrayEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "[3, 1]",
             vec![
-                (ArrayStart,      vec![]),
-                    (U64Value(3), vec![StackElement::Index(0)]),
-                    (U64Value(1), vec![StackElement::Index(1)]),
-                (ArrayEnd,        vec![]),
-            ]
+                (ArrayStart, vec![]),
+                (U64Value(3), vec![StackElement::Index(0)]),
+                (U64Value(1), vec![StackElement::Index(1)]),
+                (ArrayEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "\n[3, 2]\n",
             vec![
-                (ArrayStart,      vec![]),
-                    (U64Value(3), vec![StackElement::Index(0)]),
-                    (U64Value(2), vec![StackElement::Index(1)]),
-                (ArrayEnd,        vec![]),
-            ]
+                (ArrayStart, vec![]),
+                (U64Value(3), vec![StackElement::Index(0)]),
+                (U64Value(2), vec![StackElement::Index(1)]),
+                (ArrayEnd, vec![]),
+            ],
         );
         assert_stream_equal(
             "[2, [4, 1]]",
             vec![
-                (ArrayStart,           vec![]),
-                    (U64Value(2),      vec![StackElement::Index(0)]),
-                    (ArrayStart,       vec![StackElement::Index(1)]),
-                        (U64Value(4),  vec![StackElement::Index(1), StackElement::Index(0)]),
-                        (U64Value(1),  vec![StackElement::Index(1), StackElement::Index(1)]),
-                    (ArrayEnd,         vec![StackElement::Index(1)]),
-                (ArrayEnd,             vec![]),
-            ]
+                (ArrayStart, vec![]),
+                (U64Value(2), vec![StackElement::Index(0)]),
+                (ArrayStart, vec![StackElement::Index(1)]),
+                (
+                    U64Value(4),
+                    vec![StackElement::Index(1), StackElement::Index(0)],
+                ),
+                (
+                    U64Value(1),
+                    vec![StackElement::Index(1), StackElement::Index(1)],
+                ),
+                (ArrayEnd, vec![StackElement::Index(1)]),
+                (ArrayEnd, vec![]),
+            ],
         );
 
-        assert_eq!(last_event("["), Error(SyntaxError(EOFWhileParsingValue, 1,  2)));
+        assert_eq!(
+            last_event("["),
+            Error(SyntaxError(EOFWhileParsingValue, 1, 2))
+        );
 
-        assert_eq!(from_str("["),     Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
-        assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
-        assert_eq!(from_str("[1,"),   Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
-        assert_eq!(from_str("[1,]"),  Err(SyntaxError(InvalidSyntax,        1, 4)));
-        assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax,        1, 4)));
-
+        assert_eq!(from_str("["), Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
+        assert_eq!(from_str("[1"), Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
+        assert_eq!(
+            from_str("[1,"),
+            Err(SyntaxError(EOFWhileParsingValue, 1, 4))
+        );
+        assert_eq!(from_str("[1,]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
+        assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax, 1, 4)));
     }
     #[test]
     fn test_trailing_characters_streaming() {
-        assert_eq!(last_event("nulla"),  Error(SyntaxError(TrailingCharacters, 1, 5)));
-        assert_eq!(last_event("truea"),  Error(SyntaxError(TrailingCharacters, 1, 5)));
-        assert_eq!(last_event("falsea"), Error(SyntaxError(TrailingCharacters, 1, 6)));
-        assert_eq!(last_event("1a"),     Error(SyntaxError(TrailingCharacters, 1, 2)));
-        assert_eq!(last_event("[]a"),    Error(SyntaxError(TrailingCharacters, 1, 3)));
-        assert_eq!(last_event("{}a"),    Error(SyntaxError(TrailingCharacters, 1, 3)));
+        assert_eq!(
+            last_event("nulla"),
+            Error(SyntaxError(TrailingCharacters, 1, 5))
+        );
+        assert_eq!(
+            last_event("truea"),
+            Error(SyntaxError(TrailingCharacters, 1, 5))
+        );
+        assert_eq!(
+            last_event("falsea"),
+            Error(SyntaxError(TrailingCharacters, 1, 6))
+        );
+        assert_eq!(
+            last_event("1a"),
+            Error(SyntaxError(TrailingCharacters, 1, 2))
+        );
+        assert_eq!(
+            last_event("[]a"),
+            Error(SyntaxError(TrailingCharacters, 1, 3))
+        );
+        assert_eq!(
+            last_event("{}a"),
+            Error(SyntaxError(TrailingCharacters, 1, 3))
+        );
     }
     #[test]
     fn test_read_identifiers_streaming() {
         assert_eq!(Parser::new("null".chars()).next(), Some(NullValue));
         assert_eq!(Parser::new("true".chars()).next(), Some(BooleanValue(true)));
-        assert_eq!(Parser::new("false".chars()).next(), Some(BooleanValue(false)));
+        assert_eq!(
+            Parser::new("false".chars()).next(),
+            Some(BooleanValue(false))
+        );
 
-        assert_eq!(last_event("n"),    Error(SyntaxError(InvalidSyntax, 1, 2)));
-        assert_eq!(last_event("nul"),  Error(SyntaxError(InvalidSyntax, 1, 4)));
-        assert_eq!(last_event("t"),    Error(SyntaxError(InvalidSyntax, 1, 2)));
+        assert_eq!(last_event("n"), Error(SyntaxError(InvalidSyntax, 1, 2)));
+        assert_eq!(last_event("nul"), Error(SyntaxError(InvalidSyntax, 1, 4)));
+        assert_eq!(last_event("t"), Error(SyntaxError(InvalidSyntax, 1, 2)));
         assert_eq!(last_event("truz"), Error(SyntaxError(InvalidSyntax, 1, 4)));
-        assert_eq!(last_event("f"),    Error(SyntaxError(InvalidSyntax, 1, 2)));
-        assert_eq!(last_event("faz"),  Error(SyntaxError(InvalidSyntax, 1, 3)));
+        assert_eq!(last_event("f"), Error(SyntaxError(InvalidSyntax, 1, 2)));
+        assert_eq!(last_event("faz"), Error(SyntaxError(InvalidSyntax, 1, 3)));
     }
 
     #[test]
@@ -3831,19 +4282,25 @@ mod tests {
         stack.push_key("bar".to_string());
 
         assert!(stack.len() == 3);
-        assert!(stack.is_equal_to(&[StackElement::Index(1),
-                                    StackElement::Key("foo"),
-                                    StackElement::Key("bar")]));
+        assert!(stack.is_equal_to(&[
+            StackElement::Index(1),
+            StackElement::Key("foo"),
+            StackElement::Key("bar")
+        ]));
         assert!(stack.starts_with(&[StackElement::Index(1)]));
         assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1),
-                                    StackElement::Key("foo"),
-                                    StackElement::Key("bar")]));
+        assert!(stack.starts_with(&[
+            StackElement::Index(1),
+            StackElement::Key("foo"),
+            StackElement::Key("bar")
+        ]));
         assert!(stack.ends_with(&[StackElement::Key("bar")]));
         assert!(stack.ends_with(&[StackElement::Key("foo"), StackElement::Key("bar")]));
-        assert!(stack.ends_with(&[StackElement::Index(1),
-                                  StackElement::Key("foo"),
-                                  StackElement::Key("bar")]));
+        assert!(stack.ends_with(&[
+            StackElement::Index(1),
+            StackElement::Key("foo"),
+            StackElement::Key("bar")
+        ]));
         assert!(!stack.last_is_index());
         assert!(stack.get(0) == StackElement::Index(1));
         assert!(stack.get(1) == StackElement::Key("foo"));
@@ -3864,8 +4321,8 @@ mod tests {
 
     #[test]
     fn test_to_json() {
-        use std::collections::{HashMap,BTreeMap};
         use super::ToJson;
+        use std::collections::{BTreeMap, HashMap};
 
         let array2 = Array(vec![U64(1), U64(2)]);
         let array3 = Array(vec![U64(1), U64(2), U64(3)]);
@@ -3928,13 +4385,13 @@ mod tests {
         let result = hm.encode(&mut encoder);
         match result.unwrap_err() {
             EncoderError::BadHashmapKey => (),
-            _ => panic!("expected bad hash map key")
+            _ => panic!("expected bad hash map key"),
         }
     }
 
     #[bench]
     fn bench_streaming_small(b: &mut Bencher) {
-        b.iter( || {
+        b.iter(|| {
             let mut parser = Parser::new(
                 r#"{
                     "a": 1.0,
@@ -3943,7 +4400,8 @@ mod tests {
                         "foo\nbar",
                         { "c": {"d": null} }
                     ]
-                }"#.chars()
+                }"#
+                .chars(),
             );
             loop {
                 match parser.next() {
@@ -3955,23 +4413,27 @@ mod tests {
     }
     #[bench]
     fn bench_small(b: &mut Bencher) {
-        b.iter( || {
-            let _ = from_str(r#"{
+        b.iter(|| {
+            let _ = from_str(
+                r#"{
                 "a": 1.0,
                 "b": [
                     true,
                     "foo\nbar",
                     { "c": {"d": null} }
                 ]
-            }"#);
+            }"#,
+            );
         });
     }
 
     fn big_json() -> string::String {
         let mut src = "[\n".to_string();
         for _ in 0..500 {
-            src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
-                            [1,2,3]},"#);
+            src.push_str(
+                r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
+                            [1,2,3]},"#,
+            );
         }
         src.push_str("{}]");
         return src;
@@ -3980,7 +4442,7 @@ mod tests {
     #[bench]
     fn bench_streaming_large(b: &mut Bencher) {
         let src = big_json();
-        b.iter( || {
+        b.iter(|| {
             let mut parser = Parser::new(src.chars());
             loop {
                 match parser.next() {
@@ -3993,6 +4455,8 @@ mod tests {
     #[bench]
     fn bench_large(b: &mut Bencher) {
         let src = big_json();
-        b.iter( || { let _ = from_str(&src); });
+        b.iter(|| {
+            let _ = from_str(&src);
+        });
     }
 }

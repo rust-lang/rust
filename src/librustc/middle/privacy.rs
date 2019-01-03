@@ -4,8 +4,8 @@
 
 use util::nodemap::{DefIdSet, FxHashMap};
 
-use std::hash::Hash;
 use std::fmt;
+use std::hash::Hash;
 use syntax::ast::NodeId;
 
 // Accessibility levels, sorted in ascending order
@@ -27,7 +27,7 @@ pub enum AccessLevel {
 // Accessibility levels for reachable HIR nodes
 #[derive(Clone)]
 pub struct AccessLevels<Id = NodeId> {
-    pub map: FxHashMap<Id, AccessLevel>
+    pub map: FxHashMap<Id, AccessLevel>,
 }
 
 impl<Id: Hash + Eq> AccessLevels<Id> {
@@ -44,7 +44,9 @@ impl<Id: Hash + Eq> AccessLevels<Id> {
 
 impl<Id: Hash + Eq> Default for AccessLevels<Id> {
     fn default() -> Self {
-        AccessLevels { map: Default::default() }
+        AccessLevels {
+            map: Default::default(),
+        }
     }
 }
 

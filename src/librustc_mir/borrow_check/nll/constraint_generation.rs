@@ -1,14 +1,14 @@
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
-use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::LivenessValues;
+use borrow_check::nll::ToRegionVid;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
+use rustc::mir::UserTypeProjection;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
 use rustc::mir::{Statement, Terminator};
-use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid};

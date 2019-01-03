@@ -5,8 +5,8 @@ use ModuleCodegen;
 use rustc::util::time_graph::Timeline;
 use rustc_errors::FatalError;
 
-use std::sync::Arc;
 use std::ffi::CString;
+use std::sync::Arc;
 
 pub struct ThinModule<B: WriteBackendMethods> {
     pub shared: Arc<ThinShared<B>>,
@@ -40,7 +40,6 @@ pub struct ThinShared<B: WriteBackendMethods> {
     pub module_names: Vec<CString>,
 }
 
-
 pub enum LtoModuleCodegen<B: WriteBackendMethods> {
     Fat {
         module: Option<ModuleCodegen<B::Module>>,
@@ -67,7 +66,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     pub unsafe fn optimize(
         &mut self,
         cgcx: &CodegenContext<B>,
-        timeline: &mut Timeline
+        timeline: &mut Timeline,
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
         match *self {
             LtoModuleCodegen::Fat { ref mut module, .. } => {
@@ -93,7 +92,6 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         }
     }
 }
-
 
 pub enum SerializedModule<M: ModuleBufferMethods> {
     Local(M),

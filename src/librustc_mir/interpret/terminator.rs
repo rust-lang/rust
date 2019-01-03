@@ -1,14 +1,12 @@
 use std::borrow::Cow;
 
+use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc::{mir, ty};
-use rustc::ty::layout::{self, TyLayout, LayoutOf};
-use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
+use syntax::source_map::Span;
 
-use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
-use super::{
-    EvalContext, Machine, Immediate, OpTy, PlaceTy, MPlaceTy, Operand, StackPopCleanup
-};
+use super::{EvalContext, Immediate, MPlaceTy, Machine, OpTy, Operand, PlaceTy, StackPopCleanup};
+use rustc::mir::interpret::{EvalErrorKind, EvalResult, PointerArithmetic, Scalar};
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
@@ -50,9 +48,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op, to also support pointer values
                     let const_int = Scalar::from_uint(const_int, discr.layout.size);
-                    let (res, _) = self.binary_op(mir::BinOp::Eq,
-                        discr.to_scalar()?, discr.layout,
-                        const_int, discr.layout,
+                    let (res, _) = self.binary_op(
+                        mir::BinOp::Eq,
+                        discr.to_scalar()?,
+                        discr.layout,
+                        const_int,
+                        discr.layout,
                     )?;
                     if res.to_bool()? {
                         target_block = targets[index];
@@ -85,7 +86,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
                         (self.resolve(def_id, substs)?, sig.abi())
-                    },
+                    }
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
                         return err!(Unimplemented(msg));
@@ -113,12 +114,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
-                self.drop_in_place(
-                    place,
-                    instance,
-                    terminator.source_info.span,
-                    target,
-                )?;
+                self.drop_in_place(place, instance, terminator.source_info.span, target)?;
             }
 
             Assert {
@@ -128,8 +124,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 target,
                 ..
             } => {
-                let cond_val = self.read_immediate(self.eval_operand(cond, None)?)?
-                    .to_scalar()?.to_bool()?;
+                let cond_val = self
+                    .read_immediate(self.eval_operand(cond, None)?)?
+                    .to_scalar()?
+                    .to_bool()?;
                 if expected == cond_val {
                     self.goto_block(Some(target))?;
                 } else {
@@ -137,34 +135,43 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.read_immediate(self.eval_operand(len, None)?)
-                                .expect("can't eval len").to_scalar()?
-                                .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.read_immediate(self.eval_operand(index, None)?)
-                                .expect("can't eval index").to_scalar()?
-                                .to_bits(self.memory().pointer_size())? as u64;
+                            let len = self
+                                .read_immediate(self.eval_operand(len, None)?)
+                                .expect("can't eval len")
+                                .to_scalar()?
+                                .to_bits(self.memory().pointer_size())?
+                                as u64;
+                            let index = self
+                                .read_immediate(self.eval_operand(index, None)?)
+                                .expect("can't eval index")
+                                .to_scalar()?
+                                .to_bits(self.memory().pointer_size())?
+                                as u64;
                             err!(BoundsCheck { len, index })
                         }
                         Overflow(op) => Err(Overflow(op).into()),
                         OverflowNeg => Err(OverflowNeg.into()),
                         DivisionByZero => Err(DivisionByZero.into()),
                         RemainderByZero => Err(RemainderByZero.into()),
-                        GeneratorResumedAfterReturn |
-                        GeneratorResumedAfterPanic => unimplemented!(),
+                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic => {
+                            unimplemented!()
+                        }
                         _ => bug!(),
                     };
                 }
             }
 
-            Yield { .. } |
-            GeneratorDrop |
-            DropAndReplace { .. } |
-            Resume |
-            Abort => unimplemented!("{:#?}", terminator.kind),
-            FalseEdges { .. } => bug!("should have been eliminated by\
-                                      `simplify_branches` mir pass"),
-            FalseUnwind { .. } => bug!("should have been eliminated by\
-                                       `simplify_branches` mir pass"),
+            Yield { .. } | GeneratorDrop | DropAndReplace { .. } | Resume | Abort => {
+                unimplemented!("{:#?}", terminator.kind)
+            }
+            FalseEdges { .. } => bug!(
+                "should have been eliminated by\
+                 `simplify_branches` mir pass"
+            ),
+            FalseUnwind { .. } => bug!(
+                "should have been eliminated by\
+                 `simplify_branches` mir pass"
+            ),
             Unreachable => return err!(Unreachable),
         }
 
@@ -189,13 +196,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // Different valid ranges are okay (once we enforce validity,
             // that will take care to make it UB to leave the range, just
             // like for transmute).
-            (layout::Abi::Scalar(ref caller), layout::Abi::Scalar(ref callee)) =>
-                caller.value == callee.value,
-            (layout::Abi::ScalarPair(ref caller1, ref caller2),
-             layout::Abi::ScalarPair(ref callee1, ref callee2)) =>
-                caller1.value == callee1.value && caller2.value == callee2.value,
+            (layout::Abi::Scalar(ref caller), layout::Abi::Scalar(ref callee)) => {
+                caller.value == callee.value
+            }
+            (
+                layout::Abi::ScalarPair(ref caller1, ref caller2),
+                layout::Abi::ScalarPair(ref callee1, ref callee2),
+            ) => caller1.value == callee1.value && caller2.value == callee2.value,
             // Be conservative
-            _ => false
+            _ => false,
         }
     }
 
@@ -203,7 +212,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     fn pass_argument(
         &mut self,
         rust_abi: bool,
-        caller_arg: &mut impl Iterator<Item=OpTy<'tcx, M::PointerTag>>,
+        caller_arg: &mut impl Iterator<Item = OpTy<'tcx, M::PointerTag>>,
         callee_arg: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         if rust_abi && callee_arg.layout.is_zst() {
@@ -211,14 +220,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             trace!("Skipping callee ZST");
             return Ok(());
         }
-        let caller_arg = caller_arg.next()
+        let caller_arg = caller_arg
+            .next()
             .ok_or_else(|| EvalErrorKind::FunctionArgCountMismatch)?;
         if rust_abi {
-            debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
+            debug_assert!(
+                !caller_arg.layout.is_zst(),
+                "ZSTs must have been already filtered out"
+            );
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
-            return err!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty));
+            return err!(FunctionArgMismatch(
+                caller_arg.layout.ty,
+                callee_arg.layout.ty
+            ));
         }
         // We allow some transmutes here
         self.copy_op_transmute(caller_arg, callee_arg)
@@ -245,7 +261,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // place... (can happen e.g., for transmute returning `!`)
                 let dest = match dest {
                     Some(dest) => dest,
-                    None => return err!(Unreachable)
+                    None => return err!(Unreachable),
                 };
                 M::call_intrinsic(self, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
@@ -254,19 +270,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.dump_place(*dest);
                 Ok(())
             }
-            ty::InstanceDef::VtableShim(..) |
-            ty::InstanceDef::ClosureOnceShim { .. } |
-            ty::InstanceDef::FnPtrShim(..) |
-            ty::InstanceDef::DropGlue(..) |
-            ty::InstanceDef::CloneShim(..) |
-            ty::InstanceDef::Item(_) => {
+            ty::InstanceDef::VtableShim(..)
+            | ty::InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::FnPtrShim(..)
+            | ty::InstanceDef::DropGlue(..)
+            | ty::InstanceDef::CloneShim(..)
+            | ty::InstanceDef::Item(_) => {
                 // ABI check
                 {
                     let callee_abi = {
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
-                            ty::FnDef(..) =>
-                                instance_ty.fn_sig(*self.tcx).abi(),
+                            ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                             ty::Closure(..) => Abi::RustCall,
                             ty::Generator(..) => Abi::Rust,
                             _ => bug!("unexpected callee ty: {:?}", instance_ty),
@@ -285,18 +300,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     None => return Ok(()),
                 };
 
-                self.push_stack_frame(
-                    instance,
-                    span,
-                    mir,
-                    dest,
-                    StackPopCleanup::Goto(ret),
-                )?;
+                self.push_stack_frame(instance, span, mir, dest, StackPopCleanup::Goto(ret))?;
 
                 // We want to pop this frame again in case there was an error, to put
                 // the blame in the right location.  Until the 2018 edition is used in
                 // the compiler, we have to do this with an immediately invoked function.
-                let res = (||{
+                let res = (|| {
                     trace!(
                         "caller ABI: {:?}, args: {:#?}",
                         caller_abi,
@@ -308,9 +317,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         "spread_arg: {:?}, locals: {:#?}",
                         mir.spread_arg,
                         mir.args_iter()
-                            .map(|local|
-                                (local, self.layout_of_local(self.frame(), local).unwrap().ty)
-                            )
+                            .map(|local| (
+                                local,
+                                self.layout_of_local(self.frame(), local).unwrap().ty
+                            ))
                             .collect::<Vec<_>>()
                     );
 
@@ -319,29 +329,35 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // and where they go to.
                     let rust_abi = match caller_abi {
                         Abi::Rust | Abi::RustCall => true,
-                        _ => false
+                        _ => false,
                     };
 
                     // For where they come from: If the ABI is RustCall, we untuple the
                     // last incoming argument.  These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
-                    let caller_args : Cow<[OpTy<'tcx, M::PointerTag>]> =
+                    let caller_args: Cow<[OpTy<'tcx, M::PointerTag>]> =
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
                             let (&untuple_arg, args) = args.split_last().unwrap();
                             trace!("eval_fn_call: Will pass last argument by untupling");
-                            Cow::from(args.iter().map(|&a| Ok(a))
-                                .chain((0..untuple_arg.layout.fields.count()).into_iter()
-                                    .map(|i| self.operand_field(untuple_arg, i as u64))
-                                )
-                                .collect::<EvalResult<Vec<OpTy<'tcx, M::PointerTag>>>>()?)
+                            Cow::from(
+                                args.iter()
+                                    .map(|&a| Ok(a))
+                                    .chain(
+                                        (0..untuple_arg.layout.fields.count())
+                                            .into_iter()
+                                            .map(|i| self.operand_field(untuple_arg, i as u64)),
+                                    )
+                                    .collect::<EvalResult<Vec<OpTy<'tcx, M::PointerTag>>>>()?,
+                            )
                         } else {
                             // Plain arg passing
                             Cow::from(args)
                         };
                     // Skip ZSTs
-                    let mut caller_iter = caller_args.iter()
+                    let mut caller_iter = caller_args
+                        .iter()
                         .filter(|op| !rust_abi || !op.layout.is_zst())
                         .map(|op| *op);
 
@@ -378,7 +394,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             callee_ret.layout,
                         ) {
                             return err!(FunctionRetMismatch(
-                                caller_ret.layout.ty, callee_ret.layout.ty
+                                caller_ret.layout.ty,
+                                callee_ret.layout.ty
                             ));
                         }
                     } else {
@@ -386,7 +403,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             self.layout_of_local(self.frame(), mir::RETURN_PLACE)?;
                         if !callee_layout.abi.is_uninhabited() {
                             return err!(FunctionRetMismatch(
-                                self.tcx.types.never, callee_layout.ty
+                                self.tcx.types.never,
+                                callee_layout.ty
                             ));
                         }
                     }
@@ -397,7 +415,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         self.stack.pop();
                         Err(err)
                     }
-                    Ok(v) => Ok(v)
+                    Ok(v) => Ok(v),
                 }
             }
             // cannot use the shim here, because that will only result in infinite recursion
@@ -405,11 +423,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let ptr_size = self.pointer_size();
                 let ptr = self.deref_operand(args[0])?;
                 let vtable = ptr.vtable()?;
-                self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
-                let fn_ptr = self.memory.get(vtable.alloc_id)?.read_ptr_sized(
-                    self,
-                    vtable.offset(ptr_size * (idx as u64 + 3), self)?,
-                )?.to_ptr()?;
+                self.memory
+                    .check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
+                let fn_ptr = self
+                    .memory
+                    .get(vtable.alloc_id)?
+                    .read_ptr_sized(self, vtable.offset(ptr_size * (idx as u64 + 3), self)?)?
+                    .to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
 
                 // We have to patch the self argument, in particular get the layout
@@ -434,7 +454,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         span: Span,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
-        trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
+        trace!(
+            "drop_in_place: {:?},\n  {:?}, {:?}",
+            *place,
+            place.layout.ty,
+            instance
+        );
         // We take the address of the object.  This may well be unaligned, which is fine
         // for us here.  However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.

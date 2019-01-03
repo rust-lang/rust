@@ -1,5 +1,5 @@
 use super::super::indexed_vec::IndexVec;
-use super::{DirectedGraph, WithSuccessors, WithNumNodes};
+use super::{DirectedGraph, WithNumNodes, WithSuccessors};
 
 #[cfg(test)]
 mod test;

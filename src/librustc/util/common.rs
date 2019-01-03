@@ -2,20 +2,20 @@
 
 use rustc_data_structures::sync::Lock;
 
-use std::cell::{RefCell, Cell};
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::fmt::Debug;
-use std::hash::{Hash, BuildHasher};
-use std::panic;
 use std::env;
+use std::fmt::Debug;
+use std::hash::{BuildHasher, Hash};
+use std::panic;
 use std::time::{Duration, Instant};
 
-use std::sync::mpsc::{Sender};
-use syntax_pos::{SpanData};
-use ty::TyCtxt;
-use dep_graph::{DepNode};
+use dep_graph::DepNode;
 use lazy_static;
 use session::Session;
+use std::sync::mpsc::Sender;
+use syntax_pos::SpanData;
+use ty::TyCtxt;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &str = "Output";
@@ -38,22 +38,24 @@ lazy_static! {
 fn panic_hook(info: &panic::PanicInfo<'_>) {
     (*DEFAULT_HOOK)(info);
 
-    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+    let backtrace = env::var_os("RUST_BACKTRACE")
+        .map(|x| &x != "0")
+        .unwrap_or(false);
 
     if backtrace {
         TyCtxt::try_print_query_stack();
     }
 
-        #[cfg(windows)]
-        unsafe {
-            if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-                extern "system" {
-                    fn DebugBreak();
-                }
-                // Trigger a debugger if we crashed during bootstrap
-                DebugBreak();
+    #[cfg(windows)]
+    unsafe {
+        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+            extern "system" {
+                fn DebugBreak();
             }
+            // Trigger a debugger if we crashed during bootstrap
+            DebugBreak();
         }
+    }
 }
 
 pub fn install_panic_hook() {
@@ -61,14 +63,14 @@ pub fn install_panic_hook() {
 }
 
 /// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct ProfQDumpParams {
     /// A base path for the files we will dump
-    pub path:String,
+    pub path: String,
     /// To ensure that the compiler waits for us to finish our dumps
-    pub ack:Sender<()>,
+    pub ack: Sender<()>,
     /// toggle dumping a log file with every `ProfileQueriesMsg`
-    pub dump_profq_msg_log:bool,
+    pub dump_profq_msg_log: bool,
 }
 
 #[allow(nonstandard_style)]
@@ -80,7 +82,7 @@ pub struct QueryMsg {
 
 /// A sequence of these messages induce a trace of query-based incremental compilation.
 /// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum ProfileQueriesMsg {
     /// begin a timed pass
     TimeBegin(String),
@@ -102,7 +104,7 @@ pub enum ProfileQueriesMsg {
     /// dump a record of the queries to the given path
     Dump(ProfQDumpParams),
     /// halt the profiling/monitoring background thread
-    Halt
+    Halt,
 }
 
 /// If enabled, send a message to the profile-queries thread
@@ -138,16 +140,20 @@ pub fn set_time_depth(depth: usize) {
     TIME_DEPTH.with(|slot| slot.set(depth));
 }
 
-pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T where
+pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T
+where
     F: FnOnce() -> T,
 {
     time_ext(sess.time_passes(), Some(sess), what, f)
 }
 
-pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> T where
+pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> T
+where
     F: FnOnce() -> T,
 {
-    if !do_it { return f(); }
+    if !do_it {
+        return f();
+    }
 
     let old = TIME_DEPTH.with(|slot| {
         let r = slot.get();
@@ -178,7 +184,7 @@ pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> 
 
 pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
     if !do_it {
-        return
+        return;
     }
 
     let old = TIME_DEPTH.with(|slot| {
@@ -202,19 +208,20 @@ fn print_time_passes_entry_internal(what: &str, dur: Duration) {
         }
         None => String::new(),
     };
-    println!("{}time: {}{}\t{}",
-             "  ".repeat(indentation),
-             duration_to_secs_str(dur),
-             mem_string,
-             what);
+    println!(
+        "{}time: {}{}\t{}",
+        "  ".repeat(indentation),
+        duration_to_secs_str(dur),
+        mem_string,
+        what
+    );
 }
 
 // Hack up our own formatting for the duration to make it easier for scripts
 // to parse (always use the same number of decimal places and the same unit).
 pub fn duration_to_secs_str(dur: Duration) -> String {
     const NANOS_PER_SEC: f64 = 1_000_000_000.0;
-    let secs = dur.as_secs() as f64 +
-               dur.subsec_nanos() as f64 / NANOS_PER_SEC;
+    let secs = dur.as_secs() as f64 + dur.subsec_nanos() as f64 / NANOS_PER_SEC;
 
     format!("{:.3}", secs)
 }
@@ -239,7 +246,8 @@ pub fn to_readable_str(mut val: usize) -> String {
     groups.join("_")
 }
 
-pub fn record_time<T, F>(accu: &Lock<Duration>, f: F) -> T where
+pub fn record_time<T, F>(accu: &Lock<Duration>, f: F) -> T
+where
     F: FnOnce() -> T,
 {
     let start = Instant::now();
@@ -288,9 +296,11 @@ fn get_resident() -> Option<usize> {
     #[link(name = "psapi")]
     extern "system" {
         fn GetCurrentProcess() -> HANDLE;
-        fn GetProcessMemoryInfo(Process: HANDLE,
-                                ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
-                                cb: DWORD) -> BOOL;
+        fn GetProcessMemoryInfo(
+            Process: HANDLE,
+            ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
+            cb: DWORD,
+        ) -> BOOL;
     }
     let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { mem::zeroed() };
     pmc.cb = mem::size_of_val(&pmc) as DWORD;
@@ -300,7 +310,8 @@ fn get_resident() -> Option<usize> {
     }
 }
 
-pub fn indent<R, F>(op: F) -> R where
+pub fn indent<R, F>(op: F) -> R
+where
     R: Debug,
     F: FnOnce() -> R,
 {
@@ -317,12 +328,16 @@ pub struct Indenter {
 }
 
 impl Drop for Indenter {
-    fn drop(&mut self) { debug!("<<"); }
+    fn drop(&mut self) {
+        debug!("<<");
+    }
 }
 
 pub fn indenter() -> Indenter {
     debug!(">>");
-    Indenter { _cannot_construct_outside_of_this_module: () }
+    Indenter {
+        _cannot_construct_outside_of_this_module: (),
+    }
 }
 
 pub trait MemoizationMap {
@@ -337,17 +352,22 @@ pub trait MemoizationMap {
     /// added into the dep graph. See the `DepTrackingMap` impl for
     /// more details!
     fn memoize<OP>(&self, key: Self::Key, op: OP) -> Self::Value
-        where OP: FnOnce() -> Self::Value;
+    where
+        OP: FnOnce() -> Self::Value;
 }
 
-impl<K, V, S> MemoizationMap for RefCell<HashMap<K,V,S>>
-    where K: Hash+Eq+Clone, V: Clone, S: BuildHasher
+impl<K, V, S> MemoizationMap for RefCell<HashMap<K, V, S>>
+where
+    K: Hash + Eq + Clone,
+    V: Clone,
+    S: BuildHasher,
 {
     type Key = K;
     type Value = V;
 
     fn memoize<OP>(&self, key: K, op: OP) -> V
-        where OP: FnOnce() -> V
+    where
+        OP: FnOnce() -> V,
     {
         let result = self.borrow().get(&key).cloned();
         match result {

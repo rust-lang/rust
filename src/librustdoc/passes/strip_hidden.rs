@@ -1,17 +1,19 @@
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
 
-use clean::{self, AttributesExt, NestedAttributesExt};
 use clean::Item;
+use clean::{self, AttributesExt, NestedAttributesExt};
 use core::DocContext;
 use fold;
 use fold::DocFolder;
 use fold::StripItem;
 use passes::{ImplStripper, Pass};
 
-pub const STRIP_HIDDEN: Pass =
-    Pass::early("strip-hidden", strip_hidden,
-                "strips all doc(hidden) items from the output");
+pub const STRIP_HIDDEN: Pass = Pass::early(
+    "strip-hidden",
+    strip_hidden,
+    "strips all doc(hidden) items from the output",
+);
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate, _: &DocContext) -> clean::Crate {
@@ -19,12 +21,17 @@ pub fn strip_hidden(krate: clean::Crate, _: &DocContext) -> clean::Crate {
 
     // strip all #[doc(hidden)] items
     let krate = {
-        let mut stripper = Stripper{ retained: &mut retained, update_retained: true };
+        let mut stripper = Stripper {
+            retained: &mut retained,
+            update_retained: true,
+        };
         stripper.fold_crate(krate)
     };
 
     // strip all impls referencing stripped items
-    let mut stripper = ImplStripper { retained: &retained };
+    let mut stripper = ImplStripper {
+        retained: &retained,
+    };
     let krate = stripper.fold_crate(krate);
 
     krate

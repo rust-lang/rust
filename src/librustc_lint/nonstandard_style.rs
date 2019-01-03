@@ -1,10 +1,10 @@
-use rustc::hir::{self, GenericParamKind, PatKind};
+use lint::{EarlyContext, LateContext, LintArray, LintContext};
+use lint::{EarlyLintPass, LateLintPass, LintPass};
 use rustc::hir::def::Def;
 use rustc::hir::intravisit::FnKind;
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::ty;
 use rustc_target::spec::abi::Abi;
-use lint::{EarlyContext, LateContext, LintContext, LintArray};
-use lint::{EarlyLintPass, LintPass, LateLintPass};
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
@@ -21,12 +21,10 @@ pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
     let item = cx.tcx.associated_item(def_id);
     match item.container {
         ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
-        ty::ImplContainer(cid) => {
-            match cx.tcx.impl_trait_ref(cid) {
-                Some(_) => MethodLateContext::TraitImpl,
-                None => MethodLateContext::PlainImpl,
-            }
-        }
+        ty::ImplContainer(cid) => match cx.tcx.impl_trait_ref(cid) {
+            Some(_) => MethodLateContext::TraitImpl,
+            None => MethodLateContext::PlainImpl,
+        },
     }
 }
 
@@ -54,11 +52,13 @@ impl NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() &&
-                !name.contains("__") && !name.chars().collect::<Vec<_>>().windows(2).any(|pair| {
+            !name.is_empty()
+                && !name.chars().next().unwrap().is_lowercase()
+                && !name.contains("__")
+                && !name.chars().collect::<Vec<_>>().windows(2).any(|pair| {
                     // contains a capitalisable character followed by, or preceded by, an underscore
-                    char_has_case(pair[0]) && pair[1] == '_' ||
-                    char_has_case(pair[1]) && pair[0] == '_'
+                    char_has_case(pair[0]) && pair[1] == '_'
+                        || char_has_case(pair[1]) && pair[0] == '_'
                 })
         }
 
@@ -66,32 +66,48 @@ impl NonCamelCaseTypes {
             s.trim_matches('_')
                 .split('_')
                 .map(|word| {
-                    word.chars().enumerate().map(|(i, c)| if i == 0 {
-                        c.to_uppercase().collect::<String>()
-                    } else {
-                        c.to_lowercase().collect()
-                    })
-                    .collect::<String>()
+                    word.chars()
+                        .enumerate()
+                        .map(|(i, c)| {
+                            if i == 0 {
+                                c.to_uppercase().collect::<String>()
+                            } else {
+                                c.to_lowercase().collect()
+                            }
+                        })
+                        .collect::<String>()
                 })
                 .filter(|x| !x.is_empty())
-                .fold((String::new(), None), |(acc, prev): (String, Option<String>), next| {
-                    // separate two components with an underscore if their boundary cannot
-                    // be distinguished using a uppercase/lowercase case distinction
-                    let join = if let Some(prev) = prev {
-                                    let l = prev.chars().last().unwrap();
-                                    let f = next.chars().next().unwrap();
-                                    !char_has_case(l) && !char_has_case(f)
-                                } else { false };
-                    (acc + if join { "_" } else { "" } + &next, Some(next))
-                }).0
+                .fold(
+                    (String::new(), None),
+                    |(acc, prev): (String, Option<String>), next| {
+                        // separate two components with an underscore if their boundary cannot
+                        // be distinguished using a uppercase/lowercase case distinction
+                        let join = if let Some(prev) = prev {
+                            let l = prev.chars().last().unwrap();
+                            let f = next.chars().next().unwrap();
+                            !char_has_case(l) && !char_has_case(f)
+                        } else {
+                            false
+                        };
+                        (acc + if join { "_" } else { "" } + &next, Some(next))
+                    },
+                )
+                .0
         }
 
         if !is_camel_case(name) {
             let c = to_camel_case(&name.as_str());
             let m = if c.is_empty() {
-                format!("{} `{}` should have a camel case name such as `CamelCase`", sort, name)
+                format!(
+                    "{} `{}` should have a camel case name such as `CamelCase`",
+                    sort, name
+                )
             } else {
-                format!("{} `{}` should have a camel case name such as `{}`", sort, name, c)
+                format!(
+                    "{} `{}` should have a camel case name such as `{}`",
+                    sort, name, c
+                )
             };
             cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m);
         }
@@ -106,23 +122,21 @@ impl LintPass for NonCamelCaseTypes {
 
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
-        let has_repr_c = it.attrs
-            .iter()
-            .any(|attr| {
-                attr::find_repr_attrs(&cx.sess.parse_sess, attr)
-                    .iter()
-                    .any(|r| r == &attr::ReprC)
-            });
+        let has_repr_c = it.attrs.iter().any(|attr| {
+            attr::find_repr_attrs(&cx.sess.parse_sess, attr)
+                .iter()
+                .any(|r| r == &attr::ReprC)
+        });
 
         if has_repr_c {
             return;
         }
 
         match it.node {
-            ast::ItemKind::Ty(..) |
-            ast::ItemKind::Enum(..) |
-            ast::ItemKind::Struct(..) |
-            ast::ItemKind::Union(..) => self.check_case(cx, "type", it.ident.name, it.span),
+            ast::ItemKind::Ty(..)
+            | ast::ItemKind::Enum(..)
+            | ast::ItemKind::Struct(..)
+            | ast::ItemKind::Union(..) => self.check_case(cx, "type", it.ident.name, it.span),
             ast::ItemKind::Trait(..) => self.check_case(cx, "trait", it.ident.name, it.span),
             _ => (),
         }
@@ -204,10 +218,10 @@ impl NonSnakeCase {
         if !is_snake_case(name) {
             let sc = NonSnakeCase::to_snake_case(name);
             let msg = if sc != name {
-                format!("{} `{}` should have a snake case name such as `{}`",
-                        sort,
-                        name,
-                        sc)
+                format!(
+                    "{} `{}` should have a snake case name such as `{}`",
+                    sort, name, sc
+                )
             } else {
                 format!("{} `{}` should have a snake case name", sort, name)
             };
@@ -246,25 +260,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_fn(&mut self,
-                cx: &LateContext,
-                fk: FnKind,
-                _: &hir::FnDecl,
-                _: &hir::Body,
-                span: Span,
-                id: ast::NodeId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext,
+        fk: FnKind,
+        _: &hir::FnDecl,
+        _: &hir::Body,
+        span: Span,
+        id: ast::NodeId,
+    ) {
         match fk {
-            FnKind::Method(name, ..) => {
-                match method_context(cx, id) {
-                    MethodLateContext::PlainImpl => {
-                        self.check_snake_case(cx, "method", &name.as_str(), Some(span))
-                    }
-                    MethodLateContext::TraitAutoImpl => {
-                        self.check_snake_case(cx, "trait method", &name.as_str(), Some(span))
-                    }
-                    _ => (),
+            FnKind::Method(name, ..) => match method_context(cx, id) {
+                MethodLateContext::PlainImpl => {
+                    self.check_snake_case(cx, "method", &name.as_str(), Some(span))
                 }
-            }
+                MethodLateContext::TraitAutoImpl => {
+                    self.check_snake_case(cx, "trait method", &name.as_str(), Some(span))
+                }
+                _ => (),
+            },
             FnKind::ItemFn(name, _, header, _, attrs) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
                 if header.abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
@@ -284,10 +298,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
         if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref pnames)) = item.node {
-            self.check_snake_case(cx,
-                                  "trait method",
-                                  &item.ident.as_str(),
-                                  Some(item.span));
+            self.check_snake_case(cx, "trait method", &item.ident.as_str(), Some(item.span));
             for param_name in pnames {
                 self.check_snake_case(cx, "variable", &param_name.as_str(), Some(param_name.span));
             }
@@ -300,12 +311,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_struct_def(&mut self,
-                        cx: &LateContext,
-                        s: &hir::VariantData,
-                        _: ast::Name,
-                        _: &hir::Generics,
-                        _: ast::NodeId) {
+    fn check_struct_def(
+        &mut self,
+        cx: &LateContext,
+        s: &hir::VariantData,
+        _: ast::Name,
+        _: &hir::Generics,
+        _: ast::NodeId,
+    ) {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.ident.as_str(), Some(sf.span));
         }
@@ -326,16 +339,20 @@ impl NonUpperCaseGlobals {
         if name.as_str().chars().any(|c| c.is_lowercase()) {
             let uc = NonSnakeCase::to_snake_case(&name.as_str()).to_uppercase();
             if name != &*uc {
-                cx.span_lint(NON_UPPER_CASE_GLOBALS,
-                             span,
-                             &format!("{} `{}` should have an upper case name such as `{}`",
-                                      sort,
-                                      name,
-                                      uc));
+                cx.span_lint(
+                    NON_UPPER_CASE_GLOBALS,
+                    span,
+                    &format!(
+                        "{} `{}` should have an upper case name such as `{}`",
+                        sort, name, uc
+                    ),
+                );
             } else {
-                cx.span_lint(NON_UPPER_CASE_GLOBALS,
-                             span,
-                             &format!("{} `{}` should have an upper case name", sort, name));
+                cx.span_lint(
+                    NON_UPPER_CASE_GLOBALS,
+                    span,
+                    &format!("{} `{}` should have an upper case name", sort, name),
+                );
             }
         }
     }
@@ -354,12 +371,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
                 if attr::find_by_name(&it.attrs, "no_mangle").is_some() {
                     return;
                 }
-                NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.ident.name,
-                                                      it.span);
+                NonUpperCaseGlobals::check_upper_case(
+                    cx,
+                    "static variable",
+                    it.ident.name,
+                    it.span,
+                );
             }
             hir::ItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.ident.name,
-                                                      it.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.ident.name, it.span);
             }
             _ => {}
         }
@@ -368,8 +388,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_trait_item(&mut self, cx: &LateContext, ti: &hir::TraitItem) {
         match ti.node {
             hir::TraitItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
-                                                      ti.ident.name, ti.span);
+                NonUpperCaseGlobals::check_upper_case(
+                    cx,
+                    "associated constant",
+                    ti.ident.name,
+                    ti.span,
+                );
             }
             _ => {}
         }
@@ -378,8 +402,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_impl_item(&mut self, cx: &LateContext, ii: &hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
-                                                      ii.ident.name, ii.span);
+                NonUpperCaseGlobals::check_upper_case(
+                    cx,
+                    "associated constant",
+                    ii.ident.name,
+                    ii.span,
+                );
             }
             _ => {}
         }
@@ -390,10 +418,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
             if let Def::Const(..) = path.def {
                 if path.segments.len() == 1 {
-                    NonUpperCaseGlobals::check_upper_case(cx,
-                                                          "constant in pattern",
-                                                          path.segments[0].ident.name,
-                                                          path.span);
+                    NonUpperCaseGlobals::check_upper_case(
+                        cx,
+                        "constant in pattern",
+                        path.segments[0].ident.name,
+                        path.span,
+                    );
                 }
             }
         }

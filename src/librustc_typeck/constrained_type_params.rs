@@ -1,5 +1,5 @@
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
 use syntax::source_map::Span;
 
@@ -7,18 +7,22 @@ use syntax::source_map::Span;
 pub struct Parameter(pub u32);
 
 impl From<ty::ParamTy> for Parameter {
-    fn from(param: ty::ParamTy) -> Self { Parameter(param.idx) }
+    fn from(param: ty::ParamTy) -> Self {
+        Parameter(param.idx)
+    }
 }
 
 impl From<ty::EarlyBoundRegion> for Parameter {
-    fn from(param: ty::EarlyBoundRegion) -> Self { Parameter(param.index) }
+    fn from(param: ty::EarlyBoundRegion) -> Self {
+        Parameter(param.index)
+    }
 }
 
 /// Return the set of parameters constrained by the impl header.
-pub fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
-                                 impl_trait_ref: Option<ty::TraitRef<'tcx>>)
-                                 -> FxHashSet<Parameter>
-{
+pub fn parameters_for_impl<'tcx>(
+    impl_self_ty: Ty<'tcx>,
+    impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+) -> FxHashSet<Parameter> {
     let vec = match impl_trait_ref {
         Some(tr) => parameters_for(&tr, false),
         None => parameters_for(&impl_self_ty, false),
@@ -31,12 +35,10 @@ pub fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
 /// uniquely determined by `t` (see RFC 447). If it is true, return the list
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
-pub fn parameters_for<'tcx, T>(t: &T,
-                               include_nonconstraining: bool)
-                               -> Vec<Parameter>
-    where T: TypeFoldable<'tcx>
+pub fn parameters_for<'tcx, T>(t: &T, include_nonconstraining: bool) -> Vec<Parameter>
+where
+    T: TypeFoldable<'tcx>,
 {
-
     let mut collector = ParameterCollector {
         parameters: vec![],
         include_nonconstraining,
@@ -47,7 +49,7 @@ pub fn parameters_for<'tcx, T>(t: &T,
 
 struct ParameterCollector {
     parameters: Vec<Parameter>,
-    include_nonconstraining: bool
+    include_nonconstraining: bool,
 }
 
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
@@ -74,15 +76,15 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-                                              predicates: &ty::GenericPredicates<'tcx>,
-                                              impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                              input_parameters: &mut FxHashSet<Parameter>)
-{
+pub fn identify_constrained_type_params<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    predicates: &ty::GenericPredicates<'tcx>,
+    impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+    input_parameters: &mut FxHashSet<Parameter>,
+) {
     let mut predicates = predicates.predicates.clone();
     setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
 }
-
 
 /// Order the predicates in `predicates` such that each parameter is
 /// constrained before it is used, if that is possible, and add the
@@ -124,11 +126,12 @@ pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
-                                           predicates: &mut [(ty::Predicate<'tcx>, Span)],
-                                           impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                           input_parameters: &mut FxHashSet<Parameter>)
-{
+pub fn setup_constraining_predicates<'tcx>(
+    tcx: TyCtxt,
+    predicates: &mut [(ty::Predicate<'tcx>, Span)],
+    impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+    input_parameters: &mut FxHashSet<Parameter>,
+) {
     // The canonical way of doing the needed topological sort
     // would be a DFS, but getting the graph and its ownership
     // right is annoying, so I am using an in-place fixed-point iteration,
@@ -148,9 +151,11 @@ pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
     //   * <U as Iterator>::Item = T
     //   * T: Debug
     //   * U: Iterator
-    debug!("setup_constraining_predicates: predicates={:?} \
-            impl_trait_ref={:?} input_parameters={:?}",
-           predicates, impl_trait_ref, input_parameters);
+    debug!(
+        "setup_constraining_predicates: predicates={:?} \
+         impl_trait_ref={:?} input_parameters={:?}",
+        predicates, impl_trait_ref, input_parameters
+    );
     let mut i = 0;
     let mut changed = true;
     while changed {
@@ -189,8 +194,10 @@ pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
             i += 1;
             changed = true;
         }
-        debug!("setup_constraining_predicates: predicates={:?} \
-                i={} impl_trait_ref={:?} input_parameters={:?}",
-               predicates, i, impl_trait_ref, input_parameters);
+        debug!(
+            "setup_constraining_predicates: predicates={:?} \
+             i={} impl_trait_ref={:?} input_parameters={:?}",
+            predicates, i, impl_trait_ref, input_parameters
+        );
     }
 }

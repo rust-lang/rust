@@ -69,7 +69,8 @@ mod if_arc {
     }
 
     impl<T> From<Arc<T>> for Waker
-        where T: Wake + 'static,
+    where
+        T: Wake + 'static,
     {
         fn from(rc: Arc<T>) -> Self {
             unsafe {

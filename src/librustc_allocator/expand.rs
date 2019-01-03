@@ -3,13 +3,10 @@ use rustc_errors;
 use smallvec::SmallVec;
 use syntax::{
     ast::{
-        self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
-        Mac, Mod, Mutability, Ty, TyKind, Unsafety, VisibilityKind,
+        self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind, Mac, Mod,
+        Mutability, Ty, TyKind, Unsafety, VisibilityKind,
     },
     attr,
-    source_map::{
-        respan, ExpnInfo, MacroAttribute,
-    },
     ext::{
         base::{ExtCtxt, Resolver},
         build::AstBuilder,
@@ -19,7 +16,8 @@ use syntax::{
     fold::{self, Folder},
     parse::ParseSess,
     ptr::P,
-    symbol::Symbol
+    source_map::{respan, ExpnInfo, MacroAttribute},
+    symbol::Symbol,
 };
 use syntax_pos::Span;
 
@@ -39,7 +37,8 @@ pub fn modify(
         found: false,
         crate_name: Some(crate_name),
         in_submod: -1, // -1 to account for the "root" module
-    }.fold_crate(krate)
+    }
+    .fold_crate(krate)
 }
 
 struct ExpandAllocatorDirectives<'a> {

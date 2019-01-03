@@ -22,8 +22,7 @@ pub type CanonicalProjectionGoal<'tcx> =
 
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 
-pub type CanonicalPredicateGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
+pub type CanonicalPredicateGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
 
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ascribe_user_type::AscribeUserType<'tcx>>>;
@@ -51,4 +50,6 @@ impl<'tcx> From<TypeError<'tcx>> for NoSolution {
     }
 }
 
-impl_stable_hash_for!(struct NoSolution { });
+impl_stable_hash_for!(
+    struct NoSolution {}
+);

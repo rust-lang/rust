@@ -1,18 +1,12 @@
-use traits::{
-    Environment,
-    InEnvironment,
-    TraitEngine,
-    ObligationCause,
-    PredicateObligation,
-    FulfillmentError,
-    FulfillmentErrorCode,
-    SelectionError,
-};
-use traits::query::NoSolution;
-use infer::InferCtxt;
 use infer::canonical::{Canonical, OriginalQueryValues};
-use ty::{self, Ty};
+use infer::InferCtxt;
 use rustc_data_structures::fx::FxHashSet;
+use traits::query::NoSolution;
+use traits::{
+    Environment, FulfillmentError, FulfillmentErrorCode, InEnvironment, ObligationCause,
+    PredicateObligation, SelectionError, TraitEngine,
+};
+use ty::{self, Ty};
 
 pub type CanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;
 
@@ -30,7 +24,7 @@ impl FulfillmentContext<'tcx> {
 
 fn in_environment(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    obligation: PredicateObligation<'tcx>
+    obligation: PredicateObligation<'tcx>,
 ) -> InEnvironment<'tcx, PredicateObligation<'tcx>> {
     assert!(!infcx.is_in_snapshot());
     let obligation = infcx.resolve_type_vars_if_possible(&obligation);
@@ -77,7 +71,9 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         if self.obligations.is_empty() {
             Ok(())
         } else {
-            let errors = self.obligations.iter()
+            let errors = self
+                .obligations
+                .iter()
                 .map(|obligation| FulfillmentError {
                     obligation: obligation.goal.clone(),
                     code: FulfillmentErrorCode::CodeAmbiguity,
@@ -102,10 +98,13 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             // to unambiguously prove at least one obligation.
             for obligation in self.obligations.drain() {
                 let mut orig_values = OriginalQueryValues::default();
-                let canonical_goal = infcx.canonicalize_query(&InEnvironment {
-                    environment: obligation.environment,
-                    goal: obligation.goal.predicate,
-                }, &mut orig_values);
+                let canonical_goal = infcx.canonicalize_query(
+                    &InEnvironment {
+                        environment: obligation.environment,
+                        goal: obligation.goal.predicate,
+                    },
+                    &mut orig_values,
+                );
 
                 match infcx.tcx.global_tcx().evaluate_goal(canonical_goal) {
                     Ok(response) => {
@@ -116,18 +115,19 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 &obligation.goal.cause,
                                 obligation.goal.param_env,
                                 &orig_values,
-                                &response
+                                &response,
                             ) {
                                 Ok(infer_ok) => next_round.extend(
-                                    infer_ok.obligations
+                                    infer_ok
+                                        .obligations
                                         .into_iter()
-                                        .map(|obligation| in_environment(infcx, obligation))
+                                        .map(|obligation| in_environment(infcx, obligation)),
                                 ),
 
                                 Err(_err) => errors.push(FulfillmentError {
                                     obligation: obligation.goal,
                                     code: FulfillmentErrorCode::CodeSelectionError(
-                                        SelectionError::Unimplemented
+                                        SelectionError::Unimplemented,
                                     ),
                                 }),
                             }
@@ -140,9 +140,9 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     Err(NoSolution) => errors.push(FulfillmentError {
                         obligation: obligation.goal,
                         code: FulfillmentErrorCode::CodeSelectionError(
-                            SelectionError::Unimplemented
+                            SelectionError::Unimplemented,
                         ),
-                    })
+                    }),
                 }
             }
             next_round = std::mem::replace(&mut self.obligations, next_round);
@@ -160,6 +160,9 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations.iter().map(|obligation| obligation.goal.clone()).collect()
+        self.obligations
+            .iter()
+            .map(|obligation| obligation.goal.clone())
+            .collect()
     }
 }

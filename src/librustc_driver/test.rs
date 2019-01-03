@@ -136,7 +136,8 @@ fn test_env_with_pool<F>(
             None,
             MakeGlobMap::No,
             |_| Ok(()),
-        ).expect("phase 2 aborted")
+        )
+        .expect("phase 2 aborted")
     };
 
     let mut arenas = ty::AllArenas::new();
@@ -295,7 +296,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match self.infcx
+        match self
+            .infcx
             .at(&ObligationCause::dummy(), self.param_env)
             .sub(a, b)
         {

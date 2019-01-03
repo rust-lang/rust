@@ -17,7 +17,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::ascii::{EscapeDefault, escape_default};
+pub use core::ascii::{escape_default, EscapeDefault};
 
 /// Extension methods for ASCII-subset only operations.
 ///

@@ -48,8 +48,11 @@ pub enum Component<'tcx> {
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-    pub fn push_outlives_components(&self, ty0: Ty<'tcx>,
-                                    out: &mut SmallVec<[Component<'tcx>; 4]>) {
+    pub fn push_outlives_components(
+        &self,
+        ty0: Ty<'tcx>,
+        out: &mut SmallVec<[Component<'tcx>; 4]>,
+    ) {
         self.compute_components(ty0, out);
         debug!("components({:?}) = {:?}", ty0, out);
     }
@@ -175,5 +178,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 fn push_region_constraints<'tcx>(ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
     let mut regions = smallvec![];
     ty.push_regions(&mut regions);
-    out.extend(regions.iter().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r)));
+    out.extend(
+        regions
+            .iter()
+            .filter(|&r| !r.is_late_bound())
+            .map(|r| Component::Region(r)),
+    );
 }

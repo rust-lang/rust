@@ -13,15 +13,19 @@ use std::fs;
 use std::path::Path;
 
 macro_rules! t {
-    ($e:expr, $p:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed on {} with {}", stringify!($e), ($p).display(), e),
-    });
+    ($e:expr, $p:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed on {} with {}", stringify!($e), ($p).display(), e),
+        }
+    };
 
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
-    })
+    ($e:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        }
+    };
 }
 
 macro_rules! tidy_error {
@@ -33,16 +37,16 @@ macro_rules! tidy_error {
 }
 
 pub mod bins;
-pub mod style;
-pub mod errors;
-pub mod features;
 pub mod cargo;
-pub mod pal;
 pub mod deps;
+pub mod errors;
 pub mod extdeps;
+pub mod features;
+pub mod libcoretest;
+pub mod pal;
+pub mod style;
 pub mod ui_tests;
 pub mod unstable_book;
-pub mod libcoretest;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [

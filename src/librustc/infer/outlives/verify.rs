@@ -56,7 +56,8 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
 
         // Start with anything like `T: 'a` we can scrape from the
         // environment
-        let param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty))
+        let param_bounds = self
+            .declared_generic_bounds_from_env(GenericKind::Param(param_ty))
             .into_iter()
             .map(|outlives| outlives.1);
 
@@ -109,11 +110,13 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     pub fn projection_bound(&self, projection_ty: ty::ProjectionTy<'tcx>) -> VerifyBound<'tcx> {
         debug!("projection_bound(projection_ty={:?})", projection_ty);
 
-        let projection_ty_as_ty =
-            self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
+        let projection_ty_as_ty = self
+            .tcx
+            .mk_projection(projection_ty.item_def_id, projection_ty.substs);
 
         // Search the env for where clauses like `P: 'a`.
-        let env_bounds = self.projection_approx_declared_bounds_from_env(projection_ty)
+        let env_bounds = self
+            .projection_approx_declared_bounds_from_env(projection_ty)
             .into_iter()
             .map(|ty::OutlivesPredicate(ty, r)| {
                 let vb = VerifyBound::OutlivedBy(r);
@@ -128,12 +131,14 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             });
 
         // Extend with bounds that we can find from the trait.
-        let trait_bounds = self.projection_declared_bounds_from_trait(projection_ty)
+        let trait_bounds = self
+            .projection_declared_bounds_from_trait(projection_ty)
             .into_iter()
             .map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
-        let ty = self.tcx
+        let ty = self
+            .tcx
             .mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
 
@@ -141,7 +146,8 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        let mut bounds = ty.walk_shallow()
+        let mut bounds = ty
+            .walk_shallow()
             .map(|subty| self.type_bound(subty))
             .collect::<Vec<_>>();
 
@@ -288,7 +294,9 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates = tcx.predicates_of(trait_def_id).predicates
+        let trait_predicates = tcx
+            .predicates_of(trait_def_id)
+            .predicates
             .iter()
             .map(|(p, _)| *p)
             .collect();
@@ -297,7 +305,8 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
             traits::elaborate_predicates(tcx, trait_predicates),
-        ).map(|b| b.1)
+        )
+        .map(|b| b.1)
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.

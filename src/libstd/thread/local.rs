@@ -147,9 +147,11 @@ macro_rules! thread_local {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary",
-           issue = "0")]
+#[unstable(
+    feature = "thread_local_internals",
+    reason = "should not be necessary",
+    issue = "0"
+)]
 #[macro_export]
 #[allow_internal_unstable]
 #[allow_internal_unsafe]
@@ -218,15 +220,16 @@ impl fmt::Display for AccessError {
 
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals",
-               reason = "recently added to create a key",
-               issue = "0")]
-    pub const unsafe fn new(inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
-                            init: fn() -> T) -> LocalKey<T> {
-        LocalKey {
-            inner,
-            init,
-        }
+    #[unstable(
+        feature = "thread_local_internals",
+        reason = "recently added to create a key",
+        issue = "0"
+    )]
+    pub const unsafe fn new(
+        inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
+        init: fn() -> T,
+    ) -> LocalKey<T> {
+        LocalKey { inner, init }
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -241,9 +244,13 @@ impl<T: 'static> LocalKey<T> {
     /// previously been run for this thread.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
-                      where F: FnOnce(&T) -> R {
-        self.try_with(f).expect("cannot access a TLS value during or \
-                                 after it is destroyed")
+    where
+        F: FnOnce(&T) -> R,
+    {
+        self.try_with(f).expect(
+            "cannot access a TLS value during or \
+             after it is destroyed",
+        )
     }
 
     unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
@@ -293,9 +300,7 @@ impl<T: 'static> LocalKey<T> {
         F: FnOnce(&T) -> R,
     {
         unsafe {
-            let slot = (self.inner)().ok_or(AccessError {
-                _private: (),
-            })?;
+            let slot = (self.inner)().ok_or(AccessError { _private: () })?;
             Ok(f(match *slot.get() {
                 Some(ref inner) => inner,
                 None => self.init(slot),
@@ -316,7 +321,7 @@ pub mod statik {
         inner: UnsafeCell<Option<T>>,
     }
 
-    unsafe impl<T> ::marker::Sync for Key<T> { }
+    unsafe impl<T> ::marker::Sync for Key<T> {}
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -366,13 +371,13 @@ pub mod fast {
             Key {
                 inner: UnsafeCell::new(None),
                 dtor_registered: Cell::new(false),
-                dtor_running: Cell::new(false)
+                dtor_running: Cell::new(false),
             }
         }
 
         pub unsafe fn get(&self) -> Option<&'static UnsafeCell<Option<T>>> {
             if mem::needs_drop::<T>() && self.dtor_running.get() {
-                return None
+                return None;
             }
             self.register_dtor();
             Some(&*(&self.inner as *const _))
@@ -380,16 +385,15 @@ pub mod fast {
 
         unsafe fn register_dtor(&self) {
             if !mem::needs_drop::<T>() || self.dtor_registered.get() {
-                return
+                return;
             }
 
-            register_dtor(self as *const _ as *mut u8,
-                          destroy_value::<T>);
+            register_dtor(self as *const _ as *mut u8, destroy_value::<T>);
             self.dtor_registered.set(true);
         }
     }
 
-    unsafe extern fn destroy_value<T>(ptr: *mut u8) {
+    unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
         // destructor as running for this thread so calls to `get` will return
@@ -429,7 +433,7 @@ pub mod os {
         }
     }
 
-    unsafe impl<T> ::marker::Sync for Key<T> { }
+    unsafe impl<T> ::marker::Sync for Key<T> {}
 
     struct Value<T: 'static> {
         key: &'static Key<T>,
@@ -440,7 +444,7 @@ pub mod os {
         pub const fn new() -> Key<T> {
             Key {
                 os: OsStaticKey::new(Some(destroy_value::<T>)),
-                marker: marker::PhantomData
+                marker: marker::PhantomData,
             }
         }
 
@@ -448,7 +452,7 @@ pub mod os {
             let ptr = self.os.get() as *mut Value<T>;
             if !ptr.is_null() {
                 if ptr as usize == 1 {
-                    return None
+                    return None;
                 }
                 return Some(&(*ptr).value);
             }
@@ -465,7 +469,7 @@ pub mod os {
         }
     }
 
-    unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
+    unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
@@ -483,8 +487,8 @@ pub mod os {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use sync::mpsc::{channel, Sender};
     use cell::{Cell, UnsafeCell};
+    use sync::mpsc::{channel, Sender};
     use thread;
 
     struct Foo(Sender<()>);
@@ -505,7 +509,7 @@ mod tests {
             f.set(2);
         });
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| {
+        let _t = thread::spawn(move || {
             FOO.with(|f| {
                 assert_eq!(f.get(), 1);
             });
@@ -530,7 +534,10 @@ mod tests {
 
         thread::spawn(|| {
             assert!(FOO.try_with(|_| ()).is_ok());
-        }).join().ok().unwrap();
+        })
+        .join()
+        .ok()
+        .unwrap();
     }
 
     #[test]
@@ -538,7 +545,7 @@ mod tests {
         thread_local!(static FOO: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
 
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| unsafe {
+        let _t = thread::spawn(move || unsafe {
             let mut tx = Some(tx);
             FOO.with(|f| {
                 *f.get() = Some(Foo(tx.take().unwrap()));
@@ -582,9 +589,12 @@ mod tests {
             }
         }
 
-        thread::spawn(move|| {
+        thread::spawn(move || {
             drop(S1);
-        }).join().ok().unwrap();
+        })
+        .join()
+        .ok()
+        .unwrap();
     }
 
     #[test]
@@ -598,9 +608,12 @@ mod tests {
             }
         }
 
-        thread::spawn(move|| unsafe {
+        thread::spawn(move || unsafe {
             K1.with(|s| *s.get() = Some(S1));
-        }).join().ok().unwrap();
+        })
+        .join()
+        .ok()
+        .unwrap();
     }
 
     // Note that this test will deadlock if TLS destructors aren't run (this
@@ -624,7 +637,7 @@ mod tests {
         }
 
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| unsafe {
+        let _t = thread::spawn(move || unsafe {
             let mut tx = Some(tx);
             K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
         });
@@ -639,7 +652,9 @@ mod dynamic_tests {
 
     #[test]
     fn smoke() {
-        fn square(i: i32) -> i32 { i * i }
+        fn square(i: i32) -> i32 {
+            i * i
+        }
         thread_local!(static FOO: i32 = square(3));
 
         FOO.with(|f| {

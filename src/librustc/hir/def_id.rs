@@ -1,9 +1,9 @@
-use ty;
 use hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize;
 use std::fmt;
 use std::u32;
+use ty;
 
 newtype_index! {
     pub struct CrateId {
@@ -39,7 +39,6 @@ impl ::std::fmt::Debug for CrateNum {
 /// Item definitions in the currently-compiled crate would have the CrateNum
 /// LOCAL_CRATE in their DefId.
 pub const LOCAL_CRATE: CrateNum = CrateNum::Index(CrateId::from_u32_const(0));
-
 
 impl Idx for CrateNum {
     #[inline]
@@ -83,7 +82,12 @@ impl CrateNum {
         }
     }
 
-    pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }
+    pub fn as_def_id(&self) -> DefId {
+        DefId {
+            krate: *self,
+            index: CRATE_DEF_INDEX,
+        }
+    }
 }
 
 impl fmt::Display for CrateNum {
@@ -123,10 +127,12 @@ pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
 
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
-               "DefIndex({}:{})",
-               self.address_space().index(),
-               self.as_array_index())
+        write!(
+            f,
+            "DefIndex({}:{})",
+            self.address_space().index(),
+            self.as_array_index()
+        )
     }
 }
 
@@ -136,7 +142,7 @@ impl DefIndex {
         match self.0 & 1 {
             0 => DefIndexAddressSpace::Low,
             1 => DefIndexAddressSpace::High,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -161,9 +167,11 @@ impl DefIndex {
         // because the first FIRST_FREE_HIGH_DEF_INDEX indexes are reserved
         // for internal use.
         let def_index = DefIndex::from_array_index(
-            proc_macro_index.checked_add(FIRST_FREE_HIGH_DEF_INDEX)
+            proc_macro_index
+                .checked_add(FIRST_FREE_HIGH_DEF_INDEX)
                 .expect("integer overflow adding `proc_macro_index`"),
-            DefIndexAddressSpace::High);
+            DefIndexAddressSpace::High,
+        );
         assert!(def_index != CRATE_DEF_INDEX);
         def_index
     }
@@ -172,10 +180,9 @@ impl DefIndex {
     pub fn to_proc_macro_index(self: DefIndex) -> usize {
         assert_eq!(self.address_space(), DefIndexAddressSpace::High);
 
-        self.as_array_index().checked_sub(FIRST_FREE_HIGH_DEF_INDEX)
-            .unwrap_or_else(|| {
-                bug!("using local index {:?} as proc-macro index", self)
-            })
+        self.as_array_index()
+            .checked_sub(FIRST_FREE_HIGH_DEF_INDEX)
+            .unwrap_or_else(|| bug!("using local index {:?} as proc-macro index", self))
     }
 
     // Don't use this if you don't know about the DefIndex encoding.
@@ -215,10 +222,13 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DefId({}/{}:{}",
-               self.krate,
-               self.index.address_space().index(),
-               self.index.as_array_index())?;
+        write!(
+            f,
+            "DefId({}/{}:{}",
+            self.krate,
+            self.index.address_space().index(),
+            self.index.as_array_index()
+        )?;
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
@@ -235,7 +245,10 @@ impl DefId {
     /// Make a local `DefId` with the given index.
     #[inline]
     pub fn local(index: DefIndex) -> DefId {
-        DefId { krate: LOCAL_CRATE, index: index }
+        DefId {
+            krate: LOCAL_CRATE,
+            index: index,
+        }
     }
 
     #[inline]
@@ -272,7 +285,7 @@ impl LocalDefId {
     pub fn to_def_id(self) -> DefId {
         DefId {
             krate: LOCAL_CRATE,
-            index: self.0
+            index: self.0,
         }
     }
 }

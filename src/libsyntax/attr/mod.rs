@@ -12,19 +12,19 @@ pub use self::ReprAttr::*;
 pub use self::StabilityLevel::*;
 
 use ast;
-use ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
+use ast::{AttrId, AttrStyle, Attribute, Ident, Name, Path, PathSegment};
+use ast::{Expr, ExprKind, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
-use source_map::{BytePos, Spanned, respan, dummy_spanned};
-use syntax_pos::{FileName, Span};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::parser::Parser;
-use parse::{self, ParseSess, PResult};
 use parse::token::{self, Token};
+use parse::{self, PResult, ParseSess};
 use ptr::P;
+use source_map::{dummy_spanned, respan, BytePos, Spanned};
 use symbol::Symbol;
+use syntax_pos::{FileName, Span};
+use tokenstream::{DelimSpan, TokenStream, TokenTree};
 use ThinVec;
-use tokenstream::{TokenStream, TokenTree, DelimSpan};
 use GLOBALS;
 
 use std::iter;
@@ -37,9 +37,7 @@ pub fn mark_used(attr: &Attribute) {
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
-    GLOBALS.with(|globals| {
-        globals.used_attrs.lock().contains(attr.id)
-    })
+    GLOBALS.with(|globals| globals.used_attrs.lock().contains(attr.id))
 }
 
 pub fn mark_known(attr: &Attribute) {
@@ -50,9 +48,7 @@ pub fn mark_known(attr: &Attribute) {
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
-    GLOBALS.with(|globals| {
-        globals.known_attrs.lock().contains(attr.id)
-    })
+    GLOBALS.with(|globals| globals.known_attrs.lock().contains(attr.id))
 }
 
 pub fn is_known_lint_tool(m_item: Ident) -> bool {
@@ -64,7 +60,7 @@ impl NestedMetaItem {
     pub fn meta_item(&self) -> Option<&MetaItem> {
         match self.node {
             NestedMetaItemKind::MetaItem(ref item) => Some(item),
-            _ => None
+            _ => None,
         }
     }
 
@@ -72,7 +68,7 @@ impl NestedMetaItem {
     pub fn literal(&self) -> Option<&Lit> {
         match self.node {
             NestedMetaItemKind::Literal(ref lit) => Some(lit),
-            _ => None
+            _ => None,
         }
     }
 
@@ -83,13 +79,15 @@ impl NestedMetaItem {
 
     /// Returns true if this list item is a MetaItem with a name of `name`.
     pub fn check_name(&self, name: &str) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
+        self.meta_item()
+            .map_or(false, |meta_item| meta_item.check_name(name))
     }
 
     /// Returns the name of the meta item, e.g., `foo` in `#[foo]`,
     /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
     pub fn name(&self) -> Option<Name> {
-        self.meta_item().and_then(|meta_item| Some(meta_item.name()))
+        self.meta_item()
+            .and_then(|meta_item| Some(meta_item.name()))
     }
 
     /// Gets the string value if self is a MetaItem and the MetaItem is a
@@ -100,34 +98,37 @@ impl NestedMetaItem {
 
     /// Returns a name and single literal value tuple of the MetaItem.
     pub fn name_value_literal(&self) -> Option<(Name, &Lit)> {
-        self.meta_item().and_then(
-            |meta_item| meta_item.meta_item_list().and_then(
-                |meta_item_list| {
-                    if meta_item_list.len() == 1 {
-                        let nested_item = &meta_item_list[0];
-                        if nested_item.is_literal() {
-                            Some((meta_item.name(), nested_item.literal().unwrap()))
-                        } else {
-                            None
-                        }
-                    }
-                    else {
+        self.meta_item().and_then(|meta_item| {
+            meta_item.meta_item_list().and_then(|meta_item_list| {
+                if meta_item_list.len() == 1 {
+                    let nested_item = &meta_item_list[0];
+                    if nested_item.is_literal() {
+                        Some((meta_item.name(), nested_item.literal().unwrap()))
+                    } else {
                         None
-                    }}))
+                    }
+                } else {
+                    None
+                }
+            })
+        })
     }
 
     /// Returns a MetaItem if self is a MetaItem with Kind Word.
     pub fn word(&self) -> Option<&MetaItem> {
-        self.meta_item().and_then(|meta_item| if meta_item.is_word() {
-            Some(meta_item)
-        } else {
-            None
+        self.meta_item().and_then(|meta_item| {
+            if meta_item.is_word() {
+                Some(meta_item)
+            } else {
+                None
+            }
         })
     }
 
     /// Gets a list of inner meta items from a list MetaItem type.
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
-        self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
+        self.meta_item()
+            .and_then(|meta_item| meta_item.meta_item_list())
     }
 
     /// Returns `true` if the variant is MetaItem.
@@ -157,7 +158,11 @@ impl NestedMetaItem {
 }
 
 fn name_from_path(path: &Path) -> Name {
-    path.segments.last().expect("empty path in attribute").ident.name
+    path.segments
+        .last()
+        .expect("empty path in attribute")
+        .ident
+        .name
 }
 
 impl Attribute {
@@ -181,8 +186,11 @@ impl Attribute {
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
         match self.meta() {
-            Some(MetaItem { node: MetaItemKind::List(list), .. }) => Some(list),
-            _ => None
+            Some(MetaItem {
+                node: MetaItemKind::List(list),
+                ..
+            }) => Some(list),
+            _ => None,
         }
     }
 
@@ -220,20 +228,18 @@ impl MetaItem {
 
     pub fn value_str(&self) -> Option<Symbol> {
         match self.node {
-            MetaItemKind::NameValue(ref v) => {
-                match v.node {
-                    LitKind::Str(ref s, _) => Some(*s),
-                    _ => None,
-                }
+            MetaItemKind::NameValue(ref v) => match v.node {
+                LitKind::Str(ref s, _) => Some(*s),
+                _ => None,
             },
-            _ => None
+            _ => None,
         }
     }
 
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
         match self.node {
             MetaItemKind::List(ref l) => Some(&l[..]),
-            _ => None
+            _ => None,
         }
     }
 
@@ -244,7 +250,9 @@ impl MetaItem {
         }
     }
 
-    pub fn span(&self) -> Span { self.span }
+    pub fn span(&self) -> Span {
+        self.span
+    }
 
     pub fn check_name(&self, name: &str) -> bool {
         self.name() == name
@@ -286,7 +294,8 @@ impl Attribute {
     }
 
     pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    where
+        F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let mut parser = Parser::new(sess, self.tokens.clone(), None, false, false);
         let result = f(&mut parser)?;
@@ -297,7 +306,8 @@ impl Attribute {
     }
 
     pub fn parse_list<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, Vec<T>>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    where
+        F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         if self.tokens.is_empty() {
             return Ok(Vec::new());
@@ -308,8 +318,8 @@ impl Attribute {
             while !parser.eat(&token::CloseDelim(token::Paren)) {
                 list.push(f(parser)?);
                 if !parser.eat(&token::Comma) {
-                   parser.expect(&token::CloseDelim(token::Paren))?;
-                    break
+                    parser.expect(&token::CloseDelim(token::Paren))?;
+                    break;
                 }
             }
             Ok(list)
@@ -327,14 +337,18 @@ impl Attribute {
     /// Convert self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
-    pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
+    pub fn with_desugared_doc<T, F>(&self, f: F) -> T
+    where
         F: FnOnce(&Attribute) -> T,
     {
         if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
                 Ident::from_str("doc"),
-                dummy_spanned(Symbol::intern(&strip_doc_comment_decoration(&comment.as_str()))));
+                dummy_spanned(Symbol::intern(&strip_doc_comment_decoration(
+                    &comment.as_str(),
+                ))),
+            );
             let mut attr = if self.style == ast::AttrStyle::Outer {
                 mk_attr_outer(self.span, self.id, meta)
             } else {
@@ -356,19 +370,34 @@ pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem 
 }
 
 pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
-    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
+    MetaItem {
+        ident: Path::from_ident(ident),
+        span,
+        node: MetaItemKind::NameValue(value),
+    }
 }
 
 pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
+    MetaItem {
+        ident: Path::from_ident(ident),
+        span,
+        node: MetaItemKind::List(items),
+    }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
-    MetaItem { ident: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
+    MetaItem {
+        ident: Path::from_ident(ident),
+        span: ident.span,
+        node: MetaItemKind::Word,
+    }
 }
 
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
-    respan(ident.span, NestedMetaItemKind::MetaItem(mk_word_item(ident)))
+    respan(
+        ident.span,
+        NestedMetaItemKind::MetaItem(mk_word_item(ident)),
+    )
 }
 
 pub fn mk_attr_id() -> AttrId {
@@ -430,28 +459,27 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: &str) -> bool {
-    items.iter().any(|item| {
-        item.check_name(name)
-    })
+    items.iter().any(|item| item.check_name(name))
 }
 
 pub fn contains_name(attrs: &[Attribute], name: &str) -> bool {
-    attrs.iter().any(|item| {
-        item.check_name(name)
-    })
+    attrs.iter().any(|item| item.check_name(name))
 }
 
 pub fn find_by_name<'a>(attrs: &'a [Attribute], name: &str) -> Option<&'a Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
-pub fn filter_by_name<'a>(attrs: &'a [Attribute], name: &'a str)
-    -> impl Iterator<Item = &'a Attribute> {
+pub fn filter_by_name<'a>(
+    attrs: &'a [Attribute],
+    name: &'a str,
+) -> impl Iterator<Item = &'a Attribute> {
     attrs.iter().filter(move |attr| attr.check_name(name))
 }
 
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str) -> Option<Symbol> {
-    attrs.iter()
+    attrs
+        .iter()
         .find(|at| at.check_name(name))
         .and_then(|at| at.value_str())
 }
@@ -463,13 +491,13 @@ impl MetaItem {
         for (i, segment) in self.ident.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
-                let mod_sep_span = Span::new(last_pos,
-                                             segment.ident.span.lo(),
-                                             segment.ident.span.ctxt());
+                let mod_sep_span =
+                    Span::new(last_pos, segment.ident.span.lo(), segment.ident.span.ctxt());
                 idents.push(TokenTree::Token(mod_sep_span, Token::ModSep).into());
             }
-            idents.push(TokenTree::Token(segment.ident.span,
-                                         Token::from_ast_ident(segment.ident)).into());
+            idents.push(
+                TokenTree::Token(segment.ident.span, Token::from_ast_ident(segment.ident)).into(),
+            );
             last_pos = segment.ident.span.hi();
         }
         idents.push(self.node.tokens(self.span));
@@ -477,7 +505,8 @@ impl MetaItem {
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
-        where I: Iterator<Item = TokenTree>,
+    where
+        I: Iterator<Item = TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
         let ident = match tokens.next() {
@@ -486,8 +515,8 @@ impl MetaItem {
                     let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
                     tokens.next();
                     loop {
-                        if let Some(TokenTree::Token(span,
-                                                     Token::Ident(ident, _))) = tokens.next() {
+                        if let Some(TokenTree::Token(span, Token::Ident(ident, _))) = tokens.next()
+                        {
                             segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
                         } else {
                             return None;
@@ -543,20 +572,26 @@ impl MetaItemKind {
                     DelimSpan::from_single(span),
                     token::Paren,
                     TokenStream::new(tokens).into(),
-                ).into()
+                )
+                .into()
             }
         }
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItemKind>
-        where I: Iterator<Item = TokenTree>,
+    where
+        I: Iterator<Item = TokenTree>,
     {
         let delimited = match tokens.peek().cloned() {
             Some(TokenTree::Token(_, token::Eq)) => {
                 tokens.next();
                 return if let Some(TokenTree::Token(span, token)) = tokens.next() {
-                    LitKind::from_token(token)
-                        .map(|lit| MetaItemKind::NameValue(Spanned { node: lit, span: span }))
+                    LitKind::from_token(token).map(|lit| {
+                        MetaItemKind::NameValue(Spanned {
+                            node: lit,
+                            span: span,
+                        })
+                    })
                 } else {
                     None
                 };
@@ -598,7 +633,8 @@ impl NestedMetaItemKind {
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItemKind>
-        where I: Iterator<Item = TokenTree>,
+    where
+        I: Iterator<Item = TokenTree>,
     {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
             if let Some(node) = LitKind::from_token(token) {
@@ -630,12 +666,18 @@ impl LitKind {
                 Token::Literal(token::Lit::StrRaw(string, n), None)
             }
             LitKind::ByteStr(ref bytes) => {
-                let string = bytes.iter().cloned().flat_map(ascii::escape_default)
-                    .map(Into::<char>::into).collect::<String>();
+                let string = bytes
+                    .iter()
+                    .cloned()
+                    .flat_map(ascii::escape_default)
+                    .map(Into::<char>::into)
+                    .collect::<String>();
                 Token::Literal(token::Lit::ByteStr(Symbol::intern(&string)), None)
             }
             LitKind::Byte(byte) => {
-                let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
+                let string: String = ascii::escape_default(byte)
+                    .map(Into::<char>::into)
+                    .collect();
                 Token::Literal(token::Lit::Byte(Symbol::intern(&string)), None)
             }
             LitKind::Char(ch) => {
@@ -650,15 +692,15 @@ impl LitKind {
                 };
                 Token::Literal(token::Lit::Integer(Symbol::intern(&n.to_string())), suffix)
             }
-            LitKind::Float(symbol, ty) => {
-                Token::Literal(token::Lit::Float(symbol), Some(Symbol::intern(ty.ty_to_string())))
-            }
+            LitKind::Float(symbol, ty) => Token::Literal(
+                token::Lit::Float(symbol),
+                Some(Symbol::intern(ty.ty_to_string())),
+            ),
             LitKind::FloatUnsuffixed(symbol) => Token::Literal(token::Lit::Float(symbol), None),
-            LitKind::Bool(value) => Token::Ident(Ident::with_empty_ctxt(Symbol::intern(if value {
-                "true"
-            } else {
-                "false"
-            })), false),
+            LitKind::Bool(value) => Token::Ident(
+                Ident::with_empty_ctxt(Symbol::intern(if value { "true" } else { "false" })),
+                false,
+            ),
         }
     }
 
@@ -691,7 +733,9 @@ pub trait HasAttrs: Sized {
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
-    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
+    fn attrs(&self) -> &[ast::Attribute] {
+        self.node.attrs()
+    }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
         respan(self.span, self.node.map_attrs(f))
     }
@@ -743,17 +787,23 @@ impl HasAttrs for StmtKind {
             StmtKind::Item(..) => self,
             StmtKind::Expr(expr) => StmtKind::Expr(expr.map_attrs(f)),
             StmtKind::Semi(expr) => StmtKind::Semi(expr.map_attrs(f)),
-            StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, style, attrs)| {
-                (mac, style, attrs.map_attrs(f))
-            })),
+            StmtKind::Mac(mac) => {
+                StmtKind::Mac(mac.map(|(mac, style, attrs)| (mac, style, attrs.map_attrs(f))))
+            }
         }
     }
 }
 
 impl HasAttrs for Stmt {
-    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
+    fn attrs(&self) -> &[ast::Attribute] {
+        self.node.attrs()
+    }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
-        Stmt { id: self.id, node: self.node.map_attrs(f), span: self.span }
+        Stmt {
+            id: self.id,
+            node: self.node.map_attrs(f),
+            span: self.span,
+        }
     }
 }
 
@@ -802,7 +852,8 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
         let (path, tokens) = panictry!(parser.parse_meta_item_unrestricted());
         let end_span = parser.span;
         if parser.token != token::Eof {
-            parse_sess.span_diagnostic
+            parse_sess
+                .span_diagnostic
                 .span_err(start_span.to(end_span), "invalid crate attribute");
             continue;
         }

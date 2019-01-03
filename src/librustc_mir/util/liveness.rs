@@ -24,7 +24,7 @@
 //! doesn't matter).
 
 use rustc::mir::visit::{
-    PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext, NonUseContext,
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
 use rustc::mir::Local;
 use rustc::mir::*;

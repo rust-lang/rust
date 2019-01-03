@@ -94,15 +94,19 @@ pub trait Any: 'static {
     ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// }
     /// ```
-    #[unstable(feature = "get_type_id",
-               reason = "this method will likely be replaced by an associated static",
-               issue = "27745")]
+    #[unstable(
+        feature = "get_type_id",
+        reason = "this method will likely be replaced by an associated static",
+        issue = "27745"
+    )]
     fn get_type_id(&self) -> TypeId;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: 'static + ?Sized > Any for T {
-    fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
+impl<T: 'static + ?Sized> Any for T {
+    fn get_type_id(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -192,9 +196,7 @@ impl dyn Any {
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
-            unsafe {
-                Some(&*(self as *const dyn Any as *const T))
-            }
+            unsafe { Some(&*(self as *const dyn Any as *const T)) }
         } else {
             None
         }
@@ -229,16 +231,14 @@ impl dyn Any {
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
-            unsafe {
-                Some(&mut *(self as *mut dyn Any as *mut T))
-            }
+            unsafe { Some(&mut *(self as *mut dyn Any as *mut T)) }
         } else {
             None
         }
     }
 }
 
-impl dyn Any+Send {
+impl dyn Any + Send {
     /// Forwards to the method defined on the type `Any`.
     ///
     /// # Examples
@@ -322,7 +322,7 @@ impl dyn Any+Send {
     }
 }
 
-impl dyn Any+Send+Sync {
+impl dyn Any + Send + Sync {
     /// Forwards to the method defined on the type `Any`.
     ///
     /// # Examples
@@ -447,7 +447,7 @@ impl TypeId {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature="const_type_id")]
+    #[rustc_const_unstable(feature = "const_type_id")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },

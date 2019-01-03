@@ -12,16 +12,16 @@
 //! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
 //! ```
 
-use {fmt, u64};
 use iter::Sum;
-use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use {fmt, u64};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
-const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
+const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f64;
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -80,7 +80,8 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn new(secs: u64, nanos: u32) -> Duration {
-        let secs = secs.checked_add((nanos / NANOS_PER_SEC) as u64)
+        let secs = secs
+            .checked_add((nanos / NANOS_PER_SEC) as u64)
             .expect("overflow in Duration::new");
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs, nanos }
@@ -201,7 +202,9 @@ impl Duration {
     /// [`subsec_nanos`]: #method.subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub const fn as_secs(&self) -> u64 { self.secs }
+    pub const fn as_secs(&self) -> u64 {
+        self.secs
+    }
 
     /// Returns the fractional part of this `Duration`, in whole milliseconds.
     ///
@@ -220,7 +223,9 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
-    pub const fn subsec_millis(&self) -> u32 { self.nanos / NANOS_PER_MILLI }
+    pub const fn subsec_millis(&self) -> u32 {
+        self.nanos / NANOS_PER_MILLI
+    }
 
     /// Returns the fractional part of this `Duration`, in whole microseconds.
     ///
@@ -239,7 +244,9 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
-    pub const fn subsec_micros(&self) -> u32 { self.nanos / NANOS_PER_MICRO }
+    pub const fn subsec_micros(&self) -> u32 {
+        self.nanos / NANOS_PER_MICRO
+    }
 
     /// Returns the fractional part of this `Duration`, in nanoseconds.
     ///
@@ -258,7 +265,9 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub const fn subsec_nanos(&self) -> u32 { self.nanos }
+    pub const fn subsec_nanos(&self) -> u32 {
+        self.nanos
+    }
 
     /// Returns the total number of whole milliseconds contained by this `Duration`.
     ///
@@ -337,10 +346,7 @@ impl Duration {
                 }
             }
             debug_assert!(nanos < NANOS_PER_SEC);
-            Some(Duration {
-                secs,
-                nanos,
-            })
+            Some(Duration { secs, nanos })
         } else {
             None
         }
@@ -404,14 +410,13 @@ impl Duration {
         let total_nanos = self.nanos as u64 * rhs as u64;
         let extra_secs = total_nanos / (NANOS_PER_SEC as u64);
         let nanos = (total_nanos % (NANOS_PER_SEC as u64)) as u32;
-        if let Some(secs) = self.secs
+        if let Some(secs) = self
+            .secs
             .checked_mul(rhs as u64)
-            .and_then(|s| s.checked_add(extra_secs)) {
+            .and_then(|s| s.checked_add(extra_secs))
+        {
             debug_assert!(nanos < NANOS_PER_SEC);
-            Some(Duration {
-                secs,
-                nanos,
-            })
+            Some(Duration { secs, nanos })
         } else {
             None
         }
@@ -482,7 +487,7 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn from_float_secs(secs: f64) -> Duration {
-        let nanos =  secs * (NANOS_PER_SEC as f64);
+        let nanos = secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
             panic!("got non-finite value when converting float to duration");
         }
@@ -492,7 +497,7 @@ impl Duration {
         if nanos < 0.0 {
             panic!("underflow when converting float to duration");
         }
-        let nanos =  nanos as u128;
+        let nanos = nanos as u128;
         Duration {
             secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
             nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
@@ -563,7 +568,8 @@ impl Add for Duration {
     type Output = Duration;
 
     fn add(self, rhs: Duration) -> Duration {
-        self.checked_add(rhs).expect("overflow when adding durations")
+        self.checked_add(rhs)
+            .expect("overflow when adding durations")
     }
 }
 
@@ -579,7 +585,8 @@ impl Sub for Duration {
     type Output = Duration;
 
     fn sub(self, rhs: Duration) -> Duration {
-        self.checked_sub(rhs).expect("overflow when subtracting durations")
+        self.checked_sub(rhs)
+            .expect("overflow when subtracting durations")
     }
 }
 
@@ -595,7 +602,8 @@ impl Mul<u32> for Duration {
     type Output = Duration;
 
     fn mul(self, rhs: u32) -> Duration {
-        self.checked_mul(rhs).expect("overflow when multiplying duration by scalar")
+        self.checked_mul(rhs)
+            .expect("overflow when multiplying duration by scalar")
     }
 }
 
@@ -620,7 +628,8 @@ impl Div<u32> for Duration {
     type Output = Duration;
 
     fn div(self, rhs: u32) -> Duration {
-        self.checked_div(rhs).expect("divide by zero error when dividing duration by scalar")
+        self.checked_div(rhs)
+            .expect("divide by zero error when dividing duration by scalar")
     }
 }
 
@@ -663,14 +672,14 @@ macro_rules! sum_durations {
 
 #[stable(feature = "duration_sum", since = "1.16.0")]
 impl Sum for Duration {
-    fn sum<I: Iterator<Item=Duration>>(iter: I) -> Duration {
+    fn sum<I: Iterator<Item = Duration>>(iter: I) -> Duration {
         sum_durations!(iter)
     }
 }
 
 #[stable(feature = "duration_sum", since = "1.16.0")]
 impl<'a> Sum<&'a Duration> for Duration {
-    fn sum<I: Iterator<Item=&'a Duration>>(iter: I) -> Duration {
+    fn sum<I: Iterator<Item = &'a Duration>>(iter: I) -> Duration {
         sum_durations!(iter)
     }
 }
@@ -760,9 +769,7 @@ impl fmt::Debug for Duration {
             } else {
                 // We are only writing ASCII digits into the buffer and it was
                 // initialized with '0's, so it contains valid UTF8.
-                let s = unsafe {
-                    ::str::from_utf8_unchecked(&buf[..end])
-                };
+                let s = unsafe { ::str::from_utf8_unchecked(&buf[..end]) };
 
                 // If the user request a precision > 9, we pad '0's at the end.
                 let w = f.precision().unwrap_or(pos);
@@ -779,7 +786,12 @@ impl fmt::Debug for Duration {
             fmt_decimal(f, self.secs, self.nanos, 100_000_000)?;
             f.write_str("s")
         } else if self.nanos >= 1_000_000 {
-            fmt_decimal(f, self.nanos as u64 / 1_000_000, self.nanos % 1_000_000, 100_000)?;
+            fmt_decimal(
+                f,
+                self.nanos as u64 / 1_000_000,
+                self.nanos % 1_000_000,
+                100_000,
+            )?;
             f.write_str("ms")
         } else if self.nanos >= 1_000 {
             fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;

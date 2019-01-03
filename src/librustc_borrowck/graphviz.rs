@@ -4,14 +4,14 @@
 
 pub use self::Variant::*;
 
-pub use rustc::cfg::graphviz::{Node, Edge};
 use rustc::cfg::graphviz as cfg_dot;
+pub use rustc::cfg::graphviz::{Edge, Node};
 
 use borrowck;
 use borrowck::{BorrowckCtxt, LoanPath};
+use dataflow::{DataFlowContext, DataFlowOperator, EntryOrExit};
 use dot;
 use rustc::cfg::CFGIndex;
-use dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use std::rc::Rc;
 
 #[derive(Debug, Copy, Clone)]
@@ -24,8 +24,8 @@ pub enum Variant {
 impl Variant {
     pub fn short_name(&self) -> &'static str {
         match *self {
-            Loans   => "loans",
-            Moves   => "moves",
+            Loans => "loans",
+            Moves => "moves",
             Assigns => "assigns",
         }
     }
@@ -45,7 +45,11 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
         let mut sets = String::new();
         let mut seen_one = false;
         for &variant in &self.variants {
-            if seen_one { sets.push_str(" "); } else { seen_one = true; }
+            if seen_one {
+                sets.push_str(" ");
+            } else {
+                seen_one = true;
+            }
             sets.push_str(variant.short_name());
             sets.push_str(": ");
             sets.push_str(&self.dataflow_for_variant(e, n, variant));
@@ -56,17 +60,20 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn dataflow_for_variant(&self, e: EntryOrExit, n: &Node, v: Variant) -> String {
         let cfgidx = n.0;
         match v {
-            Loans   => self.dataflow_loans_for(e, cfgidx),
-            Moves   => self.dataflow_moves_for(e, cfgidx),
+            Loans => self.dataflow_loans_for(e, cfgidx),
+            Moves => self.dataflow_moves_for(e, cfgidx),
             Assigns => self.dataflow_assigns_for(e, cfgidx),
         }
     }
 
-    fn build_set<O:DataFlowOperator, F>(&self,
-                                        e: EntryOrExit,
-                                        cfgidx: CFGIndex,
-                                        dfcx: &DataFlowContext<'a, 'tcx, O>,
-                                        mut to_lp: F) -> String where
+    fn build_set<O: DataFlowOperator, F>(
+        &self,
+        e: EntryOrExit,
+        cfgidx: CFGIndex,
+        dfcx: &DataFlowContext<'a, 'tcx, O>,
+        mut to_lp: F,
+    ) -> String
+    where
         F: FnMut(usize) -> Rc<LoanPath<'tcx>>,
     {
         let mut saw_some = false;
@@ -121,8 +128,12 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
 impl<'a, 'tcx> dot::Labeller<'a> for DataflowLabeller<'a, 'tcx> {
     type Node = Node<'a>;
     type Edge = Edge<'a>;
-    fn graph_id(&'a self) -> dot::Id<'a> { self.inner.graph_id() }
-    fn node_id(&'a self, n: &Node<'a>) -> dot::Id<'a> { self.inner.node_id(n) }
+    fn graph_id(&'a self) -> dot::Id<'a> {
+        self.inner.graph_id()
+    }
+    fn node_id(&'a self, n: &Node<'a>) -> dot::Id<'a> {
+        self.inner.node_id(n)
+    }
     fn node_label(&'a self, n: &Node<'a>) -> dot::LabelText<'a> {
         let prefix = self.dataflow_for(EntryOrExit::Entry, n);
         let suffix = self.dataflow_for(EntryOrExit::Exit, n);
@@ -131,14 +142,24 @@ impl<'a, 'tcx> dot::Labeller<'a> for DataflowLabeller<'a, 'tcx> {
             .prefix_line(dot::LabelText::LabelStr(prefix.into()))
             .suffix_line(dot::LabelText::LabelStr(suffix.into()))
     }
-    fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
+    fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> {
+        self.inner.edge_label(e)
+    }
 }
 
 impl<'a, 'tcx> dot::GraphWalk<'a> for DataflowLabeller<'a, 'tcx> {
     type Node = Node<'a>;
     type Edge = Edge<'a>;
-    fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> { self.inner.nodes() }
-    fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> { self.inner.edges() }
-    fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.inner.source(edge) }
-    fn target(&'a self, edge: &Edge<'a>) -> Node<'a> { self.inner.target(edge) }
+    fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> {
+        self.inner.nodes()
+    }
+    fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> {
+        self.inner.edges()
+    }
+    fn source(&'a self, edge: &Edge<'a>) -> Node<'a> {
+        self.inner.source(edge)
+    }
+    fn target(&'a self, edge: &Edge<'a>) -> Node<'a> {
+        self.inner.target(edge)
+    }
 }

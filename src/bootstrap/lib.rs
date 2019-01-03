@@ -114,15 +114,15 @@ extern crate build_helper;
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
-extern crate serde_json;
+extern crate cc;
 extern crate cmake;
 extern crate filetime;
-extern crate cc;
 extern crate getopts;
 extern crate num_cpus;
-extern crate toml;
-extern crate time;
 extern crate petgraph;
+extern crate serde_json;
+extern crate time;
+extern crate toml;
 
 #[cfg(test)]
 #[macro_use]
@@ -131,12 +131,12 @@ extern crate pretty_assertions;
 #[cfg(unix)]
 extern crate libc;
 
-use std::cell::{RefCell, Cell};
-use std::collections::{HashSet, HashMap};
+use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, OpenOptions, File};
-use std::io::{self, Seek, SeekFrom, Write, Read};
-use std::path::{PathBuf, Path};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::slice;
 use std::str;
@@ -146,30 +146,30 @@ use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
 
-use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
+use build_helper::{mtime, output, run_silent, run_suppressed, try_run_silent, try_run_suppressed};
 use filetime::FileTime;
 
-use crate::util::{exe, libdir, OutputFolder, CiEnv};
+use crate::util::{exe, libdir, CiEnv, OutputFolder};
 
+mod builder;
+mod cache;
 mod cc_detect;
 mod channel;
 mod check;
-mod test;
 mod clean;
 mod compile;
-mod metadata;
 mod config;
 mod dist;
 mod doc;
 mod flags;
 mod install;
+mod metadata;
 mod native;
 mod sanity;
-pub mod util;
-mod builder;
-mod cache;
+mod test;
 mod tool;
 mod toolstate;
+pub mod util;
 
 #[cfg(windows)]
 mod job;
@@ -187,13 +187,12 @@ mod job {
 
 #[cfg(any(target_os = "haiku", not(any(unix, windows))))]
 mod job {
-    pub unsafe fn setup(_build: &mut crate::Build) {
-    }
+    pub unsafe fn setup(_build: &mut crate::Build) {}
 }
 
+use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 use crate::flags::Subcommand;
-use crate::cache::{Interned, INTERNER};
 use crate::toolstate::ToolState;
 
 const LLVM_TOOLS: &[&str] = &[
@@ -280,10 +279,8 @@ pub struct Build {
     ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
-    tool_artifacts: RefCell<HashMap<
-        Interned<String>,
-        HashMap<String, (&'static str, PathBuf, Vec<String>)>
-    >>,
+    tool_artifacts:
+        RefCell<HashMap<Interned<String>, HashMap<String, (&'static str, PathBuf, Vec<String>)>>>,
 }
 
 #[derive(Debug)]
@@ -301,8 +298,7 @@ struct Crate {
 
 impl Crate {
     fn is_local(&self, build: &Build) -> bool {
-        self.path.starts_with(&build.config.src) &&
-        !self.path.to_string_lossy().ends_with("_shim")
+        self.path.starts_with(&build.config.src) && !self.path.to_string_lossy().ends_with("_shim")
     }
 
     fn local_path(&self, build: &Build) -> PathBuf {
@@ -347,7 +343,7 @@ impl Mode {
     pub fn is_tool(&self) -> bool {
         match self {
             Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -362,12 +358,10 @@ impl Build {
         let out = config.out.clone();
 
         let is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => {
-                match env::var_os("USER") {
-                    Some(user) => user != sudo_user,
-                    None => false,
-                }
-            }
+            Some(sudo_user) => match env::var_os("USER") {
+                Some(user) => user != sudo_user,
+                None => false,
+            },
             None => false,
         };
         let rust_info = channel::GitInfo::new(&config, &src);
@@ -417,12 +411,23 @@ impl Build {
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
         let local_version_verbose = output(
-            Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
+            Command::new(&build.initial_rustc)
+                .arg("--version")
+                .arg("--verbose"),
+        );
         let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
+            .lines()
+            .filter(|x| x.starts_with("release:"))
+            .next()
+            .unwrap()
+            .trim_left_matches("release:")
+            .trim();
         let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+        if local_release
+            .split('.')
+            .take(2)
+            .eq(my_version.split('.').take(2))
+        {
             build.verbose(&format!("auto-detected local-rebuild {}", local_release));
             build.local_rebuild = true;
         }
@@ -434,9 +439,7 @@ impl Build {
     }
 
     pub fn build_triple(&self) -> &[Interned<String>] {
-        unsafe {
-            slice::from_raw_parts(&self.build, 1)
-        }
+        unsafe { slice::from_raw_parts(&self.build, 1) }
     }
 
     /// Executes the entire build, as configured by the flags and configuration.
@@ -475,7 +478,10 @@ impl Build {
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
         if failures.len() > 0 {
-            println!("\n{} command(s) did not execute successfully:\n", failures.len());
+            println!(
+                "\n{} command(s) did not execute successfully:\n",
+                failures.len()
+            );
             for failure in failures.iter() {
                 println!("  - {}\n", failure);
             }
@@ -530,11 +536,18 @@ impl Build {
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
     fn cargo_dir(&self) -> &'static str {
-        if self.config.rust_optimize {"release"} else {"debug"}
+        if self.config.rust_optimize {
+            "release"
+        } else {
+            "debug"
+        }
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self.out.join(&*compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
+        let out = self
+            .out
+            .join(&*compiler.host)
+            .join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
     }
@@ -554,18 +567,18 @@ impl Build {
             Mode::ToolTest => "-tools",
             Mode::ToolRustc => "-tools",
         };
-        self.out.join(&*compiler.host)
-                .join(format!("stage{}{}", compiler.stage, suffix))
+        self.out
+            .join(&*compiler.host)
+            .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self,
-                 compiler: Compiler,
-                 mode: Mode,
-                 target: Interned<String>) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target).join(self.cargo_dir())
+    fn cargo_out(&self, compiler: Compiler, mode: Mode, target: Interned<String>) -> PathBuf {
+        self.stage_out(compiler, mode)
+            .join(&*target)
+            .join(self.cargo_dir())
     }
 
     /// Root output directory for LLVM compiled for `target`
@@ -612,7 +625,7 @@ impl Build {
     fn is_rust_llvm(&self, target: Interned<String>) -> bool {
         match self.config.target_config.get(&target) {
             Some(ref c) => c.llvm_config.is_none(),
-            None => true
+            None => true,
         }
     }
 
@@ -631,7 +644,8 @@ impl Build {
                 // llvm subdirectory of the libdir.
                 let llvm_libdir = output(Command::new(s).arg("--libdir"));
                 let lib_filecheck = Path::new(llvm_libdir.trim())
-                    .join("llvm").join(exe("FileCheck", &*target));
+                    .join("llvm")
+                    .join(exe("FileCheck", &*target));
                 if lib_filecheck.exists() {
                     lib_filecheck
                 } else {
@@ -680,7 +694,8 @@ impl Build {
 
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.rustc_snapshot_sysroot().join(libdir(&self.config.build))
+        self.rustc_snapshot_sysroot()
+            .join(libdir(&self.config.build))
     }
 
     /// Returns the sysroot of the snapshot compiler.
@@ -690,14 +705,18 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         self.verbose(&format!("running: {:?}", cmd));
         run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         self.verbose(&format!("running: {:?}", cmd));
         run_suppressed(cmd)
     }
@@ -706,7 +725,9 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run { return true; }
+        if self.config.dry_run {
+            return true;
+        }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_silent(cmd)
     }
@@ -715,7 +736,9 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run { return true; }
+        if self.config.dry_run {
+            return true;
+        }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
     }
@@ -732,7 +755,9 @@ impl Build {
     }
 
     fn info(&self, msg: &str) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         println!("{}", msg);
     }
 
@@ -744,7 +769,7 @@ impl Build {
 
     fn debuginfo_map(&self, which: GitRepo) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
-            return None
+            return None;
         }
 
         let path = match which {
@@ -767,10 +792,12 @@ impl Build {
     fn cflags(&self, target: Interned<String>, which: GitRepo) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // cc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[&target].args().iter()
-                           .map(|s| s.to_string_lossy().into_owned())
-                           .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
-                           .collect::<Vec<String>>();
+        let mut base = self.cc[&target]
+            .args()
+            .iter()
+            .map(|s| s.to_string_lossy().into_owned())
+            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
+            .collect::<Vec<String>>();
 
         // If we're compiling on macOS then we add a few unconditional flags
         // indicating that we want libc++ (more filled out than libstdc++) and
@@ -788,7 +815,7 @@ impl Build {
         }
 
         if let Some(map) = self.debuginfo_map(which) {
-        let cc = self.cc(target);
+            let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
                 base.push(format!("-fdebug-prefix-map={}", map));
             } else if cc.ends_with("clang-cl.exe") {
@@ -814,21 +841,27 @@ impl Build {
         match self.cxx.get(&target) {
             Some(p) => Ok(p.path()),
             None => Err(format!(
-                    "target `{}` is not configured as a host, only as a target",
-                    target))
+                "target `{}` is not configured as a host, only as a target",
+                target
+            )),
         }
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
     fn linker(&self, target: Interned<String>) -> Option<&Path> {
-        if let Some(linker) = self.config.target_config.get(&target)
-                                                       .and_then(|c| c.linker.as_ref()) {
+        if let Some(linker) = self
+            .config
+            .target_config
+            .get(&target)
+            .and_then(|c| c.linker.as_ref())
+        {
             Some(linker)
-        } else if target != self.config.build &&
-                  !target.contains("msvc") &&
-                  !target.contains("emscripten") &&
-                  !target.contains("wasm32") &&
-                  !target.contains("fuchsia") {
+        } else if target != self.config.build
+            && !target.contains("msvc")
+            && !target.contains("emscripten")
+            && !target.contains("wasm32")
+            && !target.contains("fuchsia")
+        {
             Some(self.cc(target))
         } else {
             None
@@ -840,14 +873,18 @@ impl Build {
         if target.contains("pc-windows-msvc") {
             Some(true)
         } else {
-            self.config.target_config.get(&target)
+            self.config
+                .target_config
+                .get(&target)
                 .and_then(|t| t.crt_static)
         }
     }
 
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
-        self.config.target_config.get(&target)
+        self.config
+            .target_config
+            .get(&target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
@@ -855,15 +892,15 @@ impl Build {
 
     /// Returns true if this is a no-std `target`, if defined
     fn no_std(&self, target: Interned<String>) -> Option<bool> {
-        self.config.target_config.get(&target)
-            .map(|t| t.no_std)
+        self.config.target_config.get(&target).map(|t| t.no_std)
     }
 
     /// Returns whether the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
     fn remote_tested(&self, target: Interned<String>) -> bool {
-        self.qemu_rootfs(target).is_some() || target.contains("android") ||
-        env::var_os("TEST_DEVICE_ADDR").is_some()
+        self.qemu_rootfs(target).is_some()
+            || target.contains("android")
+            || env::var_os("TEST_DEVICE_ADDR").is_some()
     }
 
     /// Returns the root of the "rootfs" image that this target will be using,
@@ -872,7 +909,9 @@ impl Build {
     /// If `Some` is returned then that means that tests for this target are
     /// emulated with QEMU and binaries will need to be shipped to the emulator.
     fn qemu_rootfs(&self, target: Interned<String>) -> Option<&Path> {
-        self.config.target_config.get(&target)
+        self.config
+            .target_config
+            .get(&target)
             .and_then(|t| t.qemu_rootfs.as_ref())
             .map(|p| &**p)
     }
@@ -906,9 +945,9 @@ impl Build {
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
-        !self.config.full_bootstrap &&
-            compiler.stage >= 2 &&
-            (self.hosts.iter().any(|h| *h == target) || target == self.build)
+        !self.config.full_bootstrap
+            && compiler.stage >= 2
+            && (self.hosts.iter().any(|h| *h == target) || target == self.build)
     }
 
     /// Given `num` in the form "a.b.c" return a "release string" which
@@ -919,11 +958,13 @@ impl Build {
     fn release(&self, num: &str) -> String {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
-            "beta" => if self.rust_info.is_git() {
-                format!("{}-beta.{}", num, self.beta_prerelease_version())
-            } else {
-                format!("{}-beta", num)
-            },
+            "beta" => {
+                if self.rust_info.is_git() {
+                    format!("{}-beta.{}", num, self.beta_prerelease_version())
+                } else {
+                    format!("{}-beta", num)
+                }
+            }
             "nightly" => format!("{}-nightly", num),
             _ => format!("{}-dev", num),
         }
@@ -931,7 +972,7 @@ impl Build {
 
     fn beta_prerelease_version(&self) -> u32 {
         if let Some(s) = self.prerelease_version.get() {
-            return s
+            return s;
         }
 
         let beta = output(
@@ -939,7 +980,7 @@ impl Build {
                 .arg("ls-remote")
                 .arg("origin")
                 .arg("beta")
-                .current_dir(&self.src)
+                .current_dir(&self.src),
         );
         let beta = beta.trim().split_whitespace().next().unwrap();
         let master = output(
@@ -947,7 +988,7 @@ impl Build {
                 .arg("ls-remote")
                 .arg("origin")
                 .arg("master")
-                .current_dir(&self.src)
+                .current_dir(&self.src),
         );
         let master = master.trim().split_whitespace().next().unwrap();
 
@@ -1063,7 +1104,7 @@ impl Build {
             let prefix = "version = \"";
             let suffix = "\"";
             if line.starts_with(prefix) && line.ends_with(suffix) {
-                return line[prefix.len()..line.len() - suffix.len()].to_string()
+                return line[prefix.len()..line.len() - suffix.len()].to_string();
             }
         }
 
@@ -1083,7 +1124,9 @@ impl Build {
     /// ends when the returned object is dropped. Folding can only be used in
     /// the Travis CI environment.
     pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
-        where D: Into<String>, F: FnOnce() -> D
+    where
+        D: Into<String>,
+        F: FnOnce() -> D,
     {
         if !self.config.dry_run && self.ci_env == CiEnv::Travis {
             Some(OutputFolder::new(name().into()))
@@ -1145,7 +1188,7 @@ impl Build {
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {
             if part.is_empty() {
-                continue
+                continue;
             }
             let path = PathBuf::from(t!(str::from_utf8(part)));
             paths.push(path);
@@ -1155,7 +1198,9 @@ impl Build {
 
     /// Copies a file from `src` to `dst`
     pub fn copy(&self, src: &Path, dst: &Path) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         let _ = fs::remove_file(&dst);
         let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {
@@ -1167,8 +1212,12 @@ impl Build {
             // just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(src, dst) {
-                panic!("failed to copy `{}` to `{}`: {}", src.display(),
-                       dst.display(), e)
+                panic!(
+                    "failed to copy `{}` to `{}`: {}",
+                    src.display(),
+                    dst.display(),
+                    e
+                )
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
             let atime = FileTime::from_last_access_time(&metadata);
@@ -1180,7 +1229,9 @@ impl Build {
     /// Search-and-replaces within a file. (Not maximally efficiently: allocates a
     /// new string for each replacement.)
     pub fn replace_in_file(&self, path: &Path, replacements: &[(&str, &str)]) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         let mut contents = String::new();
         let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
         t!(file.read_to_string(&mut contents));
@@ -1195,7 +1246,9 @@ impl Build {
     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
     /// when this function is called.
     pub fn cp_r(&self, src: &Path, dst: &Path) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         for f in t!(fs::read_dir(src)) {
             let f = t!(f);
             let path = f.path();
@@ -1247,7 +1300,9 @@ impl Build {
     }
 
     fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         let dst = dstdir.join(src.file_name().unwrap());
         t!(fs::create_dir_all(dstdir));
         drop(fs::remove_file(&dst));
@@ -1263,26 +1318,34 @@ impl Build {
     }
 
     fn create(&self, path: &Path, s: &str) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         t!(fs::write(path, s));
     }
 
     fn read(&self, path: &Path) -> String {
-        if self.config.dry_run { return String::new(); }
+        if self.config.dry_run {
+            return String::new();
+        }
         t!(fs::read_to_string(path))
     }
 
     fn create_dir(&self, dir: &Path) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         t!(fs::create_dir_all(dir))
     }
 
     fn remove_dir(&self, dir: &Path) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         t!(fs::remove_dir_all(dir))
     }
 
-    fn read_dir(&self, dir: &Path) -> impl Iterator<Item=fs::DirEntry> {
+    fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run => return vec![].into_iter(),
@@ -1292,7 +1355,9 @@ impl Build {
     }
 
     fn remove(&self, f: &Path) {
-        if self.config.dry_run { return; }
+        if self.config.dry_run {
+            return;
+        }
         fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
     }
 }
@@ -1304,7 +1369,6 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
-
 
 impl<'a> Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {

@@ -1,6 +1,6 @@
 use leb128::{self, read_signed_leb128, write_signed_leb128};
-use std::borrow::Cow;
 use serialize;
+use std::borrow::Cow;
 
 // -----------------------------------------------------------------------------
 // Encoder
@@ -31,14 +31,14 @@ macro_rules! write_uleb128 {
     ($enc:expr, $value:expr, $fun:ident) => {{
         leb128::$fun(&mut $enc.data, $value);
         Ok(())
-    }}
+    }};
 }
 
 macro_rules! write_sleb128 {
     ($enc:expr, $value:expr) => {{
         write_signed_leb128(&mut $enc.data, $value as i128);
         Ok(())
-    }}
+    }};
 }
 
 impl serialize::Encoder for Encoder {
@@ -113,11 +113,7 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        self.emit_u8(if v {
-            1
-        } else {
-            0
-        })
+        self.emit_u8(if v { 1 } else { 0 })
     }
 
     #[inline]
@@ -164,10 +160,7 @@ pub struct Decoder<'a> {
 impl<'a> Decoder<'a> {
     #[inline]
     pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
-        Decoder {
-            data,
-            position,
-        }
+        Decoder { data, position }
     }
 
     #[inline]
@@ -199,21 +192,20 @@ impl<'a> Decoder<'a> {
 }
 
 macro_rules! read_uleb128 {
-    ($dec:expr, $t:ty, $fun:ident) => ({
-        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position ..]);
+    ($dec:expr, $t:ty, $fun:ident) => {{
+        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
         $dec.position += bytes_read;
         Ok(value)
-    })
+    }};
 }
 
 macro_rules! read_sleb128 {
-    ($dec:expr, $t:ty) => ({
+    ($dec:expr, $t:ty) => {{
         let (value, bytes_read) = read_signed_leb128($dec.data, $dec.position);
         $dec.position += bytes_read;
         Ok(value as $t)
-    })
+    }};
 }
-
 
 impl<'a> serialize::Decoder for Decoder<'a> {
     type Error = String;
@@ -325,12 +317,11 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use serialize::{Encodable, Decodable};
+    use super::{Decoder, Encoder};
+    use serialize::{Decodable, Encodable};
     use std::fmt::Debug;
-    use super::{Encoder, Decoder};
 
     #[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
     struct Struct {
@@ -354,7 +345,6 @@ mod tests {
         p: bool,
         q: Option<u32>,
     }
-
 
     fn check_round_trip<T: Encodable + Decodable + PartialEq + Debug>(values: Vec<T>) {
         let mut encoder = Encoder::new(Vec::new());
@@ -405,7 +395,17 @@ mod tests {
 
     #[test]
     fn test_usize() {
-        check_round_trip(vec![1, 2, 3, ::std::usize::MIN, 0, 1, ::std::usize::MAX, 2, 1]);
+        check_round_trip(vec![
+            1,
+            2,
+            3,
+            ::std::usize::MIN,
+            0,
+            1,
+            ::std::usize::MAX,
+            2,
+            1,
+        ]);
     }
 
     #[test]
@@ -426,17 +426,47 @@ mod tests {
 
     #[test]
     fn test_i32() {
-        check_round_trip(vec![-1, 2, -3, ::std::i32::MIN, 0, 1, ::std::i32::MAX, 2, 1]);
+        check_round_trip(vec![
+            -1,
+            2,
+            -3,
+            ::std::i32::MIN,
+            0,
+            1,
+            ::std::i32::MAX,
+            2,
+            1,
+        ]);
     }
 
     #[test]
     fn test_i64() {
-        check_round_trip(vec![-1, 2, -3, ::std::i64::MIN, 0, 1, ::std::i64::MAX, 2, 1]);
+        check_round_trip(vec![
+            -1,
+            2,
+            -3,
+            ::std::i64::MIN,
+            0,
+            1,
+            ::std::i64::MAX,
+            2,
+            1,
+        ]);
     }
 
     #[test]
     fn test_isize() {
-        check_round_trip(vec![-1, 2, -3, ::std::isize::MIN, 0, 1, ::std::isize::MAX, 2, 1]);
+        check_round_trip(vec![
+            -1,
+            2,
+            -3,
+            ::std::isize::MIN,
+            0,
+            1,
+            ::std::isize::MAX,
+            2,
+            1,
+        ]);
     }
 
     #[test]
@@ -464,19 +494,23 @@ mod tests {
 
     #[test]
     fn test_char() {
-        let vec = vec!['a', 'b', 'c', 'd', 'A', 'X', ' ', '#', 'Ö', 'Ä', 'µ', '€'];
+        let vec = vec![
+            'a', 'b', 'c', 'd', 'A', 'X', ' ', '#', 'Ö', 'Ä', 'µ', '€',
+        ];
         check_round_trip(vec);
     }
 
     #[test]
     fn test_string() {
-        let vec = vec!["abcbuÖeiovÄnameÜavmpßvmea€µsbpnvapeapmaebn".to_string(),
-                       "abcbuÖganeiovÄnameÜavmpßvmea€µsbpnvapeapmaebn".to_string(),
-                       "abcbuÖganeiovÄnameÜavmpßvmea€µsbpapmaebn".to_string(),
-                       "abcbuÖganeiovÄnameÜavmpßvmeabpnvapeapmaebn".to_string(),
-                       "abcbuÖganeiÄnameÜavmpßvmea€µsbpnvapeapmaebn".to_string(),
-                       "abcbuÖganeiovÄnameÜavmpßvmea€µsbpmaebn".to_string(),
-                       "abcbuÖganeiovÄnameÜavmpßvmea€µnvapeapmaebn".to_string()];
+        let vec = vec![
+            "abcbuÖeiovÄnameÜavmpßvmea€µsbpnvapeapmaebn".to_string(),
+            "abcbuÖganeiovÄnameÜavmpßvmea€µsbpnvapeapmaebn".to_string(),
+            "abcbuÖganeiovÄnameÜavmpßvmea€µsbpapmaebn".to_string(),
+            "abcbuÖganeiovÄnameÜavmpßvmeabpnvapeapmaebn".to_string(),
+            "abcbuÖganeiÄnameÜavmpßvmea€µsbpnvapeapmaebn".to_string(),
+            "abcbuÖganeiovÄnameÜavmpßvmea€µsbpmaebn".to_string(),
+            "abcbuÖganeiovÄnameÜavmpßvmea€µnvapeapmaebn".to_string(),
+        ];
 
         check_round_trip(vec);
     }
@@ -508,75 +542,73 @@ mod tests {
     #[test]
     fn test_struct() {
         check_round_trip(vec![Struct {
-                                  a: (),
-                                  b: 10,
-                                  c: 11,
-                                  d: 12,
-                                  e: 13,
-                                  f: 14,
+            a: (),
+            b: 10,
+            c: 11,
+            d: 12,
+            e: 13,
+            f: 14,
 
-                                  g: 15,
-                                  h: 16,
-                                  i: 17,
-                                  j: 18,
-                                  k: 19,
+            g: 15,
+            h: 16,
+            i: 17,
+            j: 18,
+            k: 19,
 
-                                  l: 'x',
-                                  m: "abc".to_string(),
-                                  n: 20.5,
-                                  o: 21.5,
-                                  p: false,
-                                  q: None,
-                              }]);
+            l: 'x',
+            m: "abc".to_string(),
+            n: 20.5,
+            o: 21.5,
+            p: false,
+            q: None,
+        }]);
 
         check_round_trip(vec![Struct {
-                                  a: (),
-                                  b: 101,
-                                  c: 111,
-                                  d: 121,
-                                  e: 131,
-                                  f: 141,
+            a: (),
+            b: 101,
+            c: 111,
+            d: 121,
+            e: 131,
+            f: 141,
 
-                                  g: -15,
-                                  h: -16,
-                                  i: -17,
-                                  j: -18,
-                                  k: -19,
+            g: -15,
+            h: -16,
+            i: -17,
+            j: -18,
+            k: -19,
 
-                                  l: 'y',
-                                  m: "def".to_string(),
-                                  n: -20.5,
-                                  o: -21.5,
-                                  p: true,
-                                  q: Some(1234567),
-                              }]);
+            l: 'y',
+            m: "def".to_string(),
+            n: -20.5,
+            o: -21.5,
+            p: true,
+            q: Some(1234567),
+        }]);
     }
 
     #[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
     enum Enum {
         Variant1,
         Variant2(usize, f32),
-        Variant3 {
-            a: i32,
-            b: char,
-            c: bool,
-        },
+        Variant3 { a: i32, b: char, c: bool },
     }
 
     #[test]
     fn test_enum() {
-        check_round_trip(vec![Enum::Variant1,
-                              Enum::Variant2(1, 2.5),
-                              Enum::Variant3 {
-                                  a: 3,
-                                  b: 'b',
-                                  c: false,
-                              },
-                              Enum::Variant3 {
-                                  a: -4,
-                                  b: 'f',
-                                  c: true,
-                              }]);
+        check_round_trip(vec![
+            Enum::Variant1,
+            Enum::Variant2(1, 2.5),
+            Enum::Variant3 {
+                a: 3,
+                b: 'b',
+                c: false,
+            },
+            Enum::Variant3 {
+                a: -4,
+                b: 'f',
+                c: true,
+            },
+        ]);
     }
 
     #[test]

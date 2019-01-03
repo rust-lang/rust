@@ -1,23 +1,23 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use schema;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc::mir::interpret::AllocDecodingState;
-use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
+use rustc_data_structures::indexed_vec::IndexVec;
+use schema;
 
-use rustc_data_structures::sync::{Lrc, RwLock, Lock};
+use rustc_data_structures::sync::{Lock, Lrc, RwLock};
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos;
 
-pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
 pub use rustc::middle::cstore::NativeLibraryKind::*;
-pub use rustc::middle::cstore::{CrateSource, LibSource, ForeignModule};
+pub use rustc::middle::cstore::{CrateSource, ForeignModule, LibSource};
+pub use rustc::middle::cstore::{LinkagePreference, NativeLibrary, NativeLibraryKind};
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -124,7 +124,8 @@ impl CStore {
     }
 
     pub(super) fn iter_crate_data<I>(&self, mut i: I)
-        where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
+    where
+        I: FnMut(CrateNum, &Lrc<CrateMetadata>),
     {
         for (k, v) in self.metas.borrow().iter_enumerated() {
             if let &Some(ref v) = v {
@@ -140,9 +141,11 @@ impl CStore {
         ordering
     }
 
-    pub(super) fn push_dependencies_in_postorder(&self,
-                                                 ordering: &mut Vec<CrateNum>,
-                                                 krate: CrateNum) {
+    pub(super) fn push_dependencies_in_postorder(
+        &self,
+        ordering: &mut Vec<CrateNum>,
+        krate: CrateNum,
+    ) {
         if ordering.contains(&krate) {
             return;
         }
@@ -164,7 +167,7 @@ impl CStore {
                 self.push_dependencies_in_postorder(&mut ordering, num);
             }
         }
-        return ordering
+        return ordering;
     }
 
     pub(super) fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {

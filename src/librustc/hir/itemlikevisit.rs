@@ -1,5 +1,5 @@
-use super::{Item, ImplItem, TraitItem};
 use super::intravisit::Visitor;
+use super::{ImplItem, Item, TraitItem};
 
 /// The "item-like visitor" visitor defines only the top-level methods
 /// that can be invoked by `Crate::visit_all_item_likes()`. Whether
@@ -56,7 +56,8 @@ pub struct DeepVisitor<'v, V: 'v> {
 }
 
 impl<'v, 'hir, V> DeepVisitor<'v, V>
-    where V: Visitor<'hir> + 'v
+where
+    V: Visitor<'hir> + 'v,
 {
     pub fn new(base: &'v mut V) -> Self {
         DeepVisitor { visitor: base }
@@ -64,7 +65,8 @@ impl<'v, 'hir, V> DeepVisitor<'v, V>
 }
 
 impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
-    where V: Visitor<'hir>
+where
+    V: Visitor<'hir>,
 {
     fn visit_item(&mut self, item: &'hir Item) {
         self.visitor.visit_item(item);
@@ -94,7 +96,8 @@ pub trait IntoVisitor<'hir> {
 pub struct ParDeepVisitor<V>(pub V);
 
 impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
-    where V: IntoVisitor<'hir>
+where
+    V: IntoVisitor<'hir>,
 {
     fn visit_item(&self, item: &'hir Item) {
         self.0.into_visitor().visit_item(item);

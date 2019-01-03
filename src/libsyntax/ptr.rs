@@ -26,33 +26,33 @@
 //!   implementation changes (using a special thread-local heap, for example).
 //!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Debug, Display};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::{mem, ptr, slice, vec};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
-                                           HashStable};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 /// An owned smart pointer.
 #[derive(Hash, PartialEq, Eq)]
 pub struct P<T: ?Sized> {
-    ptr: Box<T>
+    ptr: Box<T>,
 }
 
 #[allow(non_snake_case)]
 /// Construct a `P<T>` from a `T` value.
 pub fn P<T: 'static>(value: T) -> P<T> {
     P {
-        ptr: Box::new(value)
+        ptr: Box::new(value),
     }
 }
 
 impl<T: 'static> P<T> {
     /// Move out of the pointer.
     /// Intended for chaining transformations not covered by `map`.
-    pub fn and_then<U, F>(self, f: F) -> U where
+    pub fn and_then<U, F>(self, f: F) -> U
+    where
         F: FnOnce(T) -> U,
     {
         f(*self.ptr)
@@ -63,7 +63,8 @@ impl<T: 'static> P<T> {
     }
 
     /// Produce a new `P<T>` from `self` without reallocating.
-    pub fn map<F>(mut self, f: F) -> P<T> where
+    pub fn map<F>(mut self, f: F) -> P<T>
+    where
         F: FnOnce(T) -> T,
     {
         let p: *mut T = &mut *self.ptr;
@@ -78,12 +79,15 @@ impl<T: 'static> P<T> {
             ptr::write(p, f(ptr::read(p)));
 
             // Recreate self from the raw pointer.
-            P { ptr: Box::from_raw(p) }
+            P {
+                ptr: Box::from_raw(p),
+            }
         }
     }
 
     /// Optionally produce a new `P<T>` from `self` without reallocating.
-    pub fn filter_map<F>(mut self, f: F) -> Option<P<T>> where
+    pub fn filter_map<F>(mut self, f: F) -> Option<P<T>>
+    where
         F: FnOnce(T) -> Option<T>,
     {
         let p: *mut T = &mut *self.ptr;
@@ -99,7 +103,9 @@ impl<T: 'static> P<T> {
                 ptr::write(p, v);
 
                 // Recreate self from the raw pointer.
-                Some(P { ptr: Box::from_raw(p) })
+                Some(P {
+                    ptr: Box::from_raw(p),
+                })
             } else {
                 None
             }
@@ -159,12 +165,16 @@ impl<T: Encodable> Encodable for P<T> {
 
 impl<T> P<[T]> {
     pub fn new() -> P<[T]> {
-        P { ptr: Default::default() }
+        P {
+            ptr: Default::default(),
+        }
     }
 
     #[inline(never)]
     pub fn from_vec(v: Vec<T>) -> P<[T]> {
-        P { ptr: v.into_boxed_slice() }
+        P {
+            ptr: v.into_boxed_slice(),
+        }
     }
 
     #[inline(never)]
@@ -199,7 +209,7 @@ impl<T> Into<Vec<T>> for P<[T]> {
 }
 
 impl<T> FromIterator<T> for P<[T]> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> P<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> P<[T]> {
         P::from_vec(iter.into_iter().collect())
     }
 }
@@ -234,11 +244,10 @@ impl<T: Decodable> Decodable for P<[T]> {
 }
 
 impl<CTX, T> HashStable<CTX> for P<T>
-    where T: ?Sized + HashStable<CTX>
+where
+    T: ?Sized + HashStable<CTX>,
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut CTX, hasher: &mut StableHasher<W>) {
         (**self).hash_stable(hcx, hasher);
     }
 }

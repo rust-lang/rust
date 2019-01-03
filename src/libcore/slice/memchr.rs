@@ -78,7 +78,10 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     }
 
     // find the byte after the point the body loop stopped
-    text[offset..].iter().position(|elt| *elt == x).map(|i| offset + i)
+    text[offset..]
+        .iter()
+        .position(|elt| *elt == x)
+        .map(|i| offset + i)
 }
 
 /// Return the last index matching the byte `x` in `text`.

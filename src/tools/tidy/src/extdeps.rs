@@ -4,9 +4,7 @@ use std::fs;
 use std::path::Path;
 
 /// List of whitelisted sources for packages
-const WHITELISTED_SOURCES: &[&str] = &[
-    "\"registry+https://github.com/rust-lang/crates.io-index\"",
-];
+const WHITELISTED_SOURCES: &[&str] = &["\"registry+https://github.com/rust-lang/crates.io-index\""];
 
 /// check for external package sources
 pub fn check(path: &Path, bad: &mut bool) {
@@ -18,9 +16,8 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     // process each line
     for line in cargo_lock.lines() {
-
         // consider only source entries
-        if ! line.starts_with("source = ") {
+        if !line.starts_with("source = ") {
             continue;
         }
 

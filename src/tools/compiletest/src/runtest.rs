@@ -265,7 +265,7 @@ impl<'test> TestCx<'test> {
             DebugInfoBoth => {
                 self.run_debuginfo_gdb_test();
                 self.run_debuginfo_lldb_test();
-            },
+            }
             DebugInfoGdb => self.run_debuginfo_gdb_test(),
             DebugInfoLldb => self.run_debuginfo_lldb_test(),
             Codegen => self.run_codegen_test(),
@@ -293,7 +293,8 @@ impl<'test> TestCx<'test> {
             RunPass => true,
             Ui => self.props.compile_pass,
             Incremental => {
-                let revision = self.revision
+                let revision = self
+                    .revision
                     .expect("incremental tests require a list of revisions");
                 if revision.starts_with("rpass") || revision.starts_with("rfail") {
                     true
@@ -469,8 +470,7 @@ impl<'test> TestCx<'test> {
                 ReadFrom::Stdin(srcs[round].to_owned())
             };
 
-            let proc_res = self.print_source(read_from,
-                                             &self.props.pretty_mode);
+            let proc_res = self.print_source(read_from, &self.props.pretty_mode);
             if !proc_res.status.success() {
                 self.fatal_proc_rec(
                     &format!(
@@ -558,7 +558,7 @@ impl<'test> TestCx<'test> {
 
         let src = match read_from {
             ReadFrom::Stdin(src) => Some(src),
-            ReadFrom::Path => None
+            ReadFrom::Path => None,
         };
 
         self.compose_and_run(
@@ -582,8 +582,8 @@ impl<'test> TestCx<'test> {
                  {}\n\
                  ------------------------------------------\n\
                  \n",
-                expected, actual)
-            );
+                expected, actual
+            ));
         }
     }
 
@@ -875,12 +875,8 @@ impl<'test> TestCx<'test> {
             gdb.args(debugger_opts)
                 .env("PYTHONPATH", rust_pp_module_abs_path);
 
-            debugger_run_result = self.compose_and_run(
-                gdb,
-                self.config.run_lib_path.to_str().unwrap(),
-                None,
-                None,
-            );
+            debugger_run_result =
+                self.compose_and_run(gdb, self.config.run_lib_path.to_str().unwrap(), None, None);
         }
 
         if !debugger_run_result.status.success() {
@@ -1241,8 +1237,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_expected_errors(&self, expected_errors: Vec<errors::Error>, proc_res: &ProcRes) {
-        debug!("check_expected_errors: expected_errors={:?} proc_res.status={:?}",
-               expected_errors, proc_res.status);
+        debug!(
+            "check_expected_errors: expected_errors={:?} proc_res.status={:?}",
+            expected_errors, proc_res.status
+        );
         if proc_res.status.success()
             && expected_errors
                 .iter()
@@ -1274,14 +1272,17 @@ impl<'test> TestCx<'test> {
         let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in &actual_errors {
-            let opt_index = expected_errors.iter().enumerate().position(
-                |(index, expected_error)| {
-                    !found[index] && actual_error.line_num == expected_error.line_num
-                        && (expected_error.kind.is_none()
-                            || actual_error.kind == expected_error.kind)
-                        && actual_error.msg.contains(&expected_error.msg)
-                },
-            );
+            let opt_index =
+                expected_errors
+                    .iter()
+                    .enumerate()
+                    .position(|(index, expected_error)| {
+                        !found[index]
+                            && actual_error.line_num == expected_error.line_num
+                            && (expected_error.kind.is_none()
+                                || actual_error.kind == expected_error.kind)
+                            && actual_error.msg.contains(&expected_error.msg)
+                    });
 
             match opt_index {
                 Some(index) => {
@@ -1772,13 +1773,11 @@ impl<'test> TestCx<'test> {
         }
 
         if self.props.skip_codegen {
-            assert!(
-                !self
-                    .props
-                    .compile_flags
-                    .iter()
-                    .any(|s| s.starts_with("--emit"))
-            );
+            assert!(!self
+                .props
+                .compile_flags
+                .iter()
+                .any(|s| s.starts_with("--emit")));
             rustc.args(&["--emit", "metadata"]);
         }
 
@@ -1863,10 +1862,15 @@ impl<'test> TestCx<'test> {
                 self.fatal("no NodeJS binary found (--nodejs)");
             }
 
-            let src = self.config.src_base
-                .parent().unwrap() // chop off `run-pass`
-                .parent().unwrap() // chop off `test`
-                .parent().unwrap(); // chop off `src`
+            let src = self
+                .config
+                .src_base
+                .parent()
+                .unwrap() // chop off `run-pass`
+                .parent()
+                .unwrap() // chop off `test`
+                .parent()
+                .unwrap(); // chop off `src`
             args.push(src.join("src/etc/wasm32-shim.js").display().to_string());
         }
 
@@ -2221,7 +2225,8 @@ impl<'test> TestCx<'test> {
                         }
                     }
                 }
-            }) {}
+            })
+        {}
         if tested == 0 {
             self.fatal_proc_rec(&format!("No test has been found... {:?}", files), &res);
         } else {
@@ -2410,23 +2415,23 @@ impl<'test> TestCx<'test> {
         // remove all crate-disambiguators.
         fn remove_crate_disambiguator_from_cgu(cgu: &str) -> String {
             lazy_static! {
-                static ref RE: Regex = Regex::new(
-                    r"^[^\.]+(?P<d1>\.[[:alnum:]]+)(-in-[^\.]+(?P<d2>\.[[:alnum:]]+))?"
-                ).unwrap();
+                static ref RE: Regex =
+                    Regex::new(r"^[^\.]+(?P<d1>\.[[:alnum:]]+)(-in-[^\.]+(?P<d2>\.[[:alnum:]]+))?")
+                        .unwrap();
             }
 
-            let captures = RE.captures(cgu).unwrap_or_else(|| {
-                panic!("invalid cgu name encountered: {}", cgu)
-            });
+            let captures = RE
+                .captures(cgu)
+                .unwrap_or_else(|| panic!("invalid cgu name encountered: {}", cgu));
 
             let mut new_name = cgu.to_owned();
 
             if let Some(d2) = captures.name("d2") {
-                new_name.replace_range(d2.start() .. d2.end(), "");
+                new_name.replace_range(d2.start()..d2.end(), "");
             }
 
             let d1 = captures.name("d1").unwrap();
-            new_name.replace_range(d1.start() .. d1.end(), "");
+            new_name.replace_range(d1.start()..d1.end(), "");
 
             new_name
         }
@@ -2567,7 +2572,6 @@ impl<'test> TestCx<'test> {
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
             .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags)
-
             // We for sure don't want these tests to run in parallel, so make
             // sure they don't have access to these vars if we we run via `make`
             // at the top level
@@ -2713,7 +2717,8 @@ impl<'test> TestCx<'test> {
                 } else {
                     Filter::Everything
                 },
-            ).unwrap();
+            )
+            .unwrap();
             let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(&format!(
                 "failed to apply suggestions for {:?} with rustfix",
                 self.testpaths.file
@@ -2753,10 +2758,15 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        debug!("run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
-               proc_res.status={:?} props.error_patterns={:?}",
-               explicit, self.config.compare_mode, expected_errors, proc_res.status,
-               self.props.error_patterns);
+        debug!(
+            "run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
+             proc_res.status={:?} props.error_patterns={:?}",
+            explicit,
+            self.config.compare_mode,
+            expected_errors,
+            proc_res.status,
+            self.props.error_patterns
+        );
         if !explicit && self.config.compare_mode.is_none() {
             if !proc_res.status.success() {
                 if !self.props.error_patterns.is_empty() {
@@ -3002,7 +3012,13 @@ impl<'test> TestCx<'test> {
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
-        let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
+        let parent_build_dir = test_build_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
 
         // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
         normalized = normalized.replace(test_build_dir.to_str().unwrap(), "$TEST_BUILD_DIR");
@@ -3026,13 +3042,16 @@ impl<'test> TestCx<'test> {
         // with placeholders as we do not want tests needing updated when compiler source code
         // changes.
         // eg. $SRC_DIR/libcore/mem.rs:323:14 becomes $SRC_DIR/libcore/mem.rs:LL:COL
-        normalized = Regex::new("SRC_DIR(.+):\\d+:\\d+").unwrap()
-            .replace_all(&normalized, "SRC_DIR$1:LL:COL").into_owned();
+        normalized = Regex::new("SRC_DIR(.+):\\d+:\\d+")
+            .unwrap()
+            .replace_all(&normalized, "SRC_DIR$1:LL:COL")
+            .into_owned();
 
-        normalized = normalized.replace("\\\\", "\\") // denormalize for paths on windows
-              .replace("\\", "/") // normalize for paths on windows
-              .replace("\r\n", "\n") // normalize for linebreaks on windows
-              .replace("\t", "\\t"); // makes tabs visible
+        normalized = normalized
+            .replace("\\\\", "\\") // denormalize for paths on windows
+            .replace("\\", "/") // normalize for paths on windows
+            .replace("\r\n", "\n") // normalize for linebreaks on windows
+            .replace("\t", "\\t"); // makes tabs visible
         for rule in custom_rules {
             let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");
             normalized = re.replace_all(&normalized, &rule.1[..]).into_owned();
@@ -3080,17 +3099,17 @@ impl<'test> TestCx<'test> {
 
     fn load_expected_output_from_path(&self, path: &Path) -> Result<String, String> {
         fs::read_to_string(path).map_err(|err| {
-            format!("failed to load expected output from `{}`: {}", path.display(), err)
+            format!(
+                "failed to load expected output from `{}`: {}",
+                path.display(),
+                err
+            )
         })
     }
 
     fn delete_file(&self, file: &PathBuf) {
         if let Err(e) = fs::remove_file(file) {
-            self.fatal(&format!(
-                "failed to delete `{}`: {}",
-                file.display(),
-                e,
-            ));
+            self.fatal(&format!("failed to delete `{}`: {}", file.display(), e,));
         }
     }
 
@@ -3169,12 +3188,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn prune_duplicate_output(&self, mode: CompareMode, kind: &str, canon_content: &str) {
-        let examined_path = expected_output_path(
-            &self.testpaths,
-            self.revision,
-            &Some(mode),
-            kind,
-        );
+        let examined_path = expected_output_path(&self.testpaths, self.revision, &Some(mode), kind);
 
         let examined_content = self
             .load_expected_output_from_path(&examined_path)
@@ -3188,12 +3202,8 @@ impl<'test> TestCx<'test> {
     fn prune_duplicate_outputs(&self, modes: &[CompareMode]) {
         if self.config.bless {
             for kind in UI_EXTENSIONS {
-                let canon_comparison_path = expected_output_path(
-                    &self.testpaths,
-                    self.revision,
-                    &None,
-                    kind,
-                );
+                let canon_comparison_path =
+                    expected_output_path(&self.testpaths, self.revision, &None, kind);
 
                 if let Ok(canon) = self.load_expected_output_from_path(&canon_comparison_path) {
                     for mode in modes {

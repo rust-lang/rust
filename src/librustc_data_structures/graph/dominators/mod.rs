@@ -27,8 +27,7 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(
     assert_eq!(rpo[0], start_node);
 
     // compute the post order index (rank) for each node
-    let mut post_order_rank: IndexVec<G::Node, usize> =
-        (0..graph.num_nodes()).map(|_| 0).collect();
+    let mut post_order_rank: IndexVec<G::Node, usize> = (0..graph.num_nodes()).map(|_| 0).collect();
     for (index, node) in rpo.iter().rev().cloned().enumerate() {
         post_order_rank[node] = index;
     }
@@ -189,7 +188,8 @@ struct DominatorTreeNode<'tree, Node: Idx> {
 
 impl<'tree, Node: Idx> fmt::Debug for DominatorTreeNode<'tree, Node> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let subtrees: Vec<_> = self.tree
+        let subtrees: Vec<_> = self
+            .tree
             .children(self.node)
             .iter()
             .map(|&child| DominatorTreeNode {

@@ -5,9 +5,9 @@
 //! mismatches where we have two versions of the same crate that were
 //! compiled from distinct sources.
 
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 use stable_hasher;
 
@@ -34,7 +34,10 @@ impl Svh {
 }
 
 impl Hash for Svh {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         self.hash.to_le().hash(state);
     }
 }
@@ -53,9 +56,7 @@ impl Encodable for Svh {
 
 impl Decodable for Svh {
     fn decode<D: Decoder>(d: &mut D) -> Result<Svh, D::Error> {
-        d.read_u64()
-         .map(u64::from_le)
-         .map(Svh::new)
+        d.read_u64().map(u64::from_le).map(Svh::new)
     }
 }
 
@@ -64,11 +65,9 @@ impl<T> stable_hasher::HashStable<T> for Svh {
     fn hash_stable<W: stable_hasher::StableHasherResult>(
         &self,
         ctx: &mut T,
-        hasher: &mut stable_hasher::StableHasher<W>
+        hasher: &mut stable_hasher::StableHasher<W>,
     ) {
-        let Svh {
-            hash
-        } = *self;
+        let Svh { hash } = *self;
         hash.hash_stable(ctx, hasher);
     }
 }

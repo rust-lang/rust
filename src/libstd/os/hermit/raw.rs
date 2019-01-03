@@ -14,4 +14,4 @@ pub use libc::pthread_t;
 
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use libc::{dev_t, mode_t, off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
+pub use libc::{blkcnt_t, blksize_t, dev_t, ino_t, mode_t, nlink_t, off_t, stat, time_t};

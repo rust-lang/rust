@@ -228,8 +228,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
 
 pub fn redirect(dst: &mut dyn io::Write, url: &str) -> io::Result<()> {
     // <script> triggers a redirect before refresh, so this is fine.
-    write!(dst,
-r##"<!DOCTYPE html>
+    write!(
+        dst,
+        r##"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta http-equiv="refresh" content="0;URL={url}">
@@ -239,6 +240,6 @@ r##"<!DOCTYPE html>
     <script>location.replace("{url}" + location.search + location.hash);</script>
 </body>
 </html>"##,
-    url = url,
+        url = url,
     )
 }

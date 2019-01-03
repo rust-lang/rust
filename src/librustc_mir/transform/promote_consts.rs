@@ -12,13 +12,13 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
-use rustc::mir::*;
-use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
+use rustc::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc::mir::*;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use std::{iter, mem, usize};
 
@@ -30,15 +30,12 @@ pub enum TempState {
     /// One direct assignment and any number of direct uses.
     /// A borrow of this temp is promotable if the assigned
     /// value is qualified as constant.
-    Defined {
-        location: Location,
-        uses: usize
-    },
+    Defined { location: Location, uses: usize },
     /// Any other combination of assignments/uses.
     Unpromotable,
     /// This temp was part of an rvalue which got extracted
     /// during promotion and needs cleanup.
-    PromotedOut
+    PromotedOut,
 }
 
 impl TempState {
@@ -75,11 +72,11 @@ struct TempCollector<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
-    fn visit_local(&mut self,
-                   &index: &Local,
-                   context: PlaceContext<'tcx>,
-                   location: Location) {
-        debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
+    fn visit_local(&mut self, &index: &Local, context: PlaceContext<'tcx>, location: Location) {
+        debug!(
+            "visit_local: index={:?} context={:?} location={:?}",
+            index, context, location
+        );
         // We're only interested in temporaries
         if self.mir.local_kind(index) != LocalKind::Temp {
             return;
@@ -91,7 +88,8 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         if context.is_drop() || !context.is_use() {
             debug!(
                 "visit_local: context.is_drop={:?} context.is_use={:?}",
-                context.is_drop(), context.is_use(),
+                context.is_drop(),
+                context.is_use(),
             );
             return;
         }
@@ -100,13 +98,10 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         debug!("visit_local: temp={:?}", temp);
         if *temp == TempState::Undefined {
             match context {
-                PlaceContext::MutatingUse(MutatingUseContext::Store) |
-                PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
-                PlaceContext::MutatingUse(MutatingUseContext::Call) => {
-                    *temp = TempState::Defined {
-                        location,
-                        uses: 0
-                    };
+                PlaceContext::MutatingUse(MutatingUseContext::Store)
+                | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+                | PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+                    *temp = TempState::Defined { location, uses: 0 };
                     return;
                 }
                 _ => { /* mark as unpromotable below */ }
@@ -150,7 +145,7 @@ struct Promoter<'a, 'tcx: 'a> {
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
-    keep_original: bool
+    keep_original: bool,
 }
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
@@ -161,11 +156,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             terminator: Some(Terminator {
                 source_info: SourceInfo {
                     span,
-                    scope: OUTERMOST_SOURCE_SCOPE
+                    scope: OUTERMOST_SOURCE_SCOPE,
                 },
-                kind: TerminatorKind::Return
+                kind: TerminatorKind::Return,
             }),
-            is_cleanup: false
+            is_cleanup: false,
         })
     }
 
@@ -175,9 +170,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span,
-                scope: OUTERMOST_SOURCE_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE,
             },
-            kind: StatementKind::Assign(Place::Local(dest), box rvalue)
+            kind: StatementKind::Assign(Place::Local(dest), box rvalue),
         });
     }
 
@@ -192,9 +187,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
                 location
             }
-            state =>  {
-                span_bug!(self.promoted.span, "{:?} not promotable: {:?}",
-                          temp, state);
+            state => {
+                span_bug!(self.promoted.span, "{:?} not promotable: {:?}", temp, state);
             }
         };
         if !self.keep_original {
@@ -202,12 +196,15 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         }
 
         let no_stmts = self.source[loc.block].statements.len();
-        let new_temp = self.promoted.local_decls.push(
-            LocalDecl::new_temp(self.source.local_decls[temp].ty,
-                                self.source.local_decls[temp].source_info.span));
+        let new_temp = self.promoted.local_decls.push(LocalDecl::new_temp(
+            self.source.local_decls[temp].ty,
+            self.source.local_decls[temp].source_info.span,
+        ));
 
-        debug!("promote({:?} @ {:?}/{:?}, {:?})",
-               temp, loc, no_stmts, self.keep_original);
+        debug!(
+            "promote({:?} @ {:?}/{:?}, {:?})",
+            temp, loc, no_stmts, self.keep_original
+        );
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
@@ -217,17 +214,23 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 let rhs = match statement.kind {
                     StatementKind::Assign(_, ref mut rhs) => rhs,
                     _ => {
-                        span_bug!(statement.source_info.span, "{:?} is not an assignment",
-                                  statement);
+                        span_bug!(
+                            statement.source_info.span,
+                            "{:?} is not an assignment",
+                            statement
+                        );
                     }
                 };
 
-                (if self.keep_original {
-                    rhs.clone()
-                } else {
-                    let unit = box Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
-                    mem::replace(rhs, unit)
-                }, statement.source_info)
+                (
+                    if self.keep_original {
+                        rhs.clone()
+                    } else {
+                        let unit = box Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
+                        mem::replace(rhs, unit)
+                    },
+                    statement.source_info,
+                )
             };
 
             let mut rvalue = *rvalue;
@@ -239,21 +242,27 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             } else {
                 let terminator = self.source[loc.block].terminator_mut();
                 let target = match terminator.kind {
-                    TerminatorKind::Call { destination: Some((_, target)), .. } => target,
+                    TerminatorKind::Call {
+                        destination: Some((_, target)),
+                        ..
+                    } => target,
                     ref kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
                 };
                 Terminator {
                     source_info: terminator.source_info,
-                    kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto {
-                        target,
-                    })
+                    kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto { target }),
                 }
             };
 
             match terminator.kind {
-                TerminatorKind::Call { mut func, mut args, from_hir_call, .. } => {
+                TerminatorKind::Call {
+                    mut func,
+                    mut args,
+                    from_hir_call,
+                    ..
+                } => {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
@@ -289,8 +298,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let promoted_id = Promoted::new(self.source.promoted.len());
             let mut promoted_place = |ty, span| {
                 promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] =
-                    LocalDecl::new_return_place(ty, span);
+                promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
                 Place::Promoted(box (promoted_id, ty))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -304,14 +312,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             while let Place::Projection(ref mut proj) = *place {
                                 assert_ne!(proj.elem, ProjectionElem::Deref);
                                 place = &mut proj.base;
-                            };
+                            }
 
                             let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
                             let span = statement.source_info.span;
 
                             Operand::Move(mem::replace(place, promoted_place(ty, span)))
                         }
-                        _ => bug!()
+                        _ => bug!(),
                     }
                 }
                 Candidate::Argument { bb, index } => {
@@ -331,17 +339,20 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         // providing a value whose computation contains another call to a function
                         // requiring a constant argument.
                         TerminatorKind::Goto { .. } => return,
-                        _ => bug!()
+                        _ => bug!(),
                     }
                 }
             }
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_operand(&mut operand, Location {
-            block: BasicBlock::new(0),
-            statement_index: usize::MAX
-        });
+        self.visit_operand(
+            &mut operand,
+            Location {
+                block: BasicBlock::new(0),
+                statement_index: usize::MAX,
+            },
+        );
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
@@ -351,26 +362,28 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
 /// Replaces all temporaries with their promoted counterparts.
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
-    fn visit_local(&mut self,
-                   local: &mut Local,
-                   _: PlaceContext<'tcx>,
-                   _: Location) {
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext<'tcx>, _: Location) {
         if self.source.local_kind(*local) == LocalKind::Temp {
             *local = self.promote_temp(*local);
         }
     }
 }
 
-pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
-                                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    mut temps: IndexVec<Local, TempState>,
-                                    candidates: Vec<Candidate>) {
+pub fn promote_candidates<'a, 'tcx>(
+    mir: &mut Mir<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mut temps: IndexVec<Local, TempState>,
+    candidates: Vec<Candidate>,
+) {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 
     for candidate in candidates.into_iter().rev() {
         match candidate {
-            Candidate::Ref(Location { block, statement_index }) => {
+            Candidate::Ref(Location {
+                block,
+                statement_index,
+            }) => {
                 match mir[block].statements[statement_index].kind {
                     StatementKind::Assign(Place::Local(local), _) => {
                         if temps[local] == TempState::PromotedOut {
@@ -384,11 +397,9 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             Candidate::Argument { .. } => {}
         }
 
-
         // Declare return place local so that `Mir::new` doesn't complain.
-        let initial_locals = iter::once(
-            LocalDecl::new_return_place(tcx.types.never, mir.span)
-        ).collect();
+        let initial_locals =
+            iter::once(LocalDecl::new_return_place(tcx.types.never, mir.span)).collect();
 
         let promoter = Promoter {
             promoted: Mir::new(
@@ -409,7 +420,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             tcx,
             source: mir,
             temps: &mut temps,
-            keep_original: false
+            keep_original: false,
         };
         promoter.promote_candidate(candidate);
     }
@@ -417,23 +428,21 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
     for block in mir.basic_blocks_mut() {
-        block.statements.retain(|statement| {
-            match statement.kind {
-                StatementKind::Assign(Place::Local(index), _) |
-                StatementKind::StorageLive(index) |
-                StatementKind::StorageDead(index) => {
-                    !promoted(index)
-                }
-                _ => true
-            }
+        block.statements.retain(|statement| match statement.kind {
+            StatementKind::Assign(Place::Local(index), _)
+            | StatementKind::StorageLive(index)
+            | StatementKind::StorageDead(index) => !promoted(index),
+            _ => true,
         });
         let terminator = block.terminator_mut();
         match terminator.kind {
-            TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
+            TerminatorKind::Drop {
+                location: Place::Local(index),
+                target,
+                ..
+            } => {
                 if promoted(index) {
-                    terminator.kind = TerminatorKind::Goto {
-                        target,
-                    };
+                    terminator.kind = TerminatorKind::Goto { target };
                 }
             }
             _ => {}

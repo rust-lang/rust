@@ -14,7 +14,7 @@
 
 use error::Error;
 use fmt;
-use ops::{Add, Sub, AddAssign, SubAssign};
+use ops::{Add, AddAssign, Sub, SubAssign};
 use sys::time;
 use sys_common::FromInner;
 
@@ -336,8 +336,7 @@ impl SystemTime {
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
-    pub fn duration_since(&self, earlier: SystemTime)
-                          -> Result<Duration, SystemTimeError> {
+    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
@@ -377,7 +376,9 @@ impl SystemTime {
     /// otherwise.
     #[unstable(feature = "time_checked_add", issue = "55940")]
     pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
-        self.0.checked_add_duration(&duration).map(|t| SystemTime(t))
+        self.0
+            .checked_add_duration(&duration)
+            .map(|t| SystemTime(t))
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
@@ -385,7 +386,9 @@ impl SystemTime {
     /// otherwise.
     #[unstable(feature = "time_checked_add", issue = "55940")]
     pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
-        self.0.checked_sub_duration(&duration).map(|t| SystemTime(t))
+        self.0
+            .checked_sub_duration(&duration)
+            .map(|t| SystemTime(t))
     }
 }
 
@@ -494,7 +497,9 @@ impl SystemTimeError {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl Error for SystemTimeError {
-    fn description(&self) -> &str { "other time was not earlier than self" }
+    fn description(&self) -> &str {
+        "other time was not earlier than self"
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -512,17 +517,21 @@ impl FromInner<time::SystemTime> for SystemTime {
 
 #[cfg(test)]
 mod tests {
-    use super::{Instant, SystemTime, Duration, UNIX_EPOCH};
+    use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     macro_rules! assert_almost_eq {
-        ($a:expr, $b:expr) => ({
+        ($a:expr, $b:expr) => {{
             let (a, b) = ($a, $b);
             if a != b {
-                let (a, b) = if a > b {(a, b)} else {(b, a)};
-                assert!(a - Duration::new(0, 1000) <= b,
-                        "{:?} is not almost equal to {:?}", a, b);
+                let (a, b) = if a > b { (a, b) } else { (b, a) };
+                assert!(
+                    a - Duration::new(0, 1000) <= b,
+                    "{:?} is not almost equal to {:?}",
+                    a,
+                    b
+                );
             }
-        })
+        }};
     }
 
     #[test]
@@ -551,7 +560,10 @@ mod tests {
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a - second + second, a);
-        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
+        assert_almost_eq!(
+            a.checked_sub(second).unwrap().checked_add(second).unwrap(),
+            a
+        );
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(Instant::now());
@@ -597,11 +609,13 @@ mod tests {
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a.duration_since(a - second).unwrap(), second);
-        assert_almost_eq!(a.duration_since(a + second).unwrap_err()
-                           .duration(), second);
+        assert_almost_eq!(a.duration_since(a + second).unwrap_err().duration(), second);
 
         assert_almost_eq!(a - second + second, a);
-        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
+        assert_almost_eq!(
+            a.checked_sub(second).unwrap().checked_add(second).unwrap(),
+            a
+        );
 
         // A difference of 80 and 800 years cannot fit inside a 32-bit time_t
         if !(cfg!(unix) && ::mem::size_of::<::libc::time_t>() <= 4) {
@@ -611,8 +625,8 @@ mod tests {
         }
 
         let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
-        let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
-            + Duration::new(0, 500_000_000);
+        let one_second_from_epoch2 =
+            UNIX_EPOCH + Duration::new(0, 500_000_000) + Duration::new(0, 500_000_000);
         assert_eq!(one_second_from_epoch, one_second_from_epoch2);
 
         // checked_add_duration will not panic on overflow

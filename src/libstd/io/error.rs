@@ -1,8 +1,8 @@
+use convert::From;
 use error;
 use fmt;
 use result;
 use sys;
-use convert::From;
 
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
@@ -73,7 +73,7 @@ enum Repr {
 #[derive(Debug)]
 struct Custom {
     kind: ErrorKind,
-    error: Box<dyn error::Error+Send+Sync>,
+    error: Box<dyn error::Error + Send + Sync>,
 }
 
 /// A list specifying general categories of I/O error.
@@ -221,7 +221,7 @@ impl From<ErrorKind> for Error {
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error {
-            repr: Repr::Simple(kind)
+            repr: Repr::Simple(kind),
         }
     }
 }
@@ -247,17 +247,15 @@ impl Error {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
-        where E: Into<Box<dyn error::Error+Send+Sync>>
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Self::_new(kind, error.into())
     }
 
-    fn _new(kind: ErrorKind, error: Box<dyn error::Error+Send+Sync>) -> Error {
+    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
         Error {
-            repr: Repr::Custom(Box::new(Custom {
-                kind,
-                error,
-            }))
+            repr: Repr::Custom(Box::new(Custom { kind, error })),
         }
     }
 
@@ -306,7 +304,9 @@ impl Error {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_raw_os_error(code: i32) -> Error {
-        Error { repr: Repr::Os(code) }
+        Error {
+            repr: Repr::Os(code),
+        }
     }
 
     /// Returns the OS error that this error represents (if any).
@@ -370,7 +370,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn get_ref(&self) -> Option<&(dyn error::Error+Send+Sync+'static)> {
+    pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
@@ -441,7 +441,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error+Send+Sync+'static)> {
+    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
@@ -475,11 +475,11 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn into_inner(self) -> Option<Box<dyn error::Error+Send+Sync>> {
+    pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
-            Repr::Custom(c) => Some(c.error)
+            Repr::Custom(c) => Some(c.error),
         }
     }
 
@@ -514,11 +514,12 @@ impl Error {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Repr::Os(code) =>
-                fmt.debug_struct("Os")
-                    .field("code", &code)
-                    .field("kind", &sys::decode_error_kind(code))
-                    .field("message", &sys::os::error_string(code)).finish(),
+            Repr::Os(code) => fmt
+                .debug_struct("Os")
+                .field("code", &code)
+                .field("kind", &sys::decode_error_kind(code))
+                .field("message", &sys::os::error_string(code))
+                .finish(),
             Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
         }
@@ -559,17 +560,17 @@ impl error::Error for Error {
 }
 
 fn _assert_error_is_sync_send() {
-    fn _is_sync_send<T: Sync+Send>() {}
+    fn _is_sync_send<T: Sync + Send>() {}
     _is_sync_send::<Error>();
 }
 
 #[cfg(test)]
 mod test {
-    use super::{Error, ErrorKind, Repr, Custom};
+    use super::{Custom, Error, ErrorKind, Repr};
     use error;
     use fmt;
-    use sys::os::error_string;
     use sys::decode_error_kind;
+    use sys::os::error_string;
 
     #[test]
     fn test_debug_error() {
@@ -580,19 +581,19 @@ mod test {
             repr: Repr::Custom(box Custom {
                 kind: ErrorKind::InvalidInput,
                 error: box Error {
-                    repr: super::Repr::Os(code)
+                    repr: super::Repr::Os(code),
                 },
-            })
+            }),
         };
         let expected = format!(
             "Custom {{ \
-                kind: InvalidInput, \
-                error: Os {{ \
-                    code: {:?}, \
-                    kind: {:?}, \
-                    message: {:?} \
-                }} \
-            }}",
+             kind: InvalidInput, \
+             error: Os {{ \
+             code: {:?}, \
+             kind: {:?}, \
+             message: {:?} \
+             }} \
+             }}",
             code, kind, msg
         );
         assert_eq!(format!("{:?}", err), expected);

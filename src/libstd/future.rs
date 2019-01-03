@@ -2,11 +2,11 @@
 
 use core::cell::Cell;
 use core::marker::Unpin;
-use core::pin::Pin;
+use core::ops::{Drop, Generator, GeneratorState};
 use core::option::Option;
+use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{LocalWaker, Poll};
-use core::ops::{Drop, Generator, GeneratorState};
 
 #[doc(inline)]
 pub use core::future::*;
@@ -33,9 +33,11 @@ impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
     type Output = T::Return;
     fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-        set_task_waker(lw, || match unsafe { Pin::get_unchecked_mut(self).0.resume() } {
-            GeneratorState::Yielded(()) => Poll::Pending,
-            GeneratorState::Complete(x) => Poll::Ready(x),
+        set_task_waker(lw, || {
+            match unsafe { Pin::get_unchecked_mut(self).0.resume() } {
+                GeneratorState::Yielded(()) => Poll::Pending,
+                GeneratorState::Complete(x) => Poll::Ready(x),
+            }
         })
     }
 }
@@ -58,11 +60,9 @@ impl Drop for SetOnDrop {
 /// Sets the thread-local task context used by async/await futures.
 pub fn set_task_waker<F, R>(lw: &LocalWaker, f: F) -> R
 where
-    F: FnOnce() -> R
+    F: FnOnce() -> R,
 {
-    let old_waker = TLS_WAKER.with(|tls_waker| {
-        tls_waker.replace(Some(NonNull::from(lw)))
-    });
+    let old_waker = TLS_WAKER.with(|tls_waker| tls_waker.replace(Some(NonNull::from(lw))));
     let _reset_waker = SetOnDrop(old_waker);
     f()
 }
@@ -76,7 +76,7 @@ where
 /// retrieved by a surrounding call to get_task_waker.
 pub fn get_task_waker<F, R>(f: F) -> R
 where
-    F: FnOnce(&LocalWaker) -> R
+    F: FnOnce(&LocalWaker) -> R,
 {
     let waker_ptr = TLS_WAKER.with(|tls_waker| {
         // Clear the entry so that nested `get_task_waker` calls
@@ -87,7 +87,8 @@ where
 
     let waker_ptr = waker_ptr.expect(
         "TLS LocalWaker not set. This is a rustc bug. \
-        Please file an issue on https://github.com/rust-lang/rust.");
+         Please file an issue on https://github.com/rust-lang/rust.",
+    );
     unsafe { f(waker_ptr.as_ref()) }
 }
 
@@ -95,7 +96,7 @@ where
 /// Polls a future in the current thread-local task waker.
 pub fn poll_with_tls_waker<F>(f: Pin<&mut F>) -> Poll<F::Output>
 where
-    F: Future
+    F: Future,
 {
     get_task_waker(|lw| F::poll(f, lw))
 }

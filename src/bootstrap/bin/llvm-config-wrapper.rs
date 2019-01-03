@@ -2,8 +2,8 @@
 // `src/bootstrap/native.rs` for why this is needed when compiling LLD.
 
 use std::env;
-use std::process::{self, Stdio, Command};
 use std::io::{self, Write};
+use std::process::{self, Command, Stdio};
 
 fn main() {
     let real_llvm_config = env::var_os("LLVM_CONFIG_REAL").unwrap();

@@ -1,6 +1,6 @@
 use infer::type_variable::TypeVariableMap;
-use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
+use ty::{self, Ty, TyCtxt};
 
 use super::InferCtxt;
 use super::RegionVariableOrigin;
@@ -45,9 +45,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the actual types (`?T`, `Option<?T`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
-    pub fn fudge_regions_if_ok<T, E, F>(&self,
-                                        origin: &RegionVariableOrigin,
-                                        f: F) -> Result<T, E> where
+    pub fn fudge_regions_if_ok<T, E, F>(&self, origin: &RegionVariableOrigin, f: F) -> Result<T, E>
+    where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
@@ -64,12 +63,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // going to be popped, so we will have to
                     // eliminate any references to them.
 
-                    let type_variables =
-                        self.type_variables.borrow_mut().types_created_since_snapshot(
-                            &snapshot.type_snapshot);
-                    let region_vars =
-                        self.borrow_region_constraints().vars_created_since_snapshot(
-                            &snapshot.region_constraints_snapshot);
+                    let type_variables = self
+                        .type_variables
+                        .borrow_mut()
+                        .types_created_since_snapshot(&snapshot.type_snapshot);
+                    let region_vars = self
+                        .borrow_region_constraints()
+                        .vars_created_since_snapshot(&snapshot.region_constraints_snapshot);
 
                     Ok((type_variables, region_vars, value))
                 }
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct RegionFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct RegionFudger<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     type_variables: &'a TypeVariableMap,
     region_vars: &'a Vec<ty::RegionVid>,
@@ -121,9 +121,12 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         // variables to their binding anyhow, we know
                         // that it is unbound, so we can just return
                         // it.
-                        debug_assert!(self.infcx.type_variables.borrow_mut()
-                                      .probe(vid)
-                                      .is_unknown());
+                        debug_assert!(self
+                            .infcx
+                            .type_variables
+                            .borrow_mut()
+                            .probe(vid)
+                            .is_unknown());
                         ty
                     }
 
@@ -144,9 +147,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
             ty::ReVar(v) if self.region_vars.contains(&v) => {
                 self.infcx.next_region_var(self.origin.clone())
             }
-            _ => {
-                r
-            }
+            _ => r,
         }
     }
 }

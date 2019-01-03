@@ -37,10 +37,12 @@ Use llvm::report_fatal_error for increased robustness.";
 /// Parser states for line_is_url.
 #[derive(PartialEq)]
 #[allow(non_camel_case_types)]
-enum LIUState { EXP_COMMENT_START,
-                EXP_LINK_LABEL_OR_URL,
-                EXP_URL,
-                EXP_END }
+enum LIUState {
+    EXP_COMMENT_START,
+    EXP_LINK_LABEL_OR_URL,
+    EXP_URL,
+    EXP_END,
+}
 
 /// True if LINE appears to be a line comment containing an URL,
 /// possibly with a Markdown link label in front, and nothing else.
@@ -59,16 +61,22 @@ fn line_is_url(line: &str) -> bool {
             (EXP_COMMENT_START, "//!") => state = EXP_LINK_LABEL_OR_URL,
 
             (EXP_LINK_LABEL_OR_URL, w)
-                if w.len() >= 4 && w.starts_with('[') && w.ends_with("]:")
-                => state = EXP_URL,
+                if w.len() >= 4 && w.starts_with('[') && w.ends_with("]:") =>
+            {
+                state = EXP_URL
+            }
 
-            (EXP_LINK_LABEL_OR_URL, w)
-                if w.starts_with("http://") || w.starts_with("https://")
-                => state = EXP_END,
+            (EXP_LINK_LABEL_OR_URL, w) if w.starts_with("http://") || w.starts_with("https://") => {
+                state = EXP_END
+            }
 
             (EXP_URL, w)
-                if w.starts_with("http://") || w.starts_with("https://") || w.starts_with("../")
-                => state = EXP_END,
+                if w.starts_with("http://")
+                    || w.starts_with("https://")
+                    || w.starts_with("../") =>
+            {
+                state = EXP_END
+            }
 
             (_, _) => return false,
         }
@@ -93,9 +101,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     super::walk(path, &mut super::filter_dirs, &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
-        if extensions.iter().all(|e| !filename.ends_with(e)) ||
-           filename.starts_with(".#") {
-            return
+        if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
+            return;
         }
 
         contents.truncate(0);
@@ -114,9 +121,8 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if !skip_length && line.chars().count() > COLS
-                && !long_line_is_ok(line) {
-                    err(&format!("line longer than {} chars", COLS));
+            if !skip_length && line.chars().count() > COLS && !long_line_is_ok(line) {
+                err(&format!("line longer than {} chars", COLS));
             }
             if line.contains('\t') && !skip_tab {
                 err("tab character");
@@ -150,7 +156,12 @@ pub fn check(path: &Path, bad: &mut bool) {
         match trailing_new_lines {
             0 => tidy_error!(bad, "{}: missing trailing newline", file.display()),
             1 | 2 => {}
-            n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
+            n => tidy_error!(
+                bad,
+                "{}: too many trailing newlines ({})",
+                file.display(),
+                n
+            ),
         };
     })
 }

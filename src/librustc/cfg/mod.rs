@@ -1,10 +1,10 @@
 //! Module that constructs a control-flow graph representing an item.
 //! Uses `Graph` as the underlying representation.
 
-use rustc_data_structures::graph::implementation as graph;
-use ty::TyCtxt;
 use hir;
 use hir::def_id::DefId;
+use rustc_data_structures::graph::implementation as graph;
+use ty::TyCtxt;
 
 mod construct;
 pub mod graphviz;
@@ -37,7 +37,7 @@ impl CFGNodeData {
 
 #[derive(Debug)]
 pub struct CFGEdgeData {
-    pub exiting_scopes: Vec<hir::ItemLocalId>
+    pub exiting_scopes: Vec<hir::ItemLocalId>,
 }
 
 pub type CFGIndex = graph::NodeIndex;
@@ -49,13 +49,13 @@ pub type CFGNode = graph::Node<CFGNodeData>;
 pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
-    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         body: &hir::Body) -> CFG {
+    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body: &hir::Body) -> CFG {
         construct::construct(tcx, body)
     }
 
     pub fn node_is_reachable(&self, id: hir::ItemLocalId) -> bool {
-        self.graph.depth_traverse(self.entry, graph::OUTGOING)
-                  .any(|idx| self.graph.node_data(idx).id() == id)
+        self.graph
+            .depth_traverse(self.entry, graph::OUTGOING)
+            .any(|idx| self.graph.node_data(idx).id() == id)
     }
 }

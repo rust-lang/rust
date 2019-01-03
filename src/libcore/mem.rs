@@ -11,8 +11,8 @@ use fmt;
 use hash;
 use intrinsics;
 use marker::{Copy, PhantomData, Sized};
-use ptr;
 use ops::{Deref, DerefMut};
+use ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::transmute;
@@ -621,7 +621,10 @@ pub unsafe fn zeroed<T>() -> T {
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
 /// [`Drop`]: ../ops/trait.Drop.html
 #[inline]
-#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::uninitialized` instead")]
+#[rustc_deprecated(
+    since = "2.0.0",
+    reason = "use `mem::MaybeUninit::uninitialized` instead"
+)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
@@ -799,7 +802,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// [`Copy`]: ../../std/marker/trait.Copy.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn drop<T>(_x: T) { }
+pub fn drop<T>(_x: T) {}
 
 /// Interprets `src` as having type `&U`, and then reads `src` without moving
 /// the contained value.
@@ -888,9 +891,7 @@ impl<T> hash::Hash for Discriminant<T> {
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> fmt::Debug for Discriminant<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_tuple("Discriminant")
-           .field(&self.0)
-           .finish()
+        fmt.debug_tuple("Discriminant").field(&self.0).finish()
     }
 }
 
@@ -920,9 +921,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
-    unsafe {
-        Discriminant(intrinsics::discriminant_value(v), PhantomData)
-    }
+    unsafe { Discriminant(intrinsics::discriminant_value(v), PhantomData) }
 }
 
 /// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
@@ -1077,7 +1076,9 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
-        MaybeUninit { value: ManuallyDrop::new(val) }
+        MaybeUninit {
+            value: ManuallyDrop::new(val),
+        }
     }
 
     /// Create a new `MaybeUninit` in an uninitialized state.

@@ -51,7 +51,7 @@ pub struct Diagnostic {
     level: Level,
     message: String,
     spans: Vec<Span>,
-    children: Vec<Diagnostic>
+    children: Vec<Diagnostic>,
 }
 
 macro_rules! diagnostic_child_methods {
@@ -100,7 +100,7 @@ impl Diagnostic {
             level: level,
             message: message.into(),
             spans: vec![],
-            children: vec![]
+            children: vec![],
         }
     }
 
@@ -108,13 +108,15 @@ impl Diagnostic {
     /// the given set of `spans`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn spanned<S, T>(spans: S, level: Level, message: T) -> Diagnostic
-        where S: MultiSpan, T: Into<String>
+    where
+        S: MultiSpan,
+        T: Into<String>,
     {
         Diagnostic {
             level: level,
             message: message.into(),
             spans: spans.into_spans(),
-            children: vec![]
+            children: vec![],
         }
     }
 

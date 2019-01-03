@@ -1,5 +1,5 @@
-use hir::BindingAnnotation::*;
 use hir::BindingAnnotation;
+use hir::BindingAnnotation::*;
 use hir::Mutability;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

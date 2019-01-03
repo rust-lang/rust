@@ -51,25 +51,26 @@
 //! default global allocator. It is not compatible with the libc allocator API.
 
 #![allow(unused_attributes)]
-#![unstable(feature = "alloc",
-            reason = "this library is unlikely to be stabilized in its current \
-                      form or name",
-            issue = "27783")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
+#![unstable(
+    feature = "alloc",
+    reason = "this library is unlikely to be stabilized in its current \
+              form or name",
+    issue = "27783"
+)]
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+    test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
+)]
 #![no_std]
 #![needs_allocator]
-
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
-
 #![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
-
 #![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
@@ -119,9 +120,9 @@
 #[macro_use]
 extern crate std;
 #[cfg(test)]
-extern crate test;
-#[cfg(test)]
 extern crate rand;
+#[cfg(test)]
+extern crate test;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
@@ -131,9 +132,11 @@ mod macros;
 
 pub mod alloc;
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
+#[unstable(
+    feature = "futures_api",
+    reason = "futures in libcore are unstable",
+    issue = "50547"
+)]
 pub mod task;
 // Primitive types using the heaps above
 
@@ -146,22 +149,22 @@ pub mod boxed;
 mod boxed {
     pub use std::boxed::Box;
 }
+pub mod borrow;
 #[cfg(test)]
 mod boxed_test;
 pub mod collections;
-#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
-pub mod sync;
-pub mod rc;
-pub mod raw_vec;
-pub mod prelude;
-pub mod borrow;
 pub mod fmt;
+pub mod prelude;
+pub mod raw_vec;
+pub mod rc;
 pub mod slice;
 pub mod str;
 pub mod string;
+#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
+pub mod sync;
 pub mod vec;
 
 #[cfg(not(test))]
 mod std {
-    pub use core::ops;      // RangeFull
+    pub use core::ops; // RangeFull
 }

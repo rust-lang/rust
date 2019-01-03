@@ -145,7 +145,7 @@ impl CanonicalVarKind {
             CanonicalVarKind::Ty(kind) => match kind {
                 CanonicalTyVarKind::General(ui) => ui,
                 CanonicalTyVarKind::Float | CanonicalTyVarKind::Int => ty::UniverseIndex::ROOT,
-            }
+            },
 
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
@@ -352,12 +352,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         match cv_info.kind {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
-                    CanonicalTyVarKind::General(ui) => {
-                        self.next_ty_var_in_universe(
-                            TypeVariableOrigin::MiscVariable(span),
-                            universe_map(ui)
-                        )
-                    }
+                    CanonicalTyVarKind::General(ui) => self.next_ty_var_in_universe(
+                        TypeVariableOrigin::MiscVariable(span),
+                        universe_map(ui),
+                    ),
 
                     CanonicalTyVarKind::Int => self.tcx.mk_int_var(self.next_int_var_id()),
 
@@ -375,10 +373,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 self.tcx.mk_ty(ty::Placeholder(placeholder_mapped)).into()
             }
 
-            CanonicalVarKind::Region(ui) => self.next_region_var_in_universe(
-                RegionVariableOrigin::MiscVariable(span),
-                universe_map(ui),
-            ).into(),
+            CanonicalVarKind::Region(ui) => self
+                .next_region_var_in_universe(
+                    RegionVariableOrigin::MiscVariable(span),
+                    universe_map(ui),
+                )
+                .into(),
 
             CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, name }) => {
                 let universe_mapped = universe_map(universe);
@@ -386,7 +386,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     universe: universe_mapped,
                     name,
                 };
-                self.tcx.mk_region(ty::RePlaceholder(placeholder_mapped)).into()
+                self.tcx
+                    .mk_region(ty::RePlaceholder(placeholder_mapped))
+                    .into()
             }
         }
     }
@@ -434,17 +436,19 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         use ty::subst::UnpackedKind;
 
         CanonicalVarValues {
-            var_values: self.var_values.iter()
+            var_values: self
+                .var_values
+                .iter()
                 .zip(0..)
                 .map(|(kind, i)| match kind.unpack() {
-                    UnpackedKind::Type(..) => tcx.mk_ty(
-                        ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())
-                    ).into(),
-                    UnpackedKind::Lifetime(..) => tcx.mk_region(
-                        ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
-                    ).into(),
+                    UnpackedKind::Type(..) => tcx
+                        .mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into()))
+                        .into(),
+                    UnpackedKind::Lifetime(..) => tcx
+                        .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i)))
+                        .into(),
                 })
-                .collect()
+                .collect(),
         }
     }
 }

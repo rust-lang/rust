@@ -1,4 +1,4 @@
-use spec::{TargetOptions, RelroLevel};
+use spec::{RelroLevel, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
@@ -11,6 +11,6 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
 
-        .. Default::default()
+        ..Default::default()
     }
 }

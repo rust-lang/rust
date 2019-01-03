@@ -1,14 +1,13 @@
-use infer::InferCtxt;
 use infer::canonical::OriginalQueryValues;
+use infer::InferCtxt;
 use syntax::ast;
 use syntax::source_map::Span;
-use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use traits::query::NoSolution;
+use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use ty::{self, Ty, TyCtxt};
 
 use ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use std::mem;
 
 /// Outlives bounds are relationships between generic parameters,
@@ -43,9 +42,11 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             OutlivesBound::RegionSubRegion(ref a, ref b) => {
@@ -102,7 +103,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Err(NoSolution) => {
                 self.tcx.sess.delay_span_bug(
                     span,
-                    "implied_outlives_bounds failed to solve all obligations"
+                    "implied_outlives_bounds failed to solve all obligations",
                 );
                 return vec![];
             }
@@ -110,15 +111,18 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         assert!(result.value.is_proven());
 
         let result = self.instantiate_query_response_and_region_obligations(
-            &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);
+            &ObligationCause::misc(span, body_id),
+            param_env,
+            &orig_values,
+            &result,
+        );
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {
             Ok(v) => v,
             Err(_) => {
-                self.tcx.sess.delay_span_bug(
-                    span,
-                    "implied_outlives_bounds failed to instantiate"
-                );
+                self.tcx
+                    .sess
+                    .delay_span_bug(span, "implied_outlives_bounds failed to instantiate");
                 return vec![];
             }
         };
@@ -130,7 +134,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         if fulfill_cx.select_all_or_error(self).is_err() {
             self.tcx.sess.delay_span_bug(
                 span,
-                "implied_outlives_bounds failed to solve obligations from instantiation"
+                "implied_outlives_bounds failed to solve obligations from instantiation",
             );
         }
 
@@ -146,16 +150,16 @@ pub fn explicit_outlives_bounds<'tcx>(
         .caller_bounds
         .into_iter()
         .filter_map(move |predicate| match predicate {
-            ty::Predicate::Projection(..) |
-            ty::Predicate::Trait(..) |
-            ty::Predicate::Subtype(..) |
-            ty::Predicate::WellFormed(..) |
-            ty::Predicate::ObjectSafe(..) |
-            ty::Predicate::ClosureKind(..) |
-            ty::Predicate::TypeOutlives(..) |
-            ty::Predicate::ConstEvaluatable(..) => None,
-            ty::Predicate::RegionOutlives(ref data) => data.no_bound_vars().map(
-                |ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a),
-            ),
+            ty::Predicate::Projection(..)
+            | ty::Predicate::Trait(..)
+            | ty::Predicate::Subtype(..)
+            | ty::Predicate::WellFormed(..)
+            | ty::Predicate::ObjectSafe(..)
+            | ty::Predicate::ClosureKind(..)
+            | ty::Predicate::TypeOutlives(..)
+            | ty::Predicate::ConstEvaluatable(..) => None,
+            ty::Predicate::RegionOutlives(ref data) => data
+                .no_bound_vars()
+                .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a)),
         })
 }

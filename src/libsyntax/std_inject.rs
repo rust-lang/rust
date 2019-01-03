@@ -1,13 +1,13 @@
 use ast;
 use attr;
-use std::cell::Cell;
-use std::iter;
 use edition::Edition;
 use ext::hygiene::{Mark, SyntaxContext};
-use symbol::{Symbol, keywords};
-use syntax_pos::{DUMMY_SP, Span};
-use source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use ptr::P;
+use source_map::{dummy_spanned, hygiene, respan, ExpnInfo, MacroAttribute};
+use std::cell::Cell;
+use std::iter;
+use symbol::{keywords, Symbol};
+use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
@@ -70,17 +70,22 @@ pub fn maybe_inject_crates_ref(
         } else {
             None
         };
-        krate.module.items.insert(0, P(ast::Item {
-            attrs: vec![attr::mk_attr_outer(DUMMY_SP,
-                                            attr::mk_attr_id(),
-                                            attr::mk_word_item(ast::Ident::from_str("macro_use")))],
-            vis: dummy_spanned(ast::VisibilityKind::Inherited),
-            node: ast::ItemKind::ExternCrate(alt_std_name.or(orig_name)),
-            ident: ast::Ident::with_empty_ctxt(rename),
-            id: ast::DUMMY_NODE_ID,
-            span: DUMMY_SP,
-            tokens: None,
-        }));
+        krate.module.items.insert(
+            0,
+            P(ast::Item {
+                attrs: vec![attr::mk_attr_outer(
+                    DUMMY_SP,
+                    attr::mk_attr_id(),
+                    attr::mk_word_item(ast::Ident::from_str("macro_use")),
+                )],
+                vis: dummy_spanned(ast::VisibilityKind::Inherited),
+                node: ast::ItemKind::ExternCrate(alt_std_name.or(orig_name)),
+                ident: ast::Ident::with_empty_ctxt(rename),
+                id: ast::DUMMY_NODE_ID,
+                span: DUMMY_SP,
+                tokens: None,
+            }),
+        );
     }
 
     // the crates have been injected, the assumption is that the first one is the one with
@@ -90,33 +95,43 @@ pub fn maybe_inject_crates_ref(
     INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
     let span = ignored_span(DUMMY_SP);
-    krate.module.items.insert(0, P(ast::Item {
-        attrs: vec![ast::Attribute {
-            style: ast::AttrStyle::Outer,
-            path: ast::Path::from_ident(ast::Ident::new(Symbol::intern("prelude_import"), span)),
-            tokens: TokenStream::empty(),
-            id: attr::mk_attr_id(),
-            is_sugared_doc: false,
-            span,
-        }],
-        vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-        node: ast::ItemKind::Use(P(ast::UseTree {
-            prefix: ast::Path {
-                segments: iter::once(keywords::PathRoot.ident())
-                    .chain(
-                        [name, "prelude", "v1"].iter().cloned()
-                            .map(ast::Ident::from_str)
-                    ).map(ast::PathSegment::from_ident).collect(),
+    krate.module.items.insert(
+        0,
+        P(ast::Item {
+            attrs: vec![ast::Attribute {
+                style: ast::AttrStyle::Outer,
+                path: ast::Path::from_ident(ast::Ident::new(
+                    Symbol::intern("prelude_import"),
+                    span,
+                )),
+                tokens: TokenStream::empty(),
+                id: attr::mk_attr_id(),
+                is_sugared_doc: false,
                 span,
-            },
-            kind: ast::UseTreeKind::Glob,
+            }],
+            vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            node: ast::ItemKind::Use(P(ast::UseTree {
+                prefix: ast::Path {
+                    segments: iter::once(keywords::PathRoot.ident())
+                        .chain(
+                            [name, "prelude", "v1"]
+                                .iter()
+                                .cloned()
+                                .map(ast::Ident::from_str),
+                        )
+                        .map(ast::PathSegment::from_ident)
+                        .collect(),
+                    span,
+                },
+                kind: ast::UseTreeKind::Glob,
+                span,
+            })),
+            id: ast::DUMMY_NODE_ID,
+            ident: keywords::Invalid.ident(),
             span,
-        })),
-        id: ast::DUMMY_NODE_ID,
-        ident: keywords::Invalid.ident(),
-        span,
-        tokens: None,
-    }));
+            tokens: None,
+        }),
+    );
 
     krate
 }

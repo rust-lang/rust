@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry::{Occupied, Vacant};
+use std::collections::BTreeMap;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::rc::Rc;
 
-use std::iter::FromIterator;
 use super::DeterministicRng;
+use std::iter::FromIterator;
 
 #[test]
 fn test_basic_large() {
@@ -75,7 +75,8 @@ fn test_iter() {
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
-        where T: Iterator<Item = (usize, usize)>
+    where
+        T: Iterator<Item = (usize, usize)>,
     {
         for i in 0..size {
             assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
@@ -97,7 +98,8 @@ fn test_iter_rev() {
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
-        where T: Iterator<Item = (usize, usize)>
+    where
+        T: Iterator<Item = (usize, usize)>,
     {
         for i in 0..size {
             assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
@@ -133,7 +135,8 @@ fn test_iter_mixed() {
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
-        where T: Iterator<Item = (usize, usize)> + DoubleEndedIterator
+    where
+        T: Iterator<Item = (usize, usize)> + DoubleEndedIterator,
     {
         for i in 0..size / 4 {
             assert_eq!(iter.size_hint(), (size - i * 2, Some(size - i * 2)));
@@ -175,8 +178,9 @@ fn test_range_inclusive() {
     let map: BTreeMap<_, _> = (0..=size).map(|i| (i, i)).collect();
 
     fn check<'a, L, R>(lhs: L, rhs: R)
-        where L: IntoIterator<Item=(&'a i32, &'a i32)>,
-              R: IntoIterator<Item=(&'a i32, &'a i32)>,
+    where
+        L: IntoIterator<Item = (&'a i32, &'a i32)>,
+        R: IntoIterator<Item = (&'a i32, &'a i32)>,
     {
         let lhs: Vec<_> = lhs.into_iter().collect();
         let rhs: Vec<_> = rhs.into_iter().collect();
@@ -192,7 +196,10 @@ fn test_range_inclusive() {
     check(map.range(-1..=size), map.range(..));
     check(map.range(..=size), map.range(..));
     check(map.range(..=200), map.range(..201));
-    check(map.range(5..=8), vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)]);
+    check(
+        map.range(5..=8),
+        vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)],
+    );
     check(map.range(-1..=0), vec![(&0, &0)]);
     check(map.range(-1..=2), vec![(&0, &0), (&1, &1), (&2, &2)]);
 }
@@ -278,7 +285,7 @@ fn test_range_borrowed_key() {
     map.insert("coyote".to_string(), 3);
     map.insert("dingo".to_string(), 4);
     // NOTE: would like to use simply "b".."d" here...
-    let mut iter = map.range::<str, _>((Included("b"),Excluded("d")));
+    let mut iter = map.range::<str, _>((Included("b"), Excluded("d")));
     assert_eq!(iter.next(), Some((&"baboon".to_string(), &2)));
     assert_eq!(iter.next(), Some((&"coyote".to_string(), &3)));
     assert_eq!(iter.next(), None);
@@ -291,7 +298,9 @@ fn test_range() {
 
     for i in 0..size {
         for j in i..size {
-            let mut kvs = map.range((Included(&i), Included(&j))).map(|(&k, &v)| (k, v));
+            let mut kvs = map
+                .range((Included(&i), Included(&j)))
+                .map(|(&k, &v)| (k, v));
             let mut pairs = (i..=j).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
@@ -310,7 +319,9 @@ fn test_range_mut() {
 
     for i in 0..size {
         for j in i..size {
-            let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
+            let mut kvs = map
+                .range_mut((Included(&i), Included(&j)))
+                .map(|(&k, &mut v)| (k, v));
             let mut pairs = (i..=j).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
@@ -367,7 +378,6 @@ fn test_entry() {
     assert_eq!(map.get(&1).unwrap(), &100);
     assert_eq!(map.len(), 6);
 
-
     // Existing key (update)
     match map.entry(2) {
         Vacant(_) => unreachable!(),
@@ -388,7 +398,6 @@ fn test_entry() {
     }
     assert_eq!(map.get(&3), None);
     assert_eq!(map.len(), 5);
-
 
     // Inexistent key (insert)
     match map.entry(10) {
@@ -511,7 +520,7 @@ fn test_clone() {
 #[test]
 #[allow(dead_code)]
 fn test_variance() {
-    use std::collections::btree_map::{Iter, IntoIter, Range, Keys, Values};
+    use std::collections::btree_map::{IntoIter, Iter, Keys, Range, Values};
 
     fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> {
         v
@@ -592,7 +601,7 @@ macro_rules! create_append_test {
 
             let mut b = BTreeMap::new();
             for i in 5..$len {
-                b.insert(i, 2*i);
+                b.insert(i, 2 * i);
             }
 
             a.append(&mut b);
@@ -604,12 +613,12 @@ macro_rules! create_append_test {
                 if i < 5 {
                     assert_eq!(a[&i], i);
                 } else {
-                    assert_eq!(a[&i], 2*i);
+                    assert_eq!(a[&i], 2 * i);
                 }
             }
 
-            assert_eq!(a.remove(&($len-1)), Some(2*($len-1)));
-            assert_eq!(a.insert($len-1, 20), None);
+            assert_eq!(a.remove(&($len - 1)), Some(2 * ($len - 1)));
+            assert_eq!(a.insert($len - 1, 20), None);
         }
     };
 }
@@ -672,6 +681,10 @@ fn test_split_off_large_random_sorted() {
     let key = data[data.len() / 2].0;
     let right = map.split_off(&key);
 
-    assert!(map.into_iter().eq(data.clone().into_iter().filter(|x| x.0 < key)));
-    assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
+    assert!(map
+        .into_iter()
+        .eq(data.clone().into_iter().filter(|x| x.0 < key)));
+    assert!(right
+        .into_iter()
+        .eq(data.into_iter().filter(|x| x.0 >= key)));
 }

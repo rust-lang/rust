@@ -1,6 +1,6 @@
 //! Check license of third-party deps by inspecting vendor
 
-use std::collections::{BTreeSet, HashSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -380,14 +380,15 @@ fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
     ];
     let mut name_to_id: HashMap<_, Vec<_>> = HashMap::new();
     for node in resolve.nodes.iter() {
-        name_to_id.entry(node.id.split_whitespace().next().unwrap())
+        name_to_id
+            .entry(node.id.split_whitespace().next().unwrap())
             .or_default()
             .push(&node.id);
     }
 
     for name in FORBIDDEN_TO_HAVE_DUPLICATES {
         if name_to_id[name].len() <= 1 {
-            continue
+            continue;
         }
         println!("crate `{}` is duplicated in `Cargo.lock`", name);
         for id in name_to_id[name].iter() {

@@ -1,9 +1,8 @@
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
-
 use env;
-use io::prelude::*;
 use io;
+use io::prelude::*;
 use path::{self, Path};
 use ptr;
 use rustc_demangle::demangle;
@@ -12,10 +11,7 @@ use sync::atomic::{self, Ordering};
 use sys::mutex::Mutex;
 
 pub use sys::backtrace::{
-    unwind_backtrace,
-    resolve_symname,
-    foreach_symbol_fileline,
-    BacktraceContext
+    foreach_symbol_fileline, resolve_symname, unwind_backtrace, BacktraceContext,
 };
 
 #[cfg(target_pointer_width = "64")]
@@ -48,7 +44,7 @@ pub fn print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     // test mode immediately return here to optimize away any references to the
     // libbacktrace symbols
     if cfg!(test) {
-        return Ok(())
+        return Ok(());
     }
 
     // Use a lock to prevent mixed output in multithreading context.
@@ -68,22 +64,28 @@ fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
         inline_context: 0,
     }; MAX_NB_FRAMES];
     let (nb_frames, context) = unwind_backtrace(&mut frames)?;
-    let (skipped_before, skipped_after) =
-        filter_frames(&frames[..nb_frames], format, &context);
+    let (skipped_before, skipped_after) = filter_frames(&frames[..nb_frames], format, &context);
     if skipped_before + skipped_after > 0 {
-        writeln!(w, "note: Some details are omitted, \
-                     run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
+        writeln!(
+            w,
+            "note: Some details are omitted, \
+             run with `RUST_BACKTRACE=full` for a verbose backtrace."
+        )?;
     }
     writeln!(w, "stack backtrace:")?;
 
     let filtered_frames = &frames[..nb_frames - skipped_after];
     for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
-        resolve_symname(*frame, |symname| {
-            output(w, index, *frame, symname, format)
-        }, &context)?;
-        let has_more_filenames = foreach_symbol_fileline(*frame, |file, line| {
-            output_fileline(w, file, line, format)
-        }, &context)?;
+        resolve_symname(
+            *frame,
+            |symname| output(w, index, *frame, symname, format),
+            &context,
+        )?;
+        let has_more_filenames = foreach_symbol_fileline(
+            *frame,
+            |file, line| output_fileline(w, file, line, format),
+            &context,
+        )?;
         if has_more_filenames {
             w.write_all(b" <... and possibly more>")?;
         }
@@ -94,29 +96,38 @@ fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
 
 /// Returns a number of frames to remove at the beginning and at the end of the
 /// backtrace, according to the backtrace format.
-fn filter_frames(frames: &[Frame],
-                 format: PrintFormat,
-                 context: &BacktraceContext) -> (usize, usize)
-{
+fn filter_frames(
+    frames: &[Frame],
+    format: PrintFormat,
+    context: &BacktraceContext,
+) -> (usize, usize) {
     if format == PrintFormat::Full {
         return (0, 0);
     }
 
     let skipped_before = 0;
 
-    let skipped_after = frames.len() - frames.iter().position(|frame| {
-        let mut is_marker = false;
-        let _ = resolve_symname(*frame, |symname| {
-            if let Some(mangled_symbol_name) = symname {
-                // Use grep to find the concerned functions
-                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
-                    is_marker = true;
-                }
-            }
-            Ok(())
-        }, context);
-        is_marker
-    }).unwrap_or(frames.len());
+    let skipped_after = frames.len()
+        - frames
+            .iter()
+            .position(|frame| {
+                let mut is_marker = false;
+                let _ = resolve_symname(
+                    *frame,
+                    |symname| {
+                        if let Some(mangled_symbol_name) = symname {
+                            // Use grep to find the concerned functions
+                            if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
+                                is_marker = true;
+                            }
+                        }
+                        Ok(())
+                    },
+                    context,
+                );
+                is_marker
+            })
+            .unwrap_or(frames.len());
 
     if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces
@@ -126,11 +137,13 @@ fn filter_frames(frames: &[Frame],
     (skipped_before, skipped_after)
 }
 
-
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-    where F: FnOnce() -> T, F: Send, T: Send
+where
+    F: FnOnce() -> T,
+    F: Send,
+    T: Send,
 {
     f()
 }
@@ -155,7 +168,7 @@ pub fn log_enabled() -> Option<PrintFormat> {
         _ => return Some(PrintFormat::Full),
     }
 
-    let val = env::var_os("RUST_BACKTRACE").and_then(|x|
+    let val = env::var_os("RUST_BACKTRACE").and_then(|x| {
         if &x == "0" {
             None
         } else if &x == "full" {
@@ -163,11 +176,14 @@ pub fn log_enabled() -> Option<PrintFormat> {
         } else {
             Some(PrintFormat::Short)
         }
+    });
+    ENABLED.store(
+        match val {
+            Some(v) => v as isize,
+            None => 1,
+        },
+        Ordering::SeqCst,
     );
-    ENABLED.store(match val {
-        Some(v) => v as isize,
-        None => 1,
-    }, Ordering::SeqCst);
     val
 }
 
@@ -175,18 +191,19 @@ pub fn log_enabled() -> Option<PrintFormat> {
 ///
 /// These output functions should now be used everywhere to ensure consistency.
 /// You may want to also use `output_fileline`.
-fn output(w: &mut dyn Write, idx: usize, frame: Frame,
-              s: Option<&str>, format: PrintFormat) -> io::Result<()> {
+fn output(
+    w: &mut dyn Write,
+    idx: usize,
+    frame: Frame,
+    s: Option<&str>,
+    format: PrintFormat,
+) -> io::Result<()> {
     // Remove the `17: 0x0 - <unknown>` line.
     if format == PrintFormat::Short && frame.exact_position == ptr::null() {
         return Ok(());
     }
     match format {
-        PrintFormat::Full => write!(w,
-                                    "  {:2}: {:2$?} - ",
-                                    idx,
-                                    frame.exact_position,
-                                    HEX_WIDTH)?,
+        PrintFormat::Full => write!(w, "  {:2}: {:2$?} - ", idx, frame.exact_position, HEX_WIDTH)?,
         PrintFormat::Short => write!(w, "  {:2}: ", idx)?,
     }
     match s {
@@ -207,17 +224,16 @@ fn output(w: &mut dyn Write, idx: usize, frame: Frame,
 ///
 /// See also `output`.
 #[allow(dead_code)]
-fn output_fileline(w: &mut dyn Write,
-                   file: &[u8],
-                   line: u32,
-                   format: PrintFormat) -> io::Result<()> {
+fn output_fileline(
+    w: &mut dyn Write,
+    file: &[u8],
+    line: u32,
+    format: PrintFormat,
+) -> io::Result<()> {
     // prior line: "  ##: {:2$} - func"
     w.write_all(b"")?;
     match format {
-        PrintFormat::Full => write!(w,
-                                    "           {:1$}",
-                                    "",
-                                    HEX_WIDTH)?,
+        PrintFormat::Full => write!(w, "           {:1$}", "", HEX_WIDTH)?,
         PrintFormat::Short => write!(w, "           ")?,
     }
 
@@ -240,4 +256,3 @@ fn output_fileline(w: &mut dyn Write,
 
     w.write_all(b"\n")
 }
-

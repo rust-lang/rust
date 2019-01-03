@@ -193,7 +193,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
                 let mut sp = cm.def_span(self.hir().span(node));
-                if let Some(param) = self.hir()
+                if let Some(param) = self
+                    .hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&br.name))
                 {
@@ -206,7 +207,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 ..
             }) => {
                 let mut sp = cm.def_span(self.hir().span(node));
-                if let Some(param) = self.hir()
+                if let Some(param) = self
+                    .hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&name))
                 {
@@ -360,7 +362,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                                .emit();
+                            .emit();
                         } else if sup_r.is_placeholder() {
                             self.report_placeholder_failure(
                                 region_scope_tree,
@@ -368,7 +370,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                                .emit();
+                            .emit();
                         } else {
                             self.report_sub_sup_conflict(
                                 region_scope_tree,
@@ -423,10 +425,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             errors.clone()
         } else {
             errors
-            .iter()
-            .filter(|&e| !is_bound_failure(e))
-            .cloned()
-            .collect()
+                .iter()
+                .filter(|&e| !is_bound_failure(e))
+                .cloned()
+                .collect()
         };
 
         // sort the errors by span, for better error message stability.
@@ -472,8 +474,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
-                if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _))
-                     = (&exp_found.expected.sty, &exp_found.found.sty)
+                if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
+                    (&exp_found.expected.sty, &exp_found.found.sty)
                 {
                     report_path_match(err, exp_adt.did, found_adt.did);
                 }
@@ -541,7 +543,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Output the lifetimes for the first type
-        let lifetimes = sub.regions()
+        let lifetimes = sub
+            .regions()
             .map(|lifetime| {
                 let s = lifetime.to_string();
                 if s.is_empty() {
@@ -821,14 +824,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //     Foo<Bar<Qux>
                     //         ------- this type argument is exactly the same as the other type
                     //     Bar<Qux>
-                    if self.cmp_type_arg(
-                        &mut values.0,
-                        &mut values.1,
-                        path1.clone(),
-                        sub_no_defaults_1,
-                        path2.clone(),
-                        &t2,
-                    ).is_some()
+                    if self
+                        .cmp_type_arg(
+                            &mut values.0,
+                            &mut values.1,
+                            path1.clone(),
+                            sub_no_defaults_1,
+                            path2.clone(),
+                            &t2,
+                        )
+                        .is_some()
                     {
                         return values;
                     }
@@ -837,14 +842,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //     Bar<Qux>
                     //     Foo<Bar<Qux>>
                     //         ------- this type argument is exactly the same as the other type
-                    if self.cmp_type_arg(
-                        &mut values.1,
-                        &mut values.0,
-                        path2,
-                        sub_no_defaults_2,
-                        path1,
-                        &t1,
-                    ).is_some()
+                    if self
+                        .cmp_type_arg(
+                            &mut values.1,
+                            &mut values.0,
+                            path2,
+                            sub_no_defaults_2,
+                            path1,
+                            &t1,
+                        )
+                        .is_some()
                     {
                         return values;
                     }
@@ -1022,22 +1029,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             ("std::result::Result", result_msg),
                             ("core::result::Result", result_msg),
                         ];
-                        if let Some(msg) = have_as_ref.iter()
-                            .filter_map(|(path, msg)| if &path_str == path {
-                                Some(msg)
-                            } else {
-                                None
-                            }).next()
+                        if let Some(msg) = have_as_ref
+                            .iter()
+                            .filter_map(
+                                |(path, msg)| if &path_str == path { Some(msg) } else { None },
+                            )
+                            .next()
                         {
                             let mut show_suggestion = true;
                             for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
                                 match exp_ty.sty {
                                     TyKind::Ref(_, exp_ty, _) => {
                                         match (&exp_ty.sty, &found_ty.sty) {
-                                            (_, TyKind::Param(_)) |
-                                            (_, TyKind::Infer(_)) |
-                                            (TyKind::Param(_), _) |
-                                            (TyKind::Infer(_), _) => {}
+                                            (_, TyKind::Param(_))
+                                            | (_, TyKind::Infer(_))
+                                            | (TyKind::Param(_), _)
+                                            | (TyKind::Infer(_), _) => {}
                                             _ if ty::TyS::same_type(exp_ty, found_ty) => {}
                                             _ => show_suggestion = false,
                                         };
@@ -1180,7 +1187,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // `T:` when appropriate
                             let is_impl_trait = bound_kind.to_string().starts_with("impl ");
                             let sp = if has_bounds && !is_impl_trait {
-                                sp.to(self.tcx
+                                sp.to(self
+                                    .tcx
                                     .sess
                                     .source_map()
                                     .next_point(self.tcx.sess.source_map().next_point(sp)))
@@ -1226,7 +1234,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         ) {
             let consider = format!(
                 "consider adding an explicit lifetime bound {}",
-                if type_param_span.map(|(_, _, is_impl_trait)| is_impl_trait).unwrap_or(false) {
+                if type_param_span
+                    .map(|(_, _, is_impl_trait)| is_impl_trait)
+                    .unwrap_or(false)
+                {
                     format!(" `{}` to `{}`...", sub, bound_kind)
                 } else {
                     format!("`{}: {}`...", bound_kind, sub)
@@ -1339,8 +1350,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
                 debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
                 debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
-                debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);
-                debug!("report_sub_sup_conflict: sub_trace.values={:?}", sub_trace.values);
+                debug!(
+                    "report_sub_sup_conflict: sup_trace.values={:?}",
+                    sup_trace.values
+                );
+                debug!(
+                    "report_sub_sup_conflict: sub_trace.values={:?}",
+                    sub_trace.values
+                );
 
                 if let (Some((sup_expected, sup_found)), Some((sub_expected, sub_found))) = (
                     self.values_str(&sup_trace.values),

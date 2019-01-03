@@ -208,7 +208,8 @@ impl<'tcx> UniversalRegions<'tcx> {
             mir_node_id,
             mir_hir_id,
             param_env,
-        }.build()
+        }
+        .build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -324,10 +325,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // So we just include the region-vid. Annoying.
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
-                    err.note(&format!(
-                        "late-bound region is {:?}",
-                        self.to_region_vid(r),
-                    ));
+                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
                 });
             }
             DefiningTy::Generator(def_id, substs, _) => {
@@ -342,10 +340,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // and so forth.
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
-                    err.note(&format!(
-                        "late-bound region is {:?}",
-                        self.to_region_vid(r),
-                    ));
+                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
                 });
             }
             DefiningTy::FnDef(def_id, substs) => {
@@ -486,7 +481,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
-                let defining_ty = self.infcx
+                let defining_ty = self
+                    .infcx
                     .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
                 match defining_ty.sty {
@@ -507,7 +503,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
                 assert_eq!(closure_base_def_id, self.mir_def_id);
                 let identity_substs = Substs::identity_for_item(tcx, closure_base_def_id);
-                let substs = self.infcx
+                let substs = self
+                    .infcx
                     .replace_free_regions_with_nll_infer_vars(FR, &identity_substs);
                 DefiningTy::Const(self.mir_def_id, substs)
             }
@@ -739,7 +736,8 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
         if let ty::ReVar(..) = r {
             r.to_region_vid()
         } else {
-            *self.indices
+            *self
+                .indices
                 .get(&r)
                 .unwrap_or_else(|| bug!("cannot convert `{:?}` to a region vid", r))
         }

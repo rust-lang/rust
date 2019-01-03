@@ -3,7 +3,7 @@ use io::prelude::*;
 use cell::RefCell;
 use fmt;
 use io::lazy::Lazy;
-use io::{self, Initializer, BufReader, LineWriter};
+use io::{self, BufReader, Initializer, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -41,7 +41,9 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
+fn stdin_raw() -> io::Result<StdinRaw> {
+    stdio::Stdin::new().map(StdinRaw)
+}
 
 /// Constructs a new raw handle to the standard output stream of this process.
 ///
@@ -52,7 +54,9 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
+fn stdout_raw() -> io::Result<StdoutRaw> {
+    stdio::Stdout::new().map(StdoutRaw)
+}
 
 /// Constructs a new raw handle to the standard error stream of this process.
 ///
@@ -61,10 +65,14 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
+fn stderr_raw() -> io::Result<StderrRaw> {
+    stdio::Stderr::new().map(StderrRaw)
+}
 
 impl Read for StdinRaw {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
+    }
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
@@ -72,12 +80,20 @@ impl Read for StdinRaw {
     }
 }
 impl Write for StdoutRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
 }
 impl Write for StderrRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
 }
 
 enum Maybe<T> {
@@ -89,14 +105,14 @@ impl<W: io::Write> io::Write for Maybe<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
-            Maybe::Fake => Ok(buf.len())
+            Maybe::Fake => Ok(buf.len()),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
-            Maybe::Fake => Ok(())
+            Maybe::Fake => Ok(()),
         }
     }
 }
@@ -105,7 +121,7 @@ impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
-            Maybe::Fake => Ok(0)
+            Maybe::Fake => Ok(0),
         }
     }
 }
@@ -113,7 +129,7 @@ impl<R: io::Read> io::Read for Maybe<R> {
 fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default),
-        r => r
+        r => r,
     }
 }
 
@@ -190,7 +206,9 @@ pub fn stdin() -> Stdin {
     static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
     return Stdin {
         inner: unsafe {
-            INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown")
+            INSTANCE
+                .get(stdin_init)
+                .expect("cannot access stdin during shutdown")
         },
     };
 
@@ -198,10 +216,13 @@ pub fn stdin() -> Stdin {
         // This must not reentrantly access `INSTANCE`
         let stdin = match stdin_raw() {
             Ok(stdin) => Maybe::Real(stdin),
-            _ => Maybe::Fake
+            _ => Maybe::Fake,
         };
 
-        Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
+        Arc::new(Mutex::new(BufReader::with_capacity(
+            stdio::STDIN_BUF_SIZE,
+            stdin,
+        )))
     }
 }
 
@@ -232,7 +253,9 @@ impl Stdin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
-        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdinLock {
+            inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()),
+        }
     }
 
     /// Locks this handle and reads a line of input into the specified buffer.
@@ -309,8 +332,12 @@ impl<'a> Read for StdinLock<'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> BufRead for StdinLock<'a> {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, n: usize) { self.inner.consume(n) }
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        self.inner.fill_buf()
+    }
+    fn consume(&mut self, n: usize) {
+        self.inner.consume(n)
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -391,7 +418,9 @@ pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
     return Stdout {
         inner: unsafe {
-            INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
+            INSTANCE
+                .get(stdout_init)
+                .expect("cannot access stdout during shutdown")
         },
     };
 
@@ -428,7 +457,9 @@ impl Stdout {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
-        StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdoutLock {
+            inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()),
+        }
     }
 }
 
@@ -529,7 +560,9 @@ pub fn stderr() -> Stderr {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
     return Stderr {
         inner: unsafe {
-            INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown")
+            INSTANCE
+                .get(stderr_init)
+                .expect("cannot access stderr during shutdown")
         },
     };
 
@@ -566,7 +599,9 @@ impl Stderr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock {
-        StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StderrLock {
+            inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()),
+        }
     }
 }
 
@@ -617,20 +652,22 @@ impl<'a> fmt::Debug for StderrLock<'a> {
 ///
 /// Note that this does not need to be called for all new threads; the default
 /// output handle is to the process's stderr stream.
-#[unstable(feature = "set_stdio",
-           reason = "this function may disappear completely or be replaced \
-                     with a more general mechanism",
-           issue = "0")]
+#[unstable(
+    feature = "set_stdio",
+    reason = "this function may disappear completely or be replaced \
+              with a more general mechanism",
+    issue = "0"
+)]
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
-    use panicking::LOCAL_STDERR;
     use mem;
-    LOCAL_STDERR.with(move |slot| {
-        mem::replace(&mut *slot.borrow_mut(), sink)
-    }).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+    use panicking::LOCAL_STDERR;
+    LOCAL_STDERR
+        .with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink))
+        .and_then(|mut s| {
+            let _ = s.flush();
+            Some(s)
+        })
 }
 
 /// Resets the thread-local stdout handle to the specified writer
@@ -641,19 +678,21 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 ///
 /// Note that this does not need to be called for all new threads; the default
 /// output handle is to the process's stdout stream.
-#[unstable(feature = "set_stdio",
-           reason = "this function may disappear completely or be replaced \
-                     with a more general mechanism",
-           issue = "0")]
+#[unstable(
+    feature = "set_stdio",
+    reason = "this function may disappear completely or be replaced \
+              with a more general mechanism",
+    issue = "0"
+)]
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use mem;
-    LOCAL_STDOUT.with(move |slot| {
-        mem::replace(&mut *slot.borrow_mut(), sink)
-    }).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+    LOCAL_STDOUT
+        .with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink))
+        .and_then(|mut s| {
+            let _ = s.flush();
+            Some(s)
+        })
 }
 
 /// Write `args` to output stream `local_s` if possible, `global_s`
@@ -668,40 +707,43 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
     args: fmt::Arguments,
-    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write + Send>>>>,
     global_s: fn() -> T,
     label: &str,
-)
-where
+) where
     T: Write,
 {
-    let result = local_s.try_with(|s| {
-        if let Ok(mut borrowed) = s.try_borrow_mut() {
-            if let Some(w) = borrowed.as_mut() {
-                return w.write_fmt(args);
+    let result = local_s
+        .try_with(|s| {
+            if let Ok(mut borrowed) = s.try_borrow_mut() {
+                if let Some(w) = borrowed.as_mut() {
+                    return w.write_fmt(args);
+                }
             }
-        }
-        global_s().write_fmt(args)
-    }).unwrap_or_else(|_| {
-        global_s().write_fmt(args)
-    });
+            global_s().write_fmt(args)
+        })
+        .unwrap_or_else(|_| global_s().write_fmt(args));
 
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);
     }
 }
 
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+#[unstable(
+    feature = "print_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "0"
+)]
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
 }
 
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+#[unstable(
+    feature = "print_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "0"
+)]
 #[doc(hidden)]
 pub fn _eprint(args: fmt::Arguments) {
     use panicking::LOCAL_STDERR;
@@ -710,9 +752,9 @@ pub fn _eprint(args: fmt::Arguments) {
 
 #[cfg(test)]
 mod tests {
-    use panic::{UnwindSafe, RefUnwindSafe};
-    use thread;
     use super::*;
+    use panic::{RefUnwindSafe, UnwindSafe};
+    use thread;
 
     #[test]
     fn stdout_unwind_safe() {
@@ -746,7 +788,9 @@ mod tests {
             let _a = stderr();
             let _a = _a.lock();
             panic!();
-        }).join().unwrap_err();
+        })
+        .join()
+        .unwrap_err();
 
         let _a = stdin();
         let _a = _a.lock();

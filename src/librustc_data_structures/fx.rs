@@ -1,1 +1,1 @@
-pub use rustc_hash::{FxHasher, FxHashMap, FxHashSet};
+pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};

@@ -3,14 +3,13 @@ use std::fmt::{self, Display};
 
 use rustc::mir::*;
 use rustc::ty;
-use rustc_errors::{DiagnosticBuilder,Applicability};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
-use borrow_check::MirBorrowckCtxt;
 use borrow_check::prefixes::PrefixSet;
+use borrow_check::MirBorrowckCtxt;
 use dataflow::move_paths::{
-    IllegalMoveOrigin, IllegalMoveOriginKind, InitLocation,
-    LookupResult, MoveError, MovePathIndex,
+    IllegalMoveOrigin, IllegalMoveOriginKind, InitLocation, LookupResult, MoveError, MovePathIndex,
 };
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -83,7 +82,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
     fn group_move_errors(
         &self,
-        errors: Vec<(Place<'tcx>, MoveError<'tcx>)>
+        errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
     ) -> Vec<GroupedMoveError<'tcx>> {
         let mut grouped_errors = Vec::new();
         for (original_path, error) in errors {
@@ -247,39 +246,57 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         ref original_path,
                         ref kind,
                         ..
-                    } |
-                    GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } |
-                    GroupedMoveError::OtherIllegalMove { span, ref original_path, ref kind } => {
-                        (span, original_path, kind)
-                    },
+                    }
+                    | GroupedMoveError::MovesFromValue {
+                        span,
+                        ref original_path,
+                        ref kind,
+                        ..
+                    }
+                    | GroupedMoveError::OtherIllegalMove {
+                        span,
+                        ref original_path,
+                        ref kind,
+                    } => (span, original_path, kind),
                 };
             let origin = Origin::Mir;
-            debug!("report: original_path={:?} span={:?}, kind={:?} \
-                   original_path.is_upvar_field_projection={:?}", original_path, span, kind,
-                   original_path.is_upvar_field_projection(self.mir, &self.infcx.tcx));
+            debug!(
+                "report: original_path={:?} span={:?}, kind={:?} \
+                 original_path.is_upvar_field_projection={:?}",
+                original_path,
+                span,
+                kind,
+                original_path.is_upvar_field_projection(self.mir, &self.infcx.tcx)
+            );
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
-                        self.infcx.tcx.cannot_move_out_of(span, "static item", origin)
+                        self.infcx
+                            .tcx
+                            .cannot_move_out_of(span, "static item", origin)
                     }
-                    IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
+                    IllegalMoveOriginKind::BorrowedContent {
+                        target_place: place,
+                    } => {
                         // Inspect the type of the content behind the
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
                         let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
                         let is_upvar_field_projection =
-                            self.prefixes(&original_path, PrefixSet::All)
-                            .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
-                                 .is_some());
+                            self.prefixes(&original_path, PrefixSet::All).any(|p| {
+                                p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
+                                    .is_some()
+                            });
                         debug!("report: ty={:?}", ty);
                         match ty.sty {
-                            ty::Array(..) | ty::Slice(..) =>
-                                self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                                    span, ty, None, origin
-                                ),
+                            ty::Array(..) | ty::Slice(..) => self
+                                .infcx
+                                .tcx
+                                .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
                             ty::Closure(def_id, closure_substs)
-                                if !self.mir.upvar_decls.is_empty() && is_upvar_field_projection
-                            => {
+                                if !self.mir.upvar_decls.is_empty()
+                                    && is_upvar_field_projection =>
+                            {
                                 let closure_kind_ty =
                                     closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
                                 let closure_kind = closure_kind_ty.to_opt_closure_kind();
@@ -295,16 +312,22 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     }
                                     None => bug!("closure kind not inferred by borrowck"),
                                 };
-                                debug!("report: closure_kind_ty={:?} closure_kind={:?} \
-                                       place_description={:?}", closure_kind_ty, closure_kind,
-                                       place_description);
+                                debug!(
+                                    "report: closure_kind_ty={:?} closure_kind={:?} \
+                                     place_description={:?}",
+                                    closure_kind_ty, closure_kind, place_description
+                                );
 
                                 let mut diag = self.infcx.tcx.cannot_move_out_of(
-                                    span, place_description, origin);
+                                    span,
+                                    place_description,
+                                    origin,
+                                );
 
                                 for prefix in self.prefixes(&original_path, PrefixSet::All) {
-                                    if let Some(field) = prefix.is_upvar_field_projection(
-                                            self.mir, &self.infcx.tcx) {
+                                    if let Some(field) =
+                                        prefix.is_upvar_field_projection(self.mir, &self.infcx.tcx)
+                                    {
                                         let upvar_decl = &self.mir.upvar_decls[field.index()];
                                         let upvar_hir_id =
                                             upvar_decl.var_hir_id.assert_crate_local();
@@ -320,20 +343,21 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             }
                             _ => {
                                 let source = self.borrowed_content_source(place);
-                                self.infcx.tcx.cannot_move_out_of(
-                                    span, &source.to_string(), origin
-                                )
-                            },
+                                self.infcx
+                                    .tcx
+                                    .cannot_move_out_of(span, &source.to_string(), origin)
+                            }
                         }
                     }
                     IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
-                        self.infcx.tcx
+                        self.infcx
+                            .tcx
                             .cannot_move_out_of_interior_of_drop(span, ty, origin)
                     }
-                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
-                        self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                            span, ty, Some(*is_index), origin
-                        ),
+                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => self
+                        .infcx
+                        .tcx
+                        .cannot_move_out_of_interior_noncopy(span, ty, Some(*is_index), origin),
                 },
                 span,
             )
@@ -349,7 +373,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
-        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
+        let snippet = self
+            .infcx
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(span)
+            .unwrap();
         match error {
             GroupedMoveError::MovesFromPlace {
                 mut binds_to,
@@ -398,21 +428,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn add_move_error_suggestions(
-        &self,
-        err: &mut DiagnosticBuilder<'a>,
-        binds_to: &[Local],
-    ) {
+    fn add_move_error_suggestions(&self, err: &mut DiagnosticBuilder<'a>, binds_to: &[Local]) {
         let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.mir.local_decls[*local];
-            if let Some(
-                ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                    pat_span,
-                    ..
-                }))
-            ) = bind_to.is_user_variable {
-                let pat_snippet = self.infcx.tcx.sess.source_map()
+            if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                pat_span, ..
+            }))) = bind_to.is_user_variable
+            {
+                let pat_snippet = self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
                     .span_to_snippet(pat_span)
                     .unwrap();
                 if pat_snippet.starts_with('&') {
@@ -428,11 +456,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         suggestion = pat_snippet;
                         to_remove = "&";
                     }
-                    suggestions.push((
-                        pat_span,
-                        to_remove,
-                        suggestion.to_owned(),
-                    ));
+                    suggestions.push((pat_span, to_remove, suggestion.to_owned()));
                 }
             }
         }
@@ -448,11 +472,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn add_move_error_details(
-        &self,
-        err: &mut DiagnosticBuilder<'a>,
-        binds_to: &[Local],
-    ) {
+    fn add_move_error_details(&self, err: &mut DiagnosticBuilder<'a>, binds_to: &[Local]) {
         let mut noncopy_var_spans = Vec::new();
         for (j, local) in binds_to.into_iter().enumerate() {
             let bind_to = &self.mir.local_decls[*local];
@@ -469,7 +489,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     binding_span,
                     &format!(
                         "move occurs because `{}` has type `{}`, \
-                            which does not implement the `Copy` trait",
+                         which does not implement the `Copy` trait",
                         bind_to.name.unwrap(),
                         bind_to.ty
                     ),
@@ -483,7 +503,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             err.span_note(
                 noncopy_var_spans,
                 "move occurs because these variables have types that \
-                    don't implement the `Copy` trait",
+                 don't implement the `Copy` trait",
             );
         }
     }
@@ -524,7 +544,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
                 let bbd = &self.mir[loc.block];
                 let is_terminator = bbd.statements.len() == loc.statement_index;
-                debug!("borrowed_content_source: loc={:?} is_terminator={:?}", loc, is_terminator);
+                debug!(
+                    "borrowed_content_source: loc={:?} is_terminator={:?}",
+                    loc, is_terminator
+                );
                 if !is_terminator {
                     let stmt = &bbd.statements[loc.statement_index];
                     debug!("borrowed_content_source: stmt={:?}", stmt);
@@ -549,7 +572,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 } else if let Some(Terminator {
                     kind: TerminatorKind::Call { args, .. },
                     ..
-                }) = &bbd.terminator {
+                }) = &bbd.terminator
+                {
                     for arg in args {
                         let source = match arg {
                             Operand::Copy(place) | Operand::Move(place) => place,
@@ -581,8 +605,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         if let Place::Projection(box Projection {
             base,
             elem: ProjectionElem::Deref,
-        }) = place {
-            if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_unsafe_ptr() {
+        }) = place
+        {
+            if base
+                .ty(self.mir, self.infcx.tcx)
+                .to_ty(self.infcx.tcx)
+                .is_unsafe_ptr()
+            {
                 return BorrowedContentSource::DerefRawPointer;
             }
         }

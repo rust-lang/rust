@@ -16,7 +16,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Write out the region constraint graph.
     crate fn dump_graphviz_scc_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
-        let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> = self.constraint_sccs
+        let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> = self
+            .constraint_sccs
             .all_sccs()
             .map(|_| Vec::new())
             .collect();
@@ -26,7 +27,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             nodes_per_scc[scc].push(region);
         }
 
-        dot::render(&SccConstraints { regioncx: self, nodes_per_scc }, &mut w)
+        dot::render(
+            &SccConstraints {
+                regioncx: self,
+                nodes_per_scc,
+            },
+            &mut w,
+        )
     }
 }
 
@@ -112,7 +119,8 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for SccConstraints<'a, 'tcx> {
         vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, (ConstraintSccIndex, ConstraintSccIndex)> {
-        let edges: Vec<_> = self.regioncx
+        let edges: Vec<_> = self
+            .regioncx
             .constraint_sccs
             .all_sccs()
             .flat_map(|scc_a| {

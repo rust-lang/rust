@@ -7,10 +7,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 
+use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::fmt;
-use std::str;
-use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
+use std::str;
 
 use hygiene::SyntaxContext;
 use {Span, DUMMY_SP, GLOBALS};
@@ -48,7 +48,10 @@ impl Ident {
     }
 
     pub fn without_first_quote(self) -> Ident {
-        Ident::new(Symbol::intern(self.as_str().trim_start_matches('\'')), self.span)
+        Ident::new(
+            Symbol::intern(self.as_str().trim_start_matches('\'')),
+            self.span,
+        )
     }
 
     /// "Normalize" ident for use in comparisons using "item hygiene".
@@ -74,7 +77,11 @@ impl Ident {
     }
 
     pub fn gensym_if_underscore(self) -> Ident {
-        if self.name == keywords::Underscore.name() { self.gensym() } else { self }
+        if self.name == keywords::Underscore.name() {
+            self.gensym()
+        } else {
+            self
+        }
     }
 
     pub fn as_str(self) -> LocalInternedString {
@@ -115,7 +122,8 @@ impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         if self.span.ctxt().modern() == SyntaxContext::empty() {
             s.emit_str(&self.as_str())
-        } else { // FIXME(jseyfried): intercrate hygiene
+        } else {
+            // FIXME(jseyfried): intercrate hygiene
             let mut string = "#".to_owned();
             string.push_str(&self.as_str());
             s.emit_str(&string)
@@ -128,7 +136,8 @@ impl Decodable for Ident {
         let string = d.read_str()?;
         Ok(if !string.starts_with('#') {
             Ident::from_str(&string)
-        } else { // FIXME(jseyfried): intercrate hygiene
+        } else {
+            // FIXME(jseyfried): intercrate hygiene
             Ident::with_empty_ctxt(Symbol::gensym(&string[1..]))
         })
     }
@@ -151,9 +160,9 @@ newtype_index! {
 // with parallelization is disabled. So we don't allow `Symbol` to transfer between threads
 // to avoid panics and other errors, even though it would be memory safe to do so.
 #[cfg(not(parallel_queries))]
-impl !Send for Symbol { }
+impl !Send for Symbol {}
 #[cfg(not(parallel_queries))]
-impl !Sync for Symbol { }
+impl !Sync for Symbol {}
 
 impl Symbol {
     const fn new(n: u32) -> Self {
@@ -181,14 +190,14 @@ impl Symbol {
     pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
             LocalInternedString {
-                string: ::std::mem::transmute::<&str, &str>(interner.get(self))
+                string: ::std::mem::transmute::<&str, &str>(interner.get(self)),
             }
         })
     }
 
     pub fn as_interned_str(self) -> InternedString {
         with_interner(|interner| InternedString {
-            symbol: interner.interned(self)
+            symbol: interner.interned(self),
         })
     }
 
@@ -226,7 +235,7 @@ impl Decodable for Symbol {
     }
 }
 
-impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
+impl<T: ::std::ops::Deref<Target = str>> PartialEq<T> for Symbol {
     fn eq(&self, other: &T) -> bool {
         self.as_str() == other.deref()
     }
@@ -269,14 +278,11 @@ impl Interner {
 
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
-        let string: &str = unsafe {
-            str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes()))
-        };
+        let string: &str =
+            unsafe { str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes())) };
         // It is safe to extend the arena allocation to `'static` because we only access
         // these while the arena is still alive.
-        let string: &'static str =  unsafe {
-            &*(string as *const str)
-        };
+        let string: &'static str = unsafe { &*(string as *const str) };
         self.strings.push(string);
         self.names.insert(string, name);
         name
@@ -457,15 +463,15 @@ impl Ident {
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= keywords::As.name() && self.name <= keywords::While.name() ||
-        self.name.is_used_keyword_2018() && self.span.rust_2018()
+        self.name >= keywords::As.name() && self.name <= keywords::While.name()
+            || self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= keywords::Abstract.name() && self.name <= keywords::Yield.name() ||
-        self.name.is_unused_keyword_2018() && self.span.rust_2018()
+        self.name >= keywords::Abstract.name() && self.name <= keywords::Yield.name()
+            || self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
@@ -475,20 +481,22 @@ impl Ident {
 
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
-        self.name == keywords::Super.name() ||
-        self.name == keywords::SelfLower.name() ||
-        self.name == keywords::SelfUpper.name() ||
-        self.name == keywords::Extern.name() ||
-        self.name == keywords::Crate.name() ||
-        self.name == keywords::PathRoot.name() ||
-        self.name == keywords::DollarCrate.name()
+        self.name == keywords::Super.name()
+            || self.name == keywords::SelfLower.name()
+            || self.name == keywords::SelfUpper.name()
+            || self.name == keywords::Extern.name()
+            || self.name == keywords::Crate.name()
+            || self.name == keywords::PathRoot.name()
+            || self.name == keywords::DollarCrate.name()
     }
 
     // We see this identifier in a normal identifier position, like variable name or a type.
     // How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
-        self.name != keywords::Invalid.name() && self.name != keywords::Underscore.name() &&
-        self.is_reserved() && !self.is_path_segment_keyword()
+        self.name != keywords::Invalid.name()
+            && self.name != keywords::Underscore.name()
+            && self.is_reserved()
+            && !self.is_path_segment_keyword()
     }
 }
 
@@ -511,7 +519,7 @@ pub struct LocalInternedString {
 impl LocalInternedString {
     pub fn as_interned_str(self) -> InternedString {
         InternedString {
-            symbol: Symbol::intern(self.string)
+            symbol: Symbol::intern(self.string),
         }
     }
 
@@ -522,7 +530,7 @@ impl LocalInternedString {
 
 impl<U: ?Sized> ::std::convert::AsRef<U> for LocalInternedString
 where
-    str: ::std::convert::AsRef<U>
+    str: ::std::convert::AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         self.string.as_ref()
@@ -564,7 +572,9 @@ impl !Sync for LocalInternedString {}
 
 impl ::std::ops::Deref for LocalInternedString {
     type Target = str;
-    fn deref(&self) -> &str { self.string }
+    fn deref(&self) -> &str {
+        self.string
+    }
 }
 
 impl fmt::Debug for LocalInternedString {
@@ -599,9 +609,7 @@ pub struct InternedString {
 
 impl InternedString {
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        let str = with_interner(|interner| {
-            interner.get(self.symbol) as *const str
-        });
+        let str = with_interner(|interner| interner.get(self.symbol) as *const str);
         // This is safe because the interner keeps string alive until it is dropped.
         // We can access it because we know the interner is still alive since we use a
         // scoped thread local to access it, and it was alive at the beginning of this scope

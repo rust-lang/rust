@@ -22,8 +22,10 @@ fn main() {
     } else if target.contains("netbsd") {
         println!("cargo:rustc-link-lib=pthread");
         println!("cargo:rustc-link-lib=rt");
-    } else if target.contains("dragonfly") || target.contains("bitrig") ||
-              target.contains("openbsd") {
+    } else if target.contains("dragonfly")
+        || target.contains("bitrig")
+        || target.contains("openbsd")
+    {
         println!("cargo:rustc-link-lib=pthread");
     } else if target.contains("solaris") {
         println!("cargo:rustc-link-lib=socket");

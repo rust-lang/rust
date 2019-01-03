@@ -82,10 +82,10 @@
 //! }
 //! ```
 
-use deriving::{self, pathvec_std};
-use deriving::generic::*;
 use deriving::generic::ty::*;
+use deriving::generic::*;
 use deriving::warn_if_deprecated;
+use deriving::{self, pathvec_std};
 
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -94,29 +94,35 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
-                                       span: Span,
-                                       mitem: &MetaItem,
-                                       item: &Annotatable,
-                                       push: &mut dyn FnMut(Annotatable)) {
+pub fn expand_deriving_rustc_encodable(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
-pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable)) {
+pub fn expand_deriving_encodable(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+) {
     warn_if_deprecated(cx, span, "Encodable");
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
 
-fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable),
-                                 krate: &'static str) {
+fn expand_deriving_encodable_imp(
+    cx: &mut ExtCtxt,
+    span: Span,
+    mitem: &MetaItem,
+    item: &Annotatable,
+    push: &mut dyn FnMut(Annotatable),
+    krate: &'static str,
+) {
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 
     let trait_def = TraitDef {
@@ -127,60 +133,88 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
-        methods: vec![
-            MethodDef {
-                name: "encode",
-                generics: LifetimeBounds {
-                    lifetimes: Vec::new(),
-                    bounds: vec![
-                        (typaram,
-                         vec![Path::new_(vec![krate, "Encoder"], None, vec![], PathKind::Global)])
-                    ],
-                },
-                explicit_self: borrowed_explicit_self(),
-                args: vec![(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                           Borrowed(None, Mutability::Mutable)), "s")],
-                ret_ty: Literal(Path::new_(
-                    pathvec_std!(cx, result::Result),
-                    None,
-                    vec![Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"], None, vec![], PathKind::Local
-                    )))],
-                    PathKind::Std
-                )),
-                attributes: Vec::new(),
-                is_unsafe: false,
-                unify_fieldless_variants: false,
-                combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    encodable_substructure(a, b, c, krate)
-                })),
-            }
-        ],
+        methods: vec![MethodDef {
+            name: "encode",
+            generics: LifetimeBounds {
+                lifetimes: Vec::new(),
+                bounds: vec![(
+                    typaram,
+                    vec![Path::new_(
+                        vec![krate, "Encoder"],
+                        None,
+                        vec![],
+                        PathKind::Global,
+                    )],
+                )],
+            },
+            explicit_self: borrowed_explicit_self(),
+            args: vec![(
+                Ptr(
+                    Box::new(Literal(Path::new_local(typaram))),
+                    Borrowed(None, Mutability::Mutable),
+                ),
+                "s",
+            )],
+            ret_ty: Literal(Path::new_(
+                pathvec_std!(cx, result::Result),
+                None,
+                vec![
+                    Box::new(Tuple(Vec::new())),
+                    Box::new(Literal(Path::new_(
+                        vec![typaram, "Error"],
+                        None,
+                        vec![],
+                        PathKind::Local,
+                    ))),
+                ],
+                PathKind::Std,
+            )),
+            attributes: Vec::new(),
+            is_unsafe: false,
+            unify_fieldless_variants: false,
+            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                encodable_substructure(a, b, c, krate)
+            })),
+        }],
         associated_types: Vec::new(),
     };
 
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn encodable_substructure(cx: &mut ExtCtxt,
-                          trait_span: Span,
-                          substr: &Substructure,
-                          krate: &'static str)
-                          -> P<Expr> {
+fn encodable_substructure(
+    cx: &mut ExtCtxt,
+    trait_span: Span,
+    substr: &Substructure,
+    krate: &'static str,
+) -> P<Expr> {
     let encoder = substr.nonself_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_e");
     let blkencoder = cx.expr_ident(trait_span, blkarg);
-    let fn_path = cx.expr_path(cx.path_global(trait_span,
-                                              vec![cx.ident_of(krate),
-                                                   cx.ident_of("Encodable"),
-                                                   cx.ident_of("encode")]));
+    let fn_path = cx.expr_path(cx.path_global(
+        trait_span,
+        vec![
+            cx.ident_of(krate),
+            cx.ident_of("Encodable"),
+            cx.ident_of("encode"),
+        ],
+    ));
 
     return match *substr.fields {
         Struct(_, ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = Vec::new();
-            for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
+            for (
+                i,
+                &FieldInfo {
+                    name,
+                    ref self_,
+                    span,
+                    ..
+                },
+            ) in fields.iter().enumerate()
+            {
                 let name = match name {
                     Some(id) => id.name,
                     None => Symbol::intern(&format!("_field{}", i)),
@@ -188,12 +222,12 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                 let self_ref = cx.expr_addr_of(span, self_.clone());
                 let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                 let lambda = cx.lambda1(span, enc, blkarg);
-                let call = cx.expr_method_call(span,
-                                               blkencoder.clone(),
-                                               emit_struct_field,
-                                               vec![cx.expr_str(span, name),
-                                                    cx.expr_usize(span, i),
-                                                    lambda]);
+                let call = cx.expr_method_call(
+                    span,
+                    blkencoder.clone(),
+                    emit_struct_field,
+                    vec![cx.expr_str(span, name), cx.expr_usize(span, i), lambda],
+                );
 
                 // last call doesn't need a try!
                 let last = fields.len() - 1;
@@ -215,12 +249,16 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                 cx.lambda_stmts_1(trait_span, stmts, blkarg)
             };
 
-            cx.expr_method_call(trait_span,
-                                encoder,
-                                cx.ident_of("emit_struct"),
-                                vec![cx.expr_str(trait_span, substr.type_ident.name),
-                                     cx.expr_usize(trait_span, fields.len()),
-                                     blk])
+            cx.expr_method_call(
+                trait_span,
+                encoder,
+                cx.ident_of("emit_struct"),
+                vec![
+                    cx.expr_str(trait_span, substr.type_ident.name),
+                    cx.expr_usize(trait_span, fields.len()),
+                    blk,
+                ],
+            )
         }
 
         EnumMatching(idx, _, variant, ref fields) => {
@@ -234,15 +272,23 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             let mut stmts = Vec::new();
             if !fields.is_empty() {
                 let last = fields.len() - 1;
-                for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
+                for (
+                    i,
+                    &FieldInfo {
+                        ref self_, span, ..
+                    },
+                ) in fields.iter().enumerate()
+                {
                     let self_ref = cx.expr_addr_of(span, self_.clone());
                     let enc =
                         cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                     let lambda = cx.lambda1(span, enc, blkarg);
-                    let call = cx.expr_method_call(span,
-                                                   blkencoder.clone(),
-                                                   emit_variant_arg,
-                                                   vec![cx.expr_usize(span, i), lambda]);
+                    let call = cx.expr_method_call(
+                        span,
+                        blkencoder.clone(),
+                        emit_variant_arg,
+                        vec![cx.expr_usize(span, i), lambda],
+                    );
                     let call = if i != last {
                         cx.expr_try(span, call)
                     } else {
@@ -258,19 +304,24 @@ fn encodable_substructure(cx: &mut ExtCtxt,
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
             let name = cx.expr_str(trait_span, variant.node.ident.name);
-            let call = cx.expr_method_call(trait_span,
-                                           blkencoder,
-                                           cx.ident_of("emit_enum_variant"),
-                                           vec![name,
-                                                cx.expr_usize(trait_span, idx),
-                                                cx.expr_usize(trait_span, fields.len()),
-                                                blk]);
+            let call = cx.expr_method_call(
+                trait_span,
+                blkencoder,
+                cx.ident_of("emit_enum_variant"),
+                vec![
+                    name,
+                    cx.expr_usize(trait_span, idx),
+                    cx.expr_usize(trait_span, fields.len()),
+                    blk,
+                ],
+            );
             let blk = cx.lambda1(trait_span, call, blkarg);
-            let ret = cx.expr_method_call(trait_span,
-                                          encoder,
-                                          cx.ident_of("emit_enum"),
-                                          vec![cx.expr_str(trait_span ,substr.type_ident.name),
-                                               blk]);
+            let ret = cx.expr_method_call(
+                trait_span,
+                encoder,
+                cx.ident_of("emit_enum"),
+                vec![cx.expr_str(trait_span, substr.type_ident.name), blk],
+            );
             cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))
         }
 

@@ -1,12 +1,12 @@
 // FIXME: This needs an audit for correctness and completeness.
 
-use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
+use abi::call::{ArgType, FnType, Reg, RegKind, Uniform};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
-                                     -> Option<Uniform>
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>) -> Option<Uniform>
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
         // Ensure we have at most eight uniquely addressable members.
@@ -17,13 +17,13 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 128
+            RegKind::Vector => arg.layout.size.bits() == 128,
         };
 
         if valid_unit {
             Some(Uniform {
                 unit,
-                total: arg.layout.size
+                total: arg.layout.size,
             })
         } else {
             None
@@ -32,8 +32,9 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
 }
 
 fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
@@ -48,10 +49,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
     let bits = size.bits();
     if bits <= 256 {
         let unit = Reg::i64();
-        ret.cast_to(Uniform {
-            unit,
-            total: size
-        });
+        ret.cast_to(Uniform { unit, total: size });
         return;
     }
 
@@ -60,8 +58,9 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
 }
 
 fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
@@ -81,20 +80,23 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
 
     arg.cast_to(Uniform {
         unit: Reg::i64(),
-        total
+        total,
     });
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg_ty(cx, arg);
     }
 }

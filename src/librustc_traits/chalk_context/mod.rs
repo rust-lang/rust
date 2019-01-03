@@ -3,39 +3,20 @@ mod resolvent_ops;
 mod unify;
 
 use chalk_engine::fallible::Fallible;
-use chalk_engine::{
-    context,
-    hh::HhGoal,
-    DelayedLiteral,
-    Literal,
-    ExClause,
-};
 use chalk_engine::forest::Forest;
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
+use chalk_engine::{context, hh::HhGoal, DelayedLiteral, ExClause, Literal};
 use rustc::infer::canonical::{
-    Canonical,
-    CanonicalVarValues,
-    OriginalQueryValues,
-    QueryResponse,
-    Certainty,
+    Canonical, CanonicalVarValues, Certainty, OriginalQueryValues, QueryResponse,
 };
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc::traits::{
-    self,
-    DomainGoal,
-    ExClauseFold,
-    ChalkContextLift,
-    Goal,
-    GoalKind,
-    Clause,
-    QuantifierKind,
-    Environment,
-    InEnvironment,
-    ChalkCanonicalGoal,
+    self, ChalkCanonicalGoal, ChalkContextLift, Clause, DomainGoal, Environment, ExClauseFold,
+    Goal, GoalKind, InEnvironment, QuantifierKind,
 };
-use rustc::ty::{self, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
 
@@ -140,9 +121,10 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
             return None;
         }
 
-        let SimplifiedAnswer { subst: constrained_subst, ambiguous } = simplified_answers
-            .next_answer()
-            .unwrap();
+        let SimplifiedAnswer {
+            subst: constrained_subst,
+            ambiguous,
+        } = simplified_answers.next_answer().unwrap();
 
         debug!("make_solution: ambiguous flag = {}", ambiguous);
 
@@ -179,10 +161,7 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
 impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     /// True if this is a coinductive goal: basically proving that an auto trait
     /// is implemented or proving that a trait reference is well-formed.
-    fn is_coinductive(
-        &self,
-        goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>
-    ) -> bool {
+    fn is_coinductive(&self, goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>) -> bool {
         use rustc::traits::{WellFormed, WhereClause};
 
         let mut goal = goal.value.goal;
@@ -194,7 +173,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
                         return self.tcx.trait_is_auto(trait_predicate.def_id());
                     }
                     _ => return false,
-                }
+                },
 
                 GoalKind::Quantified(_, bound_goal) => goal = *bound_goal.skip_binder(),
                 _ => return false,
@@ -219,12 +198,12 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         arg: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
         op: impl context::WithInstantiatedUCanonicalGoal<ChalkArenas<'gcx>, Output = R>,
     ) -> R {
-        self.tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, arg, |ref infcx, arg, subst| {
-            let chalk_infcx = &mut ChalkInferenceContext {
-                infcx,
-            };
-            op.with(chalk_infcx, subst, arg.environment, arg.goal)
-        })
+        self.tcx
+            .infer_ctxt()
+            .enter_with_canonical(DUMMY_SP, arg, |ref infcx, arg, subst| {
+                let chalk_infcx = &mut ChalkInferenceContext { infcx };
+                op.with(chalk_infcx, subst, arg.environment, arg.goal)
+            })
     }
 
     fn instantiate_ex_clause<R>(
@@ -233,12 +212,12 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         arg: &Canonical<'gcx, ChalkExClause<'gcx>>,
         op: impl context::WithInstantiatedExClause<ChalkArenas<'gcx>, Output = R>,
     ) -> R {
-        self.tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &arg.upcast(), |ref infcx, arg, _| {
-            let chalk_infcx = &mut ChalkInferenceContext {
-                infcx,
-            };
-            op.with(chalk_infcx,arg)
-        })
+        self.tcx
+            .infer_ctxt()
+            .enter_with_canonical(DUMMY_SP, &arg.upcast(), |ref infcx, arg, _| {
+                let chalk_infcx = &mut ChalkInferenceContext { infcx };
+                op.with(chalk_infcx, arg)
+            })
     }
 
     /// True if this solution has no region constraints.
@@ -270,7 +249,8 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     ) -> bool {
         let subst = &canonical_subst.value.subst;
         assert_eq!(u_canon.variables.len(), subst.var_values.len());
-        subst.var_values
+        subst
+            .var_values
             .iter_enumerated()
             .all(|(cvar, kind)| match kind.unpack() {
                 UnpackedKind::Lifetime(r) => match r {
@@ -325,20 +305,15 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn into_hh_goal(&mut self, goal: Goal<'tcx>) -> ChalkHhGoal<'tcx> {
         match *goal {
-            GoalKind::Implies(hypotheses, goal) => HhGoal::Implies(
-                hypotheses.iter().cloned().collect(),
-                goal
-            ),
+            GoalKind::Implies(hypotheses, goal) => {
+                HhGoal::Implies(hypotheses.iter().cloned().collect(), goal)
+            }
             GoalKind::And(left, right) => HhGoal::And(left, right),
             GoalKind::Not(subgoal) => HhGoal::Not(subgoal),
             GoalKind::DomainGoal(d) => HhGoal::DomainGoal(d),
             GoalKind::Quantified(QuantifierKind::Universal, binder) => HhGoal::ForAll(binder),
             GoalKind::Quantified(QuantifierKind::Existential, binder) => HhGoal::Exists(binder),
-            GoalKind::Subtype(a, b) => HhGoal::Unify(
-                ty::Variance::Covariant,
-                a.into(),
-                b.into()
-            ),
+            GoalKind::Subtype(a, b) => HhGoal::Unify(ty::Variance::Covariant, a.into(), b.into()),
             GoalKind::CannotProve => HhGoal::CannotProve,
         }
     }
@@ -349,9 +324,10 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         clauses: Vec<Clause<'tcx>>,
     ) -> Environment<'tcx> {
         Environment {
-            clauses: self.infcx.tcx.mk_clauses(
-                env.clauses.iter().cloned().chain(clauses.into_iter())
-            )
+            clauses: self
+                .infcx
+                .tcx
+                .mk_clauses(env.clauses.iter().cloned().chain(clauses.into_iter())),
         }
     }
 }
@@ -385,22 +361,18 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         self.program_clauses_impl(environment, goal)
     }
 
-    fn instantiate_binders_universally(
-        &mut self,
-        arg: &ty::Binder<Goal<'tcx>>,
-    ) -> Goal<'tcx> {
+    fn instantiate_binders_universally(&mut self, arg: &ty::Binder<Goal<'tcx>>) -> Goal<'tcx> {
         self.infcx.replace_bound_vars_with_placeholders(arg).0
     }
 
-    fn instantiate_binders_existentially(
-        &mut self,
-        arg: &ty::Binder<Goal<'tcx>>,
-    ) -> Goal<'tcx> {
-        self.infcx.replace_bound_vars_with_fresh_vars(
-            DUMMY_SP,
-            LateBoundRegionConversionTime::HigherRankedType,
-            arg
-        ).0
+    fn instantiate_binders_existentially(&mut self, arg: &ty::Binder<Goal<'tcx>>) -> Goal<'tcx> {
+        self.infcx
+            .replace_bound_vars_with_fresh_vars(
+                DUMMY_SP,
+                LateBoundRegionConversionTime::HigherRankedType,
+                arg,
+            )
+            .0
     }
 
     fn debug_ex_clause(&mut self, value: &'v ChalkExClause<'tcx>) -> Box<dyn Debug + 'v> {
@@ -428,7 +400,8 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         subst: CanonicalVarValues<'tcx>,
         constraints: Vec<RegionConstraint<'tcx>>,
     ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
-        self.infcx.canonicalize_response(&ConstrainedSubst { subst, constraints })
+        self.infcx
+            .canonicalize_response(&ConstrainedSubst { subst, constraints })
     }
 
     fn u_canonicalize_goal(
@@ -481,20 +454,20 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     fn into_ex_clause(
         &mut self,
         result: UnificationResult<'tcx>,
-        ex_clause: &mut ChalkExClause<'tcx>
+        ex_clause: &mut ChalkExClause<'tcx>,
     ) {
         into_ex_clause(result, ex_clause);
     }
 }
 
 crate fn into_ex_clause(result: UnificationResult<'tcx>, ex_clause: &mut ChalkExClause<'tcx>) {
-    ex_clause.subgoals.extend(
-        result.goals.into_iter().map(Literal::Positive)
-    );
+    ex_clause
+        .subgoals
+        .extend(result.goals.into_iter().map(Literal::Positive));
 
     // FIXME: restore this later once we get better at handling regions
     let _ = result.constraints.len(); // trick `-D dead-code`
-    // ex_clause.constraints.extend(result.constraints);
+                                      // ex_clause.constraints.extend(result.constraints);
 }
 
 type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
@@ -520,7 +493,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_ex_clause_to_tcx(
         ex_clause: &ChalkExClause<'a>,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause> {
         Some(ChalkExClause {
             subst: tcx.lift(&ex_clause.subst)?,
@@ -532,15 +505,14 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_delayed_literal_to_tcx(
         literal: &DelayedLiteral<ChalkArenas<'a>>,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedDelayedLiteral> {
         Some(match literal {
             DelayedLiteral::CannotProve(()) => DelayedLiteral::CannotProve(()),
             DelayedLiteral::Negative(index) => DelayedLiteral::Negative(*index),
-            DelayedLiteral::Positive(index, subst) => DelayedLiteral::Positive(
-                *index,
-                tcx.lift(subst)?
-            )
+            DelayedLiteral::Positive(index, subst) => {
+                DelayedLiteral::Positive(*index, tcx.lift(subst)?)
+            }
         })
     }
 
@@ -550,7 +522,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
     ) -> Option<Self::LiftedLiteral> {
         Some(match literal {
             Literal::Negative(goal) => Literal::Negative(tcx.lift(goal)?),
-            Literal::Positive(goal) =>  Literal::Positive(tcx.lift(goal)?),
+            Literal::Positive(goal) => Literal::Positive(tcx.lift(goal)?),
         })
     }
 }
@@ -606,10 +578,9 @@ impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for DelayedLiteral<ChalkArenas<'gcx>> 
         match self {
             &DelayedLiteral::CannotProve(..) => DelayedLiteral::CannotProve(()),
             &DelayedLiteral::Negative(index) => DelayedLiteral::Negative(index),
-            DelayedLiteral::Positive(index, subst) => DelayedLiteral::Positive(
-                *index,
-                subst.clone()
-            ),
+            DelayedLiteral::Positive(index, subst) => {
+                DelayedLiteral::Positive(*index, subst.clone())
+            }
         }
     }
 }
@@ -631,21 +602,16 @@ impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for ExClause<ChalkArenas<'gcx>> {
     fn upcast(&self) -> Self::Upcasted {
         ExClause {
             subst: self.subst.clone(),
-            delayed_literals: self.delayed_literals
-                .iter()
-                .map(|l| l.upcast())
-                .collect(),
+            delayed_literals: self.delayed_literals.iter().map(|l| l.upcast()).collect(),
             constraints: self.constraints.clone(),
-            subgoals: self.subgoals
-                .iter()
-                .map(|g| g.upcast())
-                .collect(),
+            subgoals: self.subgoals.iter().map(|g| g.upcast()).collect(),
         }
     }
 }
 
 impl<'tcx, 'gcx: 'tcx, T> Upcast<'tcx, 'gcx> for Canonical<'gcx, T>
-    where T: Upcast<'tcx, 'gcx>
+where
+    T: Upcast<'tcx, 'gcx>,
 {
     type Upcasted = Canonical<'tcx, T::Upcasted>;
 
@@ -667,34 +633,26 @@ crate fn provide(p: &mut Providers) {
 
 crate fn evaluate_goal<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    goal: ChalkCanonicalGoal<'tcx>
-) -> Result<
-    Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>,
-    traits::query::NoSolution
-> {
+    goal: ChalkCanonicalGoal<'tcx>,
+) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, traits::query::NoSolution> {
     use crate::lowering::Lower;
     use rustc::traits::WellFormed;
 
     let goal = goal.unchecked_map(|goal| InEnvironment {
         environment: goal.environment,
         goal: match goal.goal {
-            ty::Predicate::WellFormed(ty) => tcx.mk_goal(
-                GoalKind::DomainGoal(DomainGoal::WellFormed(WellFormed::Ty(ty)))
-            ),
+            ty::Predicate::WellFormed(ty) => tcx.mk_goal(GoalKind::DomainGoal(
+                DomainGoal::WellFormed(WellFormed::Ty(ty)),
+            )),
 
-            ty::Predicate::Subtype(predicate) => tcx.mk_goal(
-                GoalKind::Quantified(
-                    QuantifierKind::Universal,
-                    predicate.map_bound(|pred| tcx.mk_goal(GoalKind::Subtype(pred.a, pred.b)))
-                )
-            ),
+            ty::Predicate::Subtype(predicate) => tcx.mk_goal(GoalKind::Quantified(
+                QuantifierKind::Universal,
+                predicate.map_bound(|pred| tcx.mk_goal(GoalKind::Subtype(pred.a, pred.b))),
+            )),
 
-            other => tcx.mk_goal(
-                GoalKind::from_poly_domain_goal(other.lower(), tcx)
-            ),
+            other => tcx.mk_goal(GoalKind::from_poly_domain_goal(other.lower(), tcx)),
         },
     });
-
 
     debug!("evaluate_goal(goal = {:?})", goal);
 
@@ -710,6 +668,7 @@ crate fn evaluate_goal<'a, 'tcx>(
 
     debug!("evaluate_goal: solution = {:?}", solution);
 
-    solution.map(|ok| Ok(Lrc::new(ok)))
+    solution
+        .map(|ok| Ok(Lrc::new(ok)))
         .unwrap_or(Err(traits::query::NoSolution))
 }

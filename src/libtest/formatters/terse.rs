@@ -58,7 +58,7 @@ impl<T: Write> TerseFormatter<T> {
             // we insert a new line every 100 dots in order to flush the
             // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
-            let out = format!(" {}/{}\n", self.test_count+1, self.total_test_count);
+            let out = format!(" {}/{}\n", self.test_count + 1, self.total_test_count);
             self.write_plain(&out)?;
         }
 

@@ -10,14 +10,15 @@ pub type ULONG_PTR = usize;
 pub type LPVOID = *mut c_void;
 
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
-pub const EXCEPTION_NONCONTINUABLE: DWORD = 0x1;   // Noncontinuable exception
-pub const EXCEPTION_UNWINDING: DWORD = 0x2;        // Unwind is in progress
-pub const EXCEPTION_EXIT_UNWIND: DWORD = 0x4;      // Exit unwind is in progress
-pub const EXCEPTION_TARGET_UNWIND: DWORD = 0x20;   // Target unwind in progress
+pub const EXCEPTION_NONCONTINUABLE: DWORD = 0x1; // Noncontinuable exception
+pub const EXCEPTION_UNWINDING: DWORD = 0x2; // Unwind is in progress
+pub const EXCEPTION_EXIT_UNWIND: DWORD = 0x4; // Exit unwind is in progress
+pub const EXCEPTION_TARGET_UNWIND: DWORD = 0x20; // Target unwind in progress
 pub const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler call
-pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING | EXCEPTION_EXIT_UNWIND |
-                                    EXCEPTION_TARGET_UNWIND |
-                                    EXCEPTION_COLLIDED_UNWIND;
+pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING
+    | EXCEPTION_EXIT_UNWIND
+    | EXCEPTION_TARGET_UNWIND
+    | EXCEPTION_COLLIDED_UNWIND;
 
 #[repr(C)]
 pub struct EXCEPTION_RECORD {
@@ -70,17 +71,21 @@ pub use self::EXCEPTION_DISPOSITION::*;
 
 extern "system" {
     #[unwind(allowed)]
-    pub fn RaiseException(dwExceptionCode: DWORD,
-                          dwExceptionFlags: DWORD,
-                          nNumberOfArguments: DWORD,
-                          lpArguments: *const ULONG_PTR);
+    pub fn RaiseException(
+        dwExceptionCode: DWORD,
+        dwExceptionFlags: DWORD,
+        nNumberOfArguments: DWORD,
+        lpArguments: *const ULONG_PTR,
+    );
     #[unwind(allowed)]
-    pub fn RtlUnwindEx(TargetFrame: LPVOID,
-                       TargetIp: LPVOID,
-                       ExceptionRecord: *const EXCEPTION_RECORD,
-                       ReturnValue: LPVOID,
-                       OriginalContext: *const CONTEXT,
-                       HistoryTable: *const UNWIND_HISTORY_TABLE);
+    pub fn RtlUnwindEx(
+        TargetFrame: LPVOID,
+        TargetIp: LPVOID,
+        ExceptionRecord: *const EXCEPTION_RECORD,
+        ReturnValue: LPVOID,
+        OriginalContext: *const CONTEXT,
+        HistoryTable: *const UNWIND_HISTORY_TABLE,
+    );
     #[unwind(allowed)]
     pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8);
 }

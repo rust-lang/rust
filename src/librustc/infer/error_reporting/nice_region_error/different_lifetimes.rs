@@ -1,8 +1,8 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
-use infer::error_reporting::nice_region_error::NiceRegionError;
 use infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
+use infer::error_reporting::nice_region_error::NiceRegionError;
 use util::common::ErrorReported;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
@@ -60,15 +60,11 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         debug!(
             "try_report_anon_anon_conflict: found_arg1={:?} sup={:?} br1={:?}",
-            ty_sub,
-            sup,
-            bregion_sup
+            ty_sub, sup, bregion_sup
         );
         debug!(
             "try_report_anon_anon_conflict: found_arg2={:?} sub={:?} br2={:?}",
-            ty_sup,
-            sub,
-            bregion_sub
+            ty_sup, sub, bregion_sub
         );
 
         let (ty_sup, ty_fndecl_sup) = ty_sup;
@@ -98,21 +94,19 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             String::new()
         };
 
-
         let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
             (None, None) => {
                 let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
                     (
                         "this type is declared with multiple lifetimes...".to_owned(),
-                        "...but data with one lifetime flows into the other here".to_owned()
+                        "...but data with one lifetime flows into the other here".to_owned(),
                     )
                 } else {
                     (
                         "these two types are declared with different lifetimes...".to_owned(),
                         format!(
                             "...but data{} flows{} here",
-                            span_label_var1,
-                            span_label_var2
+                            span_label_var1, span_label_var2
                         ),
                     )
                 };
@@ -123,20 +117,19 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ty_sub.span,
                 ret_span,
                 "this parameter and the return type are declared \
-                 with different lifetimes...".to_owned()
-                ,
+                 with different lifetimes..."
+                    .to_owned(),
                 format!("...but data{} is returned here", span_label_var1),
             ),
             (_, Some(ret_span)) => (
                 ty_sup.span,
                 ret_span,
                 "this parameter and the return type are declared \
-                 with different lifetimes...".to_owned()
-                ,
+                 with different lifetimes..."
+                    .to_owned(),
                 format!("...but data{} is returned here", span_label_var1),
             ),
         };
-
 
         struct_span_err!(self.tcx.sess, span, E0623, "lifetime mismatch")
             .span_label(span_1, main_label)

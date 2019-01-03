@@ -114,7 +114,6 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             root_is_start_block: root == START_BLOCK,
         };
 
-
         let data = &po.mir[root];
 
         if let Some(ref term) = data.terminator {
@@ -254,19 +253,19 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 pub struct ReversePostorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     blocks: Vec<BasicBlock>,
-    idx: usize
+    idx: usize,
 }
 
 impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
-        let blocks : Vec<_> = Postorder::new(mir, root).map(|(bb, _)| bb).collect();
+        let blocks: Vec<_> = Postorder::new(mir, root).map(|(bb, _)| bb).collect();
 
         let len = blocks.len();
 
         ReversePostorder {
             mir,
             blocks,
-            idx: len
+            idx: len,
         }
     }
 
@@ -274,7 +273,6 @@ impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
         self.idx = self.blocks.len();
     }
 }
-
 
 pub fn reverse_postorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> ReversePostorder<'a, 'tcx> {
     ReversePostorder::new(mir, START_BLOCK)
@@ -284,7 +282,9 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
     fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        if self.idx == 0 { return None; }
+        if self.idx == 0 {
+            return None;
+        }
         self.idx -= 1;
 
         self.blocks.get(self.idx).map(|&bb| (bb, &self.mir[bb]))

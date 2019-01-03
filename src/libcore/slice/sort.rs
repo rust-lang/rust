@@ -18,13 +18,16 @@ struct CopyOnDrop<T> {
 
 impl<T> Drop for CopyOnDrop<T> {
     fn drop(&mut self) {
-        unsafe { ptr::copy_nonoverlapping(self.src, self.dest, 1); }
+        unsafe {
+            ptr::copy_nonoverlapping(self.src, self.dest, 1);
+        }
     }
 }
 
 /// Shifts the first element to the right until it encounters a greater or equal element.
 fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
     unsafe {
@@ -56,7 +59,8 @@ fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
 
 /// Shifts the last element to the left until it encounters a smaller or equal element.
 fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
     unsafe {
@@ -72,7 +76,7 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
             };
             ptr::copy_nonoverlapping(v.get_unchecked(len - 2), v.get_unchecked_mut(len - 1), 1);
 
-            for i in (0..len-2).rev() {
+            for i in (0..len - 2).rev() {
                 if !is_less(&*tmp, v.get_unchecked(i)) {
                     break;
                 }
@@ -91,7 +95,8 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
 /// Returns `true` if the slice is sorted at the end. This function is `O(n)` worst-case.
 #[cold]
 fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Maximum number of adjacent out-of-order pairs that will get shifted.
     const MAX_STEPS: usize = 5;
@@ -134,17 +139,19 @@ fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
 
 /// Sorts a slice using insertion sort, which is `O(n^2)` worst-case.
 fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     for i in 1..v.len() {
-        shift_tail(&mut v[..i+1], is_less);
+        shift_tail(&mut v[..i + 1], is_less);
     }
 }
 
 /// Sorts `v` using heapsort, which guarantees `O(n log n)` worst-case.
 #[cold]
 pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // This binary heap respects the invariant `parent >= child`.
     let mut sift_down = |v: &mut [T], mut node| {
@@ -172,12 +179,12 @@ pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
     };
 
     // Build the heap in linear time.
-    for i in (0 .. v.len() / 2).rev() {
+    for i in (0..v.len() / 2).rev() {
         sift_down(v, i);
     }
 
     // Pop maximal elements from the heap.
-    for i in (1 .. v.len()).rev() {
+    for i in (1..v.len()).rev() {
         v.swap(0, i);
         sift_down(&mut v[..i], 0);
     }
@@ -193,7 +200,8 @@ pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
 ///
 /// [pdf]: http://drops.dagstuhl.de/opus/volltexte/2016/6389/pdf/LIPIcs-ESA-2016-38.pdf
 fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Number of elements in a typical block.
     const BLOCK: usize = 128;
@@ -296,8 +304,16 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
         let count = cmp::min(width(start_l, end_l), width(start_r, end_r));
 
         if count > 0 {
-            macro_rules! left { () => { l.offset(*start_l as isize) } }
-            macro_rules! right { () => { r.offset(-(*start_r as isize) - 1) } }
+            macro_rules! left {
+                () => {
+                    l.offset(*start_l as isize)
+                };
+            }
+            macro_rules! right {
+                () => {
+                    r.offset(-(*start_r as isize) - 1)
+                };
+            }
 
             // Instead of swapping one pair at the time, it is more efficient to perform a cyclic
             // permutation. This is not strictly equivalent to swapping, but produces a similar
@@ -377,7 +393,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 /// 1. Number of elements smaller than `v[pivot]`.
 /// 2. True if `v` was already partitioned.
 fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     let (mid, was_partitioned) = {
         // Place the pivot at the beginning of slice.
@@ -409,7 +426,10 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
             }
         }
 
-        (l + partition_in_blocks(&mut v[l..r], pivot, is_less), l >= r)
+        (
+            l + partition_in_blocks(&mut v[l..r], pivot, is_less),
+            l >= r,
+        )
 
         // `_pivot_guard` goes out of scope and writes the pivot (which is a stack-allocated
         // variable) back into the slice where it originally was. This step is critical in ensuring
@@ -427,7 +447,8 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
 /// Returns the number of elements equal to the pivot. It is assumed that `v` does not contain
 /// elements smaller than the pivot.
 fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Place the pivot at the beginning of slice.
     v.swap(0, pivot);
@@ -526,7 +547,8 @@ fn break_patterns<T>(v: &mut [T]) {
 ///
 /// Elements in `v` might be reordered in the process.
 fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Minimum length to choose the median-of-medians method.
     // Shorter slices use the simple median-of-three method.
@@ -594,7 +616,8 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
 /// `limit` is the number of allowed imbalanced partitions before switching to `heapsort`. If zero,
 /// this function will immediately switch to heapsort.
 fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T>, mut limit: usize)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Slices of up to this length get sorted using insertion sort.
     const MAX_INSERTION: usize = 20;
@@ -648,7 +671,7 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
                 let mid = partition_equal(v, pivot, is_less);
 
                 // Continue sorting elements greater than the pivot.
-                v = &mut {v}[mid..];
+                v = &mut { v }[mid..];
                 continue;
             }
         }
@@ -659,7 +682,7 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
         was_partitioned = was_p;
 
         // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = {v}.split_at_mut(mid);
+        let (left, right) = { v }.split_at_mut(mid);
         let (pivot, right) = right.split_at_mut(1);
         let pivot = &pivot[0];
 
@@ -679,7 +702,8 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
 
 /// Sorts `v` using pattern-defeating quicksort, which is `O(n log n)` worst-case.
 pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Sorting has no meaningful behavior on zero-sized types.
     if mem::size_of::<T>() == 0 {

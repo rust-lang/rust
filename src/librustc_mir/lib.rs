@@ -28,31 +28,32 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(try_from)]
 #![feature(reverse_bits)]
 #![cfg_attr(stage0, feature(underscore_imports))]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 extern crate arena;
 
 #[macro_use]
 extern crate bitflags;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate either;
 extern crate graphviz as dot;
 extern crate polonius_engine;
 #[macro_use]
 extern crate rustc;
-#[macro_use] extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
+#[macro_use]
+extern crate rustc_data_structures;
 extern crate rustc_errors;
+extern crate serialize as rustc_serialize;
 #[macro_use]
 extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_target;
-extern crate log_settings;
-extern crate rustc_apfloat;
 extern crate byteorder;
 extern crate core;
+extern crate log_settings;
+extern crate rustc_apfloat;
+extern crate rustc_target;
 extern crate smallvec;
+extern crate syntax_pos;
 
 // Once we can use edition 2018 in the compiler,
 // replace this with real try blocks.
@@ -66,15 +67,15 @@ mod diagnostics;
 
 mod borrow_check;
 mod build;
+pub mod const_eval;
 mod dataflow;
 mod hair;
+pub mod interpret;
 mod lints;
+pub mod monomorphize;
 mod shim;
 pub mod transform;
 pub mod util;
-pub mod interpret;
-pub mod monomorphize;
-pub mod const_eval;
 
 pub use hair::pattern::check_crate as matchck_crate;
 use rustc::ty::query::Providers;

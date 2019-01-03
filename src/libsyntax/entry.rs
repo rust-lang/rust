@@ -1,5 +1,5 @@
-use attr;
 use ast::{Item, ItemKind};
+use attr;
 
 pub enum EntryPointType {
     None,

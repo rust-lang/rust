@@ -1,23 +1,23 @@
 #![allow(non_snake_case)]
 
+use lint::{LateContext, LintArray, LintContext};
+use lint::{LateLintPass, LintPass};
 use rustc::hir::Node;
+use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
 use rustc_data_structures::indexed_vec::Idx;
 use util::nodemap::FxHashSet;
-use lint::{LateContext, LintContext, LintArray};
-use lint::{LintPass, LateLintPass};
 
 use std::cmp;
-use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
+use std::{f32, f64, i16, i32, i64, i8, u16, u32, u64, u8};
 
-use syntax::{ast, attr};
-use syntax::errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use syntax::edition::Edition;
-use syntax_pos::Span;
+use syntax::errors::Applicability;
 use syntax::source_map;
+use syntax::{ast, attr};
+use syntax_pos::Span;
 
 use rustc::hir;
 
@@ -48,14 +48,15 @@ pub struct TypeLimits {
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: ast::DUMMY_NODE_ID }
+        TypeLimits {
+            negated_expr_id: ast::DUMMY_NODE_ID,
+        }
     }
 }
 
 impl LintPass for TypeLimits {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_COMPARISONS,
-                    OVERFLOWING_LITERALS)
+        lint_array!(UNUSED_COMPARISONS, OVERFLOWING_LITERALS)
     }
 }
 
@@ -70,17 +71,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
-                    cx.span_lint(UNUSED_COMPARISONS,
-                                 e.span,
-                                 "comparison is useless due to type limits");
+                    cx.span_lint(
+                        UNUSED_COMPARISONS,
+                        e.span,
+                        "comparison is useless due to type limits",
+                    );
                 }
             }
             hir::ExprKind::Lit(ref lit) => {
                 match cx.tables.node_id_to_type(e.hir_id).sty {
                     ty::Int(t) => {
                         match lit.node {
-                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
-                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
+                            ast::LitKind::Int(v, ast::LitIntType::Signed(_))
+                            | ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
                                 let int_type = if let ast::IntTy::Isize = t {
                                     cx.sess().target.isize_ty
                                 } else {
@@ -134,29 +137,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
-                                                             OVERFLOWING_LITERALS,
-                                                             parent_expr.span,
-                                                             "only u8 can be cast into char");
+                                            OVERFLOWING_LITERALS,
+                                            parent_expr.span,
+                                            "only u8 can be cast into char",
+                                        );
                                         err.span_suggestion_with_applicability(
                                             parent_expr.span,
                                             &"use a char literal instead",
                                             format!("'\\u{{{:X}}}'", lit_val),
-                                            Applicability::MachineApplicable
+                                            Applicability::MachineApplicable,
                                         );
                                         err.emit();
-                                        return
+                                        return;
                                     }
                                 }
                             }
                             if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-                                report_bin_hex_error(
-                                    cx,
-                                    e,
-                                    ty::Uint(t),
-                                    repr_str,
-                                    lit_val,
-                                    false,
-                                );
+                                report_bin_hex_error(cx, e, ty::Uint(t), repr_str, lit_val, false);
                                 return;
                             }
                             cx.span_lint(
@@ -168,19 +165,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     }
                     ty::Float(t) => {
                         let is_infinite = match lit.node {
-                            ast::LitKind::Float(v, _) |
-                            ast::LitKind::FloatUnsuffixed(v) => {
-                                match t {
-                                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                                }
-                            }
+                            ast::LitKind::Float(v, _) | ast::LitKind::FloatUnsuffixed(v) => match t
+                            {
+                                ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                                ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                            },
                             _ => bug!(),
                         };
                         if is_infinite == Ok(true) {
-                            cx.span_lint(OVERFLOWING_LITERALS,
-                                         e.span,
-                                         &format!("literal out of range for {:?}", t));
+                            cx.span_lint(
+                                OVERFLOWING_LITERALS,
+                                e.span,
+                                &format!("literal out of range for {:?}", t),
+                            );
                         }
                     }
                     _ => (),
@@ -201,14 +198,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            source_map::respan(binop.span,
-                            match binop.node {
-                                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
-                                hir::BinOpKind::Le => hir::BinOpKind::Ge,
-                                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
-                                hir::BinOpKind::Ge => hir::BinOpKind::Le,
-                                _ => return binop,
-                            })
+            source_map::respan(
+                binop.span,
+                match binop.node {
+                    hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                    hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                    hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                    hir::BinOpKind::Ge => hir::BinOpKind::Le,
+                    _ => return binop,
+                },
+            )
         }
 
         // for isize & usize, be conservative with the warnings, so that the
@@ -220,7 +219,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ast::IntTy::I16 => (i16::min_value() as i64 as i128, i16::max_value() as i128),
                 ast::IntTy::I32 => (i32::min_value() as i64 as i128, i32::max_value() as i128),
                 ast::IntTy::I64 => (i64::min_value() as i128, i64::max_value() as i128),
-                ast::IntTy::I128 =>(i128::min_value() as i128, i128::max_value()),
+                ast::IntTy::I128 => (i128::min_value() as i128, i128::max_value()),
             }
         }
 
@@ -235,11 +234,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn check_limits(cx: &LateContext,
-                        binop: hir::BinOp,
-                        l: &hir::Expr,
-                        r: &hir::Expr)
-                        -> bool {
+        fn check_limits(cx: &LateContext, binop: hir::BinOp, l: &hir::Expr, r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprKind::Lit(_), _) => (l, r, true),
                 (_, &hir::ExprKind::Lit(_)) => (r, l, false),
@@ -252,27 +247,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
-                        hir::ExprKind::Lit(ref li) => {
-                            match li.node {
-                                ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
-                                ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
-                                _ => return true
-                            }
+                        hir::ExprKind::Lit(ref li) => match li.node {
+                            ast::LitKind::Int(v, ast::LitIntType::Signed(_))
+                            | ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
+                            _ => return true,
                         },
-                        _ => bug!()
+                        _ => bug!(),
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
                 ty::Uint(uint_ty) => {
-                    let (min, max) :(u128, u128) = uint_ty_range(uint_ty);
+                    let (min, max): (u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.node {
-                        hir::ExprKind::Lit(ref li) => {
-                            match li.node {
-                                ast::LitKind::Int(v, _) => v,
-                                _ => return true
-                            }
+                        hir::ExprKind::Lit(ref li) => match li.node {
+                            ast::LitKind::Int(v, _) => v,
+                            _ => return true,
                         },
-                        _ => bug!()
+                        _ => bug!(),
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -282,12 +273,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn is_comparison(binop: hir::BinOp) -> bool {
             match binop.node {
-                hir::BinOpKind::Eq |
-                hir::BinOpKind::Lt |
-                hir::BinOpKind::Le |
-                hir::BinOpKind::Ne |
-                hir::BinOpKind::Ge |
-                hir::BinOpKind::Gt => true,
+                hir::BinOpKind::Eq
+                | hir::BinOpKind::Lt
+                | hir::BinOpKind::Le
+                | hir::BinOpKind::Ne
+                | hir::BinOpKind::Ge
+                | hir::BinOpKind::Gt => true,
                 _ => false,
             }
         }
@@ -313,11 +304,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         //  - `uX` => `uY`
         //
         // No suggestion for: `isize`, `usize`.
-        fn get_type_suggestion<'a>(
-            t: &ty::TyKind,
-            val: u128,
-            negative: bool,
-        ) -> Option<String> {
+        fn get_type_suggestion<'a>(t: &ty::TyKind, val: u128, negative: bool) -> Option<String> {
             use syntax::ast::IntTy::*;
             use syntax::ast::UintTy::*;
             macro_rules! find_fit {
@@ -399,7 +386,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         expr.span,
                         &format!("consider using `{}` instead", sugg_ty),
                         format!("{}{}", sans_suffix, sugg_ty),
-                        Applicability::MachineApplicable
+                        Applicability::MachineApplicable,
                     );
                 } else {
                     err.help(&format!("consider using `{}` instead", sugg_ty));
@@ -436,10 +423,11 @@ enum FfiResult<'tcx> {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in codegen.
-fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  def: &'tcx ty::AdtDef,
-                                  substs: &Substs<'tcx>)
-                                  -> bool {
+fn is_repr_nullable_ptr<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def: &'tcx ty::AdtDef,
+    substs: &Substs<'tcx>,
+) -> bool {
     if def.variants.len() == 2 {
         let data_idx;
 
@@ -472,9 +460,7 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self,
-                          cache: &mut FxHashSet<Ty<'tcx>>,
-                          ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         use self::FfiResult::*;
 
         let cx = self.cx.tcx;
@@ -498,8 +484,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiUnsafe {
                                 ty: ty,
                                 reason: "this struct has unspecified layout",
-                                help: Some("consider adding a #[repr(C)] or #[repr(transparent)] \
-                                            attribute to this struct"),
+                                help: Some(
+                                    "consider adding a #[repr(C)] or #[repr(transparent)] \
+                                     attribute to this struct",
+                                ),
                             };
                         }
 
@@ -542,7 +530,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             }
                         }
 
-                        if all_phantom { FfiPhantom(ty) } else { FfiSafe }
+                        if all_phantom {
+                            FfiPhantom(ty)
+                        } else {
+                            FfiSafe
+                        }
                     }
                     AdtKind::Union => {
                         if !def.repr.c() {
@@ -579,7 +571,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             }
                         }
 
-                        if all_phantom { FfiPhantom(ty) } else { FfiSafe }
+                        if all_phantom {
+                            FfiPhantom(ty)
+                        } else {
+                            FfiSafe
+                        }
                     }
                     AdtKind::Enum => {
                         if def.variants.is_empty() {
@@ -595,8 +591,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 return FfiUnsafe {
                                     ty: ty,
                                     reason: "enum has no representation hint",
-                                    help: Some("consider adding a #[repr(...)] attribute \
-                                                to this enum"),
+                                    help: Some(
+                                        "consider adding a #[repr(...)] attribute \
+                                         to this enum",
+                                    ),
                                 };
                             }
                         }
@@ -668,8 +666,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using a struct instead"),
             },
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
+                self.check_type_for_ffi(cache, ty)
+            }
 
             ty::Array(ty, _) => self.check_type_for_ffi(cache, ty),
 
@@ -679,8 +678,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         return FfiUnsafe {
                             ty: ty,
                             reason: "this function pointer has Rust-specific calling convention",
-                            help: Some("consider using an `extern fn(...) -> ...` \
-                                        function pointer instead"),
+                            help: Some(
+                                "consider using an `extern fn(...) -> ...` \
+                                 function pointer instead",
+                            ),
                         }
                     }
                     _ => {}
@@ -710,37 +711,51 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Foreign(..) => FfiSafe,
 
-            ty::Param(..) |
-            ty::Infer(..) |
-            ty::Bound(..) |
-            ty::Error |
-            ty::Closure(..) |
-            ty::Generator(..) |
-            ty::GeneratorWitness(..) |
-            ty::Placeholder(..) |
-            ty::UnnormalizedProjection(..) |
-            ty::Projection(..) |
-            ty::Opaque(..) |
-            ty::FnDef(..) => bug!("Unexpected type in foreign function"),
+            ty::Param(..)
+            | ty::Infer(..)
+            | ty::Bound(..)
+            | ty::Error
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Placeholder(..)
+            | ty::UnnormalizedProjection(..)
+            | ty::Projection(..)
+            | ty::Opaque(..)
+            | ty::FnDef(..) => bug!("Unexpected type in foreign function"),
         }
     }
 
     fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
-        let ty = self.cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+        let ty = self
+            .cx
+            .tcx
+            .normalize_erasing_regions(ParamEnv::reveal_all(), ty);
 
         match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
-                self.cx.span_lint(IMPROPER_CTYPES,
-                                  sp,
-                                  &format!("`extern` block uses type `{}` which is not FFI-safe: \
-                                            composed only of PhantomData", ty));
+                self.cx.span_lint(
+                    IMPROPER_CTYPES,
+                    sp,
+                    &format!(
+                        "`extern` block uses type `{}` which is not FFI-safe: \
+                         composed only of PhantomData",
+                        ty
+                    ),
+                );
             }
-            FfiResult::FfiUnsafe { ty: unsafe_ty, reason, help } => {
-                let msg = format!("`extern` block uses type `{}` which is not FFI-safe: {}",
-                                  unsafe_ty, reason);
+            FfiResult::FfiUnsafe {
+                ty: unsafe_ty,
+                reason,
+                help,
+            } => {
+                let msg = format!(
+                    "`extern` block uses type `{}` which is not FFI-safe: {}",
+                    unsafe_ty, reason
+                );
                 let mut diag = self.cx.struct_span_lint(IMPROPER_CTYPES, sp, &msg);
                 if let Some(s) = help {
                     diag.help(s);
@@ -800,7 +815,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
                 hir::ForeignItemKind::Static(ref ty, _) => {
                     vis.check_foreign_static(it.id, ty.span);
                 }
-                hir::ForeignItemKind::Type => ()
+                hir::ForeignItemKind::Type => (),
             }
         }
     }
@@ -823,41 +838,58 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             match cx.layout_of(ty) {
                 Ok(layout) => {
                     let variants = &layout.variants;
-                    if let layout::Variants::Tagged { ref variants, ref tag, .. } = variants {
+                    if let layout::Variants::Tagged {
+                        ref variants,
+                        ref tag,
+                        ..
+                    } = variants
+                    {
                         let discr_size = tag.value.size(&cx.tcx).bytes();
 
-                        debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
-                               t, layout.size.bytes(), layout);
+                        debug!(
+                            "enum `{}` is {} bytes large with layout:\n{:#?}",
+                            t,
+                            layout.size.bytes(),
+                            layout
+                        );
 
-                        let (largest, slargest, largest_index) = enum_definition.variants
+                        let (largest, slargest, largest_index) = enum_definition
+                            .variants
                             .iter()
                             .zip(variants)
                             .map(|(variant, variant_layout)| {
                                 // Subtract the size of the enum discriminant.
                                 let bytes = variant_layout.size.bytes().saturating_sub(discr_size);
 
-                                debug!("- variant `{}` is {} bytes large",
-                                       variant.node.ident,
-                                       bytes);
+                                debug!(
+                                    "- variant `{}` is {} bytes large",
+                                    variant.node.ident, bytes
+                                );
                                 bytes
                             })
                             .enumerate()
-                            .fold((0, 0, 0), |(l, s, li), (idx, size)| if size > l {
-                                (size, l, idx)
-                            } else if size > s {
-                                (l, size, li)
-                            } else {
-                                (l, s, li)
+                            .fold((0, 0, 0), |(l, s, li), (idx, size)| {
+                                if size > l {
+                                    (size, l, idx)
+                                } else if size > s {
+                                    (l, size, li)
+                                } else {
+                                    (l, s, li)
+                                }
                             });
 
                         // We only warn if the largest variant is at least thrice as large as
                         // the second-largest.
                         if largest > slargest * 3 && slargest > 0 {
-                            cx.span_lint(VARIANT_SIZE_DIFFERENCES,
-                                            enum_definition.variants[largest_index].span,
-                                            &format!("enum variant is more than three times \
-                                                      larger ({} bytes) than the next largest",
-                                                     largest));
+                            cx.span_lint(
+                                VARIANT_SIZE_DIFFERENCES,
+                                enum_definition.variants[largest_index].span,
+                                &format!(
+                                    "enum variant is more than three times \
+                                     larger ({} bytes) than the next largest",
+                                    largest
+                                ),
+                            );
                         }
                     }
                 }

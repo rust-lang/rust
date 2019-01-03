@@ -382,14 +382,16 @@ where
         // Compute the bounds we can derive from the trait definition.
         // These are guaranteed to apply, no matter the inference
         // results.
-        let trait_bounds: Vec<_> = self.verify_bound
+        let trait_bounds: Vec<_> = self
+            .verify_bound
             .projection_declared_bounds_from_trait(projection_ty)
             .collect();
 
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds = self.verify_bound
+        let mut approx_env_bounds = self
+            .verify_bound
             .projection_approx_declared_bounds_from_env(projection_ty);
         debug!(
             "projection_must_outlive: approx_env_bounds={:?}",
@@ -401,15 +403,13 @@ where
         // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
-        approx_env_bounds.retain(|bound| {
-            match bound.0.sty {
-                ty::Projection(projection_ty) => {
-                    self.verify_bound.projection_declared_bounds_from_trait(projection_ty)
-                        .all(|r| r != bound.1)
-                }
+        approx_env_bounds.retain(|bound| match bound.0.sty {
+            ty::Projection(projection_ty) => self
+                .verify_bound
+                .projection_declared_bounds_from_trait(projection_ty)
+                .all(|r| r != bound.1),
 
-                _ => panic!("expected only projection types from env, not {:?}", bound.0),
-            }
+            _ => panic!("expected only projection types from env, not {:?}", bound.0),
         });
 
         // If declared bounds list is empty, the only applicable rule is

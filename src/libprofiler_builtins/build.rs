@@ -11,20 +11,22 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let cfg = &mut cc::Build::new();
 
-    let mut profile_sources = vec!["GCDAProfiling.c",
-                                   "InstrProfiling.c",
-                                   "InstrProfilingBuffer.c",
-                                   "InstrProfilingFile.c",
-                                   "InstrProfilingMerge.c",
-                                   "InstrProfilingMergeFile.c",
-                                   "InstrProfilingNameVar.c",
-                                   "InstrProfilingPlatformDarwin.c",
-                                   "InstrProfilingPlatformLinux.c",
-                                   "InstrProfilingPlatformOther.c",
-                                   "InstrProfilingRuntime.cc",
-                                   "InstrProfilingUtil.c",
-                                   "InstrProfilingValue.c",
-                                   "InstrProfilingWriter.c"];
+    let mut profile_sources = vec![
+        "GCDAProfiling.c",
+        "InstrProfiling.c",
+        "InstrProfilingBuffer.c",
+        "InstrProfilingFile.c",
+        "InstrProfilingMerge.c",
+        "InstrProfilingMergeFile.c",
+        "InstrProfilingNameVar.c",
+        "InstrProfilingPlatformDarwin.c",
+        "InstrProfilingPlatformLinux.c",
+        "InstrProfilingPlatformOther.c",
+        "InstrProfilingRuntime.cc",
+        "InstrProfilingUtil.c",
+        "InstrProfilingValue.c",
+        "InstrProfilingWriter.c",
+    ];
 
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC

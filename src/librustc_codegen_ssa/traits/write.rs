@@ -52,7 +52,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     ) -> Result<CompiledModule, FatalError>;
     fn prepare_thin(
         cgcx: &CodegenContext<Self>,
-        module: ModuleCodegen<Self::Module>
+        module: ModuleCodegen<Self::Module>,
     ) -> (String, Self::ThinBuffer);
     fn run_lto_pass_manager(
         cgcx: &CodegenContext<Self>,

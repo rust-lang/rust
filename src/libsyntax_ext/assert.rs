@@ -1,9 +1,9 @@
 use syntax::ast::*;
-use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::print::pprust;
+use syntax::source_map::Spanned;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax_pos::{Span, DUMMY_SP};
@@ -49,7 +49,8 @@ pub fn expand_assert<'cx>(
                     ))),
                     None,
                 ),
-            )).into()
+            ))
+            .into()
         },
         delim: MacDelimiter::Parenthesis,
     };

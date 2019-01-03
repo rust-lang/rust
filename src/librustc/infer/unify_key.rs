@@ -1,5 +1,5 @@
+use rustc_data_structures::unify::{EqUnifyValue, NoError, UnifyKey, UnifyValue};
 use ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt};
-use rustc_data_structures::unify::{NoError, EqUnifyValue, UnifyKey, UnifyValue};
 
 pub trait ToType {
     fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
@@ -7,20 +7,25 @@ pub trait ToType {
 
 impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::IntVid { ty::IntVid { index: i } }
-    fn tag() -> &'static str { "IntVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::IntVid {
+        ty::IntVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "IntVid"
+    }
 }
 
-impl EqUnifyValue for IntVarValue {
-}
+impl EqUnifyValue for IntVarValue {}
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RegionVidKey {
     /// The minimum region vid in the unification set. This is needed
     /// to have a canonical name for a type to prevent infinite
     /// recursion.
-    pub min_vid: ty::RegionVid
+    pub min_vid: ty::RegionVid,
 }
 
 impl UnifyValue for RegionVidKey {
@@ -39,9 +44,15 @@ impl UnifyValue for RegionVidKey {
 
 impl UnifyKey for ty::RegionVid {
     type Value = RegionVidKey;
-    fn index(&self) -> u32 { u32::from(*self) }
-    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid::from(i) }
-    fn tag() -> &'static str { "RegionVid" }
+    fn index(&self) -> u32 {
+        u32::from(*self)
+    }
+    fn from_index(i: u32) -> ty::RegionVid {
+        ty::RegionVid::from(i)
+    }
+    fn tag() -> &'static str {
+        "RegionVid"
+    }
 }
 
 impl ToType for IntVarValue {
@@ -57,13 +68,18 @@ impl ToType for IntVarValue {
 
 impl UnifyKey for ty::FloatVid {
     type Value = Option<FloatVarValue>;
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::FloatVid { ty::FloatVid { index: i } }
-    fn tag() -> &'static str { "FloatVid" }
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::FloatVid {
+        ty::FloatVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "FloatVid"
+    }
 }
 
-impl EqUnifyValue for FloatVarValue {
-}
+impl EqUnifyValue for FloatVarValue {}
 
 impl ToType for FloatVarValue {
     fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {

@@ -1,4 +1,4 @@
-use abi::call::{FnType, ArgType};
+use abi::call::{ArgType, FnType};
 
 fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
     ret.extend_integer_width_to(32);
@@ -14,7 +14,9 @@ pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg_ty(arg);
     }
 }

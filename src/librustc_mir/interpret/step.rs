@@ -3,8 +3,8 @@
 //! The main entry point is the `step` method.
 
 use rustc::mir;
+use rustc::mir::interpret::{EvalResult, PointerArithmetic, Scalar};
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 
 use super::{EvalContext, Machine};
 
@@ -14,11 +14,8 @@ use super::{EvalContext, Machine};
 fn binop_left_homogeneous(op: mir::BinOp) -> bool {
     use rustc::mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr |
-        Offset | Shl | Shr =>
-            true,
-        Eq | Ne | Lt | Le | Gt | Ge =>
-            false,
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
+        Eq | Ne | Lt | Le | Gt | Ge => false,
     }
 }
 /// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
@@ -27,11 +24,8 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     use rustc::mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr |
-        Eq | Ne | Lt | Le | Gt | Ge =>
-            true,
-        Offset | Shl | Shr =>
-            false,
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
+        Offset | Shl | Shr => false,
     }
 }
 
@@ -148,29 +142,31 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let layout = if binop_left_homogeneous(bin_op) { Some(dest.layout) } else { None };
+                let layout = if binop_left_homogeneous(bin_op) {
+                    Some(dest.layout)
+                } else {
+                    None
+                };
                 let left = self.read_immediate(self.eval_operand(left, layout)?)?;
-                let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
+                let layout = if binop_right_homogeneous(bin_op) {
+                    Some(left.layout)
+                } else {
+                    None
+                };
                 let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_ignore_overflow(
-                    bin_op,
-                    left,
-                    right,
-                    dest,
-                )?;
+                self.binop_ignore_overflow(bin_op, left, right, dest)?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
                 let left = self.read_immediate(self.eval_operand(left, None)?)?;
-                let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
+                let layout = if binop_right_homogeneous(bin_op) {
+                    Some(left.layout)
+                } else {
+                    None
+                };
                 let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(
-                    bin_op,
-                    left,
-                    right,
-                    dest,
-                )?;
+                self.binop_with_overflow(bin_op, left, right, dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
@@ -185,12 +181,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
                         self.write_discriminant_index(variant_index, dest)?;
                         if adt_def.is_enum() {
-                            (self.place_downcast(dest, variant_index)?, active_field_index)
+                            (
+                                self.place_downcast(dest, variant_index)?,
+                                active_field_index,
+                            )
                         } else {
                             (dest, active_field_index)
                         }
                     }
-                    _ => (dest, None)
+                    _ => (dest, None),
                 };
 
                 for (i, operand) in operands.iter().enumerate() {
@@ -219,7 +218,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         let (dest, dest_align) = first.to_scalar_ptr_align();
                         let rest = dest.ptr_offset(first.layout.size, self)?;
                         self.memory.copy_repeatedly(
-                            dest, dest_align, rest, dest_align, first.layout.size, length - 1, true
+                            dest,
+                            dest_align,
+                            rest,
+                            dest_align,
+                            first.layout.size,
+                            length - 1,
+                            true,
                         )?;
                     }
                 }
@@ -231,10 +236,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let mplace = self.force_allocation(src)?;
                 let len = mplace.len(self)?;
                 let size = self.pointer_size();
-                self.write_scalar(
-                    Scalar::from_uint(len, size),
-                    dest,
-                )?;
+                self.write_scalar(Scalar::from_uint(len, size), dest)?;
             }
 
             Ref(_, _, ref place) => {
@@ -250,13 +252,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
                 let ty = self.monomorphize(ty, self.substs());
                 let layout = self.layout_of(ty)?;
-                assert!(!layout.is_unsized(),
-                        "SizeOf nullary MIR operator called for unsized type");
+                assert!(
+                    !layout.is_unsized(),
+                    "SizeOf nullary MIR operator called for unsized type"
+                );
                 let size = self.pointer_size();
-                self.write_scalar(
-                    Scalar::from_uint(layout.size.bytes(), size),
-                    dest,
-                )?;
+                self.write_scalar(Scalar::from_uint(layout.size.bytes(), size), dest)?;
             }
 
             Cast(kind, ref operand, cast_ty) => {

@@ -1,34 +1,42 @@
 #![allow(dead_code)]
 #![unstable(feature = "process_internals", issue = "0")]
 
-use ffi::{OsStr, OsString};
-use env;
-use collections::BTreeMap;
 use borrow::Borrow;
+use collections::BTreeMap;
+use env;
+use ffi::{OsStr, OsString};
 
 pub trait EnvKey:
-    From<OsString> + Into<OsString> +
-    Borrow<OsStr> + Borrow<Self> + AsRef<OsStr> +
-    Ord + Clone {}
+    From<OsString> + Into<OsString> + Borrow<OsStr> + Borrow<Self> + AsRef<OsStr> + Ord + Clone
+{
+}
 
 // Implement a case-sensitive environment variable key
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct DefaultEnvKey(OsString);
 
 impl From<OsString> for DefaultEnvKey {
-    fn from(k: OsString) -> Self { DefaultEnvKey(k) }
+    fn from(k: OsString) -> Self {
+        DefaultEnvKey(k)
+    }
 }
 
 impl From<DefaultEnvKey> for OsString {
-    fn from(k: DefaultEnvKey) -> Self { k.0 }
+    fn from(k: DefaultEnvKey) -> Self {
+        k.0
+    }
 }
 
 impl Borrow<OsStr> for DefaultEnvKey {
-    fn borrow(&self) -> &OsStr { &self.0 }
+    fn borrow(&self) -> &OsStr {
+        &self.0
+    }
 }
 
 impl AsRef<OsStr> for DefaultEnvKey {
-    fn as_ref(&self) -> &OsStr { &self.0 }
+    fn as_ref(&self) -> &OsStr {
+        &self.0
+    }
 }
 
 impl EnvKey for DefaultEnvKey {}
@@ -38,7 +46,7 @@ impl EnvKey for DefaultEnvKey {}
 pub struct CommandEnv<K> {
     clear: bool,
     saw_path: bool,
-    vars: BTreeMap<K, Option<OsString>>
+    vars: BTreeMap<K, Option<OsString>>,
 }
 
 impl<K: EnvKey> Default for CommandEnv<K> {
@@ -46,7 +54,7 @@ impl<K: EnvKey> Default for CommandEnv<K> {
         CommandEnv {
             clear: false,
             saw_path: false,
-            vars: Default::default()
+            vars: Default::default(),
         }
     }
 }
@@ -101,7 +109,8 @@ impl<K: EnvKey> CommandEnv<K> {
     // The following functions build up changes
     pub fn set(&mut self, key: &OsStr, value: &OsStr) {
         self.maybe_saw_path(&key);
-        self.vars.insert(key.to_owned().into(), Some(value.to_owned()));
+        self.vars
+            .insert(key.to_owned().into(), Some(value.to_owned()));
     }
     pub fn remove(&mut self, key: &OsStr) {
         self.maybe_saw_path(&key);

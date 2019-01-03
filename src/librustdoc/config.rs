@@ -6,10 +6,11 @@ use errors;
 use errors::emitter::ColorConfig;
 use getopts;
 use rustc::lint::Level;
-use rustc::session::early_error;
+use rustc::session::config::{
+    build_codegen_options, build_debugging_options, get_cmd_lint_options, nightly_options,
+};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
-use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options};
+use rustc::session::early_error;
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -28,7 +29,6 @@ use theme;
 #[derive(Clone)]
 pub struct Options {
     // Basic options / Options passed directly to rustc
-
     /// The crate root or Markdown file to load.
     pub input: PathBuf,
     /// The name of the crate being documented.
@@ -63,14 +63,12 @@ pub struct Options {
     pub lint_cap: Option<Level>,
 
     // Options specific to running doctests
-
     /// Whether we should run doctests instead of generating docs.
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
 
     // Options that affect the documentation process
-
     /// The selected default set of passes to use.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
@@ -84,7 +82,6 @@ pub struct Options {
     pub display_warnings: bool,
 
     // Options that alter generated documentation pages
-
     /// Crate version to note on the sidebar of generated docs.
     pub crate_version: Option<String>,
     /// Collected options specific to outputting final pages.
@@ -97,9 +94,7 @@ impl fmt::Debug for Options {
 
         impl<'a> fmt::Debug for FmtExterns<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.debug_map()
-                    .entries(self.0.iter())
-                    .finish()
+                f.debug_map().entries(self.0.iter()).finish()
             }
         }
 
@@ -176,7 +171,6 @@ pub struct RenderOptions {
     pub static_root_path: Option<String>,
 
     // Options specific to reading standalone Markdown files
-
     /// Whether to generate a table of contents on the output file when reading a standalone
     /// Markdown file.
     pub markdown_no_toc: bool,
@@ -227,9 +221,14 @@ impl Options {
             Some("never") => ColorConfig::Never,
             None => ColorConfig::Auto,
             Some(arg) => {
-                early_error(ErrorOutputType::default(),
-                            &format!("argument for --color must be `auto`, `always` or `never` \
-                                      (instead was `{}`)", arg));
+                early_error(
+                    ErrorOutputType::default(),
+                    &format!(
+                        "argument for --color must be `auto`, `always` or `never` \
+                         (instead was `{}`)",
+                        arg
+                    ),
+                );
             }
         };
         let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
@@ -239,19 +238,26 @@ impl Options {
             Some("short") => ErrorOutputType::Short(color),
             None => ErrorOutputType::HumanReadable(color),
             Some(arg) => {
-                early_error(ErrorOutputType::default(),
-                            &format!("argument for --error-format must be `human`, `json` or \
-                                      `short` (instead was `{}`)", arg));
+                early_error(
+                    ErrorOutputType::default(),
+                    &format!(
+                        "argument for --error-format must be `human`, `json` or \
+                         `short` (instead was `{}`)",
+                        arg
+                    ),
+                );
             }
         };
 
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
 
-        let diag = new_handler(error_format,
-                               None,
-                               debugging_options.treat_err_as_bug,
-                               debugging_options.ui_testing);
+        let diag = new_handler(
+            error_format,
+            None,
+            debugging_options.treat_err_as_bug,
+            debugging_options.ui_testing,
+        );
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
@@ -291,7 +297,9 @@ impl Options {
         }
         let input = PathBuf::from(&matches.free[0]);
 
-        let libs = matches.opt_strs("L").iter()
+        let libs = matches
+            .opt_strs("L")
+            .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
         let externs = match parse_externs(&matches) {
@@ -310,16 +318,18 @@ impl Options {
         };
 
         let test_args = matches.opt_strs("test-args");
-        let test_args: Vec<String> = test_args.iter()
-                                              .flat_map(|s| s.split_whitespace())
-                                              .map(|s| s.to_string())
-                                              .collect();
+        let test_args: Vec<String> = test_args
+            .iter()
+            .flat_map(|s| s.split_whitespace())
+            .map(|s| s.to_string())
+            .collect();
 
         let should_test = matches.opt_present("test");
 
-        let output = matches.opt_str("o")
-                            .map(|s| PathBuf::from(&s))
-                            .unwrap_or_else(|| PathBuf::from("doc"));
+        let output = matches
+            .opt_str("o")
+            .map(|s| PathBuf::from(&s))
+            .unwrap_or_else(|| PathBuf::from("doc"));
         let mut cfgs = matches.opt_strs("cfg");
         cfgs.push("rustdoc".to_string());
 
@@ -327,7 +337,8 @@ impl Options {
 
         if let Some(ref p) = extension_css {
             if !p.is_file() {
-                diag.struct_err("option --extend-css argument must be a file").emit();
+                diag.struct_err("option --extend-css argument must be a file")
+                    .emit();
                 return Err(1);
             }
         }
@@ -336,11 +347,14 @@ impl Options {
         if matches.opt_present("themes") {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
 
-            for (theme_file, theme_s) in matches.opt_strs("themes")
-                                                .iter()
-                                                .map(|s| (PathBuf::from(&s), s.to_owned())) {
+            for (theme_file, theme_s) in matches
+                .opt_strs("themes")
+                .iter()
+                .map(|s| (PathBuf::from(&s), s.to_owned()))
+            {
                 if !theme_file.is_file() {
-                    diag.struct_err("option --themes arguments must all be files").emit();
+                    diag.struct_err("option --themes arguments must all be files")
+                        .emit();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
@@ -357,11 +371,14 @@ impl Options {
         let mut id_map = html::markdown::IdMap::new();
         id_map.populate(html::render::initial_ids());
         let external_html = match ExternalHtml::load(
-                &matches.opt_strs("html-in-header"),
-                &matches.opt_strs("html-before-content"),
-                &matches.opt_strs("html-after-content"),
-                &matches.opt_strs("markdown-before-content"),
-                &matches.opt_strs("markdown-after-content"), &diag, &mut id_map) {
+            &matches.opt_strs("html-in-header"),
+            &matches.opt_strs("html-before-content"),
+            &matches.opt_strs("html-after-content"),
+            &matches.opt_strs("markdown-before-content"),
+            &matches.opt_strs("markdown-after-content"),
+            &diag,
+            &mut id_map,
+        ) {
             Some(eh) => eh,
             None => return Err(3),
         };
@@ -378,7 +395,8 @@ impl Options {
         match matches.opt_str("r").as_ref().map(|s| &**s) {
             Some("rust") | None => {}
             Some(s) => {
-                diag.struct_err(&format!("unknown input format: {}", s)).emit();
+                diag.struct_err(&format!("unknown input format: {}", s))
+                    .emit();
                 return Err(1);
             }
         }
@@ -386,7 +404,8 @@ impl Options {
         match matches.opt_str("w").as_ref().map(|s| &**s) {
             Some("html") | None => {}
             Some(s) => {
-                diag.struct_err(&format!("unknown output format: {}", s)).emit();
+                diag.struct_err(&format!("unknown output format: {}", s))
+                    .emit();
                 return Err(1);
             }
         }
@@ -394,7 +413,8 @@ impl Options {
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
         if let Some(ref index_page) = index_page {
             if !index_page.is_file() {
-                diag.struct_err("option `--index-page` argument must be a file").emit();
+                diag.struct_err("option `--index-page` argument must be a file")
+                    .emit();
                 return Err(1);
             }
         }
@@ -474,30 +494,26 @@ impl Options {
                 markdown_css,
                 markdown_playground_url,
                 generate_search_filter,
-            }
+            },
         })
     }
 
     /// Returns whether the file given as `self.input` is a Markdown file.
     pub fn markdown_input(&self) -> bool {
-        self.input.extension()
+        self.input
+            .extension()
             .map_or(false, |e| e == "md" || e == "markdown")
     }
 }
 
 /// Prints deprecation warnings for deprecated options
 fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) {
-    let deprecated_flags = [
-       "input-format",
-       "output-format",
-       "no-defaults",
-       "passes",
-    ];
+    let deprecated_flags = ["input-format", "output-format", "no-defaults", "passes"];
 
     for flag in deprecated_flags.into_iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(&format!("the '{}' flag is considered deprecated",
-                                                    flag));
+            let mut err =
+                diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
             err.warn("please see https://github.com/rust-lang/rust/issues/44136");
 
             if *flag == "no-defaults" {
@@ -508,10 +524,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
         }
     }
 
-    let removed_flags = [
-        "plugins",
-        "plugin-path",
-    ];
+    let removed_flags = ["plugins", "plugin-path"];
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {
@@ -531,8 +544,12 @@ fn parse_extern_html_roots(
     let mut externs = BTreeMap::new();
     for arg in &matches.opt_strs("extern-html-root-url") {
         let mut parts = arg.splitn(2, '=');
-        let name = parts.next().ok_or("--extern-html-root-url must not be empty")?;
-        let url = parts.next().ok_or("--extern-html-root-url must be of the form name=url")?;
+        let name = parts
+            .next()
+            .ok_or("--extern-html-root-url must not be empty")?;
+        let url = parts
+            .next()
+            .ok_or("--extern-html-root-url must be of the form name=url")?;
         externs.insert(name.to_string(), url.to_string());
     }
 
@@ -547,11 +564,14 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
-        let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
+        let name = parts
+            .next()
+            .ok_or("--extern value must not be empty".to_string())?;
         let location = parts.next().map(|s| s.to_string());
         if location.is_none() && !nightly_options::is_unstable_enabled(matches) {
             return Err("the `-Z unstable-options` flag must also be passed to \
-                        enable `--extern crate_name` without `=path`".to_string());
+                        enable `--extern crate_name` without `=path`"
+                .to_string());
         }
         let name = name.to_string();
         externs.entry(name).or_default().insert(location);

@@ -1,11 +1,11 @@
-use abi::call::{Conv, FnType, ArgType, Reg, RegKind, Uniform};
+use abi::call::{ArgType, Conv, FnType, Reg, RegKind, Uniform};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use spec::HasTargetSpec;
 
-fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
-                                     -> Option<Uniform>
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>) -> Option<Uniform>
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
         let size = arg.layout.size;
@@ -18,14 +18,11 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => size.bits() == 64 || size.bits() == 128
+            RegKind::Vector => size.bits() == 64 || size.bits() == 128,
         };
 
         if valid_unit {
-            Some(Uniform {
-                unit,
-                total: size
-            })
+            Some(Uniform { unit, total: size })
         } else {
             None
         }
@@ -33,8 +30,9 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
 }
 
 fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, vfp: bool)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
@@ -58,18 +56,16 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, vfp: bool)
         } else {
             Reg::i32()
         };
-        ret.cast_to(Uniform {
-            unit,
-            total: size
-        });
+        ret.cast_to(Uniform { unit, total: size });
         return;
     }
     ret.make_indirect();
 }
 
 fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, vfp: bool)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(32);
@@ -87,26 +83,28 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, vfp: bool)
     let total = arg.layout.size;
     arg.cast_to(Uniform {
         unit: if align <= 4 { Reg::i32() } else { Reg::i64() },
-        total
+        total,
     });
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
-    where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
+where
+    Ty: TyLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
     // If this is a target with a hard-float ABI, and the function is not explicitly
     // `extern "aapcs"`, then we must use the VFP registers for homogeneous aggregates.
-    let vfp = cx.target_spec().llvm_target.ends_with("hf")
-        && fty.conv != Conv::ArmAapcs
-        && !fty.variadic;
+    let vfp =
+        cx.target_spec().llvm_target.ends_with("hf") && fty.conv != Conv::ArmAapcs && !fty.variadic;
 
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret, vfp);
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() { continue; }
+        if arg.is_ignore() {
+            continue;
+        }
         classify_arg_ty(cx, arg, vfp);
     }
 }

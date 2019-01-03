@@ -22,7 +22,7 @@ use crate::native;
 use crate::test;
 use crate::tool;
 use crate::util::{add_lib_path, exe, libdir};
-use crate::{Build, DocTests, Mode, GitRepo};
+use crate::{Build, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
 
@@ -708,7 +708,7 @@ impl<'a> Builder<'a> {
             "build" => self.cargo_out(compiler, mode, target),
 
             // This is the intended out directory for crate documentation.
-            "doc" | "rustdoc" =>  self.crate_doc_out(target),
+            "doc" | "rustdoc" => self.crate_doc_out(target),
 
             _ => self.stage_out(compiler, mode),
         };
@@ -748,41 +748,38 @@ impl<'a> Builder<'a> {
             match mode {
                 Mode::Std => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
-                },
+                }
                 Mode::Test => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
-                },
+                }
                 Mode::Rustc => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
-                },
+                }
                 Mode::Codegen => {
                     self.clear_if_dirty(&my_out, &librustc_stamp);
-                },
-                Mode::ToolBootstrap => { },
+                }
+                Mode::ToolBootstrap => {}
                 Mode::ToolStd => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
-                },
+                }
                 Mode::ToolTest => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
-                },
+                }
                 Mode::ToolRustc => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                     self.clear_if_dirty(&my_out, &librustc_stamp);
-                },
+                }
             }
         }
 
-        cargo
-            .env("CARGO_TARGET_DIR", out_dir)
-            .arg(cmd);
+        cargo.env("CARGO_TARGET_DIR", out_dir).arg(cmd);
 
         if cmd != "install" {
-            cargo.arg("--target")
-                 .arg(target);
+            cargo.arg("--target").arg(target);
         } else {
             assert_eq!(target, compiler.host);
         }
@@ -896,7 +893,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && cmd != "rustc" && want_rustdoc {
-            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
+            cargo.env(
+                "RUSTDOC_LIBDIR",
+                self.sysroot_libdir(compiler, self.config.build),
+            );
         }
 
         if mode.is_tool() {
@@ -1114,10 +1114,12 @@ impl<'a> Builder<'a> {
             cargo.arg("-v");
         }
 
-        match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
-            (Mode::Std, Some(n), _) |
-            (Mode::Test, Some(n), _) |
-            (_, _, Some(n)) => {
+        match (
+            mode,
+            self.config.rust_codegen_units_std,
+            self.config.rust_codegen_units,
+        ) {
+            (Mode::Std, Some(n), _) | (Mode::Test, Some(n), _) | (_, _, Some(n)) => {
                 cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
             }
             _ => {
@@ -1860,10 +1862,7 @@ mod __test {
     #[test]
     fn test_exclude() {
         let mut config = configure(&[], &[]);
-        config.exclude = vec![
-            "src/test/run-pass".into(),
-            "src/tools/tidy".into(),
-        ];
+        config.exclude = vec!["src/test/run-pass".into(), "src/tools/tidy".into()];
         config.cmd = Subcommand::Test {
             paths: Vec::new(),
             test_args: Vec::new(),

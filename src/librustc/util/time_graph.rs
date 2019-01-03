@@ -45,27 +45,29 @@ struct RaiiToken {
     timeline: TimelineId,
     events: Vec<(String, Instant)>,
     // The token must not be Send:
-    _marker: PhantomData<*const ()>
+    _marker: PhantomData<*const ()>,
 }
-
 
 impl Drop for RaiiToken {
     fn drop(&mut self) {
-        self.graph.end(self.timeline, mem::replace(&mut self.events, Vec::new()));
+        self.graph
+            .end(self.timeline, mem::replace(&mut self.events, Vec::new()));
     }
 }
 
 impl TimeGraph {
     pub fn new() -> TimeGraph {
         TimeGraph {
-            data: Arc::new(Mutex::new(FxHashMap::default()))
+            data: Arc::new(Mutex::new(FxHashMap::default())),
         }
     }
 
-    pub fn start(&self,
-                 timeline: TimelineId,
-                 work_package_kind: WorkPackageKind,
-                 name: &str) -> Timeline {
+    pub fn start(
+        &self,
+        timeline: TimelineId,
+        work_package_kind: WorkPackageKind,
+        name: &str,
+    ) -> Timeline {
         {
             let mut table = self.data.lock().unwrap();
 
@@ -114,24 +116,23 @@ impl TimeGraph {
             assert!(data.open_work_package.is_none());
         }
 
-        let mut threads: Vec<PerThread> =
-            table.values().map(|data| data.clone()).collect();
+        let mut threads: Vec<PerThread> = table.values().map(|data| data.clone()).collect();
 
         threads.sort_by_key(|timeline| timeline.timings[0].start);
 
         let earliest_instant = threads[0].timings[0].start;
-        let latest_instant = threads.iter()
-                                       .map(|timeline| timeline.timings
-                                                               .last()
-                                                               .unwrap()
-                                                               .end)
-                                       .max()
-                                       .unwrap();
+        let latest_instant = threads
+            .iter()
+            .map(|timeline| timeline.timings.last().unwrap().end)
+            .max()
+            .unwrap();
         let max_distance = distance(earliest_instant, latest_instant);
 
         let mut file = File::create(format!("{}.html", output_filename)).unwrap();
 
-        writeln!(file, "
+        writeln!(
+            file,
+            "
             <html>
             <head>
                 <style>
@@ -164,7 +165,8 @@ impl TimeGraph {
         ",
             total_height = threads.len() * TIME_LINE_HEIGHT_STRIDE_IN_PX,
             width = OUTPUT_WIDTH_IN_PX,
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut color = 0;
         for (line_index, thread) in threads.iter().enumerate() {
@@ -179,7 +181,9 @@ impl TimeGraph {
 
                 let colors = span.work_package_kind.0;
 
-                writeln!(file, "<a href='#timing{}'
+                writeln!(
+                    file,
+                    "<a href='#timing{}'
                                    style='top:{}px; \
                                           left:{}px; \
                                           width:{}px; \
@@ -192,48 +196,65 @@ impl TimeGraph {
                     TIME_LINE_HEIGHT_IN_PX,
                     colors[color % colors.len()],
                     span.name,
-                    ).unwrap();
+                )
+                .unwrap();
 
                 color += 1;
             }
         }
 
-        writeln!(file, "
+        writeln!(
+            file,
+            "
             </div>
-        ").unwrap();
+        "
+        )
+        .unwrap();
 
         let mut idx = 0;
         for thread in threads.iter() {
             for timing in &thread.timings {
                 let colors = timing.work_package_kind.0;
                 let height = TIME_LINE_HEIGHT_STRIDE_IN_PX * timing.events.len();
-                writeln!(file, "<div class='timeline'
+                writeln!(
+                    file,
+                    "<div class='timeline'
                                      id='timing{}'
                                      style='background:{};height:{}px;'>",
-                         idx,
-                         colors[idx % colors.len()],
-                         height).unwrap();
+                    idx,
+                    colors[idx % colors.len()],
+                    height
+                )
+                .unwrap();
                 idx += 1;
                 let max = distance(timing.start, timing.end);
                 for (i, &(ref event, time)) in timing.events.iter().enumerate() {
                     let i = i as u64;
                     let time = distance(timing.start, time);
                     let at = normalize(time, max, OUTPUT_WIDTH_IN_PX);
-                    writeln!(file, "<span class='event'
+                    writeln!(
+                        file,
+                        "<span class='event'
                                           style='left:{}px;\
                                                  top:{}px;'>{}</span>",
-                             at,
-                             TIME_LINE_HEIGHT_IN_PX * i,
-                             event).unwrap();
+                        at,
+                        TIME_LINE_HEIGHT_IN_PX * i,
+                        event
+                    )
+                    .unwrap();
                 }
                 writeln!(file, "</div>").unwrap();
             }
         }
 
-        writeln!(file, "
+        writeln!(
+            file,
+            "
             </body>
             </html>
-        ").unwrap();
+        "
+        )
+        .unwrap();
     }
 }
 
@@ -257,7 +278,6 @@ impl Timeline {
 }
 
 fn distance(zero: Instant, x: Instant) -> u64 {
-
     let duration = x.duration_since(zero);
     (duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64) // / div
 }
@@ -265,4 +285,3 @@ fn distance(zero: Instant, x: Instant) -> u64 {
 fn normalize(distance: u64, max: u64, max_pixels: u64) -> u64 {
     (max_pixels * distance) / max
 }
-

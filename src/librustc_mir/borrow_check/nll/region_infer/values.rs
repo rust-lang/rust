@@ -22,7 +22,8 @@ crate struct RegionValueElements {
 impl RegionValueElements {
     crate fn new(mir: &Mir<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = mir.basic_blocks()
+        let statements_before_block: IndexVec<BasicBlock, usize> = mir
+            .basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -377,10 +378,12 @@ impl<N: Idx> RegionValues<N> {
     crate fn elements_contained_in<'a>(&'a self, r: N) -> impl Iterator<Item = RegionElement> + 'a {
         let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
-        let free_regions_iter = self.universal_regions_outlived_by(r)
+        let free_regions_iter = self
+            .universal_regions_outlived_by(r)
             .map(RegionElement::RootUniversalRegion);
 
-        let placeholder_universes_iter = self.placeholders_contained_in(r)
+        let placeholder_universes_iter = self
+            .placeholders_contained_in(r)
             .map(RegionElement::PlaceholderRegion);
 
         points_iter

@@ -237,20 +237,20 @@ use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
+use core::convert::From;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
-use core::marker::{Unpin, Unsize, PhantomData};
+use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem::{self, align_of_val, forget, size_of_val};
-use core::ops::{Deref, Receiver};
 use core::ops::{CoerceUnsized, DispatchFromDyn};
+use core::ops::{Deref, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::convert::From;
 use core::usize;
 
-use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use alloc::{box_free, handle_alloc_error, Alloc, Global, Layout};
 use string::String;
 use vec::Vec;
 
@@ -533,9 +533,7 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
-            unsafe {
-                Some(&mut this.ptr.as_mut().value)
-            }
+            unsafe { Some(&mut this.ptr.as_mut().value) }
         } else {
             None
         }
@@ -616,9 +614,7 @@ impl<T: Clone> Rc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the inner value.
-        unsafe {
-            &mut this.ptr.as_mut().value
-        }
+        unsafe { &mut this.ptr.as_mut().value }
     }
 }
 
@@ -649,7 +645,10 @@ impl Rc<dyn Any> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<RcBox<T>>();
             forget(self);
-            Ok(Rc { ptr, phantom: PhantomData })
+            Ok(Rc {
+                ptr,
+                phantom: PhantomData,
+            })
         } else {
             Err(self)
         }
@@ -664,10 +663,14 @@ impl<T: ?Sized> Rc<T> {
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>()
-            .extend(Layout::for_value(&*ptr)).unwrap().0
-            .pad_to_align().unwrap();
+            .extend(Layout::for_value(&*ptr))
+            .unwrap()
+            .0
+            .pad_to_align()
+            .unwrap();
 
-        let mem = Global.alloc(layout)
+        let mem = Global
+            .alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
@@ -692,12 +695,16 @@ impl<T: ?Sized> Rc<T> {
             ptr::copy_nonoverlapping(
                 bptr as *const T as *const u8,
                 &mut (*ptr).value as *mut _ as *mut u8,
-                value_size);
+                value_size,
+            );
 
             // Free the allocation without dropping its contents
             box_free(box_unique);
 
-            Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Rc {
+                ptr: NonNull::new_unchecked(ptr),
+                phantom: PhantomData,
+            }
         }
     }
 }
@@ -719,12 +726,12 @@ impl<T> Rc<[T]> {
         let v_ptr = v as *const [T];
         let ptr = Self::allocate_for_ptr(v_ptr);
 
-        ptr::copy_nonoverlapping(
-            v.as_ptr(),
-            &mut (*ptr).value as *mut [T] as *mut T,
-            v.len());
+        ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
 
-        Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+        Rc {
+            ptr: NonNull::new_unchecked(ptr),
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -768,7 +775,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             // Pointer to first element
             let elems = &mut (*ptr).value as *mut [T] as *mut T;
 
-            let mut guard = Guard{
+            let mut guard = Guard {
                 mem: NonNull::new_unchecked(mem),
                 elems: elems,
                 layout: layout,
@@ -783,7 +790,10 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             // All clear. Forget the guard so it doesn't free the new RcBox.
             forget(guard);
 
-            Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Rc {
+                ptr: NonNull::new_unchecked(ptr),
+                phantom: PhantomData,
+            }
         }
     }
 }
@@ -875,7 +885,10 @@ impl<T: ?Sized> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
-        Rc { ptr: self.ptr, phantom: PhantomData }
+        Rc {
+            ptr: self.ptr,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -1282,7 +1295,10 @@ impl<T: ?Sized> Weak<T> {
             None
         } else {
             inner.inc_strong();
-            Some(Rc { ptr: self.ptr, phantom: PhantomData })
+            Some(Rc {
+                ptr: self.ptr,
+                phantom: PhantomData,
+            })
         }
     }
 
@@ -1459,7 +1475,9 @@ trait RcBoxPtr<T: ?Sized> {
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
         if self.strong() == 0 || self.strong() == usize::max_value() {
-            unsafe { abort(); }
+            unsafe {
+                abort();
+            }
         }
         self.inner().strong.set(self.strong() + 1);
     }
@@ -1481,7 +1499,9 @@ trait RcBoxPtr<T: ?Sized> {
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
         if self.weak() == 0 || self.weak() == usize::max_value() {
-            unsafe { abort(); }
+            unsafe {
+                abort();
+            }
         }
         self.inner().weak.set(self.weak() + 1);
     }
@@ -1495,9 +1515,7 @@ trait RcBoxPtr<T: ?Sized> {
 impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
-        unsafe {
-            self.ptr.as_ref()
-        }
+        unsafe { self.ptr.as_ref() }
     }
 }
 
@@ -1513,12 +1531,12 @@ mod tests {
     use super::{Rc, Weak};
     use std::boxed::Box;
     use std::cell::RefCell;
+    use std::clone::Clone;
+    use std::convert::From;
+    use std::mem::drop;
     use std::option::Option;
     use std::option::Option::{None, Some};
     use std::result::Result::{Err, Ok};
-    use std::mem::drop;
-    use std::clone::Clone;
-    use std::convert::From;
 
     #[test]
     fn test_clone() {
@@ -1569,7 +1587,9 @@ mod tests {
             x: RefCell<Option<Weak<Cycle>>>,
         }
 
-        let a = Rc::new(Cycle { x: RefCell::new(None) });
+        let a = Rc::new(Cycle {
+            x: RefCell::new(None),
+        });
         let b = Rc::downgrade(&a.clone());
         *a.x.borrow_mut() = Some(b);
 
@@ -1927,4 +1947,4 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized> Unpin for Rc<T> { }
+impl<T: ?Sized> Unpin for Rc<T> {}

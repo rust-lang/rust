@@ -4,15 +4,15 @@
 //! not a lot of interesting happenings here unfortunately.
 
 use std::env;
-use std::str;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{SystemTime, Instant};
+use std::str;
+use std::time::{Instant, SystemTime};
 
-use crate::config::Config;
 use crate::builder::Builder;
+use crate::config::Config;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
@@ -41,7 +41,11 @@ pub fn is_dylib(name: &str) -> bool {
 /// Returns the corresponding relative library directory that the compiler's
 /// dylibs will be found in.
 pub fn libdir(target: &str) -> &'static str {
-    if target.contains("windows") {"bin"} else {"lib"}
+    if target.contains("windows") {
+        "bin"
+    } else {
+        "lib"
+    }
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
@@ -75,7 +79,9 @@ pub fn dylib_path() -> Vec<PathBuf> {
 
 /// `push` all components to `buf`. On windows, append `.exe` to the last component.
 pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
-    let (&file, components) = components.split_last().expect("at least one component required");
+    let (&file, components) = components
+        .split_last()
+        .expect("at least one component required");
     let mut file = file.to_owned();
 
     if cfg!(windows) {
@@ -99,9 +105,11 @@ impl Drop for TimeIt {
     fn drop(&mut self) {
         let time = self.1.elapsed();
         if !self.0 {
-            println!("\tfinished in {}.{:03}",
-                    time.as_secs(),
-                    time.subsec_nanos() / 1_000_000);
+            println!(
+                "\tfinished in {}.{:03}",
+                time.as_secs(),
+                time.subsec_nanos() / 1_000_000
+            );
         }
     }
 }
@@ -109,7 +117,9 @@ impl Drop for TimeIt {
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
-    if config.dry_run { return Ok(()); }
+    if config.dry_run {
+        return Ok(());
+    }
     let _ = fs::remove_dir(dest);
     return symlink_dir_inner(src, dest);
 
@@ -129,9 +139,9 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
     #[cfg(windows)]
     #[allow(nonstandard_style)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
-        use std::ptr;
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
+        use std::ptr;
 
         const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
         const GENERIC_WRITE: DWORD = 0x40000000;
@@ -167,22 +177,25 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
         }
 
         extern "system" {
-            fn CreateFileW(lpFileName: LPCWSTR,
-                           dwDesiredAccess: DWORD,
-                           dwShareMode: DWORD,
-                           lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
-                           dwCreationDisposition: DWORD,
-                           dwFlagsAndAttributes: DWORD,
-                           hTemplateFile: HANDLE)
-                           -> HANDLE;
-            fn DeviceIoControl(hDevice: HANDLE,
-                               dwIoControlCode: DWORD,
-                               lpInBuffer: LPVOID,
-                               nInBufferSize: DWORD,
-                               lpOutBuffer: LPVOID,
-                               nOutBufferSize: DWORD,
-                               lpBytesReturned: LPDWORD,
-                               lpOverlapped: LPOVERLAPPED) -> BOOL;
+            fn CreateFileW(
+                lpFileName: LPCWSTR,
+                dwDesiredAccess: DWORD,
+                dwShareMode: DWORD,
+                lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+                dwCreationDisposition: DWORD,
+                dwFlagsAndAttributes: DWORD,
+                hTemplateFile: HANDLE,
+            ) -> HANDLE;
+            fn DeviceIoControl(
+                hDevice: HANDLE,
+                dwIoControlCode: DWORD,
+                lpInBuffer: LPVOID,
+                nInBufferSize: DWORD,
+                lpOutBuffer: LPVOID,
+                nOutBufferSize: DWORD,
+                lpBytesReturned: LPDWORD,
+                lpOverlapped: LPOVERLAPPED,
+            ) -> BOOL;
             fn CloseHandle(hObject: HANDLE) -> BOOL;
         }
 
@@ -200,17 +213,18 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
         let path = to_u16s(junction)?;
 
         unsafe {
-            let h = CreateFileW(path.as_ptr(),
-                                GENERIC_WRITE,
-                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                0 as *mut _,
-                                OPEN_EXISTING,
-                                FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
-                                ptr::null_mut());
+            let h = CreateFileW(
+                path.as_ptr(),
+                GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                0 as *mut _,
+                OPEN_EXISTING,
+                FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                ptr::null_mut(),
+            );
 
             let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-            let db = data.as_mut_ptr()
-                            as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
+            let db = data.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
             let buf = &mut (*db).ReparseTarget as *mut u16;
             let mut i = 0;
             // FIXME: this conversion is very hacky
@@ -225,17 +239,19 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             (*db).ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
             (*db).ReparseTargetMaximumLength = (i * 2) as WORD;
             (*db).ReparseTargetLength = ((i - 1) * 2) as WORD;
-            (*db).ReparseDataLength =
-                    (*db).ReparseTargetLength as DWORD + 12;
+            (*db).ReparseDataLength = (*db).ReparseTargetLength as DWORD + 12;
 
             let mut ret = 0;
-            let res = DeviceIoControl(h as *mut _,
-                                      FSCTL_SET_REPARSE_POINT,
-                                      data.as_ptr() as *mut _,
-                                      (*db).ReparseDataLength + 8,
-                                      ptr::null_mut(), 0,
-                                      &mut ret,
-                                      ptr::null_mut());
+            let res = DeviceIoControl(
+                h as *mut _,
+                FSCTL_SET_REPARSE_POINT,
+                data.as_ptr() as *mut _,
+                (*db).ReparseDataLength + 8,
+                ptr::null_mut(),
+                0,
+                &mut ret,
+                ptr::null_mut(),
+            );
 
             let out = if res == 0 {
                 Err(io::Error::last_os_error())
@@ -274,7 +290,10 @@ impl OutputFolder {
         // the ANSI escape code to clear from the cursor to end of line.
         // Travis seems to have trouble when _not_ using "\r\x1b[0K", that will
         // randomly put lines to the top of the webpage.
-        print!("travis_fold:start:{0}\r\x1b[0Ktravis_time:start:{0}\r\x1b[0K", name);
+        print!(
+            "travis_fold:start:{0}\r\x1b[0Ktravis_time:start:{0}\r\x1b[0K",
+            name
+        );
         OutputFolder {
             name,
             start_time: SystemTime::now(),
@@ -300,7 +319,7 @@ impl Drop for OutputFolder {
         let finish = end_time.duration_since(UNIX_EPOCH);
         println!(
             "travis_fold:end:{0}\r\x1b[0K\n\
-                travis_time:end:{0}:start={1},finish={2},duration={3}\r\x1b[0K",
+             travis_time:end:{0}:start={1},finish={2},duration={3}\r\x1b[0K",
             self.name,
             to_nanos(start),
             to_nanos(finish),

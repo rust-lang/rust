@@ -12,22 +12,20 @@ pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
 pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
-        debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
-               self.to_raw_string(),
-               cx.codegen_unit().name());
+        debug!(
+            "BEGIN IMPLEMENTING '{} ({})' in cgu {}",
+            self.to_string(cx.tcx()),
+            self.to_raw_string(),
+            cx.codegen_unit().name()
+        );
 
         match *self.as_mono_item() {
             MonoItem::Static(def_id) => {
                 let tcx = cx.tcx();
                 let is_mutable = match tcx.describe_def(def_id) {
                     Some(Def::Static(_, is_mutable)) => is_mutable,
-                    Some(other) => {
-                        bug!("Expected Def::Static, found {:?}", other)
-                    }
-                    None => {
-                        bug!("Expected Def::Static for {:?}, found nothing", def_id)
-                    }
+                    Some(other) => bug!("Expected Def::Static, found {:?}", other),
+                    None => bug!("Expected Def::Static for {:?}, found nothing", def_id),
                 };
                 cx.codegen_static(def_id, is_mutable);
             }
@@ -36,7 +34,10 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 if let hir::ItemKind::GlobalAsm(ref ga) = item.node {
                     cx.codegen_global_asm(ga);
                 } else {
-                    span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
+                    span_bug!(
+                        item.span,
+                        "Mismatch between hir::Item type and MonoItem type"
+                    )
                 }
             }
             MonoItem::Fn(instance) => {
@@ -44,22 +45,26 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             }
         }
 
-        debug!("END IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
-               self.to_raw_string(),
-               cx.codegen_unit().name());
+        debug!(
+            "END IMPLEMENTING '{} ({})' in cgu {}",
+            self.to_string(cx.tcx()),
+            self.to_raw_string(),
+            cx.codegen_unit().name()
+        );
     }
 
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
         linkage: Linkage,
-        visibility: Visibility
+        visibility: Visibility,
     ) {
-        debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
-               self.to_raw_string(),
-               cx.codegen_unit().name());
+        debug!(
+            "BEGIN PREDEFINING '{} ({})' in cgu {}",
+            self.to_string(cx.tcx()),
+            self.to_raw_string(),
+            cx.codegen_unit().name()
+        );
 
         let symbol_name = self.symbol_name(cx.tcx()).as_str();
 
@@ -75,25 +80,23 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             MonoItem::GlobalAsm(..) => {}
         }
 
-        debug!("END PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
-               self.to_raw_string(),
-               cx.codegen_unit().name());
+        debug!(
+            "END PREDEFINING '{} ({})' in cgu {}",
+            self.to_string(cx.tcx()),
+            self.to_raw_string(),
+            cx.codegen_unit().name()
+        );
     }
 
     fn to_raw_string(&self) -> String {
         match *self.as_mono_item() {
-            MonoItem::Fn(instance) => {
-                format!("Fn({:?}, {})",
-                        instance.def,
-                        instance.substs.as_ptr() as usize)
-            }
-            MonoItem::Static(id) => {
-                format!("Static({:?})", id)
-            }
-            MonoItem::GlobalAsm(id) => {
-                format!("GlobalAsm({:?})", id)
-            }
+            MonoItem::Fn(instance) => format!(
+                "Fn({:?}, {})",
+                instance.def,
+                instance.substs.as_ptr() as usize
+            ),
+            MonoItem::Static(id) => format!("Static({:?})", id),
+            MonoItem::GlobalAsm(id) => format!("GlobalAsm({:?})", id),
         }
     }
 }

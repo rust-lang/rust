@@ -1,5 +1,5 @@
-use unicode_width::UnicodeWidthChar;
 use super::*;
+use unicode_width::UnicodeWidthChar;
 
 /// Find all newlines, multi-byte characters, and non-narrow characters in a
 /// SourceFile.
@@ -8,19 +8,20 @@ use super::*;
 /// is detected at runtime.
 pub fn analyze_source_file(
     src: &str,
-    source_file_start_pos: BytePos)
-    -> (Vec<BytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>)
-{
+    source_file_start_pos: BytePos,
+) -> (Vec<BytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>) {
     let mut lines = vec![source_file_start_pos];
     let mut multi_byte_chars = vec![];
     let mut non_narrow_chars = vec![];
 
     // Calls the right implementation, depending on hardware support available.
-    analyze_source_file_dispatch(src,
-                             source_file_start_pos,
-                             &mut lines,
-                             &mut multi_byte_chars,
-                             &mut non_narrow_chars);
+    analyze_source_file_dispatch(
+        src,
+        source_file_start_pos,
+        &mut lines,
+        &mut multi_byte_chars,
+        &mut non_narrow_chars,
+    );
 
     // The code above optimistically registers a new line *after* each \n
     // it encounters. If that point is already outside the source_file, remove
@@ -200,14 +201,14 @@ cfg_if! {
 // `scan_len` determines the number of bytes in `src` to scan. Note that the
 // function can read past `scan_len` if a multi-byte character start within the
 // range but extends past it. The overflow is returned by the function.
-fn analyze_source_file_generic(src: &str,
-                           scan_len: usize,
-                           output_offset: BytePos,
-                           lines: &mut Vec<BytePos>,
-                           multi_byte_chars: &mut Vec<MultiByteChar>,
-                           non_narrow_chars: &mut Vec<NonNarrowChar>)
-                           -> usize
-{
+fn analyze_source_file_generic(
+    src: &str,
+    scan_len: usize,
+    output_offset: BytePos,
+    lines: &mut Vec<BytePos>,
+    multi_byte_chars: &mut Vec<MultiByteChar>,
+    non_narrow_chars: &mut Vec<NonNarrowChar>,
+) -> usize {
     assert!(src.len() >= scan_len);
     let mut i = 0;
     let src_bytes = src.as_bytes();
@@ -249,7 +250,7 @@ fn analyze_source_file_generic(src: &str,
             let pos = BytePos::from_usize(i) + output_offset;
 
             if char_len > 1 {
-                assert!(char_len >=2 && char_len <= 4);
+                assert!(char_len >= 2 && char_len <= 4);
                 let mbc = MultiByteChar {
                     pos,
                     bytes: char_len as u8,
@@ -272,48 +273,40 @@ fn analyze_source_file_generic(src: &str,
     i - scan_len
 }
 
-
-
 macro_rules! test {
     (case: $test_name:ident,
      text: $text:expr,
      source_file_start_pos: $source_file_start_pos:expr,
      lines: $lines:expr,
      multi_byte_chars: $multi_byte_chars:expr,
-     non_narrow_chars: $non_narrow_chars:expr,) => (
+     non_narrow_chars: $non_narrow_chars:expr,) => {
+        #[test]
+        fn $test_name() {
+            let (lines, multi_byte_chars, non_narrow_chars) =
+                analyze_source_file($text, BytePos($source_file_start_pos));
 
-    #[test]
-    fn $test_name() {
+            let expected_lines: Vec<BytePos> = $lines.into_iter().map(|pos| BytePos(pos)).collect();
 
-        let (lines, multi_byte_chars, non_narrow_chars) =
-            analyze_source_file($text, BytePos($source_file_start_pos));
+            assert_eq!(lines, expected_lines);
 
-        let expected_lines: Vec<BytePos> = $lines
-            .into_iter()
-            .map(|pos| BytePos(pos))
-            .collect();
+            let expected_mbcs: Vec<MultiByteChar> = $multi_byte_chars
+                .into_iter()
+                .map(|(pos, bytes)| MultiByteChar {
+                    pos: BytePos(pos),
+                    bytes,
+                })
+                .collect();
 
-        assert_eq!(lines, expected_lines);
+            assert_eq!(multi_byte_chars, expected_mbcs);
 
-        let expected_mbcs: Vec<MultiByteChar> = $multi_byte_chars
-            .into_iter()
-            .map(|(pos, bytes)| MultiByteChar {
-                pos: BytePos(pos),
-                bytes,
-            })
-            .collect();
+            let expected_nncs: Vec<NonNarrowChar> = $non_narrow_chars
+                .into_iter()
+                .map(|(pos, width)| NonNarrowChar::new(BytePos(pos), width))
+                .collect();
 
-        assert_eq!(multi_byte_chars, expected_mbcs);
-
-        let expected_nncs: Vec<NonNarrowChar> = $non_narrow_chars
-            .into_iter()
-            .map(|(pos, width)| {
-                NonNarrowChar::new(BytePos(pos), width)
-            })
-            .collect();
-
-        assert_eq!(non_narrow_chars, expected_nncs);
-    })
+            assert_eq!(non_narrow_chars, expected_nncs);
+        }
+    };
 }
 
 test!(

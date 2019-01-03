@@ -29,12 +29,12 @@
 #![allow(unused_imports)]
 
 use core::fmt;
-use core::str as core_str;
-use core::str::pattern::Pattern;
-use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+use core::iter::FusedIterator;
 use core::mem;
 use core::ptr;
-use core::iter::FusedIterator;
+use core::str as core_str;
+use core::str::pattern::Pattern;
+use core::str::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 use core::unicode::conversions;
 
 use borrow::{Borrow, ToOwned};
@@ -44,36 +44,38 @@ use string::String;
 use vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{FromStr, Utf8Error};
-#[allow(deprecated)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Lines, LinesAny};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Split, RSplit};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{SplitN, RSplitN};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{SplitTerminator, RSplitTerminator};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Matches, RMatches};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{MatchIndices, RMatchIndices};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::SplitWhitespace;
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
 #[unstable(feature = "split_ascii_whitespace", issue = "48656")]
 pub use core::str::SplitAsciiWhitespace;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::SplitWhitespace;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{from_utf8, from_utf8_mut, Bytes, CharIndices, Chars};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{FromStr, Utf8Error};
+#[allow(deprecated)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{Lines, LinesAny};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{MatchIndices, RMatchIndices};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{Matches, RMatches};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{RSplit, Split};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{RSplitN, SplitN};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{RSplitTerminator, SplitTerminator};
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
+#[unstable(
+    feature = "slice_concat_ext",
+    reason = "trait should not have to exist",
+    issue = "27747"
+)]
 impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     type Output = String;
 
@@ -82,9 +84,7 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     }
 
     fn join(&self, sep: &str) -> String {
-        unsafe {
-            String::from_utf8_unchecked( join_generic_copy(self, sep.as_bytes()) )
-        }
+        unsafe { String::from_utf8_unchecked(join_generic_copy(self, sep.as_bytes())) }
     }
 
     fn connect(&self, sep: &str) -> String {
@@ -122,10 +122,10 @@ macro_rules! spezialize_for_lengths {
 macro_rules! copy_slice_and_advance {
     ($target:expr, $bytes:expr) => {
         let len = $bytes.len();
-        let (head, tail) = {$target}.split_at_mut(len);
+        let (head, tail) = { $target }.split_at_mut(len);
         head.copy_from_slice($bytes);
         $target = tail;
-    }
+    };
 }
 
 // Optimized join implementation that works for both Vec<T> (T: Copy) and String's inner vec
@@ -155,11 +155,15 @@ where
     // if the `len` calculation overflows, we'll panic
     // we would have run out of memory anyway and the rest of the function requires
     // the entire Vec pre-allocated for safety
-    let len =  sep_len.checked_mul(iter.len()).and_then(|n| {
-            slice.iter()
+    let len = sep_len
+        .checked_mul(iter.len())
+        .and_then(|n| {
+            slice
+                .iter()
                 .map(|s| s.borrow().as_ref().len())
                 .try_fold(n, usize::checked_add)
-        }).expect("attempt to join into collection with len > usize::MAX");
+        })
+        .expect("attempt to join into collection with len > usize::MAX");
 
     // crucial for safety
     let mut result = Vec::with_capacity(len);
@@ -381,13 +385,13 @@ impl str {
             // See http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
             // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
-            let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev()) &&
-                                !case_ignoreable_then_cased(from[i + 2..].chars());
+            let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev())
+                && !case_ignoreable_then_cased(from[i + 2..].chars());
             to.push_str(if is_word_final { "ς" } else { "σ" });
         }
 
         fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use core::unicode::derived_property::{Cased, Case_Ignorable};
+            use core::unicode::derived_property::{Case_Ignorable, Cased};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
                 None => false,
@@ -449,9 +453,11 @@ impl str {
     /// escaped.
     ///
     /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
+    #[unstable(
+        feature = "str_escape",
+        reason = "return type may change to be an iterator",
+        issue = "27791"
+    )]
     pub fn escape_debug(&self) -> String {
         let mut string = String::with_capacity(self.len());
         let mut chars = self.chars();
@@ -465,9 +471,11 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_default`].
     ///
     /// [`char::escape_default`]: primitive.char.html#method.escape_default
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
+    #[unstable(
+        feature = "str_escape",
+        reason = "return type may change to be an iterator",
+        issue = "27791"
+    )]
     pub fn escape_default(&self) -> String {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
@@ -475,9 +483,11 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_unicode`].
     ///
     /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
+    #[unstable(
+        feature = "str_escape",
+        reason = "return type may change to be an iterator",
+        issue = "27791"
+    )]
     pub fn escape_unicode(&self) -> String {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
     }

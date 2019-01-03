@@ -1,9 +1,10 @@
 //! Syntax extensions in the Rust compiler.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![feature(in_band_lifetimes)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
@@ -13,17 +14,16 @@
 #![feature(str_escape)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 extern crate fmt_macros;
 #[macro_use]
 extern crate syntax;
-extern crate syntax_pos;
 extern crate proc_macro;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_target;
+extern crate syntax_pos;
 #[macro_use]
 extern crate smallvec;
 #[macro_use]
@@ -53,13 +53,15 @@ pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
+use syntax::ext::base::{MacroExpanderFn, MultiModifier, NamedSyntaxExtension, NormalTT};
 use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
-pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
-                         user_exts: Vec<NamedSyntaxExtension>,
-                         enable_quotes: bool) {
+pub fn register_builtins(
+    resolver: &mut dyn syntax::ext::base::Resolver,
+    user_exts: Vec<NamedSyntaxExtension>,
+    enable_quotes: bool,
+) {
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
@@ -124,31 +126,44 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         assert: assert::expand_assert,
     }
 
-    register(Symbol::intern("test_case"), MultiModifier(Box::new(test_case::expand)));
-    register(Symbol::intern("test"), MultiModifier(Box::new(test::expand_test)));
-    register(Symbol::intern("bench"), MultiModifier(Box::new(test::expand_bench)));
+    register(
+        Symbol::intern("test_case"),
+        MultiModifier(Box::new(test_case::expand)),
+    );
+    register(
+        Symbol::intern("test"),
+        MultiModifier(Box::new(test::expand_test)),
+    );
+    register(
+        Symbol::intern("bench"),
+        MultiModifier(Box::new(test::expand_bench)),
+    );
 
     // format_args uses `unstable` things internally.
-    register(Symbol::intern("format_args"),
-             NormalTT {
-                expander: Box::new(format::expand_format_args),
-                def_info: None,
-                allow_internal_unstable: true,
-                allow_internal_unsafe: false,
-                local_inner_macros: false,
-                unstable_feature: None,
-                edition: hygiene::default_edition(),
-            });
-    register(Symbol::intern("format_args_nl"),
-             NormalTT {
-                 expander: Box::new(format::expand_format_args_nl),
-                 def_info: None,
-                 allow_internal_unstable: true,
-                 allow_internal_unsafe: false,
-                 local_inner_macros: false,
-                 unstable_feature: None,
-                 edition: hygiene::default_edition(),
-             });
+    register(
+        Symbol::intern("format_args"),
+        NormalTT {
+            expander: Box::new(format::expand_format_args),
+            def_info: None,
+            allow_internal_unstable: true,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            unstable_feature: None,
+            edition: hygiene::default_edition(),
+        },
+    );
+    register(
+        Symbol::intern("format_args_nl"),
+        NormalTT {
+            expander: Box::new(format::expand_format_args_nl),
+            def_info: None,
+            allow_internal_unstable: true,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            unstable_feature: None,
+            edition: hygiene::default_edition(),
+        },
+    );
 
     for (name, ext) in user_exts {
         register(name, ext);

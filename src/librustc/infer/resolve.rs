@@ -1,6 +1,6 @@
-use super::{InferCtxt, FixupError, FixupResult};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use super::{FixupError, FixupResult, InferCtxt};
 use ty::fold::{TypeFolder, TypeVisitor};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER
@@ -10,7 +10,7 @@ use ty::fold::{TypeFolder, TypeVisitor};
 /// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
 /// points for correctness.
-pub struct OpportunisticTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct OpportunisticTypeResolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeResolver<'a, 'g
 /// The opportunistic type and region resolver is similar to the
 /// opportunistic type resolver, but also opportunistically resolves
 /// regions. It is useful for canonicalization.
-pub struct OpportunisticTypeAndRegionResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct OpportunisticTypeAndRegionResolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -65,11 +65,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) =>
-                self.infcx.borrow_region_constraints()
-                          .opportunistic_resolve_var(self.tcx(), rid),
-            _ =>
-                r,
+            ty::ReVar(rid) => self
+                .infcx
+                .borrow_region_constraints()
+                .opportunistic_resolve_var(self.tcx(), rid),
+            _ => r,
         }
     }
 }
@@ -81,7 +81,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
 /// type variables that don't yet have a value. They get pushed into a
 /// vector. It does not construct the fully resolved type (which might
 /// involve some hashing and so forth).
-pub struct UnresolvedTypeFinder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct UnresolvedTypeFinder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -117,11 +117,17 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                        value: &T) -> FixupResult<T>
-    where T : TypeFoldable<'tcx>
+pub fn fully_resolve<'a, 'gcx, 'tcx, T>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    value: &T,
+) -> FixupResult<T>
+where
+    T: TypeFoldable<'tcx>,
 {
-    let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
+    let mut full_resolver = FullTypeResolver {
+        infcx: infcx,
+        err: None,
+    };
     let result = value.fold_with(&mut full_resolver);
     match full_resolver.err {
         None => Ok(result),
@@ -131,7 +137,7 @@ pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
 // N.B. This type is not public because the protocol around checking the
 // `err` field is not enforcable otherwise.
-struct FullTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct FullTypeResolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     err: Option<FixupError>,
 }
@@ -164,20 +170,20 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
-                _ => {
-                    t.super_fold_with(self)
-                }
+                _ => t.super_fold_with(self),
             }
         }
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => self.infcx.lexical_region_resolutions
-                                        .borrow()
-                                        .as_ref()
-                                        .expect("region resolution not performed")
-                                        .resolve_var(rid),
+            ty::ReVar(rid) => self
+                .infcx
+                .lexical_region_resolutions
+                .borrow()
+                .as_ref()
+                .expect("region resolution not performed")
+                .resolve_var(rid),
             _ => r,
         }
     }

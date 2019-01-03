@@ -1,9 +1,9 @@
 //! Generic support for building blocking abstractions.
 
-use thread::{self, Thread};
+use mem;
 use sync::atomic::{AtomicBool, Ordering};
 use sync::Arc;
-use mem;
+use thread::{self, Thread};
 use time::Instant;
 
 struct Inner {
@@ -35,15 +35,16 @@ pub fn tokens() -> (WaitToken, SignalToken) {
     let wait_token = WaitToken {
         inner: inner.clone(),
     };
-    let signal_token = SignalToken {
-        inner,
-    };
+    let signal_token = SignalToken { inner };
     (wait_token, signal_token)
 }
 
 impl SignalToken {
     pub fn signal(&self) -> bool {
-        let wake = !self.inner.woken.compare_and_swap(false, true, Ordering::SeqCst);
+        let wake = !self
+            .inner
+            .woken
+            .compare_and_swap(false, true, Ordering::SeqCst);
         if wake {
             self.inner.thread.unpark();
         }
@@ -61,7 +62,9 @@ impl SignalToken {
     /// flag.
     #[inline]
     pub unsafe fn cast_from_usize(signal_ptr: usize) -> SignalToken {
-        SignalToken { inner: mem::transmute(signal_ptr) }
+        SignalToken {
+            inner: mem::transmute(signal_ptr),
+        }
     }
 }
 

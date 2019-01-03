@@ -1,21 +1,21 @@
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
-use borrow_check::{JustWrite, WriteAndRead};
-use borrow_check::{AccessDepth, Deep, Shallow};
-use borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
-use borrow_check::{Context, ContextKind};
-use borrow_check::{LocalMutationIsAllowed, MutateMode};
-use borrow_check::ArtificialField;
-use borrow_check::{ReadKind, WriteKind};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::path_utils::*;
+use borrow_check::ArtificialField;
+use borrow_check::{AccessDepth, Deep, Shallow};
+use borrow_check::{Activation, Read, ReadOrWrite, Reservation, Write};
+use borrow_check::{Context, ContextKind};
+use borrow_check::{JustWrite, WriteAndRead};
+use borrow_check::{LocalMutationIsAllowed, MutateMode};
+use borrow_check::{ReadKind, WriteKind};
 use dataflow::move_paths::indexes::BorrowIndex;
-use rustc::ty::TyCtxt;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue};
+use rustc::mir::{BorrowKind, Operand};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
-use rustc::mir::{Operand, BorrowKind};
+use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
 pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
@@ -66,16 +66,13 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
 
         match statement.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
-                self.consume_rvalue(
-                    ContextKind::AssignRhs.new(location),
-                    rhs,
-                );
+                self.consume_rvalue(ContextKind::AssignRhs.new(location), rhs);
 
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
                     lhs,
                     Shallow(None),
-                    JustWrite
+                    JustWrite,
                 );
             }
             StatementKind::FakeRead(_, ref place) => {
@@ -126,10 +123,10 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     self.consume_operand(context, input);
                 }
             }
-            StatementKind::Nop |
-            StatementKind::AscribeUserType(..) |
-            StatementKind::Retag { .. } |
-            StatementKind::StorageLive(..) => {
+            StatementKind::Nop
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::Retag { .. }
+            | StatementKind::StorageLive(..) => {
                 // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
                 // to borrow check.
             }
@@ -150,7 +147,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
         &mut self,
         block: BasicBlock,
         terminator: &Terminator<'tcx>,
-        location: Location
+        location: Location,
     ) {
         self.check_activations(location);
 
@@ -187,10 +184,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     Deep,
                     JustWrite,
                 );
-                self.consume_operand(
-                    ContextKind::DropAndReplace.new(location),
-                    new_value,
-                );
+                self.consume_operand(ContextKind::DropAndReplace.new(location), new_value);
             }
             TerminatorKind::Call {
                 ref func,
@@ -204,12 +198,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     self.consume_operand(ContextKind::CallOperand.new(location), arg);
                 }
                 if let Some((ref dest, _ /*bb*/)) = *destination {
-                    self.mutate_place(
-                        ContextKind::CallDest.new(location),
-                        dest,
-                        Deep,
-                        JustWrite,
-                    );
+                    self.mutate_place(ContextKind::CallDest.new(location), dest, Deep, JustWrite);
                 }
             }
             TerminatorKind::Assert {
@@ -289,11 +278,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 
     /// Simulates consumption of an operand
-    fn consume_operand(
-        &mut self,
-        context: Context,
-        operand: &Operand<'tcx>,
-    ) {
+    fn consume_operand(&mut self, context: Context, operand: &Operand<'tcx>) {
         match *operand {
             Operand::Copy(ref place) => {
                 self.access_place(
@@ -316,17 +301,14 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 
     // Simulates consumption of an rvalue
-    fn consume_rvalue(
-        &mut self,
-        context: Context,
-        rvalue: &Rvalue<'tcx>,
-    ) {
+    fn consume_rvalue(&mut self, context: Context, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
-                    BorrowKind::Shallow => {
-                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
-                    },
+                    BorrowKind::Shallow => (
+                        Shallow(Some(ArtificialField::ShallowBorrow)),
+                        Read(ReadKind::Borrow(bk)),
+                    ),
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
@@ -338,12 +320,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     }
                 };
 
-                self.access_place(
-                    context,
-                    place,
-                    access_kind,
-                    LocalMutationIsAllowed::No,
-                );
+                self.access_place(context, place, access_kind, LocalMutationIsAllowed::No);
             }
 
             Rvalue::Use(ref operand)
@@ -373,8 +350,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                 self.consume_operand(context, operand2);
             }
 
-            Rvalue::NullaryOp(_op, _ty) => {
-            }
+            Rvalue::NullaryOp(_op, _ty) => {}
 
             Rvalue::Aggregate(_, ref operands) => {
                 for operand in operands {
@@ -407,10 +383,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         debug!(
             "invalidation::check_access_for_conflict(context={:?}, place={:?}, sd={:?}, \
              rw={:?})",
-            context,
-            place,
-            sd,
-            rw,
+            context, place, sd, rw,
         );
         let tcx = self.tcx;
         let mir = self.mir;
@@ -437,8 +410,10 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         // have already taken the reservation
                     }
 
-                    (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow)
-                    | (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
+                    (Read(_), BorrowKind::Shallow)
+                    | (Reservation(..), BorrowKind::Shallow)
+                    | (Read(_), BorrowKind::Shared)
+                    | (Reservation(..), BorrowKind::Shared) => {
                         // Reads/reservations don't invalidate shared or shallow borrows
                     }
 
@@ -456,21 +431,20 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     }
 
                     (Reservation(_), BorrowKind::Unique)
-                        | (Reservation(_), BorrowKind::Mut { .. })
-                        | (Activation(_, _), _)
-                        | (Write(_), _) => {
-                            // unique or mutable borrows are invalidated by writes.
-                            // Reservations count as writes since we need to check
-                            // that activating the borrow will be OK
-                            // FIXME(bob_twinkles) is this actually the right thing to do?
-                            this.generate_invalidates(borrow_index, context.loc);
-                        }
+                    | (Reservation(_), BorrowKind::Mut { .. })
+                    | (Activation(_, _), _)
+                    | (Write(_), _) => {
+                        // unique or mutable borrows are invalidated by writes.
+                        // Reservations count as writes since we need to check
+                        // that activating the borrow will be OK
+                        // FIXME(bob_twinkles) is this actually the right thing to do?
+                        this.generate_invalidates(borrow_index, context.loc);
+                    }
                 }
                 Control::Continue
             },
         );
     }
-
 
     /// Generate a new invalidates(L, B) fact
     fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
@@ -478,10 +452,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         self.all_facts.invalidates.push((lidx, b));
     }
 
-    fn check_activations(
-        &mut self,
-        location: Location,
-    ) {
+    fn check_activations(&mut self, location: Location) {
         if !self.tcx.two_phase_borrows() {
             return;
         }
@@ -514,4 +485,3 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         }
     }
 }
-

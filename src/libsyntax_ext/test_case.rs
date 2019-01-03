@@ -9,31 +9,35 @@
 // We mark item with an inert attribute "rustc_test_marker" which the test generation
 // logic will pick up on.
 
+use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::{self, Mark, SyntaxContext};
-use syntax::ast;
-use syntax::source_map::respan;
-use syntax::symbol::Symbol;
-use syntax_pos::{DUMMY_SP, Span};
-use syntax::source_map::{ExpnInfo, MacroAttribute};
 use syntax::feature_gate;
+use syntax::source_map::respan;
+use syntax::source_map::{ExpnInfo, MacroAttribute};
+use syntax::symbol::Symbol;
+use syntax_pos::{Span, DUMMY_SP};
 
 pub fn expand(
     ecx: &mut ExtCtxt,
     attr_sp: Span,
     _meta_item: &ast::MetaItem,
-    anno_item: Annotatable
+    anno_item: Annotatable,
 ) -> Vec<Annotatable> {
     if !ecx.ecfg.enable_custom_test_frameworks() {
-        feature_gate::emit_feature_err(&ecx.parse_sess,
-                                       "custom_test_frameworks",
-                                       attr_sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_CUSTOM_TEST_FRAMEWORKS);
+        feature_gate::emit_feature_err(
+            &ecx.parse_sess,
+            "custom_test_frameworks",
+            attr_sp,
+            feature_gate::GateIssue::Language,
+            feature_gate::EXPLAIN_CUSTOM_TEST_FRAMEWORKS,
+        );
     }
 
-    if !ecx.ecfg.should_test { return vec![]; }
+    if !ecx.ecfg.should_test {
+        return vec![];
+    }
 
     let sp = {
         let mark = Mark::fresh(Mark::root());
@@ -54,12 +58,10 @@ pub fn expand(
     item = item.map(|mut item| {
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
         item.ident = item.ident.gensym();
-        item.attrs.push(
-            ecx.attribute(sp,
-                ecx.meta_word(sp, Symbol::intern("rustc_test_marker")))
-        );
+        item.attrs
+            .push(ecx.attribute(sp, ecx.meta_word(sp, Symbol::intern("rustc_test_marker"))));
         item
     });
 
-    return vec![Annotatable::Item(item)]
+    return vec![Annotatable::Item(item)];
 }

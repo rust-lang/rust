@@ -4,10 +4,11 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/"
+)]
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
@@ -26,7 +27,7 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate scoped_tls;
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
@@ -38,7 +39,7 @@ extern crate unicode_width;
 
 pub mod edition;
 pub mod hygiene;
-pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, CompilerDesugaringKind};
+pub use hygiene::{CompilerDesugaringKind, ExpnFormat, ExpnInfo, Mark, SyntaxContext};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -48,13 +49,13 @@ pub mod symbol;
 mod analyze_source_file;
 
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::hash::{Hasher, Hash};
+use std::hash::{Hash, Hasher};
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
 
@@ -108,8 +109,7 @@ impl std::fmt::Display for FileName {
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
-            ProcMacroSourceCode(_) =>
-                write!(fmt, "<proc-macro source code>"),
+            ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
@@ -130,30 +130,30 @@ impl FileName {
         use self::FileName::*;
         match *self {
             Real(_) => true,
-            Macros(_) |
-            Anon(_) |
-            MacroExpansion(_) |
-            ProcMacroSourceCode(_) |
-            CfgSpec(_) |
-            CliCrateAttr(_) |
-            Custom(_) |
-            QuoteExpansion(_) |
-            DocTest(_, _) => false,
+            Macros(_)
+            | Anon(_)
+            | MacroExpansion(_)
+            | ProcMacroSourceCode(_)
+            | CfgSpec(_)
+            | CliCrateAttr(_)
+            | Custom(_)
+            | QuoteExpansion(_)
+            | DocTest(_, _) => false,
         }
     }
 
     pub fn is_macros(&self) -> bool {
         use self::FileName::*;
         match *self {
-            Real(_) |
-            Anon(_) |
-            MacroExpansion(_) |
-            ProcMacroSourceCode(_) |
-            CfgSpec(_) |
-            CliCrateAttr(_) |
-            Custom(_) |
-            QuoteExpansion(_) |
-            DocTest(_, _) => false,
+            Real(_)
+            | Anon(_)
+            | MacroExpansion(_)
+            | ProcMacroSourceCode(_)
+            | CfgSpec(_)
+            | CliCrateAttr(_)
+            | Custom(_)
+            | QuoteExpansion(_)
+            | DocTest(_, _) => false,
             Macros(_) => true,
         }
     }
@@ -194,7 +194,7 @@ impl FileName {
         FileName::CliCrateAttr(hasher.finish())
     }
 
-    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName{
+    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
         FileName::DocTest(path, line)
     }
 }
@@ -314,7 +314,11 @@ impl Span {
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
-        if self.is_dummy() { other } else { self }
+        if self.is_dummy() {
+            other
+        } else {
+            self
+        }
     }
 
     /// Return `true` if `self` fully encloses `other`.
@@ -355,7 +359,11 @@ impl Span {
     /// Return the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
-        self.ctxt().outer().expn_info().map(|info| info.call_site.source_callsite()).unwrap_or(self)
+        self.ctxt()
+            .outer()
+            .expn_info()
+            .map(|info| info.call_site.source_callsite())
+            .unwrap_or(self)
     }
 
     /// The `Span` for the tokens in the previous macro expansion from which `self` was generated,
@@ -366,8 +374,10 @@ impl Span {
 
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
-        self.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
-                                                    |einfo| einfo.edition)
+        self.ctxt()
+            .outer()
+            .expn_info()
+            .map_or_else(|| hygiene::default_edition(), |einfo| einfo.edition)
     }
 
     #[inline]
@@ -422,9 +432,9 @@ impl Span {
         match self.ctxt().outer().expn_info() {
             Some(info) => match info.format {
                 ExpnFormat::CompilerDesugaring(k) => Some(k),
-                _ => None
+                _ => None,
             },
-            None => None
+            None => None,
         }
     }
 
@@ -481,7 +491,11 @@ impl Span {
         Span::new(
             cmp::min(span_data.lo, end_data.lo),
             cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt == SyntaxContext::empty() { end_data.ctxt } else { span_data.ctxt },
+            if span_data.ctxt == SyntaxContext::empty() {
+                end_data.ctxt
+            } else {
+                span_data.ctxt
+            },
         )
     }
 
@@ -492,7 +506,11 @@ impl Span {
         Span::new(
             span.hi,
             end.lo,
-            if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
+            if end.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                span.ctxt
+            },
         )
     }
 
@@ -503,15 +521,21 @@ impl Span {
         Span::new(
             span.lo,
             end.lo,
-            if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
+            if end.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                span.ctxt
+            },
         )
     }
 
     pub fn from_inner_byte_pos(self, start: usize, end: usize) -> Span {
         let span = self.data();
-        Span::new(span.lo + BytePos::from_usize(start),
-                  span.lo + BytePos::from_usize(end),
-                  span.ctxt)
+        Span::new(
+            span.lo + BytePos::from_usize(start),
+            span.lo + BytePos::from_usize(end),
+            span.ctxt,
+        )
     }
 
     #[inline]
@@ -537,8 +561,11 @@ impl Span {
     }
 
     #[inline]
-    pub fn glob_adjust(&mut self, expansion: Mark, glob_ctxt: SyntaxContext)
-                       -> Option<Option<Mark>> {
+    pub fn glob_adjust(
+        &mut self,
+        expansion: Mark,
+        glob_ctxt: SyntaxContext,
+    ) -> Option<Option<Mark>> {
         let mut span = self.data();
         let mark = span.ctxt.glob_adjust(expansion, glob_ctxt);
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -546,8 +573,11 @@ impl Span {
     }
 
     #[inline]
-    pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_ctxt: SyntaxContext)
-                               -> Option<Option<Mark>> {
+    pub fn reverse_glob_adjust(
+        &mut self,
+        expansion: Mark,
+        glob_ctxt: SyntaxContext,
+    ) -> Option<Option<Mark>> {
         let mut span = self.data();
         let mark = span.ctxt.reverse_glob_adjust(expansion, glob_ctxt);
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -590,13 +620,9 @@ impl serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let span = self.data();
         s.emit_struct("Span", 2, |s| {
-            s.emit_struct_field("lo", 0, |s| {
-                span.lo.encode(s)
-            })?;
+            s.emit_struct_field("lo", 0, |s| span.lo.encode(s))?;
 
-            s.emit_struct_field("hi", 1, |s| {
-                span.hi.encode(s)
-            })
+            s.emit_struct_field("hi", 1, |s| span.hi.encode(s))
         })
     }
 }
@@ -636,21 +662,21 @@ impl MultiSpan {
     pub fn new() -> MultiSpan {
         MultiSpan {
             primary_spans: vec![],
-            span_labels: vec![]
+            span_labels: vec![],
         }
     }
 
     pub fn from_span(primary_span: Span) -> MultiSpan {
         MultiSpan {
             primary_spans: vec![primary_span],
-            span_labels: vec![]
+            span_labels: vec![],
         }
     }
 
     pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
         MultiSpan {
             primary_spans: vec,
-            span_labels: vec![]
+            span_labels: vec![],
         }
     }
 
@@ -706,20 +732,22 @@ impl MultiSpan {
     pub fn span_labels(&self) -> Vec<SpanLabel> {
         let is_primary = |span| self.primary_spans.contains(&span);
 
-        let mut span_labels = self.span_labels.iter().map(|&(span, ref label)|
-            SpanLabel {
+        let mut span_labels = self
+            .span_labels
+            .iter()
+            .map(|&(span, ref label)| SpanLabel {
                 span,
                 is_primary: is_primary(span),
-                label: Some(label.clone())
-            }
-        ).collect::<Vec<_>>();
+                label: Some(label.clone()),
+            })
+            .collect::<Vec<_>>();
 
         for &span in &self.primary_spans {
             if !span_labels.iter().any(|sl| sl.span == span) {
                 span_labels.push(SpanLabel {
                     span,
                     is_primary: true,
-                    label: None
+                    label: None,
                 });
             }
         }
@@ -775,9 +803,7 @@ impl NonNarrowChar {
     /// Returns the absolute offset of the character in the `SourceMap`.
     pub fn pos(&self) -> BytePos {
         match *self {
-            NonNarrowChar::ZeroWidth(p) |
-            NonNarrowChar::Wide(p) |
-            NonNarrowChar::Tab(p) => p,
+            NonNarrowChar::ZeroWidth(p) | NonNarrowChar::Wide(p) | NonNarrowChar::Tab(p) => p,
         }
     }
 
@@ -901,17 +927,18 @@ impl Encodable for SourceFile {
                     let max_line_length = if lines.len() == 1 {
                         0
                     } else {
-                        lines.windows(2)
-                             .map(|w| w[1] - w[0])
-                             .map(|bp| bp.to_usize())
-                             .max()
-                             .unwrap()
+                        lines
+                            .windows(2)
+                            .map(|w| w[1] - w[0])
+                            .map(|bp| bp.to_usize())
+                            .max()
+                            .unwrap()
                     };
 
                     let bytes_per_diff: u8 = match max_line_length {
-                        0 ..= 0xFF => 1,
-                        0x100 ..= 0xFFFF => 2,
-                        _ => 4
+                        0..=0xFF => 1,
+                        0x100..=0xFFFF => 2,
+                        _ => 4,
                     };
 
                     // Encode the number of bytes used per diff.
@@ -920,41 +947,44 @@ impl Encodable for SourceFile {
                     // Encode the first element.
                     lines[0].encode(s)?;
 
-                    let diff_iter = (&lines[..]).windows(2)
-                                                .map(|w| (w[1] - w[0]));
+                    let diff_iter = (&lines[..]).windows(2).map(|w| (w[1] - w[0]));
 
                     match bytes_per_diff {
-                        1 => for diff in diff_iter { (diff.0 as u8).encode(s)? },
-                        2 => for diff in diff_iter { (diff.0 as u16).encode(s)? },
-                        4 => for diff in diff_iter { diff.0.encode(s)? },
-                        _ => unreachable!()
+                        1 => {
+                            for diff in diff_iter {
+                                (diff.0 as u8).encode(s)?
+                            }
+                        }
+                        2 => {
+                            for diff in diff_iter {
+                                (diff.0 as u16).encode(s)?
+                            }
+                        }
+                        4 => {
+                            for diff in diff_iter {
+                                diff.0.encode(s)?
+                            }
+                        }
+                        _ => unreachable!(),
                     }
                 }
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 7, |s| {
-                self.multibyte_chars.encode(s)
-            })?;
-            s.emit_struct_field("non_narrow_chars", 8, |s| {
-                self.non_narrow_chars.encode(s)
-            })?;
-            s.emit_struct_field("name_hash", 9, |s| {
-                self.name_hash.encode(s)
-            })
+            s.emit_struct_field("multibyte_chars", 7, |s| self.multibyte_chars.encode(s))?;
+            s.emit_struct_field("non_narrow_chars", 8, |s| self.non_narrow_chars.encode(s))?;
+            s.emit_struct_field("name_hash", 9, |s| self.name_hash.encode(s))
         })
     }
 }
 
 impl Decodable for SourceFile {
     fn decode<D: Decoder>(d: &mut D) -> Result<SourceFile, D::Error> {
-
         d.read_struct("SourceFile", 8, |d| {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
-            let src_hash: u128 =
-                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
+            let src_hash: u128 = d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
                 d.read_struct_field("start_pos", 4, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 5, |d| Decodable::decode(d))?;
@@ -975,7 +1005,7 @@ impl Decodable for SourceFile {
                             1 => d.read_u8()? as u32,
                             2 => d.read_u16()? as u32,
                             4 => d.read_u32()?,
-                            _ => unreachable!()
+                            _ => unreachable!(),
                         };
 
                         line_start = line_start + BytePos(diff);
@@ -990,8 +1020,7 @@ impl Decodable for SourceFile {
                 d.read_struct_field("multibyte_chars", 7, |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
                 d.read_struct_field("non_narrow_chars", 8, |d| Decodable::decode(d))?;
-            let name_hash: u128 =
-                d.read_struct_field("name_hash", 9, |d| Decodable::decode(d))?;
+            let name_hash: u128 = d.read_struct_field("name_hash", 9, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
                 name_was_remapped,
@@ -1021,11 +1050,13 @@ impl fmt::Debug for SourceFile {
 }
 
 impl SourceFile {
-    pub fn new(name: FileName,
-               name_was_remapped: bool,
-               unmapped_path: FileName,
-               mut src: String,
-               start_pos: BytePos) -> SourceFile {
+    pub fn new(
+        name: FileName,
+        name_was_remapped: bool,
+        unmapped_path: FileName,
+        mut src: String,
+        start_pos: BytePos,
+    ) -> SourceFile {
         remove_bom(&mut src);
 
         let src_hash = {
@@ -1071,7 +1102,8 @@ impl SourceFile {
     /// it is interpreted as an error and the corresponding enum variant is set.
     /// The return value signifies whether some kind of source is present.
     pub fn add_external_src<F>(&self, get_src: F) -> bool
-        where F: FnOnce() -> Option<String>
+    where
+        F: FnOnce() -> Option<String>,
     {
         if *self.external_src.borrow() == ExternalSource::AbsentOk {
             let src = get_src();
@@ -1109,7 +1141,7 @@ impl SourceFile {
             let slice = &src[begin..];
             match slice.find('\n') {
                 Some(e) => &slice[..e],
-                None => slice
+                None => slice,
             }
         }
 
@@ -1218,16 +1250,24 @@ pub struct CharPos(pub usize);
 
 impl Pos for BytePos {
     #[inline(always)]
-    fn from_usize(n: usize) -> BytePos { BytePos(n as u32) }
+    fn from_usize(n: usize) -> BytePos {
+        BytePos(n as u32)
+    }
 
     #[inline(always)]
-    fn to_usize(&self) -> usize { self.0 as usize }
+    fn to_usize(&self) -> usize {
+        self.0 as usize
+    }
 
     #[inline(always)]
-    fn from_u32(n: u32) -> BytePos { BytePos(n) }
+    fn from_u32(n: u32) -> BytePos {
+        BytePos(n)
+    }
 
     #[inline(always)]
-    fn to_u32(&self) -> u32 { self.0 }
+    fn to_u32(&self) -> u32 {
+        self.0
+    }
 }
 
 impl Add for BytePos {
@@ -1262,16 +1302,24 @@ impl Decodable for BytePos {
 
 impl Pos for CharPos {
     #[inline(always)]
-    fn from_usize(n: usize) -> CharPos { CharPos(n) }
+    fn from_usize(n: usize) -> CharPos {
+        CharPos(n)
+    }
 
     #[inline(always)]
-    fn to_usize(&self) -> usize { self.0 }
+    fn to_usize(&self) -> usize {
+        self.0
+    }
 
     #[inline(always)]
-    fn from_u32(n: u32) -> CharPos { CharPos(n as usize) }
+    fn from_u32(n: u32) -> CharPos {
+        CharPos(n as usize)
+    }
 
     #[inline(always)]
-    fn to_u32(&self) -> u32 { self.0 as u32}
+    fn to_u32(&self) -> u32 {
+        self.0 as u32
+    }
 }
 
 impl Add for CharPos {
@@ -1322,9 +1370,15 @@ pub struct LocWithOpt {
 
 // Used to be structural records.
 #[derive(Debug)]
-pub struct SourceFileAndLine { pub sf: Lrc<SourceFile>, pub line: usize }
+pub struct SourceFileAndLine {
+    pub sf: Lrc<SourceFile>,
+    pub line: usize,
+}
 #[derive(Debug)]
-pub struct SourceFileAndBytePos { pub sf: Lrc<SourceFile>, pub pos: BytePos }
+pub struct SourceFileAndBytePos {
+    pub sf: Lrc<SourceFile>,
+    pub pos: BytePos,
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LineInfo {
@@ -1340,7 +1394,7 @@ pub struct LineInfo {
 
 pub struct FileLines {
     pub file: Lrc<SourceFile>,
-    pub lines: Vec<LineInfo>
+    pub lines: Vec<LineInfo>,
 }
 
 thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
@@ -1375,13 +1429,13 @@ pub enum SpanSnippetError {
     IllFormedSpan(Span),
     DistinctSources(DistinctSources),
     MalformedForSourcemap(MalformedSourceMapPositions),
-    SourceNotAvailable { filename: FileName }
+    SourceNotAvailable { filename: FileName },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DistinctSources {
     pub begin: (FileName, BytePos),
-    pub end: (FileName, BytePos)
+    pub end: (FileName, BytePos),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -1389,7 +1443,7 @@ pub struct MalformedSourceMapPositions {
     pub name: FileName,
     pub source_len: usize,
     pub begin_pos: BytePos,
-    pub end_pos: BytePos
+    pub end_pos: BytePos,
 }
 
 // Given a slice of line start positions and a position, returns the index of
@@ -1398,7 +1452,7 @@ pub struct MalformedSourceMapPositions {
 fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
     match lines.binary_search(&pos) {
         Ok(line) => line as isize,
-        Err(line) => line as isize - 1
+        Err(line) => line as isize - 1,
     }
 }
 
@@ -1408,12 +1462,11 @@ mod tests {
 
     #[test]
     fn test_lookup_line() {
-
         let lines = &[BytePos(3), BytePos(17), BytePos(28)];
 
         assert_eq!(lookup_line(lines, BytePos(0)), -1);
-        assert_eq!(lookup_line(lines, BytePos(3)),  0);
-        assert_eq!(lookup_line(lines, BytePos(4)),  0);
+        assert_eq!(lookup_line(lines, BytePos(3)), 0);
+        assert_eq!(lookup_line(lines, BytePos(4)), 0);
 
         assert_eq!(lookup_line(lines, BytePos(16)), 0);
         assert_eq!(lookup_line(lines, BytePos(17)), 1);

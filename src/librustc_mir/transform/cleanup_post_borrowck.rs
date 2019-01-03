@@ -22,9 +22,9 @@
 
 use rustc_data_structures::fx::FxHashSet;
 
+use rustc::mir::visit::MutVisitor;
 use rustc::mir::{BasicBlock, FakeReadCause, Local, Location, Mir, Place};
 use rustc::mir::{Statement, StatementKind};
-use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use transform::{MirPass, MirSource};
 
@@ -33,20 +33,24 @@ pub struct CleanAscribeUserType;
 pub struct DeleteAscribeUserType;
 
 impl MirPass for CleanAscribeUserType {
-    fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _source: MirSource,
+        mir: &mut Mir<'tcx>,
+    ) {
         let mut delete = DeleteAscribeUserType;
         delete.visit_mir(mir);
     }
 }
 
 impl<'tcx> MutVisitor<'tcx> for DeleteAscribeUserType {
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
+    fn visit_statement(
+        &mut self,
+        block: BasicBlock,
+        statement: &mut Statement<'tcx>,
+        location: Location,
+    ) {
         if let StatementKind::AscribeUserType(..) = statement.kind {
             statement.make_nop();
         }
@@ -67,10 +71,12 @@ pub struct DeleteFakeBorrows {
 
 // Removes any FakeReads from the MIR
 impl MirPass for CleanFakeReadsAndBorrows {
-    fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _source: MirSource,
+        mir: &mut Mir<'tcx>,
+    ) {
         let mut delete_reads = DeleteAndRecordFakeReads::default();
         delete_reads.visit_mir(mir);
         let mut delete_borrows = DeleteFakeBorrows {
@@ -81,10 +87,12 @@ impl MirPass for CleanFakeReadsAndBorrows {
 }
 
 impl<'tcx> MutVisitor<'tcx> for DeleteAndRecordFakeReads {
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
+    fn visit_statement(
+        &mut self,
+        block: BasicBlock,
+        statement: &mut Statement<'tcx>,
+        location: Location,
+    ) {
         if let StatementKind::FakeRead(cause, ref place) = statement.kind {
             if let FakeReadCause::ForMatchGuard = cause {
                 match *place {
@@ -99,10 +107,12 @@ impl<'tcx> MutVisitor<'tcx> for DeleteAndRecordFakeReads {
 }
 
 impl<'tcx> MutVisitor<'tcx> for DeleteFakeBorrows {
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
+    fn visit_statement(
+        &mut self,
+        block: BasicBlock,
+        statement: &mut Statement<'tcx>,
+        location: Location,
+    ) {
         if let StatementKind::Assign(Place::Local(local), _) = statement.kind {
             if self.fake_borrow_temporaries.contains(&local) {
                 statement.make_nop();

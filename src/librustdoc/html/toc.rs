@@ -19,7 +19,7 @@ pub struct Toc {
     /// ### A
     /// ## B
     /// ```
-    entries: Vec<TocEntry>
+    entries: Vec<TocEntry>,
 }
 
 impl Toc {
@@ -49,14 +49,18 @@ pub struct TocBuilder {
     /// it is the most recent one).
     ///
     /// We also have `chain[0].level <= top_level.entries[last]`.
-    chain: Vec<TocEntry>
+    chain: Vec<TocEntry>,
 }
 
 impl TocBuilder {
     pub fn new() -> TocBuilder {
-        TocBuilder { top_level: Toc { entries: Vec::new() }, chain: Vec::new() }
+        TocBuilder {
+            top_level: Toc {
+                entries: Vec::new(),
+            },
+            chain: Vec::new(),
+        }
     }
-
 
     /// Convert into a true `Toc` struct.
     pub fn into_toc(mut self) -> Toc {
@@ -103,14 +107,14 @@ impl TocBuilder {
                         // this is the parent we want, so return it to
                         // its rightful place.
                         self.chain.push(next);
-                        return
+                        return;
                     } else {
                         this = Some(next);
                     }
                 }
                 None => {
                     this.map(|e| self.top_level.entries.push(e));
-                    return
+                    return;
                 }
             }
         }
@@ -155,7 +159,9 @@ impl TocBuilder {
             name,
             sec_number,
             id,
-            children: Toc { entries: Vec::new() }
+            children: Toc {
+                entries: Vec::new(),
+            },
         });
 
         // get the thing we just pushed, so we can borrow the string
@@ -177,11 +183,14 @@ impl fmt::Display for Toc {
         for entry in &self.entries {
             // recursively format this table of contents (the
             // `{children}` is the key).
-            write!(fmt,
-                   "\n<li><a href=\"#{id}\">{num} {name}</a>{children}</li>",
-                   id = entry.id,
-                   num = entry.sec_number, name = entry.name,
-                   children = entry.children)?
+            write!(
+                fmt,
+                "\n<li><a href=\"#{id}\">{num} {name}</a>{children}</li>",
+                id = entry.id,
+                num = entry.sec_number,
+                name = entry.name,
+                children = entry.children
+            )?
         }
         write!(fmt, "</ul>")
     }
@@ -189,7 +198,7 @@ impl fmt::Display for Toc {
 
 #[cfg(test)]
 mod tests {
-    use super::{TocBuilder, Toc, TocEntry};
+    use super::{Toc, TocBuilder, TocEntry};
 
     #[test]
     fn builder_smoke() {
@@ -200,11 +209,11 @@ mod tests {
         // there's been no macro mistake.
         macro_rules! push {
             ($level: expr, $name: expr) => {
-                assert_eq!(builder.push($level,
-                                        $name.to_string(),
-                                        "".to_string()),
-                           $name);
-            }
+                assert_eq!(
+                    builder.push($level, $name.to_string(), "".to_string()),
+                    $name
+                );
+            };
         }
         push!(2, "0.1");
         push!(1, "1");
@@ -252,21 +261,27 @@ mod tests {
             }
         }
         let expected = toc!(
-            (2, "0.1", ),
-
-            (1, "1",
-             ((2, "1.1", ((3, "1.1.1", )) ((3, "1.1.2", ))))
-             ((2, "1.2", ((3, "1.2.1", )) ((3, "1.2.2", ))))
-             ),
-
-            (1, "2", ),
-
-            (1, "3",
-             ((4, "3.0.0.1", ((6, "3.0.0.1.0.1", ))))
-             ((4, "3.0.0.2", ))
-             ((2, "3.1", ((4, "3.1.0.1", ))))
-             )
-            );
+            (2, "0.1",),
+            (
+                1,
+                "1",
+                ((2, "1.1", ((3, "1.1.1",))((3, "1.1.2",))))((
+                    2,
+                    "1.2",
+                    ((3, "1.2.1",))((3, "1.2.2",))
+                ))
+            ),
+            (1, "2",),
+            (
+                1,
+                "3",
+                ((4, "3.0.0.1", ((6, "3.0.0.1.0.1",))))((4, "3.0.0.2",))((
+                    2,
+                    "3.1",
+                    ((4, "3.1.0.1",))
+                ))
+            )
+        );
         assert_eq!(expected, builder.into_toc());
     }
 }

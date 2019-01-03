@@ -11,8 +11,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 
 use super::constraints::*;
-use super::terms::*;
 use super::terms::VarianceTerm::*;
+use super::terms::*;
 use super::xform::*;
 
 struct SolveContext<'a, 'tcx: 'a> {
@@ -24,7 +24,11 @@ struct SolveContext<'a, 'tcx: 'a> {
 }
 
 pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
-    let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
+    let ConstraintContext {
+        terms_cx,
+        constraints,
+        ..
+    } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
     for &(id, ref variances) in &terms_cx.lang_items {
@@ -43,7 +47,10 @@ pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariance
     let variances = solutions_cx.create_map();
     let empty_variance = Lrc::new(Vec::new());
 
-    ty::CrateVariancesMap { variances, empty_variance }
+    ty::CrateVariancesMap {
+        variances,
+        empty_variance,
+    }
 }
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {
@@ -58,18 +65,20 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             changed = false;
 
             for constraint in &self.constraints {
-                let Constraint { inferred, variance: term } = *constraint;
+                let Constraint {
+                    inferred,
+                    variance: term,
+                } = *constraint;
                 let InferredIndex(inferred) = inferred;
                 let variance = self.evaluate(term);
                 let old_value = self.solutions[inferred];
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
-                    debug!("Updating inferred {} \
-                            from {:?} to {:?} due to {:?}",
-                           inferred,
-                           old_value,
-                           new_value,
-                           term);
+                    debug!(
+                        "Updating inferred {} \
+                         from {:?} to {:?} due to {:?}",
+                        inferred, old_value, new_value, term
+                    );
 
                     self.solutions[inferred] = new_value;
                     changed = true;
@@ -82,25 +91,29 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
-        self.terms_cx.inferred_starts.iter().map(|(&id, &InferredIndex(start))| {
-            let def_id = tcx.hir().local_def_id(id);
-            let generics = tcx.generics_of(def_id);
+        self.terms_cx
+            .inferred_starts
+            .iter()
+            .map(|(&id, &InferredIndex(start))| {
+                let def_id = tcx.hir().local_def_id(id);
+                let generics = tcx.generics_of(def_id);
 
-            let mut variances = solutions[start..start+generics.count()].to_vec();
+                let mut variances = solutions[start..start + generics.count()].to_vec();
 
-            debug!("id={} variances={:?}", id, variances);
+                debug!("id={} variances={:?}", id, variances);
 
-            // Functions can have unused type parameters: make those invariant.
-            if let ty::FnDef(..) = tcx.type_of(def_id).sty {
-                for variance in &mut variances {
-                    if *variance == ty::Bivariant {
-                        *variance = ty::Invariant;
+                // Functions can have unused type parameters: make those invariant.
+                if let ty::FnDef(..) = tcx.type_of(def_id).sty {
+                    for variance in &mut variances {
+                        if *variance == ty::Bivariant {
+                            *variance = ty::Invariant;
+                        }
                     }
                 }
-            }
 
-            (def_id, Lrc::new(variances))
-        }).collect()
+                (def_id, Lrc::new(variances))
+            })
+            .collect()
     }
 
     fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {

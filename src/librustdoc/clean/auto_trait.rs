@@ -38,8 +38,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         def_ctor: &F,
         name: Option<String>,
     ) -> Vec<Item>
-    where F: Fn(DefId) -> Def {
-        if self.cx
+    where
+        F: Fn(DefId) -> Def,
+    {
+        if self
+            .cx
             .tcx
             .get_attrs(def_id)
             .lists("doc")
@@ -60,7 +63,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             "get_auto_trait_impls(def_id={:?}, def_ctor=..., generics={:?}",
             def_id, generics
         );
-        let auto_traits: Vec<_> = self.cx
+        let auto_traits: Vec<_> = self
+            .cx
             .send_trait
             .and_then(|send_trait| {
                 self.get_auto_trait_impl_for(
@@ -72,13 +76,16 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 )
             })
             .into_iter()
-            .chain(self.get_auto_trait_impl_for(
-                def_id,
-                name,
-                generics.clone(),
-                def_ctor,
-                tcx.require_lang_item(lang_items::SyncTraitLangItem),
-            ).into_iter())
+            .chain(
+                self.get_auto_trait_impl_for(
+                    def_id,
+                    name,
+                    generics.clone(),
+                    def_ctor,
+                    tcx.require_lang_item(lang_items::SyncTraitLangItem),
+                )
+                .into_iter(),
+            )
             .collect();
 
         debug!(
@@ -96,8 +103,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         def_ctor: &F,
         trait_def_id: DefId,
     ) -> Option<Item>
-    where F: Fn(DefId) -> Def {
-        if !self.cx
+    where
+        F: Fn(DefId) -> Def,
+    {
+        if !self
+            .cx
             .generated_synthetics
             .borrow_mut()
             .insert((def_id, trait_def_id))
@@ -187,33 +197,33 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         trait_did: DefId,
         generics: &ty::Generics,
     ) -> AutoTraitResult {
-        match self.f.find_auto_trait_generics(did, trait_did, generics,
-                |infcx, mut info| {
-                    let region_data = info.region_data;
-                    let names_map =
-                        info.names_map
-                            .drain()
-                            .map(|name| (name.clone(), Lifetime(name)))
-                            .collect();
-                    let lifetime_predicates =
-                        self.handle_lifetimes(&region_data, &names_map);
-                    let new_generics = self.param_env_to_generics(
-                        infcx.tcx,
-                        did,
-                        info.full_user_env,
-                        generics.clone(),
-                        lifetime_predicates,
-                        info.vid_to_region,
-                    );
+        match self
+            .f
+            .find_auto_trait_generics(did, trait_did, generics, |infcx, mut info| {
+                let region_data = info.region_data;
+                let names_map = info
+                    .names_map
+                    .drain()
+                    .map(|name| (name.clone(), Lifetime(name)))
+                    .collect();
+                let lifetime_predicates = self.handle_lifetimes(&region_data, &names_map);
+                let new_generics = self.param_env_to_generics(
+                    infcx.tcx,
+                    did,
+                    info.full_user_env,
+                    generics.clone(),
+                    lifetime_predicates,
+                    info.vid_to_region,
+                );
 
-                    debug!(
-                        "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
-                         finished with {:?}",
-                        did, trait_did, generics, new_generics
-                    );
+                debug!(
+                    "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
+                     finished with {:?}",
+                    did, trait_did, generics, new_generics
+                );
 
-                    new_generics
-                }) {
+                new_generics
+            }) {
             auto::AutoTraitResult::ExplicitImpl => AutoTraitResult::ExplicitImpl,
             auto::AutoTraitResult::NegativeImpl => AutoTraitResult::NegativeImpl,
             auto::AutoTraitResult::PositiveImpl(res) => AutoTraitResult::PositiveImpl(res),
@@ -269,27 +279,19 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             match constraint {
                 &Constraint::VarSubVar(r1, r2) => {
                     {
-                        let deps1 = vid_map
-                            .entry(RegionTarget::RegionVid(r1))
-                            .or_default();
+                        let deps1 = vid_map.entry(RegionTarget::RegionVid(r1)).or_default();
                         deps1.larger.insert(RegionTarget::RegionVid(r2));
                     }
 
-                    let deps2 = vid_map
-                        .entry(RegionTarget::RegionVid(r2))
-                        .or_default();
+                    let deps2 = vid_map.entry(RegionTarget::RegionVid(r2)).or_default();
                     deps2.smaller.insert(RegionTarget::RegionVid(r1));
                 }
                 &Constraint::RegSubVar(region, vid) => {
-                    let deps = vid_map
-                        .entry(RegionTarget::RegionVid(vid))
-                        .or_default();
+                    let deps = vid_map.entry(RegionTarget::RegionVid(vid)).or_default();
                     deps.smaller.insert(RegionTarget::Region(region));
                 }
                 &Constraint::VarSubReg(vid, region) => {
-                    let deps = vid_map
-                        .entry(RegionTarget::RegionVid(vid))
-                        .or_default();
+                    let deps = vid_map.entry(RegionTarget::RegionVid(vid)).or_default();
                     deps.larger.insert(RegionTarget::Region(region));
                 }
                 &Constraint::RegSubReg(r1, r2) => {
@@ -373,7 +375,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .iter()
             .flat_map(|(name, lifetime)| {
                 let empty = Vec::new();
-                let bounds: FxHashSet<GenericBound> = finished.get(name).unwrap_or(&empty).iter()
+                let bounds: FxHashSet<GenericBound> = finished
+                    .get(name)
+                    .unwrap_or(&empty)
+                    .iter()
                     .map(|region| GenericBound::Outlives(self.get_lifetime(region, names_map)))
                     .collect();
 
@@ -409,7 +414,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 name: name.to_string(),
                                 kind: GenericParamDefKind::Lifetime,
                             })
-                        },
+                        }
                         &ty::ReVar(_) | &ty::ReEarlyBound(_) | &ty::ReStatic => None,
                         _ => panic!("Unexpected region type {:?}", r),
                     }
@@ -428,8 +433,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
                 if let Some(data) = ty_to_fn.get(&ty) {
-                    let (poly_trait, output) =
-                        (data.0.as_ref().expect("as_ref failed").clone(), data.1.as_ref().cloned());
+                    let (poly_trait, output) = (
+                        data.0.as_ref().expect("as_ref failed").clone(),
+                        data.1.as_ref().cloned(),
+                    );
                     let new_ty = match &poly_trait.trait_ {
                         &Type::ResolvedPath {
                             ref path,
@@ -438,8 +445,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                             ref is_generic,
                         } => {
                             let mut new_path = path.clone();
-                            let last_segment = new_path.segments.pop()
-                                                                .expect("segments were empty");
+                            let last_segment =
+                                new_path.segments.pop().expect("segments were empty");
 
                             let (old_input, old_output) = match last_segment.args {
                                 GenericArgs::AngleBracketed { types, .. } => (types, None),
@@ -536,7 +543,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         // The `Sized` trait must be handled specially, since we only only display it when
         // it is *not* required (i.e., '?Sized')
-        let sized_trait = self.cx
+        let sized_trait = self
+            .cx
             .tcx
             .require_lang_item(lang_items::SizedTraitLangItem);
 
@@ -550,10 +558,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .caller_bounds
             .iter()
             .filter(|p| {
-                !orig_bounds.contains(p) || match p {
-                    &&ty::Predicate::Trait(pred) => pred.def_id() == sized_trait,
-                    _ => false,
-                }
+                !orig_bounds.contains(p)
+                    || match p {
+                        &&ty::Predicate::Trait(pred) => pred.def_id() == sized_trait,
+                        _ => false,
+                    }
             })
             .map(|p| {
                 let replaced = p.fold_with(&mut replacer);
@@ -601,7 +610,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
                     if b.is_sized_bound(self.cx) {
                         has_sized.insert(ty.clone());
-                    } else if !b.get_trait_type()
+                    } else if !b
+                        .get_trait_type()
                         .and_then(|t| {
                             ty_to_traits
                                 .get(&ty)
@@ -635,9 +645,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 .and_modify(|e| *e = (Some(poly_trait.clone()), e.1.clone()))
                                 .or_insert(((Some(poly_trait.clone())), None));
 
-                            ty_to_bounds
-                                .entry(ty.clone())
-                                .or_default();
+                            ty_to_bounds.entry(ty.clone()).or_default();
                         } else {
                             ty_to_bounds
                                 .entry(ty.clone())
@@ -679,11 +687,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
                                     // FIXME: Remove this scope when NLL lands
                                     {
-                                        let args =
-                                            &mut new_trait_path.segments
-                                                .last_mut()
-                                                .expect("segments were empty")
-                                                .args;
+                                        let args = &mut new_trait_path
+                                            .segments
+                                            .last_mut()
+                                            .expect("segments were empty")
+                                            .args;
 
                                         match args {
                                             // Convert somethiung like '<T as Iterator::Item> = u8'
@@ -710,9 +718,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                         }
                                     }
 
-                                    let bounds = ty_to_bounds
-                                        .entry(*ty.clone())
-                                        .or_default();
+                                    let bounds = ty_to_bounds.entry(*ty.clone()).or_default();
 
                                     bounds.insert(GenericBound::TraitBound(
                                         PolyTrait {
@@ -760,7 +766,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         for param in generic_params.iter_mut() {
             match param.kind {
-                GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
+                GenericParamDefKind::Type {
+                    ref mut default,
+                    ref mut bounds,
+                    ..
+                } => {
                     // We never want something like `impl<T=Foo>`.
                     default.take();
                     let generic_ty = Type::Generic(param.name.clone());
@@ -864,6 +874,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
         (match r {
             &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
             _ => None,
-        }).unwrap_or_else(|| r.super_fold_with(self))
+        })
+        .unwrap_or_else(|| r.super_fold_with(self))
     }
 }

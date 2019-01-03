@@ -1,6 +1,5 @@
 /// Convert unsigned integers into a string representation with some base.
 /// Bases up to and including 36 can be used for case-insensitive things.
-
 use std::str;
 
 pub const MAX_BASE: usize = 64;
@@ -54,7 +53,7 @@ fn test_encode() {
         test(u64::max_value() as u128, base);
         test(u128::max_value(), base);
 
-        for i in 0 .. 1_000 {
+        for i in 0..1_000 {
             test(i * 983, base);
         }
     }

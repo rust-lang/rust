@@ -1,22 +1,23 @@
 use clean::*;
 
-use rustc::util::nodemap::FxHashSet;
 use rustc::hir::def_id::DefId;
+use rustc::util::nodemap::FxHashSet;
 
 use super::Pass;
 use core::DocContext;
 use fold::DocFolder;
 
-pub const COLLECT_TRAIT_IMPLS: Pass =
-    Pass::early("collect-trait-impls", collect_trait_impls,
-                "retrieves trait impls for items in the crate");
+pub const COLLECT_TRAIT_IMPLS: Pass = Pass::early(
+    "collect-trait-impls",
+    collect_trait_impls,
+    "retrieves trait impls for items in the crate",
+);
 
 pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);
     let mut krate = synth.fold_crate(krate);
 
-    let prims: FxHashSet<PrimitiveType> =
-        krate.primitives.iter().map(|p| p.1).collect();
+    let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();
@@ -70,7 +71,8 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
             let blanket_impls = get_blanket_impls_with_def_id(cx, def_id);
             let mut renderinfo = cx.renderinfo.borrow_mut();
 
-            let new_impls: Vec<Item> = auto_impls.into_iter()
+            let new_impls: Vec<Item> = auto_impls
+                .into_iter()
                 .chain(blanket_impls.into_iter())
                 .filter(|i| renderinfo.inlined.insert(i.def_id))
                 .collect();
@@ -86,14 +88,22 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in &new_items {
-        if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = it.inner {
+        if let ImplItem(Impl {
+            ref for_,
+            ref trait_,
+            ref items,
+            ..
+        }) = it.inner
+        {
             if cleaner.keep_item(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
-                let target = items.iter().filter_map(|item| {
-                    match item.inner {
+                let target = items
+                    .iter()
+                    .filter_map(|item| match item.inner {
                         TypedefItem(ref t, true) => Some(&t.type_),
                         _ => None,
-                    }
-                }).next().expect("Deref impl without Target type");
+                    })
+                    .next()
+                    .expect("Deref impl without Target type");
 
                 if let Some(prim) = target.primitive_type() {
                     cleaner.prims.insert(prim);
@@ -105,10 +115,16 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
     }
 
     new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = it.inner {
-            cleaner.keep_item(for_) ||
-                trait_.as_ref().map_or(false, |t| cleaner.keep_item(t)) ||
-                blanket_impl.is_some()
+        if let ImplItem(Impl {
+            ref for_,
+            ref trait_,
+            ref blanket_impl,
+            ..
+        }) = it.inner
+        {
+            cleaner.keep_item(for_)
+                || trait_.as_ref().map_or(false, |t| cleaner.keep_item(t))
+                || blanket_impl.is_some()
         } else {
             true
         }
@@ -157,11 +173,15 @@ impl<'a, 'tcx, 'rcx> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rcx> {
             if let (Some(node_id), Some(name)) =
                 (self.cx.tcx.hir().as_local_node_id(i.def_id), i.name.clone())
             {
-                self.impls.extend(get_auto_traits_with_node_id(self.cx, node_id, name.clone()));
-                self.impls.extend(get_blanket_impls_with_node_id(self.cx, node_id, name));
+                self.impls
+                    .extend(get_auto_traits_with_node_id(self.cx, node_id, name.clone()));
+                self.impls
+                    .extend(get_blanket_impls_with_node_id(self.cx, node_id, name));
             } else {
-                self.impls.extend(get_auto_traits_with_def_id(self.cx, i.def_id));
-                self.impls.extend(get_blanket_impls_with_def_id(self.cx, i.def_id));
+                self.impls
+                    .extend(get_auto_traits_with_def_id(self.cx, i.def_id));
+                self.impls
+                    .extend(get_blanket_impls_with_def_id(self.cx, i.def_id));
             }
         }
 

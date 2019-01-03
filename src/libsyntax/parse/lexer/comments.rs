@@ -1,11 +1,11 @@
 pub use self::CommentStyle::*;
 
 use ast;
-use source_map::SourceMap;
-use syntax_pos::{BytePos, CharPos, Pos, FileName};
-use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
 use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
+use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
 use print::pprust;
+use source_map::SourceMap;
+use syntax_pos::{BytePos, CharPos, FileName, Pos};
 
 use std::io::Read;
 use std::usize;
@@ -30,8 +30,10 @@ pub struct Comment {
 }
 
 fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && super::is_doc_comment(s)) || s.starts_with("//!") ||
-    (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
+    (s.starts_with("///") && super::is_doc_comment(s))
+        || s.starts_with("//!")
+        || (s.starts_with("/**") && is_block_doc_comment(s))
+        || s.starts_with("/*!")
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
@@ -57,11 +59,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i &&
-           lines[j - 1]
-               .chars()
-               .skip(1)
-               .all(|c| c == '*') {
+        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
             j -= 1;
         }
 
@@ -103,9 +101,10 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         }
 
         if can_trim {
-            lines.iter()
-                 .map(|line| (&line[i + 1..line.len()]).to_string())
-                 .collect()
+            lines
+                .iter()
+                .map(|line| (&line[i + 1..line.len()]).to_string())
+                .collect()
         } else {
             lines
         }
@@ -122,9 +121,9 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
     if comment.starts_with("/*") {
         let lines = comment[3..comment.len() - 2]
-                        .lines()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<String>>();
+            .lines()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
 
         let lines = vertical_trim(lines);
         let lines = horizontal_trim(lines);
@@ -153,9 +152,11 @@ fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader, comments: &mu
     }
 }
 
-fn read_shebang_comment(rdr: &mut StringReader,
-                        code_to_the_left: bool,
-                        comments: &mut Vec<Comment>) {
+fn read_shebang_comment(
+    rdr: &mut StringReader,
+    code_to_the_left: bool,
+    comments: &mut Vec<Comment>,
+) {
     debug!(">>> shebang comment");
     let p = rdr.pos;
     debug!("<<< shebang comment");
@@ -166,9 +167,7 @@ fn read_shebang_comment(rdr: &mut StringReader,
     });
 }
 
-fn read_line_comments(rdr: &mut StringReader,
-                      code_to_the_left: bool,
-                      comments: &mut Vec<Comment>) {
+fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool, comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
     let p = rdr.pos;
     let mut lines: Vec<String> = Vec::new();
@@ -222,9 +221,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String>, s: String, col:
     lines.push(s1);
 }
 
-fn read_block_comment(rdr: &mut StringReader,
-                      code_to_the_left: bool,
-                      comments: &mut Vec<Comment>) {
+fn read_block_comment(rdr: &mut StringReader, code_to_the_left: bool, comments: &mut Vec<Comment>) {
     debug!(">>> block comment");
     let p = rdr.pos;
     let mut lines: Vec<String> = Vec::new();
@@ -232,9 +229,13 @@ fn read_block_comment(rdr: &mut StringReader,
     // Count the number of chars since the start of the line by rescanning.
     let src_index = rdr.src_index(rdr.source_file.line_begin_pos(rdr.pos));
     let end_src_index = rdr.src_index(rdr.pos);
-    assert!(src_index <= end_src_index,
+    assert!(
+        src_index <= end_src_index,
         "src_index={}, end_src_index={}, line_begin_pos={}",
-        src_index, end_src_index, rdr.source_file.line_begin_pos(rdr.pos).to_u32());
+        src_index,
+        end_src_index,
+        rdr.source_file.line_begin_pos(rdr.pos).to_u32()
+    );
 
     let col = CharPos(rdr.src[src_index..end_src_index].chars().count());
 
@@ -294,11 +295,7 @@ fn read_block_comment(rdr: &mut StringReader,
         }
     }
 
-    let mut style = if code_to_the_left {
-        Trailing
-    } else {
-        Isolated
-    };
+    let mut style = if code_to_the_left { Trailing } else { Isolated };
     rdr.consume_non_eol_whitespace();
     if !rdr.is_eof() && !rdr.ch_is('\n') && lines.len() == 1 {
         style = Mixed;
@@ -311,11 +308,12 @@ fn read_block_comment(rdr: &mut StringReader,
     });
 }
 
-
-fn consume_comment(rdr: &mut StringReader,
-                   comments: &mut Vec<Comment>,
-                   code_to_the_left: &mut bool,
-                   anything_to_the_left: &mut bool) {
+fn consume_comment(
+    rdr: &mut StringReader,
+    comments: &mut Vec<Comment>,
+    code_to_the_left: &mut bool,
+    anything_to_the_left: &mut bool,
+) {
     debug!(">>> consume comment");
     if rdr.ch_is('/') && rdr.nextch_is('/') {
         read_line_comments(rdr, *code_to_the_left, comments);
@@ -342,9 +340,11 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut dyn Read)
-    -> (Vec<Comment>, Vec<Literal>)
-{
+pub fn gather_comments_and_literals(
+    sess: &ParseSess,
+    path: FileName,
+    srdr: &mut dyn Read,
+) -> (Vec<Comment>, Vec<Literal>) {
     let mut src = String::new();
     srdr.read_to_string(&mut src).unwrap();
     let cm = SourceMap::new(sess.source_map().path_mapping().clone());
@@ -370,10 +370,14 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
             }
             // Eat one comment group
             if rdr.peeking_at_comment() {
-                consume_comment(&mut rdr, &mut comments,
-                                &mut code_to_the_left, &mut anything_to_the_left);
+                consume_comment(
+                    &mut rdr,
+                    &mut comments,
+                    &mut code_to_the_left,
+                    &mut anything_to_the_left,
+                );
             } else {
-                break
+                break;
             }
         }
 

@@ -121,7 +121,11 @@ pub struct PathSegment {
 
 impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
-        PathSegment { ident, id: DUMMY_NODE_ID, args: None }
+        PathSegment {
+            ident,
+            id: DUMMY_NODE_ID,
+            args: None,
+        }
     }
     pub fn path_root(span: Span) -> Self {
         PathSegment::from_ident(Ident::new(keywords::PathRoot.name(), span))

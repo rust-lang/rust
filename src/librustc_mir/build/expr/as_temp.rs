@@ -55,7 +55,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 local_decl = local_decl.immutable();
             }
 
-            debug!("creating temp {:?} with block_context: {:?}", local_decl, this.block_context);
+            debug!(
+                "creating temp {:?} with block_context: {:?}",
+                local_decl, this.block_context
+            );
             // Find out whether this temp is being created within the
             // tail expression of a block whose result is ignored.
             if let Some(tail_info) = this.block_context.currently_in_block_tail() {

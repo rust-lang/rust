@@ -161,12 +161,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
 
                 let rhs = unpack!(else_block = this.as_local_operand(else_block, rhs));
-                this.cfg.push_assign(
-                    else_block,
-                    source_info,
-                    destination,
-                    Rvalue::Use(rhs),
-                );
+                this.cfg
+                    .push_assign(else_block, source_info, destination, Rvalue::Use(rhs));
                 this.cfg.terminate(
                     else_block,
                     source_info,
@@ -257,7 +253,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 exit_block.unit()
             }
-            ExprKind::Call { ty, fun, args, from_hir_call } => {
+            ExprKind::Call {
+                ty,
+                fun,
+                args,
+                from_hir_call,
+            } => {
                 let intrinsic = match ty.sty {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
@@ -341,11 +342,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             // Avoid creating a temporary
-            ExprKind::VarRef { .. } |
-            ExprKind::SelfRef |
-            ExprKind::StaticRef { .. } |
-            ExprKind::PlaceTypeAscription { .. } |
-            ExprKind::ValueTypeAscription { .. } => {
+            ExprKind::VarRef { .. }
+            | ExprKind::SelfRef
+            | ExprKind::StaticRef { .. }
+            | ExprKind::PlaceTypeAscription { .. }
+            | ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
@@ -405,7 +406,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
-                this.cfg.push_assign(block, source_info, destination, rvalue);
+                this.cfg
+                    .push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
         };

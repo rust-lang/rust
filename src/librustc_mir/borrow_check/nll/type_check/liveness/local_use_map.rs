@@ -68,7 +68,8 @@ impl LocalUseMap<'me> {
         LocalUseMapBuild {
             local_use_map: &mut local_use_map,
             elements,
-        }.visit_mir(mir);
+        }
+        .visit_mir(mir);
 
         local_use_map
     }

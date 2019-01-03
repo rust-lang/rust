@@ -6,13 +6,19 @@ pub fn opts() -> TargetOptions {
     // Make sure that the linker/gcc really don't pull in anything, including
     // default objects, libs, etc.
     base.pre_link_args_crt.insert(LinkerFlavor::Gcc, Vec::new());
-    base.pre_link_args_crt.get_mut(&LinkerFlavor::Gcc).unwrap().push("-nostdlib".to_string());
+    base.pre_link_args_crt
+        .get_mut(&LinkerFlavor::Gcc)
+        .unwrap()
+        .push("-nostdlib".to_string());
 
     // At least when this was tested, the linker would not add the
     // `GNU_EH_FRAME` program header to executables generated, which is required
     // when unwinding to locate the unwinding information. I'm not sure why this
     // argument is *not* necessary for normal builds, but it can't hurt!
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-Wl,--eh-frame-hdr".to_string());
+    base.pre_link_args
+        .get_mut(&LinkerFlavor::Gcc)
+        .unwrap()
+        .push("-Wl,--eh-frame-hdr".to_string());
 
     // When generating a statically linked executable there's generally some
     // small setup needed which is listed in these files. These are provided by

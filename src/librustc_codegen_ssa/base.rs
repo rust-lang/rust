@@ -13,50 +13,52 @@
 //!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
-use {ModuleCodegen, ModuleKind, CachedModuleCodegen};
+use {CachedModuleCodegen, ModuleCodegen, ModuleKind};
 
-use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::weak_lang_items;
-use rustc::mir::mono::{Stats, CodegenUnitNameBuilder};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
-use rustc::ty::query::Providers;
-use rustc::middle::cstore::{self, LinkagePreference};
-use rustc::util::common::{time, print_time_passes_entry};
-use rustc::util::profiling::ProfileCategory;
-use rustc::session::config::{self, EntryFnType, Lto};
-use rustc::session::Session;
-use mir::place::PlaceRef;
-use back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
-    submit_post_lto_module_to_llvm};
-use {MemFlags, CrateInfo};
+use back::write::{
+    start_async_codegen, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
+    OngoingCodegen,
+};
 use callee;
-use rustc_mir::monomorphize::item::DefPathBasedNames;
-use common::{RealPredicate, TypeKind, IntPredicate};
+use common::{IntPredicate, RealPredicate, TypeKind};
 use meth;
 use mir;
-use rustc::util::time_graph;
-use rustc_mir::monomorphize::Instance;
-use rustc_mir::monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
+use mir::place::PlaceRef;
 use mono_item::MonoItem;
+use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::middle::cstore::{self, LinkagePreference};
+use rustc::middle::lang_items::StartFnLangItem;
+use rustc::middle::weak_lang_items;
+use rustc::mir::mono::{CodegenUnitNameBuilder, Stats};
+use rustc::session::config::{self, EntryFnType, Lto};
+use rustc::session::Session;
+use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+use rustc::ty::query::Providers;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::util::common::{print_time_passes_entry, time};
 use rustc::util::nodemap::FxHashMap;
+use rustc::util::profiling::ProfileCategory;
+use rustc::util::time_graph;
+use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
-use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
-use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+use rustc_mir::monomorphize::item::DefPathBasedNames;
+use rustc_mir::monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
+use rustc_mir::monomorphize::Instance;
+use {CrateInfo, MemFlags};
 
 use traits::*;
 
+use rustc::hir;
 use std::any::Any;
 use std::cmp;
 use std::ops::{Deref, DerefMut};
-use std::time::{Instant, Duration};
 use std::sync::mpsc;
-use syntax_pos::Span;
+use std::time::{Duration, Instant};
 use syntax::attr;
-use rustc::hir;
+use syntax_pos::Span;
 
 use mir::operand::OperandValue;
 
@@ -86,7 +88,9 @@ impl<'a, 'tcx, Cx: CodegenMethods<'tcx>> Drop for StatRecorder<'a, 'tcx, Cx> {
         if self.cx.sess().codegen_stats() {
             let mut stats = self.cx.stats().borrow_mut();
             let iend = stats.n_llvm_insns;
-            stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
+            stats
+                .fn_stats
+                .push((self.name.take().unwrap(), iend - self.istart));
             stats.n_fns += 1;
             // Reset LLVM insn count to avoid compound costs.
             stats.n_llvm_insns = self.istart;
@@ -94,21 +98,43 @@ impl<'a, 'tcx, Cx: CodegenMethods<'tcx>> Drop for StatRecorder<'a, 'tcx, Cx> {
     }
 }
 
-pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind,
-                                signed: bool)
-                                -> IntPredicate {
+pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicate {
     match op {
         hir::BinOpKind::Eq => IntPredicate::IntEQ,
         hir::BinOpKind::Ne => IntPredicate::IntNE,
-        hir::BinOpKind::Lt => if signed { IntPredicate::IntSLT } else { IntPredicate::IntULT },
-        hir::BinOpKind::Le => if signed { IntPredicate::IntSLE } else { IntPredicate::IntULE },
-        hir::BinOpKind::Gt => if signed { IntPredicate::IntSGT } else { IntPredicate::IntUGT },
-        hir::BinOpKind::Ge => if signed { IntPredicate::IntSGE } else { IntPredicate::IntUGE },
-        op => {
-            bug!("comparison_op_to_icmp_predicate: expected comparison operator, \
-                  found {:?}",
-                 op)
+        hir::BinOpKind::Lt => {
+            if signed {
+                IntPredicate::IntSLT
+            } else {
+                IntPredicate::IntULT
+            }
         }
+        hir::BinOpKind::Le => {
+            if signed {
+                IntPredicate::IntSLE
+            } else {
+                IntPredicate::IntULE
+            }
+        }
+        hir::BinOpKind::Gt => {
+            if signed {
+                IntPredicate::IntSGT
+            } else {
+                IntPredicate::IntUGT
+            }
+        }
+        hir::BinOpKind::Ge => {
+            if signed {
+                IntPredicate::IntSGE
+            } else {
+                IntPredicate::IntUGE
+            }
+        }
+        op => bug!(
+            "comparison_op_to_icmp_predicate: expected comparison operator, \
+             found {:?}",
+            op
+        ),
     }
 }
 
@@ -121,9 +147,11 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
         hir::BinOpKind::Gt => RealPredicate::RealOGT,
         hir::BinOpKind::Ge => RealPredicate::RealOGE,
         op => {
-            bug!("comparison_op_to_fcmp_predicate: expected comparison operator, \
-                  found {:?}",
-                 op);
+            bug!(
+                "comparison_op_to_fcmp_predicate: expected comparison operator, \
+                 found {:?}",
+                op
+            );
         }
     }
 }
@@ -134,14 +162,14 @@ pub fn compare_simd_types<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     rhs: Bx::Value,
     t: Ty<'tcx>,
     ret_ty: Bx::Type,
-    op: hir::BinOpKind
+    op: hir::BinOpKind,
 ) -> Bx::Value {
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
             let cmp = bx.fcmp(cmp, lhs, rhs);
             return bx.sext(cmp, ret_ty);
-        },
+        }
         ty::Uint(_) => false,
         ty::Int(_) => true,
         _ => bug!("compare_simd_types: invalid SIMD type"),
@@ -170,9 +198,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
 ) -> Cx::Value {
     let (source, target) = cx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
-        (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.unwrap_usize(cx.tcx()))
-        }
+        (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(len.unwrap_usize(cx.tcx())),
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
@@ -180,14 +206,19 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::Dynamic(ref data, ..)) => {
-            let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
+            let vtable_ptr = cx
+                .layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, FAT_PTR_EXTRA);
-            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()),
-                            cx.backend_type(vtable_ptr))
+            cx.const_ptrcast(
+                meth::get_vtable(cx, source, data.principal()),
+                cx.backend_type(vtable_ptr),
+            )
         }
-        _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
-                  source,
-                  target),
+        _ => bug!(
+            "unsized_info: invalid unsizing {:?} -> {:?}",
+            source,
+            target
+        ),
     }
 }
 
@@ -196,25 +227,32 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
-    dst_ty: Ty<'tcx>
+    dst_ty: Ty<'tcx>,
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::Ref(_, a, _),
-         &ty::Ref(_, b, _)) |
-        (&ty::Ref(_, a, _),
-         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
-        (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
-         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
+        | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+        | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
+            let ptr_ty = bx
+                .cx()
+                .type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
+            (
+                bx.pointercast(src, ptr_ty),
+                unsized_info(bx.cx(), a, b, None),
+            )
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
+            let ptr_ty = bx
+                .cx()
+                .type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
+            (
+                bx.pointercast(src, ptr_ty),
+                unsized_info(bx.cx(), a, b, None),
+            )
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
@@ -238,8 +276,18 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true)),
-             bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true)))
+            (
+                bx.bitcast(
+                    lldata,
+                    bx.cx()
+                        .scalar_pair_element_backend_type(dst_layout, 0, true),
+                ),
+                bx.bitcast(
+                    llextra,
+                    bx.cx()
+                        .scalar_pair_element_backend_type(dst_layout, 1, true),
+                ),
+            )
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -250,8 +298,8 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
-    dst: PlaceRef<'tcx, Bx::Value>
-)  {
+    dst: PlaceRef<'tcx, Bx::Value>,
+) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let mut coerce_ptr = || {
@@ -264,19 +312,15 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 let thin_ptr = dst.layout.field(bx.cx(), FAT_PTR_ADDR);
                 (bx.pointercast(base, bx.cx().backend_type(thin_ptr)), info)
             }
-            OperandValue::Immediate(base) => {
-                unsize_thin_ptr(bx, base, src_ty, dst_ty)
-            }
-            OperandValue::Ref(..) => bug!()
+            OperandValue::Immediate(base) => unsize_thin_ptr(bx, base, src_ty, dst_ty),
+            OperandValue::Ref(..) => bug!(),
         };
         OperandValue::Pair(base, info).store(bx, dst);
     };
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::Ref(..), &ty::Ref(..)) |
-        (&ty::Ref(..), &ty::RawPtr(..)) |
-        (&ty::RawPtr(..), &ty::RawPtr(..)) => {
-            coerce_ptr()
-        }
+        (&ty::Ref(..), &ty::Ref(..))
+        | (&ty::Ref(..), &ty::RawPtr(..))
+        | (&ty::RawPtr(..), &ty::RawPtr(..)) => coerce_ptr(),
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             coerce_ptr()
         }
@@ -293,16 +337,25 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 }
 
                 if src_f.layout.ty == dst_f.layout.ty {
-                    memcpy_ty(bx, dst_f.llval, dst_f.align, src_f.llval, src_f.align,
-                              src_f.layout, MemFlags::empty());
+                    memcpy_ty(
+                        bx,
+                        dst_f.llval,
+                        dst_f.align,
+                        src_f.llval,
+                        src_f.align,
+                        src_f.layout,
+                        MemFlags::empty(),
+                    );
                 } else {
                     coerce_unsized_into(bx, src_f, dst_f);
                 }
             }
         }
-        _ => bug!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
-                  src_ty,
-                  dst_ty),
+        _ => bug!(
+            "coerce_unsized_into: invalid coercion {:?} -> {:?}",
+            src_ty,
+            dst_ty
+        ),
     }
 }
 
@@ -310,7 +363,7 @@ pub fn cast_shift_expr_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     op: hir::BinOpKind,
     lhs: Bx::Value,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     cast_shift_rhs(bx, op, lhs, rhs)
 }
@@ -358,7 +411,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 
 pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    val: Bx::Value
+    val: Bx::Value,
 ) -> Bx::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
@@ -403,7 +456,14 @@ pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         return;
     }
 
-    bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
+    bx.memcpy(
+        dst,
+        dst_align,
+        src,
+        src_align,
+        bx.cx().const_usize(size),
+        flags,
+    );
 }
 
 pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -425,10 +485,16 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     info!("codegen_instance({})", instance);
 
     let sig = instance.fn_sig(cx.tcx());
-    let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+    let sig = cx
+        .tcx()
+        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
-    let lldecl = cx.instances().borrow().get(&instance).cloned().unwrap_or_else(||
-        bug!("Instance `{:?}` not already declared", instance));
+    let lldecl = cx
+        .instances()
+        .borrow()
+        .get(&instance)
+        .cloned()
+        .unwrap_or_else(|| bug!("Instance `{:?}` not already declared", instance));
 
     cx.stats().borrow_mut().n_closures += 1;
 
@@ -439,12 +505,10 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx
+    cx: &'a Bx::CodegenCx,
 ) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
-        Some((id, span, _)) => {
-            (cx.tcx().hir().local_def_id(id), span)
-        }
+        Some((id, span, _)) => (cx.tcx().hir().local_def_id(id), span),
         None => return,
     };
 
@@ -462,7 +526,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     match et {
         Some(EntryFnType::Main) => create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, true),
         Some(EntryFnType::Start) => create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, false),
-        None => {}    // Do nothing.
+        None => {} // Do nothing.
     }
 
     fn create_entry_fn<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -472,8 +536,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
-        let llfty =
-            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int());
+        let llfty = cx.type_func(
+            &[cx.type_int(), cx.type_ptr_to(cx.type_i8p())],
+            cx.type_int(),
+        );
 
         let main_ret_ty = cx.tcx().fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -481,15 +547,16 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().erase_regions(
-            &main_ret_ty.no_bound_vars().unwrap(),
-        );
+        let main_ret_ty = cx
+            .tcx()
+            .erase_regions(&main_ret_ty.no_bound_vars().unwrap());
 
         if cx.get_defined_value("main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
-            cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
-                     .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
-                     .emit();
+            cx.sess()
+                .struct_span_err(sp, "entry symbol `main` defined multiple times")
+                .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
+                .emit();
             cx.sess().abort_if_errors();
             bug!();
         }
@@ -516,8 +583,14 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 start_def_id,
                 cx.tcx().intern_substs(&[main_ret_ty.into()]),
             );
-            (start_fn, vec![bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())),
-                            arg_argc, arg_argv])
+            (
+                start_fn,
+                vec![
+                    bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())),
+                    arg_argc,
+                    arg_argv,
+                ],
+            )
         } else {
             debug!("using user-defined start fn");
             (rust_main, vec![arg_argc, arg_argv])
@@ -535,29 +608,29 @@ pub const CODEGEN_WORKER_TIMELINE: time_graph::TimelineId =
 pub const CODEGEN_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
     time_graph::WorkPackageKind(&["#DE9597", "#FED1D3", "#FDC5C7", "#B46668", "#88494B"]);
 
-
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    rx: mpsc::Receiver<Box<dyn Any + Send>>
+    rx: mpsc::Receiver<Box<dyn Any + Send>>,
 ) -> OngoingCodegen<B> {
-
     check_for_rustc_errors_attr(tcx);
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Codegen the metadata.
-    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen));
+    tcx.sess
+        .profiler(|p| p.start_activity(ProfileCategory::Codegen));
 
-    let metadata_cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
-                                                            &["crate"],
-                                                            Some("metadata")).as_str()
-                                                                             .to_string();
+    let metadata_cgu_name = cgu_name_builder
+        .build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata"))
+        .as_str()
+        .to_string();
     let metadata_llvm_module = backend.new_metadata(tcx.sess, &metadata_cgu_name);
     let metadata = time(tcx.sess, "write metadata", || {
         backend.write_metadata(tcx, &metadata_llvm_module)
     });
-    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
+    tcx.sess
+        .profiler(|p| p.end_activity(ProfileCategory::Codegen));
 
     let metadata_module = ModuleCodegen {
         name: metadata_cgu_name,
@@ -572,15 +645,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     };
 
     // Skip crate items and just output metadata in -Z no-codegen mode.
-    if tcx.sess.opts.debugging_opts.no_codegen ||
-       !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(
-            backend,
-            tcx,
-            time_graph,
-            metadata,
-            rx,
-            1);
+    if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
+        let ongoing_codegen = start_async_codegen(backend, tcx, time_graph, metadata, rx, 1);
 
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
         ongoing_codegen.codegen_finished(tcx);
@@ -614,7 +680,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         time_graph.clone(),
         metadata,
         rx,
-        codegen_units.len());
+        codegen_units.len(),
+    );
     let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
@@ -625,7 +692,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // linkage, then it's already got an allocator shim and we'll be using that
     // one instead. If nothing exists then it's our job to generate the
     // allocator!
-    let any_dynamic_crate = tcx.sess.dependency_formats.borrow()
+    let any_dynamic_crate = tcx
+        .sess
+        .dependency_formats
+        .borrow()
         .iter()
         .any(|(_, list)| {
             use rustc::middle::dependency_format::Linkage;
@@ -634,10 +704,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let allocator_module = if any_dynamic_crate {
         None
     } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
-        let llmod_id = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
-                                                       &["crate"],
-                                                       Some("allocator")).as_str()
-                                                                         .to_string();
+        let llmod_id = cgu_name_builder
+            .build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator"))
+            .as_str()
+            .to_string();
         let modules = backend.new_metadata(tcx.sess, &llmod_id);
         time(tcx.sess, "write allocator module", || {
             backend.codegen_allocator(tcx, &modules, kind)
@@ -674,14 +744,18 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         ongoing_codegen.check_for_errors(tcx.sess);
 
         let cgu_reuse = determine_cgu_reuse(tcx, &cgu);
-        tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
+        tcx.sess
+            .cgu_reuse_tracker
+            .set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
 
         match cgu_reuse {
             CguReuse::No => {
                 let _timing_guard = time_graph.as_ref().map(|time_graph| {
-                    time_graph.start(CODEGEN_WORKER_TIMELINE,
-                                     CODEGEN_WORK_PACKAGE_KIND,
-                                     &format!("codegen {}", cgu.name()))
+                    time_graph.start(
+                        CODEGEN_WORKER_TIMELINE,
+                        CODEGEN_WORK_PACKAGE_KIND,
+                        &format!("codegen {}", cgu.name()),
+                    )
                 });
                 let start_time = Instant::now();
                 let stats = backend.compile_codegen_unit(tcx, *cgu.name());
@@ -690,17 +764,25 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 false
             }
             CguReuse::PreLto => {
-                submit_pre_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
-                    name: cgu.name().to_string(),
-                    source: cgu.work_product(tcx),
-                });
+                submit_pre_lto_module_to_llvm(
+                    &backend,
+                    tcx,
+                    CachedModuleCodegen {
+                        name: cgu.name().to_string(),
+                        source: cgu.work_product(tcx),
+                    },
+                );
                 true
             }
             CguReuse::PostLto => {
-                submit_post_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
-                    name: cgu.name().to_string(),
-                    source: cgu.work_product(tcx),
-                });
+                submit_post_lto_module_to_llvm(
+                    &backend,
+                    tcx,
+                    CachedModuleCodegen {
+                        name: cgu.name().to_string(),
+                        source: cgu.work_product(tcx),
+                    },
+                );
                 true
             }
         };
@@ -710,9 +792,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    print_time_passes_entry(tcx.sess.time_passes(),
-                            "codegen to LLVM IR",
-                            total_codegen_time);
+    print_time_passes_entry(
+        tcx.sess.time_passes(),
+        "codegen to LLVM IR",
+        total_codegen_time,
+    );
 
     ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
@@ -794,13 +878,13 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 }
 
 fn assert_and_save_dep_graph<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>) {
-    time(tcx.sess,
-         "assert dep graph",
-         || ::rustc_incremental::assert_dep_graph(tcx));
+    time(tcx.sess, "assert dep graph", || {
+        ::rustc_incremental::assert_dep_graph(tcx)
+    });
 
-    time(tcx.sess,
-         "serialize dep graph",
-         || ::rustc_incremental::save_dep_graph(tcx));
+    time(tcx.sess, "serialize dep graph", || {
+        ::rustc_incremental::save_dep_graph(tcx)
+    });
 }
 
 impl CrateInfo {
@@ -824,10 +908,13 @@ impl CrateInfo {
         };
         let lang_items = tcx.lang_items();
 
-        let load_wasm_items = tcx.sess.crate_types.borrow()
+        let load_wasm_items = tcx
+            .sess
+            .crate_types
+            .borrow()
             .iter()
-            .any(|c| *c != config::CrateType::Rlib) &&
-            tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
+            .any(|c| *c != config::CrateType::Rlib)
+            && tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
 
         if load_wasm_items {
             info.load_wasm_imports(tcx, LOCAL_CRATE);
@@ -842,9 +929,12 @@ impl CrateInfo {
         info.missing_lang_items.reserve(n_crates);
 
         for &cnum in crates.iter() {
-            info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
-            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
-            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
+            info.native_libraries
+                .insert(cnum, tcx.native_libraries(cnum));
+            info.crate_name
+                .insert(cnum, tcx.crate_name(cnum).to_string());
+            info.used_crate_source
+                .insert(cnum, tcx.used_crate_source(cnum));
             if tcx.is_panic_runtime(cnum) {
                 info.panic_runtime = Some(cnum);
             }
@@ -872,44 +962,50 @@ impl CrateInfo {
 
             // No need to look for lang items that are whitelisted and don't
             // actually need to exist.
-            let missing = missing.iter()
+            let missing = missing
+                .iter()
                 .cloned()
                 .filter(|&l| !weak_lang_items::whitelisted(tcx, l))
                 .collect();
             info.missing_lang_items.insert(cnum, missing);
         }
 
-        return info
+        return info;
     }
 
     fn load_wasm_imports(&mut self, tcx: TyCtxt, cnum: CrateNum) {
-        self.wasm_imports.extend(tcx.wasm_import_module_map(cnum).iter().map(|(&id, module)| {
-            let instance = Instance::mono(tcx, id);
-            let import_name = tcx.symbol_name(instance);
+        self.wasm_imports.extend(
+            tcx.wasm_import_module_map(cnum)
+                .iter()
+                .map(|(&id, module)| {
+                    let instance = Instance::mono(tcx, id);
+                    let import_name = tcx.symbol_name(instance);
 
-            (import_name.to_string(), module.clone())
-        }));
+                    (import_name.to_string(), module.clone())
+                }),
+        );
     }
 }
 
 fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
-    let (all_mono_items, _) =
-        tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let (all_mono_items, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     all_mono_items.contains(&id)
 }
 
 pub fn provide_both(providers: &mut Providers) {
     providers.dllimport_foreign_items = |tcx, krate| {
         let module_map = tcx.foreign_modules(krate);
-        let module_map = module_map.iter()
+        let module_map = module_map
+            .iter()
             .map(|lib| (lib.def_id, lib))
             .collect::<FxHashMap<_, _>>();
 
-        let dllimports = tcx.native_libraries(krate)
+        let dllimports = tcx
+            .native_libraries(krate)
             .iter()
             .filter(|lib| {
                 if lib.kind != cstore::NativeLibraryKind::NativeUnknown {
-                    return false
+                    return false;
                 }
                 let cfg = match lib.cfg {
                     Some(ref cfg) => cfg,
@@ -924,23 +1020,24 @@ pub fn provide_both(providers: &mut Providers) {
         Lrc::new(dllimports)
     };
 
-    providers.is_dllimport_foreign_item = |tcx, def_id| {
-        tcx.dllimport_foreign_items(def_id.krate).contains(&def_id)
-    };
+    providers.is_dllimport_foreign_item =
+        |tcx, def_id| tcx.dllimport_foreign_items(def_id.krate).contains(&def_id);
 }
 
-fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 cgu: &CodegenUnit<'tcx>)
-                                 -> CguReuse {
+fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
     if !tcx.dep_graph.is_fully_enabled() {
-        return CguReuse::No
+        return CguReuse::No;
     }
 
     let work_product_id = &cgu.work_product_id();
-    if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
+    if tcx
+        .dep_graph
+        .previous_work_product(work_product_id)
+        .is_none()
+    {
         // We don't have anything cached for this CGU. This can happen
         // if the CGU did not exist in the previous session.
-        return CguReuse::No
+        return CguReuse::No;
     }
 
     // Try to mark the CGU as green. If it we can do so, it means that nothing
@@ -950,9 +1047,11 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(!tcx.dep_graph.dep_node_exists(&dep_node),
+    assert!(
+        !tcx.dep_graph.dep_node_exists(&dep_node),
         "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name());
+        cgu.name()
+    );
 
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state

@@ -3,8 +3,8 @@
 //! Documentation can be found on the `rt::at_exit` function.
 
 use boxed::FnBox;
-use ptr;
 use mem;
+use ptr;
 use sys_common::mutex::Mutex;
 
 type Queue = Vec<Box<dyn FnBox()>>;
@@ -32,7 +32,7 @@ unsafe fn init() -> bool {
         QUEUE = Box::into_raw(state);
     } else if QUEUE == DONE {
         // can't re-init after a cleanup
-        return false
+        return false;
     }
 
     true

@@ -7,8 +7,8 @@ use super::{HasCodegen, StaticBuilderMethods};
 use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
-use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size};
+use rustc::ty::Ty;
 use std::ffi::CStr;
 use MemFlags;
 

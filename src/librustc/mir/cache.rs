@@ -1,17 +1,15 @@
-use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
 use ich::StableHashingContext;
-use mir::{Mir, BasicBlock};
+use mir::{BasicBlock, Mir};
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::sync::{MappedReadGuard, ReadGuard, RwLock};
 
 use rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: RwLock<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
+    predecessors: RwLock<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>,
 }
-
 
 impl serialize::Encodable for Cache {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -26,9 +24,11 @@ impl serialize::Decodable for Cache {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Cache {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          _: &mut StableHashingContext<'a>,
-                                          _: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        _: &mut StableHashingContext<'a>,
+        _: &mut StableHasher<W>,
+    ) {
         // do nothing
     }
 }
@@ -36,7 +36,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Cache {
 impl Cache {
     pub fn new() -> Self {
         Cache {
-            predecessors: RwLock::new(None)
+            predecessors: RwLock::new(None),
         }
     }
 
@@ -47,7 +47,7 @@ impl Cache {
 
     pub fn predecessors(
         &self,
-        mir: &Mir<'_>
+        mir: &Mir<'_>,
     ) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));

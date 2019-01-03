@@ -1,5 +1,5 @@
-use rustc::hir::def_id::DefId;
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::{self, Predicate, TyCtxt};
 use rustc_target::spec::abi;
@@ -18,11 +18,11 @@ pub fn is_min_const_fn(
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in &predicates.predicates {
             match predicate {
-                | Predicate::RegionOutlives(_)
+                Predicate::RegionOutlives(_)
                 | Predicate::TypeOutlives(_)
                 | Predicate::WellFormed(_)
                 | Predicate::ConstEvaluatable(..) => continue,
-                | Predicate::ObjectSafe(_) => {
+                Predicate::ObjectSafe(_) => {
                     bug!("object safe predicate on function: {:#?}", predicate)
                 }
                 Predicate::ClosureKind(..) => {
@@ -90,17 +90,12 @@ pub fn is_min_const_fn(
     Ok(())
 }
 
-fn check_ty(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ty: ty::Ty<'tcx>,
-    span: Span,
-) -> McfResult {
+fn check_ty(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: ty::Ty<'tcx>, span: Span) -> McfResult {
     for ty in ty.walk() {
         match ty.sty {
-            ty::Ref(_, _, hir::Mutability::MutMutable) => return Err((
-                span,
-                "mutable references in const fn are unstable".into(),
-            )),
+            ty::Ref(_, _, hir::Mutability::MutMutable) => {
+                return Err((span, "mutable references in const fn are unstable".into()))
+            }
             ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()))
@@ -108,7 +103,7 @@ fn check_ty(
             ty::Dynamic(preds, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
-                        | ty::ExistentialPredicate::AutoTrait(_)
+                        ty::ExistentialPredicate::AutoTrait(_)
                         | ty::ExistentialPredicate::Projection(_) => {
                             return Err((
                                 span,
@@ -143,9 +138,7 @@ fn check_rvalue(
     span: Span,
 ) -> McfResult {
     match rvalue {
-        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
-            check_operand(tcx, mir, operand, span)
-        }
+        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => check_operand(tcx, mir, operand, span),
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) => {
             check_place(tcx, mir, place, span, PlaceMode::Read)
         }
@@ -164,16 +157,15 @@ fn check_rvalue(
                 _ => check_operand(tcx, mir, operand, span),
             }
         }
-        Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
-        Rvalue::Cast(CastKind::ClosureFnPointer, _, _) |
-        Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((
+        Rvalue::Cast(CastKind::UnsafeFnPointer, _, _)
+        | Rvalue::Cast(CastKind::ClosureFnPointer, _, _)
+        | Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((
             span,
             "function pointer casts are not allowed in const fn".into(),
         )),
-        Rvalue::Cast(CastKind::Unsize, _, _) => Err((
-            span,
-            "unsizing casts are not allowed in const fn".into(),
-        )),
+        Rvalue::Cast(CastKind::Unsize, _, _) => {
+            Err((span, "unsizing casts are not allowed in const fn".into()))
+        }
         // binops are fine on integers
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
             check_operand(tcx, mir, lhs, span)?;
@@ -189,10 +181,9 @@ fn check_rvalue(
             }
         }
         Rvalue::NullaryOp(NullOp::SizeOf, _) => Ok(()),
-        Rvalue::NullaryOp(NullOp::Box, _) => Err((
-            span,
-            "heap allocations are not allowed in const fn".into(),
-        )),
+        Rvalue::NullaryOp(NullOp::Box, _) => {
+            Err((span, "heap allocations are not allowed in const fn".into()))
+        }
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(mir, tcx);
             if ty.is_integral() || ty.is_bool() {
@@ -235,12 +226,12 @@ fn check_statement(
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),
 
-        | StatementKind::InlineAsm { .. } => {
+        StatementKind::InlineAsm { .. } => {
             Err((span, "cannot use inline assembly in const fn".into()))
         }
 
         // These are all NOPs
-        | StatementKind::StorageLive(_)
+        StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
@@ -284,14 +275,14 @@ fn check_place(
         Place::Static(_) => Err((span, "cannot access `static` items in const fn".into())),
         Place::Projection(proj) => {
             match proj.elem {
-                | ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
+                ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
                     check_place(tcx, mir, &proj.base, span, mode)
                 }
                 // slice patterns are unstable
-                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                     return Err((span, "slice patterns in const fn are unstable".into()))
                 }
-                | ProjectionElem::Downcast(..) => {
+                ProjectionElem::Downcast(..) => {
                     Err((span, "`match` or `if let` in `const fn` is unstable".into()))
                 }
             }
@@ -306,26 +297,26 @@ fn check_terminator(
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
-        | TerminatorKind::Goto { .. }
-        | TerminatorKind::Return
-        | TerminatorKind::Resume => Ok(()),
+        TerminatorKind::Goto { .. } | TerminatorKind::Return | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => {
             check_place(tcx, mir, location, span, PlaceMode::Read)
         }
-        TerminatorKind::DropAndReplace { location, value, .. } => {
+        TerminatorKind::DropAndReplace {
+            location, value, ..
+        } => {
             check_place(tcx, mir, location, span, PlaceMode::Read)?;
             check_operand(tcx, mir, value, span)
-        },
+        }
 
         TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
             span,
             "`if`, `match`, `&&` and `||` are not stable in const fn".into(),
         )),
-        | TerminatorKind::Abort | TerminatorKind::Unreachable => {
+        TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))
         }
-        | TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
+        TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         }
 
@@ -338,32 +329,33 @@ fn check_terminator(
         } => {
             let fn_ty = func.ty(mir, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.sty {
-
                 // some intrinsics are waved through if called inside the
                 // standard library. Users never need to call them directly
                 match tcx.fn_sig(def_id).abi() {
                     abi::Abi::RustIntrinsic => match &tcx.item_name(def_id).as_str()[..] {
-                        | "size_of"
-                        | "min_align_of"
-                        | "needs_drop"
-                        => {},
-                        _ => return Err((
-                            span,
-                            "can only call a curated list of intrinsics in `min_const_fn`".into(),
-                        )),
+                        "size_of" | "min_align_of" | "needs_drop" => {}
+                        _ => {
+                            return Err((
+                                span,
+                                "can only call a curated list of intrinsics in `min_const_fn`"
+                                    .into(),
+                            ))
+                        }
                     },
-                    abi::Abi::Rust if tcx.is_min_const_fn(def_id) => {},
-                    abi::Abi::Rust => return Err((
-                        span,
-                        "can only call other `min_const_fn` within a `min_const_fn`".into(),
-                    )),
-                    abi => return Err((
-                        span,
-                        format!(
-                            "cannot call functions with `{}` abi in `min_const_fn`",
-                            abi,
-                        ).into(),
-                    )),
+                    abi::Abi::Rust if tcx.is_min_const_fn(def_id) => {}
+                    abi::Abi::Rust => {
+                        return Err((
+                            span,
+                            "can only call other `min_const_fn` within a `min_const_fn`".into(),
+                        ))
+                    }
+                    abi => {
+                        return Err((
+                            span,
+                            format!("cannot call functions with `{}` abi in `min_const_fn`", abi,)
+                                .into(),
+                        ))
+                    }
                 }
 
                 check_operand(tcx, mir, func, span)?;
@@ -387,6 +379,6 @@ fn check_terminator(
 
         TerminatorKind::FalseUnwind { .. } => {
             Err((span, "loops are not allowed in const fn".into()))
-        },
+        }
     }
 }

@@ -3,22 +3,22 @@ use rustc::hir;
 use rustc::hir::lowering::lower_crate;
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
-use rustc::traits;
-use rustc::util::common::{install_panic_hook, time, ErrorReported};
-use rustc::util::profiling::ProfileCategory;
-use rustc::session::{CompileResult, CrateDisambiguator, Session};
-use rustc::session::CompileIncomplete;
+use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
+use rustc::session::CompileIncomplete;
+use rustc::session::{CompileResult, CrateDisambiguator, Session};
+use rustc::traits;
+use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
+use rustc::util::common::{install_panic_hook, time, ErrorReported};
+use rustc::util::profiling::ProfileCategory;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{self, Lrc, Lock};
+use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -30,16 +30,16 @@ use rustc_privacy;
 use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
-use syntax::util::node_count::NodeCounter;
-use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::Symbol;
-use syntax_pos::{FileName, hygiene};
+use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::util::node_count::NodeCounter;
+use syntax::{self, ast, attr, diagnostics, visit};
 use syntax_ext;
+use syntax_pos::{hygiene, FileName};
 
 use serialize::json;
 
@@ -52,29 +52,27 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
+use super::Compilation;
 use pretty::ReplaceBodyWithLoop;
 use proc_macro_decls;
 use profile;
-use super::Compilation;
 
 #[cfg(not(parallel_queries))]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
     opts: config::Options,
-    f: F
+    f: F,
 ) -> R {
-    ty::tls::GCX_PTR.set(&Lock::new(0), || {
-        f(opts)
-    })
+    ty::tls::GCX_PTR.set(&Lock::new(0), || f(opts))
 }
 
 #[cfg(parallel_queries)]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
     opts: config::Options,
-    f: F
+    f: F,
 ) -> R {
+    use rayon::{ThreadPool, ThreadPoolBuilder};
     use syntax;
     use syntax_pos;
-    use rayon::{ThreadPoolBuilder, ThreadPool};
 
     let gcx_ptr = &Lock::new(0);
 
@@ -83,9 +81,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
         .stack_size(::STACK_SIZE);
 
-    let with_pool = move |pool: &ThreadPool| {
-        pool.install(move || f(opts))
-    };
+    let with_pool = move |pool: &ThreadPool| pool.install(move || f(opts));
 
     syntax::GLOBALS.with(|syntax_globals| {
         syntax_pos::GLOBALS.with(|syntax_pos_globals| {
@@ -96,11 +92,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
             let main_handler = move |worker: &mut dyn FnMut()| {
                 syntax::GLOBALS.set(syntax_globals, || {
                     syntax_pos::GLOBALS.set(syntax_pos_globals, || {
-                        ty::tls::with_thread_locals(|| {
-                            ty::tls::GCX_PTR.set(gcx_ptr, || {
-                                worker()
-                            })
-                        })
+                        ty::tls::with_thread_locals(|| ty::tls::GCX_PTR.set(gcx_ptr, || worker()))
                     })
                 })
             };
@@ -134,7 +126,7 @@ pub fn compile_input(
                 // if there are no errors?
                 return $tsess.compile_status();
             }
-        }}
+        }};
     }
 
     if sess.profile_queries() {
@@ -447,13 +439,7 @@ impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
         descriptions: &::errors::registry::Registry,
         output: ::ErrorOutputType,
     ) -> Compilation {
-        ::RustcDefaultCalls.early_callback(
-            matches,
-            sopts,
-            cfg,
-            descriptions,
-            output,
-        )
+        ::RustcDefaultCalls.early_callback(matches, sopts, cfg, descriptions, output)
     }
     fn no_input(
         &mut self,
@@ -464,14 +450,7 @@ impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
         ofile: &Option<PathBuf>,
         descriptions: &::errors::registry::Registry,
     ) -> Option<(Input, Option<PathBuf>)> {
-        ::RustcDefaultCalls.no_input(
-            matches,
-            sopts,
-            cfg,
-            odir,
-            ofile,
-            descriptions,
-        )
+        ::RustcDefaultCalls.no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
     fn late_callback(
         &mut self,
@@ -483,13 +462,20 @@ impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        ::RustcDefaultCalls
-            .late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
+        ::RustcDefaultCalls.late_callback(
+            codegen_backend,
+            matches,
+            sess,
+            cstore,
+            input,
+            odir,
+            ofile,
+        )
     }
     fn build_controller(
         self: Box<Self>,
         _: &Session,
-        _: &::getopts::Matches
+        _: &::getopts::Matches,
     ) -> CompileController<'a> {
         *self
     }
@@ -779,9 +765,11 @@ where
                 trait_map: resolver.trait_map,
                 maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
                 maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
-                extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
+                extern_prelude: resolver
+                    .extern_prelude
+                    .iter()
+                    .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
+                    .collect(),
             },
 
             analysis: ty::CrateAnalysis {
@@ -816,14 +804,14 @@ where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {
     krate = time(sess, "attributes injection", || {
-        syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
+        syntax::attr::inject(
+            krate,
+            &sess.parse_sess,
+            &sess.opts.debugging_opts.crate_attr,
+        )
     });
 
-    let (mut krate, features) = syntax::config::features(
-        krate,
-        &sess.parse_sess,
-        sess.edition(),
-    );
+    let (mut krate, features) = syntax::config::features(krate, &sess.parse_sess, sess.edition());
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
@@ -976,7 +964,8 @@ where
                     new_path
                         .iter()
                         .filter(|p| env::join_paths(iter::once(p)).is_ok()),
-                ).unwrap(),
+                )
+                .unwrap(),
             );
         }
 
@@ -1003,7 +992,8 @@ where
             ecx.check_unused_macros();
         });
 
-        let mut missing_fragment_specifiers: Vec<_> = ecx.parse_sess
+        let mut missing_fragment_specifiers: Vec<_> = ecx
+            .parse_sess
             .missing_fragment_specifiers
             .borrow()
             .iter()
@@ -1075,7 +1065,13 @@ where
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
+        for BufferedEarlyLint {
+            id,
+            span,
+            msg,
+            lint_id,
+        } in buffered_lints.drain(..)
+        {
             let lint = lint::Lint::from_parser_lint_id(lint_id);
             sess.buffer_lint(lint, id, span, &msg);
         }
@@ -1298,9 +1294,11 @@ where
                 }
             });
 
-            time(sess,
-                 "MIR borrow checking",
-                 || tcx.par_body_owners(|def_id| { tcx.mir_borrowck(def_id); }));
+            time(sess, "MIR borrow checking", || {
+                tcx.par_body_owners(|def_id| {
+                    tcx.mir_borrowck(def_id);
+                })
+            });
 
             time(sess, "dumping chalk-like clauses", || {
                 rustc_traits::lowering::dump_program_clauses(tcx);
@@ -1345,9 +1343,13 @@ pub fn phase_4_codegen<'a, 'tcx>(
         ::rustc::middle::dependency_format::calculate(tcx)
     });
 
-    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen));
-    let codegen = time(tcx.sess, "codegen", move || codegen_backend.codegen_crate(tcx, rx));
-    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
+    tcx.sess
+        .profiler(|p| p.start_activity(ProfileCategory::Codegen));
+    let codegen = time(tcx.sess, "codegen", move || {
+        codegen_backend.codegen_crate(tcx, rx)
+    });
+    tcx.sess
+        .profiler(|p| p.end_activity(ProfileCategory::Codegen));
     if tcx.sess.profile_queries() {
         profile::dump(&tcx.sess, "profile_queries".to_string())
     }
@@ -1374,15 +1376,17 @@ fn generated_output_paths(
         match *output_type {
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
-            OutputType::Exe if !exact_name => for crate_type in sess.crate_types.borrow().iter() {
-                let p = ::rustc_codegen_utils::link::filename_for_input(
-                    sess,
-                    *crate_type,
-                    crate_name,
-                    outputs,
-                );
-                out_filenames.push(p);
-            },
+            OutputType::Exe if !exact_name => {
+                for crate_type in sess.crate_types.borrow().iter() {
+                    let p = ::rustc_codegen_utils::link::filename_for_input(
+                        sess,
+                        *crate_type,
+                        crate_name,
+                        outputs,
+                    );
+                    out_filenames.push(p);
+                }
+            }
             OutputType::DepInfo if sess.opts.debugging_opts.dep_info_omit_d_target => {
                 // Don't add the dep-info output when omitting it from dep-info targets
             }
@@ -1444,7 +1448,8 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[Pa
     let result = (|| -> io::Result<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let files: Vec<String> = sess.source_map()
+        let files: Vec<String> = sess
+            .source_map()
             .files()
             .iter()
             .filter(|fmap| fmap.is_real_file())
@@ -1496,35 +1501,31 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                             Symbol::intern("lib"),
                             Symbol::intern("staticlib"),
                             Symbol::intern("proc-macro"),
-                            Symbol::intern("bin")
+                            Symbol::intern("bin"),
                         ];
 
                         if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
                             let span = spanned.span;
-                            let lev_candidate = find_best_match_for_name(
-                                crate_types.iter(),
-                                &n.as_str(),
-                                None
-                            );
+                            let lev_candidate =
+                                find_best_match_for_name(crate_types.iter(), &n.as_str(), None);
                             if let Some(candidate) = lev_candidate {
                                 session.buffer_lint_with_diagnostic(
                                     lint::builtin::UNKNOWN_CRATE_TYPES,
                                     ast::CRATE_NODE_ID,
                                     span,
                                     "invalid `crate_type` value",
-                                    lint::builtin::BuiltinLintDiagnostics::
-                                        UnknownCrateTypes(
-                                            span,
-                                            "did you mean".to_string(),
-                                            format!("\"{}\"", candidate)
-                                        )
+                                    lint::builtin::BuiltinLintDiagnostics::UnknownCrateTypes(
+                                        span,
+                                        "did you mean".to_string(),
+                                        format!("\"{}\"", candidate),
+                                    ),
                                 );
                             } else {
                                 session.buffer_lint(
                                     lint::builtin::UNKNOWN_CRATE_TYPES,
                                     ast::CRATE_NODE_ID,
                                     span,
-                                    "invalid `crate_type` value"
+                                    "invalid `crate_type` value",
                                 );
                             }
                         }
@@ -1633,7 +1634,8 @@ pub fn build_output_filenames(
             let dirpath = (*odir).as_ref().cloned().unwrap_or_default();
 
             // If a crate name is present, we use it as the link name
-            let stem = sess.opts
+            let stem = sess
+                .opts
                 .crate_name
                 .clone()
                 .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
@@ -1649,7 +1651,8 @@ pub fn build_output_filenames(
         }
 
         Some(ref out_file) => {
-            let unnamed_output_types = sess.opts
+            let unnamed_output_types = sess
+                .opts
                 .output_types
                 .values()
                 .filter(|a| a.is_none())
@@ -1671,7 +1674,10 @@ pub fn build_output_filenames(
             }
 
             OutputFilenames {
-                out_directory: out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
+                out_directory: out_file
+                    .parent()
+                    .unwrap_or_else(|| Path::new(""))
+                    .to_path_buf(),
                 out_filestem: out_file
                     .file_stem()
                     .unwrap_or_default()

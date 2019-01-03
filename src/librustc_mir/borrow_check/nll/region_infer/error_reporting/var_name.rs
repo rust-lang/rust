@@ -35,18 +35,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
-        let upvar_index = self
-            .universal_regions
-            .defining_ty
-            .upvar_tys(tcx)
-            .position(|upvar_ty| {
-                debug!("get_upvar_index_for_region: upvar_ty={:?}", upvar_ty);
-                tcx.any_free_region_meets(&upvar_ty, |r| {
-                    let r = r.to_region_vid();
-                    debug!("get_upvar_index_for_region: r={:?} fr={:?}", r, fr);
-                    r == fr
-                })
-            })?;
+        let upvar_index =
+            self.universal_regions
+                .defining_ty
+                .upvar_tys(tcx)
+                .position(|upvar_ty| {
+                    debug!("get_upvar_index_for_region: upvar_ty={:?}", upvar_ty);
+                    tcx.any_free_region_meets(&upvar_ty, |r| {
+                        let r = r.to_region_vid();
+                        debug!("get_upvar_index_for_region: r={:?} fr={:?}", r, fr);
+                        r == fr
+                    })
+                })?;
 
         let upvar_ty = self
             .universal_regions
@@ -72,12 +72,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> (Symbol, Span) {
         let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
         let upvar_node_id = tcx.hir().hir_to_node_id(upvar_hir_id);
-        debug!("get_upvar_name_and_span_for_region: upvar_node_id={:?}", upvar_node_id);
+        debug!(
+            "get_upvar_name_and_span_for_region: upvar_node_id={:?}",
+            upvar_node_id
+        );
 
         let upvar_name = tcx.hir().name(upvar_node_id);
         let upvar_span = tcx.hir().span(upvar_node_id);
-        debug!("get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
-               upvar_name, upvar_span);
+        debug!(
+            "get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
+            upvar_name, upvar_span
+        );
 
         (upvar_name, upvar_span)
     }
@@ -99,10 +104,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .iter()
             .skip(implicit_inputs)
             .position(|arg_ty| {
-                debug!(
-                    "get_argument_index_for_region: arg_ty = {:?}",
-                    arg_ty
-                );
+                debug!("get_argument_index_for_region: arg_ty = {:?}", arg_ty);
                 tcx.any_free_region_meets(arg_ty, |r| r.to_region_vid() == fr)
             })?;
 
@@ -123,14 +125,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> (Option<Symbol>, Span) {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
         let argument_local = Local::new(implicit_inputs + argument_index + 1);
-        debug!("get_argument_name_and_span_for_region: argument_local={:?}", argument_local);
+        debug!(
+            "get_argument_name_and_span_for_region: argument_local={:?}",
+            argument_local
+        );
 
         let argument_name = mir.local_decls[argument_local].name;
         let argument_span = mir.local_decls[argument_local].source_info.span;
-        debug!("get_argument_name_and_span_for_region: argument_name={:?} argument_span={:?}",
-               argument_name, argument_span);
+        debug!(
+            "get_argument_name_and_span_for_region: argument_name={:?} argument_span={:?}",
+            argument_name, argument_span
+        );
 
         (argument_name, argument_span)
     }
-
 }

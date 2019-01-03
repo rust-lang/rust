@@ -1,5 +1,5 @@
-use rustc_data_structures::sync::Lrc;
 use infer::canonical::{Canonical, QueryResponse};
+use rustc_data_structures::sync::Lrc;
 use ty::Ty;
 
 #[derive(Debug)]

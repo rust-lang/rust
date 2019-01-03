@@ -68,9 +68,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("best_blame_constraint(from_region={:?})", from_region);
 
         // Find all paths
-        let (path, target_region) =
-            self.find_constraint_paths_between_regions(from_region, target_test)
-                .unwrap();
+        let (path, target_region) = self
+            .find_constraint_paths_between_regions(from_region, target_test)
+            .unwrap();
         debug!(
             "best_blame_constraint: path={:#?}",
             path.iter()
@@ -84,7 +84,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         // Classify each of the constraints along the path.
-        let mut categorized_path: Vec<(ConstraintCategory, bool, Span)> = path.iter()
+        let mut categorized_path: Vec<(ConstraintCategory, bool, Span)> = path
+            .iter()
             .map(|constraint| {
                 if constraint.category == ConstraintCategory::ClosureBounds {
                     self.retrieve_closure_constraint_info(mir, &constraint)
@@ -124,10 +125,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
             match categorized_path[i].0 {
-                ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
-                ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
-                ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
-                ConstraintCategory::Yield => true,
+                ConstraintCategory::OpaqueType
+                | ConstraintCategory::Boring
+                | ConstraintCategory::BoringNoLocation
+                | ConstraintCategory::Internal => false,
+                ConstraintCategory::TypeAnnotation
+                | ConstraintCategory::Return
+                | ConstraintCategory::Yield => true,
                 _ => constraint_sup_scc != target_scc,
             }
         });
@@ -202,7 +206,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // enqueue any regions we find, keeping track of how we
             // reached them.
             let fr_static = self.universal_regions.fr_static;
-            for constraint in self.constraint_graph
+            for constraint in self
+                .constraint_graph
                 .outgoing_edges(r, &self.constraints, fr_static)
             {
                 assert_eq!(constraint.sup, r);
@@ -259,17 +264,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             fr_is_local, outlived_fr_is_local, category
         );
         match (category, fr_is_local, outlived_fr_is_local) {
-            (ConstraintCategory::Return, true, false) if self.is_closure_fn_mut(infcx, fr) => {
-                self.report_fnmut_error(
-                    mir,
-                    infcx,
-                    mir_def_id,
-                    fr,
-                    outlived_fr,
-                    span,
-                    errors_buffer,
-                )
-            }
+            (ConstraintCategory::Return, true, false) if self.is_closure_fn_mut(infcx, fr) => self
+                .report_fnmut_error(mir, infcx, mir_def_id, fr, outlived_fr, span, errors_buffer),
             (ConstraintCategory::Assignment, true, false)
             | (ConstraintCategory::CallArgument, true, false) => self.report_escaping_data_error(
                 mir,
@@ -366,7 +362,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         diag.span_label(span, message);
 
-        match self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, &mut 1).unwrap().source {
+        match self
+            .give_region_a_name(infcx, mir, mir_def_id, outlived_fr, &mut 1)
+            .unwrap()
+            .source
+        {
             RegionNameSource::NamedEarlyBoundRegion(fr_span)
             | RegionNameSource::NamedFreeRegion(fr_span)
             | RegionNameSource::SynthesizedFreeEnvRegion(fr_span, _)
@@ -509,10 +509,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         let counter = &mut 1;
-        let fr_name = self.give_region_a_name(infcx, mir, mir_def_id, fr, counter).unwrap();
+        let fr_name = self
+            .give_region_a_name(infcx, mir, mir_def_id, fr, counter)
+            .unwrap();
         fr_name.highlight_region_name(&mut diag);
-        let outlived_fr_name =
-            self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, counter).unwrap();
+        let outlived_fr_name = self
+            .give_region_a_name(infcx, mir, mir_def_id, outlived_fr, counter)
+            .unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
 
         let mir_def_name = if infcx.tcx.is_closure(mir_def_id) {
@@ -669,29 +672,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.liveness_constraints.region_value_str(r),
             );
             self.liveness_constraints.contains(r, elem)
-        }).or_else(|| {
-                // If we fail to find that, we may find some `r` such that
-                // `fr1: r` and `r` is a placeholder from some universe
-                // `fr1` cannot name. This would force `fr1` to be
-                // `'static`.
-                self.find_constraint_paths_between_regions(fr1, |r| {
-                    self.cannot_name_placeholder(fr1, r)
-                })
+        })
+        .or_else(|| {
+            // If we fail to find that, we may find some `r` such that
+            // `fr1: r` and `r` is a placeholder from some universe
+            // `fr1` cannot name. This would force `fr1` to be
+            // `'static`.
+            self.find_constraint_paths_between_regions(fr1, |r| {
+                self.cannot_name_placeholder(fr1, r)
             })
-            .or_else(|| {
-                // If we fail to find THAT, it may be that `fr1` is a
-                // placeholder that cannot "fit" into its SCC. In that
-                // case, there should be some `r` where `fr1: r`, both
-                // `fr1` and `r` are in the same SCC, and `fr1` is a
-                // placeholder that `r` cannot name. We can blame that
-                // edge.
-                self.find_constraint_paths_between_regions(fr1, |r| {
-                    self.constraint_sccs.scc(fr1) == self.constraint_sccs.scc(r)
-                        && self.cannot_name_placeholder(r, fr1)
-                })
+        })
+        .or_else(|| {
+            // If we fail to find THAT, it may be that `fr1` is a
+            // placeholder that cannot "fit" into its SCC. In that
+            // case, there should be some `r` where `fr1: r`, both
+            // `fr1` and `r` are in the same SCC, and `fr1` is a
+            // placeholder that `r` cannot name. We can blame that
+            // edge.
+            self.find_constraint_paths_between_regions(fr1, |r| {
+                self.constraint_sccs.scc(fr1) == self.constraint_sccs.scc(r)
+                    && self.cannot_name_placeholder(r, fr1)
             })
-            .map(|(_path, r)| r)
-            .unwrap()
+        })
+        .map(|(_path, r)| r)
+        .unwrap()
     }
 
     // Finds a good span to blame for the fact that `fr1` outlives `fr2`.

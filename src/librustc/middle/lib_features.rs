@@ -4,13 +4,13 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
-use ty::TyCtxt;
-use syntax::symbol::Symbol;
-use syntax::ast::{Attribute, MetaItem, MetaItemKind};
-use syntax_pos::Span;
-use hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use errors::DiagnosticId;
+use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use syntax::ast::{Attribute, MetaItem, MetaItemKind};
+use syntax::symbol::Symbol;
+use syntax_pos::Span;
+use ty::TyCtxt;
 
 pub struct LibFeatures {
     // A map from feature to stabilisation version.
@@ -27,7 +27,10 @@ impl LibFeatures {
     }
 
     pub fn to_vec(&self) -> Vec<(Symbol, Option<Symbol>)> {
-        let mut all_features: Vec<_> = self.stable.iter().map(|(f, s)| (*f, Some(*s)))
+        let mut all_features: Vec<_> = self
+            .stable
+            .iter()
+            .map(|(f, s)| (*f, Some(*s)))
             .chain(self.unstable.iter().map(|f| (*f, None)))
             .collect();
         all_features.sort_unstable_by_key(|f| f.0.as_str());
@@ -53,11 +56,16 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
 
         // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
-        if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
-            attr.check_name(stab_attr)
-        }) {
+        if let Some(stab_attr) = stab_attrs
+            .iter()
+            .find(|stab_attr| attr.check_name(stab_attr))
+        {
             let meta_item = attr.meta();
-            if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
+            if let Some(MetaItem {
+                node: MetaItemKind::List(ref metas),
+                ..
+            }) = meta_item
+            {
                 let mut feature = None;
                 let mut since = None;
                 for meta in metas {
@@ -99,12 +107,16 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                         let msg = format!(
                             "feature `{}` is declared stable since {}, \
                              but was previously declared stable since {}",
-                            feature,
-                            since,
-                            prev_since,
+                            feature, since, prev_since,
                         );
-                        self.tcx.sess.struct_span_err_with_code(span, &msg,
-                            DiagnosticId::Error("E0711".into())).emit();
+                        self.tcx
+                            .sess
+                            .struct_span_err_with_code(
+                                span,
+                                &msg,
+                                DiagnosticId::Error("E0711".into()),
+                            )
+                            .emit();
                         return;
                     }
                 }
@@ -118,11 +130,21 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                 let msg = format!(
                     "feature `{}` is declared {}, but was previously declared {}",
                     feature,
-                    if since.is_some() { "stable" } else { "unstable" },
-                    if since.is_none() { "stable" } else { "unstable" },
+                    if since.is_some() {
+                        "stable"
+                    } else {
+                        "unstable"
+                    },
+                    if since.is_none() {
+                        "stable"
+                    } else {
+                        "unstable"
+                    },
                 );
-                self.tcx.sess.struct_span_err_with_code(span, &msg,
-                    DiagnosticId::Error("E0711".into())).emit();
+                self.tcx
+                    .sess
+                    .struct_span_err_with_code(span, &msg, DiagnosticId::Error("E0711".into()))
+                    .emit();
             }
         }
     }

@@ -1,15 +1,15 @@
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
-use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
+use rustc::lint::{EarlyLintPassObject, LateLintPassObject, Lint, LintId};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 
-use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
-use syntax::ext::base::MacroExpanderFn;
-use syntax::ext::hygiene;
-use syntax::symbol::Symbol;
 use syntax::ast;
+use syntax::ext::base::MacroExpanderFn;
+use syntax::ext::base::{IdentTT, NamedSyntaxExtension, NormalTT, SyntaxExtension};
+use syntax::ext::hygiene;
 use syntax::feature_gate::AttributeType;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use std::borrow::ToOwned;
@@ -89,32 +89,35 @@ impl<'a> Registry<'a> {
         if name == "macro_rules" {
             panic!("user-defined macros may not be named `macro_rules`");
         }
-        self.syntax_exts.push((name, match extension {
-            NormalTT {
-                expander,
-                def_info: _,
-                allow_internal_unstable,
-                allow_internal_unsafe,
-                local_inner_macros,
-                unstable_feature,
-                edition,
-            } => {
-                let nid = ast::CRATE_NODE_ID;
+        self.syntax_exts.push((
+            name,
+            match extension {
                 NormalTT {
                     expander,
-                    def_info: Some((nid, self.krate_span)),
+                    def_info: _,
                     allow_internal_unstable,
                     allow_internal_unsafe,
                     local_inner_macros,
                     unstable_feature,
                     edition,
+                } => {
+                    let nid = ast::CRATE_NODE_ID;
+                    NormalTT {
+                        expander,
+                        def_info: Some((nid, self.krate_span)),
+                        allow_internal_unstable,
+                        allow_internal_unsafe,
+                        local_inner_macros,
+                        unstable_feature,
+                        edition,
+                    }
                 }
-            }
-            IdentTT(ext, _, allow_internal_unstable) => {
-                IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
-            }
-            _ => extension,
-        }));
+                IdentTT(ext, _, allow_internal_unstable) => {
+                    IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
+                }
+                _ => extension,
+            },
+        ));
     }
 
     /// Register a macro of the usual kind.
@@ -123,15 +126,18 @@ impl<'a> Registry<'a> {
     /// It builds for you a `NormalTT` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(Symbol::intern(name), NormalTT {
-            expander: Box::new(expander),
-            def_info: None,
-            allow_internal_unstable: false,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            unstable_feature: None,
-            edition: hygiene::default_edition(),
-        });
+        self.register_syntax_extension(
+            Symbol::intern(name),
+            NormalTT {
+                expander: Box::new(expander),
+                def_info: None,
+                allow_internal_unstable: false,
+                allow_internal_unsafe: false,
+                local_inner_macros: false,
+                unstable_feature: None,
+                edition: hygiene::default_edition(),
+            },
+        );
     }
 
     /// Register a compiler lint pass.
@@ -148,11 +154,15 @@ impl<'a> Registry<'a> {
         &mut self,
         name: &'static str,
         deprecated_name: Option<&'static str>,
-        to: Vec<&'static Lint>
+        to: Vec<&'static Lint>,
     ) {
-        self.lint_groups.insert(name,
-                                (to.into_iter().map(|x| LintId::of(x)).collect(),
-                                 deprecated_name));
+        self.lint_groups.insert(
+            name,
+            (
+                to.into_iter().map(|x| LintId::of(x)).collect(),
+                deprecated_name,
+            ),
+        );
     }
 
     /// Register an LLVM pass.

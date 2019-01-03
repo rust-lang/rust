@@ -20,9 +20,11 @@ pub trait MetadataExt {
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    #[rustc_deprecated(since = "1.8.0",
-                       reason = "deprecated in favor of the accessor \
-                                 methods of this trait")]
+    #[rustc_deprecated(
+        since = "1.8.0",
+        reason = "deprecated in favor of the accessor \
+                  methods of this trait"
+    )]
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat;
 
@@ -76,10 +78,7 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
-        unsafe {
-            &*(self.as_inner().as_inner() as *const libc::stat
-                                          as *const raw::stat)
-        }
+        unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
     }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
@@ -149,4 +148,3 @@ impl MetadataExt for Metadata {
         [qspare[0] as u64, qspare[1] as u64]
     }
 }
-
