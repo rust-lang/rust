@@ -22,7 +22,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 /// Keeps track of item pairs found that way that correspond to item matchings not yet known.
 /// This allows to match up some items that aren't exported, and which possibly even differ in
 /// their names across versions.
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
 pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
