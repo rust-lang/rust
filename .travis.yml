@@ -10,6 +10,7 @@ build: &rust_build
     script:
         - cargo gen-tests --verify
         - cargo gen-syntax --verify
+        - cargo test --no-run  # let's measure compile time separately
         - cargo test
     env:
         - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
