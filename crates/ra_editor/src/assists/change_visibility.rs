@@ -1,29 +1,39 @@
 use ra_syntax::{
-    SyntaxKind::{VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF},
+    AstNode,
+    ast::{self, VisibilityOwner, NameOwner},
+    SyntaxKind::{VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT},
 };
 
 use crate::assists::{AssistCtx, Assist};
 
 pub fn change_visibility(ctx: AssistCtx) -> Option<Assist> {
-    let keyword = ctx.leaf_at_offset().find(|leaf| match leaf.kind() {
+    let offset = if let Some(keyword) = ctx.leaf_at_offset().find(|leaf| match leaf.kind() {
         FN_KW | MOD_KW | STRUCT_KW | ENUM_KW | TRAIT_KW => true,
         _ => false,
-    })?;
-    let parent = keyword.parent()?;
-    let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
-    // Parent is not a definition, can't add visibility
-    if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
-        return None;
-    }
-    // Already have visibility, do nothing
-    if parent.children().any(|child| child.kind() == VISIBILITY) {
-        return None;
-    }
+    }) {
+        let parent = keyword.parent()?;
+        let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
+        // Parent is not a definition, can't add visibility
+        if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
+            return None;
+        }
+        // Already have visibility, do nothing
+        if parent.children().any(|child| child.kind() == VISIBILITY) {
+            return None;
+        }
+        parent.range().start()
+    } else {
+        let ident = ctx.leaf_at_offset().find(|leaf| leaf.kind() == IDENT)?;
+        let field = ident.ancestors().find_map(ast::NamedFieldDef::cast)?;
+        if field.name()?.syntax().range() != ident.range() && field.visibility().is_some() {
+            return None;
+        }
+        field.syntax().range().start()
+    };
 
-    let node_start = parent.range().start();
-    ctx.build("make pub crate", |edit| {
-        edit.insert(node_start, "pub(crate) ");
-        edit.set_cursor(node_start);
+    ctx.build("make pub(crate)", |edit| {
+        edit.insert(offset, "pub(crate) ");
+        edit.set_cursor(offset);
     })
 }
 
@@ -33,7 +43,7 @@ mod tests {
     use crate::assists::check_assist;
 
     #[test]
-    fn test_change_visibility() {
+    fn change_visibility_adds_pub_crate_to_items() {
         check_assist(
             change_visibility,
             "<|>fn foo() {}",
@@ -65,5 +75,14 @@ mod tests {
             "unsafe f<|>n foo() {}",
             "<|>pub(crate) unsafe fn foo() {}",
         );
+    }
+
+    #[test]
+    fn change_visibility_works_with_struct_fields() {
+        check_assist(
+            change_visibility,
+            "struct S { <|>field: u32 }",
+            "struct S { <|>pub(crate) field: u32 }",
+        )
     }
 }
