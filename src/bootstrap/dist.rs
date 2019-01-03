@@ -671,10 +671,18 @@ impl Step for Std {
         let mut src = builder.sysroot_libdir(compiler, target).to_path_buf();
         src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
         builder.cp_filtered(&src, &dst, &|path| {
-            let name = path.file_name().and_then(|s| s.to_str());
-            name != Some(builder.config.rust_codegen_backends_dir.as_str()) &&
-                name != Some("bin")
-
+            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                if name == builder.config.rust_codegen_backends_dir.as_str() {
+                    return false
+                }
+                if name == "bin" {
+                    return false
+                }
+                if name.contains("LLVM") {
+                    return false
+                }
+            }
+            true
         });
 
         let mut cmd = rust_installer(builder);
@@ -1877,13 +1885,13 @@ impl Step for HashSign {
 // LLVM tools are linked dynamically.
 // Note: This function does no yet support Windows but we also don't support
 //       linking LLVM tools dynamically on Windows yet.
-fn maybe_install_llvm_dylib(builder: &Builder,
-                            target: Interned<String>,
-                            image: &Path) {
+pub fn maybe_install_llvm_dylib(builder: &Builder,
+                                target: Interned<String>,
+                                sysroot: &Path) {
     let src_libdir = builder
         .llvm_out(target)
         .join("lib");
-    let dst_libdir = image.join("lib/rustlib").join(&*target).join("lib");
+    let dst_libdir = sysroot.join("lib/rustlib").join(&*target).join("lib");
     t!(fs::create_dir_all(&dst_libdir));
 
     if target.contains("apple-darwin") {
