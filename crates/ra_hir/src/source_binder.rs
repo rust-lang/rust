@@ -8,8 +8,8 @@
 use ra_db::{FileId, FilePosition, Cancelable};
 use ra_editor::find_node_at_offset;
 use ra_syntax::{
+    SmolStr, TextRange, SyntaxNodeRef,
     ast::{self, AstNode, NameOwner},
-    SyntaxNodeRef,
 };
 
 use crate::{
@@ -125,4 +125,41 @@ pub fn function_from_child_node(
 ) -> Cancelable<Option<Function>> {
     let fn_def = ctry!(node.ancestors().find_map(ast::FnDef::cast));
     function_from_source(db, file_id, fn_def)
+}
+
+pub fn macro_symbols(
+    db: &impl HirDatabase,
+    file_id: FileId,
+) -> Cancelable<Vec<(SmolStr, TextRange)>> {
+    let module = match module_from_file_id(db, file_id)? {
+        Some(it) => it,
+        None => return Ok(Vec::new()),
+    };
+    let items = db.input_module_items(module.source_root_id, module.module_id)?;
+    let mut res = Vec::new();
+
+    for macro_call_id in items
+        .items
+        .iter()
+        .filter_map(|it| it.id.file_id.as_macro_call_id())
+    {
+        if let Some(exp) = db.expand_macro_invocation(macro_call_id) {
+            let loc = macro_call_id.loc(db);
+            let syntax = db.file_item(loc.source_item_id);
+            let syntax = syntax.borrowed();
+            let macro_call = ast::MacroCall::cast(syntax).unwrap();
+            let off = macro_call.token_tree().unwrap().syntax().range().start();
+            let file = exp.file();
+            for trait_def in file.syntax().descendants().filter_map(ast::TraitDef::cast) {
+                if let Some(name) = trait_def.name() {
+                    let dst_range = name.syntax().range();
+                    if let Some(src_range) = exp.map_range_back(dst_range) {
+                        res.push((name.text(), src_range + off))
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(res)
 }

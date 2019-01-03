@@ -28,11 +28,11 @@ use std::{
 use fst::{self, Streamer};
 use ra_syntax::{
     SyntaxNodeRef, SourceFileNode, SmolStr,
-    algo::visit::{visitor, Visitor},
+    algo::{visit::{visitor, Visitor}, find_covering_node},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
 };
-use ra_db::{SyntaxDatabase, SourceRootId, FilesDatabase, LocalSyntaxPtr};
+use ra_db::{SourceRootId, FilesDatabase, LocalSyntaxPtr};
 use salsa::ParallelDatabase;
 use rayon::prelude::*;
 
@@ -42,7 +42,7 @@ use crate::{
 };
 
 salsa::query_group! {
-    pub(crate) trait SymbolsDatabase: SyntaxDatabase {
+    pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
         fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
             type FileSymbolsQuery;
         }
@@ -53,10 +53,23 @@ salsa::query_group! {
     }
 }
 
-fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
     db.check_canceled()?;
-    let syntax = db.source_file(file_id);
-    Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
+    let source_file = db.source_file(file_id);
+    let mut symbols = source_file
+        .syntax()
+        .descendants()
+        .filter_map(to_symbol)
+        .map(move |(name, ptr)| FileSymbol { name, ptr, file_id })
+        .collect::<Vec<_>>();
+
+    for (name, text_range) in hir::source_binder::macro_symbols(db, file_id)? {
+        let node = find_covering_node(source_file.syntax(), text_range);
+        let ptr = LocalSyntaxPtr::new(node);
+        symbols.push(FileSymbol { file_id, name, ptr })
+    }
+
+    Ok(Arc::new(SymbolIndex::new(symbols)))
 }
 
 pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Cancelable<Vec<FileSymbol>> {
@@ -140,10 +153,6 @@ impl SymbolIndex {
             })
             .collect::<Vec<_>>();
         SymbolIndex::new(symbols)
-    }
-
-    fn for_file(file_id: FileId, file: SourceFileNode) -> SymbolIndex {
-        SymbolIndex::for_files(rayon::iter::once((file_id, file)))
     }
 }
 

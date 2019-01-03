@@ -48,6 +48,13 @@ impl HirFileId {
         }
     }
 
+    pub(crate) fn as_macro_call_id(self) -> Option<MacroCallId> {
+        match self.0 {
+            HirFileIdRepr::Macro(it) => Some(it),
+            _ => None,
+        }
+    }
+
     pub(crate) fn hir_source_file(db: &impl HirDatabase, file_id: HirFileId) -> SourceFileNode {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.source_file(file_id),

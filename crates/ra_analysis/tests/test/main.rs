@@ -6,7 +6,7 @@ use test_utils::{assert_eq_dbg, assert_eq_text};
 
 use ra_analysis::{
     mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, FileId, FnSignatureInfo,
+    AnalysisChange, CrateGraph, FileId, FnSignatureInfo, Query
 };
 
 fn get_signature(text: &str) -> (FnSignatureInfo, Option<usize>) {
@@ -531,6 +531,7 @@ fn test_rename_for_mut_param() {
     }"#,
     );
 }
+
 fn test_rename(text: &str, new_name: &str, expected: &str) {
     let (analysis, position) = single_file_with_position(text);
     let edits = analysis.rename(position, new_name).unwrap();
@@ -546,4 +547,20 @@ fn test_rename(text: &str, new_name: &str, expected: &str) {
         .finish()
         .apply(&*analysis.file_text(file_id.unwrap()));
     assert_eq_text!(expected, &*result);
+}
+
+#[test]
+fn world_symbols_include_stuff_from_macros() {
+    let (analysis, _) = single_file(
+        "
+salsa::query_group! {
+pub trait HirDatabase: SyntaxDatabase {}
+}
+    ",
+    );
+
+    let mut symbols = analysis.symbol_search(Query::new("Hir".into())).unwrap();
+    let s = symbols.pop().unwrap();
+    assert_eq!(s.name(), "HirDatabase");
+    assert_eq!(s.range(), TextRange::from_to(33.into(), 44.into()));
 }
