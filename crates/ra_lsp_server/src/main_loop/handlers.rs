@@ -525,6 +525,18 @@ pub fn handle_hover(
             contents: HoverContents::Scalar(MarkedString::String(result.join("\n\n---\n"))),
             range: Some(range),
         }));
+    } else {
+        let file_id = params.text_document.try_conv_with(&world)?;
+        let file_range = FileRange {
+            file_id,
+            range: rr.reference_range,
+        };
+        if let Some(type_name) = world.analysis().type_of(file_range)? {
+            return Ok(Some(Hover {
+                contents: HoverContents::Scalar(MarkedString::String(type_name)),
+                range: Some(range),
+            }));
+        }
     }
     Ok(None)
 }
