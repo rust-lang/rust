@@ -13,12 +13,12 @@ LL |     d.x = 10;
 error[E0382]: assign of moved value: `d`
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:43:5
    |
+LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0 } };
+   |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
 LL |     drop(d);
    |          - value moved here
 LL |     d.x = 10;
    |     ^^^^^^^^ value assigned here after move
-   |
-   = note: move occurs because `d` has type `D`, which does not implement the `Copy` trait
 
 error[E0381]: assign to part of possibly uninitialized variable: `d`
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:49:5
@@ -35,12 +35,12 @@ LL |     d.s.y = 20;
 error[E0382]: assign to part of moved value: `d`
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:62:5
    |
+LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0} };
+   |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
 LL |     drop(d);
    |          - value moved here
 LL |     d.s.y = 20;
    |     ^^^^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `d` has type `D`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 

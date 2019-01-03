@@ -19,10 +19,13 @@ LL |         if let Some(thing) = maybe {
 error[E0382]: use of moved value (Mir)
   --> $DIR/issue-41962.rs:7:21
    |
+LL |     let maybe = Some(vec![true, true]);
+   |                      ---------------- move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+...
 LL |         if let Some(thing) = maybe {
    |                     ^^^^^ value moved here, in previous iteration of loop
    |
-   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
