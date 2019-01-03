@@ -1,8 +1,12 @@
 mod support;
 
+use languageserver_types::{
+    CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range,
+};
+use ra_lsp_server::req::{
+    CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams,
+};
 use serde_json::json;
-use ra_lsp_server::req::{Runnables, RunnablesParams, CodeActionRequest, CodeActionParams, Formatting};
-use languageserver_types::{Position, Range, CodeActionContext, DocumentFormattingParams, FormattingOptions};
 
 use crate::support::project;
 
@@ -203,14 +207,15 @@ fn main() {}
               "arguments": [
                 {
                   "cursorPosition": null,
-                  "fileSystemEdits": [
-                    {
-                        "type": "createFile",
+                  "workspaceEdit": {
+                    "documentChanges": [
+                      {
+                        "kind": "create",
                         "uri": "file:///[..]/src/bar.rs"
-                    }
-                  ],
-                  "label": "create module",
-                  "sourceFileEdits": []
+                      }
+                    ]
+                  },
+                  "label": "create module"
                 }
               ],
               "command": "ra-lsp.applySourceChange",
