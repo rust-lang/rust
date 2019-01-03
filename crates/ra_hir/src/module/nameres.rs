@@ -64,14 +64,14 @@ impl ModuleScope {
 /// running name resolution.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct InputModuleItems {
-    items: Vec<ModuleItem>,
+    pub(crate) items: Vec<ModuleItem>,
     imports: Vec<Import>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct ModuleItem {
-    id: SourceItemId,
-    name: Name,
+pub(crate) struct ModuleItem {
+    pub(crate) id: SourceItemId,
+    pub(crate) name: Name,
     kind: SyntaxKind,
     vis: Vis,
 }
