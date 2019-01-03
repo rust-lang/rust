@@ -19,7 +19,7 @@ pub use self::{
     typing::{join_lines, on_enter, on_eq_typed},
     diagnostics::diagnostics
 };
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use ra_text_edit::TextEditBuilder;
 use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode},

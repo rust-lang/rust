@@ -338,7 +338,7 @@ impl db::RootDatabase {
             assists::flip_comma(&file, offset).map(|f| f()),
             assists::add_derive(&file, offset).map(|f| f()),
             assists::add_impl(&file, offset).map(|f| f()),
-            assists::make_pub_crate(&file, offset).map(|f| f()),
+            assists::change_visibility(&file, offset).map(|f| f()),
             assists::introduce_variable(&file, frange.range).map(|f| f()),
         ];
         actions
