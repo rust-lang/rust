@@ -1380,7 +1380,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant {
-                literal: ty::Const { ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  }, ..  },
+                literal: ty::LazyConst::Evaluated(ty::Const {
+                    ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  },
+                    ..
+                }),
                 ..
             }),
             args,

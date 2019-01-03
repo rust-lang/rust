@@ -136,7 +136,7 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx>{
     }
 }
 
-impl<'tcx> Key for &'tcx ty::Const<'tcx> {
+impl<'tcx> Key for ty::Const<'tcx> {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

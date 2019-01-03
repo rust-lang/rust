@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_region: region={:?}", region);
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
+    fn visit_const(&mut self, constant: &mut &'tcx ty::LazyConst<'tcx>, _location: Location) {
         *constant = self.renumber_regions(&*constant);
     }
 

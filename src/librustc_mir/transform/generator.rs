@@ -171,11 +171,11 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             span: source_info.span,
             ty: self.tcx.types.u32,
             user_ty: None,
-            literal: ty::Const::from_bits(
+            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
                 ty::ParamEnv::empty().and(self.tcx.types.u32)
-            ),
+            ))),
         });
         Statement {
             source_info,
@@ -717,7 +717,9 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             span: mir.span,
             ty: tcx.types.bool,
             user_ty: None,
-            literal: ty::Const::from_bool(tcx, false),
+            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_bool(tcx, false),
+            )),
         }),
         expected: true,
         msg: message,
