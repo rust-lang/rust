@@ -1,6 +1,8 @@
-//! ra_analyzer crate is the brain of Rust analyzer. It relies on the `salsa`
-//! crate, which provides and incremental on-demand database of facts.
-
+//! ra_analyzer crate provides "ide-centric" APIs for the rust-analyzer. What
+//! powers this API are the `RootDatabase` struct, which defines a `salsa`
+//! database, and the `ra_hir` crate, where majority of the analysis happens.
+//! However, IDE specific bits of the analysis (most notably completion) happen
+//! in this crate.
 macro_rules! ctry {
     ($expr:expr) => {
         match $expr {
@@ -219,6 +221,11 @@ impl Query {
     }
 }
 
+/// `NavigationTarget` represents and element in the editor's UI whihc you can
+/// click on to navigate to a particular piece of code.
+///
+/// Typically, a `NavigationTarget` corresponds to some element in the source
+/// code, like a function or a struct, but this is not strictly required.
 #[derive(Debug)]
 pub struct NavigationTarget {
     file_id: FileId,

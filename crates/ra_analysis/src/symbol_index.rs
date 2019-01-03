@@ -1,3 +1,24 @@
+//! This module handles fuzzy-searching of functions, structs and other symbols
+//! by name across the whole workspace and dependencies.
+//!
+//! It works by building an incrementally-updated text-search index of all
+//! symbols. The backbone of the index is the **awesome** `fst` crate by
+//! @BurntSushi.
+//!
+//! In a nutshell, you give a set of strings to the `fst`, and it builds a
+//! finite state machine describing this set of strtings. The strings which
+//! could fuzzy-match a pattern can also be described by a finite state machine.
+//! What is freakingly cool is that you can now traverse both state machines in
+//! lock-step to enumerate the strings which are both in the input set and
+//! fuzz-match the query. Or, more formally, given two langauges described by
+//! fsts, one can build an product fst which describes the intersection of the
+//! languages.
+//!
+//! `fst` does not support cheap updating of the index, but it supports unioning
+//! of state machines. So, to account for changing source code, we build an fst
+//! for each library (which is assumed to never change) and an fst for each rust
+//! file in the current workspace, and run a query aginst the union of all
+//! thouse fsts.
 use std::{
     hash::{Hash, Hasher},
     sync::Arc,
@@ -160,6 +181,8 @@ fn is_type(kind: SyntaxKind) -> bool {
     }
 }
 
+/// The actual data that is stored in the index. It should be as compact as
+/// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct FileSymbol {
     pub(crate) name: SmolStr,
