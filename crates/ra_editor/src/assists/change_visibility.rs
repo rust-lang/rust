@@ -62,11 +62,6 @@ mod tests {
         check_assist(change_visibility, "m<|>od {}", "<|>pub(crate) mod {}");
         check_assist(
             change_visibility,
-            "pub(crate) f<|>n foo() {}",
-            "pub(crate) f<|>n foo() {}",
-        );
-        check_assist(
-            change_visibility,
             "unsafe f<|>n foo() {}",
             "<|>pub(crate) unsafe fn foo() {}",
         );
