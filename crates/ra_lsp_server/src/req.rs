@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
 use languageserver_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
+use serde::{Deserialize, Serialize};
 use url_serde;
 
 pub use languageserver_types::{
@@ -8,7 +8,7 @@ pub use languageserver_types::{
     CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
     PublishDiagnosticsParams, ReferenceParams, SignatureHelp, TextDocumentEdit,
-    TextDocumentPositionParams, TextEdit, WorkspaceSymbolParams,
+    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
 };
 
 pub enum SyntaxTree {}
@@ -151,24 +151,8 @@ pub struct Runnable {
 #[serde(rename_all = "camelCase")]
 pub struct SourceChange {
     pub label: String,
-    pub source_file_edits: Vec<TextDocumentEdit>,
-    pub file_system_edits: Vec<FileSystemEdit>,
+    pub workspace_edit: WorkspaceEdit,
     pub cursor_position: Option<TextDocumentPositionParams>,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum FileSystemEdit {
-    CreateFile {
-        #[serde(with = "url_serde")]
-        uri: Url,
-    },
-    MoveFile {
-        #[serde(with = "url_serde")]
-        src: Url,
-        #[serde(with = "url_serde")]
-        dst: Url,
-    },
 }
 
 pub enum InternalFeedback {}

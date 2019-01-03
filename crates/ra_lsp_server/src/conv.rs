@@ -1,11 +1,16 @@
 use languageserver_types::{
-    self, Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, InsertTextFormat,
+    self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location,
+    Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
+    WorkspaceEdit,
 };
-use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition,FileRange,  CompletionItem, CompletionItemKind, InsertText, NavigationTarget};
-use ra_editor::{LineCol, LineIndex, translate_offset_with_edit};
-use ra_text_edit::{AtomTextEdit, TextEdit};
+use ra_analysis::{
+    CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
+    InsertText, NavigationTarget, SourceChange, SourceFileEdit,
+};
+use ra_editor::{translate_offset_with_edit, LineCol, LineIndex};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
+use ra_text_edit::{AtomTextEdit, TextEdit};
 
 use crate::{req, server_world::ServerWorld, Result};
 
@@ -49,7 +54,7 @@ impl Conv for CompletionItemKind {
     type Output = ::languageserver_types::CompletionItemKind;
 
     fn conv(self) -> <Self as Conv>::Output {
-        use ::languageserver_types::CompletionItemKind::*;
+        use languageserver_types::CompletionItemKind::*;
         match self {
             CompletionItemKind::Keyword => Keyword,
             CompletionItemKind::Snippet => Snippet,
@@ -266,12 +271,20 @@ impl TryConvWith for SourceChange {
                 })
             }
         };
-        let source_file_edits = self.source_file_edits.try_conv_with(world)?;
-        let file_system_edits = self.file_system_edits.try_conv_with(world)?;
+        let mut document_changes: Vec<DocumentChangeOperation> = Vec::new();
+        for resource_op in self.file_system_edits.try_conv_with(world)? {
+            document_changes.push(DocumentChangeOperation::Op(resource_op));
+        }
+        for text_document_edit in self.source_file_edits.try_conv_with(world)? {
+            document_changes.push(DocumentChangeOperation::Edit(text_document_edit));
+        }
+        let workspace_edit = WorkspaceEdit {
+            changes: None,
+            document_changes: Some(DocumentChanges::Operations(document_changes)),
+        };
         Ok(req::SourceChange {
             label: self.label,
-            source_file_edits,
-            file_system_edits,
+            workspace_edit,
             cursor_position,
         })
     }
@@ -301,21 +314,25 @@ impl TryConvWith for SourceFileEdit {
 
 impl TryConvWith for FileSystemEdit {
     type Ctx = ServerWorld;
-    type Output = req::FileSystemEdit;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<req::FileSystemEdit> {
+    type Output = ResourceOp;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<ResourceOp> {
         let res = match self {
             FileSystemEdit::CreateFile { source_root, path } => {
-                let uri = world.path_to_uri(source_root, &path)?;
-                req::FileSystemEdit::CreateFile { uri }
+                let uri = world.path_to_uri(source_root, &path)?.to_string();
+                ResourceOp::Create(CreateFile { uri, options: None })
             }
             FileSystemEdit::MoveFile {
                 src,
                 dst_source_root,
                 dst_path,
             } => {
-                let src = world.file_id_to_uri(src)?;
-                let dst = world.path_to_uri(dst_source_root, &dst_path)?;
-                req::FileSystemEdit::MoveFile { src, dst }
+                let old_uri = world.file_id_to_uri(src)?.to_string();
+                let new_uri = world.path_to_uri(dst_source_root, &dst_path)?.to_string();
+                ResourceOp::Rename(RenameFile {
+                    old_uri,
+                    new_uri,
+                    options: None,
+                })
             }
         };
         Ok(res)
