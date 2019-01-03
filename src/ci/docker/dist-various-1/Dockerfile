@@ -21,11 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   patch \
   libssl-dev \
   pkg-config \
-  gcc-arm-none-eabi \
   libnewlib-arm-none-eabi \
-  qemu-system-arm
+  qemu-system-arm \
+# software-properties-common for the add-apt-repository command
+  software-properties-common
 
 WORKDIR /build
+
+# Use the team-gcc-arm-embedded PPA for a newer version of Arm GCC
+RUN add-apt-repository ppa:team-gcc-arm-embedded/ppa && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends gcc-arm-embedded
 
 COPY dist-various-1/build-rumprun.sh /build
 RUN ./build-rumprun.sh
