@@ -694,9 +694,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             None => self.check_recursion_limit(&obligation, &obligation)?
         }
 
-        //self.check_recursion_limit(&obligation, previous_stack.head()
-        //                           .map_or(&obligation, |s| s.obligation))?;
-
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 debug_assert!(!t.has_escaping_bound_vars());
@@ -1023,10 +1020,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             match this.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => this.evaluate_predicates_recursively(
                     stack.list(),
-                    selection.nested_obligations().into_iter().map(|o| {
-                        //o.recursion_depth = 0;
-                        o
-                    })
+                    selection.nested_obligations().into_iter()
                 ),
                 Err(..) => Ok(EvaluatedToErr),
             }
