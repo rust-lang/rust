@@ -1,5 +1,6 @@
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
+use rustc::lint;
 use rustc::middle::cstore::{self, NativeLibrary};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
@@ -9,7 +10,7 @@ use syntax::attr;
 use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
-use errors::{Applicability, DiagnosticId};
+use errors::Applicability;
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
@@ -51,10 +52,11 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             let items = match m.meta_item_list() {
                 Some(item) => item,
                 None => {
-                    let mut err = self.tcx.sess.struct_span_err_with_code(
+                    let mut err = self.tcx.struct_span_lint_node(
+                        lint::builtin::INVALID_LINK_ARGUMENTS,
+                        it.id,
                         m.span,
-                        "#[link(...)] specified without arguments",
-                        DiagnosticId::Error("E0459".into()),
+                        "#[link(...)] requires an argument list",
                     );
                     if let Some(value) = m.value_str() {
                         err.span_suggestion_with_applicability(
@@ -80,8 +82,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             for item in items.iter() {
                 let handle_duplicate_arg = |name, report| {
                     if report {
-                        struct_span_err!(self.tcx.sess, m.span, E0649,
-                            "#[link(...)] contains repeated `{}` arguments", name)
+                        self.tcx.struct_span_lint_node(
+                            lint::builtin::INVALID_LINK_ARGUMENTS,
+                            it.id,
+                            m.span,
+                            "#[link(...)] should not contain repeated arguments",
+                        )
                         .span_label(item.span, format!("repeated `{}` argument", name))
                         .emit();
                     }

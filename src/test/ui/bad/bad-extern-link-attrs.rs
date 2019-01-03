@@ -1,18 +1,26 @@
+#![deny(invalid_link_arguments)]
+
 #![feature(link_cfg)]
 
 #[link()] //~ ERROR: specified without `name =
 #[link(name = "")] //~ ERROR: with empty name
 #[link(name = "foo")]
 #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
-#[link] //~ ERROR #[link(...)] specified without arguments
-#[link = "foo"] //~ ERROR #[link(...)] specified without arguments
-#[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] contains repeated `name` arguments
+#[link] //~ ERROR #[link(...)] requires an argument list
+        //~^ this was previously accepted by the compiler
+#[link = "foo"] //~ ERROR #[link(...)] requires an argument list
+                //~^ this was previously accepted by the compiler
+#[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] should not contain repeated arguments
+                                    //~^ this was previously accepted by the compiler
 #[link(name = "foo", kind = "dylib", kind = "dylib")]
-//~^ ERROR #[link(...)] contains repeated `kind` arguments
+//~^ ERROR #[link(...)] should not contain repeated arguments
+//~^^ this was previously accepted by the compiler
 #[link(name = "foo", cfg(foo), cfg(bar))]
-//~^ ERROR #[link(...)] contains repeated `cfg` arguments
+//~^ ERROR #[link(...)] should not contain repeated arguments
+//~^^ this was previously accepted by the compiler
 #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
-//~^ ERROR #[link(...)] contains repeated `wasm_import_module` arguments
+//~^ ERROR #[link(...)] should not contain repeated arguments
+//~^^ this was previously accepted by the compiler
 extern {}
 
 fn main() {}

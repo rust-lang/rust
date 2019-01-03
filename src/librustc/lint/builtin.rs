@@ -352,6 +352,13 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub INVALID_LINK_ARGUMENTS,
+    Allow,
+    "#[link(...)] must contain a nonrepeating list of arguments \
+     including a `name` argument"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
@@ -432,6 +439,7 @@ impl LintPass for HardwiredLints {
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             parser::QUESTION_MARK_MACRO_SEP,
             DEPRECATED_IN_FUTURE,
+            INVALID_LINK_ARGUMENTS,
         )
     }
 }

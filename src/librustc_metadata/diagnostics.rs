@@ -97,5 +97,4 @@ register_diagnostics! {
     E0465, // multiple .. candidates for `..` found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
-    E0649, // `link` was used with repeated arguments
 }

@@ -1,68 +1,91 @@
 error[E0459]: #[link(...)] specified without `name = "foo"`
-  --> $DIR/bad-extern-link-attrs.rs:3:1
+  --> $DIR/bad-extern-link-attrs.rs:5:1
    |
 LL | #[link()] //~ ERROR: specified without `name =
    | ^^^^^^^^^ missing `name` argument
 
 error[E0454]: #[link(name = "")] given with empty name
-  --> $DIR/bad-extern-link-attrs.rs:4:1
+  --> $DIR/bad-extern-link-attrs.rs:6:1
    |
 LL | #[link(name = "")] //~ ERROR: with empty name
    | ^^^^^^^^^^^^^^^^^^ empty name given
 
 error[E0458]: unknown kind: `bar`
-  --> $DIR/bad-extern-link-attrs.rs:6:1
+  --> $DIR/bad-extern-link-attrs.rs:8:1
    |
 LL | #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
    | ^^^^^^^^^^^^^^^^^^^^^------------^^
    |                      |
    |                      unknown kind
 
-error[E0459]: #[link(...)] specified without arguments
-  --> $DIR/bad-extern-link-attrs.rs:7:1
-   |
-LL | #[link] //~ ERROR #[link(...)] specified without arguments
-   | ^^^^^^^
-
-error[E0459]: #[link(...)] specified without arguments
-  --> $DIR/bad-extern-link-attrs.rs:8:1
-   |
-LL | #[link = "foo"] //~ ERROR #[link(...)] specified without arguments
-   | ^^^^^^^^^^^^^^^ help: specify a `name` argument instead: `#[link(name = "foo")]`
-
-error[E0649]: #[link(...)] contains repeated `name` arguments
+error: #[link(...)] requires an argument list
   --> $DIR/bad-extern-link-attrs.rs:9:1
    |
-LL | #[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] contains repeated `name` arguments
+LL | #[link] //~ ERROR #[link(...)] requires an argument list
+   | ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/bad-extern-link-attrs.rs:1:9
+   |
+LL | #![deny(invalid_link_arguments)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #53901 <https://github.com/rust-lang/rust/issues/53901>
+
+error: #[link(...)] requires an argument list
+  --> $DIR/bad-extern-link-attrs.rs:11:1
+   |
+LL | #[link = "foo"] //~ ERROR #[link(...)] requires an argument list
+   | ^^^^^^^^^^^^^^^ help: specify a `name` argument instead: `#[link(name = "foo")]`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #53901 <https://github.com/rust-lang/rust/issues/53901>
+
+error: #[link(...)] should not contain repeated arguments
+  --> $DIR/bad-extern-link-attrs.rs:13:1
+   |
+LL | #[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] should not contain repeated arguments
    | ^^^^^^^^^^^^^^^^^^^^^------------^^
    |                      |
    |                      repeated `name` argument
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #53901 <https://github.com/rust-lang/rust/issues/53901>
 
-error[E0649]: #[link(...)] contains repeated `kind` arguments
-  --> $DIR/bad-extern-link-attrs.rs:10:1
+error: #[link(...)] should not contain repeated arguments
+  --> $DIR/bad-extern-link-attrs.rs:15:1
    |
 LL | #[link(name = "foo", kind = "dylib", kind = "dylib")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------^^
    |                                      |
    |                                      repeated `kind` argument
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #53901 <https://github.com/rust-lang/rust/issues/53901>
 
-error[E0649]: #[link(...)] contains repeated `cfg` arguments
-  --> $DIR/bad-extern-link-attrs.rs:12:1
+error: #[link(...)] should not contain repeated arguments
+  --> $DIR/bad-extern-link-attrs.rs:18:1
    |
 LL | #[link(name = "foo", cfg(foo), cfg(bar))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------^^
    |                                |
    |                                repeated `cfg` argument
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #53901 <https://github.com/rust-lang/rust/issues/53901>
 
-error[E0649]: #[link(...)] contains repeated `wasm_import_module` arguments
-  --> $DIR/bad-extern-link-attrs.rs:14:1
+error: #[link(...)] should not contain repeated arguments
+  --> $DIR/bad-extern-link-attrs.rs:21:1
    |
 LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------^^
    |                                    |
    |                                    repeated `wasm_import_module` argument
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #53901 <https://github.com/rust-lang/rust/issues/53901>
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0454, E0458, E0459, E0649.
+Some errors occurred: E0454, E0458, E0459.
 For more information about an error, try `rustc --explain E0454`.
