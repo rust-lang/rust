@@ -1,13 +1,14 @@
 error[E0382]: use of moved value: `my_str`
   --> $DIR/borrowck-drop-from-guard.rs:11:23
    |
+LL |     let my_str = "hello".to_owned();
+   |         ------ move occurs because `my_str` has type `std::string::String`, which does not implement the `Copy` trait
+LL |     match Some(42) {
 LL |         Some(_) if { drop(my_str); false } => {}
    |                           ------ value moved here
 LL |         Some(_) => {}
 LL |         None => { foo(my_str); } //~ ERROR [E0382]
    |                       ^^^^^^ value used here after move
-   |
-   = note: move occurs because `my_str` has type `std::string::String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 
