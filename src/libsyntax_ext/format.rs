@@ -3,6 +3,7 @@ use self::Position::*;
 
 use fmt_macros as parse;
 
+use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
@@ -112,7 +113,7 @@ struct Context<'a, 'b: 'a> {
     is_literal: bool,
 }
 
-/// Parses the arguments from the given list of tokens, returning None
+/// Parses the arguments from the given list of tokens, returning the diagnostic
 /// if there's a parse error so we can continue parsing other format!
 /// expressions.
 ///
@@ -121,27 +122,26 @@ struct Context<'a, 'b: 'a> {
 /// ```text
 /// Some((fmtstr, parsed arguments, index map for named arguments))
 /// ```
-fn parse_args(ecx: &mut ExtCtxt,
-              sp: Span,
-              tts: &[tokenstream::TokenTree])
-              -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<String, usize>)> {
+fn parse_args<'a>(
+    ecx: &mut ExtCtxt<'a>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree]
+) -> Result<(P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<String, usize>), DiagnosticBuilder<'a>> {
     let mut args = Vec::<P<ast::Expr>>::new();
     let mut names = FxHashMap::<String, usize>::default();
 
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        ecx.span_err(sp, "requires at least a format string argument");
-        return None;
+        return Err(ecx.struct_span_err(sp, "requires at least a format string argument"));
     }
 
-    let fmtstr = panictry!(p.parse_expr());
+    let fmtstr = p.parse_expr()?;
     let mut named = false;
 
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
-            ecx.span_err(p.span, "expected token: `,`");
-            return None;
+            return Err(ecx.struct_span_err(p.span, "expected token: `,`"));
         }
         if p.token == token::Eof {
             break;
@@ -152,16 +152,15 @@ fn parse_args(ecx: &mut ExtCtxt,
                 p.bump();
                 i
             } else {
-                ecx.span_err(
+                return Err(ecx.struct_span_err(
                     p.span,
                     "expected ident, positional arguments cannot follow named arguments",
-                );
-                return None;
+                ));
             };
             let name: &str = &ident.as_str();
 
-            panictry!(p.expect(&token::Eq));
-            let e = panictry!(p.parse_expr());
+            p.expect(&token::Eq).unwrap();
+            let e = p.parse_expr()?;
             if let Some(prev) = names.get(name) {
                 ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", name))
                     .span_note(args[*prev].span, "previously here")
@@ -177,10 +176,11 @@ fn parse_args(ecx: &mut ExtCtxt,
             names.insert(name.to_string(), slot);
             args.push(e);
         } else {
-            args.push(panictry!(p.parse_expr()));
+            let e = p.parse_expr()?;
+            args.push(e);
         }
     }
-    Some((fmtstr, args, names))
+    Ok((fmtstr, args, names))
 }
 
 impl<'a, 'b> Context<'a, 'b> {
@@ -689,10 +689,13 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
                                -> Box<dyn base::MacResult + 'cx> {
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
-        Some((efmt, args, names)) => {
+        Ok((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, false))
         }
-        None => DummyResult::expr(sp),
+        Err(mut err) => {
+            err.emit();
+            DummyResult::expr(sp)
+        }
     }
 }
 
@@ -716,10 +719,13 @@ pub fn expand_format_args_nl<'cx>(
     }
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
-        Some((efmt, args, names)) => {
+        Ok((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, true))
         }
-        None => DummyResult::expr(sp),
+        Err(mut err) => {
+            err.emit();
+            DummyResult::expr(sp)
+        }
     }
 }
 
