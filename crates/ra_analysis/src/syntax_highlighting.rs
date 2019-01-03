@@ -43,6 +43,7 @@ mod tests {
             "
             fn main() {
                 ctry!({ let x = 92; x});
+                vec![{ let x = 92; x}];
             }
             ",
         );
@@ -53,10 +54,17 @@ mod tests {
                 HighlightedRange { range: [41; 46), tag: "macro" },
                 HighlightedRange { range: [49; 52), tag: "keyword" },
                 HighlightedRange { range: [57; 59), tag: "literal" },
+                HighlightedRange { range: [82; 86), tag: "macro" },
+                HighlightedRange { range: [89; 92), tag: "keyword" },
+                HighlightedRange { range: [97; 99), tag: "literal" },
                 HighlightedRange { range: [49; 52), tag: "keyword" },
                 HighlightedRange { range: [53; 54), tag: "function" },
                 HighlightedRange { range: [57; 59), tag: "literal" },
-                HighlightedRange { range: [61; 62), tag: "text" }]"#,
+                HighlightedRange { range: [61; 62), tag: "text" },
+                HighlightedRange { range: [89; 92), tag: "keyword" },
+                HighlightedRange { range: [93; 94), tag: "function" },
+                HighlightedRange { range: [97; 99), tag: "literal" },
+                HighlightedRange { range: [101; 102), tag: "text" }]"#,
             &highlights,
         )
     }
