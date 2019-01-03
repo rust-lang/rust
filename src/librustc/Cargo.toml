@@ -17,7 +17,7 @@ jobserver = "0.1"
 lazy_static = "1.0.0"
 scoped-tls = { version = "0.1.1", features = ["nightly"] }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
-polonius-engine = "0.5.0"
+polonius-engine = "0.6.2"
 rustc-rayon = "0.1.1"
 rustc-rayon-core = "0.1.1"
 rustc_apfloat = { path = "../librustc_apfloat" }
