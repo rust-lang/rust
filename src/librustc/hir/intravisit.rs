@@ -42,13 +42,13 @@ use std::cmp;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
-    /// #[xxx] pub async/const/extern "Abi" fn foo()
-    ItemFn(Name, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
+    /// `#[xxx] pub async/const/extern "Abi" fn foo()`
+    ItemFn(Ident, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
 
-    /// fn foo(&self)
+    /// `fn foo(&self)`
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a [Attribute]),
 
-    /// |x, y| {}
+    /// `|x, y| {}`
     Closure(&'a [Attribute]),
 }
 
@@ -472,7 +472,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref declaration, header, ref generics, body_id) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident.name,
+            visitor.visit_fn(FnKind::ItemFn(item.ident,
                                             generics,
                                             header,
                                             &item.vis,

@@ -15,7 +15,7 @@ use hir as ast;
 use hir::map;
 use hir::{Expr, FnDecl, Node};
 use hir::intravisit::FnKind;
-use syntax::ast::{Attribute, Ident, Name, NodeId};
+use syntax::ast::{Attribute, Ident, NodeId};
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -98,7 +98,7 @@ impl<'a> Code<'a> {
 /// These are all the components one can extract from a fn item for
 /// use when implementing FnLikeNode operations.
 struct ItemFnParts<'a> {
-    name:     Name,
+    ident:    Ident,
     decl:     &'a ast::FnDecl,
     header:   ast::FnHeader,
     vis:      &'a ast::Visibility,
@@ -200,7 +200,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
-            FnKind::ItemFn(p.name, p.generics, p.header, p.vis, p.attrs)
+            FnKind::ItemFn(p.ident, p.generics, p.header, p.vis, p.attrs)
         };
         let closure = |c: ClosureParts<'a>| {
             FnKind::Closure(c.attrs)
@@ -228,7 +228,7 @@ impl<'a> FnLikeNode<'a> {
                 ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
-                        name: i.ident.name,
+                        ident: i.ident,
                         decl: &decl,
                         body: block,
                         vis: &i.vis,
