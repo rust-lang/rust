@@ -695,6 +695,7 @@ impl<R: TreeRoot<RaTypes>> ConstDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
@@ -810,6 +811,7 @@ impl<R: TreeRoot<RaTypes>> EnumDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
@@ -1213,6 +1215,7 @@ impl<R: TreeRoot<RaTypes>> FnDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for FnDef<'a> {}
 impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
@@ -2136,6 +2139,7 @@ impl<R: TreeRoot<RaTypes>> ModuleNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for Module<'a> {}
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
 impl<'a> ast::DocCommentsOwner<'a> for Module<'a> {}
@@ -2351,6 +2355,7 @@ impl<R: TreeRoot<RaTypes>> NamedFieldDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> ast::NameOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> NamedFieldDef<'a> {
@@ -3082,6 +3087,7 @@ impl<R: TreeRoot<RaTypes>> PosFieldNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for PosField<'a> {}
 impl<'a> ast::AttrsOwner<'a> for PosField<'a> {}
 impl<'a> PosField<'a> {
     pub fn type_ref(self) -> Option<TypeRef<'a>> {
@@ -3639,6 +3645,7 @@ impl<R: TreeRoot<RaTypes>> StaticDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
@@ -3742,6 +3749,7 @@ impl<R: TreeRoot<RaTypes>> StructDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for StructDef<'a> {}
 impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
@@ -3902,6 +3910,7 @@ impl<R: TreeRoot<RaTypes>> TraitDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for TraitDef<'a> {}
 impl<'a> ast::NameOwner<'a> for TraitDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
 impl<'a> ast::DocCommentsOwner<'a> for TraitDef<'a> {}
@@ -4135,6 +4144,7 @@ impl<R: TreeRoot<RaTypes>> TypeDefNode<R> {
 }
 
 
+impl<'a> ast::VisibilityOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::NameOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
@@ -4408,6 +4418,43 @@ impl<'a> UseTreeList<'a> {
         super::children(self)
     }
 }
+
+// Visibility
+#[derive(Debug, Clone, Copy,)]
+pub struct VisibilityNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type Visibility<'a> = VisibilityNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<VisibilityNode<R1>> for VisibilityNode<R2> {
+    fn eq(&self, other: &VisibilityNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for VisibilityNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for VisibilityNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for Visibility<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            VISIBILITY => Some(Visibility { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> VisibilityNode<R> {
+    pub fn borrowed(&self) -> Visibility {
+        VisibilityNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> VisibilityNode {
+        VisibilityNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> Visibility<'a> {}
 
 // WhereClause
 #[derive(Debug, Clone, Copy,)]

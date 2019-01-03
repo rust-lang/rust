@@ -30,6 +30,12 @@ pub trait NameOwner<'a>: AstNode<'a> {
     }
 }
 
+pub trait VisibilityOwner<'a>: AstNode<'a> {
+    fn visibility(self) -> Option<Visibility<'a>> {
+        child_opt(self)
+    }
+}
+
 pub trait LoopBodyOwner<'a>: AstNode<'a> {
     fn loop_body(self) -> Option<Block<'a>> {
         child_opt(self)

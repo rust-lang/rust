@@ -247,6 +247,7 @@ Grammar(
         ),
         "FnDef": (
             traits: [
+                "VisibilityOwner",
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
@@ -257,6 +258,7 @@ Grammar(
         "RetType": (options: ["TypeRef"]),
         "StructDef": (
             traits: [
+                "VisibilityOwner",
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
@@ -264,10 +266,11 @@ Grammar(
             ]
         ),
         "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
-        "NamedFieldDef": ( traits: ["NameOwner", "AttrsOwner"], options: ["TypeRef"] ),
+        "NamedFieldDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner"], options: ["TypeRef"] ),
         "PosFieldList": (collections: [["fields", "PosField"]]),
-        "PosField": ( traits: ["AttrsOwner"], options: ["TypeRef"]),
+        "PosField": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
+            "VisibilityOwner",
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
@@ -275,27 +278,30 @@ Grammar(
         ], options: [["variant_list", "EnumVariantList"]] ),
         "EnumVariantList": ( collections: [["variants", "EnumVariant"]] ),
         "EnumVariant": ( traits: ["NameOwner"], options: ["Expr"] ),
-        "TraitDef": ( traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner"] ),
+        "TraitDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner"] ),
         "Module": (
-            traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner" ],
+            traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner" ],
             options: [ "ItemList" ]
         ),
         "ItemList": (
             traits: [ "FnDefOwner", "ModuleItemOwner" ],
         ),
         "ConstDef": ( traits: [
+            "VisibilityOwner",
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
             "DocCommentsOwner"
         ] ),
         "StaticDef": ( traits: [
+            "VisibilityOwner",
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
             "DocCommentsOwner"
         ] ),
         "TypeDef": ( traits: [
+            "VisibilityOwner",
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
@@ -482,6 +488,7 @@ Grammar(
             ],
         ),
 
+        "Visibility": (),
         "Name": (),
         "NameRef": (),
         "MacroCall": ( options: [ "TokenTree", "Path" ] ),
