@@ -362,6 +362,10 @@ struct Foo1 { x: &bool }
               // ^ expected lifetime parameter
 struct Foo2<'a> { x: &'a bool } // correct
 
+impl Foo2 { ... }
+  // ^ expected lifetime parameter
+impl<'a> Foo2<'a> { ... } // correct
+
 struct Bar1 { x: Foo2 }
               // ^^^^ expected lifetime parameter
 struct Bar2<'a> { x: Foo2<'a> } // correct
@@ -770,6 +774,24 @@ fn foo<'a>(x: &'a str) {}
 
 struct Foo<'a> {
     x: &'a str,
+}
+```
+
+Implementations need their own lifetime declarations:
+    
+```
+// error, undeclared lifetime
+impl Foo<'a> {
+    ...
+}
+```
+
+Which are declared like this:
+
+```
+// correct
+impl<'a> Foo<'a> {
+    ...
 }
 ```
 "##,
