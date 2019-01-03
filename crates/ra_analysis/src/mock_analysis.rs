@@ -55,6 +55,26 @@ impl MockAnalysis {
         (res, position)
     }
 
+    /// Same as `with_files`, but requires that a single file contains two `<|>` marker,
+    /// whose range is also returned.
+    pub fn with_files_and_range(fixture: &str) -> (MockAnalysis, FileRange) {
+        let mut range = None;
+        let mut res = MockAnalysis::new();
+        for entry in parse_fixture(fixture) {
+            if entry.text.contains(CURSOR_MARKER) {
+                assert!(
+                    range.is_none(),
+                    "only two marker (<|>) per fixture is allowed"
+                );
+                range = Some(res.add_file_with_range(&entry.meta, &entry.text));
+            } else {
+                res.add_file(&entry.meta, &entry.text);
+            }
+        }
+        let range = range.expect("expected two marker (<|>)");
+        (res, range)
+    }
+
     pub fn add_file(&mut self, path: &str, text: &str) -> FileId {
         let file_id = FileId((self.files.len() + 1) as u32);
         self.files.push((path.to_string(), text.to_string()));
@@ -102,10 +122,16 @@ impl MockAnalysis {
     }
 }
 
-/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+/// Creates analysis from a multi-file fixture, returns positions marked with a <|>.
 pub fn analysis_and_position(fixture: &str) -> (Analysis, FilePosition) {
     let (mock, position) = MockAnalysis::with_files_and_position(fixture);
     (mock.analysis(), position)
+}
+
+/// Creates analysis from a multi-file fixture, returns ranges marked with two <|>.
+pub fn analysis_and_range(fixture: &str) -> (Analysis, FileRange) {
+    let (mock, range) = MockAnalysis::with_files_and_range(fixture);
+    (mock.analysis(), range)
 }
 
 /// Creates analysis for a single file.

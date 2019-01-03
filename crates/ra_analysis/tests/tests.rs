@@ -2,13 +2,29 @@ use ra_syntax::TextRange;
 use test_utils::{assert_eq_dbg, assert_eq_text};
 
 use ra_analysis::{
-    mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
+    mock_analysis::{analysis_and_position, analysis_and_range, single_file, single_file_with_position, MockAnalysis},
     AnalysisChange, CrateGraph, FileId, FnSignatureInfo,
 };
 
 fn get_signature(text: &str) -> (FnSignatureInfo, Option<usize>) {
     let (analysis, position) = single_file_with_position(text);
     analysis.resolve_callable(position).unwrap().unwrap()
+}
+#[test]
+fn test_type_of() {
+    let (analysis, range) = analysis_and_range(
+        "
+        //- /lib.rs
+        pub fn foo() -> u32 {
+            1
+        };
+
+        let <|>foo_test<|> = foo();
+    ",
+    );
+
+    let type_name = analysis.type_of(range).unwrap().unwrap();
+    assert_eq_dbg("u32", &type_name);
 }
 
 #[test]
