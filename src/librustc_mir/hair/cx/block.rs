@@ -3,6 +3,7 @@ use hair::cx::Cx;
 use hair::cx::to_ref::ToRef;
 use rustc::middle::region;
 use rustc::hir;
+use rustc::ty;
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -86,7 +87,8 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     kind: Box::new(PatternKind::AscribeUserType {
                                         user_ty: PatternTypeProjection::from_user_type(user_ty),
                                         user_ty_span: ty.span,
-                                        subpattern: pattern
+                                        subpattern: pattern,
+                                        variance: ty::Variance::Covariant,
                                     })
                                 };
                             }

@@ -56,11 +56,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                  -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
-            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType {
+                ref subpattern,
+                variance,
+                ref user_ty,
+                user_ty_span
+            } => {
+                // Apply the type ascription to the value at `match_pair.place`, which is the
+                // value being matched, taking the variance field into account.
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
                     user_ty: user_ty.clone(),
                     source: match_pair.place.clone(),
+                    variance,
                 });
 
                 candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
