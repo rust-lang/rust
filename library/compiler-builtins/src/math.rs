@@ -15,7 +15,8 @@ macro_rules! no_mangle {
 }
 
 // only for the wasm32-unknown-unknown target
-#[cfg(any(all(target_arch = "wasm32", target_os = "unknown"), target_env = "sgx"))]
+#[cfg(any(all(target_arch = "wasm32", target_os = "unknown"),
+          all(target_vendor = "fortanix", target_env = "sgx")))]
 no_mangle! {
     fn acos(x: f64) -> f64;
     fn asin(x: f64) -> f64;
@@ -66,7 +67,7 @@ no_mangle! {
     fn tanhf(n: f32) -> f32;
 }
 
-#[cfg(target_env = "sgx")]
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 no_mangle! {
     fn ceil(x: f64) -> f64;
     fn ceilf(x: f32) -> f32;

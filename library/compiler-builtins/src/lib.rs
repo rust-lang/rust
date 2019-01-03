@@ -16,6 +16,7 @@
 #![feature(abi_unadjusted)]
 #![feature(linkage)]
 #![feature(lang_items)]
+#![feature(cfg_target_vendor)]
 #![allow(unused_features)]
 #![no_builtins]
 #![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
@@ -49,7 +50,7 @@ pub mod float;
 
 #[cfg(any(all(target_arch = "wasm32", target_os = "unknown"),
           all(target_arch = "arm", target_os = "none"),
-          target_env = "sgx"))]
+          all(target_vendor = "fortanix", target_env = "sgx")))]
 pub mod math;
 pub mod mem;
 
