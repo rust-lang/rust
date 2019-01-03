@@ -173,8 +173,8 @@ impl<'a> LintLevelsBuilder<'a> {
 
     /// Pushes a list of AST lint attributes onto this context.
     ///
-    /// This function will return a `BuilderPush` object which should be be
-    /// passed to `pop` when this scope for the attributes provided is exited.
+    /// This function will return a `BuilderPush` object which should be passed
+    /// to `pop` when this scope for the attributes provided is exited.
     ///
     /// This function will perform a number of tasks:
     ///
