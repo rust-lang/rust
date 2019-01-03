@@ -1,8 +1,8 @@
 error: unexpected token: `]`
-  --> $DIR/attr-bad-meta-2.rs:1:9
+  --> $DIR/attr-bad-meta-2.rs:1:8
    |
 LL | #[path =] //~ ERROR unexpected token: `]`
-   |         ^ unexpected token after this
+   |        ^
 
 error: aborting due to previous error
 

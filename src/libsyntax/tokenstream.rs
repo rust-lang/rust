@@ -254,7 +254,7 @@ impl TokenStream {
         }
     }
 
-    fn from_streams(mut streams: Vec<TokenStream>) -> TokenStream {
+    pub(crate) fn from_streams(mut streams: Vec<TokenStream>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::empty(),
             1 => streams.pop().unwrap(),

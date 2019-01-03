@@ -19,7 +19,7 @@ mod _test2_inner {
           //~| ERROR: non-builtin inner attributes are unstable
 }
 
-#[a = y] //~ ERROR: must only be followed by a delimiter token
+#[a = "y"] //~ ERROR: must only be followed by a delimiter token
 fn _test3() {}
 
 fn attrs() {
