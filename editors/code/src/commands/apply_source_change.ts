@@ -3,46 +3,23 @@ import * as lc from 'vscode-languageclient';
 
 import { Server } from '../server';
 
-interface FileSystemEdit {
-    type: string;
-    uri?: string;
-    src?: string;
-    dst?: string;
-}
-
 export interface SourceChange {
     label: string;
-    sourceFileEdits: lc.TextDocumentEdit[];
-    fileSystemEdits: FileSystemEdit[];
+    workspaceEdit: lc.WorkspaceEdit;
     cursorPosition?: lc.TextDocumentPositionParams;
 }
 
 export async function handle(change: SourceChange) {
-    const wsEdit = new vscode.WorkspaceEdit();
-    for (const sourceEdit of change.sourceFileEdits) {
-        const uri = Server.client.protocol2CodeConverter.asUri(
-            sourceEdit.textDocument.uri
-        );
-        const edits = Server.client.protocol2CodeConverter.asTextEdits(
-            sourceEdit.edits
-        );
-        wsEdit.set(uri, edits);
-    }
+    const wsEdit = Server.client.protocol2CodeConverter.asWorkspaceEdit(change.workspaceEdit);
     let created;
     let moved;
-    for (const fsEdit of change.fileSystemEdits) {
-        switch (fsEdit.type) {
-            case 'createFile':
-                const uri = vscode.Uri.parse(fsEdit.uri!);
-                wsEdit.createFile(uri);
-                created = uri;
-                break;
-            case 'moveFile':
-                const src = vscode.Uri.parse(fsEdit.src!);
-                const dst = vscode.Uri.parse(fsEdit.dst!);
-                wsEdit.renameFile(src, dst);
-                moved = dst;
-                break;
+    if (change.workspaceEdit.documentChanges) {
+        for (const docChange of change.workspaceEdit.documentChanges) {
+            if (lc.CreateFile.is(docChange)) {
+                created = docChange.uri;
+            } else if (lc.RenameFile.is(docChange)) {
+                moved = docChange.newUri;
+            }
         }
     }
     const toOpen = created || moved;
@@ -65,6 +42,6 @@ export async function handle(change: SourceChange) {
         if (!editor.selection.isEmpty) {
             return;
         }
-        editor!.selection = new vscode.Selection(position, position);
+        editor.selection = new vscode.Selection(position, position);
     }
 }
