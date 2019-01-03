@@ -680,6 +680,7 @@ dependencies = [
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "salsa 0.9.0 (git+https://github.com/matklad/salsa.git?branch=transitive-untracked)",
  "test_utils 0.1.0",
+ "unicase 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1354,6 +1355,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "unicase"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "version_check 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "unicode-bidi"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1616,6 +1625,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum unic-segment 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c9ca47cbb09fb5fcd066b5867d11dc528302fa465277882797d6a836e1ee6f9e"
 "checksum unic-ucd-segment 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "48f1a08ce0409a9e391b88d1930118eec48af12742fc538bcec55f775865776e"
 "checksum unic-ucd-version 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cf1f5e6c6c53c2d0ece4a5964bc55fcff8602153063cb4fab20958ff32998ff6"
+"checksum unicase 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9d3218ea14b4edcaccfa0df0a64a3792a2c32cc706f1b336e48867f9d3147f90"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
 "checksum unicode-normalization 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6a0180bc61fc5a987082bfa111f4cc95c4caff7f9799f3e46df09163a937aa25"
 "checksum unicode-segmentation 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "aa6024fc12ddfd1c6dbc14a80fa2324d4568849869b779f6bd37e5e4c03344d1"
