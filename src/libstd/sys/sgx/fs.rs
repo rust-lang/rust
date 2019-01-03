@@ -253,6 +253,9 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 
+// `FilePermissions` is uninhabited in SGX, so this function is
+// uncallable (but necessary for the public interface).
+#[allow(unreachable_code)]
 pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
     match perm.0 {}
 }

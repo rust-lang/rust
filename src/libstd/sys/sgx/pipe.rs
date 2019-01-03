@@ -17,6 +17,9 @@ impl AnonPipe {
     }
 }
 
+// `AnonPipe` is uninhabited in SGX, so this function is
+// uncallable (but necessary for the public interface).
+#[allow(unreachable_code)]
 pub fn read2(p1: AnonPipe,
              _v1: &mut Vec<u8>,
              _p2: AnonPipe,
