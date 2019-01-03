@@ -138,16 +138,7 @@ impl<'a> WorkInfo<'a> {
         };
 
         let package_set = PackageSet::new(&package_ids, sources, config)?;
-        let mut downloads = package_set.enable_download()?;
-        let package = if let Some(package) = downloads.start(package_ids[0])? {
-            package
-        } else {
-            downloads.wait()?;
-            downloads
-                .start(package_ids[0])?
-                .expect("started download did not finish after wait")
-        };
-
+        let package = package_set.get_one(package_ids[0])?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
         Ok(Self {
