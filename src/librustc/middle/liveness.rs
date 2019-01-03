@@ -911,7 +911,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
-        // if there is a `break` or `again` at the top level, then it's
+        // if there is a `break` or `continue` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
@@ -1407,15 +1407,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, self.ir.tcx.hir().node_to_pretty_string(body.id));
 
-        let break_ln = succ;
-        let cont_ln = ln;
-        self.break_ln.insert(expr.id, break_ln);
-        self.cont_ln.insert(expr.id, cont_ln);
+
+        self.break_ln.insert(expr.id, succ);
 
         let cond_ln = match kind {
             LoopLoop => ln,
             WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
         };
+
+        self.cont_ln.insert(expr.id, cond_ln);
+
         let body_ln = self.propagate_through_block(body, cond_ln);
 
         // repeat until fixed point is reached:
