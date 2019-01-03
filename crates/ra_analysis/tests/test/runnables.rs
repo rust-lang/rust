@@ -1,15 +1,6 @@
-extern crate ra_analysis;
-extern crate ra_editor;
-extern crate ra_syntax;
-extern crate relative_path;
-extern crate rustc_hash;
-extern crate test_utils;
-
 use test_utils::assert_eq_dbg;
 
-use ra_analysis::{
-    mock_analysis::{analysis_and_position},
-};
+use ra_analysis::mock_analysis::analysis_and_position;
 
 #[test]
 fn test_runnables() {

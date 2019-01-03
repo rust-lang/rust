@@ -1,6 +1,4 @@
-use ra_analysis::{
-    mock_analysis::{single_file_with_range},
-};
+use ra_analysis::mock_analysis::single_file_with_range;
 
 #[test]
 fn test_type_of_for_function() {
