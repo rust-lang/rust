@@ -790,6 +790,10 @@ impl<T> Vec<T> {
     ///     // Per the FFI method's docs, "32768 bytes is always enough".
     ///     let mut dict = Vec::with_capacity(32_768);
     ///     let mut dict_length = 0;
+    ///     // SAFETY: When `deflateGetDictionary` returns `Z_OK`, it holds that:
+    ///     // 1. `dict_length` elements were initialized.
+    ///     // 2. `dict_length` <= the capacity (32_768)
+    ///     // which makes `set_len` safe to call.
     ///     unsafe {
     ///         // Make the FFI call...
     ///         let r = deflateGetDictionary(self.strm, dict.as_mut_ptr(), &mut dict_length);
