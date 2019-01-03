@@ -119,3 +119,9 @@ impl SyntaxTextSlice for ops::Range<TextUnit> {
         TextRange::from_to(self.start, self.end).restrict(range)
     }
 }
+
+impl From<SyntaxText<'_>> for String {
+    fn from(text: SyntaxText) -> String {
+        text.to_string()
+    }
+}

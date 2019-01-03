@@ -57,7 +57,7 @@ fn check_unnecessary_braces_in_use_statement(
             text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(single_use_tree)
                 .unwrap_or_else(|| {
                     let to_replace = single_use_tree.syntax().text().to_string();
-                    let mut edit_builder = TextEditBuilder::new();
+                    let mut edit_builder = TextEditBuilder::default();
                     edit_builder.delete(range);
                     edit_builder.insert(range.start(), to_replace);
                     edit_builder.finish()
@@ -93,7 +93,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
         let start = use_tree_list_node.prev_sibling()?.range().start();
         let end = use_tree_list_node.range().end();
         let range = TextRange::from_to(start, end);
-        let mut edit_builder = TextEditBuilder::new();
+        let mut edit_builder = TextEditBuilder::default();
         edit_builder.delete(range);
         return Some(edit_builder.finish());
     }
@@ -111,7 +111,7 @@ fn check_struct_shorthand_initialization(
             let field_name = name_ref.syntax().text().to_string();
             let field_expr = expr.syntax().text().to_string();
             if field_name == field_expr {
-                let mut edit_builder = TextEditBuilder::new();
+                let mut edit_builder = TextEditBuilder::default();
                 edit_builder.delete(named_field.syntax().range());
                 edit_builder.insert(named_field.syntax().range().start(), field_name);
                 let edit = edit_builder.finish();

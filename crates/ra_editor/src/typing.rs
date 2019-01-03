@@ -21,7 +21,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
             None => {
                 return LocalEdit {
                     label: "join lines".to_string(),
-                    edit: TextEditBuilder::new().finish(),
+                    edit: TextEditBuilder::default().finish(),
                     cursor_position: None,
                 };
             }
@@ -33,7 +33,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     };
 
     let node = find_covering_node(file.syntax(), range);
-    let mut edit = TextEditBuilder::new();
+    let mut edit = TextEditBuilder::default();
     for node in node.descendants() {
         let text = match node.leaf_text() {
             Some(text) => text,
@@ -76,7 +76,7 @@ pub fn on_enter(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let indent = node_indent(file, comment.syntax())?;
     let inserted = format!("\n{}{} ", indent, prefix);
     let cursor_position = offset + TextUnit::of_str(&inserted);
-    let mut edit = TextEditBuilder::new();
+    let mut edit = TextEditBuilder::default();
     edit.insert(offset, inserted);
     Some(LocalEdit {
         label: "on enter".to_string(),
@@ -127,7 +127,7 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
         return None;
     }
     let offset = let_stmt.syntax().range().end();
-    let mut edit = TextEditBuilder::new();
+    let mut edit = TextEditBuilder::default();
     edit.insert(offset, ";".to_string());
     Some(LocalEdit {
         label: "add semicolon".to_string(),
