@@ -223,7 +223,7 @@ LL |     let _ = fat_v as *const Foo; //~ ERROR the size for values of type
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
@@ -233,7 +233,7 @@ LL |     let _ = a as *const Foo; //~ ERROR the size for values of type
    |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0606]: casting `&{float}` as `f32` is invalid

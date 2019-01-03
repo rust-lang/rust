@@ -20,7 +20,7 @@ LL | fn bar() where Vec<dyn Copy>:, {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::marker::Copy + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::vec::Vec`
 
 error[E0038]: the trait `std::marker::Copy` cannot be made into an object

@@ -723,7 +723,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      functions can only return borrows to data passed as arguments",
                 );
                 err.note(
-                    "to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-\
+                    "to learn more, visit <https://doc.rust-lang.org/book/ch04-02-\
                      references-and-borrowing.html#dangling-references>",
                 );
             } else {
@@ -2139,7 +2139,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
                     "argument and return type have the same lifetime due to lifetime elision rules",
                 );
                 diag.note(
-                    "to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-\
+                    "to learn more, visit <https://doc.rust-lang.org/book/ch10-03-\
                      lifetime-syntax.html#lifetime-elision>",
                 );
 

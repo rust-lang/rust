@@ -5,7 +5,7 @@ LL |     mem::size_of::<U>();
    |     ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `U`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where U: std::marker::Sized` bound
    = note: required by `std::mem::size_of`
 
@@ -16,7 +16,7 @@ LL |     mem::size_of::<Misc<U>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Misc<U>`, the trait `std::marker::Sized` is not implemented for `U`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where U: std::marker::Sized` bound
    = note: required because it appears within the type `Misc<U>`
    = note: required by `std::mem::size_of`
@@ -54,7 +54,7 @@ LL |     mem::size_of::<[T]>();
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[T]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::mem::size_of`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
@@ -64,7 +64,7 @@ LL |     mem::size_of::<[&U]>();
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[&U]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::mem::size_of`
 
 error: aborting due to 7 previous errors
