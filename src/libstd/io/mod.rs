@@ -252,7 +252,7 @@
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
-//! [`?` operator]: ../../book/first-edition/syntax-index.html
+//! [`?` operator]: ../../book/appendix-02-operators.html
 //! [`Read::read`]: trait.Read.html#tymethod.read
 //! [`Result`]: ../result/enum.Result.html
 //! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
