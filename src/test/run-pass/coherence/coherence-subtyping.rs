@@ -1,4 +1,7 @@
 // run-pass
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 // Test that two distinct impls which match subtypes of one another
 // yield coherence errors (or not) depending on the variance.
 
