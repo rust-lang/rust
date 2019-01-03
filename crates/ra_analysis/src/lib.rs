@@ -237,11 +237,11 @@ pub struct NavigationTarget {
 }
 
 impl NavigationTarget {
-    fn from_symbol(file_id: FileId, symbol: FileSymbol) -> NavigationTarget {
+    fn from_symbol(symbol: FileSymbol) -> NavigationTarget {
         NavigationTarget {
+            file_id: symbol.file_id,
             name: symbol.name.clone(),
             kind: symbol.ptr.kind(),
-            file_id,
             range: symbol.ptr.range(),
             ptr: Some(symbol.ptr.clone()),
         }
@@ -277,11 +277,6 @@ impl ReferenceResolution {
             reference_range,
             resolves_to: Vec::new(),
         }
-    }
-
-    fn add_resolution(&mut self, file_id: FileId, symbol: FileSymbol) {
-        self.resolves_to
-            .push(NavigationTarget::from_symbol(file_id, symbol))
     }
 }
 
@@ -380,7 +375,7 @@ impl Analysis {
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
         let res = symbol_index::world_symbols(&*self.db, query)?
             .into_iter()
-            .map(|(file_id, symbol)| NavigationTarget::from_symbol(file_id, symbol))
+            .map(NavigationTarget::from_symbol)
             .collect();
         Ok(res)
     }

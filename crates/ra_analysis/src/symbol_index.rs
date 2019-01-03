@@ -58,10 +58,7 @@ fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<Sym
     Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }
 
-pub(crate) fn world_symbols(
-    db: &RootDatabase,
-    query: Query,
-) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Cancelable<Vec<FileSymbol>> {
     /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
     struct Snap(salsa::Snapshot<RootDatabase>);
     impl Clone for Snap {
@@ -95,7 +92,7 @@ pub(crate) fn world_symbols(
 
 #[derive(Default, Debug)]
 pub(crate) struct SymbolIndex {
-    symbols: Vec<(FileId, FileSymbol)>,
+    symbols: Vec<FileSymbol>,
     map: fst::Map,
 }
 
@@ -126,14 +123,18 @@ impl SymbolIndex {
                 file.syntax()
                     .descendants()
                     .filter_map(to_symbol)
-                    .map(move |symbol| (symbol.name.as_str().to_lowercase(), (file_id, symbol)))
+                    .map(move |(name, ptr)| {
+                        (
+                            name.as_str().to_lowercase(),
+                            FileSymbol { name, ptr, file_id },
+                        )
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
         symbols.par_sort_by(|s1, s2| s1.0.cmp(&s2.0));
         symbols.dedup_by(|s1, s2| s1.0 == s2.0);
-        let (names, symbols): (Vec<String>, Vec<(FileId, FileSymbol)>) =
-            symbols.into_iter().unzip();
+        let (names, symbols): (Vec<String>, Vec<FileSymbol>) = symbols.into_iter().unzip();
         let map = fst::Map::from_iter(names.into_iter().zip(0u64..)).unwrap();
         SymbolIndex { symbols, map }
     }
@@ -144,7 +145,7 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search(self, indices: &[Arc<SymbolIndex>]) -> Vec<(FileId, FileSymbol)> {
+    pub(crate) fn search(self, indices: &[Arc<SymbolIndex>]) -> Vec<FileSymbol> {
         let mut op = fst::map::OpBuilder::new();
         for file_symbols in indices.iter() {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);
@@ -160,14 +161,14 @@ impl Query {
                 let file_symbols = &indices[indexed_value.index];
                 let idx = indexed_value.value as usize;
 
-                let (file_id, symbol) = &file_symbols.symbols[idx];
+                let symbol = &file_symbols.symbols[idx];
                 if self.only_types && !is_type(symbol.ptr.kind()) {
                     continue;
                 }
                 if self.exact && symbol.name != self.query {
                     continue;
                 }
-                res.push((*file_id, symbol.clone()));
+                res.push(symbol.clone());
             }
         }
         res
@@ -185,17 +186,16 @@ fn is_type(kind: SyntaxKind) -> bool {
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct FileSymbol {
+    pub(crate) file_id: FileId,
     pub(crate) name: SmolStr,
     pub(crate) ptr: LocalSyntaxPtr,
 }
 
-fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
-    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<FileSymbol> {
-        let name = node.name()?;
-        Some(FileSymbol {
-            name: name.text(),
-            ptr: LocalSyntaxPtr::new(node.syntax()),
-        })
+fn to_symbol(node: SyntaxNodeRef) -> Option<(SmolStr, LocalSyntaxPtr)> {
+    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<(SmolStr, LocalSyntaxPtr)> {
+        let name = node.name()?.text();
+        let ptr = LocalSyntaxPtr::new(node.syntax());
+        Some((name, ptr))
     }
     visitor()
         .visit(decl::<ast::FnDef>)

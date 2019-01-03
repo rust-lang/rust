@@ -165,9 +165,11 @@ impl db::RootDatabase {
                 };
             }
             // If that fails try the index based approach.
-            for (file_id, symbol) in self.index_resolve(name_ref)? {
-                rr.add_resolution(file_id, symbol);
-            }
+            rr.resolves_to.extend(
+                self.index_resolve(name_ref)?
+                    .into_iter()
+                    .map(NavigationTarget::from_symbol),
+            );
             return Ok(Some(rr));
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
@@ -352,13 +354,15 @@ impl db::RootDatabase {
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
-        for (fn_file_id, fs) in file_symbols {
-            if fs.ptr.kind() == FN_DEF {
-                let fn_file = self.source_file(fn_file_id);
-                let fn_def = fs.ptr.resolve(&fn_file);
+        for symbol in file_symbols {
+            if symbol.ptr.kind() == FN_DEF {
+                let fn_file = self.source_file(symbol.file_id);
+                let fn_def = symbol.ptr.resolve(&fn_file);
                 let fn_def = ast::FnDef::cast(fn_def.borrowed()).unwrap();
                 let descr = ctry!(source_binder::function_from_source(
-                    self, fn_file_id, fn_def
+                    self,
+                    symbol.file_id,
+                    fn_def
                 )?);
                 if let Some(descriptor) = descr.signature_info(self) {
                     // If we have a calling expression let's find which argument we are on
@@ -438,7 +442,7 @@ impl db::RootDatabase {
             .collect::<Vec<_>>();
         Ok(res)
     }
-    fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<FileSymbol>> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
