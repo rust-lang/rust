@@ -25,7 +25,8 @@ name = "rust-semverver"
 path = "src/bin/rust_semverver.rs"
 
 [dependencies]
-cargo = "0.32"
+cargo = { git = "https://github.com/gnzlbg/cargo", branch = "revert_6193" }
+failure = "0.1"
 crates-io = "0.20"
 env_logger = "0.6"
 log = "0.4"

@@ -4,18 +4,19 @@
 extern crate cargo;
 extern crate crates_io;
 extern crate env_logger;
+extern crate failure;
 extern crate getopts;
 #[macro_use]
 extern crate log;
 
 use cargo::{
-    core::{compiler::CompileMode, Package, PackageId, Source, SourceId, Workspace},
+    core::{
+        compiler::CompileMode, Package, PackageId, PackageSet, Source, SourceId, SourceMap,
+        Workspace,
+    },
     exit_with_error,
     ops::{compile, CompileOptions},
-    util::{
-        config::Config, important_paths::find_root_manifest_for_wd, CargoError, CargoResult,
-        CliError,
-    },
+    util::{config::Config, important_paths::find_root_manifest_for_wd, CargoResult, CliError},
 };
 use crates_io::{Crate, Registry};
 use getopts::{Matches, Options};
@@ -123,17 +124,36 @@ impl<'a> WorkInfo<'a> {
     /// version.
     fn remote(
         config: &'a Config,
-        source: &mut SourceInfo<'a>,
+        source: SourceInfo<'a>,
         info: &NameAndVersion,
     ) -> CargoResult<WorkInfo<'a>> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
-        let package_id = PackageId::new(info.name, info.version, &source.id)?;
-        debug!("(remote) package id: {:?}", package_id);
-        let package = source.source.download(&package_id)?;
+        let package_ids = [PackageId::new(info.name, info.version, source.id)?];
+        debug!("(remote) package id: {:?}", package_ids[0]);
+        let sources = {
+            let mut s = SourceMap::new();
+            s.insert(source.source);
+            s
+        };
+
+        let package_set = PackageSet::new(&package_ids, sources, config)?;
+        let mut downloads = package_set.enable_download()?;
+        let package = if let Some(package) = downloads.start(package_ids[0])? {
+            package
+        } else {
+            downloads.wait()?;
+            downloads
+                .start(package_ids[0])?
+                .expect("started download did not finish after wait")
+        };
+
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
-        Ok(Self { package, workspace })
+        Ok(Self {
+            package: package.clone(),
+            workspace,
+        })
     }
 
     /// Obtain the paths to the produced rlib and the dependency output directory.
@@ -155,7 +175,7 @@ impl<'a> WorkInfo<'a> {
 
         env::remove_var("RUSTFLAGS");
 
-        let rlib = compilation.libraries[self.package.package_id()]
+        let rlib = compilation.libraries[&self.package.package_id()]
             .iter()
             .find(|t| t.0.name() == name)
             .ok_or_else(|| Error("lost a build artifact".to_owned()))?;
@@ -192,10 +212,8 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
 
     debug!("running cargo-semver");
 
-    let mut source = SourceInfo::new(config)?;
-
     let current = if let Some(opt) = matches.opt_str("C") {
-        WorkInfo::remote(config, &mut source, &parse_arg(&opt)?)?
+        WorkInfo::remote(config, SourceInfo::new(config)?, &parse_arg(&opt)?)?
     } else {
         WorkInfo::local(config, matches.opt_str("c").map(PathBuf::from))?
     };
@@ -206,7 +224,7 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
         let info = parse_arg(&opt)?;
         let version = info.version.to_owned();
 
-        let work_info = WorkInfo::remote(config, &mut source, &info)?;
+        let work_info = WorkInfo::remote(config, SourceInfo::new(config)?, &info)?;
 
         (work_info, version)
     } else if let Some(path) = matches.opt_str("s") {
@@ -219,7 +237,7 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
             name: &name,
             version: &stable_crate.max_version,
         };
-        let work_info = WorkInfo::remote(config, &mut source, &info)?;
+        let work_info = WorkInfo::remote(config, SourceInfo::new(config)?, &info)?;
 
         (work_info, stable_crate.max_version.clone())
     };
@@ -305,7 +323,7 @@ fn version() {
 ///
 /// Parse CLI arguments, handle their semantics, and provide for proper error handling.
 fn main() {
-    fn err(config: &Config, e: CargoError) -> ! {
+    fn err(config: &Config, e: failure::Error) -> ! {
         exit_with_error(CliError::new(e, 1), &mut config.shell());
     }
 

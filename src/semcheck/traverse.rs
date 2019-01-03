@@ -386,11 +386,11 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
     let mut fields = BTreeMap::new();
 
     for variant in &old_def.variants {
-        variants.entry(variant.name).or_insert((None, None)).0 = Some(variant);
+        variants.entry(variant.ident.name).or_insert((None, None)).0 = Some(variant);
     }
 
     for variant in &new_def.variants {
-        variants.entry(variant.name).or_insert((None, None)).1 = Some(variant);
+        variants.entry(variant.ident.name).or_insert((None, None)).1 = Some(variant);
     }
 
     for items in variants.values() {
