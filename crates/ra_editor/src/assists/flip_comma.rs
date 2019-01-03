@@ -1,45 +1,31 @@
-use ra_text_edit::TextEditBuilder;
 use ra_syntax::{
-    algo::find_leaf_at_offset,
-    Direction, SourceFileNode,
+    Direction,
     SyntaxKind::COMMA,
-    TextUnit,
 };
 
-use crate::assists::{LocalEdit, non_trivia_sibling};
+use crate::assists::{non_trivia_sibling, AssistCtx, Assist};
 
-pub fn flip_comma<'a>(
-    file: &'a SourceFileNode,
-    offset: TextUnit,
-) -> Option<impl FnOnce() -> LocalEdit + 'a> {
-    let syntax = file.syntax();
-
-    let comma = find_leaf_at_offset(syntax, offset).find(|leaf| leaf.kind() == COMMA)?;
+pub fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
+    let comma = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COMMA)?;
     let prev = non_trivia_sibling(comma, Direction::Prev)?;
     let next = non_trivia_sibling(comma, Direction::Next)?;
-    Some(move || {
-        let mut edit = TextEditBuilder::new();
-        edit.replace(prev.range(), next.text().to_string());
-        edit.replace(next.range(), prev.text().to_string());
-        LocalEdit {
-            label: "flip comma".to_string(),
-            edit: edit.finish(),
-            cursor_position: None,
-        }
+    ctx.build("flip comma", |edit| {
+        edit.replace(prev.range(), next.text());
+        edit.replace(next.range(), prev.text());
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::check_action;
+    use crate::assists::check_assist;
 
     #[test]
-    fn test_swap_comma() {
-        check_action(
+    fn flip_comma_works_for_function_parameters() {
+        check_assist(
+            flip_comma,
             "fn foo(x: i32,<|> y: Result<(), ()>) {}",
             "fn foo(y: Result<(), ()>,<|> x: i32) {}",
-            |file, off| flip_comma(file, off).map(|f| f()),
         )
     }
 }

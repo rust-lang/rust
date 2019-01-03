@@ -333,19 +333,9 @@ impl db::RootDatabase {
 
     pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
         let file = self.source_file(frange.file_id);
-        let offset = frange.range.start();
-        let actions = vec![
-            assists::flip_comma(&file, offset).map(|f| f()),
-            assists::add_derive(&file, offset).map(|f| f()),
-            assists::add_impl(&file, offset).map(|f| f()),
-            assists::change_visibility(&file, offset).map(|f| f()),
-            assists::introduce_variable(&file, frange.range).map(|f| f()),
-        ];
-        actions
+        assists::assists(&file, frange.range)
             .into_iter()
-            .filter_map(|local_edit| {
-                Some(SourceChange::from_local_edit(frange.file_id, local_edit?))
-            })
+            .map(|local_edit| SourceChange::from_local_edit(frange.file_id, local_edit))
             .collect()
     }
 
@@ -440,7 +430,7 @@ impl db::RootDatabase {
             .map(|(file_id, text_range)| SourceFileEdit {
                 file_id: *file_id,
                 edit: {
-                    let mut builder = ra_text_edit::TextEditBuilder::new();
+                    let mut builder = ra_text_edit::TextEditBuilder::default();
                     builder.replace(*text_range, new_name.into());
                     builder.finish()
                 },

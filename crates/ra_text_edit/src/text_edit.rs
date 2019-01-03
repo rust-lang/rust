@@ -7,15 +7,12 @@ pub struct TextEdit {
     atoms: Vec<AtomTextEdit>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TextEditBuilder {
     atoms: Vec<AtomTextEdit>,
 }
 
 impl TextEditBuilder {
-    pub fn new() -> TextEditBuilder {
-        TextEditBuilder { atoms: Vec::new() }
-    }
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
         self.atoms.push(AtomTextEdit::replace(range, replace_with))
     }
