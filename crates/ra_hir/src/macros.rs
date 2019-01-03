@@ -21,6 +21,7 @@ use crate::{HirDatabase, MacroCallId};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroDef {
     CTry,
+    Vec,
     QueryGroup,
 }
 
@@ -40,6 +41,8 @@ impl MacroDef {
             let name_ref = path.segment()?.name_ref()?;
             if name_ref.text() == "ctry" {
                 MacroDef::CTry
+            } else if name_ref.text() == "vec" {
+                MacroDef::Vec
             } else if name_ref.text() == "query_group" {
                 MacroDef::QueryGroup
             } else {
@@ -59,6 +62,7 @@ impl MacroDef {
     fn expand(self, input: MacroInput) -> Option<MacroExpansion> {
         match self {
             MacroDef::CTry => self.expand_ctry(input),
+            MacroDef::Vec => self.expand_vec(input),
             MacroDef::QueryGroup => self.expand_query_group(input),
         }
     }
@@ -79,6 +83,20 @@ impl MacroDef {
         let ptr = LocalSyntaxPtr::new(match_arg.syntax());
         let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
         let ranges_map = vec![(src_range, match_arg.syntax().range())];
+        let res = MacroExpansion {
+            text,
+            ranges_map,
+            ptr,
+        };
+        Some(res)
+    }
+    fn expand_vec(self, input: MacroInput) -> Option<MacroExpansion> {
+        let text = format!(r"fn dummy() {{ {}; }}", input.text);
+        let file = SourceFileNode::parse(&text);
+        let array_expr = file.syntax().descendants().find_map(ast::ArrayExpr::cast)?;
+        let ptr = LocalSyntaxPtr::new(array_expr.syntax());
+        let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
+        let ranges_map = vec![(src_range, array_expr.syntax().range())];
         let res = MacroExpansion {
             text,
             ranges_map,
