@@ -10,6 +10,7 @@ build: &rust_build
     script:
         - cargo gen-tests --verify
         - cargo gen-syntax --verify
+        - cargo test --no-run  # let's measure compile time separately
         - cargo test
     env:
         - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
@@ -25,7 +26,7 @@ matrix:
               - cd editors/code && npm ci && npm run travis
 
         - os: windows
-          if: branch = master
+          if: branch = master AND type = push
           before_script:
               - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.txt
               - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.rs
