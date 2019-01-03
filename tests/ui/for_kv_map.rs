@@ -42,15 +42,18 @@ fn main() {
     for (k, _value) in rm {
         let _k = k;
     }
-    test_for_kv_map();
-}
 
-fn test_for_kv_map() {
+    // The following should not produce warnings.
+
     let m: HashMap<u64, u64> = HashMap::new();
-
     // No error, _value is actually used
     for (k, _value) in &m {
         let _ = _value;
         let _k = k;
+    }
+
+    let m: HashMap<u64, String> = Default::default();
+    for (_, v) in m {
+        let _v = v;
     }
 }
