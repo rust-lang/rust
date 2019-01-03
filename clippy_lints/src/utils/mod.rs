@@ -271,7 +271,7 @@ pub fn implements_trait<'a, 'tcx>(
     );
     cx.tcx
         .infer_ctxt()
-        .enter(|infcx| infcx.predicate_must_hold(&obligation))
+        .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
 }
 
 /// Check whether this type implements Drop.
@@ -884,7 +884,7 @@ pub fn type_is_unsafe_function<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx
 }
 
 pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    !ty.moves_by_default(cx.tcx.global_tcx(), cx.param_env, DUMMY_SP)
+    ty.is_copy_modulo_regions(cx.tcx.global_tcx(), cx.param_env, DUMMY_SP)
 }
 
 /// Return whether a pattern is refutable.
