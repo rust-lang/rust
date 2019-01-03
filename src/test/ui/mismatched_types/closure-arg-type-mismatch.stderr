@@ -22,34 +22,25 @@ LL |     a.iter().map(|_: (u16, u16)| 45); //~ ERROR type mismatch
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
 
-error[E0631]: type mismatch in function arguments
+error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
-LL |     baz(f); //~ ERROR type mismatch
-   |     ^^^
-   |     |
-   |     expected signature of `for<'r> fn(*mut &'r u32) -> _`
-   |     found signature of `fn(*mut &'a u32) -> _`
+LL |     baz(f); //~ ERROR mismatched types
+   |     ^^^ one type is more general than the other
    |
-note: required by `baz`
-  --> $DIR/closure-arg-type-mismatch.rs:8:1
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected type `for<'r> std::ops::Fn<(*mut &'r u32,)>`
+              found type `std::ops::Fn<(*mut &'a u32,)>`
 
-error[E0271]: type mismatch resolving `for<'r> <fn(*mut &'a u32) as std::ops::FnOnce<(*mut &'r u32,)>>::Output == ()`
+error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
-LL |     baz(f); //~ ERROR type mismatch
-   |     ^^^ expected bound lifetime parameter, found concrete lifetime
+LL |     baz(f); //~ ERROR mismatched types
+   |     ^^^ one type is more general than the other
    |
-note: required by `baz`
-  --> $DIR/closure-arg-type-mismatch.rs:8:1
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected type `std::ops::FnOnce<(*mut &u32,)>`
+              found type `std::ops::FnOnce<(*mut &'a u32,)>`
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0271, E0631.
-For more information about an error, try `rustc --explain E0271`.
+Some errors occurred: E0308, E0631.
+For more information about an error, try `rustc --explain E0308`.

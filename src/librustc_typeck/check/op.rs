@@ -262,9 +262,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
-                                    !self.infcx.type_moves_by_default(self.param_env,
-                                                                        rty,
-                                                                        lhs_expr.span) &&
+                                    self.infcx.type_is_copy_modulo_regions(self.param_env,
+                                                                           rty,
+                                                                           lhs_expr.span) &&
                                         self.lookup_op_method(rty,
                                                               &[rhs_ty],
                                                               Op::Binary(op, is_assign))
@@ -334,9 +334,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
-                                    !self.infcx.type_moves_by_default(self.param_env,
-                                                                      rty,
-                                                                      lhs_expr.span) &&
+                                    self.infcx.type_is_copy_modulo_regions(self.param_env,
+                                                                           rty,
+                                                                           lhs_expr.span) &&
                                         self.lookup_op_method(rty,
                                                               &[rhs_ty],
                                                               Op::Binary(op, is_assign))

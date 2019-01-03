@@ -23,6 +23,5 @@ fn foo<U, T>(_t: T)
 #[rustc_error]
 fn main() { //[good]~ ERROR compilation successful
     foo(());
-    //[bad]~^ ERROR type mismatch resolving `for<'a> <&'a _ as Mirror>::Image == _`
-    //[bad]~| expected bound lifetime parameter 'a, found concrete lifetime
+    //[bad]~^ ERROR E0308
 }

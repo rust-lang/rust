@@ -203,7 +203,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                     let cause = ObligationCause { span, ..ObligationCause::dummy() };
                     let ctx = traits::FulfillmentContext::new();
                     match traits::fully_normalize(&infcx, ctx, cause, self, &ty) {
-                        Ok(ty) => if infcx.type_moves_by_default(self, ty, span) {
+                        Ok(ty) => if !infcx.type_is_copy_modulo_regions(self, ty, span) {
                             infringing.push(field);
                         }
                         Err(errors) => {
@@ -621,14 +621,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
-    pub fn moves_by_default(&'tcx self,
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            param_env: ty::ParamEnv<'tcx>,
-                            span: Span)
-                            -> bool {
-        !tcx.at(span).is_copy_raw(param_env.and(self))
+    /// Checks whether values of this type `T` are *moved* or *copied*
+    /// when referenced -- this amounts to a check for whether `T:
+    /// Copy`, but note that we **don't** consider lifetimes when
+    /// doing this check. This means that we may generate MIR which
+    /// does copies even when the type actually doesn't satisfy the
+    /// full requirements for the `Copy` trait (cc #29149) -- this
+    /// winds up being reported as an error during NLL borrow check.
+    pub fn is_copy_modulo_regions(&'tcx self,
+                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  param_env: ty::ParamEnv<'tcx>,
+                                  span: Span)
+                                  -> bool {
+        tcx.at(span).is_copy_raw(param_env.and(self))
     }
 
+    /// Checks whether values of this type `T` have a size known at
+    /// compile time (i.e., whether `T: Sized`). Lifetimes are ignored
+    /// for the purposes of this check, so it can be an
+    /// over-approximation in generic contexts, where one can have
+    /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
+    /// actually carry lifetime requirements.
     pub fn is_sized(&'tcx self,
                     tcx_at: TyCtxtAt<'a, 'tcx, 'tcx>,
                     param_env: ty::ParamEnv<'tcx>)-> bool
@@ -636,6 +649,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx_at.is_sized_raw(param_env.and(self))
     }
 
+    /// Checks whether values of this type `T` implement the `Freeze`
+    /// trait -- frozen types are those that do not contain a
+    /// `UnsafeCell` anywhere.  This is a language concept used to
+    /// distinguish "true immutability", which is relevant to
+    /// optimization as well as the rules around static values. Note
+    /// that the `Freeze` trait is not exposed to end users and is
+    /// effectively an implementation detail.
     pub fn is_freeze(&'tcx self,
                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
                      param_env: ty::ParamEnv<'tcx>,
@@ -851,11 +871,13 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -865,11 +887,13 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -879,11 +903,13 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -921,11 +947,11 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // `ManuallyDrop` doesn't have a destructor regardless of field types.
         ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
 
-        // Issue #22536: We first query type_moves_by_default.  It sees a
+        // Issue #22536: We first query `is_copy_modulo_regions`.  It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
         // cleanup/drop/zeroing) ...
-        _ if !ty.moves_by_default(tcx, param_env, DUMMY_SP) => false,
+        _ if ty.is_copy_modulo_regions(tcx, param_env, DUMMY_SP) => false,
 
         // ... (issue #22536 continued) but as an optimization, still use
         // prior logic of asking for the structural "may drop".

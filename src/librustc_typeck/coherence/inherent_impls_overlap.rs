@@ -73,6 +73,10 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
                         cause.add_intercrate_ambiguity_hint(&mut err);
                     }
 
+                    if overlap.involves_placeholder {
+                        traits::add_placeholder_note(&mut err);
+                    }
+
                     err.emit();
                 }
             }

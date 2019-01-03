@@ -21,7 +21,13 @@ fn give_any() {
 struct StaticInt;
 impl Foo<&'static isize> for StaticInt { }
 fn give_static() {
-    want_hrtb::<StaticInt>() //~ ERROR `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
+    want_hrtb::<StaticInt>() //~ ERROR
+}
+
+// AnyInt implements Foo<&'a isize> for any 'a, so it is a match.
+impl<'a> Foo<&'a isize> for &'a u32 { }
+fn give_some<'a>() {
+    want_hrtb::<&'a u32>() //~ ERROR
 }
 
 fn main() { }

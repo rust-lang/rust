@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return Err(ErrorReported);
         }
 
-        if self.type_is_known_to_be_sized(t, span) {
+        if self.type_is_known_to_be_sized_modulo_regions(t, span) {
             return Ok(Some(PointerKind::Thin));
         }
 
@@ -397,7 +397,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                self.expr_ty,
                self.cast_ty);
 
-        if !fcx.type_is_known_to_be_sized(self.cast_ty, self.span) {
+        if !fcx.type_is_known_to_be_sized_modulo_regions(self.cast_ty, self.span) {
             self.report_cast_to_unsized_type(fcx);
         } else if self.expr_ty.references_error() || self.cast_ty.references_error() {
             // No sense in giving duplicate error messages
@@ -618,8 +618,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    fn type_is_known_to_be_sized(&self, ty: Ty<'tcx>, span: Span) -> bool {
+    fn type_is_known_to_be_sized_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
-        traits::type_known_to_meet_bound(self, self.param_env, ty, lang_item, span)
+        traits::type_known_to_meet_bound_modulo_regions(self, self.param_env, ty, lang_item, span)
     }
 }

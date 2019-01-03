@@ -132,12 +132,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
 
+            ty::RePlaceholder(_) => (format!("any other region"), None),
+
             // FIXME(#13998) RePlaceholder should probably print like
             // ReFree rather than dumping Debug output on the user.
             //
             // We shouldn't really be having unification failures with ReVar
             // and ReLateBound though.
-            ty::RePlaceholder(..) | ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
+            ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
                 (format!("lifetime {:?}", region), None)
             }
 
@@ -324,8 +326,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // the error. If all of these fails, we fall back to a rather
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
-                        self.report_concrete_failure(region_scope_tree, origin, sub, sup)
-                            .emit();
+                        if sub.is_placeholder() || sup.is_placeholder() {
+                            self.report_placeholder_failure(region_scope_tree, origin, sub, sup)
+                                .emit();
+                        } else {
+                            self.report_concrete_failure(region_scope_tree, origin, sub, sup)
+                                .emit();
+                        }
                     }
 
                     RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => {
@@ -339,20 +346,39 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     RegionResolutionError::SubSupConflict(
+                        _,
                         var_origin,
                         sub_origin,
                         sub_r,
                         sup_origin,
                         sup_r,
                     ) => {
-                        self.report_sub_sup_conflict(
-                            region_scope_tree,
-                            var_origin,
-                            sub_origin,
-                            sub_r,
-                            sup_origin,
-                            sup_r,
-                        );
+                        if sub_r.is_placeholder() {
+                            self.report_placeholder_failure(
+                                region_scope_tree,
+                                sub_origin,
+                                sub_r,
+                                sup_r,
+                            )
+                                .emit();
+                        } else if sup_r.is_placeholder() {
+                            self.report_placeholder_failure(
+                                region_scope_tree,
+                                sup_origin,
+                                sub_r,
+                                sup_r,
+                            )
+                                .emit();
+                        } else {
+                            self.report_sub_sup_conflict(
+                                region_scope_tree,
+                                var_origin,
+                                sub_origin,
+                                sub_r,
+                                sup_origin,
+                                sup_r,
+                            );
+                        }
                     }
                 }
             }
@@ -407,7 +433,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         errors.sort_by_key(|u| match *u {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::SubSupConflict(ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
         });
         errors
     }
@@ -1306,6 +1332,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         match (&sup_origin, &sub_origin) {
             (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) => {
+                debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
+                debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
+                debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
+                debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
+                debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
+                debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
+                debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
+                debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);
+                debug!("report_sub_sup_conflict: sub_trace.values={:?}", sub_trace.values);
+
                 if let (Some((sup_expected, sup_found)), Some((sub_expected, sub_found))) = (
                     self.values_str(&sup_trace.values),
                     self.values_str(&sub_trace.values),

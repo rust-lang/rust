@@ -1,17 +1,11 @@
-error[E0279]: the requirement `for<'de> 'de : ` is not satisfied (`expected bound lifetime parameter 'de, found concrete lifetime`)
+error: implementation of `Deserialize` is not general enough
   --> $DIR/issue-54302.rs:13:5
    |
 LL |     assert_deserialize_owned::<&'static str>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: required because of the requirements on the impl of `for<'de> Deserialize<'de>` for `&'static str`
-   = note: required because of the requirements on the impl of `DeserializeOwned` for `&'static str`
-note: required by `main::assert_deserialize_owned`
-  --> $DIR/issue-54302.rs:12:5
-   |
-LL |     fn assert_deserialize_owned<T: DeserializeOwned>() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `&'static str` must implement `Deserialize<'0>` for any lifetime `'0`
+   = note: but `&str` only implements `Deserialize<'1>` for some lifetime `'1`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0279`.

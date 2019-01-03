@@ -3,8 +3,7 @@ error: compilation successful
    |
 LL | / fn main() { //[good]~ ERROR compilation successful
 LL | |     foo(());
-LL | |     //[bad]~^ ERROR type mismatch resolving `for<'a> <&'a _ as Mirror>::Image == _`
-LL | |     //[bad]~| expected bound lifetime parameter 'a, found concrete lifetime
+LL | |     //[bad]~^ ERROR E0308
 LL | | }
    | |_^
 

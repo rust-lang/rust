@@ -11,6 +11,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
         if let Some(ref error) = self.error {
             if let RegionResolutionError::SubSupConflict(
+                    _,
                     var_origin,
                     sub_origin,
                     sub_r,

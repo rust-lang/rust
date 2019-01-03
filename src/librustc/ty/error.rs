@@ -1,5 +1,5 @@
 use hir::def_id::DefId;
-use ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use ty::{self, Region, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
@@ -9,7 +9,7 @@ use syntax_pos::Span;
 
 use hir;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -27,8 +27,7 @@ pub enum TypeError<'tcx> {
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
@@ -102,17 +101,8 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             RegionsDoesNotOutlive(..) => {
                 write!(f, "lifetime mismatch")
             }
-            RegionsInsufficientlyPolymorphic(br, _) => {
-                write!(f,
-                       "expected bound lifetime parameter{}{}, found concrete lifetime",
-                       if br.is_named() { " " } else { "" },
-                       br)
-            }
-            RegionsOverlyPolymorphic(br, _) => {
-                write!(f,
-                       "expected concrete lifetime, found bound lifetime parameter{}{}",
-                       if br.is_named() { " " } else { "" },
-                       br)
+            RegionsPlaceholderMismatch => {
+                write!(f, "one type is more general than the other")
             }
             Sorts(values) => ty::tls::with(|tcx| {
                 report_maybe_different(f, &values.expected.sort_string(tcx),

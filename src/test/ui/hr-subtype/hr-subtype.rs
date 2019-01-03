@@ -31,21 +31,17 @@ macro_rules! check {
         #[cfg($rev)]
         fn subtype<'x,'y:'x,'z:'y>() {
             gimme::<$t2>(None::<$t1>);
-            //[free_inv_x_vs_free_inv_y]~^ ERROR mismatched types
+            //[free_inv_x_vs_free_inv_y]~^ ERROR
         }
 
         #[cfg($rev)]
         fn supertype<'x,'y:'x,'z:'y>() {
             gimme::<$t1>(None::<$t2>);
-            //[bound_a_vs_free_x]~^ ERROR mismatched types
-            //[free_x_vs_free_y]~^^ ERROR mismatched types
-            //[bound_inv_a_b_vs_bound_inv_a]~^^^ ERROR mismatched types
-            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^ ERROR mismatched types
-            //[free_inv_x_vs_free_inv_y]~^^^^^ ERROR mismatched types
-            //[bound_a_b_vs_bound_a]~^^^^^^ ERROR mismatched types
-            //[bound_co_a_b_vs_bound_co_a]~^^^^^^^ ERROR mismatched types
-            //[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^ ERROR mismatched types
-            //[bound_co_a_co_b_ret_contra_a]~^^^^^^^^^ ERROR mismatched types
+            //[bound_a_vs_free_x]~^ ERROR
+            //[free_x_vs_free_y]~^^ ERROR
+            //[bound_inv_a_b_vs_bound_inv_a]~^^^ ERROR
+            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^ ERROR
+            //[free_inv_x_vs_free_inv_y]~^^^^^ ERROR
         }
     }
 }
@@ -103,4 +99,8 @@ fn main() {
 //[bound_inv_a_vs_bound_inv_b]~^^^ ERROR compilation successful
 //[bound_co_a_vs_bound_co_b]~^^^^ ERROR compilation successful
 //[free_x_vs_free_x]~^^^^^ ERROR compilation successful
+//[bound_a_b_vs_bound_a]~^^^^^^ ERROR compilation successful
+//[bound_co_a_co_b_ret_contra_a]~^^^^^^^ ERROR compilation successful
+//[bound_co_a_b_vs_bound_co_a]~^^^^^^^^ ERROR compilation successful
+//[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^^ ERROR compilation successful
 }

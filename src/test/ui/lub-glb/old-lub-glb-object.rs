@@ -7,7 +7,7 @@ fn foo(
     x: &for<'a, 'b> Foo<&'a u8, &'b u8>,
     y: &for<'a> Foo<&'a u8, &'a u8>,
 ) {
-    let z = match 22 { //~ ERROR incompatible types
+    let z = match 22 { //~ ERROR E0308
         0 => x,
         _ => y,
     };

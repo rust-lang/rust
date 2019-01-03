@@ -1,37 +1,20 @@
-error[E0277]: the trait bound `No: Foo` is not satisfied in `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
+error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:30:5
    |
-LL |     assert_foo(gen); //~ ERROR the trait bound `No: Foo` is not satisfied
-   |     ^^^^^^^^^^ within `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`, the trait `Foo` is not implemented for `No`
-   |
-   = help: the following implementations were found:
-             <No as Foo>
-   = note: required because it appears within the type `OnlyFooIfStaticRef`
-   = note: required because it appears within the type `&OnlyFooIfStaticRef`
-   = note: required because it appears within the type `for<'r> {&'r OnlyFooIfStaticRef, ()}`
-   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
-note: required by `assert_foo`
-  --> $DIR/auto-trait-regions.rs:20:1
-   |
-LL | fn assert_foo<T: Foo>(f: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0279]: the requirement `for<'r, 's> 'r : 's` is not satisfied (`expected bound lifetime parameter, found concrete lifetime`)
-  --> $DIR/auto-trait-regions.rs:47:5
-   |
-LL |     assert_foo(gen); //~ ERROR the requirement `for<'r, 's> 'r : 's` is not satisfied
+LL |     assert_foo(gen);
    |     ^^^^^^^^^^
    |
-   = note: required because of the requirements on the impl of `for<'r, 's> Foo` for `A<'_, '_>`
-   = note: required because it appears within the type `for<'r, 's> {A<'r, 's>, ()}`
-   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:42:15: 46:6 for<'r, 's> {A<'r, 's>, ()}]`
-note: required by `assert_foo`
-  --> $DIR/auto-trait-regions.rs:20:1
+   = note: `&'0 OnlyFooIfStaticRef` must implement `Foo` for any lifetime `'0`
+   = note: but `&'1 OnlyFooIfStaticRef` only implements `Foo` for the lifetime `'1`
+
+error: implementation of `Foo` is not general enough
+  --> $DIR/auto-trait-regions.rs:48:5
    |
-LL | fn assert_foo<T: Foo>(f: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^
+   |
+   = note: `A<'0, '1>` must implement `Foo` for any two lifetimes `'0` and `'1`
+   = note: but `A<'_, '2>` only implements `Foo` for the lifetime `'2`
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0277, E0279.
-For more information about an error, try `rustc --explain E0277`.

@@ -282,7 +282,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                 if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
-                    if self.selcx.infcx().predicate_must_hold(&obligation) {
+                    if self.selcx.infcx().predicate_must_hold_considering_regions(&obligation) {
                         debug!("selecting trait `{:?}` at depth {} evaluated to holds",
                                data, obligation.recursion_depth);
                         return ProcessResult::Changed(vec![])
@@ -331,10 +331,8 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             }
 
             ty::Predicate::RegionOutlives(ref binder) => {
-                match self.selcx.infcx().region_outlives_predicate(&obligation.cause, binder) {
-                    Ok(()) => ProcessResult::Changed(vec![]),
-                    Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
-                }
+                let () = self.selcx.infcx().region_outlives_predicate(&obligation.cause, binder);
+                ProcessResult::Changed(vec![])
             }
 
             ty::Predicate::TypeOutlives(ref binder) => {

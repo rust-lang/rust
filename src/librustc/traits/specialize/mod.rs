@@ -15,6 +15,7 @@ use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use lint;
 use traits::{self, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use traits::coherence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
@@ -32,6 +33,7 @@ pub struct OverlapError {
     pub trait_desc: String,
     pub self_desc: Option<String>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+    pub involves_placeholder: bool,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -368,6 +370,10 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
 
                 for cause in &overlap.intercrate_ambiguity_causes {
                     cause.add_intercrate_ambiguity_hint(&mut err);
+                }
+
+                if overlap.involves_placeholder {
+                    coherence::add_placeholder_note(&mut err);
                 }
 
                 err.emit();

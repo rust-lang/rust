@@ -224,8 +224,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                         "non-field projection {:?} from union?",
                                         place)
                                 };
-                                if elem_ty.moves_by_default(self.tcx, self.param_env,
-                                                            self.source_info.span) {
+                                if !elem_ty.is_copy_modulo_regions(
+                                    self.tcx,
+                                    self.param_env,
+                                    self.source_info.span,
+                                ) {
                                     self.require_unsafe(
                                         "assignment to non-`Copy` union field",
                                         "the previous content of the field will be dropped, which \

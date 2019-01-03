@@ -223,8 +223,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.check_overflow
     }
 
-    pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.infcx.type_moves_by_default(self.param_env, ty, span)
+    pub fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
     }
 }
 

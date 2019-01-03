@@ -77,23 +77,33 @@ fn tuple_four<T>()
     // not ok for tuple, two lifetimes, and lifetime matching is invariant
 }
 
-pub fn main() {
+pub fn call_foo() {
     foo::<IntStruct>();
     foo::<UintStruct>(); //~ ERROR type mismatch
+}
 
+pub fn call_bar() {
     bar::<IntStruct>(); //~ ERROR type mismatch
     bar::<UintStruct>();
-
-    tuple_one::<Tuple>();
-    //~^ ERROR E0277
-    //~| ERROR type mismatch
-
-    tuple_two::<Tuple>();
-    //~^ ERROR E0277
-    //~| ERROR type mismatch
-
-    tuple_three::<Tuple>();
-
-    tuple_four::<Tuple>();
-    //~^ ERROR E0277
 }
+
+pub fn call_tuple_one() {
+    tuple_one::<Tuple>();
+    //~^ ERROR not general enough
+}
+
+pub fn call_tuple_two() {
+    tuple_two::<Tuple>();
+    //~^ ERROR not general enough
+}
+
+pub fn call_tuple_three() {
+    tuple_three::<Tuple>();
+}
+
+pub fn call_tuple_four() {
+    tuple_four::<Tuple>();
+    //~^ ERROR not general enough
+}
+
+fn main() { }
