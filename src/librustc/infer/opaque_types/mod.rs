@@ -19,7 +19,7 @@ pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 /// appear in the return type).
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
-    /// The substitutions that we apply to the abstract that that this
+    /// The substitutions that we apply to the abstract that this
     /// `impl Trait` desugars to. e.g., if:
     ///
     ///     fn foo<'a, 'b, T>() -> impl Trait<'a>

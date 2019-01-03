@@ -2569,7 +2569,7 @@ impl<'test> TestCx<'test> {
             .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags)
 
             // We for sure don't want these tests to run in parallel, so make
-            // sure they don't have access to these vars if we we run via `make`
+            // sure they don't have access to these vars if we run via `make`
             // at the top level
             .env_remove("MAKEFLAGS")
             .env_remove("MFLAGS")
