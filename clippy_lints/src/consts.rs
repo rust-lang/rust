@@ -17,11 +17,11 @@ use rustc::lint::LateContext;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc::{bug, span_bug};
+use rustc_data_structures::sync::Lrc;
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
 
@@ -31,7 +31,7 @@ pub enum Constant {
     /// a String "abc"
     Str(String),
     /// a Binary String b"abc"
-    Binary(Rc<Vec<u8>>),
+    Binary(Lrc<Vec<u8>>),
     /// a single char 'a'
     Char(char),
     /// an integer's bit representation
@@ -156,7 +156,7 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s) => Constant::Binary(Rc::clone(s)),
+        LitKind::ByteStr(ref s) => Constant::Binary(Lrc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, _) | LitKind::FloatUnsuffixed(ref is) => match ty.sty {

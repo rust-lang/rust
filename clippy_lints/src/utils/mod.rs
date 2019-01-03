@@ -25,11 +25,11 @@ use rustc::ty::{
     subst::Kind,
     Binder, Ty, TyCtxt,
 };
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
 use std::borrow::Cow;
 use std::env;
 use std::mem;
-use std::rc::Rc;
 use std::str::FromStr;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
@@ -223,7 +223,7 @@ pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> 
                 None => return None,
             };
 
-            for item in mem::replace(&mut items, Rc::new(vec![])).iter() {
+            for item in mem::replace(&mut items, Lrc::new(vec![])).iter() {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return Some(item.def);

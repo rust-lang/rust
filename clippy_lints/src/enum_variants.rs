@@ -15,7 +15,7 @@ use rustc::lint::{EarlyContext, EarlyLintPass, Lint, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::*;
 use syntax::source_map::Span;
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::{InternedString, LocalInternedString};
 
 /// **What it does:** Detects enumeration variants that are prefixed or suffixed
 /// by the same characters.
@@ -111,7 +111,7 @@ declare_clippy_lint! {
 }
 
 pub struct EnumVariantNames {
-    modules: Vec<(LocalInternedString, String)>,
+    modules: Vec<(InternedString, String)>,
     threshold: u64,
 }
 
@@ -308,6 +308,6 @@ impl EarlyLintPass for EnumVariantNames {
             };
             check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span, lint);
         }
-        self.modules.push((item_name, item_camel));
+        self.modules.push((item_name.as_interned_str(), item_camel));
     }
 }
