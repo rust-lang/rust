@@ -1,4 +1,6 @@
-// revisions: a b c
+// revisions: a b c re_a re_b re_c
+
+#![cfg_attr(any(re_a, re_b, re_c), feature(re_rebalance_coherence))]
 
 // aux-build:coherence_lib.rs
 
@@ -12,14 +14,19 @@ use lib::{Remote,Pair};
 
 pub struct Cover<T>(T);
 
-#[cfg(a)]
-impl<T> Remote for Pair<T,Cover<T>> { } //[a]~ ERROR E0210
+#[cfg(any(a, re_a))]
+impl<T> Remote for Pair<T,Cover<T>> { }
+//[a]~^ ERROR E0210
+//[re_a]~^^ ERROR E0117
 
-#[cfg(b)]
-impl<T> Remote for Pair<Cover<T>,T> { } //[b]~ ERROR E0210
+#[cfg(any(b, re_b))]
+impl<T> Remote for Pair<Cover<T>,T> { }
+//[b]~^ ERROR E0210
+//[re_b]~^^ ERROR E0117
 
-#[cfg(c)]
+#[cfg(any(c, re_c))]
 impl<T,U> Remote for Pair<Cover<T>,U> { }
 //[c]~^ ERROR type parameter `T` must be used as the type parameter for some local type
+//[re_c]~^^ ERROR E0117
 
 fn main() { }

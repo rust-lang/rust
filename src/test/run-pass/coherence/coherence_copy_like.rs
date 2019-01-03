@@ -1,4 +1,7 @@
 // run-pass
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 #![allow(dead_code)]
 // Test that we are able to introduce a negative constraint that
 // `MyType: !MyTrait` along with other "fundamental" wrappers.

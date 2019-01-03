@@ -1,4 +1,7 @@
 // run-pass
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 #![allow(unused_imports)]
 // pretty-expanded FIXME #23616
 

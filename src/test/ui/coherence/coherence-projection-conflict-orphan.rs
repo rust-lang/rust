@@ -1,3 +1,6 @@
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 #![feature(rustc_attrs)]
 
 // Here we expect a coherence conflict because, even though `i32` does
@@ -13,6 +16,8 @@ pub trait Bar {
 
 impl Foo<i32> for i32 { }
 
-impl<A:Iterator> Foo<A::Item> for A { }  //~ ERROR E0119
+impl<A:Iterator> Foo<A::Item> for A { }
+//[old]~^ ERROR E0119
+//[re]~^^ ERROR E0119
 
 fn main() {}

@@ -1,3 +1,7 @@
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
+
 use std::fmt::Debug;
 use std::default::Default;
 
@@ -19,7 +23,9 @@ struct MyType {
     dummy: usize
 }
 
-impl MyTrait<MyType> for MyType { //~ ERROR E0119
+impl MyTrait<MyType> for MyType {
+//[old]~^ ERROR E0119
+//[re]~^^ ERROR E0119
     fn get(&self) -> usize { (*self).clone() }
 }
 
