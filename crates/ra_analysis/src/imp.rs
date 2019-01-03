@@ -8,11 +8,11 @@ use hir::{
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, find_node_at_offset, LocalEdit, Severity};
 use ra_syntax::{
-    algo::find_covering_node,
+    algo::{find_covering_node, visit::{visitor, Visitor}},
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
     AstNode, SourceFileNode,
     SyntaxKind::*,
-    SyntaxNodeRef, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodeRef, TextRange, TextUnit,
 };
 
 use crate::{
@@ -116,12 +116,13 @@ impl db::RootDatabase {
         };
         let decl = decl.borrowed();
         let decl_name = decl.name().unwrap();
-        let symbol = FileSymbol {
+        Ok(vec![NavigationTarget {
+            file_id,
             name: decl_name.text(),
-            node_range: decl_name.syntax().range(),
+            range: decl_name.syntax().range(),
             kind: MODULE,
-        };
-        Ok(vec![NavigationTarget { file_id, symbol }])
+            ptr: None,
+        }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
@@ -153,14 +154,13 @@ impl db::RootDatabase {
                 let scope = fn_descr.scopes(self);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
-                    rr.add_resolution(
-                        position.file_id,
-                        FileSymbol {
-                            name: entry.name().to_string().into(),
-                            node_range: entry.ptr().range(),
-                            kind: NAME,
-                        },
-                    );
+                    rr.resolves_to.push(NavigationTarget {
+                        file_id: position.file_id,
+                        name: entry.name().to_string().into(),
+                        range: entry.ptr().range(),
+                        kind: NAME,
+                        ptr: None,
+                    });
                     return Ok(Some(rr));
                 };
             }
@@ -182,12 +182,14 @@ impl db::RootDatabase {
                             Some(name) => name.to_string().into(),
                             None => "".into(),
                         };
-                        let symbol = FileSymbol {
+                        let symbol = NavigationTarget {
+                            file_id,
                             name,
-                            node_range: TextRange::offset_len(0.into(), 0.into()),
+                            range: TextRange::offset_len(0.into(), 0.into()),
                             kind: MODULE,
+                            ptr: None,
                         };
-                        rr.add_resolution(file_id, symbol);
+                        rr.resolves_to.push(symbol);
                         return Ok(Some(rr));
                     }
                 }
@@ -253,8 +255,7 @@ impl db::RootDatabase {
         }
     }
     pub(crate) fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        let file = self.source_file(nav.file_id);
-        let result = match (nav.symbol.description(&file), nav.symbol.docs(&file)) {
+        let result = match (nav.description(self), nav.docs(self)) {
             (Some(desc), Some(docs)) => {
                 Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
             }
@@ -362,52 +363,52 @@ impl db::RootDatabase {
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
         for (fn_file_id, fs) in file_symbols {
-            if fs.kind == FN_DEF {
+            if fs.ptr.kind() == FN_DEF {
                 let fn_file = self.source_file(fn_file_id);
-                if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
-                    let descr = ctry!(source_binder::function_from_source(
-                        self, fn_file_id, fn_def
-                    )?);
-                    if let Some(descriptor) = descr.signature_info(self) {
-                        // If we have a calling expression let's find which argument we are on
-                        let mut current_parameter = None;
+                let fn_def = fs.ptr.resolve(&fn_file);
+                let fn_def = ast::FnDef::cast(fn_def.borrowed()).unwrap();
+                let descr = ctry!(source_binder::function_from_source(
+                    self, fn_file_id, fn_def
+                )?);
+                if let Some(descriptor) = descr.signature_info(self) {
+                    // If we have a calling expression let's find which argument we are on
+                    let mut current_parameter = None;
 
-                        let num_params = descriptor.params.len();
-                        let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
+                    let num_params = descriptor.params.len();
+                    let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
 
-                        if num_params == 1 {
-                            if !has_self {
-                                current_parameter = Some(0);
-                            }
-                        } else if num_params > 1 {
-                            // Count how many parameters into the call we are.
-                            // TODO: This is best effort for now and should be fixed at some point.
-                            // It may be better to see where we are in the arg_list and then check
-                            // where offset is in that list (or beyond).
-                            // Revisit this after we get documentation comments in.
-                            if let Some(ref arg_list) = calling_node.arg_list() {
-                                let start = arg_list.syntax().range().start();
-
-                                let range_search = TextRange::from_to(start, position.offset);
-                                let mut commas: usize = arg_list
-                                    .syntax()
-                                    .text()
-                                    .slice(range_search)
-                                    .to_string()
-                                    .matches(',')
-                                    .count();
-
-                                // If we have a method call eat the first param since it's just self.
-                                if has_self {
-                                    commas += 1;
-                                }
-
-                                current_parameter = Some(commas);
-                            }
+                    if num_params == 1 {
+                        if !has_self {
+                            current_parameter = Some(0);
                         }
+                    } else if num_params > 1 {
+                        // Count how many parameters into the call we are.
+                        // TODO: This is best effort for now and should be fixed at some point.
+                        // It may be better to see where we are in the arg_list and then check
+                        // where offset is in that list (or beyond).
+                        // Revisit this after we get documentation comments in.
+                        if let Some(ref arg_list) = calling_node.arg_list() {
+                            let start = arg_list.syntax().range().start();
 
-                        return Ok(Some((descriptor, current_parameter)));
+                            let range_search = TextRange::from_to(start, position.offset);
+                            let mut commas: usize = arg_list
+                                .syntax()
+                                .text()
+                                .slice(range_search)
+                                .to_string()
+                                .matches(',')
+                                .count();
+
+                            // If we have a method call eat the first param since it's just self.
+                            if has_self {
+                                commas += 1;
+                            }
+
+                            current_parameter = Some(commas);
+                        }
                     }
+
+                    return Ok(Some((descriptor, current_parameter)));
                 }
             }
         }
@@ -509,5 +510,93 @@ impl<'a> FnCallNode<'a> {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
+    }
+}
+
+impl NavigationTarget {
+    fn node(&self, db: &db::RootDatabase) -> Option<SyntaxNode> {
+        let source_file = db.source_file(self.file_id);
+        let source_file = source_file.syntax();
+        let node = source_file
+            .descendants()
+            .find(|node| node.kind() == self.kind && node.range() == self.range)?
+            .owned();
+        Some(node)
+    }
+
+    fn docs(&self, db: &db::RootDatabase) -> Option<String> {
+        let node = self.node(db)?;
+        let node = node.borrowed();
+        fn doc_comments<'a, N: ast::DocCommentsOwner<'a>>(node: N) -> Option<String> {
+            let comments = node.doc_comment_text();
+            if comments.is_empty() {
+                None
+            } else {
+                Some(comments)
+            }
+        }
+
+        visitor()
+            .visit(doc_comments::<ast::FnDef>)
+            .visit(doc_comments::<ast::StructDef>)
+            .visit(doc_comments::<ast::EnumDef>)
+            .visit(doc_comments::<ast::TraitDef>)
+            .visit(doc_comments::<ast::Module>)
+            .visit(doc_comments::<ast::TypeDef>)
+            .visit(doc_comments::<ast::ConstDef>)
+            .visit(doc_comments::<ast::StaticDef>)
+            .accept(node)?
+    }
+
+    /// Get a description of this node.
+    ///
+    /// e.g. `struct Name`, `enum Name`, `fn Name`
+    fn description(&self, db: &db::RootDatabase) -> Option<String> {
+        // TODO: After type inference is done, add type information to improve the output
+        let node = self.node(db)?;
+        let node = node.borrowed();
+        // TODO: Refactor to be have less repetition
+        visitor()
+            .visit(|node: ast::FnDef| {
+                let mut string = "fn ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::StructDef| {
+                let mut string = "struct ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::EnumDef| {
+                let mut string = "enum ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::TraitDef| {
+                let mut string = "trait ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::Module| {
+                let mut string = "mod ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::TypeDef| {
+                let mut string = "type ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::ConstDef| {
+                let mut string = "const ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::StaticDef| {
+                let mut string = "static ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .accept(node)?
     }
 }

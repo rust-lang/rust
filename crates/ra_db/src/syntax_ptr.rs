@@ -31,6 +31,10 @@ impl LocalSyntaxPtr {
     pub fn range(self) -> TextRange {
         self.range
     }
+
+    pub fn kind(self) -> SyntaxKind {
+        self.kind
+    }
 }
 
 #[test]

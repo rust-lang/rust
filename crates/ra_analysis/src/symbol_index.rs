@@ -1,3 +1,24 @@
+//! This module handles fuzzy-searching of functions, structs and other symbols
+//! by name across the whole workspace and dependencies.
+//!
+//! It works by building an incrementally-updated text-search index of all
+//! symbols. The backbone of the index is the **awesome** `fst` crate by
+//! @BurntSushi.
+//!
+//! In a nutshell, you give a set of strings to the `fst`, and it builds a
+//! finite state machine describing this set of strtings. The strings which
+//! could fuzzy-match a pattern can also be described by a finite state machine.
+//! What is freakingly cool is that you can now traverse both state machines in
+//! lock-step to enumerate the strings which are both in the input set and
+//! fuzz-match the query. Or, more formally, given two langauges described by
+//! fsts, one can build an product fst which describes the intersection of the
+//! languages.
+//!
+//! `fst` does not support cheap updating of the index, but it supports unioning
+//! of state machines. So, to account for changing source code, we build an fst
+//! for each library (which is assumed to never change) and an fst for each rust
+//! file in the current workspace, and run a query aginst the union of all
+//! thouse fsts.
 use std::{
     hash::{Hash, Hasher},
     sync::Arc,
@@ -5,12 +26,12 @@ use std::{
 
 use fst::{self, Streamer};
 use ra_syntax::{
-    AstNode, SyntaxNodeRef, SourceFileNode, SmolStr, TextRange,
+    SyntaxNodeRef, SourceFileNode, SmolStr,
     algo::visit::{visitor, Visitor},
     SyntaxKind::{self, *},
-    ast::{self, NameOwner, DocCommentsOwner},
+    ast::{self, NameOwner},
 };
-use ra_db::{SyntaxDatabase, SourceRootId, FilesDatabase};
+use ra_db::{SyntaxDatabase, SourceRootId, FilesDatabase, LocalSyntaxPtr};
 use salsa::ParallelDatabase;
 use rayon::prelude::*;
 
@@ -140,7 +161,7 @@ impl Query {
                 let idx = indexed_value.value as usize;
 
                 let (file_id, symbol) = &file_symbols.symbols[idx];
-                if self.only_types && !is_type(symbol.kind) {
+                if self.only_types && !is_type(symbol.ptr.kind()) {
                     continue;
                 }
                 if self.exact && symbol.name != self.query {
@@ -160,96 +181,12 @@ fn is_type(kind: SyntaxKind) -> bool {
     }
 }
 
+/// The actual data that is stored in the index. It should be as compact as
+/// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct FileSymbol {
     pub(crate) name: SmolStr,
-    pub(crate) node_range: TextRange,
-    pub(crate) kind: SyntaxKind,
-}
-
-impl FileSymbol {
-    pub(crate) fn docs(&self, file: &SourceFileNode) -> Option<String> {
-        file.syntax()
-            .descendants()
-            .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
-            .filter_map(|node: SyntaxNodeRef| {
-                fn doc_comments<'a, N: DocCommentsOwner<'a>>(node: N) -> Option<String> {
-                    let comments = node.doc_comment_text();
-                    if comments.is_empty() {
-                        None
-                    } else {
-                        Some(comments)
-                    }
-                }
-
-                visitor()
-                    .visit(doc_comments::<ast::FnDef>)
-                    .visit(doc_comments::<ast::StructDef>)
-                    .visit(doc_comments::<ast::EnumDef>)
-                    .visit(doc_comments::<ast::TraitDef>)
-                    .visit(doc_comments::<ast::Module>)
-                    .visit(doc_comments::<ast::TypeDef>)
-                    .visit(doc_comments::<ast::ConstDef>)
-                    .visit(doc_comments::<ast::StaticDef>)
-                    .accept(node)?
-            })
-            .nth(0)
-    }
-    /// Get a description of this node.
-    ///
-    /// e.g. `struct Name`, `enum Name`, `fn Name`
-    pub(crate) fn description(&self, file: &SourceFileNode) -> Option<String> {
-        // TODO: After type inference is done, add type information to improve the output
-        file.syntax()
-            .descendants()
-            .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
-            .filter_map(|node: SyntaxNodeRef| {
-                // TODO: Refactor to be have less repetition
-                visitor()
-                    .visit(|node: ast::FnDef| {
-                        let mut string = "fn ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::StructDef| {
-                        let mut string = "struct ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::EnumDef| {
-                        let mut string = "enum ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::TraitDef| {
-                        let mut string = "trait ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::Module| {
-                        let mut string = "mod ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::TypeDef| {
-                        let mut string = "type ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::ConstDef| {
-                        let mut string = "const ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .visit(|node: ast::StaticDef| {
-                        let mut string = "static ".to_string();
-                        node.name()?.syntax().text().push_to(&mut string);
-                        Some(string)
-                    })
-                    .accept(node)?
-            })
-            .nth(0)
-    }
+    pub(crate) ptr: LocalSyntaxPtr,
 }
 
 fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
@@ -257,8 +194,7 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
         let name = node.name()?;
         Some(FileSymbol {
             name: name.text(),
-            node_range: node.syntax().range(),
-            kind: node.syntax().kind(),
+            ptr: LocalSyntaxPtr::new(node.syntax()),
         })
     }
     visitor()

@@ -1,6 +1,8 @@
-//! ra_analyzer crate is the brain of Rust analyzer. It relies on the `salsa`
-//! crate, which provides and incremental on-demand database of facts.
-
+//! ra_analyzer crate provides "ide-centric" APIs for the rust-analyzer. What
+//! powers this API are the `RootDatabase` struct, which defines a `salsa`
+//! database, and the `ra_hir` crate, where majority of the analysis happens.
+//! However, IDE specific bits of the analysis (most notably completion) happen
+//! in this crate.
 macro_rules! ctry {
     ($expr:expr) => {
         match $expr {
@@ -41,7 +43,7 @@ pub use ra_editor::{
 pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
-    Canceled, Cancelable, FilePosition, FileRange,
+    Canceled, Cancelable, FilePosition, FileRange, LocalSyntaxPtr,
     CrateGraph, CrateId, SourceRootId, FileId, SyntaxDatabase, FilesDatabase
 };
 
@@ -219,24 +221,42 @@ impl Query {
     }
 }
 
+/// `NavigationTarget` represents and element in the editor's UI whihc you can
+/// click on to navigate to a particular piece of code.
+///
+/// Typically, a `NavigationTarget` corresponds to some element in the source
+/// code, like a function or a struct, but this is not strictly required.
 #[derive(Debug)]
 pub struct NavigationTarget {
     file_id: FileId,
-    symbol: FileSymbol,
+    name: SmolStr,
+    kind: SyntaxKind,
+    range: TextRange,
+    // Should be DefId ideally
+    ptr: Option<LocalSyntaxPtr>,
 }
 
 impl NavigationTarget {
-    pub fn name(&self) -> SmolStr {
-        self.symbol.name.clone()
+    fn from_symbol(file_id: FileId, symbol: FileSymbol) -> NavigationTarget {
+        NavigationTarget {
+            name: symbol.name.clone(),
+            kind: symbol.ptr.kind(),
+            file_id,
+            range: symbol.ptr.range(),
+            ptr: Some(symbol.ptr.clone()),
+        }
+    }
+    pub fn name(&self) -> &SmolStr {
+        &self.name
     }
     pub fn kind(&self) -> SyntaxKind {
-        self.symbol.kind
+        self.kind
     }
     pub fn file_id(&self) -> FileId {
         self.file_id
     }
     pub fn range(&self) -> TextRange {
-        self.symbol.node_range
+        self.range
     }
 }
 
@@ -260,7 +280,8 @@ impl ReferenceResolution {
     }
 
     fn add_resolution(&mut self, file_id: FileId, symbol: FileSymbol) {
-        self.resolves_to.push(NavigationTarget { file_id, symbol })
+        self.resolves_to
+            .push(NavigationTarget::from_symbol(file_id, symbol))
     }
 }
 
@@ -359,7 +380,7 @@ impl Analysis {
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
         let res = symbol_index::world_symbols(&*self.db, query)?
             .into_iter()
-            .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
+            .map(|(file_id, symbol)| NavigationTarget::from_symbol(file_id, symbol))
             .collect();
         Ok(res)
     }

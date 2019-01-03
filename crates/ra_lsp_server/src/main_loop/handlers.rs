@@ -190,7 +190,7 @@ pub fn handle_workspace_symbol(
         let mut res = Vec::new();
         for nav in world.analysis().symbol_search(query)? {
             let info = SymbolInformation {
-                name: nav.name().into(),
+                name: nav.name().to_string(),
                 kind: nav.kind().conv(),
                 location: nav.try_conv_with(world)?,
                 container_name: None,
