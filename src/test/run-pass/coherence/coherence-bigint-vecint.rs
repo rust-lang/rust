@@ -1,5 +1,8 @@
 // run-pass
 // aux-build:coherence_lib.rs
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 
 // pretty-expanded FIXME #23616
 

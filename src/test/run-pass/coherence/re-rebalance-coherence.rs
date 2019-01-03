@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![feature(re_rebalance_coherence)]
 
 // run-pass
