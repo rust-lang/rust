@@ -1,4 +1,4 @@
-mod code_actions;
+pub mod assists;
 mod extend_selection;
 mod folding_ranges;
 mod line_index;
@@ -10,7 +10,7 @@ mod typing;
 mod diagnostics;
 
 pub use self::{
-    code_actions::{add_derive, add_impl, flip_comma, introduce_variable, make_pub_crate, LocalEdit},
+    assists::LocalEdit,
     extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},

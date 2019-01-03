@@ -6,7 +6,7 @@ use hir::{
     self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, find_node_at_offset, LocalEdit, Severity};
+use ra_editor::{self, find_node_at_offset, assists, LocalEdit, Severity};
 use ra_syntax::{
     algo::{find_covering_node, visit::{visitor, Visitor}},
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
@@ -335,11 +335,11 @@ impl db::RootDatabase {
         let file = self.source_file(frange.file_id);
         let offset = frange.range.start();
         let actions = vec![
-            ra_editor::flip_comma(&file, offset).map(|f| f()),
-            ra_editor::add_derive(&file, offset).map(|f| f()),
-            ra_editor::add_impl(&file, offset).map(|f| f()),
-            ra_editor::make_pub_crate(&file, offset).map(|f| f()),
-            ra_editor::introduce_variable(&file, frange.range).map(|f| f()),
+            assists::flip_comma(&file, offset).map(|f| f()),
+            assists::add_derive(&file, offset).map(|f| f()),
+            assists::add_impl(&file, offset).map(|f| f()),
+            assists::make_pub_crate(&file, offset).map(|f| f()),
+            assists::introduce_variable(&file, frange.range).map(|f| f()),
         ];
         actions
             .into_iter()
