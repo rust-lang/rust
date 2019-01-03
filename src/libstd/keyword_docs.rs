@@ -47,8 +47,8 @@ mod as_keyword { }
 ///
 /// Constants must be explicitly typed, unlike with `let` you can't ignore its type and let the
 /// compiler figure it out. Any constant value can be defined in a const, which in practice happens
-/// to be most things that would be reasonable to have a constant (barring `const fn`s, coming
-/// soon). For example, you can't have a File as a `const`.
+/// to be most things that would be reasonable to have a constant (barring `const fn`s). For
+/// example, you can't have a File as a `const`.
 ///
 /// The only lifetime allowed in a constant is `'static`, which is the lifetime that encompasses
 /// all others in a Rust program. For example, if you wanted to define a constant string, it would
