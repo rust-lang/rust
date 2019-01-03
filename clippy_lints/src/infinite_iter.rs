@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span_lint};
+use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
@@ -200,7 +200,6 @@ static POSSIBLY_COMPLETING_METHODS: &[(&str, usize)] = &[
 /// their iterators
 static COMPLETING_METHODS: &[(&str, usize)] = &[
     ("count", 1),
-    ("collect", 1),
     ("fold", 3),
     ("for_each", 2),
     ("partition", 2),
@@ -212,6 +211,18 @@ static COMPLETING_METHODS: &[(&str, usize)] = &[
     ("min_by_key", 2),
     ("sum", 1),
     ("product", 1),
+];
+
+/// the paths of types that are known to be infinitely allocating
+static INFINITE_COLLECTORS: &[&[&str]] = &[
+    &paths::BINARY_HEAP,
+    &paths::BTREEMAP,
+    &paths::BTREESET,
+    &paths::HASHMAP,
+    &paths::HASHSET,
+    &paths::LINKED_LIST,
+    &paths::VEC,
+    &paths::VEC_DEQUE,
 ];
 
 fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
@@ -231,6 +242,11 @@ fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
                 let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR)
                     .map_or(false, |id| !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[]));
                 if not_double_ended {
+                    return is_infinite(cx, &args[0]);
+                }
+            } else if method.ident.name == "collect" {
+                let ty = cx.tables.expr_ty(expr);
+                if INFINITE_COLLECTORS.iter().any(|path| match_type(cx, ty, path)) {
                     return is_infinite(cx, &args[0]);
                 }
             }
