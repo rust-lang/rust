@@ -451,7 +451,7 @@ impl<T> From<T> for Box<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T> From<Box<T>> for Pin<Box<T>> {
+impl<T: ?Sized> From<Box<T>> for Pin<Box<T>> {
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
