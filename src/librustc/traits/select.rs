@@ -2260,7 +2260,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         ImplCandidate(victim_def) => {
                             let tcx = self.tcx().global_tcx();
                             return tcx.specializes((other_def, victim_def))
-                                || tcx.impls_are_allowed_to_overlap(other_def, victim_def);
+                                || tcx.impls_are_allowed_to_overlap(
+                                    other_def, victim_def).is_some();
                         }
                         ParamCandidate(ref cand) => {
                             // Prefer the impl to a global where clause candidate.

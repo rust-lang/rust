@@ -2637,6 +2637,45 @@ impl<'gcx> ::std::ops::Deref for Attributes<'gcx> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum ImplOverlapKind {
+    /// These impls are always allowed to overlap.
+    Permitted,
+    /// These impls are allowed to overlap, but that raises
+    /// an issue #33140 future-compatibility warning.
+    ///
+    /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
+    /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
+    ///
+    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
+    /// that difference, making what reduces to the following set of impls:
+    ///
+    /// ```
+    /// trait Trait {}
+    /// impl Trait for dyn Send + Sync {}
+    /// impl Trait for dyn Sync + Send {}
+    /// ```
+    ///
+    /// Obviously, once we made these types be identical, that code causes a coherence
+    /// error and a fairly big headache for us. However, luckily for us, the trait
+    /// `Trait` used in this case is basically a marker trait, and therefore having
+    /// overlapping impls for it is sound.
+    ///
+    /// To handle this, we basically regard the trait as a marker trait, with an additional
+    /// future-compatibility warning. To avoid accidentally "stabilizing" this feature,
+    /// it has the following restrictions:
+    ///
+    /// 1. The trait must indeed be a marker-like trait (i.e., no items), and must be
+    /// positive impls.
+    /// 2. The trait-ref of both impls must be equal.
+    /// 3. The trait-ref of both impls must be a trait object type consisting only of
+    /// marker traits.
+    /// 4. Neither of the impls can have any where-clauses.
+    ///
+    /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
+    Issue33140
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'gcx TypeckTables<'gcx> {
         self.typeck_tables_of(self.hir().body_owner_def_id(body))
@@ -2788,8 +2827,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns `true` if the impls are the same polarity and the trait either
     /// has no items or is annotated #[marker] and prevents item overrides.
-    pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId) -> bool {
-        if self.features().overlapping_marker_traits {
+    pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId)
+                                        -> Option<ImplOverlapKind>
+    {
+        let is_legit = if self.features().overlapping_marker_traits {
             let trait1_is_empty = self.impl_trait_ref(def_id1)
                 .map_or(false, |trait_ref| {
                     self.associated_item_def_ids(trait_ref.def_id).is_empty()
@@ -2811,6 +2852,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 && is_marker_impl(def_id2)
         } else {
             false
+        };
+
+        if is_legit {
+            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted)",
+                  def_id1, def_id2);
+            Some(ImplOverlapKind::Permitted)
+        } else {
+            if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
+                if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
+                    if self_ty1 == self_ty2 {
+                        debug!("impls_are_allowed_to_overlap({:?}, {:?}) - issue #33140 HACK",
+                               def_id1, def_id2);
+                        return Some(ImplOverlapKind::Issue33140);
+                    } else {
+                        debug!("impls_are_allowed_to_overlap({:?}, {:?}) - found {:?} != {:?}",
+                              def_id1, def_id2, self_ty1, self_ty2);
+                    }
+                }
+            }
+
+            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = None",
+                  def_id1, def_id2);
+            None
         }
     }
 
@@ -3203,6 +3267,59 @@ fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+/// If `def_id` is an issue 33140 hack impl, return its self type. Otherwise
+/// return None.
+///
+/// See ImplOverlapKind::Issue33140 for more details.
+fn issue33140_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                def_id: DefId)
+                                -> Option<Ty<'tcx>>
+{
+    debug!("issue33140_self_ty({:?})", def_id);
+
+    let trait_ref = tcx.impl_trait_ref(def_id).unwrap_or_else(|| {
+        bug!("issue33140_self_ty called on inherent impl {:?}", def_id)
+    });
+
+    debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
+
+    let is_marker_like =
+        tcx.impl_polarity(def_id) == hir::ImplPolarity::Positive &&
+        tcx.associated_item_def_ids(trait_ref.def_id).is_empty();
+
+    // Check whether these impls would be ok for a marker trait.
+    if !is_marker_like {
+        debug!("issue33140_self_ty - not marker-like!");
+        return None;
+    }
+
+    // impl must be `impl Trait for dyn Marker1 + Marker2 + ...`
+    if trait_ref.substs.len() != 1 {
+        debug!("issue33140_self_ty - impl has substs!");
+        return None;
+    }
+
+    let predicates = tcx.predicates_of(def_id);
+    if predicates.parent.is_some() || !predicates.predicates.is_empty() {
+        debug!("issue33140_self_ty - impl has predicates {:?}!", predicates);
+        return None;
+    }
+
+    let self_ty = trait_ref.self_ty();
+    let self_ty_matches = match self_ty.sty {
+        ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
+        _ => false
+    };
+
+    if self_ty_matches {
+        debug!("issue33140_self_ty - MATCHES!");
+        Some(self_ty)
+    } else {
+        debug!("issue33140_self_ty - non-matching self type");
+        None
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -3221,6 +3338,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
         instance_def_size_estimate,
+        issue33140_self_ty,
         ..*providers
     };
 }

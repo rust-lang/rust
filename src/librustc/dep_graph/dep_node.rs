@@ -492,6 +492,7 @@ define_dep_nodes!( <'tcx>
     [] AdtDefOfItem(DefId),
     [] ImplTraitRef(DefId),
     [] ImplPolarity(DefId),
+    [] Issue33140SelfTy(DefId),
     [] FnSignature(DefId),
     [] CoerceUnsizedInfo(DefId),
 
