@@ -15,7 +15,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_xorshift 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -98,7 +98,7 @@ version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
@@ -409,7 +409,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -665,7 +665,7 @@ name = "dlmalloc"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
@@ -823,7 +823,7 @@ name = "fortanix-sgx-abi"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
 
@@ -1516,7 +1516,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1526,7 +1526,7 @@ name = "panic_unwind"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "unwind 0.0.0",
@@ -1679,7 +1679,7 @@ name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -1810,7 +1810,7 @@ name = "rand_chacha"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand_core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1832,7 +1832,7 @@ name = "rand_hc"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand_core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1857,7 +1857,7 @@ name = "rand_xorshift"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand_core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2198,7 +2198,7 @@ name = "rustc-demangle"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
 
@@ -2296,7 +2296,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -2490,7 +2490,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -2542,7 +2542,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -2655,7 +2655,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -2891,7 +2891,7 @@ dependencies = [
  "alloc 0.0.0",
  "backtrace-sys 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "dlmalloc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3232,7 +3232,7 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -3412,7 +3412,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0aa3473e85a3161b59845d6096b289bb577874cafeaf75ea1b1beaa6572c7fc"
 "checksum commoncrypto 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d056a8586ba25a1e4d61cb090900e495952c7886786fc55f909ab2f819b69007"
 "checksum commoncrypto-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1fed34f46747aa73dfaa578069fd8279d2818ade2b55f38f22a9401c7f4083e2"
-"checksum compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8ad611263b9f31bdb66e66227d3b781600fd1e68d5deee29b23f5e2ac9cb4892"
+"checksum compiler_builtins 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "e066bf05ea052f9891699abcf8c3025256e3f29b50b741441be1e614b10d9c4a"
 "checksum compiletest_rs 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)" = "89747fe073b7838343bd2c2445e7a7c2e0d415598f8925f0fa9205b9cdfc48cb"
 "checksum core-foundation 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4e2640d6d0bf22e82bed1b73c6aef8d5dd31e5abe6666c57e6d45e2649f4f887"
 "checksum core-foundation-sys 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
