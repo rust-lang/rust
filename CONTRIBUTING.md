@@ -156,6 +156,15 @@ Therefore you should use `tests/ui/update-all-references.sh` (after running
 `cargo test`) and check whether the output looks as you expect with `git diff`. Commit all
 `*.stderr` files, too.
 
+If the lint you are working on is making use of structured suggestions, the
+test file should include a `// run-rustfix` comment at the top. This will
+additionally run [rustfix](https://github.com/rust-lang-nursery/rustfix) for
+that test. Rustfix will apply the suggestions from the lint to the code of the
+test file and compare that to the contents of a `.fixed` file.
+
+Use `tests/ui/update-all-references.sh` to automatically generate the
+`.fixed` file after running `cargo test`.
+
 ### Running rustfmt
 
 [Rustfmt](https://github.com/rust-lang/rustfmt) is a tool for formatting Rust code according

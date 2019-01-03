@@ -19,5 +19,5 @@ struct Outer {
 #[deny(clippy::ref_in_deref)]
 fn main() {
     let outer = Outer { inner: 0 };
-    let inner = (&outer).inner;
+    let inner = outer.inner;
 }

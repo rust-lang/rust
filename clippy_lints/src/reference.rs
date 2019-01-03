@@ -98,7 +98,7 @@ impl LintPass for DerefPass {
 impl EarlyLintPass for DerefPass {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
-            if let ExprKind::Field(ref object, ref field_name) = e.node;
+            if let ExprKind::Field(ref object, _) = e.node;
             if let ExprKind::Paren(ref parened) = object.node;
             if let ExprKind::AddrOf(_, ref inner) = parened.node;
             then {
@@ -109,11 +109,7 @@ impl EarlyLintPass for DerefPass {
                     object.span,
                     "Creating a reference that is immediately dereferenced.",
                     "try this",
-                    format!(
-                        "{}.{}",
-                        snippet_with_applicability(cx, inner.span, "_", &mut applicability),
-                        snippet_with_applicability(cx, field_name.span, "_", &mut applicability)
-                    ),
+                    snippet_with_applicability(cx, inner.span, "_", &mut applicability).to_string(),
                     applicability,
                 );
             }
