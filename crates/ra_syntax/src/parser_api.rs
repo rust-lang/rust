@@ -61,7 +61,7 @@ impl<'t> Parser<'t> {
         Marker::new(self.0.start())
     }
 
-    /// Advances the parser by one token.
+    /// Advances the parser by one token unconditionally.
     pub(crate) fn bump(&mut self) {
         self.0.bump();
     }
@@ -91,7 +91,7 @@ impl<'t> Parser<'t> {
         self.0.error(message.into())
     }
 
-    /// Consume the next token if it is `kind`.
+    /// Consume the next token if `kind` matches.
     pub(crate) fn eat(&mut self, kind: SyntaxKind) -> bool {
         if !self.at(kind) {
             return false;
@@ -142,11 +142,13 @@ impl Marker {
         }
     }
 
-    /// Finishes the syntax tree node and assigns `kind` to it.
+    /// Finishes the syntax tree node and assigns `kind` to it,
+    /// and mark the create a `CompletedMarker` for possible future
+    /// operation like `.precede()` to deal with forward_parent.
     pub(crate) fn complete(mut self, p: &mut Parser, kind: SyntaxKind) -> CompletedMarker {
         self.bomb.defuse();
         p.0.complete(self.pos, kind);
-        CompletedMarker(self.pos, kind)
+        CompletedMarker::new(self.pos, kind)
     }
 
     /// Abandons the syntax tree node. All its children
@@ -160,13 +162,22 @@ impl Marker {
 pub(crate) struct CompletedMarker(u32, SyntaxKind);
 
 impl CompletedMarker {
-    /// This one is tricky :-)
+    fn new(pos: u32, kind: SyntaxKind) -> Self {
+        CompletedMarker(pos, kind)
+    }
+
     /// This method allows to create a new node which starts
     /// *before* the current one. That is, parser could start
     /// node `A`, then complete it, and then after parsing the
     /// whole `A`, decide that it should have started some node
     /// `B` before starting `A`. `precede` allows to do exactly
     /// that. See also docs about `forward_parent` in `Event::Start`.
+    ///
+    /// Given completed events `[START, FINISH]` and its corresponding
+    /// `CompletedMarker(pos: 0, _)`.
+    /// Append a new `START` events as `[START, FINISH, NEWSTART]`,
+    /// then mark `NEWSTART` as `START`'s parent with saving its relative
+    /// distance to `NEWSTART` into forward_parent(=2 in this case);
     pub(crate) fn precede(self, p: &mut Parser) -> Marker {
         Marker::new(p.0.precede(self.0))
     }

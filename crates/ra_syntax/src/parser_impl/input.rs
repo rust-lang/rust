@@ -4,11 +4,26 @@ use std::ops::{Add, AddAssign};
 
 pub(crate) struct ParserInput<'t> {
     text: &'t str,
+    /// start position of each token(expect whitespace and comment)
+    /// ```non-rust
+    ///  struct Foo;
+    /// ^------^---
+    /// |      |  ^-
+    /// 0      7  10
+    /// ```
+    /// (token, start_offset): `[(struct, 0), (Foo, 7), (;, 10)]`
     start_offsets: Vec<TextUnit>,
-    tokens: Vec<Token>, // non-whitespace tokens
+    /// non-whitespace/comment tokens
+    /// ```non-rust
+    /// struct Foo {}
+    /// ^^^^^^ ^^^ ^^
+    /// ```
+    /// tokens: `[struct, Foo, {, }]`
+    tokens: Vec<Token>,
 }
 
 impl<'t> ParserInput<'t> {
+    /// Generate input from tokens(expect comment and whitespace).
     pub fn new(text: &'t str, raw_tokens: &'t [Token]) -> ParserInput<'t> {
         let mut tokens = Vec::new();
         let mut start_offsets = Vec::new();
@@ -28,6 +43,7 @@ impl<'t> ParserInput<'t> {
         }
     }
 
+    /// Get the syntax kind of token at given input position.
     pub fn kind(&self, pos: InputPosition) -> SyntaxKind {
         let idx = pos.0 as usize;
         if !(idx < self.tokens.len()) {
@@ -36,7 +52,8 @@ impl<'t> ParserInput<'t> {
         self.tokens[idx].kind
     }
 
-    pub fn len(&self, pos: InputPosition) -> TextUnit {
+    /// Get the length of a token at given input position.
+    pub fn token_len(&self, pos: InputPosition) -> TextUnit {
         let idx = pos.0 as usize;
         if !(idx < self.tokens.len()) {
             return 0.into();
@@ -44,7 +61,8 @@ impl<'t> ParserInput<'t> {
         self.tokens[idx].len
     }
 
-    pub fn start(&self, pos: InputPosition) -> TextUnit {
+    /// Get the start position of a taken at given input position.
+    pub fn token_start_at(&self, pos: InputPosition) -> TextUnit {
         let idx = pos.0 as usize;
         if !(idx < self.tokens.len()) {
             return 0.into();
@@ -52,7 +70,8 @@ impl<'t> ParserInput<'t> {
         self.start_offsets[idx]
     }
 
-    pub fn text(&self, pos: InputPosition) -> &'t str {
+    /// Get the raw text of a token at given input position.
+    pub fn token_text(&self, pos: InputPosition) -> &'t str {
         let idx = pos.0 as usize;
         if !(idx < self.tokens.len()) {
             return "";

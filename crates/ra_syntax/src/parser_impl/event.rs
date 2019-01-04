@@ -36,7 +36,7 @@ pub(crate) enum Event {
     ///
     /// For left-recursive syntactic constructs, the parser produces
     /// a child node before it sees a parent. `forward_parent`
-    /// exists to allow to tweak parent-child relationships.
+    /// saves the position of current event's parent.
     ///
     /// Consider this path
     ///
@@ -84,6 +84,15 @@ pub(crate) enum Event {
     },
 }
 
+impl Event {
+    pub(crate) fn tombstone() -> Self {
+        Event::Start {
+            kind: TOMBSTONE,
+            forward_parent: None,
+        }
+    }
+}
+
 pub(super) struct EventProcessor<'a, S: Sink> {
     sink: S,
     text_pos: TextUnit,
@@ -110,17 +119,12 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
         }
     }
 
+    /// Generate the syntax tree with the control of events.
     pub(super) fn process(mut self) -> S {
-        fn tombstone() -> Event {
-            Event::Start {
-                kind: TOMBSTONE,
-                forward_parent: None,
-            }
-        }
         let mut forward_parents = Vec::new();
 
         for i in 0..self.events.len() {
-            match mem::replace(&mut self.events[i], tombstone()) {
+            match mem::replace(&mut self.events[i], Event::tombstone()) {
                 Event::Start {
                     kind: TOMBSTONE, ..
                 } => (),
@@ -129,12 +133,18 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                     kind,
                     forward_parent,
                 } => {
+                    // For events[A, B, C], B is A's forward_parent, C is B's forward_parent,
+                    // in the normal control flow, the parent-child relation: `A -> B -> C`,
+                    // while with the magic forward_parent, it writes: `C <- B <- A`.
+
+                    // append `A` into parents.
                     forward_parents.push(kind);
                     let mut idx = i;
                     let mut fp = forward_parent;
                     while let Some(fwd) = fp {
                         idx += fwd as usize;
-                        fp = match mem::replace(&mut self.events[idx], tombstone()) {
+                        // append `A`'s forward_parent `B`
+                        fp = match mem::replace(&mut self.events[idx], Event::tombstone()) {
                             Event::Start {
                                 kind,
                                 forward_parent,
@@ -144,17 +154,19 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                             }
                             _ => unreachable!(),
                         };
+                        // append `B`'s forward_parent `C` in the next stage.
                     }
+
                     for kind in forward_parents.drain(..).rev() {
                         self.start(kind);
                     }
                 }
                 Event::Finish => {
-                    let last = i == self.events.len() - 1;
-                    self.finish(last);
+                    let is_last = i == self.events.len() - 1;
+                    self.finish(is_last);
                 }
                 Event::Token { kind, n_raw_tokens } => {
-                    self.eat_ws();
+                    self.eat_trivias();
                     let n_raw_tokens = n_raw_tokens as usize;
                     let len = self.tokens[self.token_pos..self.token_pos + n_raw_tokens]
                         .iter()
@@ -171,9 +183,10 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
         self.sink
     }
 
+    /// Add the node into syntax tree but discard the comments/whitespaces.
     fn start(&mut self, kind: SyntaxKind) {
         if kind == SOURCE_FILE {
-            self.sink.start_internal(kind);
+            self.sink.start_branch(kind);
             return;
         }
         let n_trivias = self.tokens[self.token_pos..]
@@ -194,18 +207,18 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
             n_attached_trivias(kind, leading_trivias)
         };
         self.eat_n_trivias(n_trivias - n_attached_trivias);
-        self.sink.start_internal(kind);
+        self.sink.start_branch(kind);
         self.eat_n_trivias(n_attached_trivias);
     }
 
-    fn finish(&mut self, last: bool) {
-        if last {
-            self.eat_ws()
+    fn finish(&mut self, is_last: bool) {
+        if is_last {
+            self.eat_trivias()
         }
-        self.sink.finish_internal();
+        self.sink.finish_branch();
     }
 
-    fn eat_ws(&mut self) {
+    fn eat_trivias(&mut self) {
         while let Some(&token) = self.tokens.get(self.token_pos) {
             if !token.kind.is_trivia() {
                 break;
@@ -236,7 +249,7 @@ fn n_attached_trivias<'a>(
     trivias: impl Iterator<Item = (SyntaxKind, &'a str)>,
 ) -> usize {
     match kind {
-        STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | MODULE => {
+        CONST_DEF | TYPE_DEF | STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | MODULE => {
             let mut res = 0;
             for (i, (kind, text)) in trivias.enumerate() {
                 match kind {
