@@ -60,7 +60,7 @@ fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
         .visit(decl::<ast::TypeDef>)
         .visit(decl::<ast::ConstDef>)
         .visit(decl::<ast::StaticDef>)
-        .visit(|im: ast::ImplItem| {
+        .visit(|im: ast::ImplBlock| {
             let target_type = im.target_type()?;
             let target_trait = im.target_trait();
             let label = match target_trait {
@@ -121,8 +121,8 @@ impl fmt::Debug for E {}
                 StructureNode { parent: None, label: "T", navigation_range: [81; 82), node_range: [76; 88), kind: TYPE_DEF },
                 StructureNode { parent: None, label: "S", navigation_range: [96; 97), node_range: [89; 108), kind: STATIC_DEF },
                 StructureNode { parent: None, label: "C", navigation_range: [115; 116), node_range: [109; 127), kind: CONST_DEF },
-                StructureNode { parent: None, label: "impl E", navigation_range: [134; 135), node_range: [129; 138), kind: IMPL_ITEM },
-                StructureNode { parent: None, label: "impl fmt::Debug for E", navigation_range: [160; 161), node_range: [140; 164), kind: IMPL_ITEM }]"#,
+                StructureNode { parent: None, label: "impl E", navigation_range: [134; 135), node_range: [129; 138), kind: IMPL_BLOCK },
+                StructureNode { parent: None, label: "impl fmt::Debug for E", navigation_range: [160; 161), node_range: [140; 164), kind: IMPL_BLOCK }]"#,
             &structure,
         )
     }

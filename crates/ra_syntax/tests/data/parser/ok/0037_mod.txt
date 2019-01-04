@@ -14,4 +14,3 @@ SOURCE_FILE@[0; 93)
     ITEM_LIST@[91; 93)
       L_CURLY@[91; 92)
       R_CURLY@[92; 93)
-

@@ -152,7 +152,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         // unsafe default impl Foo {}
         IMPL_KW => {
             traits::impl_item(p);
-            IMPL_ITEM
+            IMPL_BLOCK
         }
         _ => {
             return if has_mods {

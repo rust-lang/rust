@@ -100,7 +100,7 @@ fn find_reparsable_node(
             ITEM_LIST => {
                 let parent = node.parent().unwrap();
                 match parent.kind() {
-                    IMPL_ITEM => grammar::impl_item_list,
+                    IMPL_BLOCK => grammar::impl_item_list,
                     TRAIT_DEF => grammar::trait_item_list,
                     MODULE => grammar::mod_item_list,
                     _ => return None,

@@ -1407,42 +1407,42 @@ impl<'a> IfExpr<'a> {
     }
 }
 
-// ImplItem
+// ImplBlock
 #[derive(Debug, Clone, Copy,)]
-pub struct ImplItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+pub struct ImplBlockNode<R: TreeRoot<RaTypes> = OwnedRoot> {
     pub(crate) syntax: SyntaxNode<R>,
 }
-pub type ImplItem<'a> = ImplItemNode<RefRoot<'a>>;
+pub type ImplBlock<'a> = ImplBlockNode<RefRoot<'a>>;
 
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ImplItemNode<R1>> for ImplItemNode<R2> {
-    fn eq(&self, other: &ImplItemNode<R1>) -> bool { self.syntax == other.syntax }
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ImplBlockNode<R1>> for ImplBlockNode<R2> {
+    fn eq(&self, other: &ImplBlockNode<R1>) -> bool { self.syntax == other.syntax }
 }
-impl<R: TreeRoot<RaTypes>> Eq for ImplItemNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ImplItemNode<R> {
+impl<R: TreeRoot<RaTypes>> Eq for ImplBlockNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ImplBlockNode<R> {
     fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
 }
 
-impl<'a> AstNode<'a> for ImplItem<'a> {
+impl<'a> AstNode<'a> for ImplBlock<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
-            IMPL_ITEM => Some(ImplItem { syntax }),
+            IMPL_BLOCK => Some(ImplBlock { syntax }),
             _ => None,
         }
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot<RaTypes>> ImplItemNode<R> {
-    pub fn borrowed(&self) -> ImplItem {
-        ImplItemNode { syntax: self.syntax.borrowed() }
+impl<R: TreeRoot<RaTypes>> ImplBlockNode<R> {
+    pub fn borrowed(&self) -> ImplBlock {
+        ImplBlockNode { syntax: self.syntax.borrowed() }
     }
-    pub fn owned(&self) -> ImplItemNode {
-        ImplItemNode { syntax: self.syntax.owned() }
+    pub fn owned(&self) -> ImplBlockNode {
+        ImplBlockNode { syntax: self.syntax.owned() }
     }
 }
 
 
-impl<'a> ImplItem<'a> {}
+impl<'a> ImplBlock<'a> {}
 
 // ImplTraitType
 #[derive(Debug, Clone, Copy,)]
@@ -2157,7 +2157,7 @@ pub enum ModuleItem<'a> {
     FnDef(FnDef<'a>),
     TraitDef(TraitDef<'a>),
     TypeDef(TypeDef<'a>),
-    ImplItem(ImplItem<'a>),
+    ImplBlock(ImplBlock<'a>),
     UseItem(UseItem<'a>),
     ExternCrateItem(ExternCrateItem<'a>),
     ConstDef(ConstDef<'a>),
@@ -2173,7 +2173,7 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
             FN_DEF => Some(ModuleItem::FnDef(FnDef { syntax })),
             TRAIT_DEF => Some(ModuleItem::TraitDef(TraitDef { syntax })),
             TYPE_DEF => Some(ModuleItem::TypeDef(TypeDef { syntax })),
-            IMPL_ITEM => Some(ModuleItem::ImplItem(ImplItem { syntax })),
+            IMPL_BLOCK => Some(ModuleItem::ImplBlock(ImplBlock { syntax })),
             USE_ITEM => Some(ModuleItem::UseItem(UseItem { syntax })),
             EXTERN_CRATE_ITEM => Some(ModuleItem::ExternCrateItem(ExternCrateItem { syntax })),
             CONST_DEF => Some(ModuleItem::ConstDef(ConstDef { syntax })),
@@ -2189,7 +2189,7 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
             ModuleItem::FnDef(inner) => inner.syntax(),
             ModuleItem::TraitDef(inner) => inner.syntax(),
             ModuleItem::TypeDef(inner) => inner.syntax(),
-            ModuleItem::ImplItem(inner) => inner.syntax(),
+            ModuleItem::ImplBlock(inner) => inner.syntax(),
             ModuleItem::UseItem(inner) => inner.syntax(),
             ModuleItem::ExternCrateItem(inner) => inner.syntax(),
             ModuleItem::ConstDef(inner) => inner.syntax(),

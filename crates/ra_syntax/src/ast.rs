@@ -279,7 +279,7 @@ impl<'a> NameRef<'a> {
     }
 }
 
-impl<'a> ImplItem<'a> {
+impl<'a> ImplBlock<'a> {
     pub fn target_type(self) -> Option<TypeRef<'a>> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),

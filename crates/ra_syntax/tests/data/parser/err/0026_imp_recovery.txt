@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 38)
-  IMPL_ITEM@[0; 14)
+  IMPL_BLOCK@[0; 14)
     IMPL_KW@[0; 4)
     TYPE_PARAM_LIST@[4; 14)
       L_ANGLE@[4; 5)
@@ -17,7 +17,7 @@ SOURCE_FILE@[0; 38)
       err: `expected trait or type`
       err: `expected `{``
   WHITESPACE@[14; 15)
-  IMPL_ITEM@[15; 37)
+  IMPL_BLOCK@[15; 37)
     IMPL_KW@[15; 19)
     TYPE_PARAM_LIST@[19; 22)
       L_ANGLE@[19; 20)
