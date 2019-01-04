@@ -1618,6 +1618,7 @@ fn predicates_defined_on<'a, 'tcx>(
             .predicates
             .extend(inferred_outlives.iter().map(|&p| (p, span)));
     }
+    debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
 }
 
@@ -1645,6 +1646,7 @@ fn predicates_of<'a, 'tcx>(
             .predicates
             .push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
     }
+    debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
 }
 
@@ -1972,10 +1974,12 @@ fn explicit_predicates_of<'a, 'tcx>(
         );
     }
 
-    Lrc::new(ty::GenericPredicates {
+    let result = Lrc::new(ty::GenericPredicates {
         parent: generics.parent,
         predicates,
-    })
+    });
+    debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
+    result
 }
 
 pub enum SizedByDefault {
