@@ -1,8 +1,10 @@
 mod full {
-    use std::env;
-    use std::fs::File;
-    use std::path::{Path, PathBuf};
-    use std::process::{Command, Stdio};
+    use std::{
+        env,
+        fs::File,
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+    };
 
     fn test_full(crate_name: &str, old_version: &str, new_version: &str) {
         let mut success = true;

@@ -1,6 +1,8 @@
 //! The translation machinery used to lift items into the context of the other crate for
 //! comparison and inference.
 
+use crate::mapping::{IdMapping, InherentEntry};
+use log::{debug, info};
 use rustc::{
     hir::def_id::DefId,
     infer::InferCtxt,
@@ -10,7 +12,6 @@ use rustc::{
         GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
     },
 };
-use semcheck::mapping::{IdMapping, InherentEntry};
 use std::collections::HashMap;
 
 /// The context in which `DefId` translation happens.

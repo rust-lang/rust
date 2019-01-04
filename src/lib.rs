@@ -1,16 +1,16 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(uniform_paths)]
 
-#[macro_use]
-extern crate log;
-
-#[cfg(test)]
-extern crate quickcheck;
-
-extern crate rand;
 extern crate rustc;
-extern crate semver;
 extern crate syntax;
 extern crate syntax_pos;
 
-pub mod semcheck;
+mod changes;
+mod mapping;
+mod mismatch;
+mod translate;
+mod traverse;
+mod typeck;
+
+pub use self::traverse::run_analysis;

@@ -1,22 +1,18 @@
-#![feature(box_syntax)]
 #![feature(rustc_private)]
 #![feature(try_from)]
 
-extern crate env_logger;
 extern crate getopts;
-#[macro_use]
-extern crate log;
 extern crate rustc;
 extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_metadata;
-extern crate semverver;
 extern crate syntax;
 
+use log::debug;
 use rustc::{hir::def_id::*, middle::cstore::ExternCrate};
 use rustc_driver::{driver::CompileController, Compilation};
-use semverver::semcheck::run_analysis;
+use semverver::run_analysis;
 use std::convert::TryInto;
 use std::{
     path::Path,
