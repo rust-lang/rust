@@ -248,9 +248,8 @@ fn n_attached_trivias<'a>(
     kind: SyntaxKind,
     trivias: impl Iterator<Item = (SyntaxKind, &'a str)>,
 ) -> usize {
-    // FIXME: parse attached trivias of CONST_DEF/TYPE_DEF
     match kind {
-        STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | MODULE => {
+        CONST_DEF | TYPE_DEF | STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | MODULE => {
             let mut res = 0;
             for (i, (kind, text)) in trivias.enumerate() {
                 match kind {
