@@ -17,11 +17,11 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(unused_variables)] implied by #[warn(unused)]
 
-error: structure field `X` should have a snake case name such as `x`
+error: structure field `X` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:10:5
    |
-LL |     X: usize //~ ERROR structure field `X` should have a snake case name such as `x`
-   |     ^^^^^^^^
+LL |     X: usize //~ ERROR structure field `X` should have a snake case name
+   |     ^ help: convert the identifier to snake case: `x`
    |
 note: lint level defined here
   --> $DIR/lint-uppercase-variables.rs:3:9
@@ -29,23 +29,23 @@ note: lint level defined here
 LL | #![deny(non_snake_case)]
    |         ^^^^^^^^^^^^^^
 
-error: variable `Xx` should have a snake case name such as `xx`
+error: variable `Xx` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:13:9
    |
-LL | fn test(Xx: usize) { //~ ERROR variable `Xx` should have a snake case name such as `xx`
-   |         ^^
+LL | fn test(Xx: usize) { //~ ERROR variable `Xx` should have a snake case name
+   |         ^^ help: convert the identifier to snake case: `xx`
 
-error: variable `Test` should have a snake case name such as `test`
+error: variable `Test` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:18:9
    |
-LL |     let Test: usize = 0; //~ ERROR variable `Test` should have a snake case name such as `test`
-   |         ^^^^
+LL |     let Test: usize = 0; //~ ERROR variable `Test` should have a snake case name
+   |         ^^^^ help: convert the identifier to snake case: `test`
 
-error: variable `Foo` should have a snake case name such as `foo`
+error: variable `Foo` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:22:9
    |
 LL |         Foo => {}
-   |         ^^^
+   |         ^^^ help: convert the identifier to snake case: `foo`
 
 error: aborting due to 4 previous errors
 

@@ -11,11 +11,11 @@ LL |         #![warn(nonstandard_style)]
    |                 ^^^^^^^^^^^^^^^^^
    = note: #[warn(non_camel_case_types)] implied by #[warn(nonstandard_style)]
 
-error: function `CamelCase` should have a snake case name such as `camel_case`
-  --> $DIR/lint-group-nonstandard-style.rs:4:1
+error: function `CamelCase` should have a snake case name
+  --> $DIR/lint-group-nonstandard-style.rs:4:4
    |
 LL | fn CamelCase() {} //~ ERROR should have a snake
-   | ^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
    |
 note: lint level defined here
   --> $DIR/lint-group-nonstandard-style.rs:1:9
@@ -24,11 +24,11 @@ LL | #![deny(nonstandard_style)]
    |         ^^^^^^^^^^^^^^^^^
    = note: #[deny(non_snake_case)] implied by #[deny(nonstandard_style)]
 
-error: function `CamelCase` should have a snake case name such as `camel_case`
-  --> $DIR/lint-group-nonstandard-style.rs:12:9
+error: function `CamelCase` should have a snake case name
+  --> $DIR/lint-group-nonstandard-style.rs:12:12
    |
 LL |         fn CamelCase() {} //~ ERROR should have a snake
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
    |
 note: lint level defined here
   --> $DIR/lint-group-nonstandard-style.rs:10:14
@@ -50,11 +50,11 @@ LL |     #[forbid(nonstandard_style)]
    |              ^^^^^^^^^^^^^^^^^
    = note: #[forbid(non_upper_case_globals)] implied by #[forbid(nonstandard_style)]
 
-warning: function `CamelCase` should have a snake case name such as `camel_case`
-  --> $DIR/lint-group-nonstandard-style.rs:20:9
+warning: function `CamelCase` should have a snake case name
+  --> $DIR/lint-group-nonstandard-style.rs:20:12
    |
 LL |         fn CamelCase() {} //~ WARN should have a snake
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
    |
 note: lint level defined here
   --> $DIR/lint-group-nonstandard-style.rs:18:17

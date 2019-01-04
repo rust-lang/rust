@@ -117,16 +117,18 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
             ));
         }
     });
-    let sym = Ident::with_empty_ctxt(Symbol::gensym(&format!(
-        "__register_diagnostic_{}", code
-    )));
+
+    let span = span.apply_mark(ecx.current_expansion.mark);
+
+    let sym = Ident::new(Symbol::gensym(&format!("__register_diagnostic_{}", code)), span);
+
     MacEager::items(smallvec![
         ecx.item_mod(
             span,
             span,
             sym,
-            Vec::new(),
-            Vec::new()
+            vec![],
+            vec![],
         )
     ])
 }

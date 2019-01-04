@@ -1,5 +1,5 @@
 #![crate_name = "NonSnakeCase"]
-//~^ ERROR crate `NonSnakeCase` should have a snake case name such as `non_snake_case`
+//~^ ERROR crate `NonSnakeCase` should have a snake case name
 #![deny(non_snake_case)]
 
 fn main() {}

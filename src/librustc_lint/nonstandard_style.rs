@@ -7,7 +7,8 @@ use lint::{EarlyContext, LateContext, LintContext, LintArray};
 use lint::{EarlyLintPass, LintPass, LateLintPass};
 use syntax::ast;
 use syntax::attr;
-use syntax_pos::Span;
+use syntax::errors::Applicability;
+use syntax_pos::{BytePos, symbol::Ident, Span};
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {
@@ -179,7 +180,8 @@ impl NonSnakeCase {
         words.join("_")
     }
 
-    fn check_snake_case(&self, cx: &LateContext, sort: &str, name: &str, span: Option<Span>) {
+    /// Checks if a given identifier is snake case, and reports a diagnostic if not.
+    fn check_snake_case(&self, cx: &LateContext, sort: &str, ident: &Ident) {
         fn is_snake_case(ident: &str) -> bool {
             if ident.is_empty() {
                 return true;
@@ -201,20 +203,28 @@ impl NonSnakeCase {
             })
         }
 
+        let name = &ident.name.as_str();
+
         if !is_snake_case(name) {
             let sc = NonSnakeCase::to_snake_case(name);
-            let msg = if sc != name {
-                format!("{} `{}` should have a snake case name such as `{}`",
-                        sort,
-                        name,
-                        sc)
+
+            let msg = format!("{} `{}` should have a snake case name", sort, name);
+            let mut err = cx.struct_span_lint(NON_SNAKE_CASE, ident.span, &msg);
+
+            // We have a valid span in almost all cases, but we don't have one when linting a crate
+            // name provided via the command line.
+            if !ident.span.is_dummy() {
+                err.span_suggestion_with_applicability(
+                    ident.span,
+                    "convert the identifier to snake case",
+                    sc,
+                    Applicability::MaybeIncorrect,
+                );
             } else {
-                format!("{} `{}` should have a snake case name", sort, name)
-            };
-            match span {
-                Some(span) => cx.span_lint(NON_SNAKE_CASE, span, &msg),
-                None => cx.lint(NON_SNAKE_CASE, &msg),
+                err.help(&format!("convert the identifier to snake case: `{}`", sc));
             }
+
+            err.emit();
         }
     }
 }
@@ -227,50 +237,75 @@ impl LintPass for NonSnakeCase {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
-        let attr_crate_name = attr::find_by_name(&cr.attrs, "crate_name")
-            .and_then(|at| at.value_str().map(|s| (at, s)));
-        if let Some(ref name) = cx.tcx.sess.opts.crate_name {
-            self.check_snake_case(cx, "crate", name, None);
-        } else if let Some((attr, name)) = attr_crate_name {
-            self.check_snake_case(cx, "crate", &name.as_str(), Some(attr.span));
+        let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
+            Some(Ident::from_str(name))
+        } else {
+            attr::find_by_name(&cr.attrs, "crate_name")
+                .and_then(|attr| attr.meta())
+                .and_then(|meta| {
+                    meta.name_value_literal().and_then(|lit| {
+                        if let ast::LitKind::Str(name, ..) = lit.node {
+                            // Discard the double quotes surrounding the literal.
+                            let sp = cx.sess().source_map().span_to_snippet(lit.span)
+                                .ok()
+                                .and_then(|snippet| {
+                                    let left = snippet.find('"')?;
+                                    let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
+
+                                    Some(
+                                        lit.span
+                                            .with_lo(lit.span.lo() + BytePos(left as u32 + 1))
+                                            .with_hi(lit.span.hi() - BytePos(right as u32)),
+                                    )
+                                })
+                                .unwrap_or_else(|| lit.span);
+
+                            Some(Ident::new(name, sp))
+                        } else {
+                            None
+                        }
+                    })
+                })
+        };
+
+        if let Some(ident) = &crate_ident {
+            self.check_snake_case(cx, "crate", ident);
         }
     }
 
     fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
-        match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                let name = param.name.ident().as_str();
-                self.check_snake_case(cx, "lifetime", &name, Some(param.span));
-            }
-            GenericParamKind::Type { .. } => {}
+        if let GenericParamKind::Lifetime { .. } = param.kind {
+            self.check_snake_case(cx, "lifetime", &param.name.ident());
         }
     }
 
-    fn check_fn(&mut self,
-                cx: &LateContext,
-                fk: FnKind,
-                _: &hir::FnDecl,
-                _: &hir::Body,
-                span: Span,
-                id: ast::NodeId) {
-        match fk {
-            FnKind::Method(name, ..) => {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext,
+        fk: FnKind,
+        _: &hir::FnDecl,
+        _: &hir::Body,
+        _: Span,
+        id: ast::NodeId,
+    ) {
+        match &fk {
+            FnKind::Method(ident, ..) => {
                 match method_context(cx, id) {
                     MethodLateContext::PlainImpl => {
-                        self.check_snake_case(cx, "method", &name.as_str(), Some(span))
+                        self.check_snake_case(cx, "method", ident);
                     }
                     MethodLateContext::TraitAutoImpl => {
-                        self.check_snake_case(cx, "trait method", &name.as_str(), Some(span))
+                        self.check_snake_case(cx, "trait method", ident);
                     }
                     _ => (),
                 }
             }
-            FnKind::ItemFn(name, _, header, _, attrs) => {
+            FnKind::ItemFn(ident, _, header, _, attrs) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
+                if header.abi != Abi::Rust && attr::contains_name(attrs, "no_mangle") {
                     return;
                 }
-                self.check_snake_case(cx, "function", &name.as_str(), Some(span))
+                self.check_snake_case(cx, "function", ident);
             }
             FnKind::Closure(_) => (),
         }
@@ -278,36 +313,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemKind::Mod(_) = it.node {
-            self.check_snake_case(cx, "module", &it.ident.as_str(), Some(it.span));
+            self.check_snake_case(cx, "module", &it.ident);
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref pnames)) = item.node {
-            self.check_snake_case(cx,
-                                  "trait method",
-                                  &item.ident.as_str(),
-                                  Some(item.span));
+        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(pnames)) = &item.node {
+            self.check_snake_case(cx, "trait method", &item.ident);
             for param_name in pnames {
-                self.check_snake_case(cx, "variable", &param_name.as_str(), Some(param_name.span));
+                self.check_snake_case(cx, "variable", param_name);
             }
         }
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        if let &PatKind::Binding(_, _, ref ident, _) = &p.node {
-            self.check_snake_case(cx, "variable", &ident.as_str(), Some(p.span));
+        if let &PatKind::Binding(_, _, ident, _) = &p.node {
+            self.check_snake_case(cx, "variable", &ident);
         }
     }
 
-    fn check_struct_def(&mut self,
-                        cx: &LateContext,
-                        s: &hir::VariantData,
-                        _: ast::Name,
-                        _: &hir::Generics,
-                        _: ast::NodeId) {
+    fn check_struct_def(
+        &mut self,
+        cx: &LateContext,
+        s: &hir::VariantData,
+        _: ast::Name,
+        _: &hir::Generics,
+        _: ast::NodeId,
+    ) {
         for sf in s.fields() {
-            self.check_snake_case(cx, "structure field", &sf.ident.as_str(), Some(sf.span));
+            self.check_snake_case(cx, "structure field", &sf.ident);
         }
     }
 }

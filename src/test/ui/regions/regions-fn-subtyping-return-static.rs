@@ -10,6 +10,7 @@
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(non_snake_case)]
 
 struct S;
 
