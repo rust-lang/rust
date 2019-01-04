@@ -465,6 +465,10 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
+                if binding.def() == Def::Err {
+                    // Do not override real bindings with `Def::Err`s from error recovery.
+                    return Ok(());
+                }
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
                         if binding.def() != old_binding.def() {
@@ -836,7 +840,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
                 if let Some(initial_module) = directive.imported_module.get() {
-                    if module != initial_module && self.ambiguity_errors.is_empty() {
+                    if !ModuleOrUniformRoot::same_def(module, initial_module)
+                        && self.ambiguity_errors.is_empty()
+                    {
                         span_bug!(directive.span, "inconsistent resolution for an import");
                     }
                 } else {
