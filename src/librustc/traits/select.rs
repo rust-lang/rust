@@ -1095,8 +1095,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .insert(trait_ref, WithDepNode::new(dep_node, result));
     }
 
-    // Due to caching of projection results, it's possible for a subobligation
+    // For various reasons, it's possible for a subobligation
     // to have a *lower* recursion_depth than the obligation used to create it.
+    // Projection sub-obligations may be returned from the projection cache,
+    // which results in obligations with an 'old' recursion_depth.
+    // Additionally, methods like ty::wf::obligations and
+    // InferCtxt.subtype_predicate produce subobligations without
+    // taking in a 'parent' depth, causing the generated subobligations
+    // to have a recursion_depth of 0
+    //
     // To ensure that obligation_depth never decreasees, we force all subobligations
     // to have at least the depth of the original obligation.
     fn add_depth<T: 'cx, I: Iterator<Item = &'cx mut Obligation<'tcx, T>>>(&self, it: I,
