@@ -1,7 +1,7 @@
-warning: type `snake_case` should have a camel case name such as `SnakeCase`
+warning: type `snake_case` should have an upper camel case name such as `SnakeCase`
   --> $DIR/lint-group-nonstandard-style.rs:22:9
    |
-LL |         struct snake_case; //~ WARN should have a camel
+LL |         struct snake_case; //~ WARN should have an upper camel
    |         ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

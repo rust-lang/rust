@@ -89,9 +89,11 @@ impl NonCamelCaseTypes {
         if !is_camel_case(name) {
             let c = to_camel_case(&name.as_str());
             let m = if c.is_empty() {
-                format!("{} `{}` should have a camel case name such as `CamelCase`", sort, name)
+                format!("{} `{}` should have an upper camel case name such as
+                 `CamelCase`", sort, name)
             } else {
-                format!("{} `{}` should have a camel case name such as `{}`", sort, name, c)
+                format!("{} `{}` should have an upper camel case name such as
+                 `{}`", sort, name, c)
             };
             cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m);
         }

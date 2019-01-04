@@ -163,7 +163,7 @@ struct s;
 This will produce:
 
 ```text
-warning: type `s` should have a camel case name such as `S`
+warning: type `s` should have an upper camel case name such as `S`
  --> src/main.rs:1:1
   |
 1 | struct s;
