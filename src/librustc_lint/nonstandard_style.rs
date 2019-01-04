@@ -356,21 +356,21 @@ declare_lint! {
 pub struct NonUpperCaseGlobals;
 
 impl NonUpperCaseGlobals {
-    fn check_upper_case(cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
-        if name.as_str().chars().any(|c| c.is_lowercase()) {
-            let uc = NonSnakeCase::to_snake_case(&name.as_str()).to_uppercase();
-            if name != &*uc {
-                cx.span_lint(NON_UPPER_CASE_GLOBALS,
-                             span,
-                             &format!("{} `{}` should have an upper case name such as `{}`",
-                                      sort,
-                                      name,
-                                      uc));
-            } else {
-                cx.span_lint(NON_UPPER_CASE_GLOBALS,
-                             span,
-                             &format!("{} `{}` should have an upper case name", sort, name));
-            }
+    fn check_upper_case(cx: &LateContext, sort: &str, ident: &Ident) {
+        let name = &ident.name.as_str();
+
+        if name.chars().any(|c| c.is_lowercase()) {
+            let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
+
+            let msg = format!("{} `{}` should have an upper case name", sort, name);
+            cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, &msg)
+                .span_suggestion_with_applicability(
+                    ident.span,
+                    "convert the identifier to upper case",
+                    uc,
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
         }
     }
 }
@@ -384,38 +384,25 @@ impl LintPass for NonUpperCaseGlobals {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemKind::Static(..) => {
-                if attr::find_by_name(&it.attrs, "no_mangle").is_some() {
-                    return;
-                }
-                NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.ident.name,
-                                                      it.span);
+            hir::ItemKind::Static(..) if !attr::contains_name(&it.attrs, "no_mangle") => {
+                NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
             }
             hir::ItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.ident.name,
-                                                      it.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "constant", &it.ident);
             }
             _ => {}
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, ti: &hir::TraitItem) {
-        match ti.node {
-            hir::TraitItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
-                                                      ti.ident.name, ti.span);
-            }
-            _ => {}
+        if let hir::TraitItemKind::Const(..) = ti.node {
+            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ti.ident);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, ii: &hir::ImplItem) {
-        match ii.node {
-            hir::ImplItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
-                                                      ii.ident.name, ii.span);
-            }
-            _ => {}
+        if let hir::ImplItemKind::Const(..) = ii.node {
+            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ii.ident);
         }
     }
 
@@ -424,10 +411,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
             if let Def::Const(..) = path.def {
                 if path.segments.len() == 1 {
-                    NonUpperCaseGlobals::check_upper_case(cx,
-                                                          "constant in pattern",
-                                                          path.segments[0].ident.name,
-                                                          path.span);
+                    NonUpperCaseGlobals::check_upper_case(
+                        cx,
+                        "constant in pattern",
+                        &path.segments[0].ident
+                    );
                 }
             }
         }

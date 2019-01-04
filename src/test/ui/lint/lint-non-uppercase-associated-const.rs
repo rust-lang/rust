@@ -6,6 +6,6 @@ struct Foo;
 impl Foo {
     const not_upper: bool = true;
 }
-//~^^ ERROR associated constant `not_upper` should have an upper case name such as `NOT_UPPER`
+//~^^ ERROR associated constant `not_upper` should have an upper case name
 
 fn main() {}

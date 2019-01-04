@@ -37,11 +37,11 @@ LL |     #[forbid(nonstandard_style)]
    |              ^^^^^^^^^^^^^^^^^
    = note: #[forbid(non_snake_case)] implied by #[forbid(nonstandard_style)]
 
-error: static variable `bad` should have an upper case name such as `BAD`
-  --> $DIR/lint-group-nonstandard-style.rs:14:9
+error: static variable `bad` should have an upper case name
+  --> $DIR/lint-group-nonstandard-style.rs:14:16
    |
 LL |         static bad: isize = 1; //~ ERROR should have an upper
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^ help: convert the identifier to upper case: `BAD`
    |
 note: lint level defined here
   --> $DIR/lint-group-nonstandard-style.rs:10:14

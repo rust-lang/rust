@@ -9,7 +9,7 @@ pub const a : isize = 97;
 fn f() {
     let r = match (0,0) {
         (0, a) => 0,
-        //~^ ERROR constant in pattern `a` should have an upper case name such as `A`
+        //~^ ERROR constant in pattern `a` should have an upper case name
         (x, y) => 1 + x + y,
     };
     assert_eq!(r, 1);
@@ -24,7 +24,7 @@ fn g() {
     use self::m::aha;
     let r = match (0,0) {
         (0, aha) => 0,
-        //~^ ERROR constant in pattern `aha` should have an upper case name such as `AHA`
+        //~^ ERROR constant in pattern `aha` should have an upper case name
         (x, y)   => 1 + x + y,
     };
     assert_eq!(r, 1);
@@ -38,7 +38,7 @@ fn h() {
     use self::n::OKAY as not_okay;
     let r = match (0,0) {
         (0, not_okay) => 0,
-//~^ ERROR constant in pattern `not_okay` should have an upper case name such as `NOT_OKAY`
+//~^ ERROR constant in pattern `not_okay` should have an upper case name
         (x, y)   => 1 + x + y,
     };
     assert_eq!(r, 1);
