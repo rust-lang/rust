@@ -51,6 +51,7 @@ mod diagnostics;
 /// in `impl Trait`, see individual commits in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'a, 'tcx: 'a> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
+    fn recurse(&self) -> bool { true }
     fn recurse_into_assoc_tys(&self) -> bool { true }
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool;
 
@@ -86,7 +87,8 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         let TraitRef { def_id, substs } = trait_ref;
-        self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) || substs.visit_with(self)
+        self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) ||
+        self.def_id_visitor.recurse() && substs.visit_with(self)
     }
 
     fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
@@ -167,7 +169,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                     // free type aliases, but this isn't done yet.
                     return false;
                 }
-                // This will also visit substs, so we don't need to recurse.
+                // This will also visit substs if necessary, so we don't need to recurse.
                 return self.visit_trait(proj.trait_ref(tcx));
             }
             ty::Dynamic(predicates, ..) => {
@@ -206,7 +208,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 bug!("unexpected type: {:?}", ty),
         }
 
-        ty.super_visit_with(self)
+        self.def_id_visitor.recurse() && ty.super_visit_with(self)
     }
 }
 
@@ -325,6 +327,7 @@ struct FindMin<'a, 'tcx, VL: VisibilityLike> {
 
 impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'a, 'tcx> for FindMin<'a, 'tcx, VL> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+    fn recurse(&self) -> bool { VL::RECURSE }
     fn recurse_into_assoc_tys(&self) -> bool { false }
     fn visit_def_id(&mut self, def_id: DefId, _kind: &str, _descr: &dyn fmt::Display) -> bool {
         self.min = VL::new_min(self, def_id);
@@ -334,6 +337,7 @@ impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'a, 'tcx> for FindMin<'a, 'tcx, 
 
 trait VisibilityLike: Sized {
     const MAX: Self;
+    const RECURSE: bool = true;
     fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self;
 
     // Returns an over-approximation (`recurse_into_assoc_tys` = false) of visibility due to
@@ -357,6 +361,12 @@ impl VisibilityLike for ty::Visibility {
 }
 impl VisibilityLike for Option<AccessLevel> {
     const MAX: Self = Some(AccessLevel::Public);
+    // Type inference is very smart sometimes.
+    // It can make an impl reachable even some components of its type or trait are unreachable.
+    // E.g. methods of `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
+    // can be usable from other crates (#57264). So we skip substs when calculating reachability
+    // and consider an impl reachable if its "primary" type and trait are reachable.
+    const RECURSE: bool = false;
     fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self {
         cmp::min(if let Some(node_id) = find.tcx.hir().as_local_node_id(def_id) {
             find.access_levels.map.get(&node_id).cloned()
