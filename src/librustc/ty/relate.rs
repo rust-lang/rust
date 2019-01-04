@@ -18,6 +18,8 @@ use rustc_target::spec::abi;
 use hir as ast;
 use traits;
 
+use rustc_data_structures::fx::FxHashSet;
+
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
 #[derive(Clone, Debug)]
@@ -601,40 +603,37 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
         use ty::ExistentialPredicate::*;
 
         let tcx = relation.tcx();
-        let (a_buf, b_buf);
-        let (a_norm, b_norm): (&[_], &[_]) = match relation.trait_object_mode() {
-            TraitObjectMode::NoSquash => {
-                (a, b)
-            }
-            TraitObjectMode::SquashAutoTraitsIssue33140 => {
-                // Treat auto-trait "principal" components as equal
-                // to the non-principal components, to make
-                // `dyn Send+Sync = dyn Sync+Send`.
-                let normalize = |d: &[ty::ExistentialPredicate<'tcx>]| {
-                    let mut result: Vec<_> = d.iter().map(|pi| match pi {
-                        Trait(ref a) if tcx.trait_is_auto(a.def_id) => {
-                            AutoTrait(a.def_id)
-                        },
-                        other => *other
-                    }).collect();
+        if let TraitObjectMode::SquashAutoTraitsIssue33140 = relation.trait_object_mode() {
+            // Treat auto-trait "principal" components as equal
+            // to the non-principal components, to make
+            // `dyn Send+Sync = dyn Sync+Send`.
+            //
+            // In that case,both types will be "fully resolved" (because
+            // auto-traits can't have type parameters or lifetimes), and we
+            // can just return either of them - we don't perform a full
+            // relation because that would "spread" the unnormalized types.
 
-                    result.sort_by(|a, b| a.stable_cmp(tcx, b));
-                    result.dedup();
-                    result
-                };
+            let auto_traits = |d: &[ty::ExistentialPredicate<'tcx>]| {
+                d.iter().map(|pi| match pi {
+                    Trait(ref a) if tcx.trait_is_auto(a.def_id) => {
+                        Ok(a.def_id)
+                    },
+                    AutoTrait(def_id) => Ok(*def_id),
+                    _ => Err(()),
+                }).collect::<Result<FxHashSet<_>, ()>>()
+            };
 
-                a_buf = normalize(a);
-                b_buf = normalize(b);
-
-                (&a_buf, &b_buf)
+            match (&auto_traits(a), &auto_traits(b)) {
+                (Ok(a_dids), Ok(b_dids)) if a_dids == b_dids => return Ok(a),
+                _ => {}
             }
         };
 
-        if a_norm.len() != b_norm.len() {
+        if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_norm.iter().zip(b_norm.iter()).map(|(ep_a, ep_b)| {
+        let v = a.iter().zip(b.iter()).map(|(ep_a, ep_b)| {
             use ty::ExistentialPredicate::*;
             match (*ep_a, *ep_b) {
                 (Trait(ref a), Trait(ref b)) => Ok(Trait(relation.relate(a, b)?)),
