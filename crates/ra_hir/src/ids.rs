@@ -185,8 +185,9 @@ impl DefId {
 
     /// Returns the containing impl block, if this is an impl item.
     pub fn impl_block(self, db: &impl HirDatabase) -> Cancelable<Option<ImplBlock>> {
-        let crate_impls = db.impls_in_crate(ctry!(self.krate(db)?))?;
-        Ok(ImplBlock::containing(crate_impls, self))
+        let loc = self.loc(db);
+        let module_impls = db.impls_in_module(loc.source_root_id, loc.module_id)?;
+        Ok(ImplBlock::containing(module_impls, self))
     }
 }
 

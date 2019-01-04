@@ -3,36 +3,36 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::ast::{self, AstNode};
-use ra_db::{LocationIntener, Cancelable};
+use ra_db::{LocationIntener, Cancelable, SourceRootId};
 
 use crate::{
-    Crate, DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
+    DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
     Module, Function,
     db::HirDatabase,
     type_ref::TypeRef,
-    module::{ModuleSourceNode},
+    module::{ModuleSourceNode, ModuleId},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplBlock {
-    crate_impl_blocks: Arc<CrateImplBlocks>,
+    module_impl_blocks: Arc<ModuleImplBlocks>,
     impl_id: ImplId,
 }
 
 impl ImplBlock {
     pub(crate) fn containing(
-        crate_impl_blocks: Arc<CrateImplBlocks>,
+        module_impl_blocks: Arc<ModuleImplBlocks>,
         def_id: DefId,
     ) -> Option<ImplBlock> {
-        let impl_id = *crate_impl_blocks.impls_by_def.get(&def_id)?;
+        let impl_id = *module_impl_blocks.impls_by_def.get(&def_id)?;
         Some(ImplBlock {
-            crate_impl_blocks,
+            module_impl_blocks,
             impl_id,
         })
     }
 
     fn impl_data(&self) -> &ImplData {
-        &self.crate_impl_blocks.impls[self.impl_id]
+        &self.module_impl_blocks.impls[self.impl_id]
     }
 
     pub fn target_trait(&self) -> Option<&TypeRef> {
@@ -126,17 +126,22 @@ impl ImplItem {
 pub struct ImplId(pub RawId);
 impl_arena_id!(ImplId);
 
-/// We have to collect all impl blocks in a crate, to later be able to find
-/// impls for specific types.
+/// Collection of impl blocks is a two-step process: First we collect the blocks
+/// per-module; then we build an index of all impl blocks in the crate. This
+/// way, we avoid having to do this process for the whole crate whenever someone
+/// types in any file; as long as the impl blocks in the file don't change, we
+/// don't need to do the second step again.
+///
+/// (The second step does not yet exist currently.)
 #[derive(Debug, PartialEq, Eq)]
-pub struct CrateImplBlocks {
+pub struct ModuleImplBlocks {
     impls: Arena<ImplId, ImplData>,
     impls_by_def: FxHashMap<DefId, ImplId>,
 }
 
-impl CrateImplBlocks {
+impl ModuleImplBlocks {
     fn new() -> Self {
-        CrateImplBlocks {
+        ModuleImplBlocks {
             impls: Arena::default(),
             impls_by_def: FxHashMap::default(),
         }
@@ -159,24 +164,17 @@ impl CrateImplBlocks {
             }
         }
 
-        for (_, child) in module.children() {
-            self.collect(db, child)?;
-        }
-
         Ok(())
     }
 }
 
-pub(crate) fn impls_in_crate(
+pub(crate) fn impls_in_module(
     db: &impl HirDatabase,
-    krate: Crate,
-) -> Cancelable<Arc<CrateImplBlocks>> {
-    let mut result = CrateImplBlocks::new();
-    let root_module = if let Some(root) = krate.root_module(db)? {
-        root
-    } else {
-        return Ok(Arc::new(result));
-    };
-    result.collect(db, root_module)?;
+    source_root_id: SourceRootId,
+    module_id: ModuleId,
+) -> Cancelable<Arc<ModuleImplBlocks>> {
+    let mut result = ModuleImplBlocks::new();
+    let module = Module::new(db, source_root_id, module_id)?;
+    result.collect(db, module)?;
     Ok(Arc::new(result))
 }

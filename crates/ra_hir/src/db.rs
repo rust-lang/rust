@@ -4,7 +4,7 @@ use ra_syntax::{SyntaxNode, SourceFileNode};
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
-    Crate, DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
+    DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
@@ -13,7 +13,7 @@ use crate::{
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
     adt::{StructData, EnumData},
-    impl_block::CrateImplBlocks,
+    impl_block::ModuleImplBlocks,
 };
 
 salsa::query_group! {
@@ -89,9 +89,9 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::module::imp::module_tree;
     }
 
-    fn impls_in_crate(krate: Crate) -> Cancelable<Arc<CrateImplBlocks>> {
+    fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {
         type ImplsInCrateQuery;
-        use fn crate::impl_block::impls_in_crate;
+        use fn crate::impl_block::impls_in_module;
     }
 }
 
