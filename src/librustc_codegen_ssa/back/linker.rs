@@ -81,11 +81,7 @@ impl LinkerInfo {
             }
 
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
-                Box::new(WasmLd {
-                    cmd,
-                    sess,
-                    info: self
-                }) as Box<dyn Linker>
+                Box::new(WasmLd::new(cmd, sess, self)) as Box<dyn Linker>
             }
         }
     }
@@ -876,6 +872,67 @@ pub struct WasmLd<'a> {
     info: &'a LinkerInfo,
 }
 
+impl<'a> WasmLd<'a> {
+    fn new(mut cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
+        // There have been reports in the wild (rustwasm/wasm-bindgen#119) of
+        // using threads causing weird hangs and bugs. Disable it entirely as
+        // this isn't yet the bottleneck of compilation at all anyway.
+        cmd.arg("--no-threads");
+
+        // By default LLD only gives us one page of stack (64k) which is a
+        // little small. Default to a larger stack closer to other PC platforms
+        // (1MB) and users can always inject their own link-args to override this.
+        cmd.arg("-z").arg("stack-size=1048576");
+
+        // By default LLD's memory layout is:
+        //
+        // 1. First, a blank page
+        // 2. Next, all static data
+        // 3. Finally, the main stack (which grows down)
+        //
+        // This has the unfortunate consequence that on stack overflows you
+        // corrupt static data and can cause some exceedingly weird bugs. To
+        // help detect this a little sooner we instead request that the stack is
+        // placed before static data.
+        //
+        // This means that we'll generate slightly larger binaries as references
+        // to static data will take more bytes in the ULEB128 encoding, but
+        // stack overflow will be guaranteed to trap as it underflows instead of
+        // corrupting static data.
+        cmd.arg("--stack-first");
+
+        // FIXME we probably shouldn't pass this but instead pass an explicit
+        // whitelist of symbols we'll allow to be undefined. Unfortunately
+        // though we can't handle symbols like `log10` that LLVM injects at a
+        // super late date without actually parsing object files. For now let's
+        // stick to this and hopefully fix it before stabilization happens.
+        cmd.arg("--allow-undefined");
+
+        // For now we just never have an entry symbol
+        cmd.arg("--no-entry");
+
+        // Make the default table accessible
+        cmd.arg("--export-table");
+
+        // Rust code should never have warnings, and warnings are often
+        // indicative of bugs, let's prevent them.
+        cmd.arg("--fatal-warnings");
+
+        // The symbol visibility story is a bit in flux right now with LLD.
+        // It's... not entirely clear to me what's going on, but this looks to
+        // make everything work when `export_symbols` isn't otherwise called for
+        // things like executables.
+        cmd.arg("--export-dynamic");
+
+        // LLD only implements C++-like demangling, which doesn't match our own
+        // mangling scheme. Tell LLD to not demangle anything and leave it up to
+        // us to demangle these symbols later.
+        cmd.arg("--no-demangle");
+
+        WasmLd { cmd, sess, info }
+    }
+}
+
 impl<'a> Linker for WasmLd<'a> {
     fn link_dylib(&mut self, lib: &str) {
         self.cmd.arg("-l").arg(lib);
@@ -982,61 +1039,6 @@ impl<'a> Linker for WasmLd<'a> {
     }
 
     fn finalize(&mut self) -> Command {
-        // There have been reports in the wild (rustwasm/wasm-bindgen#119) of
-        // using threads causing weird hangs and bugs. Disable it entirely as
-        // this isn't yet the bottleneck of compilation at all anyway.
-        self.cmd.arg("--no-threads");
-
-        // By default LLD only gives us one page of stack (64k) which is a
-        // little small. Default to a larger stack closer to other PC platforms
-        // (1MB) and users can always inject their own link-args to override this.
-        self.cmd.arg("-z").arg("stack-size=1048576");
-
-        // By default LLD's memory layout is:
-        //
-        // 1. First, a blank page
-        // 2. Next, all static data
-        // 3. Finally, the main stack (which grows down)
-        //
-        // This has the unfortunate consequence that on stack overflows you
-        // corrupt static data and can cause some exceedingly weird bugs. To
-        // help detect this a little sooner we instead request that the stack is
-        // placed before static data.
-        //
-        // This means that we'll generate slightly larger binaries as references
-        // to static data will take more bytes in the ULEB128 encoding, but
-        // stack overflow will be guaranteed to trap as it underflows instead of
-        // corrupting static data.
-        self.cmd.arg("--stack-first");
-
-        // FIXME we probably shouldn't pass this but instead pass an explicit
-        // whitelist of symbols we'll allow to be undefined. Unfortunately
-        // though we can't handle symbols like `log10` that LLVM injects at a
-        // super late date without actually parsing object files. For now let's
-        // stick to this and hopefully fix it before stabilization happens.
-        self.cmd.arg("--allow-undefined");
-
-        // For now we just never have an entry symbol
-        self.cmd.arg("--no-entry");
-
-        // Make the default table accessible
-        self.cmd.arg("--export-table");
-
-        // Rust code should never have warnings, and warnings are often
-        // indicative of bugs, let's prevent them.
-        self.cmd.arg("--fatal-warnings");
-
-        // The symbol visibility story is a bit in flux right now with LLD.
-        // It's... not entirely clear to me what's going on, but this looks to
-        // make everything work when `export_symbols` isn't otherwise called for
-        // things like executables.
-        self.cmd.arg("--export-dynamic");
-
-        // LLD only implements C++-like demangling, which doesn't match our own
-        // mangling scheme. Tell LLD to not demangle anything and leave it up to
-        // us to demangle these symbols later.
-        self.cmd.arg("--no-demangle");
-
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
