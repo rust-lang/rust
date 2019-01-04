@@ -1,6 +1,6 @@
-//
-#![allow(dead_code)]
+// compile-pass
 
+#![allow(dead_code)]
 
 #![forbid(non_camel_case_types)]
 #![forbid(non_upper_case_globals)]

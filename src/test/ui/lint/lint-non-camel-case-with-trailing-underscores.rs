@@ -1,3 +1,5 @@
+// compile-pass
+
 #![allow(dead_code)]
 // This is ok because we often use the trailing underscore to mean 'prime'
 

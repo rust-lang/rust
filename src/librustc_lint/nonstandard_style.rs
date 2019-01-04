@@ -41,13 +41,12 @@ declare_lint! {
 pub struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
-    fn check_case(&self, cx: &EarlyContext, sort: &str, name: ast::Name, span: Span) {
+    fn check_case(&self, cx: &EarlyContext, sort: &str, ident: &Ident) {
         fn char_has_case(c: char) -> bool {
             c.is_lowercase() || c.is_uppercase()
         }
 
-        fn is_camel_case(name: ast::Name) -> bool {
-            let name = name.as_str();
+        fn is_camel_case(name: &str) -> bool {
             let name = name.trim_matches('_');
             if name.is_empty() {
                 return true;
@@ -87,14 +86,20 @@ impl NonCamelCaseTypes {
                 }).0
         }
 
+        let name = &ident.name.as_str();
+
         if !is_camel_case(name) {
-            let c = to_camel_case(&name.as_str());
-            let m = if c.is_empty() {
-                format!("{} `{}` should have a camel case name such as `CamelCase`", sort, name)
-            } else {
-                format!("{} `{}` should have a camel case name such as `{}`", sort, name, c)
-            };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m);
+            let c = to_camel_case(name);
+
+            let msg = format!("{} `{}` should have a camel case name", sort, name);
+            cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, &msg)
+                .span_suggestion_with_applicability(
+                    ident.span,
+                    "convert the identifier to camel case",
+                    c,
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
         }
     }
 }
@@ -123,19 +128,19 @@ impl EarlyLintPass for NonCamelCaseTypes {
             ast::ItemKind::Ty(..) |
             ast::ItemKind::Enum(..) |
             ast::ItemKind::Struct(..) |
-            ast::ItemKind::Union(..) => self.check_case(cx, "type", it.ident.name, it.span),
-            ast::ItemKind::Trait(..) => self.check_case(cx, "trait", it.ident.name, it.span),
+            ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
+            ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
             _ => (),
         }
     }
 
     fn check_variant(&mut self, cx: &EarlyContext, v: &ast::Variant, _: &ast::Generics) {
-        self.check_case(cx, "variant", v.node.ident.name, v.span);
+        self.check_case(cx, "variant", &v.node.ident);
     }
 
     fn check_generic_param(&mut self, cx: &EarlyContext, param: &ast::GenericParam) {
         if let ast::GenericParamKind::Type { .. } = param.kind {
-            self.check_case(cx, "type parameter", param.ident.name, param.ident.span);
+            self.check_case(cx, "type parameter", &param.ident);
         }
     }
 }
