@@ -4,7 +4,7 @@
 // compile-pass
 
 #![warn(unused_must_use)]
-#![feature(cfg_attr_multi)]
+#![cfg_attr(stage0, feature(cfg_attr_multi))]
 
 #[cfg_attr(any(), deprecated, must_use)]
 struct Struct {}
