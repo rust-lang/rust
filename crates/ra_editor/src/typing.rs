@@ -256,6 +256,11 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Opti
 fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
     match left.kind() {
         L_PAREN | L_BRACK => return "",
+        L_CURLY => {
+            if let USE_TREE = right.kind() {
+                return "";
+            }
+        }
         _ => (),
     }
     match right.kind() {
@@ -327,6 +332,20 @@ fn foo() {
 fn foo() {
     foo(<|>92)
 }",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_items() {
+        // No space after the '{'
+        check_join_lines(
+            r"
+<|>use ra_syntax::{
+    TextUnit, TextRange,
+};",
+            r"
+<|>use ra_syntax::{TextUnit, TextRange,
+};",
         );
     }
 
