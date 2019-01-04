@@ -249,7 +249,8 @@ fn bar() {
 fn test_fn_signature_with_docs_simple() {
     let (desc, param) = get_signature(
         r#"
-// test
+/// test
+// non-doc-comment
 fn foo(j: u32) -> u32 {
     j
 }

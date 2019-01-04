@@ -115,6 +115,7 @@ pub trait DocCommentsOwner<'a>: AstNode<'a> {
     /// That is, strips leading `///` and joins lines
     fn doc_comment_text(self) -> RustString {
         self.doc_comments()
+            .filter(|comment| comment.is_doc_comment())
             .map(|comment| {
                 let prefix = comment.prefix();
                 let trimmed = comment
@@ -206,6 +207,10 @@ impl<'a> Comment<'a> {
         }
     }
 
+    pub fn is_doc_comment(&self) -> bool {
+        self.flavor().is_doc_comment()
+    }
+
     pub fn prefix(&self) -> &'static str {
         self.flavor().prefix()
     }
@@ -235,6 +240,13 @@ impl CommentFlavor {
             Doc => "///",
             ModuleDoc => "//!",
             Multiline => "/*",
+        }
+    }
+
+    pub fn is_doc_comment(&self) -> bool {
+        match self {
+            CommentFlavor::Doc | CommentFlavor::ModuleDoc => true,
+            _ => false,
         }
     }
 }
@@ -468,4 +480,17 @@ impl<'a> PrefixExpr<'a> {
             _ => None,
         }
     }
+}
+
+#[test]
+fn test_doc_comment_of_items() {
+    let file = SourceFileNode::parse(
+        r#"
+        //! doc
+        // non-doc
+        mod foo {}
+        "#,
+    );
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("doc", module.doc_comment_text());
 }
