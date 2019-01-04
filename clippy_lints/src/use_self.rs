@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::utils::{in_macro, span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
@@ -172,7 +172,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if in_macro(item.span) {
+        if in_external_macro(cx.sess(), item.span) {
             return;
         }
         if_chain! {
