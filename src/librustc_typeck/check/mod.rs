@@ -4859,13 +4859,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    /// Given a function block's `NodeId`, return its `FnDecl` , `None` otherwise.
+    /// Given a function block's `NodeId`, return its `FnDecl` if it exists, or `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, ast::Ident)> {
         let parent = self.tcx.hir().get(self.tcx.hir().get_parent(blk_id));
-        self.get_node_fn_decl(parent).map(|(fn_decl, ident , _)| (fn_decl, ident))
+        self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
-    /// Given a function `Node`, return its `FnDecl` , `None` otherwise.
+    /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
     fn get_node_fn_decl(&self, node: Node) -> Option<(hir::FnDecl, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
