@@ -57,13 +57,16 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
-    on(Args="()", note="wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"),
-    message="expected a `{Fn}<{Args}>` closure, found `{Self}`",
-    label="expected an `Fn<{Args}>` closure, found `{Self}`",
+    on(
+        Args = "()",
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+    ),
+    message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
+    label = "expected an `Fn<{Args}>` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use]
-pub trait Fn<Args> : FnMut<Args> {
+pub trait Fn<Args>: FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
@@ -136,13 +139,16 @@ pub trait Fn<Args> : FnMut<Args> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
-    on(Args="()", note="wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"),
-    message="expected a `{FnMut}<{Args}>` closure, found `{Self}`",
-    label="expected an `FnMut<{Args}>` closure, found `{Self}`",
+    on(
+        Args = "()",
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+    ),
+    message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
+    label = "expected an `FnMut<{Args}>` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use]
-pub trait FnMut<Args> : FnOnce<Args> {
+pub trait FnMut<Args>: FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
@@ -215,9 +221,12 @@ pub trait FnMut<Args> : FnOnce<Args> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
-    on(Args="()", note="wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"),
-    message="expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
-    label="expected an `FnOnce<{Args}>` closure, found `{Self}`",
+    on(
+        Args = "()",
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+    ),
+    message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
+    label = "expected an `FnOnce<{Args}>` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use]
@@ -233,8 +242,9 @@ pub trait FnOnce<Args> {
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A,F:?Sized> Fn<A> for &F
-        where F : Fn<A>
+    impl<A, F: ?Sized> Fn<A> for &F
+    where
+        F: Fn<A>,
     {
         extern "rust-call" fn call(&self, args: A) -> F::Output {
             (**self).call(args)
@@ -242,8 +252,9 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A,F:?Sized> FnMut<A> for &F
-        where F : Fn<A>
+    impl<A, F: ?Sized> FnMut<A> for &F
+    where
+        F: Fn<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (**self).call(args)
@@ -251,8 +262,9 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A,F:?Sized> FnOnce<A> for &F
-        where F : Fn<A>
+    impl<A, F: ?Sized> FnOnce<A> for &F
+    where
+        F: Fn<A>,
     {
         type Output = F::Output;
 
@@ -262,8 +274,9 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A,F:?Sized> FnMut<A> for &mut F
-        where F : FnMut<A>
+    impl<A, F: ?Sized> FnMut<A> for &mut F
+    where
+        F: FnMut<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (*self).call_mut(args)
@@ -271,8 +284,9 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A,F:?Sized> FnOnce<A> for &mut F
-        where F : FnMut<A>
+    impl<A, F: ?Sized> FnOnce<A> for &mut F
+    where
+        F: FnMut<A>,
     {
         type Output = F::Output;
         extern "rust-call" fn call_once(self, args: A) -> F::Output {
