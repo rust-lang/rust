@@ -346,7 +346,7 @@ where
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db)? {
-                        let def_id = module.def_id(self.db);
+                        let def_id = module.def_id;
                         self.add_module_item(
                             &mut module_items,
                             dep.name.clone(),

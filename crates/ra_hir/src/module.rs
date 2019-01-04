@@ -224,7 +224,7 @@ impl ModuleTree {
 /// `ModuleSource` is the syntax tree element that produced this module:
 /// either a file, or an inlinde module.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ModuleSource(SourceItemId);
+pub struct ModuleSource(pub(crate) SourceItemId);
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
@@ -255,12 +255,12 @@ impl ModuleId {
         let link = self.parent_link(tree)?;
         Some(tree.links[link].owner)
     }
-    fn crate_root(self, tree: &ModuleTree) -> ModuleId {
+    pub(crate) fn crate_root(self, tree: &ModuleTree) -> ModuleId {
         generate(Some(self), move |it| it.parent(tree))
             .last()
             .unwrap()
     }
-    fn child(self, tree: &ModuleTree, name: &Name) -> Option<ModuleId> {
+    pub(crate) fn child(self, tree: &ModuleTree, name: &Name) -> Option<ModuleId> {
         let link = tree.mods[self]
             .children
             .iter()
