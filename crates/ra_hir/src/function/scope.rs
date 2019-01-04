@@ -5,19 +5,19 @@ use ra_syntax::{
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
 };
+use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::LocalSyntaxPtr;
 
-use crate::{
-    arena::{Arena, Id},
-    Name, AsName,
-};
+use crate::{Name, AsName};
 
-pub(crate) type ScopeId = Id<ScopeData>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ScopeId(RawId);
+impl_arena_id!(ScopeId);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FnScopes {
     pub self_param: Option<LocalSyntaxPtr>,
-    scopes: Arena<ScopeData>,
+    scopes: Arena<ScopeId, ScopeData>,
     scope_for: FxHashMap<LocalSyntaxPtr, ScopeId>,
 }
 

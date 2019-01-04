@@ -12,6 +12,7 @@ crossbeam-channel = "0.3.5"
 log = "0.4.6"
 
 thread_worker = { path = "../thread_worker" }
+ra_arena = { path = "../ra_arena" }
 
 [dev-dependencies]
 tempfile = "3"

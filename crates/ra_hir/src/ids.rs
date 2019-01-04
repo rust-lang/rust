@@ -1,10 +1,8 @@
 use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
 use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, SourceFile, AstNode, ast};
+use ra_arena::{Arena, RawId, impl_arena_id};
 
-use crate::{
-    HirDatabase, PerNs, ModuleId, Module, Def, Function, Struct, Enum,
-    arena::{Arena, Id},
-};
+use crate::{HirDatabase, PerNs, ModuleId, Module, Def, Function, Struct, Enum};
 
 /// hir makes a heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor
@@ -206,7 +204,9 @@ impl DefKind {
 
 /// Identifier of item within a specific file. This is stable over reparses, so
 /// it's OK to use it as a salsa key/value.
-pub(crate) type SourceFileItemId = Id<SyntaxNode>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SourceFileItemId(RawId);
+impl_arena_id!(SourceFileItemId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
@@ -219,7 +219,7 @@ pub struct SourceItemId {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
     file_id: HirFileId,
-    arena: Arena<SyntaxNode>,
+    arena: Arena<SourceFileItemId, SyntaxNode>,
 }
 
 impl SourceFileItems {

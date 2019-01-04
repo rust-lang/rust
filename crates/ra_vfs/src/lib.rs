@@ -13,7 +13,6 @@
 //! VFS is based on a concept of roots: a set of directories on the file system
 //! which are watched for changes. Typically, there will be a root for each
 //! Cargo package.
-mod arena;
 mod io;
 
 use std::{
@@ -32,10 +31,7 @@ use relative_path::RelativePathBuf;
 use crossbeam_channel::Receiver;
 use walkdir::DirEntry;
 use thread_worker::WorkerHandle;
-
-use crate::{
-    arena::{ArenaId, Arena},
-};
+use ra_arena::{Arena, RawId, impl_arena_id};
 
 pub use crate::io::TaskResult as VfsTask;
 
@@ -68,29 +64,13 @@ fn has_rs_extension(p: &Path) -> bool {
     p.extension() == Some(OsStr::new("rs"))
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub struct VfsRoot(pub u32);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct VfsRoot(pub RawId);
+impl_arena_id!(VfsRoot);
 
-impl ArenaId for VfsRoot {
-    fn from_u32(idx: u32) -> VfsRoot {
-        VfsRoot(idx)
-    }
-    fn to_u32(self) -> u32 {
-        self.0
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub struct VfsFile(pub u32);
-
-impl ArenaId for VfsFile {
-    fn from_u32(idx: u32) -> VfsFile {
-        VfsFile(idx)
-    }
-    fn to_u32(self) -> u32 {
-        self.0
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct VfsFile(pub RawId);
+impl_arena_id!(VfsFile);
 
 struct VfsFileData {
     root: VfsRoot,

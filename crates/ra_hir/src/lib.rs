@@ -19,7 +19,6 @@ pub mod db;
 mod mock;
 mod query_definitions;
 mod path;
-mod arena;
 pub mod source_binder;
 
 mod ids;
