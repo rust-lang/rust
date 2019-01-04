@@ -1,26 +1,12 @@
-pub use ra_db::{CrateId, Cancelable};
+use ra_db::{CrateId, Cancelable};
 
-use crate::{HirDatabase, Module, Name, AsName, HirFileId};
-
-/// hir::Crate describes a single crate. It's the main inteface with which
-/// crate's dependencies interact. Mostly, it should be just a proxy for the
-/// root module.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Crate {
-    crate_id: CrateId,
-}
-
-#[derive(Debug)]
-pub struct CrateDependency {
-    pub krate: Crate,
-    pub name: Name,
-}
+use crate::{Module, HirFileId, db::HirDatabase, Crate, CrateDependency, AsName};
 
 impl Crate {
     pub(crate) fn new(crate_id: CrateId) -> Crate {
         Crate { crate_id }
     }
-    pub fn dependencies(&self, db: &impl HirDatabase) -> Vec<CrateDependency> {
+    pub(crate) fn dependencies_impl(&self, db: &impl HirDatabase) -> Vec<CrateDependency> {
         let crate_graph = db.crate_graph();
         crate_graph
             .dependencies(self.crate_id)
@@ -31,7 +17,7 @@ impl Crate {
             })
             .collect()
     }
-    pub fn root_module(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+    pub(crate) fn root_module_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         let crate_graph = db.crate_graph();
         let file_id = crate_graph.crate_root(self.crate_id);
         let source_root_id = db.file_source_root(file_id);

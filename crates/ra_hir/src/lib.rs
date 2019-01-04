@@ -24,8 +24,6 @@ pub mod source_binder;
 mod ids;
 mod macros;
 mod name;
-// can't use `crate` or `r#crate` here :(
-mod krate;
 mod module;
 mod function;
 mod adt;
@@ -34,16 +32,19 @@ mod ty;
 mod impl_block;
 mod expr;
 
+pub mod code_model_api;
+mod code_model_impl;
+
 use crate::{
     db::HirDatabase,
     name::{AsName, KnownName},
     ids::{DefKind, SourceItemId, SourceFileItemId, SourceFileItems},
+    code_model_api::{Crate, CrateDependency}
 };
 
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    krate::Crate,
     ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc},
     macros::{MacroDef, MacroInput, MacroExpansion},
     module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
