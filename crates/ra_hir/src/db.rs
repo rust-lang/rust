@@ -90,7 +90,7 @@ pub trait HirDatabase: SyntaxDatabase
     }
 
     fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {
-        type ImplsInCrateQuery;
+        type ImplsInModuleQuery;
         use fn crate::impl_block::impls_in_module;
     }
 }
