@@ -686,7 +686,7 @@ declare_features! (
     (accepted, repr_packed, "1.33.0", Some(33158), None),
     // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
-// `#[cfg_attr(predicate, multiple, attributes, here)]`
+    // `#[cfg_attr(predicate, multiple, attributes, here)]`
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
 );
 
