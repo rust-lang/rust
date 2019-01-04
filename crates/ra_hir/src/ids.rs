@@ -2,7 +2,7 @@ use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
 use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
-use crate::{HirDatabase, PerNs, ModuleId, Module, Def, Function, Struct, Enum};
+use crate::{HirDatabase, PerNs, ModuleId, Module, Def, Function, Struct, Enum, ImplBlock, Crate};
 
 /// hir makes a heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor
@@ -176,6 +176,18 @@ impl DefId {
     pub fn module(self, db: &impl HirDatabase) -> Cancelable<Module> {
         let loc = self.loc(db);
         Module::new(db, loc.source_root_id, loc.module_id)
+    }
+
+    /// Returns the containing crate.
+    pub fn krate(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
+        Ok(self.module(db)?.krate(db))
+    }
+
+    /// Returns the containing impl block, if this is an impl item.
+    pub fn impl_block(self, db: &impl HirDatabase) -> Cancelable<Option<ImplBlock>> {
+        let loc = self.loc(db);
+        let module_impls = db.impls_in_module(loc.source_root_id, loc.module_id)?;
+        Ok(ImplBlock::containing(module_impls, self))
     }
 }
 

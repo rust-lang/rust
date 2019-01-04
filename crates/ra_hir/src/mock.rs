@@ -30,6 +30,10 @@ impl MockDatabase {
         let file_id = db.add_file(&mut source_root, "/main.rs", text);
         db.query_mut(ra_db::SourceRootQuery)
             .set(WORKSPACE, Arc::new(source_root.clone()));
+
+        let mut crate_graph = CrateGraph::default();
+        crate_graph.add_crate_root(file_id);
+        db.set_crate_graph(crate_graph);
         (db, source_root, file_id)
     }
 
@@ -203,6 +207,7 @@ salsa::database_storage! {
             fn type_for_field() for db::TypeForFieldQuery;
             fn struct_data() for db::StructDataQuery;
             fn enum_data() for db::EnumDataQuery;
+            fn impls_in_module() for db::ImplsInModuleQuery;
         }
     }
 }

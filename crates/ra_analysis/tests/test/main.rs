@@ -138,14 +138,14 @@ fn test_resolve_parent_module_for_inline() {
 fn test_resolve_crate_root() {
     let mock = MockAnalysis::with_files(
         "
-        //- /lib.rs
+        //- /bar.rs
         mod foo;
-        //- /foo.rs
+        //- /bar/foo.rs
         // emtpy <|>
     ",
     );
-    let root_file = mock.id_of("/lib.rs");
-    let mod_file = mock.id_of("/foo.rs");
+    let root_file = mock.id_of("/bar.rs");
+    let mod_file = mock.id_of("/bar/foo.rs");
     let mut host = mock.analysis_host();
     assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 

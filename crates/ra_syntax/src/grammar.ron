@@ -284,6 +284,7 @@ Grammar(
             options: [ "ItemList" ]
         ),
         "ItemList": (
+            collections: [["impl_items", "ImplItem"]],
             traits: [ "FnDefOwner", "ModuleItemOwner" ],
         ),
         "ConstDef": ( traits: [
@@ -307,7 +308,7 @@ Grammar(
             "AttrsOwner",
             "DocCommentsOwner"
         ] ),
-        "ImplBlock": (collections: []),
+        "ImplBlock": (options: ["ItemList"]),
 
         "ParenType": (options: ["TypeRef"]),
         "TupleType": ( collections: [["fields", "TypeRef"]] ),
@@ -350,6 +351,9 @@ Grammar(
         "ModuleItem": (
             enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeDef", "ImplBlock",
                    "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ]
+        ),
+        "ImplItem": (
+            enum: ["FnDef", "TypeDef", "ConstDef"]
         ),
 
         "TupleExpr": (),
@@ -530,7 +534,8 @@ Grammar(
                 ["params", "Param"]
             ]
         ),
-        "SelfParam": (),
+        "SelfParam": (options: ["TypeRef", "SelfKw"]),
+        "SelfKw": (),
         "Param": (
             options: [ "Pat", "TypeRef" ],
         ),

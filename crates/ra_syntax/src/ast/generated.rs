@@ -1442,7 +1442,39 @@ impl<R: TreeRoot<RaTypes>> ImplBlockNode<R> {
 }
 
 
-impl<'a> ImplBlock<'a> {}
+impl<'a> ImplBlock<'a> {
+    pub fn item_list(self) -> Option<ItemList<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// ImplItem
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImplItem<'a> {
+    FnDef(FnDef<'a>),
+    TypeDef(TypeDef<'a>),
+    ConstDef(ConstDef<'a>),
+}
+
+impl<'a> AstNode<'a> for ImplItem<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            FN_DEF => Some(ImplItem::FnDef(FnDef { syntax })),
+            TYPE_DEF => Some(ImplItem::TypeDef(TypeDef { syntax })),
+            CONST_DEF => Some(ImplItem::ConstDef(ConstDef { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            ImplItem::FnDef(inner) => inner.syntax(),
+            ImplItem::TypeDef(inner) => inner.syntax(),
+            ImplItem::ConstDef(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<'a> ImplItem<'a> {}
 
 // ImplTraitType
 #[derive(Debug, Clone, Copy,)]
@@ -1555,7 +1587,11 @@ impl<R: TreeRoot<RaTypes>> ItemListNode<R> {
 
 impl<'a> ast::FnDefOwner<'a> for ItemList<'a> {}
 impl<'a> ast::ModuleItemOwner<'a> for ItemList<'a> {}
-impl<'a> ItemList<'a> {}
+impl<'a> ItemList<'a> {
+    pub fn impl_items(self) -> impl Iterator<Item = ImplItem<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // Label
 #[derive(Debug, Clone, Copy,)]
@@ -3452,6 +3488,43 @@ impl<'a> ReturnExpr<'a> {
     }
 }
 
+// SelfKw
+#[derive(Debug, Clone, Copy,)]
+pub struct SelfKwNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type SelfKw<'a> = SelfKwNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SelfKwNode<R1>> for SelfKwNode<R2> {
+    fn eq(&self, other: &SelfKwNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for SelfKwNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for SelfKwNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for SelfKw<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            SELF_KW => Some(SelfKw { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> SelfKwNode<R> {
+    pub fn borrowed(&self) -> SelfKw {
+        SelfKwNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> SelfKwNode {
+        SelfKwNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> SelfKw<'a> {}
+
 // SelfParam
 #[derive(Debug, Clone, Copy,)]
 pub struct SelfParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
@@ -3487,7 +3560,15 @@ impl<R: TreeRoot<RaTypes>> SelfParamNode<R> {
 }
 
 
-impl<'a> SelfParam<'a> {}
+impl<'a> SelfParam<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn self_kw(self) -> Option<SelfKw<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // SlicePat
 #[derive(Debug, Clone, Copy,)]

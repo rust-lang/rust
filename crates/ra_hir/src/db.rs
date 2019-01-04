@@ -13,6 +13,7 @@ use crate::{
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
     adt::{StructData, EnumData},
+    impl_block::ModuleImplBlocks,
 };
 
 salsa::query_group! {
@@ -86,6 +87,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
         type ModuleTreeQuery;
         use fn crate::module::imp::module_tree;
+    }
+
+    fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {
+        type ImplsInModuleQuery;
+        use fn crate::impl_block::impls_in_module;
     }
 }
 

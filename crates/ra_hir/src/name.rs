@@ -51,6 +51,7 @@ impl Name {
             "u128" => KnownName::U128,
             "f32" => KnownName::F32,
             "f64" => KnownName::F64,
+            "Self" => KnownName::Self_,
             _ => return None,
         };
         Some(name)
@@ -84,7 +85,7 @@ impl AsName for ra_db::Dependency {
 // const ISIZE: Name = Name::new("isize")
 // ```
 // but const-fn is not that powerful yet.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum KnownName {
     Isize,
     I8,
@@ -102,4 +103,6 @@ pub(crate) enum KnownName {
 
     F32,
     F64,
+
+    Self_,
 }
