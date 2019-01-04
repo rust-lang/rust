@@ -329,12 +329,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure"
         };
 
-        let (desc_place, msg_place, msg_borrow) = self.describe_place_for_conflicting_borrow(
-            place, &issued_borrow.borrowed_place,
-        );
-        let via = |msg: String| if msg.is_empty() { msg } else { format!(" (via `{}`)", msg) };
-        let msg_place = via(msg_place);
-        let msg_borrow = via(msg_borrow);
+        let (desc_place, msg_place, msg_borrow, union_type_name) =
+            self.describe_place_for_conflicting_borrow(place, &issued_borrow.borrowed_place);
 
         let explanation = self.explain_why_borrow_contains_point(context, issued_borrow, None);
         let second_borrow_desc = if explanation.is_explained() {
@@ -516,6 +512,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         }
 
+        if union_type_name != "" {
+            err.note(&format!(
+                "`{}` is a field of the union `{}`, so it overlaps the field `{}`",
+                msg_place, union_type_name, msg_borrow,
+            ));
+        }
+
         explanation
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
 
@@ -549,7 +552,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &self,
         first_borrowed_place: &Place<'tcx>,
         second_borrowed_place: &Place<'tcx>,
-    ) -> (String, String, String) {
+    ) -> (String, String, String, String) {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let is_union = |place: &Place<'tcx>| -> bool {
@@ -600,7 +603,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 .unwrap_or_else(|| "_".to_owned());
                             let desc_second = self.describe_place(second_borrowed_place)
                                 .unwrap_or_else(|| "_".to_owned());
-                            return Some((desc_base, desc_first, desc_second));
+
+                            // Also compute the name of the union type, eg. `Foo` so we
+                            // can add a helpful note with it.
+                            let ty = base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+
+                            return Some((desc_base, desc_first, desc_second, ty.to_string()));
                         },
                         _ => current = base,
                     }
@@ -612,7 +620,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // only return the description of the first place.
                 let desc_place = self.describe_place(first_borrowed_place)
                     .unwrap_or_else(|| "_".to_owned());
-                (desc_place, "".to_string(), "".to_string())
+                (desc_place, "".to_string(), "".to_string(), "".to_string())
             })
     }
 

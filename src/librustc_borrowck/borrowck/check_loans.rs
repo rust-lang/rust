@@ -557,12 +557,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 if new_loan.loan_path.has_fork(&old_loan.loan_path) && common.is_some() {
                     let nl = self.bccx.loan_path_to_string(&common.unwrap());
                     let ol = nl.clone();
-                    let new_loan_msg = format!(" (via `{}`)",
-                                               self.bccx.loan_path_to_string(
-                                                   &new_loan.loan_path));
-                    let old_loan_msg = format!(" (via `{}`)",
-                                               self.bccx.loan_path_to_string(
-                                                   &old_loan.loan_path));
+                    let new_loan_msg = self.bccx.loan_path_to_string(&new_loan.loan_path);
+                    let old_loan_msg = self.bccx.loan_path_to_string(&old_loan.loan_path);
                     (nl, ol, new_loan_msg, old_loan_msg)
                 } else {
                     (self.bccx.loan_path_to_string(&new_loan.loan_path),

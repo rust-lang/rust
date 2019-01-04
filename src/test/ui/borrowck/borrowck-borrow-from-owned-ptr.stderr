@@ -138,7 +138,7 @@ error[E0502]: cannot borrow `foo` (via `foo.bar2`) as immutable because `foo` is
 LL |     let bar1 = &mut foo.bar1;
    |                     -------- mutable borrow occurs here (via `foo.bar1`)
 LL |     let _foo1 = &foo.bar2; //~ ERROR cannot borrow
-   |                  ^^^^^^^^ immutable borrow occurs here (via `foo.bar2`)
+   |                  ^^^^^^^^ immutable borrow of `foo.bar2` -- which overlaps with `foo.bar1` -- occurs here
 LL |     *bar1;
 LL | }
    | - mutable borrow ends here

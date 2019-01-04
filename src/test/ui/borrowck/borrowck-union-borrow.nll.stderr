@@ -24,9 +24,11 @@ error[E0502]: cannot borrow `u` (via `u.b`) as mutable because it is also borrow
 LL |             let ra = &u.a;
    |                      ---- immutable borrow occurs here (via `u.a`)
 LL |             let rmb = &mut u.b; //~ ERROR cannot borrow `u` (via `u.b`) as mutable because `u` is also borrowed as immutable (via `u.a`)
-   |                       ^^^^^^^^ mutable borrow occurs here (via `u.b`)
+   |                       ^^^^^^^^ mutable borrow of `u.b` -- which overlaps with `u.a` -- occurs here
 LL |             drop(ra);
    |                  -- immutable borrow later used here
+   |
+   = note: `u.b` is a field of the union `U`, so it overlaps the field `u.a`
 
 error[E0506]: cannot assign to `u.b` because it is borrowed
   --> $DIR/borrowck-union-borrow.rs:51:13
@@ -84,9 +86,11 @@ error[E0502]: cannot borrow `u` (via `u.b`) as immutable because it is also borr
 LL |             let rma = &mut u.a;
    |                       -------- mutable borrow occurs here (via `u.a`)
 LL |             let rb = &u.b; //~ ERROR cannot borrow `u` (via `u.b`) as immutable because `u` is also borrowed as mutable (via `u.a`)
-   |                      ^^^^ immutable borrow occurs here (via `u.b`)
+   |                      ^^^^ immutable borrow of `u.b` -- which overlaps with `u.a` -- occurs here
 LL |             drop(rma);
    |                  --- mutable borrow later used here
+   |
+   = note: `u.b` is a field of the union `U`, so it overlaps the field `u.a`
 
 error[E0503]: cannot use `u.b` because it was mutably borrowed
   --> $DIR/borrowck-union-borrow.rs:83:21
@@ -108,6 +112,8 @@ LL |             let rmb2 = &mut u.b; //~ ERROR cannot borrow `u` (via `u.b`) as
    |                        ^^^^^^^^ second mutable borrow occurs here (via `u.b`)
 LL |             drop(rma);
    |                  --- first borrow later used here
+   |
+   = note: `u.b` is a field of the union `U`, so it overlaps the field `u.a`
 
 error[E0506]: cannot assign to `u.b` because it is borrowed
   --> $DIR/borrowck-union-borrow.rs:94:13
