@@ -49,7 +49,7 @@ impl fmt::Debug for c_void {
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 extern {
     type VaListImpl;
 }
@@ -74,7 +74,7 @@ impl fmt::Debug for VaListImpl {
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 struct VaListImpl {
     stack: *mut (),
     gr_top: *mut (),
@@ -90,7 +90,7 @@ struct VaListImpl {
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 struct VaListImpl {
     gpr: u8,
     fpr: u8,
@@ -106,7 +106,7 @@ struct VaListImpl {
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 struct VaListImpl {
     gp_offset: i32,
     fp_offset: i32,
@@ -120,7 +120,7 @@ struct VaListImpl {
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 #[repr(transparent)]
 pub struct VaList<'a>(&'a mut VaListImpl);
 
@@ -140,7 +140,7 @@ mod sealed_trait {
     #[unstable(feature = "c_variadic",
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
-               issue = "27745")]
+               issue = "44930")]
     pub trait VaArgSafe {}
 }
 
@@ -150,7 +150,7 @@ macro_rules! impl_va_arg_safe {
             #[unstable(feature = "c_variadic",
                        reason = "the `c_variadic` feature has not been properly tested on \
                                  all supported platforms",
-                       issue = "27745")]
+                       issue = "44930")]
             impl sealed_trait::VaArgSafe for $t {}
         )+
     }
@@ -163,12 +163,12 @@ impl_va_arg_safe!{f64}
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 impl<T> sealed_trait::VaArgSafe for *mut T {}
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 impl<T> sealed_trait::VaArgSafe for *const T {}
 
 impl<'a> VaList<'a> {
@@ -176,7 +176,7 @@ impl<'a> VaList<'a> {
     #[unstable(feature = "c_variadic",
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
-               issue = "27745")]
+               issue = "44930")]
     pub unsafe fn arg<T: sealed_trait::VaArgSafe>(&mut self) -> T {
         va_arg(self)
     }
@@ -185,7 +185,7 @@ impl<'a> VaList<'a> {
     #[unstable(feature = "c_variadic",
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
-               issue = "27745")]
+               issue = "44930")]
     pub unsafe fn copy<F, R>(&self, f: F) -> R
             where F: for<'copy> FnOnce(VaList<'copy>) -> R {
         #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
