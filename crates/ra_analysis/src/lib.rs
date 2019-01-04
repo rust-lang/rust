@@ -394,7 +394,7 @@ impl Analysis {
     pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
         self.db.doc_text_for(nav)
     }
-    /// Returns a `mod name;` declaration whihc created the current module.
+    /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         self.db.parent_module(position)
     }
