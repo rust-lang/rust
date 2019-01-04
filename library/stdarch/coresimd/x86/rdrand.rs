@@ -2,10 +2,15 @@
 //! on-chip hardware random number generator which has been seeded by an
 //! on-chip entropy source.
 
-extern "platform-intrinsic" {
+#[allow(improper_ctypes)]
+extern "unadjusted" {
+    #[link_name = "llvm.x86.rdrand.16"]
     fn x86_rdrand16_step() -> (u16, i32);
+    #[link_name = "llvm.x86.rdrand.32"]
     fn x86_rdrand32_step() -> (u32, i32);
+    #[link_name = "llvm.x86.rdseed.16"]
     fn x86_rdseed16_step() -> (u16, i32);
+    #[link_name = "llvm.x86.rdseed.32"]
     fn x86_rdseed32_step() -> (u32, i32);
 }
 

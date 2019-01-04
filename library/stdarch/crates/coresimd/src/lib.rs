@@ -36,7 +36,8 @@
     avx512_target_feature,
     mips_target_feature,
     powerpc_target_feature,
-    wasm_target_feature
+    wasm_target_feature,
+    abi_unadjusted
 )]
 // NB: When running nvptx/nvptx64 cross tests, enabling "integer_atomics" yields
 // a compile-time error: 'unknown feature `integer_atomics`'. This ought to be
