@@ -71,6 +71,8 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/
     - env: INTEGRATION=hyperium/hyper
       if: repo =~ /^rust-lang\/rust-clippy$/
+    - env: INTEGRATION=bluss/rust-itertools
+      if: repo =~ /^rust-lang\/rust-clippy$/
   allow_failures:
   - os: windows
     env: CARGO_INCREMENTAL=0 BASE_TESTS=true
