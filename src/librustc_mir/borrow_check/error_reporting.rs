@@ -214,6 +214,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 note_msg, ty,
                         ));
                         note = false;
+                        break;
                     }
                 }
                 if note {
