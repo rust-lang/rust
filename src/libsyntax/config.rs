@@ -5,7 +5,6 @@ use feature_gate::{
     Features,
     get_features,
     GateIssue,
-    emit_feature_err,
 };
 use {fold, attr};
 use ast;
@@ -93,8 +92,6 @@ impl<'a> StripUnconfigured<'a> {
         if !attr.check_name("cfg_attr") {
             return vec![attr];
         }
-
-        let cfg_attr_span = attr.span;
 
         let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
             parser.expect(&token::OpenDelim(token::Paren))?;

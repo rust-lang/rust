@@ -5,7 +5,6 @@
 // compile-pass
 
 #![warn(unused_must_use)]
-#![cfg_attr(stage0, feature(cfg_attr_multi))]
 
 #[cfg_attr(all(), deprecated, must_use)]
 struct MustUseDeprecated {}
