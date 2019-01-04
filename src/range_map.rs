@@ -203,6 +203,7 @@ mod tests {
         }
         // Check
         assert_eq!(to_vec(&map, 10, 1), vec![42]);
+        assert_eq!(map.map.len(), 3);
 
         // Insert with size 0
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
@@ -212,6 +213,7 @@ mod tests {
             *x = 19;
         }
         assert_eq!(to_vec(&map, 10, 2), vec![42, -1]);
+        assert_eq!(map.map.len(), 3);
     }
 
     #[test]
@@ -223,6 +225,7 @@ mod tests {
         for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(1)) {
             *x = 43;
         }
+        assert_eq!(map.map.len(), 5);
         assert_eq!(
             to_vec(&map, 10, 10),
             vec![-1, 42, -1, -1, -1, 43, -1, -1, -1, -1]
@@ -233,6 +236,7 @@ mod tests {
                 *x = 23;
             }
         }
+        assert_eq!(map.map.len(), 6);
 
         assert_eq!(
             to_vec(&map, 10, 10),
@@ -244,6 +248,7 @@ mod tests {
         for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(10)) {
             *x = 19;
         }
+        assert_eq!(map.map.len(), 6);
         assert_eq!(map.iter(Size::from_bytes(19), Size::from_bytes(1))
             .map(|&t| t).collect::<Vec<_>>(), vec![19]);
         assert_eq!(map.iter(Size::from_bytes(20), Size::from_bytes(1))
