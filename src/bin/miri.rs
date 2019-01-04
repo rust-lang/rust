@@ -154,6 +154,14 @@ fn init_late_loggers() {
             rustc_driver::init_rustc_env_logger();
         }
     }
+
+    // If MIRI_BACKTRACE is set and RUST_CTFE_BACKTRACE is not, set RUST_CTFE_BACKTRACE.
+    // Do this late, so we really only apply this to miri's errors.
+    if let Ok(var) = env::var("MIRI_BACKTRACE") {
+        if env::var("RUST_CTFE_BACKTRACE") == Err(env::VarError::NotPresent) {
+            env::set_var("RUST_CTFE_BACKTRACE", &var);
+        }
+    }
 }
 
 fn find_sysroot() -> String {
