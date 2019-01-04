@@ -1,6 +1,6 @@
 language: shell
 sudo: required
-dist: trusty
+dist: xenial
 services:
   - docker
 addons:
