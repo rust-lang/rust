@@ -16,6 +16,18 @@ fn two_phase2() {
     v.push(v.len());
 }
 
+fn two_phase3(b: bool) {
+    let mut x = &mut vec![];
+    let mut y = vec![];
+    x.push((
+        {
+            if b { x = &mut y };
+            22
+        },
+        x.len(),
+    ));
+}
+
 /*
 fn two_phase_overlapping1() {
     let mut x = vec![];
@@ -62,6 +74,8 @@ fn with_interior_mutability() {
 fn main() {
     two_phase1();
     two_phase2();
+    two_phase3(false);
+    two_phase3(true);
     match_two_phase();
     with_interior_mutability();
     //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
