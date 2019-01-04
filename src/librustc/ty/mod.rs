@@ -122,7 +122,6 @@ mod sty;
 /// *on-demand* infrastructure.
 #[derive(Clone)]
 pub struct CrateAnalysis {
-    pub name: String,
     pub glob_map: Option<hir::GlobMap>,
 }
 

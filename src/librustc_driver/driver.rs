@@ -784,7 +784,6 @@ where
             },
 
             analysis: ty::CrateAnalysis {
-                name: crate_name.to_string(),
                 glob_map: if resolver.make_glob_map {
                     Some(resolver.glob_map)
                 } else {
