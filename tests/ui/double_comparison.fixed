@@ -10,10 +10,30 @@
 // run-rustfix
 
 fn main() {
-    println!();
-    println!("");
-
-    match "a" {
-        _ => println!(""),
+    let x = 1;
+    let y = 2;
+    if x <= y {
+        // do something
+    }
+    if x <= y {
+        // do something
+    }
+    if x >= y {
+        // do something
+    }
+    if x >= y {
+        // do something
+    }
+    if x != y {
+        // do something
+    }
+    if x != y {
+        // do something
+    }
+    if x == y {
+        // do something
+    }
+    if x == y {
+        // do something
     }
 }

@@ -9,11 +9,18 @@
 
 // run-rustfix
 
+#[warn(clippy::cast_lossless)]
+#[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
-    println!();
-    println!("");
-
-    match "a" {
-        _ => println!(""),
-    }
+    // Test clippy::cast_lossless with casts to floating-point types
+    f32::from(1i8);
+    f64::from(1i8);
+    f32::from(1u8);
+    f64::from(1u8);
+    f32::from(1i16);
+    f64::from(1i16);
+    f32::from(1u16);
+    f64::from(1u16);
+    f64::from(1i32);
+    f64::from(1u32);
 }

@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 #![allow(unused_must_use)]
 #![warn(clippy::writeln_empty_string)]
 use std::io::Write;

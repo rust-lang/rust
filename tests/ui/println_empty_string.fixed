@@ -11,9 +11,9 @@
 
 fn main() {
     println!();
-    println!("");
+    println!();
 
     match "a" {
-        _ => println!(""),
+        _ => println!(),
     }
 }
