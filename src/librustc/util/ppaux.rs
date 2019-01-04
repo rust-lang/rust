@@ -729,13 +729,26 @@ define_print! {
                 }
 
                 // Builtin bounds.
-                for did in self.auto_traits() {
+                let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
+                    tcx.item_path_str(did)
+                }).collect();
+
+                // The auto traits come ordered by `DefPathHash`. While
+                // `DefPathHash` is *stable* in the sense that it depends on
+                // neither the host nor the phase of the moon, it depends
+                // "pseudorandomly" on the compiler version and the target.
+                //
+                // To avoid that causing instabilities in compiletest
+                // output, sort the auto-traits alphabetically.
+                auto_traits.sort();
+
+                for auto_trait in auto_traits {
                     if !first {
                         write!(f, " + ")?;
                     }
                     first = false;
 
-                    write!(f, "{}", tcx.item_path_str(did))?;
+                    write!(f, "{}", auto_trait)?;
                 }
 
                 Ok(())
