@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-fundamental-trait-objects.rs:12:1
+  --> $DIR/coherence-fundamental-trait-objects.rs:15:1
    |
 LL | impl Misc for dyn Fundamental<Local> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
