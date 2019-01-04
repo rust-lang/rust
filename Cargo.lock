@@ -684,6 +684,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra_arena"
+version = "0.1.0"
+
+[[package]]
 name = "ra_cli"
 version = "0.1.0"
 dependencies = [
@@ -808,6 +812,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_arena 0.1.0",
  "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",

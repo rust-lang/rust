@@ -49,7 +49,7 @@ impl ServerWorldState {
         let (mut vfs, roots) = Vfs::new(roots);
         for r in roots {
             let is_local = vfs.root2path(r).starts_with(&root);
-            change.add_root(SourceRootId(r.0), is_local);
+            change.add_root(SourceRootId(r.0.into()), is_local);
         }
 
         let mut crate_graph = CrateGraph::default();
@@ -60,7 +60,7 @@ impl ServerWorldState {
                 for tgt in pkg.targets(ws) {
                     let root = tgt.root(ws);
                     if let Some(file_id) = vfs.load(root) {
-                        let file_id = FileId(file_id.0);
+                        let file_id = FileId(file_id.0.into());
                         let crate_id = crate_graph.add_crate_root(file_id);
                         if tgt.kind(ws) == TargetKind::Lib {
                             pkg_to_lib_crate.insert(pkg, crate_id);
@@ -113,14 +113,19 @@ impl ServerWorldState {
                     if root_path.starts_with(&self.root) {
                         self.roots_to_scan -= 1;
                         for (file, path, text) in files {
-                            change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
+                            change.add_file(
+                                SourceRootId(root.0.into()),
+                                FileId(file.0.into()),
+                                path,
+                                text,
+                            );
                         }
                     } else {
                         let files = files
                             .into_iter()
-                            .map(|(vfsfile, path, text)| (FileId(vfsfile.0), path, text))
+                            .map(|(vfsfile, path, text)| (FileId(vfsfile.0.into()), path, text))
                             .collect();
-                        libs.push((SourceRootId(root.0), files));
+                        libs.push((SourceRootId(root.0.into()), files));
                     }
                 }
                 VfsChange::AddFile {
@@ -129,13 +134,18 @@ impl ServerWorldState {
                     path,
                     text,
                 } => {
-                    change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
+                    change.add_file(
+                        SourceRootId(root.0.into()),
+                        FileId(file.0.into()),
+                        path,
+                        text,
+                    );
                 }
                 VfsChange::RemoveFile { root, file, path } => {
-                    change.remove_file(SourceRootId(root.0), FileId(file.0), path)
+                    change.remove_file(SourceRootId(root.0.into()), FileId(file.0.into()), path)
                 }
                 VfsChange::ChangeFile { file, text } => {
-                    change.change_file(FileId(file.0), text);
+                    change.change_file(FileId(file.0.into()), text);
                 }
             }
         }
@@ -173,18 +183,18 @@ impl ServerWorld {
             .read()
             .path2file(&path)
             .ok_or_else(|| format_err!("unknown file: {}", path.display()))?;
-        Ok(FileId(file.0))
+        Ok(FileId(file.0.into()))
     }
 
     pub fn file_id_to_uri(&self, id: FileId) -> Result<Url> {
-        let path = self.vfs.read().file2path(VfsFile(id.0));
+        let path = self.vfs.read().file2path(VfsFile(id.0.into()));
         let url = Url::from_file_path(&path)
             .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
         Ok(url)
     }
 
     pub fn path_to_uri(&self, root: SourceRootId, path: &RelativePathBuf) -> Result<Url> {
-        let base = self.vfs.read().root2path(VfsRoot(root.0));
+        let base = self.vfs.read().root2path(VfsRoot(root.0.into()));
         let path = path.to_path(base);
         let url = Url::from_file_path(&path)
             .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
