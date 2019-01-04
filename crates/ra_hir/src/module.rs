@@ -9,6 +9,7 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     SyntaxNode,
 };
+use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{SourceRootId, FileId, Cancelable};
 use relative_path::RelativePathBuf;
 
@@ -16,7 +17,6 @@ use crate::{
     Def, DefKind, DefLoc, DefId,
     Name, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
     HirFileId,
-    arena::{Arena, Id},
 };
 
 pub use self::nameres::{ModuleScope, Resolution, Namespace, PerNs};
@@ -173,6 +173,14 @@ impl Module {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ModuleId(RawId);
+impl_arena_id!(ModuleId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LinkId(RawId);
+impl_arena_id!(LinkId);
+
 /// Physically, rust source is organized as a set of files, but logically it is
 /// organized as a tree of modules. Usually, a single file corresponds to a
 /// single module, but it is not nessary the case.
@@ -182,8 +190,8 @@ impl Module {
 /// always have one parent).
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ModuleTree {
-    mods: Arena<ModuleData>,
-    links: Arena<LinkData>,
+    mods: Arena<ModuleId, ModuleData>,
+    links: Arena<LinkId, LinkData>,
 }
 
 impl ModuleTree {
@@ -209,9 +217,6 @@ pub(crate) enum ModuleSourceNode {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
 }
-
-pub type ModuleId = Id<ModuleData>;
-type LinkId = Id<LinkData>;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Problem {
