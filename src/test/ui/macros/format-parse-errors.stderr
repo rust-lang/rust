@@ -1,0 +1,44 @@
+error: requires at least a format string argument
+  --> $DIR/format-parse-errors.rs:2:5
+   |
+LL |     format!(); //~ ERROR requires at least a format string argument
+   |     ^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: expected expression, found keyword `struct`
+  --> $DIR/format-parse-errors.rs:3:13
+   |
+LL |     format!(struct); //~ ERROR expected expression
+   |             ^^^^^^ expected expression
+
+error: expected expression, found `<eof>`
+  --> $DIR/format-parse-errors.rs:4:23
+   |
+LL |     format!("s", name =); //~ ERROR expected expression
+   |                       ^ expected expression
+
+error: expected expression, found keyword `struct`
+  --> $DIR/format-parse-errors.rs:5:24
+   |
+LL |     format!("s", foo = struct); //~ ERROR expected expression
+   |                        ^^^^^^ expected expression
+
+error: expected expression, found keyword `struct`
+  --> $DIR/format-parse-errors.rs:6:18
+   |
+LL |     format!("s", struct); //~ ERROR expected expression
+   |                  ^^^^^^ expected expression
+
+error: format argument must be a string literal
+  --> $DIR/format-parse-errors.rs:9:13
+   |
+LL |     format!(123); //~ ERROR format argument must be a string literal
+   |             ^^^
+help: you might be missing a string literal to format with
+   |
+LL |     format!("{}", 123); //~ ERROR format argument must be a string literal
+   |             ^^^^^
+
+error: aborting due to 6 previous errors
+

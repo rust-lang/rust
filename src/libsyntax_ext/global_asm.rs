@@ -8,11 +8,13 @@
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
 
+use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
+use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -31,24 +33,47 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
                                        feature_gate::EXPLAIN_GLOBAL_ASM);
     }
 
+    match parse_global_asm(cx, sp, tts) {
+        Ok(Some(global_asm)) => {
+            MacEager::items(smallvec![P(ast::Item {
+                ident: ast::Ident::with_empty_ctxt(Symbol::intern("")),
+                attrs: Vec::new(),
+                id: ast::DUMMY_NODE_ID,
+                node: ast::ItemKind::GlobalAsm(P(global_asm)),
+                vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                span: sp,
+                tokens: None,
+            })])
+        }
+        Ok(None) => DummyResult::any(sp),
+        Err(mut err) => {
+            err.emit();
+            DummyResult::any(sp)
+        }
+    }
+}
+
+fn parse_global_asm<'a>(
+    cx: &mut ExtCtxt<'a>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree]
+) -> Result<Option<ast::GlobalAsm>, DiagnosticBuilder<'a>> {
     let mut p = cx.new_parser_from_tts(tts);
-    let (asm, _) = match expr_to_string(cx,
-                                        panictry!(p.parse_expr()),
-                                        "inline assembly must be a string literal") {
+
+    if p.token == token::Eof {
+        let mut err = cx.struct_span_err(sp, "macro requires a string literal as an argument");
+        err.span_label(sp, "string literal required");
+        return Err(err);
+    }
+
+    let expr = p.parse_expr()?;
+    let (asm, _) = match expr_to_string(cx, expr, "inline assembly must be a string literal") {
         Some((s, st)) => (s, st),
-        None => return DummyResult::any(sp),
+        None => return Ok(None),
     };
 
-    MacEager::items(smallvec![P(ast::Item {
-        ident: ast::Ident::with_empty_ctxt(Symbol::intern("")),
-        attrs: Vec::new(),
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ItemKind::GlobalAsm(P(ast::GlobalAsm {
-            asm,
-            ctxt: cx.backtrace(),
-        })),
-        vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
-        span: sp,
-        tokens: None,
-    })])
+    Ok(Some(ast::GlobalAsm {
+        asm,
+        ctxt: cx.backtrace(),
+    }))
 }

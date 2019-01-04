@@ -23,7 +23,7 @@ use syntax::json::JsonEmitter;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::DUMMY_SP;
-use errors;
+use errors::{self, FatalError};
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
 
@@ -429,7 +429,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
         let control = &driver::CompileController::basic();
 
-        let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
+        let krate = match driver::phase_1_parse_input(control, &sess, &input) {
+            Ok(krate) => krate,
+            Err(mut e) => {
+                e.emit();
+                FatalError.raise();
+            }
+        };
 
         let name = match crate_name {
             Some(ref crate_name) => crate_name.clone(),

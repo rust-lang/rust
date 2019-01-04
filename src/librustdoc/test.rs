@@ -1,4 +1,4 @@
-use errors;
+use errors::{self, FatalError};
 use errors::emitter::ColorConfig;
 use rustc_data_structures::sync::Lrc;
 use rustc_lint;
@@ -84,9 +84,14 @@ pub fn run(mut options: Options) -> isize {
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
-        let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
-                                                        &sess,
-                                                        &input));
+        let krate =
+            match driver::phase_1_parse_input(&driver::CompileController::basic(), &sess, &input) {
+                Ok(krate) => krate,
+                Err(mut e) => {
+                    e.emit();
+                    FatalError.raise();
+                }
+            };
         let driver::ExpansionResult { defs, mut hir_forest, .. } = {
             phase_2_configure_and_expand(
                 &sess,

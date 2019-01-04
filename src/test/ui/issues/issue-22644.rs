@@ -1,5 +1,7 @@
+#![feature(type_ascription)]
+
 fn main() {
-    let a : u32 = 0;
+    let a : usize = 0;
     let long_name : usize = 0;
 
     println!("{}", a as usize > long_name);
