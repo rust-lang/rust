@@ -481,3 +481,16 @@ impl<'a> PrefixExpr<'a> {
         }
     }
 }
+
+#[test]
+fn test_doc_comment_of_items() {
+    let file = SourceFileNode::parse(
+        r#"
+        //! doc
+        // non-doc
+        mod foo {}
+        "#,
+    );
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("doc", module.doc_comment_text());
+}
