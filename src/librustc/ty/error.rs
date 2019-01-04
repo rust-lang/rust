@@ -157,11 +157,12 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)).into(),
-            ty::Array(_, n) => {
-                match n.assert_usize(tcx) {
+            ty::Array(_, n) => match n {
+                ty::LazyConst::Evaluated(n) => match n.assert_usize(tcx) {
                     Some(n) => format!("array of {} elements", n).into(),
                     None => "array".into(),
-                }
+                },
+                ty::LazyConst::Unevaluated(..) => "array".into(),
             }
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "*-ptr".into(),

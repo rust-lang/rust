@@ -202,7 +202,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         }
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
+    fn visit_const(&mut self, constant: &mut &'tcx ty::LazyConst<'tcx>, _: Location) {
         if let Some(lifted) = self.tcx.lift(constant) {
             *constant = lifted;
         } else {

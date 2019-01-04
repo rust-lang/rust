@@ -108,8 +108,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.types.usize
     }
 
-    pub fn usize_literal(&mut self, value: u64) -> &'tcx ty::Const<'tcx> {
-        ty::Const::from_usize(self.tcx, value)
+    pub fn usize_literal(&mut self, value: u64) -> &'tcx ty::LazyConst<'tcx> {
+        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_usize(self.tcx, value)))
     }
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {
@@ -120,12 +120,12 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.mk_unit()
     }
 
-    pub fn true_literal(&mut self) -> &'tcx ty::Const<'tcx> {
-        ty::Const::from_bool(self.tcx, true)
+    pub fn true_literal(&mut self) -> &'tcx ty::LazyConst<'tcx> {
+        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, true)))
     }
 
-    pub fn false_literal(&mut self) -> &'tcx ty::Const<'tcx> {
-        ty::Const::from_bool(self.tcx, false)
+    pub fn false_literal(&mut self) -> &'tcx ty::LazyConst<'tcx> {
+        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, false)))
     }
 
     pub fn const_eval_literal(
@@ -134,7 +134,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         sp: Span,
         neg: bool,
-    ) -> &'tcx ty::Const<'tcx> {
+    ) -> ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
         match lit_to_const(lit, self.tcx, ty, neg) {
@@ -169,14 +169,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         method_name: &str,
                         self_ty: Ty<'tcx>,
                         params: &[Kind<'tcx>])
-                        -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
+                        -> (Ty<'tcx>, ty::Const<'tcx>) {
         let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
             if item.kind == ty::AssociatedKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty, ty::Const::zero_sized(self.tcx, method_ty));
+                return (method_ty, ty::Const::zero_sized(method_ty));
             }
         }
 

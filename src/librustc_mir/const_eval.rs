@@ -95,7 +95,7 @@ pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
     may_normalize: bool,
-) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
+) -> EvalResult<'tcx, ty::Const<'tcx>> {
     // We do not normalize just any data.  Only scalar layout and fat pointers.
     let normalize = may_normalize
         && match op.layout.abi {
@@ -134,14 +134,16 @@ pub fn op_to_const<'tcx>(
         Ok(Immediate::ScalarPair(a, b)) =>
             ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
-    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
+    Ok(ty::Const { val, ty: op.layout.ty })
 }
-pub fn const_to_op<'tcx>(
+
+pub fn lazy_const_to_op<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    cnst: &ty::Const<'tcx>,
+    cnst: ty::LazyConst<'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EvalResult<'tcx, OpTy<'tcx>> {
-    let op = ecx.const_value_to_op(cnst.val)?;
-    Ok(OpTy { op, layout: ecx.layout_of(cnst.ty)? })
+    let op = ecx.const_value_to_op(cnst)?;
+    Ok(OpTy { op, layout: ecx.layout_of(ty)? })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -508,13 +510,13 @@ pub fn const_field<'a, 'tcx>(
     instance: ty::Instance<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
-    value: &'tcx ty::Const<'tcx>,
+    value: ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     trace!("const_field: {:?}, {:?}, {:?}", instance, field, value);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         // get the operand again
-        let op = const_to_op(&ecx, value)?;
+        let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
         // downcast
         let down = match variant {
             None => op,
@@ -537,11 +539,11 @@ pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
+    val: ty::Const<'tcx>,
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = const_to_op(&ecx, val)?;
+    let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 

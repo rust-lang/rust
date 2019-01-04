@@ -486,6 +486,26 @@ BraceStructLiftImpl! {
     }
 }
 
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for ty::Const<'a> {
+        type Lifted = ty::Const<'tcx>;
+        val, ty
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
+    type Lifted = ConstValue<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            ConstValue::Scalar(x) => Some(ConstValue::Scalar(x)),
+            ConstValue::ScalarPair(x, y) => Some(ConstValue::ScalarPair(x, y)),
+            ConstValue::ByRef(x, alloc, z) => Some(ConstValue::ByRef(
+                x, alloc.lift_to_tcx(tcx)?, z,
+            )),
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 //
@@ -1014,36 +1034,15 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::LazyConst<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            ConstValue::Scalar(v) => ConstValue::Scalar(v),
-            ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
-            ConstValue::ByRef(id, alloc, offset) => ConstValue::ByRef(id, alloc, offset),
-            ConstValue::Unevaluated(def_id, substs) => {
-                ConstValue::Unevaluated(def_id, substs.fold_with(folder))
+        let new = match self {
+            ty::LazyConst::Evaluated(v) => ty::LazyConst::Evaluated(v.fold_with(folder)),
+            ty::LazyConst::Unevaluated(def_id, substs) => {
+                ty::LazyConst::Unevaluated(*def_id, substs.fold_with(folder))
             }
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            ConstValue::Scalar(_) |
-            ConstValue::ScalarPair(_, _) |
-            ConstValue::ByRef(_, _, _) => false,
-            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let ty = self.ty.fold_with(folder);
-        let val = self.val.fold_with(folder);
-        folder.tcx().mk_const(ty::Const {
-            ty,
-            val
-        })
+        };
+        folder.tcx().intern_lazy_const(new)
     }
 
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
@@ -1051,10 +1050,38 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor) || self.val.visit_with(visitor)
+        match *self {
+            ty::LazyConst::Evaluated(c) => c.visit_with(visitor),
+            ty::LazyConst::Unevaluated(_, substs) => substs.visit_with(visitor),
+        }
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         visitor.visit_const(self)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::Const<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let ty = self.ty.fold_with(folder);
+        let val = self.val.fold_with(folder);
+        ty::Const {
+            ty,
+            val
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.ty.visit_with(visitor) || self.val.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
+        *self
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
     }
 }

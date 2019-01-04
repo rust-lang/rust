@@ -123,7 +123,7 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
     },
 
     Range(PatternRange<'tcx>),
@@ -147,8 +147,8 @@ pub enum PatternKind<'tcx> {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PatternRange<'tcx> {
-    pub lo: &'tcx ty::Const<'tcx>,
-    pub hi: &'tcx ty::Const<'tcx>,
+    pub lo: ty::Const<'tcx>,
+    pub hi: ty::Const<'tcx>,
     pub ty: Ty<'tcx>,
     pub end: RangeEnd,
 }
@@ -857,7 +857,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,
-        cv: &'tcx ty::Const<'tcx>,
+        cv: ty::Const<'tcx>,
         id: hir::HirId,
         span: Span,
     ) -> Pattern<'tcx> {
@@ -1018,7 +1018,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
@@ -1140,8 +1140,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
 
 pub fn compare_const_vals<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);

@@ -15,7 +15,6 @@ use super::util;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use infer::type_variable::TypeVariableOrigin;
-use mir::interpret::ConstValue;
 use mir::interpret::{GlobalId};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast::Ident;
@@ -394,8 +393,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         }
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
+    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        if let ty::LazyConst::Unevaluated(def_id, substs) = *constant {
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
                 if substs.needs_infer() || substs.has_placeholders() {
@@ -407,8 +406,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                             promoted: None
                         };
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let evaluated = evaluated.subst(self.tcx(), substs);
-                            return self.fold_const(evaluated);
+                            let substs = tcx.lift_to_global(&substs).unwrap();
+                            let evaluated = evaluated.subst(tcx, substs);
+                            return tcx.intern_lazy_const(ty::LazyConst::Evaluated(evaluated));
                         }
                     }
                 } else {
@@ -420,7 +420,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                                 promoted: None
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return self.fold_const(evaluated)
+                                return tcx.intern_lazy_const(ty::LazyConst::Evaluated(evaluated));
                             }
                         }
                     }

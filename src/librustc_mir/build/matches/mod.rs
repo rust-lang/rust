@@ -658,12 +658,12 @@ enum TestKind<'tcx> {
     SwitchInt {
         switch_ty: Ty<'tcx>,
         options: Vec<u128>,
-        indices: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        indices: FxHashMap<ty::Const<'tcx>, usize>,
     },
 
     // test for equality
     Eq {
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
         ty: Ty<'tcx>,
     },
 

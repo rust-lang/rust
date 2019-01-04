@@ -1,7 +1,6 @@
 use std::fmt;
 
-use crate::ty::{Ty, subst::Substs, layout::{HasDataLayout, Size}};
-use crate::hir::def_id::DefId;
+use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
@@ -18,12 +17,6 @@ pub struct RawConst<'tcx> {
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    /// Never returned from the `const_eval` query, but the HIR contains these frequently in order
-    /// to allow HIR creation to happen for everything before needing to be able to run constant
-    /// evaluation
-    /// FIXME: The query should then return a type that does not even have this variant.
-    Unevaluated(DefId, &'tcx Substs<'tcx>),
-
     /// Used only for types with layout::abi::Scalar ABI and ZSTs
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`
@@ -43,7 +36,6 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::Unevaluated(..) |
             ConstValue::ByRef(..) |
             ConstValue::ScalarPair(..) => None,
             ConstValue::Scalar(val) => Some(val),

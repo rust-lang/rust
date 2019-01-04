@@ -20,7 +20,8 @@ use rustc::ty::layout::{
 
 use interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
 use const_eval::{
-    CompileTimeInterpreter, const_to_op, error_to_const_error, eval_promoted, mk_borrowck_eval_cx
+    CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_borrowck_eval_cx,
+    lazy_const_to_op,
 };
 use transform::{MirPass, MirSource};
 
@@ -255,7 +256,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match const_to_op(&self.ecx, c.literal) {
+        match lazy_const_to_op(&self.ecx, *c.literal, c.ty) {
             Ok(op) => {
                 Some((op, c.span))
             },

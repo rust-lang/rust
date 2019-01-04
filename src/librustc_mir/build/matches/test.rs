@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<u128>,
-                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
+                                     indices: &mut FxHashMap<ty::Const<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
@@ -302,6 +302,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
+                    let method = self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(method));
 
                     // take the argument by reference
                     let region_scope = self.topmost_scope();
@@ -657,7 +658,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (&TestKind::Range(range), &PatternKind::Constant { ref value }) => {
+            (&TestKind::Range(range), &PatternKind::Constant { value }) => {
                 if self.const_range_contains(range, value) == Some(false) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
@@ -786,7 +787,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn const_range_contains(
         &self,
         range: PatternRange<'tcx>,
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
@@ -806,9 +807,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatternRange<'tcx>,
-        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        indices: &FxHashMap<ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
-        for val in indices.keys() {
+        for &val in indices.keys() {
             if self.const_range_contains(range, val)? {
                 return Some(false);
             }
