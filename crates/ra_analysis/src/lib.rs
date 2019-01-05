@@ -12,41 +12,39 @@ macro_rules! ctry {
     };
 }
 
-mod db;
-mod imp;
 mod completion;
+mod db;
 mod goto_defenition;
-mod symbol_index;
+mod imp;
 pub mod mock_analysis;
 mod runnables;
+mod symbol_index;
 
 mod extend_selection;
-mod syntax_highlighting;
 mod hover;
+mod syntax_highlighting;
 
 use std::{fmt, sync::Arc};
 
-use rustc_hash::FxHashMap;
-use ra_syntax::{SourceFileNode, TextRange, TextUnit, SmolStr, SyntaxKind};
+use ra_syntax::{SmolStr, SourceFileNode, SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
+use rustc_hash::FxHashMap;
 use salsa::ParallelDatabase;
 
-use crate::symbol_index::{SymbolIndex, FileSymbol};
+use crate::symbol_index::{FileSymbol, SymbolIndex};
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
 };
-pub use ra_editor::{
-    Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity
-};
 pub use hir::FnSignatureInfo;
+pub use ra_editor::{Fold, FoldKind, HighlightedRange, LineIndex, Severity, StructureNode};
 
 pub use ra_db::{
-    Canceled, Cancelable, FilePosition, FileRange, LocalSyntaxPtr,
-    CrateGraph, CrateId, SourceRootId, FileId, SyntaxDatabase, FilesDatabase
+    Cancelable, Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, FilesDatabase,
+    LocalSyntaxPtr, SourceRootId, SyntaxDatabase,
 };
 
 #[derive(Default)]
@@ -346,12 +344,18 @@ impl Analysis {
         let edit = ra_editor::on_enter(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
-    /// Returns an edit which should be applied after `=` was typed. Primaraly,
+    /// Returns an edit which should be applied after `=` was typed. Primarily,
     /// this works when adding `let =`.
     // FIXME: use a snippet completion instead of this hack here.
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.source_file(position.file_id);
         let edit = ra_editor::on_eq_typed(&file, position.offset)?;
+        Some(SourceChange::from_local_edit(position.file_id, edit))
+    }
+    /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
+    pub fn on_dot_typed(&self, position: FilePosition) -> Option<SourceChange> {
+        let file = self.db.source_file(position.file_id);
+        let edit = ra_editor::on_dot_typed(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
     /// Returns a tree representation of symbols in the file. Useful to draw a

@@ -16,7 +16,7 @@ pub use self::{
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
     structure::{file_structure, StructureNode},
-    typing::{join_lines, on_enter, on_eq_typed},
+    typing::{join_lines, on_enter, on_dot_typed, on_eq_typed},
     diagnostics::diagnostics
 };
 use ra_text_edit::TextEditBuilder;

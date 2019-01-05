@@ -2,15 +2,16 @@ use std::collections::HashMap;
 
 use gen_lsp_server::ErrorCode;
 use languageserver_types::{
-    CodeActionResponse, Command, Diagnostic,
-    DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Location, MarkupContent, MarkupKind, MarkedString, Position,
-    PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    Range, WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover,
-    HoverContents, DocumentFormattingParams, DocumentHighlight,
+    CodeActionResponse, Command, Diagnostic, DiagnosticSeverity, DocumentFormattingParams,
+    DocumentHighlight, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
+    FoldingRangeParams, Hover, HoverContents, Location, MarkedString, MarkupContent, MarkupKind,
+    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, RenameParams,
+    SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
-use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FileRange, FilePosition, Severity};
-use ra_syntax::{TextUnit, text_utils::intersect};
+use ra_analysis::{
+    FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, SourceChange,
+};
+use ra_syntax::{text_utils::intersect, TextUnit};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
@@ -92,7 +93,7 @@ pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
-    if params.ch != "=" {
+    if params.ch != "=" || params.ch != "." {
         return Ok(None);
     }
 
@@ -102,19 +103,30 @@ pub fn handle_on_type_formatting(
         file_id,
         offset: params.position.conv_with(&line_index),
     };
-    let edits = match world.analysis().on_eq_typed(position) {
-        None => return Ok(None),
-        Some(mut action) => action
-            .source_file_edits
-            .pop()
-            .unwrap()
-            .edit
-            .as_atoms()
-            .iter()
-            .map_conv_with(&line_index)
-            .collect(),
-    };
-    Ok(Some(edits))
+
+    let analysis: Vec<Box<Fn(FilePosition) -> Option<SourceChange>>> = vec![
+        Box::new(|pos| world.analysis().on_eq_typed(pos)),
+        Box::new(|pos| world.analysis().on_dot_typed(pos)),
+    ];
+
+    // try all analysis until one succeeds
+    for ana in analysis {
+        if let Some(mut action) = ana(position) {
+            return Ok(Some(
+                action
+                    .source_file_edits
+                    .pop()
+                    .unwrap()
+                    .edit
+                    .as_atoms()
+                    .iter()
+                    .map_conv_with(&line_index)
+                    .collect(),
+            ));
+        }
+    }
+
+    return Ok(None);
 }
 
 pub fn handle_document_symbol(

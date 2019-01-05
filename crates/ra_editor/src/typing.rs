@@ -1,5 +1,6 @@
 use std::mem;
 
+use itertools::Itertools;
 use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
@@ -9,9 +10,8 @@ use ra_syntax::{
     SyntaxNodeRef, TextRange, TextUnit,
 };
 use ra_text_edit::text_utils::contains_offset_nonstrict;
-use itertools::Itertools;
 
-use crate::{find_node_at_offset, TextEditBuilder, LocalEdit};
+use crate::{find_node_at_offset, LocalEdit, TextEditBuilder};
 
 pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
@@ -133,6 +133,27 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
         label: "add semicolon".to_string(),
         edit: edit.finish(),
         cursor_position: None,
+    })
+}
+
+pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
+    let before_dot_offset = offset - TextUnit::of_char('.');
+
+    let whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset)
+        .left_biased()
+        .and_then(ast::Whitespace::cast)?;
+
+    // whitespace found just left of the dot
+    // TODO: indent is always 4 spaces now. A better heuristic could look on the previous line(s)
+    let indent = "    ".to_string();
+
+    let cursor_position = offset + TextUnit::of_str(&indent);;
+    let mut edit = TextEditBuilder::default();
+    edit.insert(before_dot_offset, indent);
+    Some(LocalEdit {
+        label: "indent dot".to_string(),
+        edit: edit.finish(),
+        cursor_position: Some(cursor_position),
     })
 }
 
@@ -283,7 +304,9 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{add_cursor, check_action, extract_offset, extract_range, assert_eq_text};
+    use crate::test_utils::{
+        add_cursor, assert_eq_text, check_action, extract_offset, extract_range,
+    };
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
@@ -612,6 +635,31 @@ fn foo() {
         //     let bar = 1;
         // }
         // ");
+    }
+
+    #[test]
+    fn test_on_dot_typed() {
+        fn do_check(before: &str, after: &str) {
+            let (offset, before) = extract_offset(before);
+            let file = SourceFileNode::parse(&before);
+            let result = on_dot_typed(&file, offset).unwrap();
+            let actual = result.edit.apply(&before);
+            assert_eq_text!(after, &actual);
+        }
+        do_check(
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+        .<|>
+    }
+",
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .
+    }
+",
+        );
     }
 
     #[test]
