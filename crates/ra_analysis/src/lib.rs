@@ -15,6 +15,7 @@ macro_rules! ctry {
 mod db;
 mod imp;
 mod completion;
+mod goto_defenition;
 mod symbol_index;
 pub mod mock_analysis;
 mod runnables;
@@ -396,16 +397,15 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<Vec<NavigationTarget>>> {
-        let r = self.approximately_resolve_symbol(position)?;
-        Ok(r.map(|it| it.resolves_to))
+        goto_defenition::goto_defenition(&*self.db, position)
     }
-    /// Resolves reference to definition, but does not gurantee correctness.
-    pub fn approximately_resolve_symbol(
-        &self,
-        position: FilePosition,
-    ) -> Cancelable<Option<ReferenceResolution>> {
-        self.db.approximately_resolve_symbol(position)
-    }
+    // /// Resolves reference to definition, but does not gurantee correctness.
+    // pub fn approximately_resolve_symbol(
+    //     &self,
+    //     position: FilePosition,
+    // ) -> Cancelable<Option<ReferenceResolution>> {
+    //     self.db.approximately_resolve_symbol(position)
+    // }
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
         self.db.find_all_refs(position)
