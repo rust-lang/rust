@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 #[warn(clippy::unreadable_literal)]
 #[allow(unused_variables)]
 fn main() {

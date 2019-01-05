@@ -10,10 +10,20 @@
 // run-rustfix
 
 fn main() {
-    println!();
-    println!("");
+    let vec = vec![b'a', b'b', b'c'];
+    let ptr = vec.as_ptr();
 
-    match "a" {
-        _ => println!(""),
+    let offset_u8 = 1_u8;
+    let offset_usize = 1_usize;
+    let offset_isize = 1_isize;
+
+    unsafe {
+        ptr.add(offset_usize);
+        ptr.offset(offset_isize as isize);
+        ptr.offset(offset_u8 as isize);
+
+        ptr.wrapping_add(offset_usize);
+        ptr.wrapping_offset(offset_isize as isize);
+        ptr.wrapping_offset(offset_u8 as isize);
     }
 }
