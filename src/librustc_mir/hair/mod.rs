@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const, LazyConst, UserTypeAnnotation};
+use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserTypeAnnotation};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use syntax::ast;
@@ -235,7 +235,6 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: Region<'tcx>,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },
