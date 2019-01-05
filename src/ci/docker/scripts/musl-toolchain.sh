@@ -41,7 +41,7 @@ cd musl-cross-make
 hide_output make -j$(nproc) TARGET=$TARGET
 hide_output make install TARGET=$TARGET OUTPUT=$OUTPUT
 
-cd ..
+cd -
 
 # Make musl binaries executable
 
@@ -72,5 +72,5 @@ cmake ../libunwind-release_$LLVM \
 
 hide_output make -j$(nproc)
 cp lib/libunwind.a $OUTPUT/$TARGET/lib
-cd ../ && rm -rf libunwind-build
+cd - && rm -rf libunwind-build
 
