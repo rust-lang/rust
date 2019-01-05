@@ -1,30 +1,27 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-13428.rs:3:20
+  --> $DIR/issue-13428.rs:3:13
    |
-LL |   fn foo() -> String {  //~ ERROR mismatched types
-   |  ____________________^
-LL | |     format!("Hello {}",
-LL | |             "world")
-LL | |     // Put the trailing semicolon on its own line to test that the
-LL | |     // note message gets the offending semicolon exactly
-LL | |     ;
-   | |     - help: consider removing this semicolon
-LL | | }
-   | |_^ expected struct `std::string::String`, found ()
+LL | fn foo() -> String {  //~ ERROR mismatched types
+   |    ---      ^^^^^^ expected struct `std::string::String`, found ()
+   |    |
+   |    this function's body doesn't return
+...
+LL |     ;
+   |     - help: consider removing this semicolon
    |
    = note: expected type `std::string::String`
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-13428.rs:11:20
+  --> $DIR/issue-13428.rs:11:13
    |
-LL |   fn bar() -> String {  //~ ERROR mismatched types
-   |  ____________________^
-LL | |     "foobar".to_string()
-LL | |     ;
-   | |     - help: consider removing this semicolon
-LL | | }
-   | |_^ expected struct `std::string::String`, found ()
+LL | fn bar() -> String {  //~ ERROR mismatched types
+   |    ---      ^^^^^^ expected struct `std::string::String`, found ()
+   |    |
+   |    this function's body doesn't return
+LL |     "foobar".to_string()
+LL |     ;
+   |     - help: consider removing this semicolon
    |
    = note: expected type `std::string::String`
               found type `()`

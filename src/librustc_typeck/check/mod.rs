@@ -4843,11 +4843,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
                 if !self.diverges.get().always() {
-                    coerce.coerce_forced_unit(self, &self.misc(blk.span), &mut |err| {
+                    // #50009 -- Do not point at the entire fn block span, point at the return type
+                    // span, as it is the cause of the requirement, and
+                    // `consider_hint_about_removing_semicolon` will point at the last expression
+                    // if it were a relevant part of the error. This improves usability in editors
+                    // that highlight errors inline.
+                    let mut sp = blk.span;
+                    let mut fn_span = None;
+                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk.id) {
+                        let ret_sp = decl.output.span();
+                        if let Some(block_sp) = self.parent_item_span(blk.id) {
+                            // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
+                            // output would otherwise be incorrect and even misleading. Make sure
+                            // the span we're aiming at correspond to a `fn` body.
+                            if block_sp == blk.span {
+                                sp = ret_sp;
+                                fn_span = Some(ident.span);
+                            }
+                        }
+                    }
+                    coerce.coerce_forced_unit(self, &self.misc(sp), &mut |err| {
                         if let Some(expected_ty) = expected.only_has_type(self) {
-                            self.consider_hint_about_removing_semicolon(blk,
-                                                                        expected_ty,
-                                                                        err);
+                            self.consider_hint_about_removing_semicolon(blk, expected_ty, err);
+                        }
+                        if let Some(fn_span) = fn_span {
+                            err.span_label(fn_span, "this function's body doesn't return");
                         }
                     }, false);
                 }
@@ -4872,45 +4892,65 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
+    fn parent_item_span(&self, id: ast::NodeId) -> Option<Span> {
+        let node = self.tcx.hir().get(self.tcx.hir().get_parent(id));
+        match node {
+            Node::Item(&hir::Item {
+                node: hir::ItemKind::Fn(_, _, _, body_id), ..
+            }) |
+            Node::ImplItem(&hir::ImplItem {
+                node: hir::ImplItemKind::Method(_, body_id), ..
+            }) => {
+                let body = self.tcx.hir().body(body_id);
+                if let ExprKind::Block(block, _) = &body.value.node {
+                    return Some(block.span);
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    /// Given a function block's `NodeId`, return its `FnDecl` if it exists, or `None` otherwise.
+    fn get_parent_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, ast::Ident)> {
+        let parent = self.tcx.hir().get(self.tcx.hir().get_parent(blk_id));
+        self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
+    }
+
+    /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
+    fn get_node_fn_decl(&self, node: Node) -> Option<(hir::FnDecl, ast::Ident, bool)> {
+        match node {
+            Node::Item(&hir::Item {
+                ident, node: hir::ItemKind::Fn(ref decl, ..), ..
+            }) => decl.clone().and_then(|decl| {
+                // This is less than ideal, it will not suggest a return type span on any
+                // method called `main`, regardless of whether it is actually the entry point,
+                // but it will still present it as the reason for the expected type.
+                Some((decl, ident, ident.name != Symbol::intern("main")))
+            }),
+            Node::TraitItem(&hir::TraitItem {
+                ident, node: hir::TraitItemKind::Method(hir::MethodSig {
+                    ref decl, ..
+                }, ..), ..
+            }) => decl.clone().and_then(|decl| Some((decl, ident, true))),
+            Node::ImplItem(&hir::ImplItem {
+                ident, node: hir::ImplItemKind::Method(hir::MethodSig {
+                    ref decl, ..
+                }, ..), ..
+            }) => decl.clone().and_then(|decl| Some((decl, ident, false))),
+            _ => None,
+        }
+    }
+
     /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether a
     /// suggestion can be made, `None` otherwise.
     pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
-        if let Some(fn_id) = self.tcx.hir().get_return_block(blk_id) {
-            let parent = self.tcx.hir().get(fn_id);
-
-            if let Node::Item(&hir::Item {
-                ident, node: hir::ItemKind::Fn(ref decl, ..), ..
-            }) = parent {
-                decl.clone().and_then(|decl| {
-                    // This is less than ideal, it will not suggest a return type span on any
-                    // method called `main`, regardless of whether it is actually the entry point,
-                    // but it will still present it as the reason for the expected type.
-                    Some((decl, ident.name != Symbol::intern("main")))
-                })
-            } else if let Node::TraitItem(&hir::TraitItem {
-                node: hir::TraitItemKind::Method(hir::MethodSig {
-                    ref decl, ..
-                }, ..), ..
-            }) = parent {
-                decl.clone().and_then(|decl| {
-                    Some((decl, true))
-                })
-            } else if let Node::ImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(hir::MethodSig {
-                    ref decl, ..
-                }, ..), ..
-            }) = parent {
-                decl.clone().and_then(|decl| {
-                    Some((decl, false))
-                })
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
+            let parent = self.tcx.hir().get(blk_id);
+            self.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+        })
     }
 
     /// On implicit return expressions with mismatched types, provide the following suggestions:
@@ -4918,13 +4958,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ///  - Point out the method's return type as the reason for the expected type
     ///  - Possible missing semicolon
     ///  - Possible missing return type if the return type is the default, and not `fn main()`
-    pub fn suggest_mismatched_types_on_tail(&self,
-                                            err: &mut DiagnosticBuilder<'tcx>,
-                                            expression: &'gcx hir::Expr,
-                                            expected: Ty<'tcx>,
-                                            found: Ty<'tcx>,
-                                            cause_span: Span,
-                                            blk_id: ast::NodeId) {
+    pub fn suggest_mismatched_types_on_tail(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expression: &'gcx hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        cause_span: Span,
+        blk_id: ast::NodeId,
+    ) {
         self.suggest_missing_semicolon(err, expression, expected, cause_span);
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
