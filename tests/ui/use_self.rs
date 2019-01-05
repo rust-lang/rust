@@ -226,6 +226,22 @@ mod tuple_structs {
     }
 }
 
+mod macros {
+    macro_rules! use_self_expand {
+        () => {
+            fn new() -> Foo {
+                Foo {}
+            }
+        };
+    }
+
+    struct Foo {}
+
+    impl Foo {
+        use_self_expand!(); // Should lint in local macros
+    }
+}
+
 mod issue3410 {
 
     struct A;
