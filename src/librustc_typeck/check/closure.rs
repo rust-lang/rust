@@ -496,7 +496,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.infcx.commit_if_ok(|_| {
             let mut all_obligations = vec![];
 
-            // The liberated version of this signature should be be a subtype
+            // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
             for ((hir_ty, &supplied_ty), expected_ty) in decl.inputs.iter()
                .zip(*supplied_sig.inputs().skip_binder()) // binder moved to (*) below
