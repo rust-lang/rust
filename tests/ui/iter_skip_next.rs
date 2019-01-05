@@ -7,44 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:option_helpers.rs
+
 #![warn(clippy::iter_skip_next)]
 #![allow(clippy::blacklisted_name)]
 
-/// Struct to generate false positive for Iterator-based lints
-#[derive(Copy, Clone)]
-struct IteratorFalsePositives {
-    foo: u32,
-}
+extern crate option_helpers;
 
-impl IteratorFalsePositives {
-    fn filter(self) -> IteratorFalsePositives {
-        self
-    }
-
-    fn next(self) -> IteratorFalsePositives {
-        self
-    }
-
-    fn find(self) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn position(self) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn rposition(self) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn nth(self, n: usize) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn skip(self, _: usize) -> IteratorFalsePositives {
-        self
-    }
-}
+use option_helpers::IteratorFalsePositives;
 
 /// Checks implementation of `ITER_SKIP_NEXT` lint
 fn iter_skip_next() {

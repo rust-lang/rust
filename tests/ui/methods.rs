@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:option_helpers.rs
+
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
@@ -22,6 +24,9 @@
     clippy::useless_format
 )]
 
+#[macro_use]
+extern crate option_helpers;
+
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -30,6 +35,8 @@ use std::ops::Mul;
 use std::iter::FromIterator;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
+
+use option_helpers::IteratorFalsePositives;
 
 pub struct T;
 
@@ -101,13 +108,6 @@ impl Mul<T> for T {
     fn mul(self, other: T) -> T { self } // no error, obviously
 }
 
-/// Utility macro to test linting behavior in `option_methods()`
-/// The lints included in `option_methods()` should not lint if the call to map is partially
-/// within a macro
-macro_rules! opt_map {
-    ($opt:expr, $map:expr) => {($opt).map($map)};
-}
-
 /// Checks implementation of the following lints:
 /// * `OPTION_MAP_UNWRAP_OR`
 /// * `OPTION_MAP_UNWRAP_OR_ELSE`
@@ -169,29 +169,6 @@ fn option_methods() {
                 );
 }
 
-/// Checks implementation of the following lints:
-/// * `RESULT_MAP_UNWRAP_OR_ELSE`
-fn result_methods() {
-    let res: Result<i32, ()> = Ok(1);
-
-    // Check RESULT_MAP_UNWRAP_OR_ELSE
-    // single line case
-    let _ = res.map(|x| x + 1)
-
-               .unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
-    // multi line cases
-    let _ = res.map(|x| {
-                        x + 1
-                    }
-              ).unwrap_or_else(|e| 0);
-    let _ = res.map(|x| x + 1)
-               .unwrap_or_else(|e|
-                    0
-                );
-    // macro case
-    let _ = opt_map!(res, |x| x + 1).unwrap_or_else(|e| 0); // should not lint
-}
-
 /// Struct to generate false positives for things with .iter()
 #[derive(Copy, Clone)]
 struct HasIter;
@@ -203,42 +180,6 @@ impl HasIter {
 
     fn iter_mut(self) -> IteratorFalsePositives {
         IteratorFalsePositives { foo: 0 }
-    }
-}
-
-/// Struct to generate false positive for Iterator-based lints
-#[derive(Copy, Clone)]
-struct IteratorFalsePositives {
-    foo: u32,
-}
-
-impl IteratorFalsePositives {
-    fn filter(self) -> IteratorFalsePositives {
-        self
-    }
-
-    fn next(self) -> IteratorFalsePositives {
-        self
-    }
-
-    fn find(self) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn position(self) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn rposition(self) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn nth(self, n: usize) -> Option<u32> {
-        Some(self.foo)
-    }
-
-    fn skip(self, _: usize) -> IteratorFalsePositives {
-        self
     }
 }
 
