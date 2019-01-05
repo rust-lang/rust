@@ -103,7 +103,7 @@ fn set_frames<W: StackWalker>(StackWalk: W, frames: &mut [Frame]) -> io::Result<
         frames[i] = Frame {
             symbol_addr: addr,
             exact_position: addr,
-            inline_context: 0,
+            inline_context: frame.get_inline_context(),
         };
 
         i += 1
@@ -209,6 +209,7 @@ trait StackFrame {
     fn new() -> Self;
     fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD;
     fn get_addr(&self) -> *const u8;
+    fn get_inline_context(&self) -> u32;
 }
 
 impl StackFrame for c::STACKFRAME_EX {
@@ -263,6 +264,10 @@ impl StackFrame for c::STACKFRAME_EX {
     fn get_addr(&self) -> *const u8 {
         (self.AddrPC.Offset - 1) as *const u8
     }
+
+    fn get_inline_context(&self) -> u32 {
+        self.InlineFrameContext
+    }
 }
 
 impl StackFrame for c::STACKFRAME64 {
@@ -316,6 +321,10 @@ impl StackFrame for c::STACKFRAME64 {
 
     fn get_addr(&self) -> *const u8 {
         (self.AddrPC.Offset - 1) as *const u8
+    }
+
+    fn get_inline_context(&self) -> u32 {
+        0
     }
 }
 
