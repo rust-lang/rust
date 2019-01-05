@@ -392,6 +392,13 @@ impl Analysis {
             .collect();
         Ok(res)
     }
+    pub fn goto_defenition(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<Vec<NavigationTarget>>> {
+        let r = self.approximately_resolve_symbol(position)?;
+        Ok(r.map(|it| it.resolves_to))
+    }
     /// Resolves reference to definition, but does not gurantee correctness.
     pub fn approximately_resolve_symbol(
         &self,

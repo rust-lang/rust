@@ -207,12 +207,11 @@ pub fn handle_goto_definition(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
-    let rr = match world.analysis().approximately_resolve_symbol(position)? {
+    let navs = match world.analysis().goto_defenition(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = rr
-        .resolves_to
+    let res = navs
         .into_iter()
         .map(|nav| nav.try_conv_with(&world))
         .collect::<Result<Vec<_>>>()?;
