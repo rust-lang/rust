@@ -552,7 +552,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             // Visit everything except for private impl items.
             hir::ItemKind::Impl(.., ref impl_item_refs) => {
                 if item_level.is_some() {
-                    self.reach(item.id, item_level).generics().predicates();
+                    self.reach(item.id, item_level).generics().predicates().ty().trait_ref();
 
                     for impl_item_ref in impl_item_refs {
                         let impl_item_level = self.get(impl_item_ref.id.node_id);
@@ -709,6 +709,13 @@ impl<'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
 
     fn ty(&mut self) -> &mut Self {
         self.visit(self.ev.tcx.type_of(self.item_def_id));
+        self
+    }
+
+    fn trait_ref(&mut self) -> &mut Self {
+        if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
+            self.visit_trait(trait_ref);
+        }
         self
     }
 }
