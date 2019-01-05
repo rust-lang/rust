@@ -188,10 +188,14 @@ fn remove_newline(
         edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
     } else if prev.kind() == COMMA && next.kind() == R_CURLY {
         // Removes: comma, newline (incl. surrounding whitespace)
-        // Adds: a single whitespace
+        let space = if let Some(USE_TREE) = prev.prev_sibling().map(|p| p.kind()) {
+            ""
+        } else {
+            " "
+        };
         edit.replace(
             TextRange::from_to(prev.range().start(), node.range().end()),
-            " ".to_string(),
+            space.to_string(),
         );
     } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
@@ -336,7 +340,7 @@ fn foo() {
     }
 
     #[test]
-    fn test_join_lines_use_items() {
+    fn test_join_lines_use_items_left() {
         // No space after the '{'
         check_join_lines(
             r"
@@ -346,6 +350,20 @@ fn foo() {
             r"
 <|>use ra_syntax::{TextUnit, TextRange,
 };",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_items_right() {
+        // No space after the '{'
+        check_join_lines(
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange,
+};",
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange};",
         );
     }
 
