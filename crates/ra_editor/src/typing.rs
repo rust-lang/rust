@@ -188,8 +188,8 @@ fn remove_newline(
         edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
     } else if prev.kind() == COMMA && next.kind() == R_CURLY {
         // Removes: comma, newline (incl. surrounding whitespace)
-        let space = if let Some(USE_TREE) = prev.prev_sibling().map(|p| p.kind()) {
-            ""
+        let space = if let Some(left) = prev.prev_sibling() {
+            compute_ws(left, next)
         } else {
             " "
         };
@@ -269,6 +269,11 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
     }
     match right.kind() {
         R_PAREN | R_BRACK => return "",
+        R_CURLY => {
+            if let USE_TREE = left.kind() {
+                return "";
+            }
+        }
         DOT => return "",
         _ => (),
     }
@@ -355,7 +360,21 @@ fn foo() {
 
     #[test]
     fn test_join_lines_use_items_right() {
-        // No space after the '{'
+        // No space after the '}'
+        check_join_lines(
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange
+};",
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange};",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_items_right_comma() {
+        // No space after the '}'
         check_join_lines(
             r"
 use ra_syntax::{
