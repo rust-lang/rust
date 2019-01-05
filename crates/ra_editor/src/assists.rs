@@ -8,6 +8,7 @@ mod add_derive;
 mod add_impl;
 mod introduce_variable;
 mod change_visibility;
+mod split_import;
 
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
@@ -23,6 +24,7 @@ pub use self::{
     add_impl::add_impl,
     introduce_variable::introduce_variable,
     change_visibility::change_visibility,
+    split_import::split_import,
 };
 
 /// Return all the assists applicable at the given position.
@@ -34,6 +36,7 @@ pub fn assists(file: &SourceFileNode, range: TextRange) -> Vec<LocalEdit> {
         add_impl,
         introduce_variable,
         change_visibility,
+        split_import,
     ]
     .iter()
     .filter_map(|&assist| ctx.clone().apply(assist))

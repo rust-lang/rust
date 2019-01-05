@@ -363,6 +363,12 @@ impl<'a> PathSegment<'a> {
     }
 }
 
+impl<'a> Path<'a> {
+    pub fn parent_path(self) -> Option<Path<'a>> {
+        self.syntax().parent().and_then(Path::cast)
+    }
+}
+
 impl<'a> UseTree<'a> {
     pub fn has_star(self) -> bool {
         self.syntax().children().any(|it| it.kind() == STAR)
