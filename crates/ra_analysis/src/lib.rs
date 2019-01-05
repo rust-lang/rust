@@ -21,6 +21,7 @@ mod runnables;
 
 mod extend_selection;
 mod syntax_highlighting;
+mod hover;
 
 use std::{fmt, sync::Arc};
 
@@ -260,6 +261,18 @@ impl NavigationTarget {
     }
 }
 
+#[derive(Debug)]
+pub struct RangeInfo<T> {
+    pub range: TextRange,
+    pub info: T,
+}
+
+impl<T> RangeInfo<T> {
+    fn new(range: TextRange, info: T) -> RangeInfo<T> {
+        RangeInfo { range, info }
+    }
+}
+
 /// Result of "goto def" query.
 #[derive(Debug)]
 pub struct ReferenceResolution {
@@ -393,6 +406,10 @@ impl Analysis {
     /// Returns documentation string for a given target.
     pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
         self.db.doc_text_for(nav)
+    }
+    /// Returns a short text descrbing element at position.
+    pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
+        hover::hover(&*self.db, position)
     }
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
