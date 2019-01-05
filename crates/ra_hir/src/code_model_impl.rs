@@ -4,7 +4,6 @@ use crate::{HirFileId, db::HirDatabase, Crate, CrateDependency, AsName, DefId, D
 
 use crate::code_model_api::Module;
 
-
 impl Crate {
     pub(crate) fn new(crate_id: CrateId) -> Crate {
         Crate { crate_id }
@@ -45,7 +44,7 @@ impl Crate {
 }
 
 impl Module {
-    fn new(def_id: DefId) -> Self {
+    pub(crate) fn new(def_id: DefId) -> Self {
         crate::code_model_api::Module { def_id }
     }
 

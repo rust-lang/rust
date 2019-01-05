@@ -13,10 +13,12 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Module, Function, SourceItemId,
+    HirDatabase, Function, SourceItemId,
     module::ModuleSource,
     DefKind, DefLoc, AsName,
 };
+
+use crate::code_model_api::Module;
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Cancelable<Option<Module>> {
@@ -34,7 +36,7 @@ pub fn module_from_declaration(
     let child_name = decl.name();
     match (parent_module, child_name) {
         (Some(parent_module), Some(child_name)) => {
-            if let Some(child) = parent_module.child(&child_name.as_name()) {
+            if let Some(child) = parent_module.child(db, &child_name.as_name())? {
                 return Ok(Some(child));
             }
         }
@@ -84,7 +86,15 @@ fn module_from_source(
         .modules_with_sources()
         .find(|(_id, src)| src == &module_source);
     let module_id = ctry!(m).0;
-    Ok(Some(Module::new(db, source_root_id, module_id)?))
+    let def_loc = DefLoc {
+        kind: DefKind::Module,
+        source_root_id,
+        module_id,
+        source_item_id: module_source.0,
+    };
+    let def_id = def_loc.id(db);
+
+    Ok(Some(Module::new(def_id)))
 }
 
 pub fn function_from_position(
@@ -114,7 +124,8 @@ pub fn function_from_module(
     module: &Module,
     fn_def: ast::FnDef,
 ) -> Function {
-    let file_id = module.source().file_id();
+    let loc = module.def_id.loc(db);
+    let file_id = loc.source_item_id.file_id;
     let file_items = db.file_items(file_id);
     let item_id = file_items.id_of(file_id, fn_def.syntax());
     let source_item_id = SourceItemId {
@@ -123,8 +134,8 @@ pub fn function_from_module(
     };
     let def_loc = DefLoc {
         kind: DefKind::Function,
-        source_root_id: module.source_root_id,
-        module_id: module.module_id,
+        source_root_id: loc.source_root_id,
+        module_id: loc.module_id,
         source_item_id,
     };
     Function::new(def_loc.id(db))
@@ -147,7 +158,8 @@ pub fn macro_symbols(
         Some(it) => it,
         None => return Ok(Vec::new()),
     };
-    let items = db.input_module_items(module.source_root_id, module.module_id)?;
+    let loc = module.def_id.loc(db);
+    let items = db.input_module_items(loc.source_root_id, loc.module_id)?;
     let mut res = Vec::new();
 
     for macro_call_id in items
