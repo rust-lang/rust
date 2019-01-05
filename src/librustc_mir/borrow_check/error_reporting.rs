@@ -123,7 +123,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Origin::Mir,
             );
 
-            self.add_closure_invoked_twice_with_moved_variable_suggestion(
+            self.add_moved_or_invoked_closure_note(
                 context.loc,
                 used_place,
                 &mut err,
@@ -1329,7 +1329,8 @@ enum StorageDeadOrDrop<'tcx> {
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
-    /// Adds a suggestion when a closure is invoked twice with a moved variable.
+    /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
+    /// is moved after being invoked.
     ///
     /// ```text
     /// note: closure cannot be invoked more than once because it moves the variable `dict` out of
@@ -1339,30 +1340,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// LL |         for (key, value) in dict {
     ///    |                             ^^^^
     /// ```
-    pub(super) fn add_closure_invoked_twice_with_moved_variable_suggestion(
+    pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
         place: &Place<'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
+        debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local();
-        debug!(
-            "add_closure_invoked_twice_with_moved_variable_suggestion: location={:?} place={:?} \
-             target={:?}",
-             location, place, target,
-        );
         for stmt in &self.mir[location.block].statements[location.statement_index..] {
-            debug!(
-                "add_closure_invoked_twice_with_moved_variable_suggestion: stmt={:?} \
-                 target={:?}",
-                 stmt, target,
-            );
+            debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
-                debug!(
-                    "add_closure_invoked_twice_with_moved_variable_suggestion: into={:?} \
-                     from={:?}",
-                     into, from,
-                );
+                debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(ref place) |
                     Operand::Move(ref place) if target == place.local() =>
@@ -1372,12 +1361,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-
+        // Check if we are attempting to call a closure after it has been invoked.
         let terminator = self.mir[location.block].terminator();
-        debug!(
-            "add_closure_invoked_twice_with_moved_variable_suggestion: terminator={:?}",
-            terminator,
-        );
+        debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant {
                 literal: ty::LazyConst::Evaluated(ty::Const {
@@ -1389,7 +1375,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             args,
             ..
         } = &terminator.kind {
-            debug!("add_closure_invoked_twice_with_moved_variable_suggestion: id={:?}", id);
+            debug!("add_moved_or_invoked_closure_note: id={:?}", id);
             if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                 let closure = match args.first() {
                     Some(Operand::Copy(ref place)) |
@@ -1397,30 +1383,48 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         place.local().unwrap(),
                     _ => return,
                 };
-                debug!(
-                    "add_closure_invoked_twice_with_moved_variable_suggestion: closure={:?}",
-                     closure,
-                );
 
-                if let ty::TyKind::Closure(did, _substs) = self.mir.local_decls[closure].ty.sty {
-                    let node_id = match self.infcx.tcx.hir().as_local_node_id(did) {
-                        Some(node_id) => node_id,
-                        _ => return,
-                    };
+                debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
+                if let ty::TyKind::Closure(did, _) = self.mir.local_decls[closure].ty.sty {
+                    let node_id = self.infcx.tcx.hir().as_local_node_id(did).unwrap();
                     let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
 
-                    if let Some((
-                        span, name
-                    )) = self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id) {
+                    if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
+                        .closure_kind_origins()
+                        .get(hir_id)
+                    {
                         diag.span_note(
                             *span,
                             &format!(
-                                "closure cannot be invoked more than once because it \
-                                 moves the variable `{}` out of its environment",
-                                 name,
+                                "closure cannot be invoked more than once because it moves the \
+                                 variable `{}` out of its environment",
+                                name,
                             ),
                         );
+                        return;
                     }
+                }
+            }
+        }
+
+        // Check if we are just moving a closure after it has been invoked.
+        if let Some(target) = target {
+            if let ty::TyKind::Closure(did, _) = self.mir.local_decls[target].ty.sty {
+                let node_id = self.infcx.tcx.hir().as_local_node_id(did).unwrap();
+                let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
+
+                if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
+                    .closure_kind_origins()
+                    .get(hir_id)
+                {
+                    diag.span_note(
+                        *span,
+                        &format!(
+                            "closure cannot be moved more than once as it is not `Copy` due to \
+                             moving the variable `{}` out of its environment",
+                             name
+                        ),
+                    );
                 }
             }
         }
