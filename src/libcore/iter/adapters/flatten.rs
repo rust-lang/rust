@@ -226,11 +226,19 @@ impl<I, U> Iterator for FlattenCompat<I, U>
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
         let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
-        let lo = flo.saturating_add(blo);
-        match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
-            _ => (lo, None)
-        }
+        let (mlo, mhi) = self.iter.size_hint();
+        let max = U::max_size_hint();
+
+        let lo = flo.saturating_add(blo).saturating_add(mlo.saturating_mul(max.unwrap_or(0)));
+        let hi = match (fhi, bhi, mhi, max) {
+            (Some(f), Some(b), Some(0), None) => f.checked_add(b),
+            (Some(f), Some(b), Some(m), Some(max)) => try {
+                f.checked_add(b)?.checked_add(m.checked_mul(max)?)?
+             },
+            _ => None,
+        };
+
+        (lo, hi)
     }
 
     #[inline]

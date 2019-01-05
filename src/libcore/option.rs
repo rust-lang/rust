@@ -1172,6 +1172,8 @@ impl<'a, A> Iterator for Iter<'a, A> {
     fn next(&mut self) -> Option<&'a A> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    #[inline]
+    fn max_size_hint() -> Option<usize> { Some(1) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1218,6 +1220,8 @@ impl<'a, A> Iterator for IterMut<'a, A> {
     fn next(&mut self) -> Option<&'a mut A> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    #[inline]
+    fn max_size_hint() -> Option<usize> { Some(1) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1255,6 +1259,8 @@ impl<A> Iterator for IntoIter<A> {
     fn next(&mut self) -> Option<A> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    #[inline]
+    fn max_size_hint() -> Option<usize> { Some(1) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

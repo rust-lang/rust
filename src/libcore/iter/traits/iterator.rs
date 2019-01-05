@@ -199,6 +199,15 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
 
+    /// An estimate of the maximum size of iterators of this type.
+    ///
+    /// This is similar to [`size_hint`], with the exception that it applies to all
+    /// iterators of this type. It can be used to optimize adapters like [`flatten`]
+    /// and provide better size hints.
+    #[inline]
+    #[unstable(feature = "max_size_hint", issue = "0")]
+    fn max_size_hint() -> Option<usize> where Self: Sized { None }
+
     /// Consumes the iterator, counting the number of iterations and returning it.
     ///
     /// This method will evaluate the iterator until its [`next`] returns

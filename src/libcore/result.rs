@@ -1077,6 +1077,8 @@ impl<'a, T> Iterator for Iter<'a, T> {
         let n = if self.inner.is_some() {1} else {0};
         (n, Some(n))
     }
+    #[inline]
+    fn max_size_hint() -> Option<usize> { Some(1) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1122,6 +1124,8 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         let n = if self.inner.is_some() {1} else {0};
         (n, Some(n))
     }
+    #[inline]
+    fn max_size_hint() -> Option<usize> { Some(1) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1165,6 +1169,8 @@ impl<T> Iterator for IntoIter<T> {
         let n = if self.inner.is_some() {1} else {0};
         (n, Some(n))
     }
+    #[inline]
+    fn max_size_hint() -> Option<usize> { Some(1) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
