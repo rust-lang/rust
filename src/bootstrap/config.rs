@@ -136,6 +136,7 @@ pub struct Config {
     pub libdir: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
+    pub eslint: Option<PathBuf>,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
@@ -202,6 +203,7 @@ struct Build {
     gdb: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
+    eslint: Option<String>,
     nodejs: Option<String>,
     python: Option<String>,
     full_bootstrap: Option<bool>,
@@ -444,6 +446,7 @@ impl Config {
         };
 
 
+        config.eslint = build.eslint.map(PathBuf::from);
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
