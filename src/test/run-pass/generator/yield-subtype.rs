@@ -3,7 +3,6 @@
 #![allow(dead_code)]
 
 // revisions:lexical nll
-//[nll]compile-flags: -Z disable-nll-user-type-assert
 #![cfg_attr(nll, feature(nll))]
 
 #![feature(generators)]

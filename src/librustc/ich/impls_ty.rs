@@ -477,22 +477,6 @@ impl_stable_hash_for!(enum mir::interpret::InboundsCheck {
     MaybeDead
 });
 
-impl_stable_hash_for!(enum mir::interpret::Lock {
-    NoLock,
-    WriteLock(dl),
-    ReadLock(v)
-});
-
-impl_stable_hash_for!(struct mir::interpret::DynamicLifetime {
-    frame,
-    region
-});
-
-impl_stable_hash_for!(enum mir::interpret::AccessKind {
-    Read,
-    Write
-});
-
 impl_stable_hash_for!(enum ty::Variance {
     Covariant,
     Invariant,
