@@ -403,10 +403,6 @@ impl Analysis {
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
         self.db.find_all_refs(position)
     }
-    /// Returns documentation string for a given target.
-    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        self.db.doc_text_for(nav)
-    }
     /// Returns a short text descrbing element at position.
     pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
         hover::hover(&*self.db, position)

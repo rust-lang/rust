@@ -8,11 +8,11 @@ use hir::{
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, find_node_at_offset, assists, LocalEdit, Severity};
 use ra_syntax::{
-    algo::{find_covering_node, visit::{visitor, Visitor}},
+    algo::find_covering_node,
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
     AstNode, SourceFileNode,
     SyntaxKind::*,
-    SyntaxNode, SyntaxNodeRef, TextRange, TextUnit,
+    SyntaxNodeRef, TextRange, TextUnit,
 };
 
 use crate::{
@@ -256,18 +256,6 @@ impl db::RootDatabase {
             Ok(Some((binding, descr)))
         }
     }
-    pub(crate) fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        let result = match (nav.description(self), nav.docs(self)) {
-            (Some(desc), Some(docs)) => {
-                Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
-            }
-            (Some(desc), None) => Some("```rust\n".to_string() + &*desc + "\n```"),
-            (None, Some(docs)) => Some(docs),
-            _ => None,
-        };
-
-        Ok(result)
-    }
 
     pub(crate) fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let syntax = self.source_file(file_id);
@@ -504,93 +492,5 @@ impl<'a> FnCallNode<'a> {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
-    }
-}
-
-impl NavigationTarget {
-    fn node(&self, db: &db::RootDatabase) -> Option<SyntaxNode> {
-        let source_file = db.source_file(self.file_id);
-        let source_file = source_file.syntax();
-        let node = source_file
-            .descendants()
-            .find(|node| node.kind() == self.kind && node.range() == self.range)?
-            .owned();
-        Some(node)
-    }
-
-    fn docs(&self, db: &db::RootDatabase) -> Option<String> {
-        let node = self.node(db)?;
-        let node = node.borrowed();
-        fn doc_comments<'a, N: ast::DocCommentsOwner<'a>>(node: N) -> Option<String> {
-            let comments = node.doc_comment_text();
-            if comments.is_empty() {
-                None
-            } else {
-                Some(comments)
-            }
-        }
-
-        visitor()
-            .visit(doc_comments::<ast::FnDef>)
-            .visit(doc_comments::<ast::StructDef>)
-            .visit(doc_comments::<ast::EnumDef>)
-            .visit(doc_comments::<ast::TraitDef>)
-            .visit(doc_comments::<ast::Module>)
-            .visit(doc_comments::<ast::TypeDef>)
-            .visit(doc_comments::<ast::ConstDef>)
-            .visit(doc_comments::<ast::StaticDef>)
-            .accept(node)?
-    }
-
-    /// Get a description of this node.
-    ///
-    /// e.g. `struct Name`, `enum Name`, `fn Name`
-    fn description(&self, db: &db::RootDatabase) -> Option<String> {
-        // TODO: After type inference is done, add type information to improve the output
-        let node = self.node(db)?;
-        let node = node.borrowed();
-        // TODO: Refactor to be have less repetition
-        visitor()
-            .visit(|node: ast::FnDef| {
-                let mut string = "fn ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::StructDef| {
-                let mut string = "struct ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::EnumDef| {
-                let mut string = "enum ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::TraitDef| {
-                let mut string = "trait ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::Module| {
-                let mut string = "mod ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::TypeDef| {
-                let mut string = "type ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::ConstDef| {
-                let mut string = "const ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: ast::StaticDef| {
-                let mut string = "static ".to_string();
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .accept(node)?
     }
 }
