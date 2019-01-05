@@ -66,8 +66,7 @@ impl FnScopes {
             .scope_chain_for(context_expr)
             .flat_map(|scope| self.entries(scope).iter())
             .filter(|entry| shadowed.insert(entry.name()))
-            .filter(|entry| entry.name() == &name)
-            .nth(0);
+            .find(|entry| entry.name() == &name);
         ret
     }
 
@@ -84,7 +83,7 @@ impl FnScopes {
         })
     }
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
-        match body.pat(pat) {
+        match &body[pat] {
             Pat::Bind { name } => self.scopes[scope].entries.push(ScopeEntry {
                 name: name.clone(),
                 pat,
@@ -96,7 +95,7 @@ impl FnScopes {
         let body = Arc::clone(&self.body);
         params
             .into_iter()
-            .for_each(|it| self.add_bindings(&body, scope, *it));
+            .for_each(|pat| self.add_bindings(&body, scope, *pat));
     }
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
         self.scope_for.insert(node, scope);
@@ -218,8 +217,7 @@ impl ScopesWithSyntaxMapping {
         node.ancestors()
             .map(LocalSyntaxPtr::new)
             .filter_map(|ptr| self.syntax_mapping.syntax_expr(ptr))
-            .filter_map(|it| self.scopes.scope_for(it))
-            .next()
+            .find_map(|it| self.scopes.scope_for(it))
     }
 }
 
@@ -264,7 +262,7 @@ fn compute_block_scopes(
 
 fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut FnScopes, scope: ScopeId) {
     scopes.set_scope(expr, scope);
-    match body.expr(expr) {
+    match &body[expr] {
         Expr::Block { statements, tail } => {
             compute_block_scopes(&statements, *tail, body, scopes, scope);
         }

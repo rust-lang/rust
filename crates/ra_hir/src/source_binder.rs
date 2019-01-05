@@ -92,12 +92,10 @@ pub fn function_from_position(
     position: FilePosition,
 ) -> Cancelable<Option<Function>> {
     let file = db.source_file(position.file_id);
-    let fn_def = if let Some(f) = find_node_at_offset::<ast::FnDef>(file.syntax(), position.offset)
-    {
-        f
-    } else {
-        return Ok(None);
-    };
+    let fn_def = ctry!(find_node_at_offset::<ast::FnDef>(
+        file.syntax(),
+        position.offset
+    ));
     function_from_source(db, position.file_id, fn_def)
 }
 

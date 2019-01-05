@@ -1,3 +1,4 @@
+use std::ops::Index;
 use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
@@ -44,20 +45,28 @@ pub struct BodySyntaxMapping {
 }
 
 impl Body {
-    pub fn expr(&self, expr: ExprId) -> &Expr {
-        &self.exprs[expr]
-    }
-
-    pub fn pat(&self, pat: PatId) -> &Pat {
-        &self.pats[pat]
-    }
-
     pub fn args(&self) -> &[PatId] {
         &self.args
     }
 
     pub fn body_expr(&self) -> ExprId {
         self.body_expr
+    }
+}
+
+impl Index<ExprId> for Body {
+    type Output = Expr;
+
+    fn index(&self, expr: ExprId) -> &Expr {
+        &self.exprs[expr]
+    }
+}
+
+impl Index<PatId> for Body {
+    type Output = Pat;
+
+    fn index(&self, pat: PatId) -> &Pat {
+        &self.pats[pat]
     }
 }
 
@@ -377,11 +386,7 @@ impl ExprCollector {
                         syntax_ptr,
                     )
                 } else {
-                    let condition = if let Some(condition) = e.condition() {
-                        self.collect_expr_opt(condition.expr())
-                    } else {
-                        self.exprs.alloc(Expr::Missing)
-                    };
+                    let condition = self.collect_expr_opt(e.condition().and_then(|c| c.expr()));
                     let then_branch = self.collect_block_opt(e.then_branch());
                     let else_branch = e.else_branch().map(|e| self.collect_block(e));
                     self.alloc_expr(
