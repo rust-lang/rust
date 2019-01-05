@@ -32,6 +32,7 @@ mod adt;
 mod type_ref;
 mod ty;
 mod impl_block;
+mod expr;
 
 use crate::{
     db::HirDatabase,

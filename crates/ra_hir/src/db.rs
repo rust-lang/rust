@@ -93,6 +93,16 @@ pub trait HirDatabase: SyntaxDatabase
         type ImplsInModuleQuery;
         use fn crate::impl_block::impls_in_module;
     }
+
+    fn body_hir(def_id: DefId) -> Cancelable<Arc<crate::expr::Body>> {
+        type BodyHirQuery;
+        use fn crate::expr::body_hir;
+    }
+
+    fn body_syntax_mapping(def_id: DefId) -> Cancelable<Arc<crate::expr::BodySyntaxMapping>> {
+        type BodySyntaxMappingQuery;
+        use fn crate::expr::body_syntax_mapping;
+    }
 }
 
 }

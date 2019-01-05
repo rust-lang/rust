@@ -384,7 +384,7 @@ Grammar(
             options: [ "Condition" ]
         ),
         "ContinueExpr": (),
-        "BreakExpr": (),
+        "BreakExpr": (options: ["Expr"]),
         "Label": (),
         "BlockExpr": (
             options: [ "Block" ]
@@ -404,7 +404,7 @@ Grammar(
             collections: [ [ "pats", "Pat" ] ]
         ),
         "MatchGuard": (),
-        "StructLit": (options: ["Path", "NamedFieldList"]),
+        "StructLit": (options: ["Path", "NamedFieldList", ["spread", "Expr"]]),
         "NamedFieldList": (collections: [ ["fields", "NamedField"] ]),
         "NamedField": (options: ["NameRef", "Expr"]),
         "CallExpr": (

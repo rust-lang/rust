@@ -106,6 +106,8 @@ salsa::database_storage! {
             fn struct_data() for hir::db::StructDataQuery;
             fn enum_data() for hir::db::EnumDataQuery;
             fn impls_in_module() for hir::db::ImplsInModuleQuery;
+            fn body_hir() for hir::db::BodyHirQuery;
+            fn body_syntax_mapping() for hir::db::BodySyntaxMappingQuery;
         }
     }
 }

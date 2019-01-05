@@ -378,7 +378,11 @@ impl<R: TreeRoot<RaTypes>> BreakExprNode<R> {
 }
 
 
-impl<'a> BreakExpr<'a> {}
+impl<'a> BreakExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // Byte
 #[derive(Debug, Clone, Copy,)]
@@ -3878,6 +3882,10 @@ impl<'a> StructLit<'a> {
     }
 
     pub fn named_field_list(self) -> Option<NamedFieldList<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn spread(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
