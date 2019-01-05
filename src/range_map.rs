@@ -40,10 +40,11 @@ impl<T> RangeMap<T> {
 
     /// Find the index containing the given offset.
     fn find_offset(&self, offset: u64) -> usize {
-        debug_assert!(self.v.len() > 0);
+        // We do a binary search
         let mut left = 0usize; // inclusive
         let mut right = self.v.len(); // exclusive
         loop {
+            debug_assert!(left < right, "find_offset: offset {} is out-of-bounds", offset);
             let candidate = left.checked_add(right).unwrap() / 2;
             let elem = &self.v[candidate];
             if offset < elem.range.start {
@@ -54,7 +55,6 @@ impl<T> RangeMap<T> {
                 // we are too far left (offset is further right)
                 debug_assert!(candidate >= left); // we are making progress
                 left = candidate+1;
-                debug_assert!(left < right, "find_offset: offset {} is out-of-bounds", offset);
             } else {
                 // This is it!
                 return candidate;
