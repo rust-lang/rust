@@ -479,6 +479,9 @@ declare_features! (
 
     // Allows paths to enum variants on type aliases.
     (active, type_alias_enum_variants, "1.31.0", Some(49683), None),
+
+    // Re-Rebalance coherence
+    (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
 );
 
 declare_features! (

@@ -1,4 +1,7 @@
 // aux-build:coherence_copy_like_lib.rs
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 
 // Test that we are able to introduce a negative constraint that
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
@@ -16,6 +19,8 @@ impl<T: lib::MyCopy> MyTrait for T { }
 //     MyStruct<MyType>: !MyTrait
 //
 // which we cannot approve.
-impl MyTrait for lib::MyStruct<MyType> { } //~ ERROR E0119
+impl MyTrait for lib::MyStruct<MyType> { }
+//[old]~^ ERROR E0119
+//[re]~^^ ERROR E0119
 
 fn main() { }

@@ -4,10 +4,14 @@
 //
 // No we expect to run into a more user-friendly cycle error instead.
 
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 #![feature(specialization)]
 
 trait Trait<T> { type Assoc; }
-//~^ cycle detected
+//[old]~^ cycle detected
+//[re]~^^ ERROR E0391
 
 impl<T> Trait<T> for Vec<T> {
     type Assoc = ();
