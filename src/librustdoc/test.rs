@@ -278,7 +278,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
-        let out = Some(outdir.lock().unwrap().path().to_path_buf());
+        let out = Some(outdir.lock().unwrap().path().join("rust_out"));
 
         if no_run {
             control.after_analysis.stop = Compilation::Stop;
@@ -291,8 +291,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                 &cstore,
                 &None,
                 &input,
-                &out,
                 &None,
+                &out,
                 None,
                 &control
             )
