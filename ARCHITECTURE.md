@@ -87,7 +87,7 @@ fixes a bug in the grammar.
 
 ### `crates/ra_db`
 
-We use [salsa][https://github.com/salsa-rs/salsa] crate for incremental and
+We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and
 on-demand computation. Roughly, you can think of salsa as a key-value store, but
 it also can compute derived values using specified functions. The `ra_db` crate
 provides a basic infrastructure for interacting with salsa. Crucially, it
