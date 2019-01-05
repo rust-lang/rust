@@ -26,7 +26,8 @@ export async function handle(change: SourceChange) {
     const toReveal = change.cursorPosition;
     await vscode.workspace.applyEdit(wsEdit);
     if (toOpen) {
-        const doc = await vscode.workspace.openTextDocument(toOpen);
+        const toOpenUri = vscode.Uri.parse(toOpen);
+        const doc = await vscode.workspace.openTextDocument(toOpenUri);
         await vscode.window.showTextDocument(doc);
     } else if (toReveal) {
         const uri = Server.client.protocol2CodeConverter.asUri(
