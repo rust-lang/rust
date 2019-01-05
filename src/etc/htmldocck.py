@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 r"""
 htmldocck.py is a custom checker script for Rustdoc HTML outputs.
 
@@ -98,7 +101,10 @@ checks if the given file does not exist, for example.
 
 """
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function, unicode_literals
+
+import codecs
+import io
 import sys
 import os.path
 import re
@@ -110,14 +116,10 @@ except ImportError:
     from HTMLParser import HTMLParser
 from xml.etree import cElementTree as ET
 
-# &larrb;/&rarrb; are not in HTML 4 but are in HTML 5
 try:
-    from html.entities import entitydefs
+    from html.entities import name2codepoint
 except ImportError:
-    from htmlentitydefs import entitydefs
-entitydefs['larrb'] = u'\u21e4'
-entitydefs['rarrb'] = u'\u21e5'
-entitydefs['nbsp'] = ' '
+    from htmlentitydefs import name2codepoint
 
 # "void elements" (no closing tag) from the HTML Standard section 12.1.2
 VOID_ELEMENTS = set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
@@ -157,11 +159,11 @@ class CustomHTMLParser(HTMLParser):
         self.__builder.data(data)
 
     def handle_entityref(self, name):
-        self.__builder.data(entitydefs[name])
+        self.__builder.data(unichr(name2codepoint[name]))
 
     def handle_charref(self, name):
         code = int(name[1:], 16) if name.startswith(('x', 'X')) else int(name, 10)
-        self.__builder.data(unichr(code).encode('utf-8'))
+        self.__builder.data(unichr(code))
 
     def close(self):
         HTMLParser.close(self)
@@ -210,11 +212,11 @@ LINE_PATTERN = re.compile(r'''
     (?<=(?<!\S)@)(?P<negated>!?)
     (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
     (?P<args>.*)$
-''', re.X)
+''', re.X | re.UNICODE)
 
 
 def get_commands(template):
-    with open(template, 'rU') as f:
+    with io.open(template, encoding='utf-8') as f:
         for lineno, line in concat_multi_lines(f):
             m = LINE_PATTERN.search(line)
             if not m:
@@ -226,7 +228,10 @@ def get_commands(template):
             if args and not args[:1].isspace():
                 print_err(lineno, line, 'Invalid template syntax')
                 continue
-            args = shlex.split(args)
+            try:
+                args = shlex.split(args)
+            except UnicodeEncodeError:
+                args = [arg.decode('utf-8') for arg in shlex.split(args.encode('utf-8'))]
             yield Command(negated=negated, cmd=cmd, args=args, lineno=lineno+1, context=line)
 
 
@@ -280,7 +285,7 @@ class CachedFiles(object):
         if not(os.path.exists(abspath) and os.path.isfile(abspath)):
             raise FailedCheck('File does not exist {!r}'.format(path))
 
-        with open(abspath) as f:
+        with io.open(abspath, encoding='utf-8') as f:
             data = f.read()
             self.files[path] = data
             return data
@@ -294,9 +299,9 @@ class CachedFiles(object):
         if not(os.path.exists(abspath) and os.path.isfile(abspath)):
             raise FailedCheck('File does not exist {!r}'.format(path))
 
-        with open(abspath) as f:
+        with io.open(abspath, encoding='utf-8') as f:
             try:
-                tree = ET.parse(f, CustomHTMLParser())
+                tree = ET.fromstringlist(f.readlines(), CustomHTMLParser())
             except Exception as e:
                 raise RuntimeError('Cannot parse an HTML file {!r}: {}'.format(path, e))
             self.trees[path] = tree
@@ -313,7 +318,7 @@ def check_string(data, pat, regexp):
     if not pat:
         return True # special case a presence testing
     elif regexp:
-        return re.search(pat, data) is not None
+        return re.search(pat, data, flags=re.UNICODE) is not None
     else:
         data = ' '.join(data.split())
         pat = ' '.join(pat.split())
@@ -350,7 +355,7 @@ def check_tree_text(tree, path, pat, regexp):
                     break
     except Exception as e:
         print('Failed to get path "{}"'.format(path))
-        raise e
+        raise
     return ret
 
 
@@ -359,7 +364,12 @@ def get_tree_count(tree, path):
     return len(tree.findall(path))
 
 def stderr(*args):
-    print(*args, file=sys.stderr)
+    if sys.version_info.major < 3:
+        file = codecs.getwriter('utf-8')(sys.stderr)
+    else:
+        file = sys.stderr
+
+    print(*args, file=file)
 
 def print_err(lineno, context, err, message=None):
     global ERR_COUNT
