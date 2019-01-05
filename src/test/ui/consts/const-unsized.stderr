@@ -5,7 +5,7 @@ LL | const CONST_0: Debug+Sync = *(&0 as &(Debug+Sync));
    |                ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/const-unsized.rs:6:18
@@ -14,7 +14,7 @@ LL | const CONST_FOO: str = *"foo";
    |                  ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:9:18
@@ -23,7 +23,7 @@ LL | static STATIC_1: Debug+Sync = *(&1 as &(Debug+Sync));
    |                  ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/const-unsized.rs:12:20
@@ -32,7 +32,7 @@ LL | static STATIC_BAR: str = *"bar";
    |                    ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error: aborting due to 4 previous errors
 

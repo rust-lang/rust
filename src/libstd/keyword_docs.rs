@@ -169,7 +169,7 @@ mod crate_keyword { }
 ///
 /// [Algebraic Data Types]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [`Option`]: option/enum.Option.html
-/// [Rust Book]: https://doc.rust-lang.org/book/second-edition/ch06-01-defining-an-enum.html
+/// [Rust Book]: https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html
 /// [Reference]: https://doc.rust-lang.org/reference/items/enumerations.html
 mod enum_keyword { }
 
@@ -211,7 +211,7 @@ mod enum_keyword { }
 /// For more information on FFI, check the [Rust book] or the [Reference].
 ///
 /// [Rust book]:
-/// https://doc.rust-lang.org/book/second-edition/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
+/// https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
 /// [Reference]: https://doc.rust-lang.org/reference/items/external-blocks.html
 mod extern_keyword { }
 
@@ -278,7 +278,7 @@ mod extern_keyword { }
 ///
 /// [`impl`]: keyword.impl.html
 /// [`extern`]: keyword.extern.html
-/// [Rust book]: https://doc.rust-lang.org/book/second-edition/ch03-03-how-functions-work.html
+/// [Rust book]: https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
 /// [Reference]: https://doc.rust-lang.org/reference/items/functions.html
 mod fn_keyword { }
 
@@ -705,6 +705,6 @@ mod loop_keyword { }
 /// [Reference][reference].
 ///
 /// [`PhantomData`]: marker/struct.PhantomData.html
-/// [book]: https://doc.rust-lang.org/book/second-edition/ch05-01-defining-structs.html
+/// [book]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html
 /// [reference]: https://doc.rust-lang.org/reference/items/structs.html
 mod struct_keyword { }

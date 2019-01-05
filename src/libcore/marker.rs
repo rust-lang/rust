@@ -85,7 +85,7 @@ impl<T: ?Sized> !Send for *mut T { }
     on(parent_trait="std::path::Path", label="borrow the `Path` instead"),
     message="the size for values of type `{Self}` cannot be known at compilation time",
     label="doesn't have a size known at compile-time",
-    note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
+    note="to learn more, visit <https://doc.rust-lang.org/book/\
           ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>",
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable

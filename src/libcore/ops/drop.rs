@@ -11,7 +11,7 @@
 /// Refer to [the chapter on `Drop` in *The Rust Programming Language*][book]
 /// for some more elaboration.
 ///
-/// [book]: ../../book/second-edition/ch15-03-drop.html
+/// [book]: ../../book/ch15-03-drop.html
 ///
 /// # Examples
 ///
