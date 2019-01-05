@@ -73,7 +73,6 @@ pub const PATH_BUF: [&str; 3] = ["std", "path", "PathBuf"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
 pub const PTR_NULL: [&str; 2] = ["ptr", "null"];
 pub const PTR_NULL_MUT: [&str; 2] = ["ptr", "null_mut"];
-pub const RANDOM_STATE: [&str; 5] = ["std", "collections", "hash", "map", "RandomState"];
 pub const RANGE: [&str; 3] = ["core", "ops", "Range"];
 pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
 pub const RANGE_FROM: [&str; 3] = ["core", "ops", "RangeFrom"];
