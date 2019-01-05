@@ -15,7 +15,6 @@ extern crate rustc_target;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
-use std::env;
 
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size, Align};
@@ -183,14 +182,6 @@ pub fn eval_main<'a, 'tcx: 'a>(
     validate: bool,
 ) {
     let mut ecx = create_ecx(tcx, main_id, validate).expect("Couldn't create ecx");
-
-    // If MIRI_BACKTRACE is set and RUST_CTFE_BACKTRACE is not, set RUST_CTFE_BACKTRACE.
-    // Do this late, so we really only apply this to miri's errors.
-    if let Ok(var) = env::var("MIRI_BACKTRACE") {
-        if env::var("RUST_CTFE_BACKTRACE") == Err(env::VarError::NotPresent) {
-            env::set_var("RUST_CTFE_BACKTRACE", &var);
-        }
-    }
 
     // Run! The main execution.
     let res: EvalResult = (|| {
