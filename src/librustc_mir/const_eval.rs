@@ -68,12 +68,36 @@ pub fn mk_eval_cx<'a, 'tcx>(
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
     let span = tcx.def_span(instance.def_id());
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    let mir = ecx.load_mir(instance.def)?;
+    let mir = mir::Mir::new(
+        ::std::iter::once(
+            mir::BasicBlockData {
+                statements: Vec::new(),
+                is_cleanup: false,
+                terminator: Some(mir::Terminator {
+                    source_info: mir::SourceInfo {
+                        scope: mir::OUTERMOST_SOURCE_SCOPE,
+                        span: DUMMY_SP,
+                    },
+                    kind: mir::TerminatorKind::Return,
+                }),
+            }
+        ).collect(), // basic blocks
+        IndexVec::new(), // source_scopes
+        mir::ClearCrossCrate::Clear, // source_scope_local_data
+        IndexVec::new(), // promoted
+        None, // yield ty
+        ::std::iter::once(mir::LocalDecl::new_return_place(tcx.types.unit, DUMMY_SP)).collect(),
+        IndexVec::new(), //user_type_annotations
+        0, // arg_count
+        Vec::new(), // upvar_decls
+        DUMMY_SP, // span
+        Vec::new(), // control_flow_destroyed
+    );
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
         instance,
-        mir.span,
-        mir,
+        span,
+        tcx.alloc_mir(mir),
         None,
         StackPopCleanup::Goto(None), // never pop
     )?;
