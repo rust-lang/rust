@@ -2180,25 +2180,6 @@ if (!DOMTokenList.prototype.remove) {
 
     let showItemDeclarations = getCurrentValue("rustdoc-item-declarations") === "false";
     function buildToggleWrapper(e) {
-        if (hasClass(e, "autohide")) {
-            let wrap = e.previousElementSibling;
-            if (wrap && hasClass(wrap, "toggle-wrapper")) {
-                let inner_toggle = wrap.childNodes[0];
-                let extra = e.childNodes[0].tagName === "H3";
-
-                e.style.display = "none";
-                addClass(wrap, "collapsed");
-                onEachLazy(inner_toggle.getElementsByClassName("inner"), function(e) {
-                    e.innerHTML = labelForToggleButton(true);
-                });
-                onEachLazy(inner_toggle.getElementsByClassName("toggle-label"), function(e) {
-                    e.style.display = "inline-block";
-                    if (extra === true) {
-                        i_e.innerHTML = " Show " + e.childNodes[0].innerHTML;
-                    }
-                });
-            }
-        }
         if (e.parentNode.id === "main") {
             let otherMessage = "";
             let fontSize;
