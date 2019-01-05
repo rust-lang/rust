@@ -15,6 +15,7 @@ macro_rules! ctry {
 mod db;
 mod imp;
 mod completion;
+mod goto_defenition;
 mod symbol_index;
 pub mod mock_analysis;
 mod runnables;
@@ -273,26 +274,6 @@ impl<T> RangeInfo<T> {
     }
 }
 
-/// Result of "goto def" query.
-#[derive(Debug)]
-pub struct ReferenceResolution {
-    /// The range of the reference itself. Client does not know what constitutes
-    /// a reference, it handles us only the offset. It's helpful to tell the
-    /// client where the reference was.
-    pub reference_range: TextRange,
-    /// What this reference resolves to.
-    pub resolves_to: Vec<NavigationTarget>,
-}
-
-impl ReferenceResolution {
-    fn new(reference_range: TextRange) -> ReferenceResolution {
-        ReferenceResolution {
-            reference_range,
-            resolves_to: Vec::new(),
-        }
-    }
-}
-
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug, Default)]
 pub struct AnalysisHost {
@@ -392,12 +373,11 @@ impl Analysis {
             .collect();
         Ok(res)
     }
-    /// Resolves reference to definition, but does not gurantee correctness.
-    pub fn approximately_resolve_symbol(
+    pub fn goto_defenition(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<ReferenceResolution>> {
-        self.db.approximately_resolve_symbol(position)
+    ) -> Cancelable<Option<Vec<NavigationTarget>>> {
+        goto_defenition::goto_defenition(&*self.db, position)
     }
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {

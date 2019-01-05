@@ -15,65 +15,6 @@ fn get_signature(text: &str) -> (FnSignatureInfo, Option<usize>) {
 }
 
 #[test]
-fn approximate_resolve_works_in_items() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        struct Foo;
-        enum E { X(Foo<|>) }
-    ",
-    );
-
-    let symbols = analysis.approximately_resolve_symbol(pos).unwrap().unwrap();
-    assert_eq_dbg(
-        r#"ReferenceResolution {
-            reference_range: [23; 26),
-            resolves_to: [NavigationTarget { file_id: FileId(1), name: "Foo", kind: STRUCT_DEF, range: [0; 11), ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]
-        }"#,
-        &symbols,
-    );
-}
-
-#[test]
-fn test_resolve_module() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod <|>foo;
-        //- /foo.rs
-        // empty
-    ",
-    );
-
-    let symbols = analysis.approximately_resolve_symbol(pos).unwrap().unwrap();
-    assert_eq_dbg(
-        r#"ReferenceResolution {
-            reference_range: [4; 7),
-            resolves_to: [NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]
-        }"#,
-        &symbols,
-    );
-
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod <|>foo;
-        //- /foo/mod.rs
-        // empty
-    ",
-    );
-
-    let symbols = analysis.approximately_resolve_symbol(pos).unwrap().unwrap();
-    assert_eq_dbg(
-        r#"ReferenceResolution {
-            reference_range: [4; 7),
-            resolves_to: [NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]
-        }"#,
-        &symbols,
-    );
-}
-
-#[test]
 fn test_unresolved_module_diagnostic() {
     let (analysis, file_id) = single_file("mod foo;");
     let diagnostics = analysis.diagnostics(file_id).unwrap();
