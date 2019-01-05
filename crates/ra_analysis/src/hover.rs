@@ -167,7 +167,7 @@ impl NavigationTarget {
 #[cfg(test)]
 mod tests {
     use ra_syntax::TextRange;
-    use crate::mock_analysis::single_file_with_position;
+    use crate::mock_analysis::{single_file_with_position, single_file_with_range};
 
     #[test]
     fn hover_shows_type_of_an_expression() {
@@ -191,4 +191,52 @@ mod tests {
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.info, "i32");
     }
+
+    #[test]
+    fn test_type_of_for_function() {
+        let (analysis, range) = single_file_with_range(
+            "
+            pub fn foo() -> u32 { 1 };
+
+            fn main() {
+                let foo_test = <|>foo()<|>;
+            }
+            ",
+        );
+
+        let type_name = analysis.type_of(range).unwrap().unwrap();
+        assert_eq!("u32", &type_name);
+    }
+
+    // FIXME: improve type_of to make this work
+    #[test]
+    fn test_type_of_for_expr_1() {
+        let (analysis, range) = single_file_with_range(
+            "
+            fn main() {
+                let foo = <|>1 + foo_test<|>;
+            }
+            ",
+        );
+
+        let type_name = analysis.type_of(range).unwrap().unwrap();
+        assert_eq!("[unknown]", &type_name);
+    }
+
+    // FIXME: improve type_of to make this work
+    #[test]
+    fn test_type_of_for_expr_2() {
+        let (analysis, range) = single_file_with_range(
+            "
+            fn main() {
+                let foo: usize = 1;
+                let bar = <|>1 + foo_test<|>;
+            }
+            ",
+        );
+
+        let type_name = analysis.type_of(range).unwrap().unwrap();
+        assert_eq!("[unknown]", &type_name);
+    }
+
 }

@@ -1,5 +1,4 @@
 mod runnables;
-mod type_of;
 
 use ra_syntax::TextRange;
 use test_utils::{assert_eq_dbg, assert_eq_text};
