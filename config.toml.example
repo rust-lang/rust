@@ -144,6 +144,10 @@
 # target when running tests, otherwise this can be omitted.
 #nodejs = "node"
 
+# The eslint executable to use. Note that this is only used for linting js files
+# during the test phase. It can be omitted.
+#eslint = "eslint"
+
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 # Note that Python 2 is currently required.

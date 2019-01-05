@@ -609,6 +609,14 @@ impl Step for RustdocJS {
                 "No nodejs found, skipping \"src/test/rustdoc-js\" tests"
             );
         }
+
+        if let Some(ref eslint) = builder.config.eslint {
+            let mut command = Command::new(eslint);
+            command.args(&["src/librustdoc/html/static"]);
+            builder.run(&mut command);
+        } else {
+            builder.info("No eslint found, skipping js linting");
+        }
     }
 }
 
