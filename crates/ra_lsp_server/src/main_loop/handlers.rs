@@ -9,7 +9,7 @@ use languageserver_types::{
     Range, WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover,
     HoverContents, DocumentFormattingParams, DocumentHighlight,
 };
-use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FileRange, FilePosition, Severity};
+use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FileRange, FilePosition, Severity, NavigationTarget};
 use ra_syntax::{TextUnit, text_utils::intersect};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
@@ -517,11 +517,20 @@ pub fn handle_hover(
         Some(it) => it,
     };
     let mut result = Vec::new();
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_range = FileRange {
+        file_id,
+        range: rr.reference_range,
+    };
+    if let Some(type_name) = get_type(&world, file_range) {
+        result.push(type_name);
+    }
     for nav in rr.resolves_to {
-        if let Some(docs) = world.analysis().doc_text_for(nav)? {
+        if let Some(docs) = get_doc_text(&world, nav) {
             result.push(docs);
         }
     }
+
     let range = rr.reference_range.conv_with(&line_index);
     if result.len() > 0 {
         return Ok(Some(Hover {
@@ -751,5 +760,19 @@ fn to_diagnostic_severity(severity: Severity) -> DiagnosticSeverity {
     match severity {
         Error => DiagnosticSeverity::Error,
         WeakWarning => DiagnosticSeverity::Hint,
+    }
+}
+
+fn get_type(world: &ServerWorld, file_range: FileRange) -> Option<String> {
+    match world.analysis().type_of(file_range) {
+        Ok(result) => result,
+        _ => None,
+    }
+}
+
+fn get_doc_text(world: &ServerWorld, nav: NavigationTarget) -> Option<String> {
+    match world.analysis().doc_text_for(nav) {
+        Ok(result) => result,
+        _ => None,
     }
 }
