@@ -1,4 +1,5 @@
 use ra_db::{Cancelable, SyntaxDatabase};
+use ra_editor::find_node_at_offset;
 use ra_syntax::{
     AstNode, SyntaxNode,
     ast::{self, NameOwner},
@@ -11,18 +12,18 @@ pub(crate) fn hover(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Option<RangeInfo<String>>> {
+    let file = db.source_file(position.file_id);
     let mut res = Vec::new();
-    let range = if let Some(rr) = db.approximately_resolve_symbol(position)? {
-        for nav in rr.resolves_to {
+    let range = if let Some(name_ref) =
+        find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)
+    {
+        let navs = crate::goto_defenition::reference_defenition(db, position.file_id, name_ref)?;
+        for nav in navs {
             res.extend(doc_text_for(db, nav)?)
         }
-        rr.reference_range
+        name_ref.syntax().range()
     } else {
-        let file = db.source_file(position.file_id);
-        let expr: ast::Expr = ctry!(ra_editor::find_node_at_offset(
-            file.syntax(),
-            position.offset
-        ));
+        let expr: ast::Expr = ctry!(find_node_at_offset(file.syntax(), position.offset));
         let frange = FileRange {
             file_id: position.file_id,
             range: expr.syntax().range(),

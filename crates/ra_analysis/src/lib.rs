@@ -274,26 +274,6 @@ impl<T> RangeInfo<T> {
     }
 }
 
-/// Result of "goto def" query.
-#[derive(Debug)]
-pub struct ReferenceResolution {
-    /// The range of the reference itself. Client does not know what constitutes
-    /// a reference, it handles us only the offset. It's helpful to tell the
-    /// client where the reference was.
-    pub reference_range: TextRange,
-    /// What this reference resolves to.
-    pub resolves_to: Vec<NavigationTarget>,
-}
-
-impl ReferenceResolution {
-    fn new(reference_range: TextRange) -> ReferenceResolution {
-        ReferenceResolution {
-            reference_range,
-            resolves_to: Vec::new(),
-        }
-    }
-}
-
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug, Default)]
 pub struct AnalysisHost {

@@ -20,7 +20,7 @@ pub(crate) fn goto_defenition(
     Ok(None)
 }
 
-fn reference_defenition(
+pub(crate) fn reference_defenition(
     db: &RootDatabase,
     file_id: FileId,
     name_ref: ast::NameRef,
