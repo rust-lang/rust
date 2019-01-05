@@ -6,62 +6,29 @@
 //! necessary (e.g. when [0,5) is first associated with X, and then [1,2) is mutated).
 //! Users must not depend on whether a range is coalesced or not, even though this is observable
 //! via the iteration APIs.
-use std::collections::BTreeMap;
+
 use std::ops;
+use std::num::NonZeroU64;
 
 use rustc::ty::layout::Size;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+// Representation: offset-length-data tuples, sorted by offset.
+#[derive(Clone, Debug)]
+struct Elem<T> {
+    offset: u64,
+    len: NonZeroU64,
+    data: T,
+}
+// Length is always > 0.
+#[derive(Clone, Debug)]
 pub struct RangeMap<T> {
-    map: BTreeMap<Range, T>,
+    v: Vec<Elem<T>>,
 }
 
-// The derived `Ord` impl sorts first by the first field, then, if the fields are the same,
-// by the second field.
-// This is exactly what we need for our purposes, since a range query on a BTReeSet/BTreeMap will give us all
-// `MemoryRange`s whose `start` is <= than the one we're looking for, but not > the end of the range we're checking.
-// At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
-// This kind of search breaks, if `end < start`, so don't do that!
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Range {
-    start: u64,
-    end: u64, // Invariant: end > start
-}
-
-impl Range {
-    /// Compute a range of ranges that contains all ranges overlaping with [offset, offset+len)
-    fn range(offset: u64, len: u64) -> ops::Range<Range> {
-        if len == 0 {
-            // We can produce an empty range, nothing overlaps with this.
-            let r = Range { start: 0, end: 1 };
-            return r..r;
-        }
-        // We select all elements that are within
-        // the range given by the offset into the allocation and the length.
-        // This is sound if all ranges that intersect with the argument range, are in the
-        // resulting range of ranges.
-        let left = Range {
-            // lowest range to include `offset`
-            start: 0,
-            end: offset + 1,
-        };
-        let right = Range {
-            // lowest (valid) range not to include `offset+len`
-            start: offset + len,
-            end: offset + len + 1,
-        };
-        left..right
-    }
-
-    /// Tests if any element of [offset, offset+len) is contained in this range.
+impl<T> Elem<T> {
     #[inline(always)]
-    fn overlaps(&self, offset: u64, len: u64) -> bool {
-        if len == 0 {
-            // `offset` totally does not matter, we cannot overlap with an empty interval
-            false
-        } else {
-            offset < self.end && offset.checked_add(len).unwrap() >= self.start
-        }
+    fn contains(&self, offset: u64) -> bool {
+        offset >= self.offset && offset < self.offset + self.len.get()
     }
 }
 
@@ -70,73 +37,95 @@ impl<T> RangeMap<T> {
     /// the entire range.
     #[inline(always)]
     pub fn new(size: Size, init: T) -> RangeMap<T> {
-        let mut map = RangeMap { map: BTreeMap::new() };
-        if size.bytes() > 0 {
-            map.map.insert(Range { start: 0, end: size.bytes() }, init);
+        let size = size.bytes();
+        let mut map = RangeMap { v: Vec::new() };
+        if size > 0 {
+            map.v.push(Elem {
+                offset: 0,
+                len: NonZeroU64::new(size).unwrap(),
+                data: init
+            });
         }
         map
     }
 
-    fn iter_with_range<'a>(
-        &'a self,
-        offset: u64,
-        len: u64,
-    ) -> impl Iterator<Item = (&'a Range, &'a T)> + 'a {
-        self.map.range(Range::range(offset, len)).filter_map(
-            move |(range, data)| {
-                debug_assert!(len > 0);
-                if range.overlaps(offset, len) {
-                    Some((range, data))
-                } else {
-                    None
-                }
-            },
-        )
+    /// Find the index containing the given offset.
+    fn find_offset(&self, offset: u64) -> usize {
+        debug_assert!(self.v.len() > 0);
+        let mut left = 0usize; // inclusive
+        let mut right = self.v.len(); // exclusive
+        loop {
+            let candidate = left.checked_add(right).unwrap() / 2;
+            let elem = &self.v[candidate];
+            if elem.offset > offset {
+                // we are too far right (offset is further left)
+                debug_assert!(candidate < right); // we are making progress
+                right = candidate;
+            } else if offset >= elem.offset + elem.len.get() {
+                // we are too far left (offset is further right)
+                debug_assert!(candidate >= left); // we are making progress
+                left = candidate+1;
+                debug_assert!(left < right, "find_offset: offset {} is out-of-bounds", offset);
+            } else {
+                // This is it!
+                return candidate;
+            }
+        }
     }
 
     /// Provide read-only iteration over everything in the given range.  This does
     /// *not* split items if they overlap with the edges.  Do not use this to mutate
     /// through interior mutability.
     pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = &'a T> + 'a {
-        self.iter_with_range(offset.bytes(), len.bytes()).map(|(_, data)| data)
+        let offset = offset.bytes();
+        let len = len.bytes();
+        // Compute a slice starting with the elements we care about
+        let slice: &[Elem<T>] = if len == 0 {
+                // We just need any empty iterator.  We don't even want to
+                // yield the element that surrounds this position.
+                &[]
+            } else {
+                let first = self.find_offset(offset);
+                &self.v[first..]
+            };
+        let end = offset + len; // the first offset that is not included any more
+        slice.iter()
+            .take_while(move |elem| elem.offset < end)
+            .map(|elem| &elem.data)
     }
 
     pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
-        self.map.values_mut()
+        self.v.iter_mut().map(|elem| &mut elem.data)
     }
 
-    fn split_entry_at(&mut self, offset: u64)
+    // Split the element situated at the given `index`, such that the 2nd one starts at offset `split_offset`.
+    // Do nothing if the element already starts there.
+    // Return whether a split was necessary.
+    fn split_index(&mut self, index: usize, split_offset: u64) -> bool
     where
         T: Clone,
     {
-        let range = match self.iter_with_range(offset, 1).next() {
-            Some((&range, _)) => range,
-            None => return,
-        };
-        assert!(
-            range.start <= offset && range.end > offset,
-            "We got a range that doesn't even contain what we asked for."
-        );
-        // There is an entry overlapping this position, see if we have to split it
-        if range.start < offset {
-            let data = self.map.remove(&range).unwrap();
-            let old = self.map.insert(
-                Range {
-                    start: range.start,
-                    end: offset,
-                },
-                data.clone(),
-            );
-            assert!(old.is_none());
-            let old = self.map.insert(
-                Range {
-                    start: offset,
-                    end: range.end,
-                },
-                data,
-            );
-            assert!(old.is_none());
+        let elem = &mut self.v[index];
+        let first_len = split_offset.checked_sub(elem.offset)
+            .expect("The split_offset is before the element to be split");
+        assert!(first_len <= elem.len.get(),
+            "The split_offset is after the element to be split");
+        if first_len == 0 || first_len == elem.len.get() {
+            // Nothing to do
+            return false;
         }
+
+        // Now we really have to split.  Reduce length of first element.
+        let second_len = elem.len.get() - first_len;
+        elem.len = NonZeroU64::new(first_len).unwrap();
+        // Copy the data, and insert 2nd element
+        let second = Elem {
+            offset: split_offset,
+            len: NonZeroU64::new(second_len).unwrap(),
+            data: elem.data.clone(),
+        };
+        self.v.insert(index+1, second);
+        return true;
     }
 
     /// Provide mutable iteration over everything in the given range.  As a side-effect,
@@ -152,28 +141,43 @@ impl<T> RangeMap<T> {
     {
         let offset = offset.bytes();
         let len = len.bytes();
-
-        if len > 0 {
-            // Preparation: Split first and last entry as needed.
-            self.split_entry_at(offset);
-            self.split_entry_at(offset + len);
-        }
-        // Now we can provide a mutable iterator
-        self.map.range_mut(Range::range(offset, len)).filter_map(
-            move |(&range, data)| {
-                debug_assert!(len > 0);
-                if range.overlaps(offset, len) {
-                    assert!(
-                        offset <= range.start && offset + len >= range.end,
-                        "The splitting went wrong"
-                    );
-                    Some(data)
-                } else {
-                    // Skip this one
-                    None
+        // Compute a slice containing exactly the elements we care about
+        let slice: &mut [Elem<T>] = if len == 0 {
+                // We just need any empty iterator.  We don't even want to
+                // yield the element that surrounds this position, nor do
+                // any splitting.
+                &mut []
+            } else {
+                // Make sure we got a clear beginning
+                let mut first = self.find_offset(offset);
+                if self.split_index(first, offset) {
+                    // The newly created 2nd element is ours
+                    first += 1;
                 }
-            },
-        )
+                let first = first; // no more mutation
+                // Find our end.  Linear scan, but that's okay because the iteration
+                // is doing the same linear scan anyway -- no increase in complexity.
+                let mut end = first; // the last element to be included
+                loop {
+                    let elem = &self.v[end];
+                    if elem.offset+elem.len.get() < offset+len {
+                        // We need to scan further.
+                        end += 1;
+                        debug_assert!(end < self.v.len(), "iter_mut: end-offset {} is out-of-bounds", offset+len);
+                    } else {
+                        // `elem` is the last included element.  Stop search.
+                        break;
+                    }
+                }
+                let end = end; // no more mutation
+                // We need to split the end as well.  Even if this performs a
+                // split, we don't have to adjust our index as we only care about
+                // the first part of the split.
+                self.split_index(end, offset+len);
+                // Now we yield the slice. `end` is inclusive.
+                &mut self.v[first..=end]
+            };
+        slice.iter_mut().map(|elem| &mut elem.data)
     }
 }
 
@@ -203,7 +207,7 @@ mod tests {
         }
         // Check
         assert_eq!(to_vec(&map, 10, 1), vec![42]);
-        assert_eq!(map.map.len(), 3);
+        assert_eq!(map.v.len(), 3);
 
         // Insert with size 0
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
@@ -213,7 +217,7 @@ mod tests {
             *x = 19;
         }
         assert_eq!(to_vec(&map, 10, 2), vec![42, -1]);
-        assert_eq!(map.map.len(), 3);
+        assert_eq!(map.v.len(), 3);
     }
 
     #[test]
@@ -225,7 +229,7 @@ mod tests {
         for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(1)) {
             *x = 43;
         }
-        assert_eq!(map.map.len(), 5);
+        assert_eq!(map.v.len(), 5);
         assert_eq!(
             to_vec(&map, 10, 10),
             vec![-1, 42, -1, -1, -1, 43, -1, -1, -1, -1]
@@ -236,7 +240,7 @@ mod tests {
                 *x = 23;
             }
         }
-        assert_eq!(map.map.len(), 6);
+        assert_eq!(map.v.len(), 6);
 
         assert_eq!(
             to_vec(&map, 10, 10),
@@ -244,14 +248,11 @@ mod tests {
         );
         assert_eq!(to_vec(&map, 13, 5), vec![23, 23, 43, 23, 23]);
 
-        // Now request a range that goes beyond the initial size
-        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(10)) {
+        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) {
             *x = 19;
         }
-        assert_eq!(map.map.len(), 6);
+        assert_eq!(map.v.len(), 6);
         assert_eq!(map.iter(Size::from_bytes(19), Size::from_bytes(1))
             .map(|&t| t).collect::<Vec<_>>(), vec![19]);
-        assert_eq!(map.iter(Size::from_bytes(20), Size::from_bytes(1))
-            .map(|&t| t).collect::<Vec<_>>(), vec![]);
     }
 }
