@@ -161,7 +161,7 @@ struct MatcherPos<'root, 'tt: 'root> {
     /// The position of the "dot" in this matcher
     idx: usize,
 
-    /// The first span of source source that the beginning of this matcher corresponds to. In other
+    /// The first span of source that the beginning of this matcher corresponds to. In other
     /// words, the token in the source whose span is `sp_open` is matched against the first token of
     /// the matcher.
     sp_open: Span,

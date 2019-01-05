@@ -335,7 +335,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // we may want to suggest adding a `*`, or removing
                 // a `&`.
                 //
-                // (But, also check check the `expn_info()` to see if this is
+                // (But, also check the `expn_info()` to see if this is
                 // a macro; if so, it's hard to extract the text and make a good
                 // suggestion, so don't bother.)
                 if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() &&

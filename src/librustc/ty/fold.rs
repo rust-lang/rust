@@ -109,7 +109,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
-    /// True if there any any un-erased free regions.
+    /// True if there are any un-erased free regions.
     fn has_erasable_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }

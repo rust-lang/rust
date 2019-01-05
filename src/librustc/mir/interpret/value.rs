@@ -79,7 +79,7 @@ pub enum Scalar<Tag=(), Id=AllocId> {
     /// The raw bytes of a simple value.
     Bits {
         /// The first `size` bytes are the value.
-        /// Do not try to read less or more bytes that that. The remaining bytes must be 0.
+        /// Do not try to read less or more bytes than that. The remaining bytes must be 0.
         size: u8,
         bits: u128,
     },

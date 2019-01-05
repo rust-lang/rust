@@ -4,7 +4,7 @@
 
 // FIXME: LLVM generates invalid debug info for variables requiring
 // dynamic stack realignment, which is the case on s390x for vector
-// types with with non-vector ABI.
+// types with non-vector ABI.
 // ignore-s390x
 
 // compile-flags:-g
