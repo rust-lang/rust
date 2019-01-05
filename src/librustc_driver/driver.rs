@@ -4,7 +4,6 @@ use rustc::hir::lowering::lower_crate;
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
@@ -18,7 +17,7 @@ use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{self, Lrc, Lock};
+use rustc_data_structures::sync::{self, Lock};
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -785,8 +784,6 @@ where
             },
 
             analysis: ty::CrateAnalysis {
-                access_levels: Lrc::new(AccessLevels::default()),
-                name: crate_name.to_string(),
                 glob_map: if resolver.make_glob_map {
                     Some(resolver.glob_map)
                 } else {
@@ -1193,7 +1190,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     sess: &'tcx Session,
     cstore: &'tcx CStore,
     hir_map: hir_map::Map<'tcx>,
-    mut analysis: ty::CrateAnalysis,
+    analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
     arenas: &'tcx mut AllArenas<'tcx>,
     name: &str,
@@ -1275,8 +1272,9 @@ where
                 rvalue_promotion::check_crate(tcx)
             });
 
-            analysis.access_levels =
-                time(sess, "privacy checking", || rustc_privacy::check_crate(tcx));
+            time(sess, "privacy checking", || {
+                rustc_privacy::check_crate(tcx)
+            });
 
             time(sess, "intrinsic checking", || {
                 middle::intrinsicck::check_crate(tcx)
