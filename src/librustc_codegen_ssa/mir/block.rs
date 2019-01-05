@@ -500,53 +500,57 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => bx.new_fn_type(sig, &extra_args)
                 };
 
-                // emit a panic instead of instantiating an uninhabited type
-                if (intrinsic == Some("init") || intrinsic == Some("uninit")) &&
-                    fn_ty.ret.layout.abi.is_uninhabited()
-                {
-                    let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                    let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                    let filename = bx.const_str_slice(filename);
-                    let line = bx.const_u32(loc.line as u32);
-                    let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
-                    let align = tcx.data_layout.aggregate_align.abi
-                        .max(tcx.data_layout.i32_align.abi)
-                        .max(tcx.data_layout.pointer_align.abi);
+                // emit a panic or a NOP for `panic_if_uninhabited`
+                if intrinsic == Some("panic_if_uninhabited") {
+                    let ty = instance.unwrap().substs.type_at(0);
+                    let layout = bx.layout_of(ty);
+                    if layout.abi.is_uninhabited() {
+                        let loc = bx.sess().source_map().lookup_char_pos(span.lo());
+                        let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
+                        let filename = bx.const_str_slice(filename);
+                        let line = bx.const_u32(loc.line as u32);
+                        let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
+                        let align = tcx.data_layout.aggregate_align.abi
+                            .max(tcx.data_layout.i32_align.abi)
+                            .max(tcx.data_layout.pointer_align.abi);
 
-                    let str = format!(
-                        "Attempted to instantiate uninhabited type {} using mem::{}",
-                        sig.output(),
-                        if intrinsic == Some("init") { "zeroed" } else { "uninitialized" }
-                    );
-                    let msg_str = Symbol::intern(&str).as_str();
-                    let msg_str = bx.const_str_slice(msg_str);
-                    let msg_file_line_col = bx.const_struct(
-                        &[msg_str, filename, line, col],
-                        false,
-                    );
-                    let msg_file_line_col = bx.static_addr_of(
-                        msg_file_line_col,
-                        align,
-                        Some("panic_loc"),
-                    );
+                        let str = format!(
+                            "Attempted to instantiate uninhabited type {}",
+                            ty
+                        );
+                        let msg_str = Symbol::intern(&str).as_str();
+                        let msg_str = bx.const_str_slice(msg_str);
+                        let msg_file_line_col = bx.const_struct(
+                            &[msg_str, filename, line, col],
+                            false,
+                        );
+                        let msg_file_line_col = bx.static_addr_of(
+                            msg_file_line_col,
+                            align,
+                            Some("panic_loc"),
+                        );
 
-                    // Obtain the panic entry point.
-                    let def_id =
-                        common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
-                    let instance = ty::Instance::mono(bx.tcx(), def_id);
-                    let fn_ty = bx.fn_type_of_instance(&instance);
-                    let llfn = bx.get_fn(instance);
+                        // Obtain the panic entry point.
+                        let def_id =
+                            common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
+                        let instance = ty::Instance::mono(bx.tcx(), def_id);
+                        let fn_ty = bx.fn_type_of_instance(&instance);
+                        let llfn = bx.get_fn(instance);
 
-                    // Codegen the actual panic invoke/call.
-                    do_call(
-                        self,
-                        &mut bx,
-                        fn_ty,
-                        llfn,
-                        &[msg_file_line_col],
-                        destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
-                        cleanup,
-                    );
+                        // Codegen the actual panic invoke/call.
+                        do_call(
+                            self,
+                            &mut bx,
+                            fn_ty,
+                            llfn,
+                            &[msg_file_line_col],
+                            destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
+                            cleanup,
+                        );
+                    } else {
+                        // a NOP
+                        funclet_br(self, &mut bx, destination.as_ref().unwrap().1);
+                    }
                     return;
                 }
 
