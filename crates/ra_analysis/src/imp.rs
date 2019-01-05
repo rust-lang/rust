@@ -269,6 +269,32 @@ impl db::RootDatabase {
         Ok(result)
     }
 
+    pub(crate) fn hover(&self, position: FilePosition) -> Cancelable<Option<(TextRange, String)>> {
+        let mut res = Vec::new();
+        let range = if let Some(rr) = self.approximately_resolve_symbol(position)? {
+            for nav in rr.resolves_to {
+                res.extend(self.doc_text_for(nav)?)
+            }
+            rr.reference_range
+        } else {
+            let file = self.source_file(position.file_id);
+            let expr: ast::Expr = ctry!(ra_editor::find_node_at_offset(
+                file.syntax(),
+                position.offset
+            ));
+            let frange = FileRange {
+                file_id: position.file_id,
+                range: expr.syntax().range(),
+            };
+            res.extend(self.type_of(frange)?);
+            expr.syntax().range()
+        };
+        if res.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some((range, res.join("\n\n---\n"))))
+    }
+
     pub(crate) fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let syntax = self.source_file(file_id);
 
