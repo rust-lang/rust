@@ -1984,7 +1984,7 @@ dependencies = [
  "rls-vfs 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-workspace-hack 1.0.0",
- "rustc_tools_util 0.1.0 (git+https://github.com/rust-lang/rust-clippy?rev=a3c77f6ad1c1c185e561e9cd7fdec7db569169d1)",
+ "rustc_tools_util 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustfmt-nightly 1.0.1",
  "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.81 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2633,12 +2633,12 @@ dependencies = [
 
 [[package]]
 name = "rustc_tools_util"
-version = "0.1.0"
-source = "git+https://github.com/rust-lang/rust-clippy?rev=a3c77f6ad1c1c185e561e9cd7fdec7db569169d1#a3c77f6ad1c1c185e561e9cd7fdec7db569169d1"
+version = "0.1.1"
 
 [[package]]
 name = "rustc_tools_util"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc_traits"
@@ -3599,7 +3599,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c6d5a683c6ba4ed37959097e88d71c9e8e26659a3cb5be8b389078e7ad45306"
 "checksum rustc-rayon-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "40f06724db71e18d68b3b946fdf890ca8c921d9edccc1404fdfdb537b0d12649"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-"checksum rustc_tools_util 0.1.0 (git+https://github.com/rust-lang/rust-clippy?rev=a3c77f6ad1c1c185e561e9cd7fdec7db569169d1)" = "<none>"
+"checksum rustc_tools_util 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c5a95edfa0c893236ae4778bb7c4752760e4c0d245e19b5eff33c5aa5eb9dc"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum rustfix 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "af7c21531a91512a4a51b490be6ba1c8eff34fdda0dc5bf87dc28d86748aac56"
 "checksum rusty-fork 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9591f190d2852720b679c21f66ad929f9f1d7bb09d1193c26167586029d8489c"
