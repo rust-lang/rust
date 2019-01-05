@@ -12,7 +12,7 @@ export class Server {
         notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>
     ) {
         const run: lc.Executable = {
-            command: 'ra_lsp_server',
+            command: this.config.raLspServerPath,
             options: { cwd: '.' }
         };
         const serverOptions: lc.ServerOptions = {

@@ -132,6 +132,13 @@
                     "default": true,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
                 },
+                "ra-lsp.raLspServerPath": {
+                    "type": [
+                        "string"
+                    ],
+                    "default": "ra_lsp_server",
+                    "description": "Path to ra_lsp_server executable"
+                },
                 "ra-lsp.trace.server": {
                     "type": "string",
                     "scope": "window",
