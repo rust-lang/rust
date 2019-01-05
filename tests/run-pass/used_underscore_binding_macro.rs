@@ -8,7 +8,6 @@
 // except according to those terms.
 
 #![allow(clippy::useless_attribute)] //issue #2910
-#![allow(clippy::random_state)] // issue #3628
 
 #[macro_use]
 extern crate serde_derive;
