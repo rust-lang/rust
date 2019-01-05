@@ -1,0 +1,10 @@
+[21; 22) 'x': bool
+[68; 69) 'z': bool
+[72; 78) 'x == y': bool
+[45; 58) 'true || false': bool
+[11; 125) '{     ... < 3 }': bool
+[117; 123) '10 < 3': bool
+[88; 89) 'h': bool
+[41; 42) 'y': bool
+[92; 110) 'CONST_...ONST_2': bool
+[25; 31) 'a && b': bool

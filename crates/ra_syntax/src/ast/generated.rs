@@ -217,7 +217,15 @@ impl<R: TreeRoot<RaTypes>> BinExprNode<R> {
 }
 
 
-impl<'a> BinExpr<'a> {}
+impl<'a> BinExpr<'a> {
+    pub fn lhs(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn rhs(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // BindPat
 #[derive(Debug, Clone, Copy,)]

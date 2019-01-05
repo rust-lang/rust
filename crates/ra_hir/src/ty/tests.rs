@@ -153,6 +153,23 @@ impl S {
     );
 }
 
+#[test]
+fn infer_boolean_op() {
+    check_inference(
+        r#"
+fn test() {
+    let x = a && b;
+    let y = true || false;
+    let z = x == y;
+    let h = CONST_1 <= CONST_2;
+
+    10 < 3
+}
+"#,
+        "0008_boolean_op.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

@@ -489,6 +489,45 @@ impl<'a> PrefixExpr<'a> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum BinOp {
+    /// The `||` operator for boolean OR
+    BooleanOr,
+    /// The `&&` operator for boolean AND
+    BooleanAnd,
+    /// The `==` operator for equality testing
+    EqualityTest,
+    /// The `<=` operator for lesser-equal testing
+    LesserEqualTest,
+    /// The `>=` operator for greater-equal testing
+    GreaterEqualTest,
+    /// The `<` operator for comparison
+    LesserTest,
+    /// The `>` operator for comparison
+    GreaterTest,
+    // TODO: lots of others
+}
+
+impl<'a> BinExpr<'a> {
+    pub fn op(&self) -> Option<BinOp> {
+        self.syntax()
+            .children()
+            .filter_map(|c| {
+                match c.kind() {
+                    PIPEPIPE => Some(BinOp::BooleanOr),
+                    AMPAMP => Some(BinOp::BooleanAnd),
+                    EQEQ => Some(BinOp::EqualityTest),
+                    LTEQ => Some(BinOp::LesserEqualTest),
+                    GTEQ => Some(BinOp::GreaterEqualTest),
+                    L_ANGLE => Some(BinOp::LesserTest),
+                    R_ANGLE => Some(BinOp::GreaterTest),
+                    _ => None,
+                }
+            })
+            .next()
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelfParamFlavor {
     /// self
     Owned,

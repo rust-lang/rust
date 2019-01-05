@@ -26,7 +26,7 @@ use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
 
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::{
-    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp},
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp, BinOp},
     SyntaxNodeRef
 };
 
@@ -906,7 +906,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             ast::Expr::RangeExpr(_e) => Ty::Unknown,
-            ast::Expr::BinExpr(_e) => Ty::Unknown,
+            ast::Expr::BinExpr(e) => match e.op() {
+                Some(BinOp::BooleanOr)
+                | Some(BinOp::BooleanAnd)
+                | Some(BinOp::EqualityTest)
+                | Some(BinOp::LesserEqualTest)
+                | Some(BinOp::GreaterEqualTest)
+                | Some(BinOp::LesserTest)
+                | Some(BinOp::GreaterTest) => Ty::Bool,
+                _ => Ty::Unknown,
+            },
             ast::Expr::Literal(_e) => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here

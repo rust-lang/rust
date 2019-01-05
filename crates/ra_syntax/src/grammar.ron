@@ -422,7 +422,12 @@ Grammar(
         "RefExpr": (options: ["Expr"]),
         "PrefixExpr": (options: ["Expr"]),
         "RangeExpr": (),
-        "BinExpr": (),
+        "BinExpr": (
+            options: [
+                ["lhs", "Expr"],
+                ["rhs", "Expr"]
+            ]
+        ),
         "String": (),
         "Byte": (),
         "ByteString": (),
