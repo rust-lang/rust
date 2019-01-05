@@ -26,7 +26,7 @@ pub fn opts() -> TargetOptions {
     base.post_link_objects_crt.push("crtn.o".to_string());
 
     // These targets statically link libc by default
-    base.crt_static_default = true;
+    base.crt_static_default = false;
     // These targets allow the user to choose between static and dynamic linking.
     base.crt_static_respected = true;
 
