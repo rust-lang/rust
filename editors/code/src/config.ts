@@ -4,6 +4,7 @@ import { Server } from './server';
 
 export class Config {
     public highlightingOn = true;
+    public raLspServerPath = 'ra_lsp_server';
 
     constructor() {
         vscode.workspace.onDidChangeConfiguration(_ =>
@@ -20,6 +21,10 @@ export class Config {
 
         if (!this.highlightingOn && Server) {
             Server.highlighter.removeHighlights();
+        }
+
+        if (config.has('raLspServerPath')) {
+            this.raLspServerPath = config.get('raLspServerPath') as string;
         }
     }
 }
