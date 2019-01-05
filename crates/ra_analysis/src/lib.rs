@@ -399,13 +399,6 @@ impl Analysis {
     ) -> Cancelable<Option<Vec<NavigationTarget>>> {
         goto_defenition::goto_defenition(&*self.db, position)
     }
-    // /// Resolves reference to definition, but does not gurantee correctness.
-    // pub fn approximately_resolve_symbol(
-    //     &self,
-    //     position: FilePosition,
-    // ) -> Cancelable<Option<ReferenceResolution>> {
-    //     self.db.approximately_resolve_symbol(position)
-    // }
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
         self.db.find_all_refs(position)

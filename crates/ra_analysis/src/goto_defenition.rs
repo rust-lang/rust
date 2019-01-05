@@ -78,3 +78,61 @@ fn name_defenition(
     }
     Ok(None)
 }
+
+#[cfg(test)]
+mod tests {
+    use test_utils::assert_eq_dbg;
+    use crate::mock_analysis::analysis_and_position;
+
+    #[test]
+    fn goto_defenition_works_in_items() {
+        let (analysis, pos) = analysis_and_position(
+            "
+            //- /lib.rs
+            struct Foo;
+            enum E { X(Foo<|>) }
+            ",
+        );
+
+        let symbols = analysis.goto_defenition(pos).unwrap().unwrap();
+        assert_eq_dbg(
+            r#"[NavigationTarget { file_id: FileId(1), name: "Foo",
+                                   kind: STRUCT_DEF, range: [0; 11),
+                                   ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
+            &symbols,
+        );
+    }
+
+    #[test]
+    fn goto_defenition_works_for_module_declaration() {
+        let (analysis, pos) = analysis_and_position(
+            "
+            //- /lib.rs
+            mod <|>foo;
+            //- /foo.rs
+            // empty
+        ",
+        );
+
+        let symbols = analysis.goto_defenition(pos).unwrap().unwrap();
+        assert_eq_dbg(
+            r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
+            &symbols,
+        );
+
+        let (analysis, pos) = analysis_and_position(
+            "
+            //- /lib.rs
+            mod <|>foo;
+            //- /foo/mod.rs
+            // empty
+        ",
+        );
+
+        let symbols = analysis.goto_defenition(pos).unwrap().unwrap();
+        assert_eq_dbg(
+            r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
+            &symbols,
+        );
+    }
+}
