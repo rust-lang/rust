@@ -8,8 +8,7 @@ use hir::{
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, find_node_at_offset, assists, LocalEdit, Severity};
 use ra_syntax::{
-    algo::find_covering_node,
-    ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
+    ast::{self, ArgListOwner, Expr, NameOwner},
     AstNode, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
@@ -398,19 +397,6 @@ impl db::RootDatabase {
         Ok(None)
     }
 
-    pub(crate) fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        let file = self.source_file(frange.file_id);
-        let syntax = file.syntax();
-        let node = find_covering_node(syntax, frange.range);
-        let parent_fn = ctry!(node.ancestors().find_map(FnDef::cast));
-        let function = ctry!(source_binder::function_from_source(
-            self,
-            frange.file_id,
-            parent_fn
-        )?);
-        let infer = function.infer(self)?;
-        Ok(infer.type_of_node(node).map(|t| t.to_string()))
-    }
     pub(crate) fn rename(
         &self,
         position: FilePosition,

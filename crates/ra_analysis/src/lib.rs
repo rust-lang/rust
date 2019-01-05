@@ -450,7 +450,7 @@ impl Analysis {
     }
     /// Computes the type of the expression at the given position.
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        self.db.type_of(frange)
+        hover::type_of(&*self.db, frange)
     }
     /// Returns the edit required to rename reference at the position to the new
     /// name.

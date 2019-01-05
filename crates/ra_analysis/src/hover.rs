@@ -2,7 +2,7 @@ use ra_db::{Cancelable, SyntaxDatabase};
 use ra_syntax::{
     AstNode, SyntaxNode,
     ast::{self, NameOwner},
-    algo::visit::{visitor, Visitor},
+    algo::{find_covering_node, visit::{visitor, Visitor}},
 };
 
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};
@@ -27,7 +27,7 @@ pub(crate) fn hover(
             file_id: position.file_id,
             range: expr.syntax().range(),
         };
-        res.extend(db.type_of(frange)?);
+        res.extend(type_of(db, frange)?);
         expr.syntax().range()
     };
     if res.is_empty() {
@@ -35,6 +35,20 @@ pub(crate) fn hover(
     }
     let res = RangeInfo::new(range, res.join("\n\n---\n"));
     Ok(Some(res))
+}
+
+pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Cancelable<Option<String>> {
+    let file = db.source_file(frange.file_id);
+    let syntax = file.syntax();
+    let node = find_covering_node(syntax, frange.range);
+    let parent_fn = ctry!(node.ancestors().find_map(ast::FnDef::cast));
+    let function = ctry!(hir::source_binder::function_from_source(
+        db,
+        frange.file_id,
+        parent_fn
+    )?);
+    let infer = function.infer(db)?;
+    Ok(infer.type_of_node(node).map(|t| t.to_string()))
 }
 
 // FIXME: this should not really use navigation target. Rather, approximatelly
