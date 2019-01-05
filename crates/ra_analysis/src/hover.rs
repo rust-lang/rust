@@ -14,23 +14,28 @@ pub(crate) fn hover(
 ) -> Cancelable<Option<RangeInfo<String>>> {
     let file = db.source_file(position.file_id);
     let mut res = Vec::new();
-    let range = if let Some(name_ref) =
-        find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)
-    {
+
+    let mut range = None;
+    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         let navs = crate::goto_defenition::reference_defenition(db, position.file_id, name_ref)?;
         for nav in navs {
             res.extend(doc_text_for(db, nav)?)
         }
-        name_ref.syntax().range()
-    } else {
+        if !res.is_empty() {
+            range = Some(name_ref.syntax().range())
+        }
+    }
+    if range.is_none() {
         let expr: ast::Expr = ctry!(find_node_at_offset(file.syntax(), position.offset));
         let frange = FileRange {
             file_id: position.file_id,
             range: expr.syntax().range(),
         };
         res.extend(type_of(db, frange)?);
-        expr.syntax().range()
+        range = Some(expr.syntax().range());
     };
+
+    let range = ctry!(range);
     if res.is_empty() {
         return Ok(None);
     }
@@ -41,7 +46,13 @@ pub(crate) fn hover(
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Cancelable<Option<String>> {
     let file = db.source_file(frange.file_id);
     let syntax = file.syntax();
-    let node = find_covering_node(syntax, frange.range);
+    let leaf_node = find_covering_node(syntax, frange.range);
+    // if we picked identifier, expand to pattern/expression
+    let node = leaf_node
+        .ancestors()
+        .take_while(|it| it.range() == leaf_node.range())
+        .find(|&it| ast::Expr::cast(it).is_some() || ast::Pat::cast(it).is_some())
+        .unwrap_or(leaf_node);
     let parent_fn = ctry!(node.ancestors().find_map(ast::FnDef::cast));
     let function = ctry!(hir::source_binder::function_from_source(
         db,
@@ -156,7 +167,6 @@ impl NavigationTarget {
 #[cfg(test)]
 mod tests {
     use ra_syntax::TextRange;
-
     use crate::mock_analysis::single_file_with_position;
 
     #[test]
@@ -168,10 +178,17 @@ mod tests {
             fn main() {
                 let foo_test = foo()<|>;
             }
-        ",
+            ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::from_to(95.into(), 100.into()));
         assert_eq!(hover.info, "u32");
+    }
+
+    #[test]
+    fn hover_for_local_variable() {
+        let (analysis, position) = single_file_with_position("fn func(foo: i32) { fo<|>o; }");
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(hover.info, "i32");
     }
 }
