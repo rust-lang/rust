@@ -814,7 +814,6 @@ All notable changes to this project will be documented in this file.
 [`ptr_offset_with_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_offset_with_cast
 [`pub_enum_variant_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_enum_variant_names
 [`question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#question_mark
-[`random_state`]: https://rust-lang.github.io/rust-clippy/master/index.html#random_state
 [`range_minus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_minus_one
 [`range_plus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_plus_one
 [`range_step_by_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_step_by_zero
