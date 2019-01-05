@@ -7,7 +7,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
-use ty::relate::TraitObjectMode;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
 use util::captures::Captures;
@@ -174,9 +173,20 @@ impl<'a, 'gcx, 'tcx> Children {
                 possible_sibling,
                 impl_def_id,
                 traits::IntercrateMode::Issue43355,
-                TraitObjectMode::NoSquash,
                 |overlap| {
-                    if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
+                    if let Some(overlap_kind) =
+                        tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
+                    {
+                        match overlap_kind {
+                            ty::ImplOverlapKind::Permitted => {}
+                            ty::ImplOverlapKind::Issue33140 => {
+                                last_lint = Some(FutureCompatOverlapError {
+                                    error: overlap_error(overlap),
+                                    kind: FutureCompatOverlapErrorKind::Issue33140
+                                });
+                            }
+                        }
+
                         return Ok((false, false));
                     }
 
@@ -204,31 +214,17 @@ impl<'a, 'gcx, 'tcx> Children {
 
                 replace_children.push(possible_sibling);
             } else {
-                if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
-                    // do future-compat checks for overlap. Have issue #43355
-                    // errors overwrite issue #33140 errors when both are present.
+                if let None = tcx.impls_are_allowed_to_overlap(
+                    impl_def_id, possible_sibling)
+                {
+                    // do future-compat checks for overlap. Have issue #33140
+                    // errors overwrite issue #43355 errors when both are present.
 
                     traits::overlapping_impls(
                         tcx,
                         possible_sibling,
                         impl_def_id,
                         traits::IntercrateMode::Fixed,
-                        TraitObjectMode::SquashAutoTraitsIssue33140,
-                        |overlap| {
-                            last_lint = Some(FutureCompatOverlapError {
-                                error: overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::Issue33140
-                            });
-                        },
-                        || (),
-                    );
-
-                    traits::overlapping_impls(
-                        tcx,
-                        possible_sibling,
-                        impl_def_id,
-                        traits::IntercrateMode::Fixed,
-                        TraitObjectMode::NoSquash,
                         |overlap| {
                             last_lint = Some(FutureCompatOverlapError {
                                 error: overlap_error(overlap),

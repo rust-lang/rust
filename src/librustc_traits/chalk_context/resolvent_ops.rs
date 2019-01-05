@@ -17,7 +17,7 @@ use rustc::traits::{
 };
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Kind;
-use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax_pos::DUMMY_SP;
 
 use super::{ChalkInferenceContext, ChalkArenas, ChalkExClause, ConstrainedSubst};
@@ -155,10 +155,6 @@ impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
 impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
     fn tcx(&self) -> ty::TyCtxt<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
-    }
-
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        self.infcx.trait_object_mode()
     }
 
     fn tag(&self) -> &'static str {

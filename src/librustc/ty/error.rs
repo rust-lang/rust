@@ -184,7 +184,11 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::FnDef(..) => "fn item".into(),
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
-                format!("trait {}", tcx.item_path_str(inner.principal().def_id())).into()
+                if let Some(principal) = inner.principal() {
+                    format!("trait {}", tcx.item_path_str(principal.def_id())).into()
+                } else {
+                    "trait".into()
+                }
             }
             ty::Closure(..) => "closure".into(),
             ty::Generator(..) => "generator".into(),

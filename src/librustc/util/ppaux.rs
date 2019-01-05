@@ -711,21 +711,43 @@ define_print! {
             ty::tls::with(|tcx| {
                 // Use a type that can't appear in defaults of type parameters.
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+                let mut first = true;
 
-                let principal = tcx
-                    .lift(&self.principal())
-                    .expect("could not lift TraitRef for printing")
-                    .with_self_ty(tcx, dummy_self);
-                let projections = self.projection_bounds().map(|p| {
-                    tcx.lift(&p)
-                        .expect("could not lift projection for printing")
-                        .with_self_ty(tcx, dummy_self)
-                }).collect::<Vec<_>>();
-                cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                if let Some(principal) = self.principal() {
+                    let principal = tcx
+                        .lift(&principal)
+                        .expect("could not lift TraitRef for printing")
+                        .with_self_ty(tcx, dummy_self);
+                    let projections = self.projection_bounds().map(|p| {
+                        tcx.lift(&p)
+                            .expect("could not lift projection for printing")
+                            .with_self_ty(tcx, dummy_self)
+                    }).collect::<Vec<_>>();
+                    cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                    first = false;
+                }
 
                 // Builtin bounds.
-                for did in self.auto_traits() {
-                    write!(f, " + {}", tcx.item_path_str(did))?;
+                let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
+                    tcx.item_path_str(did)
+                }).collect();
+
+                // The auto traits come ordered by `DefPathHash`. While
+                // `DefPathHash` is *stable* in the sense that it depends on
+                // neither the host nor the phase of the moon, it depends
+                // "pseudorandomly" on the compiler version and the target.
+                //
+                // To avoid that causing instabilities in compiletest
+                // output, sort the auto-traits alphabetically.
+                auto_traits.sort();
+
+                for auto_trait in auto_traits {
+                    if !first {
+                        write!(f, " + ")?;
+                    }
+                    first = false;
+
+                    write!(f, "{}", auto_trait)?;
                 }
 
                 Ok(())

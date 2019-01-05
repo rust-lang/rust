@@ -24,19 +24,8 @@ pub enum Cause {
     ExistentialRegionBound, // relating an existential region bound
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum TraitObjectMode {
-    NoSquash,
-    /// A temporary mode to treat `Send + Sync = Sync + Send`, should be
-    /// used only in coherence.
-    SquashAutoTraitsIssue33140
-}
-
 pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx>;
-
-    /// Return the trait object mode to be used.
-    fn trait_object_mode(&self) -> TraitObjectMode;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
@@ -591,44 +580,14 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
                            a: &Self,
                            b: &Self)
         -> RelateResult<'tcx, Self>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a {
-        use ty::ExistentialPredicate::*;
+            where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a {
 
-        let tcx = relation.tcx();
-        let (a_buf, b_buf);
-        let (a_norm, b_norm): (&[_], &[_]) = match relation.trait_object_mode() {
-            TraitObjectMode::NoSquash => {
-                (a, b)
-            }
-            TraitObjectMode::SquashAutoTraitsIssue33140 => {
-                // Treat auto-trait "principal" components as equal
-                // to the non-principal components, to make
-                // `dyn Send+Sync = dyn Sync+Send`.
-                let normalize = |d: &[ty::ExistentialPredicate<'tcx>]| {
-                    let mut result: Vec<_> = d.iter().map(|pi| match pi {
-                        Trait(ref a) if tcx.trait_is_auto(a.def_id) => {
-                            AutoTrait(a.def_id)
-                        },
-                        other => *other
-                    }).collect();
-
-                    result.sort_by(|a, b| a.stable_cmp(tcx, b));
-                    result.dedup();
-                    result
-                };
-
-                a_buf = normalize(a);
-                b_buf = normalize(b);
-
-                (&a_buf, &b_buf)
-            }
-        };
-
-        if a_norm.len() != b_norm.len() {
+        if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_norm.iter().zip(b_norm.iter()).map(|(ep_a, ep_b)| {
+        let tcx = relation.tcx();
+        let v = a.iter().zip(b.iter()).map(|(ep_a, ep_b)| {
             use ty::ExistentialPredicate::*;
             match (*ep_a, *ep_b) {
                 (Trait(ref a), Trait(ref b)) => Ok(Trait(relation.relate(a, b)?)),

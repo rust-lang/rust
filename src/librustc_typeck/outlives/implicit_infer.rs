@@ -194,27 +194,28 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 debug!("Dynamic");
                 debug!("field_ty = {}", &field_ty);
                 debug!("ty in field = {}", &ty);
-                let ex_trait_ref = obj.principal();
-                // Here, we are passing the type `usize` as a
-                // placeholder value with the function
-                // `with_self_ty`, since there is no concrete type
-                // `Self` for a `dyn Trait` at this
-                // stage. Therefore when checking explicit
-                // predicates in `check_explicit_predicates` we
-                // need to ignore checking the explicit_map for
-                // Self type.
-                let substs = ex_trait_ref
-                    .with_self_ty(tcx, tcx.types.usize)
-                    .skip_binder()
-                    .substs;
-                check_explicit_predicates(
-                    tcx,
-                    &ex_trait_ref.skip_binder().def_id,
-                    substs,
-                    required_predicates,
-                    explicit_map,
-                    IgnoreSelfTy(true),
-                );
+                if let Some(ex_trait_ref) = obj.principal() {
+                    // Here, we are passing the type `usize` as a
+                    // placeholder value with the function
+                    // `with_self_ty`, since there is no concrete type
+                    // `Self` for a `dyn Trait` at this
+                    // stage. Therefore when checking explicit
+                    // predicates in `check_explicit_predicates` we
+                    // need to ignore checking the explicit_map for
+                    // Self type.
+                    let substs = ex_trait_ref
+                        .with_self_ty(tcx, tcx.types.usize)
+                        .skip_binder()
+                        .substs;
+                    check_explicit_predicates(
+                        tcx,
+                        &ex_trait_ref.skip_binder().def_id,
+                        substs,
+                        required_predicates,
+                        explicit_map,
+                        IgnoreSelfTy(true),
+                    );
+                }
             }
 
             ty::Projection(obj) => {

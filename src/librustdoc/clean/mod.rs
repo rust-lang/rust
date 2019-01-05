@@ -2642,13 +2642,24 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
             }
             ty::Dynamic(ref obj, ref reg) => {
-                let principal = obj.principal();
-                let did = principal.def_id();
+                // HACK: pick the first `did` as the `did` of the trait object. Someone
+                // might want to implement "native" support for marker-trait-only
+                // trait objects.
+                let mut dids = obj.principal_def_id().into_iter().chain(obj.auto_traits());
+                let did = dids.next().unwrap_or_else(|| {
+                    panic!("found trait object `{:?}` with no traits?", self)
+                });
+                let substs = match obj.principal() {
+                    Some(principal) => principal.skip_binder().substs,
+                    // marker traits have no substs.
+                    _ => cx.tcx.intern_substs(&[])
+                };
+
                 inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                 let mut typarams = vec![];
                 reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
-                for did in obj.auto_traits() {
+                for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                         Some(did), false, vec![], empty);
@@ -2674,7 +2685,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
 
                 let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
-                    false, bindings, principal.skip_binder().substs);
+                    false, bindings, substs);
                 ResolvedPath {
                     path,
                     typarams: Some(typarams),

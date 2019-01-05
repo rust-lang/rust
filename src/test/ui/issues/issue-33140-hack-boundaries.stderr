@@ -1,0 +1,67 @@
+error[E0119]: conflicting implementations of trait `Trait1` for type `(dyn std::marker::Send + 'static)`:
+  --> $DIR/issue-33140-hack-boundaries.rs:19:1
+   |
+LL | impl Trait1 for dyn Send {}
+   | ------------------------ first implementation here
+LL | impl Trait1 for dyn Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait2` for type `(dyn std::marker::Send + 'static)`:
+  --> $DIR/issue-33140-hack-boundaries.rs:27:1
+   |
+LL | impl Trait2 for dyn Send {}
+   | ------------------------ first implementation here
+LL | impl !Trait2 for dyn Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait3<(dyn std::marker::Sync + 'static)>` for type `(dyn std::marker::Send + 'static)`:
+  --> $DIR/issue-33140-hack-boundaries.rs:36:1
+   |
+LL | impl Trait3<dyn Sync> for dyn Send {}
+   | ---------------------------------- first implementation here
+LL | impl Trait3<dyn Sync> for dyn Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait4a` for type `(dyn std::marker::Send + 'static)`:
+  --> $DIR/issue-33140-hack-boundaries.rs:44:1
+   |
+LL | impl<T: ?Sized> Trait4a for T {}
+   | ----------------------------- first implementation here
+LL | impl Trait4a for dyn Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait4b` for type `()`:
+  --> $DIR/issue-33140-hack-boundaries.rs:52:1
+   |
+LL | impl Trait4b for () {}
+   | ------------------- first implementation here
+LL | impl Trait4b for () {}
+   | ^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+
+error[E0119]: conflicting implementations of trait `Trait4c` for type `(dyn Trait1 + std::marker::Send + 'static)`:
+  --> $DIR/issue-33140-hack-boundaries.rs:60:1
+   |
+LL | impl Trait4c for dyn Trait1 + Send {}
+   | ---------------------------------- first implementation here
+LL | impl Trait4c for dyn Trait1 + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Trait1 + std::marker::Send + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait4d` for type `dyn std::marker::Send`:
+  --> $DIR/issue-33140-hack-boundaries.rs:68:1
+   |
+LL | impl<'a> Trait4d for dyn Send + 'a {}
+   | ---------------------------------- first implementation here
+LL | impl<'a> Trait4d for dyn Send + 'a {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `dyn std::marker::Send`
+
+error[E0119]: conflicting implementations of trait `Trait5` for type `(dyn std::marker::Send + 'static)`:
+  --> $DIR/issue-33140-hack-boundaries.rs:77:1
+   |
+LL | impl Trait5 for dyn Send {}
+   | ------------------------ first implementation here
+LL | impl Trait5 for dyn Send where u32: Copy {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

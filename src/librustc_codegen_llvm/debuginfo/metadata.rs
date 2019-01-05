@@ -429,7 +429,8 @@ fn trait_pointer_metadata(
     // But it does not describe the trait's methods.
 
     let containing_scope = match trait_type.sty {
-        ty::Dynamic(ref data, ..) => Some(get_namespace_for_item(cx, data.principal().def_id())),
+        ty::Dynamic(ref data, ..) =>
+            data.principal_def_id().map(|did| get_namespace_for_item(cx, did)),
         _ => {
             bug!("debuginfo: Unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",

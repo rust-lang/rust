@@ -69,7 +69,7 @@ impl<'a, 'tcx: 'a> VirtualIndex {
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
-    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
 
@@ -83,8 +83,15 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     // Not in the cache. Build it.
     let nullptr = cx.const_null(cx.type_i8p());
 
-    let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
-    let methods = methods.iter().cloned().map(|opt_mth| {
+    let methods_root;
+    let methods = if let Some(trait_ref) = trait_ref {
+        methods_root = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
+        methods_root.iter()
+    } else {
+        (&[]).iter()
+    };
+
+    let methods = methods.cloned().map(|opt_mth| {
         opt_mth.map_or(nullptr, |(def_id, substs)| {
             callee::resolve_and_get_fn_for_vtable(cx, def_id, substs)
         })

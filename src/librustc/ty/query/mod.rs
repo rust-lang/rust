@@ -202,6 +202,8 @@ define_queries! { <'tcx>
 
         [] fn impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,
         [] fn impl_polarity: ImplPolarity(DefId) -> hir::ImplPolarity,
+
+        [] fn issue33140_self_ty: Issue33140SelfTy(DefId) -> Option<ty::Ty<'tcx>>,
     },
 
     TypeChecking {

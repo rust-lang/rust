@@ -63,7 +63,7 @@ enum PointerKind<'tcx> {
     /// No metadata attached, ie pointer to sized type or foreign type
     Thin,
     /// A trait object
-    Vtable(DefId),
+    Vtable(Option<DefId>),
     /// Slice
     Length,
     /// The unsize info of this projection
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Ok(match t.sty {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, ..) =>
-                Some(PointerKind::Vtable(tty.principal().def_id())),
+                Some(PointerKind::Vtable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => {
                 match def.non_enum_variant().fields.last() {
                     None => Some(PointerKind::Thin),

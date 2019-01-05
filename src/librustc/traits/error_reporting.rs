@@ -447,7 +447,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let simp = fast_reject::simplify_type(self.tcx,
                                               trait_ref.skip_binder().self_ty(),
-                                              true,);
+                                              true);
         let all_impls = self.tcx.all_impls(trait_ref.def_id());
 
         match simp {

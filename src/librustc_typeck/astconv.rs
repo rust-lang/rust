@@ -1138,13 +1138,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         auto_traits.dedup();
 
         // Calling `skip_binder` is okay, because the predicates are re-bound.
+        let principal = if tcx.trait_is_auto(existential_principal.def_id()) {
+            ty::ExistentialPredicate::AutoTrait(existential_principal.def_id())
+        } else {
+            ty::ExistentialPredicate::Trait(*existential_principal.skip_binder())
+        };
         let mut v =
-            iter::once(ty::ExistentialPredicate::Trait(*existential_principal.skip_binder()))
+            iter::once(principal)
             .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
             .chain(existential_projections
                 .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.stable_cmp(tcx, b));
+        v.dedup();
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 
         // Use explicitly-specified region bound.
