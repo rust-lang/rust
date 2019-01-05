@@ -7,10 +7,19 @@ use ra_syntax::{
 use crate::assists::{AssistCtx, Assist};
 
 pub fn change_visibility(ctx: AssistCtx) -> Option<Assist> {
-    let offset = if let Some(keyword) = ctx.leaf_at_offset().find(|leaf| match leaf.kind() {
+    if let Some(vis) = ctx.node_at_offset::<ast::Visibility>() {
+        return change_vis(ctx, vis);
+    }
+    add_vis(ctx)
+}
+
+fn add_vis(ctx: AssistCtx) -> Option<Assist> {
+    let item_keyword = ctx.leaf_at_offset().find(|leaf| match leaf.kind() {
         FN_KW | MOD_KW | STRUCT_KW | ENUM_KW | TRAIT_KW => true,
         _ => false,
-    }) {
+    });
+
+    let offset = if let Some(keyword) = item_keyword {
         let parent = keyword.parent()?;
         let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
         // Parent is not a definition, can't add visibility
@@ -34,6 +43,16 @@ pub fn change_visibility(ctx: AssistCtx) -> Option<Assist> {
     ctx.build("make pub(crate)", |edit| {
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
+    })
+}
+
+fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
+    if vis.syntax().text() != "pub" {
+        return None;
+    }
+    ctx.build("chage to pub(crate)", |edit| {
+        edit.replace(vis.syntax().range(), "pub(crate)");
+        edit.set_cursor(vis.syntax().range().start());
     })
 }
 
@@ -83,6 +102,15 @@ mod tests {
             change_visibility,
             "struct S { <|>field: u32 }",
             "struct S { <|>pub(crate) field: u32 }",
+        )
+    }
+
+    #[test]
+    fn change_visibility_pub_to_pub_crate() {
+        check_assist(
+            change_visibility,
+            "<|>pub fn foo() {}",
+            "<|>pub(crate) fn foo() {}",
         )
     }
 }

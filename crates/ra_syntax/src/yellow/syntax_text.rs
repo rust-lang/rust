@@ -125,3 +125,21 @@ impl From<SyntaxText<'_>> for String {
         text.to_string()
     }
 }
+
+impl PartialEq<str> for SyntaxText<'_> {
+    fn eq(&self, mut rhs: &str) -> bool {
+        for chunk in self.chunks() {
+            if !rhs.starts_with(chunk) {
+                return false;
+            }
+            rhs = &rhs[chunk.len()..];
+        }
+        rhs.is_empty()
+    }
+}
+
+impl PartialEq<&'_ str> for SyntaxText<'_> {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
