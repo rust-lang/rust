@@ -188,10 +188,14 @@ fn remove_newline(
         edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
     } else if prev.kind() == COMMA && next.kind() == R_CURLY {
         // Removes: comma, newline (incl. surrounding whitespace)
-        // Adds: a single whitespace
+        let space = if let Some(left) = prev.prev_sibling() {
+            compute_ws(left, next)
+        } else {
+            " "
+        };
         edit.replace(
             TextRange::from_to(prev.range().start(), node.range().end()),
-            " ".to_string(),
+            space.to_string(),
         );
     } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
@@ -256,10 +260,20 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Opti
 fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
     match left.kind() {
         L_PAREN | L_BRACK => return "",
+        L_CURLY => {
+            if let USE_TREE = right.kind() {
+                return "";
+            }
+        }
         _ => (),
     }
     match right.kind() {
         R_PAREN | R_BRACK => return "",
+        R_CURLY => {
+            if let USE_TREE = left.kind() {
+                return "";
+            }
+        }
         DOT => return "",
         _ => (),
     }
@@ -327,6 +341,48 @@ fn foo() {
 fn foo() {
     foo(<|>92)
 }",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_items_left() {
+        // No space after the '{'
+        check_join_lines(
+            r"
+<|>use ra_syntax::{
+    TextUnit, TextRange,
+};",
+            r"
+<|>use ra_syntax::{TextUnit, TextRange,
+};",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_items_right() {
+        // No space after the '}'
+        check_join_lines(
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange
+};",
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange};",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_items_right_comma() {
+        // No space after the '}'
+        check_join_lines(
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange,
+};",
+            r"
+use ra_syntax::{
+<|>    TextUnit, TextRange};",
         );
     }
 
