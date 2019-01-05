@@ -31,7 +31,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::macros::expand_macro_invocation;
     }
 
-    fn fn_scopes(def_id: DefId) -> Arc<FnScopes> {
+    fn fn_scopes(def_id: DefId) -> Cancelable<Arc<FnScopes>> {
         type FnScopesQuery;
         use fn query_definitions::fn_scopes;
     }

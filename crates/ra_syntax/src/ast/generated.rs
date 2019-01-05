@@ -927,12 +927,7 @@ pub enum Expr<'a> {
     BlockExpr(BlockExpr<'a>),
     ReturnExpr(ReturnExpr<'a>),
     MatchExpr(MatchExpr<'a>),
-    MatchArmList(MatchArmList<'a>),
-    MatchArm(MatchArm<'a>),
-    MatchGuard(MatchGuard<'a>),
     StructLit(StructLit<'a>),
-    NamedFieldList(NamedFieldList<'a>),
-    NamedField(NamedField<'a>),
     CallExpr(CallExpr<'a>),
     IndexExpr(IndexExpr<'a>),
     MethodCallExpr(MethodCallExpr<'a>),
@@ -964,12 +959,7 @@ impl<'a> AstNode<'a> for Expr<'a> {
             BLOCK_EXPR => Some(Expr::BlockExpr(BlockExpr { syntax })),
             RETURN_EXPR => Some(Expr::ReturnExpr(ReturnExpr { syntax })),
             MATCH_EXPR => Some(Expr::MatchExpr(MatchExpr { syntax })),
-            MATCH_ARM_LIST => Some(Expr::MatchArmList(MatchArmList { syntax })),
-            MATCH_ARM => Some(Expr::MatchArm(MatchArm { syntax })),
-            MATCH_GUARD => Some(Expr::MatchGuard(MatchGuard { syntax })),
             STRUCT_LIT => Some(Expr::StructLit(StructLit { syntax })),
-            NAMED_FIELD_LIST => Some(Expr::NamedFieldList(NamedFieldList { syntax })),
-            NAMED_FIELD => Some(Expr::NamedField(NamedField { syntax })),
             CALL_EXPR => Some(Expr::CallExpr(CallExpr { syntax })),
             INDEX_EXPR => Some(Expr::IndexExpr(IndexExpr { syntax })),
             METHOD_CALL_EXPR => Some(Expr::MethodCallExpr(MethodCallExpr { syntax })),
@@ -1001,12 +991,7 @@ impl<'a> AstNode<'a> for Expr<'a> {
             Expr::BlockExpr(inner) => inner.syntax(),
             Expr::ReturnExpr(inner) => inner.syntax(),
             Expr::MatchExpr(inner) => inner.syntax(),
-            Expr::MatchArmList(inner) => inner.syntax(),
-            Expr::MatchArm(inner) => inner.syntax(),
-            Expr::MatchGuard(inner) => inner.syntax(),
             Expr::StructLit(inner) => inner.syntax(),
-            Expr::NamedFieldList(inner) => inner.syntax(),
-            Expr::NamedField(inner) => inner.syntax(),
             Expr::CallExpr(inner) => inner.syntax(),
             Expr::IndexExpr(inner) => inner.syntax(),
             Expr::MethodCallExpr(inner) => inner.syntax(),
@@ -4155,7 +4140,15 @@ impl<R: TreeRoot<RaTypes>> TupleStructPatNode<R> {
 }
 
 
-impl<'a> TupleStructPat<'a> {}
+impl<'a> TupleStructPat<'a> {
+    pub fn args(self) -> impl Iterator<Item = Pat<'a>> + 'a {
+        super::children(self)
+    }
+
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // TupleType
 #[derive(Debug, Clone, Copy,)]

@@ -157,7 +157,7 @@ impl db::RootDatabase {
             .collect::<Vec<_>>();
         ret.extend(
             descr
-                .scopes(self)
+                .scopes(self)?
                 .find_all_refs(binding)
                 .into_iter()
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
@@ -185,7 +185,7 @@ impl db::RootDatabase {
                 position.file_id,
                 name_ref.syntax(),
             )?);
-            let scope = descr.scopes(db);
+            let scope = descr.scopes(db)?;
             let resolved = ctry!(scope.resolve_local_name(name_ref));
             let resolved = resolved.ptr().resolve(source_file);
             let binding = ctry!(find_node_at_offset::<ast::BindPat>(

@@ -15,7 +15,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
         None => return Ok(()),
     };
     if let Some(function) = &ctx.function {
-        let scopes = function.scopes(ctx.db);
+        let scopes = function.scopes(ctx.db)?;
         complete_fn(acc, &scopes, ctx.offset);
     }
 
@@ -40,20 +40,17 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
     Ok(())
 }
 
-fn complete_fn(acc: &mut Completions, scopes: &hir::FnScopes, offset: TextUnit) {
+fn complete_fn(acc: &mut Completions, scopes: &hir::ScopesWithSyntaxMapping, offset: TextUnit) {
     let mut shadowed = FxHashSet::default();
     scopes
         .scope_chain_for_offset(offset)
-        .flat_map(|scope| scopes.entries(scope).iter())
+        .flat_map(|scope| scopes.scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
         .for_each(|entry| {
             CompletionItem::new(CompletionKind::Reference, entry.name().to_string())
                 .kind(CompletionItemKind::Binding)
                 .add_to(acc)
         });
-    if scopes.self_param.is_some() {
-        CompletionItem::new(CompletionKind::Reference, "self").add_to(acc);
-    }
 }
 
 #[cfg(test)]

@@ -11,9 +11,9 @@ use ra_syntax::{
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
 };
 
-use crate::{DefId, DefKind, HirDatabase, ty::InferenceResult, Module, Crate, impl_block::ImplBlock};
+use crate::{DefId, DefKind, HirDatabase, ty::InferenceResult, Module, Crate, impl_block::ImplBlock, expr::{Body, BodySyntaxMapping}};
 
-pub use self::scope::FnScopes;
+pub use self::scope::{FnScopes, ScopesWithSyntaxMapping};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function {
@@ -36,8 +36,21 @@ impl Function {
         ast::FnDef::cast(syntax.borrowed()).unwrap().owned()
     }
 
-    pub fn scopes(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
-        db.fn_scopes(self.def_id)
+    pub fn body(&self, db: &impl HirDatabase) -> Cancelable<Arc<Body>> {
+        db.body_hir(self.def_id)
+    }
+
+    pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Cancelable<Arc<BodySyntaxMapping>> {
+        db.body_syntax_mapping(self.def_id)
+    }
+
+    pub fn scopes(&self, db: &impl HirDatabase) -> Cancelable<ScopesWithSyntaxMapping> {
+        let scopes = db.fn_scopes(self.def_id)?;
+        let syntax_mapping = db.body_syntax_mapping(self.def_id)?;
+        Ok(ScopesWithSyntaxMapping {
+            scopes,
+            syntax_mapping,
+        })
     }
 
     pub fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {

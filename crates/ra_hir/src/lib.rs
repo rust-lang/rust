@@ -47,7 +47,7 @@ pub use self::{
     ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc},
     macros::{MacroDef, MacroInput, MacroExpansion},
     module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
-    function::{Function, FnScopes},
+    function::{Function, FnScopes, ScopesWithSyntaxMapping},
     adt::{Struct, Enum},
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},

@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{LocalSyntaxPtr, Cancelable};
-use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner};
+use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner};
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
 
@@ -21,7 +21,7 @@ pub struct Body {
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
     ///
-    /// If this `ExprTable` is for the body of a constant, this will just be
+    /// If this `Body` is for the body of a constant, this will just be
     /// empty.
     args: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
@@ -41,6 +41,43 @@ pub struct BodySyntaxMapping {
     expr_syntax_mapping_back: FxHashMap<ExprId, LocalSyntaxPtr>,
     pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
     pat_syntax_mapping_back: FxHashMap<PatId, LocalSyntaxPtr>,
+}
+
+impl Body {
+    pub fn expr(&self, expr: ExprId) -> &Expr {
+        &self.exprs[expr]
+    }
+
+    pub fn pat(&self, pat: PatId) -> &Pat {
+        &self.pats[pat]
+    }
+
+    pub fn args(&self) -> &[PatId] {
+        &self.args
+    }
+
+    pub fn body_expr(&self) -> ExprId {
+        self.body_expr
+    }
+}
+
+impl BodySyntaxMapping {
+    pub fn expr_syntax(&self, expr: ExprId) -> Option<LocalSyntaxPtr> {
+        self.expr_syntax_mapping_back.get(&expr).cloned()
+    }
+    pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
+        self.expr_syntax_mapping.get(&ptr).cloned()
+    }
+    pub fn pat_syntax(&self, pat: PatId) -> Option<LocalSyntaxPtr> {
+        self.pat_syntax_mapping_back.get(&pat).cloned()
+    }
+    pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
+        self.pat_syntax_mapping.get(&ptr).cloned()
+    }
+
+    pub fn body(&self) -> &Arc<Body> {
+        &self.body
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -113,21 +150,26 @@ pub enum Expr {
         expr: ExprId,
         op: Option<UnaryOp>,
     },
+    Lambda {
+        args: Vec<PatId>,
+        arg_types: Vec<Option<TypeRef>>,
+        body: ExprId,
+    },
 }
 
 pub type UnaryOp = ast::PrefixOp;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
-    pats: Vec<PatId>,
+    pub pats: Vec<PatId>,
     // guard: Option<ExprId>, // TODO
-    expr: ExprId,
+    pub expr: ExprId,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StructLitField {
-    name: Name,
-    expr: ExprId,
+    pub name: Name,
+    pub expr: ExprId,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -140,12 +182,118 @@ pub enum Statement {
     Expr(ExprId),
 }
 
+impl Expr {
+    pub fn walk_child_exprs(&self, mut f: impl FnMut(ExprId)) {
+        match self {
+            Expr::Missing => {}
+            Expr::Path(_) => {}
+            Expr::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                f(*condition);
+                f(*then_branch);
+                if let Some(else_branch) = else_branch {
+                    f(*else_branch);
+                }
+            }
+            Expr::Block { statements, tail } => {
+                for stmt in statements {
+                    match stmt {
+                        Statement::Let { initializer, .. } => {
+                            if let Some(expr) = initializer {
+                                f(*expr);
+                            }
+                        }
+                        Statement::Expr(e) => f(*e),
+                    }
+                }
+                if let Some(expr) = tail {
+                    f(*expr);
+                }
+            }
+            Expr::Loop { body } => f(*body),
+            Expr::While { condition, body } => {
+                f(*condition);
+                f(*body);
+            }
+            Expr::For { iterable, body, .. } => {
+                f(*iterable);
+                f(*body);
+            }
+            Expr::Call { callee, args } => {
+                f(*callee);
+                for arg in args {
+                    f(*arg);
+                }
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                f(*receiver);
+                for arg in args {
+                    f(*arg);
+                }
+            }
+            Expr::Match { expr, arms } => {
+                f(*expr);
+                for arm in arms {
+                    f(arm.expr);
+                }
+            }
+            Expr::Continue => {}
+            Expr::Break { expr } | Expr::Return { expr } => {
+                if let Some(expr) = expr {
+                    f(*expr);
+                }
+            }
+            Expr::StructLit { fields, spread, .. } => {
+                for field in fields {
+                    f(field.expr);
+                }
+                if let Some(expr) = spread {
+                    f(*expr);
+                }
+            }
+            Expr::Lambda { body, .. } => {
+                f(*body);
+            }
+            Expr::Field { expr, .. }
+            | Expr::Try { expr }
+            | Expr::Cast { expr, .. }
+            | Expr::Ref { expr, .. }
+            | Expr::UnaryOp { expr, .. } => {
+                f(*expr);
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PatId(RawId);
 impl_arena_id!(PatId);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Pat;
+pub enum Pat {
+    Missing,
+    Bind {
+        name: Name,
+    },
+    TupleStruct {
+        path: Option<Path>,
+        args: Vec<PatId>,
+    },
+}
+
+impl Pat {
+    pub fn walk_child_pats(&self, f: impl FnMut(PatId)) {
+        match self {
+            Pat::Missing | Pat::Bind { .. } => {}
+            Pat::TupleStruct { args, .. } => {
+                args.iter().map(|pat| *pat).for_each(f);
+            }
+        }
+    }
+}
 
 // Queries
 
@@ -163,6 +311,17 @@ struct ExprCollector {
 }
 
 impl ExprCollector {
+    fn new() -> Self {
+        ExprCollector {
+            exprs: Arena::default(),
+            pats: Arena::default(),
+            expr_syntax_mapping: FxHashMap::default(),
+            expr_syntax_mapping_back: FxHashMap::default(),
+            pat_syntax_mapping: FxHashMap::default(),
+            pat_syntax_mapping_back: FxHashMap::default(),
+        }
+    }
+
     fn alloc_expr(&mut self, expr: Expr, syntax_ptr: LocalSyntaxPtr) -> ExprId {
         let id = self.exprs.alloc(expr);
         self.expr_syntax_mapping.insert(syntax_ptr, id);
@@ -177,30 +336,63 @@ impl ExprCollector {
         id
     }
 
+    fn empty_block(&mut self) -> ExprId {
+        let block = Expr::Block {
+            statements: Vec::new(),
+            tail: None,
+        };
+        self.exprs.alloc(block)
+    }
+
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = LocalSyntaxPtr::new(expr.syntax());
         match expr {
             ast::Expr::IfExpr(e) => {
-                let condition = if let Some(condition) = e.condition() {
-                    if condition.pat().is_none() {
+                if let Some(pat) = e.condition().and_then(|c| c.pat()) {
+                    // if let -- desugar to match
+                    let pat = self.collect_pat(pat);
+                    let match_expr =
+                        self.collect_expr_opt(e.condition().expect("checked above").expr());
+                    let then_branch = self.collect_block_opt(e.then_branch());
+                    let else_branch = e
+                        .else_branch()
+                        .map(|e| self.collect_block(e))
+                        .unwrap_or_else(|| self.empty_block());
+                    let placeholder_pat = self.pats.alloc(Pat::Missing);
+                    let arms = vec![
+                        MatchArm {
+                            pats: vec![pat],
+                            expr: then_branch,
+                        },
+                        MatchArm {
+                            pats: vec![placeholder_pat],
+                            expr: else_branch,
+                        },
+                    ];
+                    self.alloc_expr(
+                        Expr::Match {
+                            expr: match_expr,
+                            arms,
+                        },
+                        syntax_ptr,
+                    )
+                } else {
+                    let condition = if let Some(condition) = e.condition() {
                         self.collect_expr_opt(condition.expr())
                     } else {
-                        // TODO handle if let
-                        return self.alloc_expr(Expr::Missing, syntax_ptr);
-                    }
-                } else {
-                    self.exprs.alloc(Expr::Missing)
-                };
-                let then_branch = self.collect_block_opt(e.then_branch());
-                let else_branch = e.else_branch().map(|e| self.collect_block(e));
-                self.alloc_expr(
-                    Expr::If {
-                        condition,
-                        then_branch,
-                        else_branch,
-                    },
-                    syntax_ptr,
-                )
+                        self.exprs.alloc(Expr::Missing)
+                    };
+                    let then_branch = self.collect_block_opt(e.then_branch());
+                    let else_branch = e.else_branch().map(|e| self.collect_block(e));
+                    self.alloc_expr(
+                        Expr::If {
+                            condition,
+                            then_branch,
+                            else_branch,
+                        },
+                        syntax_ptr,
+                    )
+                }
             }
             ast::Expr::BlockExpr(e) => self.collect_block_opt(e.block()),
             ast::Expr::LoopExpr(e) => {
@@ -368,18 +560,30 @@ impl ExprCollector {
                 let op = e.op();
                 self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr)
             }
-
-            // We should never get to these because they're handled in MatchExpr resp. StructLit:
-            ast::Expr::MatchArmList(_) | ast::Expr::MatchArm(_) | ast::Expr::MatchGuard(_) => {
-                panic!("collect_expr called on {:?}", expr)
-            }
-            ast::Expr::NamedFieldList(_) | ast::Expr::NamedField(_) => {
-                panic!("collect_expr called on {:?}", expr)
+            ast::Expr::LambdaExpr(e) => {
+                let mut args = Vec::new();
+                let mut arg_types = Vec::new();
+                if let Some(pl) = e.param_list() {
+                    for param in pl.params() {
+                        let pat = self.collect_pat_opt(param.pat());
+                        let type_ref = param.type_ref().map(TypeRef::from_ast);
+                        args.push(pat);
+                        arg_types.push(type_ref);
+                    }
+                }
+                let body = self.collect_expr_opt(e.body());
+                self.alloc_expr(
+                    Expr::Lambda {
+                        args,
+                        arg_types,
+                        body,
+                    },
+                    syntax_ptr,
+                )
             }
 
             // TODO implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::LambdaExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::TupleExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
@@ -431,16 +635,31 @@ impl ExprCollector {
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
         let syntax_ptr = LocalSyntaxPtr::new(pat.syntax());
-        // TODO
-        self.alloc_pat(Pat, syntax_ptr)
+        match pat {
+            ast::Pat::BindPat(bp) => {
+                let name = bp
+                    .name()
+                    .map(|nr| nr.as_name())
+                    .unwrap_or_else(Name::missing);
+                self.alloc_pat(Pat::Bind { name }, syntax_ptr)
+            }
+            ast::Pat::TupleStructPat(p) => {
+                let path = p.path().and_then(Path::from_ast);
+                let args = p.args().map(|p| self.collect_pat(p)).collect();
+                self.alloc_pat(Pat::TupleStruct { path, args }, syntax_ptr)
+            }
+            _ => {
+                // TODO
+                self.alloc_pat(Pat::Missing, syntax_ptr)
+            }
+        }
     }
 
     fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
         if let Some(pat) = pat {
             self.collect_pat(pat)
         } else {
-            // TODO
-            self.pats.alloc(Pat)
+            self.pats.alloc(Pat::Missing)
         }
     }
 
@@ -461,47 +680,61 @@ impl ExprCollector {
     }
 }
 
+pub(crate) fn collect_fn_body_syntax(node: ast::FnDef) -> BodySyntaxMapping {
+    let mut collector = ExprCollector::new();
+
+    let args = if let Some(param_list) = node.param_list() {
+        let mut args = Vec::new();
+
+        if let Some(self_param) = param_list.self_param() {
+            let self_param = LocalSyntaxPtr::new(
+                self_param
+                    .self_kw()
+                    .expect("self param without self keyword")
+                    .syntax(),
+            );
+            let arg = collector.alloc_pat(
+                Pat::Bind {
+                    name: Name::self_param(),
+                },
+                self_param,
+            );
+            args.push(arg);
+        }
+
+        for param in param_list.params() {
+            let pat = if let Some(pat) = param.pat() {
+                pat
+            } else {
+                continue;
+            };
+            args.push(collector.collect_pat(pat));
+        }
+        args
+    } else {
+        Vec::new()
+    };
+
+    let body = collector.collect_block_opt(node.body());
+    collector.into_body_syntax_mapping(args, body)
+}
+
 pub(crate) fn body_syntax_mapping(
     db: &impl HirDatabase,
     def_id: DefId,
 ) -> Cancelable<Arc<BodySyntaxMapping>> {
     let def = def_id.resolve(db)?;
-    let mut collector = ExprCollector {
-        exprs: Arena::default(),
-        pats: Arena::default(),
-        expr_syntax_mapping: FxHashMap::default(),
-        expr_syntax_mapping_back: FxHashMap::default(),
-        pat_syntax_mapping: FxHashMap::default(),
-        pat_syntax_mapping_back: FxHashMap::default(),
-    };
 
-    let (body, args) = match def {
+    let body_syntax_mapping = match def {
         Def::Function(f) => {
             let node = f.syntax(db);
             let node = node.borrowed();
 
-            let args = if let Some(param_list) = node.param_list() {
-                let mut args = Vec::new();
-                // TODO self param
-                for param in param_list.params() {
-                    let pat = if let Some(pat) = param.pat() {
-                        pat
-                    } else {
-                        continue;
-                    };
-                    args.push(collector.collect_pat(pat));
-                }
-                args
-            } else {
-                Vec::new()
-            };
-
-            let body = collector.collect_block_opt(node.body());
-            (body, args)
+            collect_fn_body_syntax(node)
         }
         // TODO: consts, etc.
         _ => panic!("Trying to get body for item type without body"),
     };
 
-    Ok(Arc::new(collector.into_body_syntax_mapping(args, body)))
+    Ok(Arc::new(body_syntax_mapping))
 }
