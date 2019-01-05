@@ -1,6 +1,6 @@
 -include ../tools.mk
 
-# This tests the different -Zrelro-level values, and makes sure that they they work properly.
+# This tests the different -Zrelro-level values, and makes sure that they work properly.
 
 all:
 ifeq ($(UNAME),Linux)

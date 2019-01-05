@@ -476,8 +476,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             }).collect(),
         };
         let analysis = ty::CrateAnalysis {
-            access_levels: Lrc::new(AccessLevels::default()),
-            name: name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
@@ -500,12 +498,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         &mut arenas,
                                                         &name,
                                                         &output_filenames,
-                                                        |tcx, analysis, _, result| {
+                                                        |tcx, _, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let ty::CrateAnalysis { access_levels, .. } = analysis;
+            let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
 
             // Convert from a NodeId set to a DefId set since we don't always have easy access
             // to the map from defid -> nodeid

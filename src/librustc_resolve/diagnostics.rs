@@ -192,7 +192,7 @@ use foo::core;  // error: an extern crate named `core` has already
 fn main() {}
 ```
 
-To fix issue issue, you have to rename at least one of the two imports.
+To fix this issue, you have to rename at least one of the two imports.
 Example:
 
 ```

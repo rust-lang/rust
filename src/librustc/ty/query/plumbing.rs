@@ -974,7 +974,7 @@ macro_rules! define_queries_inner {
                         // HACK(eddyb) it's possible crates may be loaded after
                         // the query engine is created, and because crate loading
                         // is not yet integrated with the query engine, such crates
-                        // would be be missing appropriate entries in `providers`.
+                        // would be missing appropriate entries in `providers`.
                         .unwrap_or(&tcx.queries.fallback_extern_providers)
                         .$name;
                     provider(tcx.global_tcx(), key)

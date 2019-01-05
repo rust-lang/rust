@@ -171,7 +171,7 @@
 
 # Installs chosen set of extended tools if enables. By default builds all.
 # If chosen tool failed to build the installation fails.
-#tools = ["cargo", "rls", "rustfmt", "analysis", "src"]
+#tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0

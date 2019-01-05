@@ -5,7 +5,7 @@ LL |     value: T,
    |     ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where T: std::marker::Sized` bound
    = note: no field of a union may have a dynamically sized type
 
@@ -16,7 +16,7 @@ LL |     value: T,
    |     ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where T: std::marker::Sized` bound
    = note: only the last field of a struct may have a dynamically sized type
 
@@ -27,7 +27,7 @@ LL |     Value(T),
    |           ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where T: std::marker::Sized` bound
    = note: no field of an enum variant may have a dynamically sized type
 

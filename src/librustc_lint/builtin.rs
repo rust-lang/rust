@@ -673,7 +673,7 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-/// Checks for incorrect use use of `repr` attributes.
+/// Checks for incorrect use of `repr` attributes.
 #[derive(Clone)]
 pub struct BadRepr;
 

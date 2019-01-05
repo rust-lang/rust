@@ -1,6 +1,6 @@
 //! Conversion from AST representation of types to the `ty.rs` representation.
-//! The main routine here is `ast_ty_to_ty()`; each use is is parameterized by
-//! an instance of `AstConv`.
+//! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
+//! instance of `AstConv`.
 
 use errors::{Applicability, FatalError, DiagnosticId};
 use hir::{self, GenericArg, GenericArgs};

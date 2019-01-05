@@ -359,7 +359,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
                 match abi_of_ty(unit_receiver_ty) {
                     &Abi::Scalar(..) => (),
-                    abi => bug!("Receiver when Self = () should have a Scalar ABI, found {:?}", abi)
+                    abi => {
+                        self.sess.delay_span_bug(
+                            self.def_span(method.def_id),
+                            &format!(
+                                "Receiver when Self = () should have a Scalar ABI, found {:?}",
+                                abi
+                            ),
+                        );
+                    }
                 }
 
                 let trait_object_ty = self.object_ty_for_trait(
@@ -373,10 +381,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
                 match abi_of_ty(trait_object_receiver) {
                     &Abi::ScalarPair(..) => (),
-                    abi => bug!(
-                        "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
-                        trait_object_ty, abi
-                    )
+                    abi => {
+                        self.sess.delay_span_bug(
+                            self.def_span(method.def_id),
+                            &format!(
+                                "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
+                                trait_object_ty, abi
+                            ),
+                        );
+                    }
                 }
             }
         }
