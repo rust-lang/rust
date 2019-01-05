@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                         promoted: None,
                     };
                     let constant = cx.tcx.const_eval(param_env.and(c_id)).ok();
-                    if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, c)) {
+                    if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, &c)) {
                         let mut ty = cx.tcx.type_of(def_id);
                         if let ty::Adt(adt, _) = ty.sty {
                             if adt.is_enum() {

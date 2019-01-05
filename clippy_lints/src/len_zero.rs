@@ -302,10 +302,15 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
-        ty::Dynamic(ref tt, ..) => cx
-            .tcx
-            .associated_items(tt.principal().def_id())
-            .any(|item| is_is_empty(cx, &item)),
+        ty::Dynamic(ref tt, ..) => {
+            if let Some(principal) = tt.principal() {
+                cx.tcx
+                    .associated_items(principal.def_id())
+                    .any(|item| is_is_empty(cx, &item))
+            } else {
+                false
+            }
+        },
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
         ty::Adt(id, _) => has_is_empty_impl(cx, id.did),
         ty::Array(..) | ty::Slice(..) | ty::Str => true,
