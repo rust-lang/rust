@@ -12,24 +12,14 @@ use std::num::NonZeroU64;
 
 use rustc::ty::layout::Size;
 
-// Representation: offset-length-data tuples, sorted by offset.
 #[derive(Clone, Debug)]
 struct Elem<T> {
-    offset: u64,
-    len: NonZeroU64,
+    range: ops::Range<u64>, // the range covered by this element, never empty
     data: T,
 }
-// Length is always > 0.
 #[derive(Clone, Debug)]
 pub struct RangeMap<T> {
     v: Vec<Elem<T>>,
-}
-
-impl<T> Elem<T> {
-    #[inline(always)]
-    fn contains(&self, offset: u64) -> bool {
-        offset >= self.offset && offset < self.offset + self.len.get()
-    }
 }
 
 impl<T> RangeMap<T> {
@@ -41,8 +31,7 @@ impl<T> RangeMap<T> {
         let mut map = RangeMap { v: Vec::new() };
         if size > 0 {
             map.v.push(Elem {
-                offset: 0,
-                len: NonZeroU64::new(size).unwrap(),
+                range: 0..size,
                 data: init
             });
         }
@@ -57,11 +46,11 @@ impl<T> RangeMap<T> {
         loop {
             let candidate = left.checked_add(right).unwrap() / 2;
             let elem = &self.v[candidate];
-            if elem.offset > offset {
+            if offset < elem.range.start {
                 // we are too far right (offset is further left)
                 debug_assert!(candidate < right); // we are making progress
                 right = candidate;
-            } else if offset >= elem.offset + elem.len.get() {
+            } else if offset >= elem.range.end {
                 // we are too far left (offset is further right)
                 debug_assert!(candidate >= left); // we are making progress
                 left = candidate+1;
@@ -85,12 +74,12 @@ impl<T> RangeMap<T> {
                 // yield the element that surrounds this position.
                 &[]
             } else {
-                let first = self.find_offset(offset);
-                &self.v[first..]
+                let first_idx = self.find_offset(offset);
+                &self.v[first_idx..]
             };
         let end = offset + len; // the first offset that is not included any more
         slice.iter()
-            .take_while(move |elem| elem.offset < end)
+            .take_while(move |elem| elem.range.start < end)
             .map(|elem| &elem.data)
     }
 
@@ -106,22 +95,19 @@ impl<T> RangeMap<T> {
         T: Clone,
     {
         let elem = &mut self.v[index];
-        let first_len = split_offset.checked_sub(elem.offset)
-            .expect("The split_offset is before the element to be split");
-        assert!(first_len <= elem.len.get(),
-            "The split_offset is after the element to be split");
-        if first_len == 0 || first_len == elem.len.get() {
+        if split_offset == elem.range.start || split_offset == elem.range.end {
             // Nothing to do
             return false;
         }
+        debug_assert!(elem.range.contains(&split_offset),
+            "The split_offset is not in the element to be split");
 
         // Now we really have to split.  Reduce length of first element.
-        let second_len = elem.len.get() - first_len;
-        elem.len = NonZeroU64::new(first_len).unwrap();
+        let second_range = split_offset..elem.range.end;
+        elem.range.end = split_offset;
         // Copy the data, and insert 2nd element
         let second = Elem {
-            offset: split_offset,
-            len: NonZeroU64::new(second_len).unwrap(),
+            range: second_range,
             data: elem.data.clone(),
         };
         self.v.insert(index+1, second);
@@ -137,7 +123,7 @@ impl<T> RangeMap<T> {
         len: Size,
     ) -> impl Iterator<Item = &'a mut T> + 'a
     where
-        T: Clone,
+        T: Clone + PartialEq,
     {
         let offset = offset.bytes();
         let len = len.bytes();
@@ -149,33 +135,53 @@ impl<T> RangeMap<T> {
                 &mut []
             } else {
                 // Make sure we got a clear beginning
-                let mut first = self.find_offset(offset);
-                if self.split_index(first, offset) {
+                let mut first_idx = self.find_offset(offset);
+                if self.split_index(first_idx, offset) {
                     // The newly created 2nd element is ours
-                    first += 1;
+                    first_idx += 1;
                 }
-                let first = first; // no more mutation
+                let first_idx = first_idx; // no more mutation
                 // Find our end.  Linear scan, but that's okay because the iteration
                 // is doing the same linear scan anyway -- no increase in complexity.
-                let mut end = first; // the last element to be included
+                // We combine this scan with a scan for duplicates that we can merge, to reduce
+                // the number of elements.
+                let mut equal_since_idx = first_idx;
+                let mut end_idx = first_idx; // when the loop is done, this is the first excluded element.
                 loop {
-                    let elem = &self.v[end];
-                    if elem.offset+elem.len.get() < offset+len {
-                        // We need to scan further.
-                        end += 1;
-                        debug_assert!(end < self.v.len(), "iter_mut: end-offset {} is out-of-bounds", offset+len);
-                    } else {
-                        // `elem` is the last included element.  Stop search.
+                    // Compute if `end` is the last element we need to look at.
+                    let done = (self.v[end_idx].range.end >= offset+len);
+                    // We definitely need to include `end`, so move the index.
+                    end_idx += 1;
+                    debug_assert!(done || end_idx < self.v.len(), "iter_mut: end-offset {} is out-of-bounds", offset+len);
+                    // see if we want to merge everything in `equal_since..end` (exclusive at the end!)
+                    if done || self.v[end_idx].data != self.v[equal_since_idx].data {
+                        // Everything in `equal_since..end` was equal.  Make them just one element covering
+                        // the entire range.
+                        let equal_elems = end_idx - equal_since_idx; // number of equal elements
+                        if equal_elems > 1 {
+                            // Adjust the range of the first element to cover all of them.
+                            let equal_until = self.v[end_idx - 1].range.end; // end of range of last of the equal elements
+                            self.v[equal_since_idx].range.end = equal_until;
+                            // Delete the rest of them.
+                            self.v.splice(equal_since_idx+1..end_idx, std::iter::empty());
+                            // Adjust `end_idx` because we made the list shorter.
+                            end_idx -= (equal_elems - 1);
+                        }
+                        // Go on scanning.
+                        equal_since_idx = end_idx;
+                    }
+                    // Leave loop if this is the last element.
+                    if done {
                         break;
                     }
                 }
-                let end = end; // no more mutation
+                let end_idx = end_idx-1; // Move to last included instead of first excluded index.
                 // We need to split the end as well.  Even if this performs a
                 // split, we don't have to adjust our index as we only care about
                 // the first part of the split.
-                self.split_index(end, offset+len);
+                self.split_index(end_idx, offset+len);
                 // Now we yield the slice. `end` is inclusive.
-                &mut self.v[first..=end]
+                &mut self.v[first_idx..=end_idx]
             };
         slice.iter_mut().map(|elem| &mut elem.data)
     }
@@ -241,18 +247,31 @@ mod tests {
             }
         }
         assert_eq!(map.v.len(), 6);
-
         assert_eq!(
             to_vec(&map, 10, 10),
             vec![23, 42, 23, 23, 23, 43, 23, 23, 23, 23]
         );
         assert_eq!(to_vec(&map, 13, 5), vec![23, 23, 43, 23, 23]);
 
+
         for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) {
             *x = 19;
         }
         assert_eq!(map.v.len(), 6);
-        assert_eq!(map.iter(Size::from_bytes(19), Size::from_bytes(1))
-            .map(|&t| t).collect::<Vec<_>>(), vec![19]);
+        assert_eq!(
+            to_vec(&map, 10, 10),
+            vec![23, 42, 23, 23, 23, 19, 19, 19, 19, 19]
+        );
+        // Should be seeing two blocks with 19
+        assert_eq!(map.iter(Size::from_bytes(15), Size::from_bytes(2))
+            .map(|&t| t).collect::<Vec<_>>(), vec![19, 19]);
+
+        // a NOP iter_mut should trigger merging
+        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) { }
+        assert_eq!(map.v.len(), 5);
+        assert_eq!(
+            to_vec(&map, 10, 10),
+            vec![23, 42, 23, 23, 23, 19, 19, 19, 19, 19]
+        );
     }
 }
