@@ -114,13 +114,6 @@ pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     sysroot.join(&relative_target_lib_path(sysroot, target_triple))
 }
 
-pub fn target_lib_path(target_triple: &str) -> PathBuf {
-    let mut p = PathBuf::from(RUST_LIB_DIR);
-    p.push(target_triple);
-    p.push("lib");
-    p
-}
-
 pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
     fn canonicalize(path: Option<PathBuf>) -> Option<PathBuf> {

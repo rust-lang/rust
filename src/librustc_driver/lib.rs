@@ -269,35 +269,37 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
     }
 
     let target = session::config::host_triple();
-    // get target libdir path based on executable binary path
-    let sysroot = filesearch::get_or_default_sysroot();
-    let mut libdir_candidates = vec![filesearch::make_target_lib_path(&sysroot, &target)];
+    let mut sysroot_candidates = vec![filesearch::get_or_default_sysroot()];
     let path = current_dll_path()
         .and_then(|s| s.canonicalize().ok());
     if let Some(dll) = path {
-        // use `parent` once to chop off the file name
-        if let Some(path) = dll.parent() {
+        // use `parent` twice to chop off the file name and then also the
+        // directory containing the dll which should be either `lib` or `bin`.
+        if let Some(path) = dll.parent().and_then(|p| p.parent()) {
             // The original `path` pointed at the `rustc_driver` crate's dll.
             // Now that dll should only be in one of two locations. The first is
-            // in the compiler's libdir, for example `$sysroot/$libdir/*.dll`. The
+            // in the compiler's libdir, for example `$sysroot/lib/*.dll`. The
             // other is the target's libdir, for example
-            // `$sysroot/$libdir/rustlib/$target/lib/*.dll`.
+            // `$sysroot/lib/rustlib/$target/lib/*.dll`.
             //
             // We don't know which, so let's assume that if our `path` above
-            // doesn't end in `$target` we *could* be in the main libdir, and always
-            // assume that we may be in the target libdir.
-            libdir_candidates.push(path.to_owned());
+            // ends in `$target` we *could* be in the target libdir, and always
+            // assume that we may be in the main libdir.
+            sysroot_candidates.push(path.to_owned());
 
-            if !path.parent().map_or(false, |p| p.ends_with(target)) {
-                libdir_candidates.push(path.join(filesearch::target_lib_path(target)));
+            if path.ends_with(target) {
+                sysroot_candidates.extend(path.parent() // chop off `$target`
+                    .and_then(|p| p.parent())           // chop off `rustlib`
+                    .and_then(|p| p.parent())           // chop off `lib`
+                    .map(|s| s.to_owned()));
             }
         }
     }
 
-    let sysroot = libdir_candidates.iter()
-        .map(|libdir| {
-            debug!("Trying target libdir: {}", libdir.display());
-            libdir.with_file_name(
+    let sysroot = sysroot_candidates.iter()
+        .map(|sysroot| {
+            let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
+            sysroot.join(libdir).with_file_name(
                 option_env!("CFG_CODEGEN_BACKENDS_DIR").unwrap_or("codegen-backends"))
         })
         .filter(|f| {
@@ -306,12 +308,12 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
         })
         .next();
     let sysroot = sysroot.unwrap_or_else(|| {
-        let candidates = libdir_candidates.iter()
+        let candidates = sysroot_candidates.iter()
             .map(|p| p.display().to_string())
             .collect::<Vec<_>>()
             .join("\n* ");
         let err = format!("failed to find a `codegen-backends` folder \
-                           in the libdir candidates:\n* {}", candidates);
+                           in the sysroot candidates:\n* {}", candidates);
         early_error(ErrorOutputType::default(), &err);
     });
     info!("probing {} for a codegen backend", sysroot.display());
