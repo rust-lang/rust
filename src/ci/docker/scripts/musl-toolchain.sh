@@ -51,6 +51,7 @@ echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
 
 export CC=$TARGET-gcc
 export CXX=$TARGET-g++
+export CFLAGS="-fPIC $CFLAGS"
 
 LLVM=60
 
