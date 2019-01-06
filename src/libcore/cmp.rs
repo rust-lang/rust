@@ -65,7 +65,6 @@ use self::Ordering::*;
 /// the same book if their ISBN matches, even if the formats differ:
 ///
 /// ```
-/// #[derive(PartialEq)]
 /// enum BookFormat {
 ///     Paperback,
 ///     Hardback,
@@ -97,6 +96,7 @@ use self::Ordering::*;
 /// For example, let's tweak our previous code a bit:
 ///
 /// ```
+/// #[derive(PartialEq)]
 /// enum BookFormat {
 ///     Paperback,
 ///     Hardback,
