@@ -34,22 +34,23 @@ pub struct Module {
     pub(crate) def_id: DefId,
 }
 
-/// An owned syntax node for a module. Unlike `ModuleSource`,
-/// this holds onto the AST for the whole file.
 pub enum ModuleSource {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
 }
 
 impl Module {
+    /// Name of this module.
     pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
         self.name_impl(db)
     }
 
+    /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn defenition_source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, ModuleSource)> {
         self.defenition_source_impl(db)
     }
-
+    /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
+    /// `None` for the crate root.
     pub fn declaration_source(
         &self,
         db: &impl HirDatabase,
@@ -61,11 +62,12 @@ impl Module {
     pub fn krate(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
         self.krate_impl(db)
     }
-
+    /// Topmost parent of this module. Every module has a `crate_root`, but some
+    /// might miss `krate`. This can happen if a module's file is not included
+    /// into any module tree of any target from Cargo.toml.
     pub fn crate_root(&self, db: &impl HirDatabase) -> Cancelable<Module> {
         self.crate_root_impl(db)
     }
-
     /// Finds a child module with the specified name.
     pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         self.child_impl(db, name)
