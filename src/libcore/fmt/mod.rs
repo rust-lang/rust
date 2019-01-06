@@ -191,29 +191,8 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, args: Arguments) -> Result {
-        // This Adapter is needed to allow `self` (of type `&mut
-        // Self`) to be cast to a Write (below) without
-        // requiring a `Sized` bound.
-        struct Adapter<'a,T: ?Sized +'a>(&'a mut T);
-
-        impl<T: ?Sized> Write for Adapter<'_, T>
-            where T: Write
-        {
-            fn write_str(&mut self, s: &str) -> Result {
-                self.0.write_str(s)
-            }
-
-            fn write_char(&mut self, c: char) -> Result {
-                self.0.write_char(c)
-            }
-
-            fn write_fmt(&mut self, args: Arguments) -> Result {
-                self.0.write_fmt(args)
-            }
-        }
-
-        write(&mut Adapter(self), args)
+    fn write_fmt(mut self: &mut Self, args: Arguments) -> Result {
+        write(&mut self, args)
     }
 }
 
