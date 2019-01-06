@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc::mir::interpret::{
     read_target_uint, AllocId, AllocKind, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
-use rustc::ty::Const;
+use rustc::ty::{Const, LazyConst};
 use rustc_mir::interpret::{
     EvalContext, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup,
 };
@@ -61,7 +61,6 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
         }))
         .unwrap();
 
-    let const_ = force_eval_const(fx, const_);
     trans_const_place(fx, const_)
 }
 
@@ -76,10 +75,10 @@ pub fn trans_constant<'a, 'tcx: 'a>(
 
 pub fn force_eval_const<'a, 'tcx: 'a>(
     fx: &FunctionCx<'a, 'tcx, impl Backend>,
-    const_: &'tcx Const<'tcx>,
-) -> &'tcx Const<'tcx> {
-    match const_.val {
-        ConstValue::Unevaluated(def_id, ref substs) => {
+    const_: &'tcx LazyConst<'tcx>,
+) -> Const<'tcx> {
+    match *const_ {
+        LazyConst::Unevaluated(def_id, ref substs) => {
             let param_env = ParamEnv::reveal_all();
             let instance = Instance::resolve(fx.tcx, param_env, def_id, substs).unwrap();
             let cid = GlobalId {
@@ -88,13 +87,13 @@ pub fn force_eval_const<'a, 'tcx: 'a>(
             };
             fx.tcx.const_eval(param_env.and(cid)).unwrap()
         }
-        _ => const_,
+        LazyConst::Evaluated(const_) => const_,
     }
 }
 
 fn trans_const_value<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    const_: &'tcx Const<'tcx>,
+    const_: Const<'tcx>,
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
@@ -124,7 +123,7 @@ fn trans_const_value<'a, 'tcx: 'a>(
 
 fn trans_const_place<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    const_: &'tcx Const<'tcx>,
+    const_: Const<'tcx>,
 ) -> CPlace<'tcx> {
     // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
     let result = || -> EvalResult<'tcx, &'tcx Allocation> {
@@ -146,7 +145,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
                 span: DUMMY_SP,
                 ty: const_.ty,
                 user_ty: None,
-                literal: const_,
+                literal: fx.tcx.intern_lazy_const(LazyConst::Evaluated(const_)),
             })),
             None,
         )?;

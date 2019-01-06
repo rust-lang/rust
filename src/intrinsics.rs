@@ -352,6 +352,11 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let needs_drop = CValue::const_val(fx, fx.tcx.types.bool, needs_drop);
             ret.write_cvalue(fx, needs_drop);
         };
+        panic_if_uninhabited, <T> () {
+            if fx.layout_of(T).abi.is_uninhabited() {
+                crate::trap::trap_panic(&mut fx.bcx);
+            }
+        };
 
         _ if intrinsic.starts_with("atomic_fence"), () {};
         _ if intrinsic.starts_with("atomic_singlethreadfence"), () {};
