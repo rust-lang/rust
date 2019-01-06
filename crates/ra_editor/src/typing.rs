@@ -306,7 +306,7 @@ mod tests {
     use super::*;
     use crate::test_utils::{
         add_cursor, assert_eq_text, check_action, extract_offset, extract_range,
-};
+    };
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
@@ -646,6 +646,7 @@ fn foo() {
             let actual = result.edit.apply(&before);
             assert_eq_text!(after, &actual);
         }
+        // indent if continuing chain call
         do_check(
             r"
     pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
@@ -656,6 +657,58 @@ fn foo() {
             r"
     pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         self.child_impl(db, name)
+            .
+    }
+",
+        );
+
+        // do not indent if already indented
+        do_check(
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .<|>
+    }
+",
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .
+    }
+",
+        );
+
+        // indent if the previous line is already indented
+        do_check(
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .first()
+        .<|>
+    }
+",
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .first()
+            .
+    }
+",
+        );
+
+        // don't indent if indent matches previous line
+        do_check(
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .first()
+            .<|>
+    }
+",
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+            .first()
             .
     }
 ",
