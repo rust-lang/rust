@@ -1334,7 +1334,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if def_id.is_local() {
-            self.hir().definitions().def_path_hash(def_id.index)
+            // FIXME: This is used when executing the hir query, can't use hir() here
+            self.hir_map.definitions().def_path_hash(def_id.index)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -1373,11 +1374,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'a> {
+        // FIXME: This is used when executing the hir query, can't use hir() here
         let krate = self.gcx.hir_map.forest.untracked_krate();
-
         StableHashingContext::new(self.sess,
                                   krate,
-                                  self.hir().definitions(),
+                                  self.hir_map.definitions(),
                                   self.cstore)
     }
 
