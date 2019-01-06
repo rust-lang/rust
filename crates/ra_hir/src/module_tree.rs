@@ -20,6 +20,40 @@ pub enum Submodule {
 }
 
 impl Submodule {
+    pub(crate) fn submodules_query(
+        db: &impl HirDatabase,
+        source: ModuleSource,
+    ) -> Cancelable<Arc<Vec<Submodule>>> {
+        db.check_canceled()?;
+        let file_id = source.file_id();
+        let submodules = match source.resolve(db) {
+            ModuleSourceNode::SourceFile(it) => collect_submodules(db, file_id, it.borrowed()),
+            ModuleSourceNode::Module(it) => it
+                .borrowed()
+                .item_list()
+                .map(|it| collect_submodules(db, file_id, it))
+                .unwrap_or_else(Vec::new),
+        };
+        return Ok(Arc::new(submodules));
+
+        fn collect_submodules<'a>(
+            db: &impl HirDatabase,
+            file_id: HirFileId,
+            root: impl ast::ModuleItemOwner<'a>,
+        ) -> Vec<Submodule> {
+            modules(root)
+                .map(|(name, m)| {
+                    if m.has_semi() {
+                        Submodule::Declaration(name)
+                    } else {
+                        let src = ModuleSource::new_inline(db, file_id, m);
+                        Submodule::Definition(name, src)
+                    }
+                })
+                .collect()
+        }
+    }
+
     fn name(&self) -> &Name {
         match self {
             Submodule::Declaration(name) => name,

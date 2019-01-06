@@ -6,16 +6,16 @@ use std::{
 use rustc_hash::FxHashMap;
 use ra_syntax::{
     AstNode, SyntaxNode,
-    ast::{self, NameOwner, ModuleItemOwner}
+    ast::{self, ModuleItemOwner}
 };
 use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, DefId, Name, AsName, HirFileId,
+    SourceFileItems, SourceItemId, DefKind, DefId, HirFileId,
     MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
-    module_tree::{ModuleId, Submodule, ModuleSource, ModuleSourceNode},
+    module_tree::{ModuleId, ModuleSourceNode},
     nameres::{InputModuleItems, ItemMap, Resolver},
     adt::{StructData, EnumData},
 };
@@ -56,54 +56,6 @@ pub(super) fn file_item(db: &impl HirDatabase, source_item_id: SourceItemId) -> 
         Some(id) => db.file_items(source_item_id.file_id)[id].clone(),
         None => db.hir_source_file(source_item_id.file_id).syntax().owned(),
     }
-}
-
-pub(crate) fn submodules(
-    db: &impl HirDatabase,
-    source: ModuleSource,
-) -> Cancelable<Arc<Vec<Submodule>>> {
-    db.check_canceled()?;
-    let file_id = source.file_id();
-    let submodules = match source.resolve(db) {
-        ModuleSourceNode::SourceFile(it) => collect_submodules(db, file_id, it.borrowed()),
-        ModuleSourceNode::Module(it) => it
-            .borrowed()
-            .item_list()
-            .map(|it| collect_submodules(db, file_id, it))
-            .unwrap_or_else(Vec::new),
-    };
-    return Ok(Arc::new(submodules));
-
-    fn collect_submodules<'a>(
-        db: &impl HirDatabase,
-        file_id: HirFileId,
-        root: impl ast::ModuleItemOwner<'a>,
-    ) -> Vec<Submodule> {
-        modules(root)
-            .map(|(name, m)| {
-                if m.has_semi() {
-                    Submodule::Declaration(name)
-                } else {
-                    let src = ModuleSource::new_inline(db, file_id, m);
-                    Submodule::Definition(name, src)
-                }
-            })
-            .collect()
-    }
-}
-
-pub(crate) fn modules<'a>(
-    root: impl ast::ModuleItemOwner<'a>,
-) -> impl Iterator<Item = (Name, ast::Module<'a>)> {
-    root.items()
-        .filter_map(|item| match item {
-            ast::ModuleItem::Module(m) => Some(m),
-            _ => None,
-        })
-        .filter_map(|module| {
-            let name = module.name()?.as_name();
-            Some((name, module))
-        })
 }
 
 pub(super) fn input_module_items(

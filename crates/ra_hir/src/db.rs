@@ -73,7 +73,7 @@ pub trait HirDatabase: SyntaxDatabase
 
     fn submodules(source: ModuleSource) -> Cancelable<Arc<Vec<crate::module_tree::Submodule>>> {
         type SubmodulesQuery;
-        use fn query_definitions::submodules;
+        use fn crate::module_tree::Submodule::submodules_query;
     }
 
     fn input_module_items(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<InputModuleItems>> {
