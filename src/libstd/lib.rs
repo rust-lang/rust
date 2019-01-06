@@ -248,6 +248,7 @@
 #![feature(const_cstr_unchecked)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
+#![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
 #![feature(external_doc)]
 #![feature(fixed_size_array)]
