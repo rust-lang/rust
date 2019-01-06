@@ -1,7 +1,7 @@
-[21; 22) 'a': [unknown]
-[52; 53) '1': usize
 [11; 71) '{     ...= b; }': ()
-[63; 64) 'c': usize
+[21; 22) 'a': [unknown]
 [25; 31) '1isize': [unknown]
 [41; 42) 'b': usize
+[52; 53) '1': usize
+[63; 64) 'c': usize
 [67; 68) 'b': usize
