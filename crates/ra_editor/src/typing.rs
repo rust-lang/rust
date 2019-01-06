@@ -5,7 +5,7 @@ use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
     text_utils::intersect,
-    AstNode, SourceFileNode, SyntaxKind,
+    AstNode, Direction, SourceFileNode, SyntaxKind,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
@@ -139,15 +139,41 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
 pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let before_dot_offset = offset - TextUnit::of_char('.');
 
-    let _whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset)
-        .left_biased()
-        .and_then(ast::Whitespace::cast)?;
+    let _whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset).left_biased()?;
 
-    // whitespace found just left of the dot
+    // find whitespace just left of the dot
+    ast::Whitespace::cast(_whitespace)?;
+
+    // make sure there is a method call
+    let _method_call = _whitespace
+        .siblings(Direction::Prev)
+        // first is whitespace
+        .skip(1)
+        .next()?;
+
+    ast::MethodCallExprNode::cast(_method_call)?;
+
+    // find how much the _method call is indented
+    let method_chain_indent = _method_call
+        .ancestors()
+        .skip(1)
+        .next()?
+        .siblings(Direction::Prev)
+        .skip(1)
+        .next()?
+        .leaf_text()
+        .map(|x| last_line_indent_in_whitespace(x))?;
+
+    let current_indent = TextUnit::of_str(last_line_indent_in_whitespace(_whitespace.leaf_text()?));
     // TODO: indent is always 4 spaces now. A better heuristic could look on the previous line(s)
-    let indent = "    ".to_string();
 
-    let cursor_position = offset + TextUnit::of_str(&indent);;
+    let target_indent = TextUnit::of_str(method_chain_indent) + TextUnit::from_usize(4);
+
+    let diff = target_indent - current_indent;
+
+    let indent = "".repeat(diff.to_usize());
+
+    let cursor_position = offset + diff;
     let mut edit = TextEditBuilder::default();
     edit.insert(before_dot_offset, indent);
     Some(LocalEdit {
@@ -155,6 +181,11 @@ pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit
         edit: edit.finish(),
         cursor_position: Some(cursor_position),
     })
+}
+
+/// Finds the last line in the whitespace
+fn last_line_indent_in_whitespace(ws: &str) -> &str {
+    ws.split('\n').last().unwrap_or("")
 }
 
 fn remove_newline(
@@ -642,9 +673,10 @@ fn foo() {
         fn do_check(before: &str, after: &str) {
             let (offset, before) = extract_offset(before);
             let file = SourceFileNode::parse(&before);
-            let result = on_dot_typed(&file, offset).unwrap();
-            let actual = result.edit.apply(&before);
-            assert_eq_text!(after, &actual);
+            if let Some(result) = on_eq_typed(&file, offset) {
+                let actual = result.edit.apply(&before);
+                assert_eq_text!(after, &actual);
+            };
         }
         // indent if continuing chain call
         do_check(
@@ -709,6 +741,36 @@ fn foo() {
     pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         self.child_impl(db, name)
             .first()
+            .
+    }
+",
+        );
+
+        // don't indent if there is no method call on previous line
+        do_check(
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        .<|>
+    }
+",
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        .
+    }
+",
+        );
+
+        // indent to match previous expr
+        do_check(
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
+.<|>
+    }
+",
+            r"
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+        self.child_impl(db, name)
             .
     }
 ",
