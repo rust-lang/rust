@@ -31,7 +31,7 @@ use crate::{
     Path, PathKind,
     HirDatabase, Crate,
     Name, AsName,
-    module::{Module, ModuleId, ModuleTree},
+    module::{ModuleId, ModuleTree},
 };
 
 /// Item map is the result of the name resolution. Item map contains, for each
@@ -466,7 +466,7 @@ where
                         if source_root_id == self.source_root {
                             target_module_id
                         } else {
-                            let module = Module::new(self.db, source_root_id, target_module_id)?;
+                            let module = crate::code_model_api::Module::new(type_def_id);
                             let path = Path {
                                 segments: import.path.segments[i + 1..].iter().cloned().collect(),
                                 kind: PathKind::Crate,

@@ -1,7 +1,6 @@
 pub(super) mod imp;
 pub(super) mod nameres;
 
-use std::sync::Arc;
 use log;
 
 use ra_syntax::{
@@ -10,183 +9,14 @@ use ra_syntax::{
     SyntaxNode,
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
-use ra_db::{SourceRootId, FileId, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
-    Def, DefKind, DefLoc, DefId,
-    Name, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
+    Name,  HirDatabase, SourceItemId, SourceFileItemId,
     HirFileId,
 };
 
 pub use self::nameres::{ModuleScope, Resolution, Namespace, PerNs};
-
-/// `Module` is API entry point to get all the information
-/// about a particular module.
-#[derive(Debug, Clone)]
-pub struct Module {
-    tree: Arc<ModuleTree>,
-    pub(crate) source_root_id: SourceRootId,
-    pub(crate) module_id: ModuleId,
-}
-
-impl Module {
-    pub(super) fn new(
-        db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> Cancelable<Module> {
-        let module_tree = db.module_tree(source_root_id)?;
-        let res = Module {
-            tree: module_tree,
-            source_root_id,
-            module_id,
-        };
-        Ok(res)
-    }
-
-    /// Returns `mod foo;` or `mod foo {}` node whihc declared this module.
-    /// Returns `None` for the root module
-    pub fn parent_link_source(&self, db: &impl HirDatabase) -> Option<(FileId, ast::ModuleNode)> {
-        let link = self.module_id.parent_link(&self.tree)?;
-        let file_id = link
-            .owner(&self.tree)
-            .source(&self.tree)
-            .file_id()
-            .as_original_file();
-        let src = link.bind_source(&self.tree, db);
-        Some((file_id, src))
-    }
-
-    pub fn file_id(&self) -> FileId {
-        self.source().file_id().as_original_file()
-    }
-
-    /// Parent module. Returns `None` if this is a root module.
-    pub fn parent(&self) -> Option<Module> {
-        let parent_id = self.module_id.parent(&self.tree)?;
-        Some(Module {
-            module_id: parent_id,
-            ..self.clone()
-        })
-    }
-
-    /// Returns an iterator of all children of this module.
-    pub fn children<'a>(&'a self) -> impl Iterator<Item = (Name, Module)> + 'a {
-        self.module_id
-            .children(&self.tree)
-            .map(move |(name, module_id)| {
-                (
-                    name,
-                    Module {
-                        module_id,
-                        ..self.clone()
-                    },
-                )
-            })
-    }
-
-    /// Returns the crate this module is part of.
-    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
-        let root_id = self.module_id.crate_root(&self.tree);
-        let file_id = root_id.source(&self.tree).file_id().as_original_file();
-        let crate_graph = db.crate_graph();
-        let crate_id = crate_graph.crate_id_for_crate_root(file_id)?;
-        Some(Crate::new(crate_id))
-    }
-
-    /// Returns the all modules on the way to the root.
-    pub fn path_to_root(&self) -> Vec<Module> {
-        generate(Some(self.clone()), move |it| it.parent()).collect::<Vec<Module>>()
-    }
-
-    /// The root of the tree this module is part of
-    pub fn crate_root(&self) -> Module {
-        let root_id = self.module_id.crate_root(&self.tree);
-        Module {
-            module_id: root_id,
-            ..self.clone()
-        }
-    }
-
-    /// `name` is `None` for the crate's root module
-    pub fn name(&self) -> Option<&Name> {
-        let link = self.module_id.parent_link(&self.tree)?;
-        Some(link.name(&self.tree))
-    }
-
-    pub fn def_id(&self, db: &impl HirDatabase) -> DefId {
-        let def_loc = DefLoc {
-            kind: DefKind::Module,
-            source_root_id: self.source_root_id,
-            module_id: self.module_id,
-            source_item_id: self.module_id.source(&self.tree).0,
-        };
-        def_loc.id(db)
-    }
-
-    /// Finds a child module with the specified name.
-    pub fn child(&self, name: &Name) -> Option<Module> {
-        let child_id = self.module_id.child(&self.tree, name)?;
-        Some(Module {
-            module_id: child_id,
-            ..self.clone()
-        })
-    }
-
-    /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
-        let item_map = db.item_map(self.source_root_id)?;
-        let res = item_map.per_module[&self.module_id].clone();
-        Ok(res)
-    }
-
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
-        let mut curr_per_ns = PerNs::types(
-            match path.kind {
-                PathKind::Crate => self.crate_root(),
-                PathKind::Self_ | PathKind::Plain => self.clone(),
-                PathKind::Super => {
-                    if let Some(p) = self.parent() {
-                        p
-                    } else {
-                        return Ok(PerNs::none());
-                    }
-                }
-            }
-            .def_id(db),
-        );
-
-        let segments = &path.segments;
-        for name in segments.iter() {
-            let curr = if let Some(r) = curr_per_ns.as_ref().take(Namespace::Types) {
-                r
-            } else {
-                return Ok(PerNs::none());
-            };
-            let module = match curr.resolve(db)? {
-                Def::Module(it) => it,
-                // TODO here would be the place to handle enum variants...
-                _ => return Ok(PerNs::none()),
-            };
-            let scope = module.scope(db)?;
-            curr_per_ns = if let Some(r) = scope.get(&name) {
-                r.def_id
-            } else {
-                return Ok(PerNs::none());
-            };
-        }
-        Ok(curr_per_ns)
-    }
-
-    pub fn problems(&self, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
-        self.module_id.problems(&self.tree, db)
-    }
-
-    pub(crate) fn source(&self) -> ModuleSource {
-        self.module_id.source(&self.tree)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModuleId(RawId);

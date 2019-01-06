@@ -1,7 +1,6 @@
-use ra_db::{CrateId, Cancelable, FileId};
-use ra_syntax::ast;
+use ra_db::{CrateId, Cancelable};
 
-use crate::{Name, db::HirDatabase, DefId, Path, PerNs};
+use crate::{Name, db::HirDatabase, DefId, Path, PerNs, module::{ModuleSource, ModuleScope}};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -35,7 +34,8 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, Option<ast::ModuleNode>)> {
+    // FIXME: what is a module source exactly? It should contain two nodes
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<ModuleSource> {
         Ok(self.source_impl(db))
     }
 
@@ -56,7 +56,10 @@ impl Module {
     pub fn parent(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         self.parent_impl(db)
     }
-
+    /// Returns a `ModuleScope`: a set of items, visible in this module.
+    pub fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
+        self.scope_impl(db)
+    }
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
         self.resolve_path_impl(db, path)
     }

@@ -56,6 +56,8 @@ pub use self::{
 
 pub use self::function::FnSignatureInfo;
 
+pub use self::code_model_api::Module;
+
 pub enum Def {
     Module(Module),
     Function(Function),

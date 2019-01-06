@@ -1,7 +1,10 @@
-use ra_db::{CrateId, Cancelable, FileId};
-use ra_syntax::{AstNode, ast};
+use ra_db::{CrateId, Cancelable, SourceRootId};
 
-use crate::{HirFileId, db::HirDatabase, Crate, CrateDependency, AsName, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def};
+use crate::{
+    HirFileId, Crate, CrateDependency, AsName, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def, ModuleId,
+    module::{ModuleSource, ModuleScope},
+    db::HirDatabase,
+};
 
 use crate::code_model_api::Module;
 
@@ -48,21 +51,26 @@ impl Module {
     pub(crate) fn new(def_id: DefId) -> Self {
         crate::code_model_api::Module { def_id }
     }
-
-    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (FileId, Option<ast::ModuleNode>) {
-        let loc = self.def_id.loc(db);
-        let source_item_id = loc.source_item_id;
-        let module = match source_item_id.item_id {
-            None => None,
-            Some(_) => {
-                let syntax_node = db.file_item(source_item_id);
-                let module = ast::Module::cast(syntax_node.borrowed()).unwrap().owned();
-                Some(module)
-            }
+    pub(crate) fn from_module_id(
+        db: &impl HirDatabase,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+    ) -> Cancelable<Self> {
+        let module_tree = db.module_tree(source_root_id)?;
+        let def_loc = DefLoc {
+            kind: DefKind::Module,
+            source_root_id,
+            module_id,
+            source_item_id: module_id.source(&module_tree).0,
         };
-        // FIXME: remove `as_original_file` here
-        let file_id = source_item_id.file_id.as_original_file();
-        (file_id, module)
+        let def_id = def_loc.id(db);
+        let module = Module::new(def_id);
+        Ok(module)
+    }
+
+    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> ModuleSource {
+        let loc = self.def_id.loc(db);
+        ModuleSource(loc.source_item_id)
     }
 
     pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
@@ -79,41 +87,27 @@ impl Module {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         let module_id = loc.module_id.crate_root(&module_tree);
-        let def_loc = DefLoc {
-            module_id,
-            source_item_id: module_id.source(&module_tree).0,
-            ..loc
-        };
-        let def_id = def_loc.id(db);
-        let module = Module::new(def_id);
-        Ok(module)
+        Module::from_module_id(db, loc.source_root_id, module_id)
     }
     /// Finds a child module with the specified name.
     pub fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         let child_id = ctry!(loc.module_id.child(&module_tree, name));
-        let def_loc = DefLoc {
-            module_id: child_id,
-            source_item_id: child_id.source(&module_tree).0,
-            ..loc
-        };
-        let def_id = def_loc.id(db);
-        let module = Module::new(def_id);
-        Ok(Some(module))
+        Module::from_module_id(db, loc.source_root_id, child_id).map(Some)
     }
     pub fn parent_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         let parent_id = ctry!(loc.module_id.parent(&module_tree));
-        let def_loc = DefLoc {
-            module_id: parent_id,
-            source_item_id: parent_id.source(&module_tree).0,
-            ..loc
-        };
-        let def_id = def_loc.id(db);
-        let module = Module::new(def_id);
-        Ok(Some(module))
+        Module::from_module_id(db, loc.source_root_id, parent_id).map(Some)
+    }
+    /// Returns a `ModuleScope`: a set of items, visible in this module.
+    pub fn scope_impl(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
+        let loc = self.def_id.loc(db);
+        let item_map = db.item_map(loc.source_root_id)?;
+        let res = item_map.per_module[&loc.module_id].clone();
+        Ok(res)
     }
     pub fn resolve_path_impl(
         &self,
