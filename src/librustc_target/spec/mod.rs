@@ -580,6 +580,8 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Support for static position independent executables.
+    pub static_position_independent_executables: bool,
     /// Determines if the target always requires using the PLT for indirect
     /// library calls or not. This controls the default value of the `-Z plt` flag.
     pub needs_plt: bool,
@@ -735,6 +737,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
+            static_position_independent_executables: false,
             needs_plt: false,
             relro_level: RelroLevel::None,
             pre_link_objects_exe: Vec::new(),
@@ -1035,6 +1038,7 @@ impl Target {
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
+        key!(static_position_independent_executables, bool);
         key!(needs_plt, bool);
         key!(relro_level, RelroLevel)?;
         key!(archive_format);
@@ -1246,6 +1250,7 @@ impl ToJson for Target {
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
+        target_option_val!(static_position_independent_executables);
         target_option_val!(needs_plt);
         target_option_val!(relro_level);
         target_option_val!(archive_format);

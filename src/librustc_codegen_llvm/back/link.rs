@@ -916,13 +916,10 @@ fn link_args(cmd: &mut dyn Linker,
         let mut position_independent_executable = false;
 
         if t.options.position_independent_executables {
-            let empty_vec = Vec::new();
-            let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-            let more_args = &sess.opts.cg.link_arg;
-            let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
+            let static_pie = t.options.static_position_independent_executables;
             if get_reloc_model(sess) == llvm::RelocMode::PIC
-                && !sess.crt_static() && !args.any(|x| *x == "-static") {
+                && (!sess.crt_static() || static_pie) {
                 position_independent_executable = true;
             }
         }

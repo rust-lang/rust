@@ -21,14 +21,17 @@ pub fn opts() -> TargetOptions {
     //
     // Each target directory for musl has these object files included in it so
     // they'll be included from there.
-    base.pre_link_objects_exe_crt.push("crt1.o".to_string());
+    base.pre_link_objects_exe_crt.push("rcrt1.o".to_string());
     base.pre_link_objects_exe_crt.push("crti.o".to_string());
     base.post_link_objects_crt.push("crtn.o".to_string());
 
     // These targets statically link libc by default
-    base.crt_static_default = false;
+    base.crt_static_default = true;
     // These targets allow the user to choose between static and dynamic linking.
     base.crt_static_respected = true;
+
+    // Static position-independent executables are supported.
+    base.static_position_independent_executables = true;
 
     // Defaults for dynamic linking
     base.dynamic_linking = true;
