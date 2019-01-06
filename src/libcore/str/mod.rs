@@ -10,9 +10,8 @@ use crate::iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, F
 use crate::iter::{Flatten, FlatMap, Chain};
 use crate::slice::{self, SliceIndex, Split as SliceSplit};
 use crate::mem;
-use crate::needle::{
-    ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer,
-};
+use crate::needle::{ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer};
+use crate::ops::Range;
 
 #[unstable(feature = "str_internals", issue = "0")]
 mod needles;
@@ -2549,6 +2548,105 @@ impl str {
         ext::rfind(self, pat)
     }
 
+    /// Returns the byte range of the first substring of this string slice that
+    /// the pattern can be found.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that determines if
+    /// a substring matches.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find_range('L'), Some(0..1));
+    /// assert_eq!(s.find_range('é'), Some(14..16));
+    /// assert_eq!(s.find_range("Léopard"), Some(13..21));
+    /// ```
+    ///
+    /// More complex patterns using point-free style and closures:
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find(char::is_whitespace), Some(5..6));
+    /// assert_eq!(s.find(char::is_lowercase), Some(1..2));
+    /// assert_eq!(s.find(|c: char| c.is_whitespace() || c.is_lowercase()), Some(1..2));
+    /// assert_eq!(s.find(|c: char| (c < 'o') && (c > 'a')), Some(4..5));
+    /// ```
+    ///
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    /// let x: &[_] = &['1', '2'];
+    ///
+    /// assert_eq!(s.find(x), None);
+    /// ```
+    #[unstable(feature = "str_find_range", issue = "56345")]
+    #[inline]
+    pub fn find_range<'a, P: Needle<&'a str>>(&'a self, pat: P) -> Option<Range<usize>>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::find_range(self, pat)
+    }
+
+    /// Returns the byte range of the last substring of this string slice that
+    /// the pattern can be found.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that determines if
+    /// a substring matches.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.rfind_range('L'), Some(13..14));
+    /// assert_eq!(s.rfind_range('é'), Some(14..16));
+    /// ```
+    ///
+    /// More complex patterns with closures:
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.rfind_range(char::is_whitespace), Some(12..13));
+    /// assert_eq!(s.rfind_range(char::is_lowercase), Some(20..21));
+    /// ```
+    ///
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    /// let x: &[_] = &['1', '2'];
+    ///
+    /// assert_eq!(s.rfind_range(x), None);
+    /// ```
+    #[unstable(feature = "str_find_range", issue = "56345")]
+    #[inline]
+    pub fn rfind_range<'a, P: Needle<&'a str>>(&'a self, pat: P) -> Option<Range<usize>>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rfind_range(self, pat)
+    }
+
     /// An iterator over substrings of this string slice, separated by
     /// characters matched by a pattern.
     ///
@@ -3081,6 +3179,99 @@ impl str {
         P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
         ext::rmatch_indices(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within this string
+    /// slice as well as the range that the match covers.
+    ///
+    /// For matches of `pat` within `self` that overlap, only the ranges
+    /// corresponding to the first match are returned.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that determines
+    /// if a substring matches.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
+    /// allows a reverse search and forward/reverse search yields the same
+    /// elements. This is true for, eg, [`char`] but not for `&str`.
+    ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, the [`rmatch_ranges`] method can be used.
+    ///
+    /// [`rmatch_ranges`]: #method.rmatch_ranges
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let v: Vec<_> = "abcXXXabcYYYabc".match_ranges("abc").collect();
+    /// assert_eq!(v, [(0..3, "abc"), (6..9, "abc"), (12..15, "abc")]);
+    ///
+    /// let v: Vec<_> = "1abcabc2".match_ranges("abc").collect();
+    /// assert_eq!(v, [(1..4, "abc"), (4..7, "abc")]);
+    ///
+    /// let v: Vec<_> = "ababa".match_ranges("aba").collect();
+    /// assert_eq!(v, [(0..3, "aba")]); // only the first `aba`
+    /// ```
+    #[unstable(feature = "str_find_range", issue = "56345")]
+    #[inline]
+    pub fn match_ranges<'a, P>(&'a self, pat: P) -> ext::MatchRanges<&'a str, P::Searcher>
+    where
+        P: Needle<&'a str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::match_ranges(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within `self`,
+    /// yielded in reverse order along with the range of the match.
+    ///
+    /// For matches of `pat` within `self` that overlap, only the ranges
+    /// corresponding to the last match are returned.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that determines if a
+    /// substring matches.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a reverse
+    /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
+    /// search yields the same elements.
+    ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
+    /// For iterating from the front, the [`match_ranges`] method can be used.
+    ///
+    /// [`match_ranges`]: #method.match_ranges
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let v: Vec<_> = "abcXXXabcYYYabc".rmatch_ranges("abc").collect();
+    /// assert_eq!(v, [(12..15, "abc"), (6..9, "abc"), (0..3, "abc")]);
+    ///
+    /// let v: Vec<_> = "1abcabc2".rmatch_ranges("abc").collect();
+    /// assert_eq!(v, [(4..7, "abc"), (1..4, "abc")]);
+    ///
+    /// let v: Vec<_> = "ababa".rmatch_ranges("aba").collect();
+    /// assert_eq!(v, [(2..5, "aba")]); // only the last `aba`
+    /// ```
+    #[unstable(feature = "str_find_range", issue = "56345")]
+    #[inline]
+    pub fn rmatch_ranges<'a, P>(&'a self, pat: P) -> ext::RMatchRanges<&'a str, P::Searcher>
+    where
+        P: Needle<&'a str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rmatch_ranges(self, pat)
     }
 
     /// Returns a string slice with leading and trailing whitespace removed.
