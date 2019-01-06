@@ -6,7 +6,6 @@ use rustc_driver::{self, driver, target_features, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_resolve::MakeGlobMap;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
@@ -100,7 +99,6 @@ pub fn run(mut options: Options) -> isize {
                 None,
                 "rustdoc-test",
                 None,
-                MakeGlobMap::No,
                 |_| Ok(()),
             ).expect("phase_2_configure_and_expand aborted in rustdoc!")
         };
