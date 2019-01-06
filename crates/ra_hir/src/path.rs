@@ -67,10 +67,7 @@ impl Path {
 
     /// Converts an `ast::NameRef` into a single-identifier `Path`.
     pub fn from_name_ref(name_ref: ast::NameRef) -> Path {
-        Path {
-            kind: PathKind::Plain,
-            segments: vec![name_ref.as_name()],
-        }
+        name_ref.as_name().into()
     }
 
     /// `true` is this path is a single identifier, like `foo`
@@ -89,6 +86,15 @@ impl Path {
             return None;
         }
         self.segments.first()
+    }
+}
+
+impl From<Name> for Path {
+    fn from(name: Name) -> Path {
+        Path {
+            kind: PathKind::Plain,
+            segments: vec![name],
+        }
     }
 }
 

@@ -7,7 +7,7 @@ use crate::{
     DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
-    FnScopes,
+    FnSignature, FnScopes,
     macros::MacroExpansion,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
@@ -102,6 +102,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn body_syntax_mapping(def_id: DefId) -> Cancelable<Arc<crate::expr::BodySyntaxMapping>> {
         type BodySyntaxMappingQuery;
         use fn crate::expr::body_syntax_mapping;
+    }
+
+    fn fn_signature(def_id: DefId) -> Arc<FnSignature> {
+        type FnSignatureQuery;
+        use fn crate::function::fn_signature;
     }
 }
 

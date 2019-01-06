@@ -35,6 +35,10 @@ impl Name {
         Name::new("self".into())
     }
 
+    pub(crate) fn self_type() -> Name {
+        Name::new("Self".into())
+    }
+
     pub(crate) fn tuple_field_name(idx: usize) -> Name {
         Name::new(idx.to_string().into())
     }
