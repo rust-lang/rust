@@ -11,11 +11,11 @@ use ra_syntax::{
 use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, DefId, HirFileId,
+    SourceFileItems, SourceItemId, DefKind, DefId, HirFileId, ModuleSource,
     MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
-    module_tree::{ModuleId, ModuleSourceNode},
+    module_tree::ModuleId,
     nameres::{InputModuleItems, ItemMap, Resolver},
     adt::{StructData, EnumData},
 };
@@ -65,7 +65,8 @@ pub(super) fn input_module_items(
 ) -> Cancelable<Arc<InputModuleItems>> {
     let module_tree = db.module_tree(source_root_id)?;
     let source = module_id.source(&module_tree);
-    let file_id = source.file_id();
+    let file_id = source.file_id;
+    let source = ModuleSource::from_source_item_id(db, source);
     let file_items = db.file_items(file_id);
     let fill = |acc: &mut InputModuleItems, items: &mut Iterator<Item = ast::ItemOrMacro>| {
         for item in items {
@@ -96,9 +97,9 @@ pub(super) fn input_module_items(
     };
 
     let mut res = InputModuleItems::default();
-    match source.resolve(db) {
-        ModuleSourceNode::SourceFile(it) => fill(&mut res, &mut it.borrowed().items_with_macros()),
-        ModuleSourceNode::Module(it) => {
+    match source {
+        ModuleSource::SourceFile(it) => fill(&mut res, &mut it.borrowed().items_with_macros()),
+        ModuleSource::Module(it) => {
             if let Some(item_list) = it.borrowed().item_list() {
                 fill(&mut res, &mut item_list.items_with_macros())
             }

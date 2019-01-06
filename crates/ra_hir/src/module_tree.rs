@@ -11,53 +11,68 @@ use ra_syntax::{
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
 
-use crate::{Name, AsName, HirDatabase, SourceItemId, SourceFileItemId, HirFileId, Problem};
+use crate::{Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource};
+
+impl ModuleSource {
+    pub fn from_source_item_id(
+        db: &impl HirDatabase,
+        source_item_id: SourceItemId,
+    ) -> ModuleSource {
+        let module_syntax = db.file_item(source_item_id);
+        let module_syntax = module_syntax.borrowed();
+        if let Some(source_file) = ast::SourceFile::cast(module_syntax) {
+            ModuleSource::SourceFile(source_file.owned())
+        } else if let Some(module) = ast::Module::cast(module_syntax) {
+            assert!(module.item_list().is_some(), "expected inline module");
+            ModuleSource::Module(module.owned())
+        } else {
+            panic!("expected file or inline module")
+        }
+    }
+}
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum Submodule {
-    Declaration(Name),
-    Definition(Name, ModuleSource),
+pub struct Submodule {
+    name: Name,
+    is_declaration: bool,
+    source: SourceItemId,
 }
 
 impl Submodule {
     pub(crate) fn submodules_query(
         db: &impl HirDatabase,
-        source: ModuleSource,
+        source: SourceItemId,
     ) -> Cancelable<Arc<Vec<Submodule>>> {
         db.check_canceled()?;
-        let file_id = source.file_id();
-        let submodules = match source.resolve(db) {
-            ModuleSourceNode::SourceFile(it) => collect_submodules(db, file_id, it.borrowed()),
-            ModuleSourceNode::Module(it) => it
-                .borrowed()
-                .item_list()
-                .map(|it| collect_submodules(db, file_id, it))
-                .unwrap_or_else(Vec::new),
+        let file_id = source.file_id;
+        let file_items = db.file_items(file_id);
+        let module_source = ModuleSource::from_source_item_id(db, source);
+        let submodules = match module_source {
+            ModuleSource::SourceFile(source_file) => {
+                collect_submodules(file_id, &file_items, source_file.borrowed())
+            }
+            ModuleSource::Module(module) => {
+                let module = module.borrowed();
+                collect_submodules(file_id, &file_items, module.item_list().unwrap())
+            }
         };
         return Ok(Arc::new(submodules));
 
         fn collect_submodules<'a>(
-            db: &impl HirDatabase,
             file_id: HirFileId,
+            file_items: &SourceFileItems,
             root: impl ast::ModuleItemOwner<'a>,
         ) -> Vec<Submodule> {
             modules(root)
-                .map(|(name, m)| {
-                    if m.has_semi() {
-                        Submodule::Declaration(name)
-                    } else {
-                        let src = ModuleSource::new_inline(db, file_id, m);
-                        Submodule::Definition(name, src)
-                    }
+                .map(|(name, m)| Submodule {
+                    name,
+                    is_declaration: m.has_semi(),
+                    source: SourceItemId {
+                        file_id,
+                        item_id: Some(file_items.id_of(file_id, m.syntax())),
+                    },
                 })
                 .collect()
-        }
-    }
-
-    fn name(&self) -> &Name {
-        match self {
-            Submodule::Declaration(name) => name,
-            Submodule::Definition(name, _) => name,
         }
     }
 }
@@ -85,13 +100,14 @@ pub struct ModuleTree {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ModuleData {
-    source: ModuleSource,
+    source: SourceItemId,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
 }
 
 #[derive(Hash, Debug, PartialEq, Eq)]
 struct LinkData {
+    source: SourceItemId,
     owner: ModuleId,
     name: Name,
     points_to: Vec<ModuleId>,
@@ -112,27 +128,14 @@ impl ModuleTree {
         self.mods.iter().map(|(id, _)| id)
     }
 
-    pub(crate) fn modules_with_sources<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (ModuleId, ModuleSource)> + 'a {
-        self.mods.iter().map(|(id, m)| (id, m.source))
+    pub(crate) fn find_module_by_source(&self, source: SourceItemId) -> Option<ModuleId> {
+        let (res, _) = self.mods.iter().find(|(_, m)| m.source == source)?;
+        Some(res)
     }
 }
 
-/// `ModuleSource` is the syntax tree element that produced this module:
-/// either a file, or an inlinde module.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ModuleSource(pub(crate) SourceItemId);
-
-/// An owned syntax node for a module. Unlike `ModuleSource`,
-/// this holds onto the AST for the whole file.
-pub(crate) enum ModuleSourceNode {
-    SourceFile(ast::SourceFileNode),
-    Module(ast::ModuleNode),
-}
-
 impl ModuleId {
-    pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
+    pub(crate) fn source(self, tree: &ModuleTree) -> SourceItemId {
         tree.mods[self].source
     }
     pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
@@ -173,9 +176,9 @@ impl ModuleId {
         tree.mods[self]
             .children
             .iter()
-            .filter_map(|&it| {
-                let p = tree.links[it].problem.clone()?;
-                let s = it.bind_source(tree, db);
+            .filter_map(|&link| {
+                let p = tree.links[link].problem.clone()?;
+                let s = link.source(tree, db);
                 let s = s.borrowed().name().unwrap().syntax().owned();
                 Some((s, p))
             })
@@ -190,59 +193,11 @@ impl LinkId {
     pub(crate) fn name(self, tree: &ModuleTree) -> &Name {
         &tree.links[self].name
     }
-    pub(crate) fn bind_source<'a>(
-        self,
-        tree: &ModuleTree,
-        db: &impl HirDatabase,
-    ) -> ast::ModuleNode {
-        let owner = self.owner(tree);
-        match owner.source(tree).resolve(db) {
-            ModuleSourceNode::SourceFile(root) => {
-                let ast = modules(root.borrowed())
-                    .find(|(name, _)| name == &tree.links[self].name)
-                    .unwrap()
-                    .1;
-                ast.owned()
-            }
-            ModuleSourceNode::Module(it) => it,
-        }
-    }
-}
-
-impl ModuleSource {
-    // precondition: item_id **must** point to module
-    fn new(file_id: HirFileId, item_id: Option<SourceFileItemId>) -> ModuleSource {
-        let source_item_id = SourceItemId { file_id, item_id };
-        ModuleSource(source_item_id)
-    }
-
-    pub(crate) fn new_file(file_id: HirFileId) -> ModuleSource {
-        ModuleSource::new(file_id, None)
-    }
-
-    pub(crate) fn new_inline(
-        db: &impl HirDatabase,
-        file_id: HirFileId,
-        m: ast::Module,
-    ) -> ModuleSource {
-        assert!(!m.has_semi());
-        let file_items = db.file_items(file_id);
-        let item_id = file_items.id_of(file_id, m.syntax());
-        ModuleSource::new(file_id, Some(item_id))
-    }
-
-    pub(crate) fn file_id(self) -> HirFileId {
-        self.0.file_id
-    }
-
-    pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
-        let syntax_node = db.file_item(self.0);
-        let syntax_node = syntax_node.borrowed();
-        if let Some(file) = ast::SourceFile::cast(syntax_node) {
-            return ModuleSourceNode::SourceFile(file.owned());
-        }
-        let module = ast::Module::cast(syntax_node).unwrap();
-        ModuleSourceNode::Module(module.owned())
+    pub(crate) fn source(self, tree: &ModuleTree, db: &impl HirDatabase) -> ast::ModuleNode {
+        let syntax_node = db.file_item(tree.links[self].source);
+        ast::ModuleNode::cast(syntax_node.borrowed())
+            .unwrap()
+            .owned()
     }
 }
 
@@ -283,7 +238,10 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.values() {
-        let source = ModuleSource::new_file(file_id.into());
+        let source = SourceItemId {
+            file_id: file_id.into(),
+            item_id: None,
+        };
         if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
@@ -306,10 +264,10 @@ fn build_subtree(
     db: &impl HirDatabase,
     source_root: &SourceRoot,
     tree: &mut ModuleTree,
-    visited: &mut FxHashSet<ModuleSource>,
+    visited: &mut FxHashSet<SourceItemId>,
     roots: &mut FxHashMap<FileId, ModuleId>,
     parent: Option<LinkId>,
-    source: ModuleSource,
+    source: SourceItemId,
 ) -> Cancelable<ModuleId> {
     visited.insert(source);
     let id = tree.push_mod(ModuleData {
@@ -319,47 +277,48 @@ fn build_subtree(
     });
     for sub in db.submodules(source)?.iter() {
         let link = tree.push_link(LinkData {
-            name: sub.name().clone(),
+            source: sub.source,
+            name: sub.name.clone(),
             owner: id,
             points_to: Vec::new(),
             problem: None,
         });
 
-        let (points_to, problem) = match sub {
-            Submodule::Declaration(name) => {
-                let (points_to, problem) = resolve_submodule(db, source, &name);
-                let points_to = points_to
-                    .into_iter()
-                    .map(|file_id| match roots.remove(&file_id) {
-                        Some(module_id) => {
-                            tree.mods[module_id].parent = Some(link);
-                            Ok(module_id)
-                        }
-                        None => build_subtree(
-                            db,
-                            source_root,
-                            tree,
-                            visited,
-                            roots,
-                            Some(link),
-                            ModuleSource::new_file(file_id.into()),
-                        ),
-                    })
-                    .collect::<Cancelable<Vec<_>>>()?;
-                (points_to, problem)
-            }
-            Submodule::Definition(_name, submodule_source) => {
-                let points_to = build_subtree(
-                    db,
-                    source_root,
-                    tree,
-                    visited,
-                    roots,
-                    Some(link),
-                    *submodule_source,
-                )?;
-                (vec![points_to], None)
-            }
+        let (points_to, problem) = if sub.is_declaration {
+            let (points_to, problem) = resolve_submodule(db, source.file_id, &sub.name);
+            let points_to = points_to
+                .into_iter()
+                .map(|file_id| match roots.remove(&file_id) {
+                    Some(module_id) => {
+                        tree.mods[module_id].parent = Some(link);
+                        Ok(module_id)
+                    }
+                    None => build_subtree(
+                        db,
+                        source_root,
+                        tree,
+                        visited,
+                        roots,
+                        Some(link),
+                        SourceItemId {
+                            file_id: file_id.into(),
+                            item_id: None,
+                        },
+                    ),
+                })
+                .collect::<Cancelable<Vec<_>>>()?;
+            (points_to, problem)
+        } else {
+            let points_to = build_subtree(
+                db,
+                source_root,
+                tree,
+                visited,
+                roots,
+                Some(link),
+                sub.source,
+            )?;
+            (vec![points_to], None)
         };
 
         tree.links[link].points_to = points_to;
@@ -370,11 +329,11 @@ fn build_subtree(
 
 fn resolve_submodule(
     db: &impl HirDatabase,
-    source: ModuleSource,
+    file_id: HirFileId,
     name: &Name,
 ) -> (Vec<FileId>, Option<Problem>) {
     // FIXME: handle submodules of inline modules properly
-    let file_id = source.file_id().original_file(db);
+    let file_id = file_id.original_file(db);
     let source_root_id = db.file_source_root(file_id);
     let path = db.file_relative_path(file_id);
     let root = RelativePathBuf::default();

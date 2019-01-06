@@ -22,7 +22,7 @@ impl Module {
             kind: DefKind::Module,
             source_root_id,
             module_id,
-            source_item_id: module_id.source(&module_tree).0,
+            source_item_id: module_id.source(&module_tree),
         };
         let def_id = def_loc.id(db);
         let module = Module::new(def_id);
@@ -63,9 +63,9 @@ impl Module {
         let file_id = link
             .owner(&module_tree)
             .source(&module_tree)
-            .file_id()
+            .file_id
             .as_original_file();
-        let src = link.bind_source(&module_tree, db);
+        let src = link.source(&module_tree, db);
         Ok(Some((file_id, src)))
     }
 
