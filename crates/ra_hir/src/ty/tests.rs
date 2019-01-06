@@ -4,8 +4,9 @@ use std::path::{PathBuf, Path};
 use std::fs;
 
 use salsa::Database;
+use rustc_hash::FxHashMap;
 
-use ra_db::{SyntaxDatabase};
+use ra_db::SyntaxDatabase;
 use ra_syntax::ast::{self, AstNode};
 use test_utils::{project_dir, assert_eq_text, read_text};
 
@@ -193,7 +194,25 @@ fn infer(content: &str) -> String {
             .unwrap()
             .unwrap();
         let inference_result = func.infer(&db).unwrap();
-        for (syntax_ptr, ty) in &inference_result.type_of {
+        let body_syntax_mapping = func.body_syntax_mapping(&db).unwrap();
+        let mut types = FxHashMap::default();
+        for (pat, ty) in &inference_result.type_of_pat {
+            let syntax_ptr = if let Some(sp) = body_syntax_mapping.pat_syntax(*pat) {
+                sp
+            } else {
+                continue;
+            };
+            types.insert(syntax_ptr, ty);
+        }
+        for (expr, ty) in &inference_result.type_of_expr {
+            let syntax_ptr = if let Some(sp) = body_syntax_mapping.expr_syntax(*expr) {
+                sp
+            } else {
+                continue;
+            };
+            types.insert(syntax_ptr, ty);
+        }
+        for (syntax_ptr, ty) in &types {
             let node = syntax_ptr.resolve(&source_file);
             write!(
                 acc,
@@ -246,7 +265,6 @@ fn test_data_dir() -> PathBuf {
 }
 
 #[test]
-#[should_panic] // TODO this should work once hir::Expr is used
 fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     let (mut db, pos) = MockDatabase::with_position(
         "
