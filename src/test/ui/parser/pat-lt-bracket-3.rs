@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 struct Foo<T>(T, T);
 
 impl<T> Foo<T> {
@@ -12,3 +10,5 @@ impl<T> Foo<T> {
         }
     }
 }
+
+fn main() {}

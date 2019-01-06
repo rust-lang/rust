@@ -1,5 +1,5 @@
 error: overlong unicode escape (must have at most 6 hex digits)
-  --> $DIR/new-unicode-escapes-2.rs:4:17
+  --> $DIR/new-unicode-escapes-2.rs:2:17
    |
 LL |     let s = "/u{260311111111}"; //~ ERROR overlong unicode escape (must have at most 6 hex digits)
    |                 ^^^^^^^^^^^^

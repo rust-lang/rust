@@ -1,5 +1,5 @@
 error: expected pattern, found reserved keyword `typeof`
-  --> $DIR/keyword-typeof.rs:4:9
+  --> $DIR/keyword-typeof.rs:2:9
    |
 LL |     let typeof = (); //~ ERROR expected pattern, found reserved keyword `typeof`
    |         ^^^^^^ expected pattern

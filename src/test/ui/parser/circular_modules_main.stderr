@@ -1,5 +1,5 @@
 error: circular modules: $DIR/circular_modules_hello.rs -> $DIR/circular_modules_main.rs -> $DIR/circular_modules_hello.rs
-  --> $DIR/circular_modules_main.rs:4:5
+  --> $DIR/circular_modules_main.rs:2:5
    |
 LL | mod circular_modules_hello; //~ ERROR: circular modules
    |     ^^^^^^^^^^^^^^^^^^^^^^

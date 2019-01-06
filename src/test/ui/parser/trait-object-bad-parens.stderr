@@ -1,25 +1,25 @@
-error[E0178]: expected a path on the left-hand side of `+`, not `((Copy))`
-  --> $DIR/trait-object-bad-parens.rs:4:16
-   |
-LL |     let _: Box<((Copy)) + Copy>;
-   |                ^^^^^^^^^^^^^^^ expected a path
-
-error[E0178]: expected a path on the left-hand side of `+`, not `(Copy + Copy)`
-  --> $DIR/trait-object-bad-parens.rs:6:16
-   |
-LL |     let _: Box<(Copy + Copy) + Copy>;
-   |                ^^^^^^^^^^^^^^^^^^^^ expected a path
-
-error[E0178]: expected a path on the left-hand side of `+`, not `(Copy)`
+error[E0178]: expected a path on the left-hand side of `+`, not `((Auto))`
   --> $DIR/trait-object-bad-parens.rs:8:16
    |
-LL |     let _: Box<(Copy +) + Copy>;
+LL |     let _: Box<((Auto)) + Auto>;
    |                ^^^^^^^^^^^^^^^ expected a path
 
-error[E0178]: expected a path on the left-hand side of `+`, not `(dyn Copy)`
+error[E0178]: expected a path on the left-hand side of `+`, not `(Auto + Auto)`
   --> $DIR/trait-object-bad-parens.rs:10:16
    |
-LL |     let _: Box<(dyn Copy) + Copy>;
+LL |     let _: Box<(Auto + Auto) + Auto>;
+   |                ^^^^^^^^^^^^^^^^^^^^ expected a path
+
+error[E0178]: expected a path on the left-hand side of `+`, not `(Auto)`
+  --> $DIR/trait-object-bad-parens.rs:12:16
+   |
+LL |     let _: Box<(Auto +) + Auto>;
+   |                ^^^^^^^^^^^^^^^ expected a path
+
+error[E0178]: expected a path on the left-hand side of `+`, not `(dyn Auto)`
+  --> $DIR/trait-object-bad-parens.rs:14:16
+   |
+LL |     let _: Box<(dyn Auto) + Auto>;
    |                ^^^^^^^^^^^^^^^^^ expected a path
 
 error: aborting due to 4 previous errors

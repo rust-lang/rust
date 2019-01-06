@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     struct::foo();
     //~^ ERROR expected identifier

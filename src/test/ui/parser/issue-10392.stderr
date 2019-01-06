@@ -1,8 +1,15 @@
 error: expected identifier, found `,`
-  --> $DIR/issue-10392.rs:8:13
+  --> $DIR/issue-10392.rs:6:13
    |
-LL |     let A { , } = a(); //~ ERROR: expected ident
+LL |     let A { , } = a(); //~ ERROR expected ident
    |             ^ expected identifier
 
-error: aborting due to previous error
+error[E0027]: pattern does not mention field `foo`
+  --> $DIR/issue-10392.rs:6:9
+   |
+LL |     let A { , } = a(); //~ ERROR expected ident
+   |         ^^^^^^^ missing field `foo`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0027`.

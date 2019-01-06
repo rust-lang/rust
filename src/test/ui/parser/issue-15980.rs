@@ -1,9 +1,7 @@
-// compile-flags: -Z parse-only
-
 use std::io;
 
 fn main(){
-    let x: io::IoResult<()> = Ok(());
+    let x: io::Result<()> = Ok(());
     match x {
         Err(ref e) if e.kind == io::EndOfFile {
             //~^ NOTE while parsing this struct

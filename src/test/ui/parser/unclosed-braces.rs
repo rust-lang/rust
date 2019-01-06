@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 struct S {
     x: [usize; 3],
 }

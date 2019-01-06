@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
-fn f() {
+fn main() {
     let x: fn~() = || (); //~ ERROR expected `(`, found `~`
 }

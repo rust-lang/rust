@@ -1,7 +1,6 @@
-// compile-flags: -Z parse-only
+// Issue #11669
 
 // ignore-tidy-cr
-// Issue #11669
 
 fn main() {
     // \r\n

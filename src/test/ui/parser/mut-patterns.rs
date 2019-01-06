@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Can't put mut in non-ident pattern
 
 pub fn main() {

@@ -1,5 +1,5 @@
 error: expected `[`, found `vec`
-  --> $DIR/issue-1655.rs:5:6
+  --> $DIR/issue-1655.rs:3:6
    |
 LL |     #vec[doc(
    |      ^^^ expected `[`

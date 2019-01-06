@@ -1,5 +1,5 @@
 error: expected one of `crate`, `fn`, or `{`, found `crte`
-  --> $DIR/extern-crate-unexpected-token.rs:3:8
+  --> $DIR/extern-crate-unexpected-token.rs:1:8
    |
 LL | extern crte foo; //~ ERROR expected one of `crate`, `fn`, or `{`, found `crte`
    |        ^^^^ expected one of `crate`, `fn`, or `{` here

@@ -1,11 +1,11 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `true`
-  --> $DIR/raw-literal-keywords.rs:4:10
+  --> $DIR/raw-literal-keywords.rs:2:10
    |
 LL |     r#if true { } //~ ERROR found `true`
    |          ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
-  --> $DIR/raw-literal-keywords.rs:8:14
+  --> $DIR/raw-literal-keywords.rs:7:14
    |
 LL |     r#struct Test; //~ ERROR found `Test`
    |              ^^^^ expected one of 8 possible tokens here
@@ -16,5 +16,24 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |     r#union Test; //~ ERROR found `Test`
    |             ^^^^ expected one of 8 possible tokens here
 
-error: aborting due to 3 previous errors
+error[E0425]: cannot find value `if` in this scope
+  --> $DIR/raw-literal-keywords.rs:2:5
+   |
+LL |     r#if true { } //~ ERROR found `true`
+   |     ^^^^ not found in this scope
 
+error[E0425]: cannot find value `struct` in this scope
+  --> $DIR/raw-literal-keywords.rs:7:5
+   |
+LL |     r#struct Test; //~ ERROR found `Test`
+   |     ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `union` in this scope
+  --> $DIR/raw-literal-keywords.rs:12:5
+   |
+LL |     r#union Test; //~ ERROR found `Test`
+   |     ^^^^^^^ not found in this scope
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `break`
-  --> $DIR/keyword-break-as-identifier.rs:6:9
+  --> $DIR/keyword-break-as-identifier.rs:4:9
    |
 LL |     let break = "foo"; //~ error: expected pattern, found keyword `break`
    |         ^^^^^ expected pattern

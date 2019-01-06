@@ -1,8 +1,12 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
-fn f<T: Copy + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported
+trait Trait {}
 
-fn main() {
-    let _: Box<Copy + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
-    let _: Box<('a) + Copy>; //~ ERROR expected type, found `'a`
+fn f<'a, T: Trait + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported
+
+fn check<'a>() {
+    let _: Box<Trait + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
+    let _: Box<('a) + Trait>; //~ ERROR expected type, found `'a`
 }
+
+fn main() {}

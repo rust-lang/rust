@@ -1,5 +1,5 @@
 error: expected expression, found keyword `type`
-  --> $DIR/unsized2.rs:8:7
+  --> $DIR/unsized2.rs:6:7
    |
 LL |     f<type>(); //~ ERROR expected expression, found keyword `type`
    |       ^^^^ expected expression

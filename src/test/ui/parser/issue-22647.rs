@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
     where F: Fn() -> i32

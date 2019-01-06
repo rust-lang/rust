@@ -1,6 +1,4 @@
-// compile-flags: -Z parse-only
-
-fn f() {
+fn main() {
     let ok = "{{everything fine}}";
     let bad = "\{it is wrong\}";
     //~^  ERROR unknown character escape: {
