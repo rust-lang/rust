@@ -18,4 +18,5 @@ fn cat(in_x : usize, in_y : isize) -> Cat {
 fn main() {
   let nyan : Cat = cat(52, 99);
   nyan.speak = || println!("meow"); //~ ERROR attempted to take value of method
+  nyan.speak += || println!("meow"); //~ ERROR attempted to take value of method
 }

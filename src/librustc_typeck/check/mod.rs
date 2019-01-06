@@ -3442,19 +3442,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            "field `{}` of struct `{}` is private",
                                            field, struct_path);
             // Also check if an accessible method exists, which is often what is meant.
-            if self.method_exists(field, expr_t, expr.id, false) {
-                err.note(&format!("a method `{}` also exists, perhaps you wish to call it", field));
+            if self.method_exists(field, expr_t, expr.id, false) && !self.expr_in_place(expr.id) {
+                self.suggest_method_call(
+                    &mut err,
+                    &format!("a method `{}` also exists, call it with parentheses", field),
+                    field,
+                    expr_t,
+                    expr.id,
+                );
             }
             err.emit();
             field_ty
         } else if field.name == keywords::Invalid.name() {
             self.tcx().types.err
         } else if self.method_exists(field, expr_t, expr.id, true) {
-            type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
+            let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
                                "attempted to take value of method `{}` on type `{}`",
-                               field, expr_t)
-                .help("maybe a `()` to call it is missing?")
-                .emit();
+                               field, expr_t);
+
+            if !self.expr_in_place(expr.id) {
+                self.suggest_method_call(
+                    &mut err,
+                    "use parentheses to call the method",
+                    field,
+                    expr_t,
+                    expr.id
+                );
+            } else {
+                err.help("methods are immutable and cannot be assigned to");
+            }
+
+            err.emit();
             self.tcx().types.err
         } else {
             if !expr_t.is_primitive_ty() {
@@ -5506,6 +5524,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
             original_values,
             query_result)
+    }
+
+    /// Returns whether an expression is contained inside the LHS of an assignment expression.
+    fn expr_in_place(&self, mut expr_id: ast::NodeId) -> bool {
+        let mut contained_in_place = false;
+
+        while let hir::Node::Expr(parent_expr) =
+            self.tcx.hir().get(self.tcx.hir().get_parent_node(expr_id))
+        {
+            match &parent_expr.node {
+                hir::ExprKind::Assign(lhs, ..) | hir::ExprKind::AssignOp(_, lhs, ..) => {
+                    if lhs.id == expr_id {
+                        contained_in_place = true;
+                        break;
+                    }
+                }
+                _ => (),
+            }
+            expr_id = parent_expr.id;
+        }
+
+        contained_in_place
     }
 }
 
