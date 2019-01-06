@@ -337,7 +337,7 @@ mod tests {
     use super::*;
     use crate::test_utils::{
         add_cursor, assert_eq_text, check_action, extract_offset, extract_range,
-    };
+};
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
