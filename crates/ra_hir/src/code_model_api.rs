@@ -1,7 +1,7 @@
 use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::ast;
 
-use crate::{Name, db::HirDatabase, DefId};
+use crate::{Name, db::HirDatabase, DefId, Path, PerNs};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -51,5 +51,13 @@ impl Module {
     /// Finds a child module with the specified name.
     pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         self.child_impl(db, name)
+    }
+    /// Finds a parent module.
+    pub fn parent(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+        self.parent_impl(db)
+    }
+
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
+        self.resolve_path_impl(db, path)
     }
 }

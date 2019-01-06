@@ -251,7 +251,7 @@ impl ModuleId {
     fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.mods[self].parent
     }
-    fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
+    pub(crate) fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
         let link = self.parent_link(tree)?;
         Some(tree.links[link].owner)
     }

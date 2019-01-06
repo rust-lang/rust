@@ -177,11 +177,11 @@ impl<T> PerNs<T> {
     }
 
     pub fn take_types(self) -> Option<T> {
-        self.types
+        self.take(Namespace::Types)
     }
 
     pub fn take_values(self) -> Option<T> {
-        self.values
+        self.take(Namespace::Values)
     }
 
     pub fn get(&self, namespace: Namespace) -> Option<&T> {

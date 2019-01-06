@@ -1,7 +1,7 @@
 use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{AstNode, ast};
 
-use crate::{HirFileId, db::HirDatabase, Crate, CrateDependency, AsName, DefId, DefLoc, DefKind, Name};
+use crate::{HirFileId, db::HirDatabase, Crate, CrateDependency, AsName, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def};
 
 use crate::code_model_api::Module;
 
@@ -101,5 +101,59 @@ impl Module {
         let def_id = def_loc.id(db);
         let module = Module::new(def_id);
         Ok(Some(module))
+    }
+    pub fn parent_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+        let loc = self.def_id.loc(db);
+        let module_tree = db.module_tree(loc.source_root_id)?;
+        let parent_id = ctry!(loc.module_id.parent(&module_tree));
+        let def_loc = DefLoc {
+            module_id: parent_id,
+            source_item_id: parent_id.source(&module_tree).0,
+            ..loc
+        };
+        let def_id = def_loc.id(db);
+        let module = Module::new(def_id);
+        Ok(Some(module))
+    }
+    pub fn resolve_path_impl(
+        &self,
+        db: &impl HirDatabase,
+        path: &Path,
+    ) -> Cancelable<PerNs<DefId>> {
+        let mut curr_per_ns = PerNs::types(
+            match path.kind {
+                PathKind::Crate => self.crate_root(db)?,
+                PathKind::Self_ | PathKind::Plain => self.clone(),
+                PathKind::Super => {
+                    if let Some(p) = self.parent(db)? {
+                        p
+                    } else {
+                        return Ok(PerNs::none());
+                    }
+                }
+            }
+            .def_id,
+        );
+
+        let segments = &path.segments;
+        for name in segments.iter() {
+            let curr = if let Some(r) = curr_per_ns.as_ref().take_types() {
+                r
+            } else {
+                return Ok(PerNs::none());
+            };
+            let module = match curr.resolve(db)? {
+                Def::Module(it) => it,
+                // TODO here would be the place to handle enum variants...
+                _ => return Ok(PerNs::none()),
+            };
+            let scope = module.scope(db)?;
+            curr_per_ns = if let Some(r) = scope.get(&name) {
+                r.def_id
+            } else {
+                return Ok(PerNs::none());
+            };
+        }
+        Ok(curr_per_ns)
     }
 }
