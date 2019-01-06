@@ -35,7 +35,9 @@ use crate::ptr;
 use crate::mem;
 use crate::marker::{Copy, Send, Sync, Sized, self};
 use crate::iter_private::TrustedRandomAccess;
-use crate::needle::{ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer};
+use crate::needle::{
+    ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer,
+};
 
 #[unstable(feature = "slice_internals", issue = "0",
            reason = "exposed from core to be reused in std; use the memchr crate")]
@@ -1284,6 +1286,312 @@ impl<T> [T] {
         where T: PartialEq
     {
         x.slice_contains(self)
+    }
+
+    /// Returns `true` if the given predicate matches a sub-slice of this slice.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn contains_match<'a, F>(&'a self, pred: F) -> bool
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::contains(self, pred)
+    }
+
+    /// Returns the index of the first sub-slice of this slice that matches the
+    /// predicate.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn find<'a, F>(&'a self, pred: F) -> Option<usize>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::find(self, pred)
+    }
+
+    /// Returns the index of the last sub-slice of this slice that matches the
+    /// predicate.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rfind<'a, F>(&'a self, pred: F) -> Option<usize>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rfind(self, pred)
+    }
+
+    /// Returns the index range of the first sub-slice of this slice that
+    /// matches the predicate.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn find_range<'a, F>(&'a self, pred: F) -> Option<ops::Range<usize>>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::find_range(self, pred)
+    }
+
+    /// Returns the index range of the last sub-slice of this slice that matches
+    /// the predicate.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rfind_range<'a, F>(&'a self, pred: F) -> Option<ops::Range<usize>>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rfind_range(self, pred)
+    }
+
+    /// An iterator over the disjoint matches of a predicate within the given
+    /// slice.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn matches<'a, F>(&'a self, pred: F) -> ext::Matches<&'a [T], F::Searcher>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::matches(self, pred)
+    }
+
+    /// An iterator over the disjoint matches of a predicate within the given
+    /// mutable slice.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn matches_mut<'a, F>(&'a mut self, pred: F) -> ext::Matches<&'a mut [T], F::Searcher>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::matches(self, pred)
+    }
+
+    /// An iterator over the disjoint matches of a predicate within the given
+    /// slice, yielded in reverse order.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatches<'a, F>(&'a self, pred: F) -> ext::RMatches<&'a [T], F::Searcher>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rmatches(self, pred)
+    }
+
+    /// An iterator over the disjoint matches of a predicate within the given
+    /// mutable slice, yielded in reverse order.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatches_mut<'a, F>(&'a mut self, pred: F) -> ext::RMatches<&'a mut [T], F::Searcher>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rmatches(self, pred)
+    }
+
+    /// An iterator over the disjoint matches of a predicate within the given
+    /// slice as well as the index that the match starts at.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn match_indices<'a, F>(&'a self, pred: F)
+        -> ext::MatchIndices<&'a [T], F::Searcher>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::match_indices(self, pred)
+    }
+
+    /// An iterator over the disjoint match_indices of a predicate within the given
+    /// mutable slice as well as the range that the match covers.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn match_indices_mut<'a, F>(&'a mut self, pred: F)
+        -> ext::MatchIndices<&'a mut [T], F::Searcher>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::match_indices(self, pred)
+    }
+
+    /// An iterator over the disjoint match_indices of a predicate within the given
+    /// slice as well as the index that the match starts at, yielded in reverse order.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatch_indices<'a, F>(&'a self, pred: F)
+        -> ext::RMatchIndices<&'a [T], F::Searcher>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rmatch_indices(self, pred)
+    }
+
+    /// An iterator over the disjoint match_indices of a predicate within the given
+    /// mutable slice as well as the index that the match starts at, yielded in reverse order.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatch_indices_mut<'a, F>(&'a mut self, pred: F)
+        -> ext::RMatchIndices<&'a mut [T], F::Searcher>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rmatch_indices(self, pred)
+    }
+
+    /// An iterator over the disjoint matches of a predicate within the given
+    /// slice as well as the range that the match covers.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn match_ranges<'a, F>(&'a self, pred: F)
+        -> ext::MatchRanges<&'a [T], F::Searcher>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::match_ranges(self, pred)
+    }
+
+    /// An iterator over the disjoint match_ranges of a predicate within the given
+    /// mutable slice as well as the range that the match coversat.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn match_ranges_mut<'a, F>(&'a mut self, pred: F)
+        -> ext::MatchRanges<&'a mut [T], F::Searcher>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::match_ranges(self, pred)
+    }
+
+    /// An iterator over the disjoint match_ranges of a predicate within the given
+    /// slice as well as the range that the match covers, yielded in reverse order.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatch_ranges<'a, F>(&'a self, pred: F)
+        -> ext::RMatchRanges<&'a [T], F::Searcher>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rmatch_ranges(self, pred)
+    }
+
+    /// An iterator over the disjoint match_ranges of a predicate within the given
+    /// mutable slice as well as the range that the match covers, yielded in reverse order.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatch_ranges_mut<'a, F>(&'a mut self, pred: F)
+        -> ext::RMatchRanges<&'a mut [T], F::Searcher>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rmatch_ranges(self, pred)
+    }
+
+    /// Returns a slice with all prefixes and suffixes that match a predicate
+    /// repeatedly removed.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_matches<'a, F>(&'a self, pred: F) -> &'a [T]
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: DoubleEndedConsumer<[T]>,
+    {
+        ext::trim(self, pred)
+    }
+
+    /// Returns a mutable slice with all prefixes and suffixes that match a
+    /// predicate repeatedly removed.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_matches_mut<'a, F>(&'a mut self, pred: F) -> &'a mut [T]
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: DoubleEndedConsumer<[T]>,
+    {
+        ext::trim(self, pred)
+    }
+
+    /// Returns a slice with all prefixes that match a predicate repeatedly
+    /// removed.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_start_matches<'a, F>(&'a self, pred: F) -> &'a [T]
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::trim_start(self, pred)
+    }
+
+    /// Returns a mutable slice with all prefixes that match a predicate
+    /// repeatedly removed.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_start_matches_mut<'a, F>(&'a mut self, pred: F) -> &'a mut [T]
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::trim_start(self, pred)
+    }
+
+    /// Returns a slice with all suffixes that match a predicate repeatedly
+    /// removed.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_end_matches<'a, F>(&'a self, pred: F) -> &'a [T]
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: ReverseConsumer<[T]>,
+    {
+        ext::trim_end(self, pred)
+    }
+
+    /// Returns a mutable slice with all suffixes that match a predicate
+    /// repeatedly removed.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_end_matches_mut<'a, F>(&'a mut self, pred: F) -> &'a mut [T]
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: ReverseConsumer<[T]>,
+    {
+        ext::trim_end(self, pred)
     }
 
     /// Returns `true` if `needle` is a prefix of the slice.

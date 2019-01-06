@@ -10,6 +10,7 @@
 #![feature(unboxed_closures)]
 #![feature(vecdeque_rotate)]
 #![feature(mut_str_needle_methods)]
+#![feature(slice_needle_methods)]
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

@@ -5,6 +5,7 @@ use std::panic;
 use std::rc::Rc;
 use std::sync::atomic::{Ordering::Relaxed, AtomicUsize};
 use std::thread;
+use std::f64::NAN;
 
 use rand::{Rng, RngCore, thread_rng};
 use rand::seq::SliceRandom;
@@ -1653,5 +1654,62 @@ fn repeat_generic_slice() {
     assert_eq!(
         [1, 2, 3, 4].repeat(3),
         vec![1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]
+    );
+}
+
+#[test]
+fn test_match_indices_simple() {
+    let haystack = &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 2.0, 3.0, 2.0, 4.0, 8.0][..];
+    let needle = &[2.0, 3.0][..];
+
+    assert_eq!(haystack.match_indices(needle).collect::<Vec<_>>(), vec![
+        (1, needle),
+        (8, needle),
+    ]);
+}
+
+#[test]
+fn test_match_indices_nan_haystack() {
+    let haystack = &[1.0, 2.0, NAN, 1.0, 2.0, NAN, 1.0, NAN, NAN, NAN, 2.0, 1.0, 2.0][..];
+    let needle = &[1.0, 2.0][..];
+
+    assert_eq!(haystack.match_indices(needle).collect::<Vec<_>>(), vec![
+        (0, needle),
+        (3, needle),
+        (11, needle),
+    ]);
+}
+
+#[test]
+fn test_match_indices_nan_needle() {
+    let haystack = &[1.0, 2.0, NAN, 1.0, 2.0, NAN, 1.0, NAN, NAN, NAN, 2.0, 1.0, 2.0][..];
+    let needle = &[1.0, 2.0][..];
+
+    assert_eq!(haystack.match_indices(needle).collect::<Vec<_>>(), vec![
+        (0, needle),
+        (3, needle),
+        (11, needle),
+    ]);
+}
+
+#[test]
+fn test_match_indices_negative_zero() {
+    let haystack = &[1.0, 2.0, NAN, 1.0, 2.0, NAN, 1.0, NAN, NAN, NAN, 2.0, 1.0, 2.0][..];
+    let needle = &[1.0, 2.0][..];
+
+    assert_eq!(haystack.match_indices(needle).collect::<Vec<_>>(), vec![
+        (0, needle),
+        (3, needle),
+        (11, needle),
+    ]);
+}
+
+#[test]
+fn test_replace() {
+    let haystack = &b" empowering everyone to build reliable and efficient software."[..];
+
+    assert_eq!(
+        haystack.replace(&b" e"[..], b" **E**"),
+        b" **E**mpowering **E**veryone to build reliable and **E**fficient software.".to_vec()
     );
 }

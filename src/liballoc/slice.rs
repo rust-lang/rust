@@ -92,6 +92,7 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::{self, size_of};
 use core::ptr;
 use core::{u8, u16, u32};
+use core::needle::{ext, Needle, Searcher, Consumer};
 
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
@@ -484,6 +485,40 @@ impl<T> [T] {
             }
         }
         buf
+    }
+
+    /// Replaces all matches of a predicate with another slice.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    #[must_use = "this returns the replaced slice as a new allocation, \
+                  without modifying the original"]
+    pub fn replace<'s: 'a, 'a, F>(&'s self, from: F, to: &'a [T]) -> Vec<T>
+    where
+        T: Clone,
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        let mut result = Vec::with_capacity(self.len());
+        ext::replace_with(self, from, |_| to, |s| result.extend_from_slice(s));
+        result
+    }
+
+    /// Replaces first N matches of a predicate with another slice.
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
+    #[inline]
+    #[must_use = "this returns the replaced slice as a new allocation, \
+                  without modifying the original"]
+    pub fn replacen<'s: 'a, 'a, F>(&'s self, from: F, to: &'a [T], count: usize) -> Vec<T>
+    where
+        T: Clone,
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        let mut result = Vec::with_capacity(self.len());
+        ext::replacen_with(self, from, |_| to, count, |s| result.extend_from_slice(s));
+        result
     }
 }
 
