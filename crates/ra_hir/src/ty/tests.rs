@@ -95,7 +95,7 @@ fn test() {
 }
 
 #[test]
-fn infer_refs_and_ptrs() {
+fn infer_refs() {
     check_inference(
         r#"
 fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
@@ -177,6 +177,37 @@ fn test() {
 }
 "#,
         "boolean_op.txt",
+    );
+}
+
+#[test]
+fn infer_field_autoderef() {
+    check_inference(
+        r#"
+struct A {
+    b: B,
+}
+struct B;
+
+fn test1(a: A) {
+    let a1 = a;
+    a1.b;
+    let a2 = &a;
+    a2.b;
+    let a3 = &mut a;
+    a3.b;
+    let a4 = &&&&&&&a;
+    a4.b;
+    let a5 = &mut &&mut &&mut a;
+    a5.b;
+}
+
+fn test2(a1: *const A, a2: *mut A) {
+    a1.b;
+    a2.b;
+}
+"#,
+        "field_autoderef.txt",
     );
 }
 
