@@ -65,16 +65,12 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ops::{self, Index, IndexMut, RangeBounds};
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds};
-use core::ops;
-use core::ptr;
-use core::ptr::NonNull;
-use core::slice;
+use core::ptr::{self, NonNull};
+use core::slice::{self, SliceIndex};
 use core::needle::Needle;
 
+use crate::borrow::{ToOwned, Cow};
 use crate::collections::CollectionAllocErr;
-use crate::borrow::ToOwned;
-use crate::borrow::Cow;
 use crate::boxed::Box;
 use crate::raw_vec::RawVec;
 

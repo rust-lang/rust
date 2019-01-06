@@ -12,7 +12,7 @@
 #![feature(is_sorted)]
 #![feature(iter_copied)]
 #![feature(iter_nth_back)]
-#![feature(iter_unfold)]
+#![feature(iter_once_with)]
 #![feature(needle)]
 #![feature(range_is_empty)]
 #![feature(raw)]

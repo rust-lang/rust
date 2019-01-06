@@ -64,7 +64,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         // no matter what.
         QUOTE => {
             let args = {
-                let mut cut = cmd_line[1..].splitn(2, |&c: &u8| c == QUOTE);
+                let mut cut = cmd_line[1..].splitn(2, |&c: &u16| c == QUOTE);
                 if let Some(exe) = cut.next() {
                     ret_val.push(OsString::from_wide(exe));
                 }
@@ -89,7 +89,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         // no matter what.
         _ => {
             let args = {
-                let mut cut = cmd_line.splitn(2, |&c: &u8| c > 0 && c <= SPACE);
+                let mut cut = cmd_line.splitn(2, |&c: &u16| c > 0 && c <= SPACE);
                 if let Some(exe) = cut.next() {
                     ret_val.push(OsString::from_wide(exe));
                 }

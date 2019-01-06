@@ -206,11 +206,11 @@ impl Slice {
         self.inner.prev_index(index)
     }
 
-    pub fn into_searcher(&self) -> OsStrSearcher<SliceSearcher<'_, u8>> {
+    pub fn into_searcher(&self) -> InnerSearcher<SliceSearcher<'_, u8>> {
         wtf8::new_wtf8_searcher(&self.inner)
     }
 
-    pub fn into_consumer(&self) -> OsStrSearcher<NaiveSearcher<'_, u8>> {
+    pub fn into_consumer(&self) -> InnerSearcher<NaiveSearcher<'_, u8>> {
         wtf8::new_wtf8_consumer(&self.inner)
     }
 
@@ -219,4 +219,4 @@ impl Slice {
     }
 }
 
-pub use sys_common::wtf8::Wtf8Searcher as OsStrSearcher;
+pub use crate::sys_common::wtf8::Wtf8Searcher as InnerSearcher;

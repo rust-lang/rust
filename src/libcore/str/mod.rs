@@ -10,8 +10,11 @@ use crate::iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, F
 use crate::iter::{Flatten, FlatMap, Chain};
 use crate::slice::{self, SliceIndex, Split as SliceSplit};
 use crate::mem;
-use crate::needle::{ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer};
-use crate::ops::Range;
+use crate::needle::{
+    ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer,
+};
+use crate::ops::{Range, Try};
+use crate::option;
 
 #[unstable(feature = "str_internals", issue = "0")]
 mod needles;
@@ -2563,6 +2566,8 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find_range('L'), Some(0..1));
@@ -2573,21 +2578,25 @@ impl str {
     /// More complex patterns using point-free style and closures:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     ///
-    /// assert_eq!(s.find(char::is_whitespace), Some(5..6));
-    /// assert_eq!(s.find(char::is_lowercase), Some(1..2));
-    /// assert_eq!(s.find(|c: char| c.is_whitespace() || c.is_lowercase()), Some(1..2));
-    /// assert_eq!(s.find(|c: char| (c < 'o') && (c > 'a')), Some(4..5));
+    /// assert_eq!(s.find_range(char::is_whitespace), Some(5..6));
+    /// assert_eq!(s.find_range(char::is_lowercase), Some(1..3));
+    /// assert_eq!(s.find_range(|c: char| c.is_whitespace() || c.is_lowercase()), Some(1..3));
+    /// assert_eq!(s.find_range(|c: char| (c < 'o') && (c > 'a')), Some(4..5));
     /// ```
     ///
     /// Not finding the pattern:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     /// let x: &[_] = &['1', '2'];
     ///
-    /// assert_eq!(s.find(x), None);
+    /// assert_eq!(s.find_range(x), None);
     /// ```
     #[unstable(feature = "str_find_range", issue = "56345")]
     #[inline]
@@ -2614,6 +2623,8 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.rfind_range('L'), Some(13..14));
@@ -2623,6 +2634,8 @@ impl str {
     /// More complex patterns with closures:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.rfind_range(char::is_whitespace), Some(12..13));
@@ -2632,6 +2645,8 @@ impl str {
     /// Not finding the pattern:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     /// let x: &[_] = &['1', '2'];
     ///
@@ -3303,6 +3318,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let v: Vec<_> = "abcXXXabcYYYabc".match_ranges("abc").collect();
     /// assert_eq!(v, [(0..3, "abc"), (6..9, "abc"), (12..15, "abc")]);
     ///
@@ -3349,6 +3366,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(str_find_range)]
+    ///
     /// let v: Vec<_> = "abcXXXabcYYYabc".rmatch_ranges("abc").collect();
     /// assert_eq!(v, [(12..15, "abc"), (6..9, "abc"), (0..3, "abc")]);
     ///

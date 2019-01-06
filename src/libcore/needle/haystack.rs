@@ -5,8 +5,8 @@ use ops::{Deref, Range};
 ///
 /// Every [`Haystack`] type can be borrowed as references to `Hay` types. This
 /// allows multiple similar types to share the same implementation (e.g. the
-/// haystacks `&[T]`, `&mut [T]` and `Vec<T>` all have the same corresponding
-/// hay type `[T]`).
+/// haystacks `&[T]` and `&mut [T]` both have the same corresponding hay type
+/// `[T]`).
 ///
 /// In the other words, a `Haystack` is a generalized reference to `Hay`.
 /// `Hay`s are typically implemented on unsized slice types like `str` and `[T]`.
@@ -91,7 +91,8 @@ pub unsafe trait Hay {
     /// # Examples
     ///
     /// ```rust
-    /// use pattern_3::Hay;
+    /// #![feature(needle)]
+    /// use std::needle::Hay;
     ///
     /// let sample = "A→😀";
     /// unsafe {
@@ -115,7 +116,8 @@ pub unsafe trait Hay {
     /// # Examples
     ///
     /// ```rust
-    /// use pattern_3::Hay;
+    /// #![feature(needle)]
+    /// use std::needle::Hay;
     ///
     /// let sample = "A→😀";
     /// unsafe {
@@ -210,8 +212,8 @@ pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
     /// (original.start + parent.start)..(original.start + parent.end)
     /// ```
     ///
-    /// If this haystack is a [`SharedHaystack`], this method would never be
-    /// called.
+    /// If this haystack is a [`SharedHaystack`], this method should never be
+    /// called, and calling it would cause an unreachable panic.
     ///
     /// # Safety
     ///
@@ -240,9 +242,13 @@ pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
     /// #![feature(needle)]
     /// use std::needle::Haystack;
     ///
-    /// let hay = b"This is a sample haystack";
-    /// let this = hay[2..23][3..19].to_vec();
-    /// assert_eq!(&*this, &hay[this.restore_range(2..23, 3..19)]);
+    /// let mut hay = *b"This is a sample haystack";
+    /// let restored = {
+    ///     let this = &mut hay[2..23][3..19];
+    ///     assert_eq!(b"is a sample hays", this);
+    ///     this.restore_range(2..23, 3..19)
+    /// };
+    /// assert_eq!(b"is a sample hays", &hay[restored]);
     /// ```
     fn restore_range(
         &self,
@@ -412,7 +418,7 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 /// let subspan = unsafe { span.slice_unchecked(4..8) };
 ///
 /// // obtains the substring.
-/// let substring = subspan.into();
+/// let substring: &str = subspan.into();
 /// assert_eq!(substring, "o世");
 /// ```
 ///
@@ -716,5 +722,3 @@ unsafe impl<'h, T: 'h> Haystack for &'h mut [T] {
         (subrange.start + range.start)..(subrange.end + range.start)
     }
 }
-
-

@@ -215,7 +215,7 @@ pub unsafe trait Consumer<A: Hay + ?Sized> {
     ///
     /// ```rust
     /// #![feature(needle)]
-    /// use std::needle::{Consumer, Needle, Span};
+    /// use std::needle::{Consumer, Needle};
     ///
     /// let mut consumer = Needle::<&str>::into_consumer('x');
     /// assert_eq!(consumer.trim_start("xxxyy"), 3);
@@ -331,7 +331,7 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
     ///
     /// ```
     /// #![feature(needle)]
-    /// use std:needle::{ReverseConsumer, Needle, Span};
+    /// use std::needle::{ReverseConsumer, Needle, Span};
     ///
     /// let mut consumer = Needle::<&str>::into_consumer(|c: char| c.is_ascii());
     /// let span = Span::from("Hi😋!!");
@@ -364,7 +364,7 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
     ///
     /// ```rust
     /// #![feature(needle)]
-    /// use std::needle::{ReverseConsumer, Needle, Span};
+    /// use std::needle::{ReverseConsumer, Needle};
     ///
     /// let mut consumer = Needle::<&str>::into_consumer('x');
     /// assert_eq!(consumer.trim_end("yyxxx"), 2);

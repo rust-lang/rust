@@ -34,7 +34,6 @@ use crate::result::Result::{Ok, Err};
 use crate::ptr;
 use crate::mem;
 use crate::marker::{Copy, Send, Sync, Sized, self};
-use crate::iter_private::TrustedRandomAccess;
 use crate::needle::{
     ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer,
 };
@@ -48,11 +47,8 @@ mod rotate;
 mod sort;
 
 /// Needle implementations for slices
-#[unstable(
-    feature = "slice_internals",
-    issue = "0",
-    reason = "exposed from core to be reused in std",
-)]
+#[unstable(feature = "slice_internals", issue = "0",
+           reason = "exposed from core to be reused in std")]
 #[doc(hidden)]
 pub mod needles;
 
@@ -1020,7 +1016,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let slice = [10, 40, 33, 20];
-    /// let mut iter = slice.split(|num| num % 3 == 0);
+    /// let mut iter = slice.split(|num: &i32| num % 3 == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[10, 40]);
     /// assert_eq!(iter.next().unwrap(), &[20]);
@@ -1034,7 +1030,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let slice = [10, 40, 33];
-    /// let mut iter = slice.split(|num| num % 3 == 0);
+    /// let mut iter = slice.split(|num: &i32| num % 3 == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[10, 40]);
     /// assert_eq!(iter.next().unwrap(), &[]);
@@ -1046,7 +1042,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let slice = [10, 6, 33, 20];
-    /// let mut iter = slice.split(|num| num % 3 == 0);
+    /// let mut iter = slice.split(|num: &i32| num % 3 == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[10]);
     /// assert_eq!(iter.next().unwrap(), &[]);
@@ -1072,7 +1068,7 @@ impl<T> [T] {
     /// ```
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.split_mut(|num| *num % 3 == 0) {
+    /// for group in v.split_mut(|num: &i32| *num % 3 == 0) {
     ///     group[0] = 1;
     /// }
     /// assert_eq!(v, [1, 40, 30, 1, 60, 1]);
@@ -1096,7 +1092,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let slice = [11, 22, 33, 0, 44, 55];
-    /// let mut iter = slice.rsplit(|num| *num == 0);
+    /// let mut iter = slice.rsplit(|num: &i32| *num == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[44, 55]);
     /// assert_eq!(iter.next().unwrap(), &[11, 22, 33]);
@@ -1108,7 +1104,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let v = &[0, 1, 1, 2, 3, 5, 8];
-    /// let mut it = v.rsplit(|n| *n % 2 == 0);
+    /// let mut it = v.rsplit(|n: &i32| *n % 2 == 0);
     /// assert_eq!(it.next().unwrap(), &[]);
     /// assert_eq!(it.next().unwrap(), &[3, 5]);
     /// assert_eq!(it.next().unwrap(), &[1, 1]);
@@ -1136,7 +1132,7 @@ impl<T> [T] {
     /// let mut v = [100, 400, 300, 200, 600, 500];
     ///
     /// let mut count = 0;
-    /// for group in v.rsplit_mut(|num| *num % 3 == 0) {
+    /// for group in v.rsplit_mut(|num: &i32| *num % 3 == 0) {
     ///     count += 1;
     ///     group[0] = count;
     /// }
@@ -1169,7 +1165,7 @@ impl<T> [T] {
     /// ```
     /// let v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.splitn(2, |num| *num % 3 == 0) {
+    /// for group in v.splitn(2, |num: &i32| *num % 3 == 0) {
     ///     println!("{:?}", group);
     /// }
     /// ```
@@ -1196,7 +1192,7 @@ impl<T> [T] {
     /// ```
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.splitn_mut(2, |num| *num % 3 == 0) {
+    /// for group in v.splitn_mut(2, |num: &i32| *num % 3 == 0) {
     ///     group[0] = 1;
     /// }
     /// assert_eq!(v, [1, 40, 30, 1, 60, 50]);
@@ -1228,7 +1224,7 @@ impl<T> [T] {
     /// ```
     /// let v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.rsplitn(2, |num| *num % 3 == 0) {
+    /// for group in v.rsplitn(2, |num: &i32| *num % 3 == 0) {
     ///     println!("{:?}", group);
     /// }
     /// ```
@@ -1256,7 +1252,7 @@ impl<T> [T] {
     /// ```
     /// let mut s = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in s.rsplitn_mut(2, |num| *num % 3 == 0) {
+    /// for group in s.rsplitn_mut(2, |num: &i32| *num % 3 == 0) {
     ///     group[0] = 1;
     /// }
     /// assert_eq!(s, [1, 40, 30, 20, 60, 1]);

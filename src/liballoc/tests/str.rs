@@ -1724,7 +1724,8 @@ fn test_mut_str() {
         assert_eq!(res, vec!["a", "b", "c", "d", "e"]);
     }
     {
-        let res: Vec<(Range<usize>, &mut str)> = s.match_ranges_mut(|c: char| c.is_ascii_digit()).collect();
+        let res: Vec<(Range<usize>, &mut str)> =
+            s.match_ranges_mut(|c: char| c.is_ascii_digit()).collect();
         let res = res.into_iter().map(|(r, ss)| (r, &*ss)).collect::<Vec<_>>();
         assert_eq!(res, vec![
             (1..2, "1"),
@@ -1734,7 +1735,8 @@ fn test_mut_str() {
         ]);
     }
     {
-        let res: Vec<(Range<usize>, &mut str)> = s.rmatch_ranges_mut(|c: char| c.is_ascii_digit()).collect();
+        let res: Vec<(Range<usize>, &mut str)> =
+            s.rmatch_ranges_mut(|c: char| c.is_ascii_digit()).collect();
         let res = res.into_iter().map(|(r, ss)| (r, &*ss)).collect::<Vec<_>>();
         assert_eq!(res, vec![
             (7..8, "4"),

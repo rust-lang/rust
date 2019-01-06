@@ -10,7 +10,7 @@ use crate::needle::{
     Consumer, ReverseConsumer, DoubleEndedConsumer,
 };
 
-use crate::sys::os_str::{Buf, Slice, OsStrSearcher};
+use crate::sys::os_str::{Buf, InnerSearcher, Slice};
 use crate::sys_common::{AsInner, IntoInner, FromInner};
 
 use core::slice::needles::{TwoWaySearcher, SliceSearcher, NaiveSearcher};
@@ -379,7 +379,7 @@ impl ops::Index<ops::RangeFull> for OsString {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::Range<usize>> for OsString {
     type Output = OsStr;
 
@@ -389,7 +389,7 @@ impl ops::Index<ops::Range<usize>> for OsString {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::RangeFrom<usize>> for OsString {
     type Output = OsStr;
 
@@ -399,7 +399,7 @@ impl ops::Index<ops::RangeFrom<usize>> for OsString {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::RangeTo<usize>> for OsString {
     type Output = OsStr;
 
@@ -1314,7 +1314,7 @@ impl AsInner<Slice> for OsStr {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::RangeFull> for OsStr {
     type Output = OsStr;
 
@@ -1324,7 +1324,7 @@ impl ops::Index<ops::RangeFull> for OsStr {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::Range<usize>> for OsStr {
     type Output = OsStr;
 
@@ -1334,7 +1334,7 @@ impl ops::Index<ops::Range<usize>> for OsStr {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::RangeFrom<usize>> for OsStr {
     type Output = OsStr;
 
@@ -1344,7 +1344,7 @@ impl ops::Index<ops::RangeFrom<usize>> for OsStr {
     }
 }
 
-#[stable(feature = "os_str_slice", since = "1.33.0")]
+#[stable(feature = "os_str_slice", since = "1.36.0")]
 impl ops::Index<ops::RangeTo<usize>> for OsStr {
     type Output = OsStr;
 
@@ -1551,9 +1551,9 @@ mod tests {
     #[cfg(any(unix, target_os = "redox", target_arch = "wasm32"))]
     fn slice_with_non_utf8_boundary_unix() {
         #[cfg(unix)]
-        use os::unix::ffi::OsStrExt;
+        use crate::os::unix::ffi::OsStrExt;
         #[cfg(target_os = "redox")]
-        use os::redox::ffi::OsStrExt;
+        use crate::os::redox::ffi::OsStrExt;
 
         let os_str = OsStr::new("Hello🌍🌎🌏");
         assert_eq!(OsStr::from_bytes(b"Hello\xf0"), &os_str[..6]);
@@ -1564,7 +1564,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn slice_with_non_utf8_boundary_windows() {
-        use os::windows::ffi::OsStringExt;
+        use crate::os::windows::ffi::OsStringExt;
 
         let os_str = OsStr::new("Hello🌍🌎🌏");
         assert_eq!(OsString::from_wide(&[0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xD83C]), &os_str[..7]);
@@ -1665,10 +1665,14 @@ unsafe impl<'p> ReverseConsumer<OsStr> for NaiveSearcher<'p, u8> {
 }
 
 #[unstable(feature = "needle", issue = "56345")]
+#[derive(Debug)]
+pub struct OsStrSearcher<S>(InnerSearcher<S>);
+
+#[unstable(feature = "needle", issue = "56345")]
 unsafe impl<'p> Searcher<OsStr> for OsStrSearcher<SliceSearcher<'p, u8>> {
     #[inline]
     fn search(&mut self, span: Span<&OsStr>) -> Option<ops::Range<usize>> {
-        self.search(span_as_inner!(span))
+        self.0.search(span_as_inner!(span))
     }
 }
 
@@ -1676,7 +1680,7 @@ unsafe impl<'p> Searcher<OsStr> for OsStrSearcher<SliceSearcher<'p, u8>> {
 unsafe impl<'p> ReverseSearcher<OsStr> for OsStrSearcher<SliceSearcher<'p, u8>> {
     #[inline]
     fn rsearch(&mut self, span: Span<&OsStr>) -> Option<ops::Range<usize>> {
-        self.rsearch(span_as_inner!(span))
+        self.0.rsearch(span_as_inner!(span))
     }
 }
 
@@ -1684,12 +1688,12 @@ unsafe impl<'p> ReverseSearcher<OsStr> for OsStrSearcher<SliceSearcher<'p, u8>> 
 unsafe impl<'p> Consumer<OsStr> for OsStrSearcher<NaiveSearcher<'p, u8>> {
     #[inline]
     fn consume(&mut self, span: Span<&OsStr>) -> Option<usize> {
-        self.consume(span_as_inner!(span))
+        self.0.consume(span_as_inner!(span))
     }
 
     #[inline]
     fn trim_start(&mut self, hay: &OsStr) -> usize {
-        self.trim_start(&hay.inner.inner)
+        self.0.trim_start(&hay.inner.inner)
     }
 }
 
@@ -1697,12 +1701,12 @@ unsafe impl<'p> Consumer<OsStr> for OsStrSearcher<NaiveSearcher<'p, u8>> {
 unsafe impl<'p> ReverseConsumer<OsStr> for OsStrSearcher<NaiveSearcher<'p, u8>> {
     #[inline]
     fn rconsume(&mut self, span: Span<&OsStr>) -> Option<usize> {
-        self.rconsume(span_as_inner!(span))
+        self.0.rconsume(span_as_inner!(span))
     }
 
     #[inline]
     fn trim_end(&mut self, hay: &OsStr) -> usize {
-        self.trim_end(&hay.inner.inner)
+        self.0.trim_end(&hay.inner.inner)
     }
 }
 
@@ -1712,11 +1716,11 @@ impl<'p, H: Haystack<Target = OsStr>> Needle<H> for &'p OsStr {
     type Consumer = OsStrSearcher<NaiveSearcher<'p, u8>>;
 
     fn into_searcher(self) -> Self::Searcher {
-        self.inner.into_searcher()
+        OsStrSearcher(self.inner.into_searcher())
     }
 
     fn into_consumer(self) -> Self::Consumer {
-        self.inner.into_consumer()
+        OsStrSearcher(self.inner.into_consumer())
     }
 }
 
@@ -1741,9 +1745,9 @@ mod needle_tests {
     use super::*;
 
     #[cfg(windows)]
-    use os::windows::ffi::OsStringExt;
+    use crate::os::windows::ffi::OsStringExt;
     #[cfg(unix)]
-    use os::unix::ffi::OsStrExt;
+    use crate::os::unix::ffi::OsStrExt;
 
     #[test]
     #[cfg(any(unix, target_os = "redox", target_arch = "wasm32"))]
@@ -1765,19 +1769,19 @@ mod needle_tests {
     fn test_trim_start_low_surrogate() {
         let pat = OsString::from_wide(&[0xdc00]);
         let a = &OsStr::new("\u{10000}aaa")[2..];
-        assert_eq!(a.trim_start_matches(&pat), OsStr::new("aaa"));
+        assert_eq!(a.trim_start_matches(&*pat), OsStr::new("aaa"));
 
         let b = OsString::from_wide(&[0xd800, 0xdc00, 0xdc00, 0x62, 0x62, 0x62]);
-        assert_eq!(b[2..].trim_start_matches(&pat), OsStr::new("bbb"));
+        assert_eq!(b[2..].trim_start_matches(&*pat), OsStr::new("bbb"));
 
         let c = OsString::from_wide(&[0xdc00, 0xdc00, 0x63, 0x63, 0x63]);
-        assert_eq!(c.trim_start_matches(&pat), OsStr::new("ccc"));
+        assert_eq!(c.trim_start_matches(&*pat), OsStr::new("ccc"));
 
         let d = &OsStr::new("\u{ffc00}ddd")[2..];
-        assert_eq!(d.trim_start_matches(&pat), OsStr::new("ddd"));
+        assert_eq!(d.trim_start_matches(&*pat), OsStr::new("ddd"));
 
         let e = OsStr::new("㰀eee");
-        assert_eq!(e.trim_start_matches(&pat), e);
+        assert_eq!(e.trim_start_matches(&*pat), e);
     }
 
     #[test]
@@ -1785,13 +1789,13 @@ mod needle_tests {
     fn test_trim_start_high_surrogate() {
         let pat = OsString::from_wide(&[0xd800]);
         let a = OsStr::new("\u{10000}");
-        assert_eq!(a.trim_start_matches(&pat), &*OsString::from_wide(&[0xdc00]));
+        assert_eq!(a.trim_start_matches(&*pat), &*OsString::from_wide(&[0xdc00]));
 
         let b = OsString::from_wide(&[0xd800, 0x62, 0x62, 0x62]);
-        assert_eq!(b.trim_start_matches(&pat), OsStr::new("bbb"));
+        assert_eq!(b.trim_start_matches(&*pat), OsStr::new("bbb"));
 
         let c = OsString::from_wide(&[0xd800, 0xd800, 0xdc00, 0x63, 0x63, 0x63]);
-        assert_eq!(c.trim_start_matches(&pat), OsStr::new("ccc"));
+        assert_eq!(c.trim_start_matches(&*pat), &c[5..]);
     }
 
     #[test]
@@ -1799,23 +1803,23 @@ mod needle_tests {
     fn test_trim_end_high_surrogate() {
         let pat = OsString::from_wide(&[0xd800]);
         let a = OsStr::new("aaa\u{10000}");
-        assert_eq!(a[..a.len()-2].trim_end_matches(&pat), OsStr::new("aaa"));
+        assert_eq!(a[..a.len()-2].trim_end_matches(&*pat), OsStr::new("aaa"));
 
         let b = OsString::from_wide(&[0x62, 0x62, 0x62, 0xd800, 0xd800, 0xdc00]);
-        assert_eq!(b[..b.len()-2].trim_end_matches(&pat), OsStr::new("bbb"));
+        assert_eq!(b[..b.len()-2].trim_end_matches(&*pat), OsStr::new("bbb"));
 
         let c = OsString::from_wide(&[0x63, 0x63, 0x63, 0xd800, 0xd800]);
-        assert_eq!(c.trim_end_matches(&pat), OsStr::new("ccc"));
+        assert_eq!(c.trim_end_matches(&*pat), OsStr::new("ccc"));
 
         let d = OsStr::new("ddd\u{103ff}");
-        assert_eq!(d[..d.len()-2].trim_end_matches(&pat), OsStr::new("ddd"));
+        assert_eq!(d[..d.len()-2].trim_end_matches(&*pat), OsStr::new("ddd"));
 
         let e = OsStr::new("eee\u{11000}");
         let e = &e[..e.len()-2];
-        assert_eq!(e.trim_end_matches(&pat), e);
+        assert_eq!(e.trim_end_matches(&*pat), e);
 
         let f = OsString::from_wide(&[0x66, 0x66, 0x66, 0xdc00]);
-        assert_eq!(f.trim_end_matches(&pat), &*f);
+        assert_eq!(f.trim_end_matches(&*pat), &*f);
     }
 
 
@@ -1824,103 +1828,101 @@ mod needle_tests {
     fn test_trim_end_low_surrogate() {
         let pat = OsString::from_wide(&[0xdc00]);
         let a = OsStr::new("\u{10000}");
-        assert_eq!(a.trim_end_matches(&pat), &*OsString::from_wide(&[0xd800]));
+        assert_eq!(a.trim_end_matches(&*pat), &*OsString::from_wide(&[0xd800]));
 
         let b = OsString::from_wide(&[0x62, 0x62, 0x62, 0xdc00]);
-        assert_eq!(b.trim_end_matches(&pat), OsStr::new("bbb"));
+        assert_eq!(b.trim_end_matches(&*pat), OsStr::new("bbb"));
 
         let c = OsString::from_wide(&[0x63, 0x63, 0x63, 0xdbff, 0xdc00, 0xdc00]);
-        assert_eq!(c.trim_end_matches(&pat), &c[..c.len()-3]);
+        assert_eq!(c.trim_end_matches(&*pat), &c[..c.len()-5]);
     }
 
     #[test]
     #[cfg(windows)]
     fn test_match_string_with_surrogates() {
-        unsafe {
-            let haystack = &OsStr::new("\u{10000}a\u{10000}a\u{10000}\u{10000}")[2..16];
-            // 0..3 = U+DC00
-            // 3..4 = 'a'
-            // 4..6 = U+D800
-            // 6..8 = U+DC00
-            // 8..9 = 'a'
-            // 9..11 = U+D800
-            // 11..13 = U+DC00
-            // 13..16 = U+D800
+        let haystack = &OsStr::new("\u{10000}a\u{10000}a\u{10000}\u{10000}")[2..16];
+        // 0..3 = U+DC00
+        // 3..4 = 'a'
+        // 4..6 = U+D800
+        // 6..8 = U+DC00
+        // 8..9 = 'a'
+        // 9..11 = U+D800
+        // 11..13 = U+DC00
+        // 13..16 = U+D800
 
-            let pat = "a";
-            let matched_pat = OsStr::new(pat);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (3..4, matched_pat),
-                (8..9, matched_pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (8..9, matched_pat),
-                (3..4, matched_pat),
-            ]);
+        let pat = "a";
+        let matched_pat = OsStr::new(pat);
+        assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
+            (3..4, matched_pat),
+            (8..9, matched_pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
+            (8..9, matched_pat),
+            (3..4, matched_pat),
+        ]);
 
-            let pat = OsString::from_wide(&[0xdc00, 0x61]);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (0..4, &*pat),
-                (6..9, &*pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (6..9, &*pat),
-                (0..4, &*pat),
-            ]);
+        let pat = OsString::from_wide(&[0xdc00, 0x61]);
+        assert_eq!(haystack.match_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (0..4, &*pat),
+            (6..9, &*pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (6..9, &*pat),
+            (0..4, &*pat),
+        ]);
 
-            let pat = OsString::from_wide(&[0x61, 0xd800]);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (3..6, &*pat),
-                (8..11, &*pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (8..11, &*pat),
-                (3..6, &*pat),
-            ]);
+        let pat = OsString::from_wide(&[0x61, 0xd800]);
+        assert_eq!(haystack.match_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (3..6, &*pat),
+            (8..11, &*pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (8..11, &*pat),
+            (3..6, &*pat),
+        ]);
 
-            let pat = "\u{10000}";
-            let matched_pat = OsStr::new(pat);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (4..8, matched_pat),
-                (9..13, matched_pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (9..13, matched_pat),
-                (4..8, matched_pat),
-            ]);
+        let pat = "\u{10000}";
+        let matched_pat = OsStr::new(pat);
+        assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
+            (4..8, matched_pat),
+            (9..13, matched_pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
+            (9..13, matched_pat),
+            (4..8, matched_pat),
+        ]);
 
-            let pat = OsString::from_wide(&[0xd800]);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (4..6, &*pat),
-                (9..11, &*pat),
-                (13..16, &*pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (13..16, &*pat),
-                (9..11, &*pat),
-                (4..6, &*pat),
-            ]);
+        let pat = OsString::from_wide(&[0xd800]);
+        assert_eq!(haystack.match_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (4..6, &*pat),
+            (9..11, &*pat),
+            (13..16, &*pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (13..16, &*pat),
+            (9..11, &*pat),
+            (4..6, &*pat),
+        ]);
 
-            let pat = OsString::from_wide(&[0xdc00]);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (0..3, &*pat),
-                (6..8, &*pat),
-                (11..13, &*pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (11..13, &*pat),
-                (6..8, &*pat),
-                (0..3, &*pat),
-            ]);
+        let pat = OsString::from_wide(&[0xdc00]);
+        assert_eq!(haystack.match_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (0..3, &*pat),
+            (6..8, &*pat),
+            (11..13, &*pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (11..13, &*pat),
+            (6..8, &*pat),
+            (0..3, &*pat),
+        ]);
 
-            let pat = OsString::from_wide(&[0xdc00, 0xd800]);
-            assert_eq!(haystack.match_ranges(pat).collect::<Vec<_>>(), vec![
-                (11..16, &*pat),
-            ]);
-            assert_eq!(haystack.rmatch_ranges(pat).collect::<Vec<_>>(), vec![
-                (11..16, &*pat),
-            ]);
-        }
+        let pat = OsString::from_wide(&[0xdc00, 0xd800]);
+        assert_eq!(haystack.match_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (11..16, &*pat),
+        ]);
+        assert_eq!(haystack.rmatch_ranges(&*pat).collect::<Vec<_>>(), vec![
+            (11..16, &*pat),
+        ]);
     }
 }
 

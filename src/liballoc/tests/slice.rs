@@ -1683,24 +1683,20 @@ fn test_match_indices_nan_haystack() {
 #[test]
 fn test_match_indices_nan_needle() {
     let haystack = &[1.0, 2.0, NAN, 1.0, 2.0, NAN, 1.0, NAN, NAN, NAN, 2.0, 1.0, 2.0][..];
-    let needle = &[1.0, 2.0][..];
+    let needle = &[2.0, NAN][..];
 
     assert_eq!(haystack.match_indices(needle).collect::<Vec<_>>(), vec![
-        (0, needle),
-        (3, needle),
-        (11, needle),
     ]);
 }
 
 #[test]
 fn test_match_indices_negative_zero() {
-    let haystack = &[1.0, 2.0, NAN, 1.0, 2.0, NAN, 1.0, NAN, NAN, NAN, 2.0, 1.0, 2.0][..];
-    let needle = &[1.0, 2.0][..];
+    let haystack = &[-0.0, 0.0, 0.0, -0.0, 0.0][..];
+    let needle = &[0.0, -0.0][..];
 
     assert_eq!(haystack.match_indices(needle).collect::<Vec<_>>(), vec![
         (0, needle),
-        (3, needle),
-        (11, needle),
+        (2, needle),
     ]);
 }
 

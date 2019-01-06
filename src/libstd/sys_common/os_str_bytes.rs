@@ -11,9 +11,10 @@ use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::{FromInner, IntoInner, AsInner};
 use crate::sys_common::bytestring::debug_fmt_bytestring;
+
 use core::str::lossy::Utf8Lossy;
 use core::slice::needles::{SliceSearcher, NaiveSearcher};
-use needle::{Hay, Span, Searcher, ReverseSearcher, Consumer, ReverseConsumer};
+use crate::needle::Hay;
 
 #[derive(Clone, Hash)]
 pub(crate) struct Buf {
@@ -214,12 +215,12 @@ impl Slice {
         self.inner.prev_index(index)
     }
 
-    pub fn into_searcher(&self) -> OsStrSearcher<SliceSearcher<'_, u8>> {
-        OsStrSearcher(SliceSearcher::new(&self.inner))
+    pub fn into_searcher(&self) -> SliceSearcher<'_, u8> {
+        SliceSearcher::new(&self.inner)
     }
 
-    pub fn into_consumer(&self) -> OsStrSearcher<NaiveSearcher<'_, u8>> {
-        OsStrSearcher(NaiveSearcher::new(&self.inner))
+    pub fn into_consumer(&self) -> NaiveSearcher<'_, u8> {
+        NaiveSearcher::new(&self.inner)
     }
 
     pub fn as_bytes_for_searcher(&self) -> &[u8] {
@@ -228,49 +229,7 @@ impl Slice {
 }
 
 #[unstable(feature = "needle", issue = "56345")]
-pub struct OsStrSearcher<S>(S);
-
-#[unstable(feature = "needle", issue = "56345")]
-unsafe impl<'p> Searcher<[u8]> for OsStrSearcher<SliceSearcher<'p, u8>> {
-    #[inline]
-    fn search(&mut self, span: Span<&[u8]>) -> Option<Range<usize>> {
-        self.0.search(span)
-    }
-}
-
-#[unstable(feature = "needle", issue = "56345")]
-unsafe impl<'p> Consumer<[u8]> for OsStrSearcher<NaiveSearcher<'p, u8>> {
-    #[inline]
-    fn consume(&mut self, span: Span<&[u8]>) -> Option<usize> {
-        self.0.consume(span)
-    }
-
-    #[inline]
-    fn trim_start(&mut self, hay: &[u8]) -> usize {
-        self.0.trim_start(hay)
-    }
-}
-
-#[unstable(feature = "needle", issue = "56345")]
-unsafe impl<'p> ReverseSearcher<[u8]> for OsStrSearcher<SliceSearcher<'p, u8>> {
-    #[inline]
-    fn rsearch(&mut self, span: Span<&[u8]>) -> Option<Range<usize>> {
-        self.0.rsearch(span)
-    }
-}
-
-#[unstable(feature = "needle", issue = "56345")]
-unsafe impl<'p> ReverseConsumer<[u8]> for OsStrSearcher<NaiveSearcher<'p, u8>> {
-    #[inline]
-    fn rconsume(&mut self, span: Span<&[u8]>) -> Option<usize> {
-        self.0.rconsume(span)
-    }
-
-    #[inline]
-    fn trim_end(&mut self, hay: &[u8]) -> usize {
-        self.0.trim_end(hay)
-    }
-}
+pub type InnerSearcher<S> = S;
 
 /// Platform-specific extensions to [`OsString`].
 ///
