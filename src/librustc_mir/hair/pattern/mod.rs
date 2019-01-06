@@ -15,7 +15,7 @@ use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
-use rustc::ty::{CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, UserType};
+use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotations, UserType};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -60,12 +60,12 @@ pub struct Pattern<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct PatternTypeProjection<'tcx> {
-    pub base: CanonicalUserTypeAnnotation<'tcx>,
+    pub base: CanonicalUserType<'tcx>,
     pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
 
 impl<'tcx> PatternTypeProjection<'tcx> {
-    pub(crate) fn from_user_type(user_annotation: CanonicalUserTypeAnnotation<'tcx>) -> Self {
+    pub(crate) fn from_user_type(user_annotation: CanonicalUserType<'tcx>) -> Self {
         Self {
             base: user_annotation,
             projs: Vec::new(),

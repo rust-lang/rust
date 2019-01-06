@@ -103,7 +103,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{
-    self, AdtKind, CanonicalUserTypeAnnotation, Ty, TyCtxt, GenericParamDefKind, Visibility,
+    self, AdtKind, CanonicalUserType, Ty, TyCtxt, GenericParamDefKind, Visibility,
     ToPolyTraitRef, ToPredicate, RegionKind, UserType
 };
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -2252,7 +2252,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn write_user_type_annotation(
         &self,
         hir_id: hir::HirId,
-        canonical_user_type_annotation: CanonicalUserTypeAnnotation<'tcx>,
+        canonical_user_type_annotation: CanonicalUserType<'tcx>,
     ) {
         debug!(
             "write_user_type_annotation: hir_id={:?} canonical_user_type_annotation={:?} tag={}",

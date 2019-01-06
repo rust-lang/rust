@@ -797,7 +797,7 @@ fn user_substs_applied_to_def(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     hir_id: hir::HirId,
     def: &Def,
-) -> Option<ty::CanonicalUserTypeAnnotation<'tcx>> {
+) -> Option<ty::CanonicalUserType<'tcx>> {
     debug!("user_substs_applied_to_def: def={:?}", def);
     let user_provided_type = match def {
         // A reference to something callable -- e.g., a fn, method, or

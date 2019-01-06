@@ -350,7 +350,7 @@ pub struct TypeckTables<'tcx> {
     /// canonical substitutions would include only `for<X> { Vec<X> }`.
     ///
     /// See also `AscribeUserType` statement in MIR.
-    user_provided_types: ItemLocalMap<CanonicalUserTypeAnnotation<'tcx>>,
+    user_provided_types: ItemLocalMap<CanonicalUserType<'tcx>>,
 
     /// Stores the canonicalized types provided by the user. See also
     /// `AscribeUserType` statement in MIR.
@@ -493,7 +493,7 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn user_provided_types(
         &self
-    ) -> LocalTableInContext<'_, CanonicalUserTypeAnnotation<'tcx>> {
+    ) -> LocalTableInContext<'_, CanonicalUserType<'tcx>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.user_provided_types
@@ -502,7 +502,7 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn user_provided_types_mut(
         &mut self
-    ) -> LocalTableInContextMut<'_, CanonicalUserTypeAnnotation<'tcx>> {
+    ) -> LocalTableInContextMut<'_, CanonicalUserType<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.user_provided_types
@@ -807,12 +807,12 @@ newtype_index! {
 
 /// Mapping of type annotation indices to canonical user type annotations.
 pub type CanonicalUserTypeAnnotations<'tcx> =
-    IndexVec<UserTypeAnnotationIndex, (Span, CanonicalUserTypeAnnotation<'tcx>)>;
+    IndexVec<UserTypeAnnotationIndex, (Span, CanonicalUserType<'tcx>)>;
 
 /// Canonicalized user type annotation.
-pub type CanonicalUserTypeAnnotation<'gcx> = Canonical<'gcx, UserType<'gcx>>;
+pub type CanonicalUserType<'gcx> = Canonical<'gcx, UserType<'gcx>>;
 
-impl CanonicalUserTypeAnnotation<'gcx> {
+impl CanonicalUserType<'gcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e. each thing is mapped to a canonical variable with the same index.
     pub fn is_identity(&self) -> bool {
