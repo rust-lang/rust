@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, SourceItemId,
-    module::ModuleSource,
+    module_tree::ModuleSource,
     DefKind, DefLoc, AsName,
 };
 

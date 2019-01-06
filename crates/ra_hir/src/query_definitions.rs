@@ -15,11 +15,8 @@ use crate::{
     MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
-    module::{
-        ModuleSource, ModuleSourceNode, ModuleId,
-        imp::Submodule,
-        nameres::{InputModuleItems, ItemMap, Resolver},
-    },
+    module_tree::{ModuleId, Submodule, ModuleSource, ModuleSourceNode},
+    nameres::{InputModuleItems, ItemMap, Resolver},
     adt::{StructData, EnumData},
 };
 

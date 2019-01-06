@@ -31,7 +31,7 @@ use crate::{
     Path, PathKind,
     HirDatabase, Crate,
     Name, AsName,
-    module::{ModuleId, ModuleTree},
+    module_tree::{ModuleId, ModuleTree},
 };
 
 /// Item map is the result of the name resolution. Item map contains, for each

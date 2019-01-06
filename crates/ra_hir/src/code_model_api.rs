@@ -1,7 +1,8 @@
+use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{ast, SyntaxNode};
 
-use crate::{Name, db::HirDatabase, DefId, Path, PerNs, module::{Problem, ModuleScope}};
+use crate::{Name, db::HirDatabase, DefId, Path, PerNs, nameres::ModuleScope};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -37,6 +38,17 @@ pub struct Module {
 pub enum ModuleSource {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Problem {
+    UnresolvedModule {
+        candidate: RelativePathBuf,
+    },
+    NotDirOwner {
+        move_to: RelativePathBuf,
+        candidate: RelativePathBuf,
+    },
 }
 
 impl Module {

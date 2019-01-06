@@ -10,7 +10,7 @@ use crate::{
     Function,
     db::HirDatabase,
     type_ref::TypeRef,
-    module::ModuleId,
+    module_tree::ModuleId,
 };
 
 use crate::code_model_api::{Module, ModuleSource};
