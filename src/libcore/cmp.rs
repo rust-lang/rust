@@ -117,7 +117,7 @@ use self::Ordering::*;
 /// // Implement <BookFormat> == <Book> comparisons
 /// impl PartialEq<Book> for BookFormat {
 ///     fn eq(&self, other: &Book) -> bool {
-///         *other == self.format
+///         *self == other.format
 ///     }
 /// }
 ///
