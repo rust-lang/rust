@@ -35,8 +35,8 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn source(&self, db: &impl HirDatabase) -> (FileId, Option<ast::ModuleNode>) {
-        self.source_impl(db)
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, Option<ast::ModuleNode>)> {
+        Ok(self.source_impl(db))
     }
 
     /// Returns the crate this module is part of.
