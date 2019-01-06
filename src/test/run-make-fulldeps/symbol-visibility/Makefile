@@ -1,12 +1,9 @@
 include ../tools.mk
 
-ifdef IS_WINDOWS
-# Do nothing on MSVC.
+# ignore-windows
+#
 # On MINGW the --version-script, --dynamic-list, and --retain-symbol args don't
 # seem to work reliably.
-all:
-	exit 0
-else
 
 NM=nm -D
 CDYLIB_NAME=liba_cdylib.so
@@ -89,4 +86,3 @@ all:
 	# Check that an executable does not export any dynamic symbols
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_c_function_from_rlib)" -eq "0" ]
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_rust_function_from_exe)" -eq "0" ]
-endif

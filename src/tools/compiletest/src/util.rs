@@ -9,6 +9,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("androideabi", "android"),
     ("bitrig", "bitrig"),
     ("cloudabi", "cloudabi"),
+    ("cuda", "cuda"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
     ("emscripten", "emscripten"),
@@ -20,9 +21,11 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("l4re", "l4re"),
     ("linux", "linux"),
     ("mingw32", "windows"),
+    ("none", "none"),
     ("netbsd", "netbsd"),
     ("openbsd", "openbsd"),
     ("redox", "redox"),
+    ("sgx", "sgx"),
     ("solaris", "solaris"),
     ("win32", "windows"),
     ("windows", "windows"),
@@ -38,6 +41,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("armv7", "arm"),
     ("armv7s", "arm"),
     ("asmjs", "asmjs"),
+    ("cuda", "cuda"),
     ("hexagon", "hexagon"),
     ("i386", "x86"),
     ("i586", "x86"),
@@ -154,6 +158,7 @@ fn test_get_arch_failure() {
 fn test_get_arch() {
     assert_eq!("x86_64", get_arch("x86_64-unknown-linux-gnu"));
     assert_eq!("x86_64", get_arch("amd64"));
+    assert_eq!("cuda", get_arch("nvptx64-nvidia-cuda"));
 }
 
 #[test]
@@ -168,4 +173,8 @@ fn test_matches_os() {
     assert!(matches_os("wasm32-unknown-unknown", "emscripten"));
     assert!(matches_os("wasm32-unknown-unknown", "wasm32-bare"));
     assert!(!matches_os("wasm32-unknown-unknown", "windows"));
+    assert!(matches_os("thumbv6m0-none-eabi", "none"));
+    assert!(matches_os("riscv32imc-unknown-none-elf", "none"));
+    assert!(matches_os("nvptx64-nvidia-cuda", "cuda"));
+    assert!(matches_os("x86_64-fortanix-unknown-sgx", "sgx"));
 }

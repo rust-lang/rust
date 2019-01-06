@@ -4,10 +4,10 @@
 # while generating files. Ideally this would be a rustdoc-ui test, so we could
 # verify the error message as well.
 
-OUTPUT_DIR := "$(TMPDIR)/rustdoc-io-error"
+# ignore-windows
+# The test uses `chmod`.
 
-# Ignore Windows: the test uses `chmod`.
-ifndef IS_WINDOWS
+OUTPUT_DIR := "$(TMPDIR)/rustdoc-io-error"
 
 # This test operates by creating a temporary directory and modifying its
 # permissions so that it is not writable. We have to take special care to set
@@ -18,8 +18,3 @@ all:
 	-$(shell $(RUSTDOC) -o $(OUTPUT_DIR) foo.rs)
 	chmod u+w $(OUTPUT_DIR)
 	exit $($(.SHELLSTATUS) -eq 1)
-
-else
-all:
-
-endif

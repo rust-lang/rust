@@ -1,8 +1,11 @@
 -include ../tools.mk
 
+# only-linux
+# only-x86_64
+#
 # I *really* don't want to deal with a cross-platform way to compare file sizes,
 # tests in `make` sort of are awful
-ifeq ($(TARGET),x86_64-unknown-linux-gnu)
+
 all: $(TMPDIR)/out.log
 	# Make sure no warnings about "unknown CPU `native`" were emitted
 	if [ "$$(wc -c $(TMPDIR)/out.log | cut -d' ' -f 1)" = "0" ]; then \
@@ -10,9 +13,6 @@ all: $(TMPDIR)/out.log
 	else \
 	  exit 1; \
 	fi
-else
-all: $(TMPDIR)/out.log
-endif
 
 
 $(TMPDIR)/out.log:
