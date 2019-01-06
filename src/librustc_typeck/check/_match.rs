@@ -730,7 +730,12 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             variant_ty
         } else {
             for field in fields {
-                self.check_pat_walk(&field.node.pat, self.tcx.types.err, def_bm, match_discrim_span);
+                self.check_pat_walk(
+                    &field.node.pat,
+                    self.tcx.types.err,
+                    def_bm,
+                    match_discrim_span,
+                );
             }
             return self.tcx.types.err;
         };
