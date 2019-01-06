@@ -139,7 +139,7 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
 pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let before_dot_offset = offset - TextUnit::of_char('.');
 
-    let whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset)
+    let _whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset)
         .left_biased()
         .and_then(ast::Whitespace::cast)?;
 
