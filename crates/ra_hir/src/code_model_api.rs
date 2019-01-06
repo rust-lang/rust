@@ -1,6 +1,7 @@
-use ra_db::{CrateId, Cancelable};
+use ra_db::{CrateId, Cancelable, FileId};
+use ra_syntax::{ast, SyntaxNode};
 
-use crate::{Name, db::HirDatabase, DefId, Path, PerNs, module::{ModuleSource, ModuleScope}};
+use crate::{Name, db::HirDatabase, DefId, Path, PerNs, module::{Problem, ModuleScope}};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -33,10 +34,27 @@ pub struct Module {
     pub(crate) def_id: DefId,
 }
 
+/// An owned syntax node for a module. Unlike `ModuleSource`,
+/// this holds onto the AST for the whole file.
+pub enum ModuleSource {
+    SourceFile(ast::SourceFileNode),
+    Module(ast::ModuleNode),
+}
+
 impl Module {
-    // FIXME: what is a module source exactly? It should contain two nodes
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<ModuleSource> {
-        Ok(self.source_impl(db))
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+        self.name_impl(db)
+    }
+
+    pub fn defenition_source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, ModuleSource)> {
+        self.defenition_source_impl(db)
+    }
+
+    pub fn declaration_source(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<Option<(FileId, ast::ModuleNode)>> {
+        self.declaration_source_impl(db)
     }
 
     /// Returns the crate this module is part of.
@@ -56,11 +74,23 @@ impl Module {
     pub fn parent(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         self.parent_impl(db)
     }
+    pub fn path_to_root(&self, db: &impl HirDatabase) -> Cancelable<Vec<Module>> {
+        let mut res = vec![self.clone()];
+        let mut curr = self.clone();
+        while let Some(next) = curr.parent(db)? {
+            res.push(next.clone());
+            curr = next
+        }
+        Ok(res)
+    }
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
         self.scope_impl(db)
     }
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
         self.resolve_path_impl(db, path)
+    }
+    pub fn problems(&self, db: &impl HirDatabase) -> Cancelable<Vec<(SyntaxNode, Problem)>> {
+        self.problems_impl(db)
     }
 }

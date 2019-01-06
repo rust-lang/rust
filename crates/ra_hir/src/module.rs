@@ -1,8 +1,6 @@
 pub(super) mod imp;
 pub(super) mod nameres;
 
-use log;
-
 use ra_syntax::{
     algo::generate,
     ast::{self, AstNode, NameOwner},
@@ -11,10 +9,7 @@ use ra_syntax::{
 use ra_arena::{Arena, RawId, impl_arena_id};
 use relative_path::RelativePathBuf;
 
-use crate::{
-    Name,  HirDatabase, SourceItemId, SourceFileItemId,
-    HirFileId,
-};
+use crate::{Name, HirDatabase, SourceItemId, SourceFileItemId, HirFileId};
 
 pub use self::nameres::{ModuleScope, Resolution, Namespace, PerNs};
 
@@ -78,7 +73,7 @@ impl ModuleId {
     pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
         tree.mods[self].source
     }
-    fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
+    pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.mods[self].parent
     }
     pub(crate) fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
@@ -105,7 +100,11 @@ impl ModuleId {
             Some((link.name.clone(), module))
         })
     }
-    fn problems(self, tree: &ModuleTree, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
+    pub(crate) fn problems(
+        self,
+        tree: &ModuleTree,
+        db: &impl HirDatabase,
+    ) -> Vec<(SyntaxNode, Problem)> {
         tree.mods[self]
             .children
             .iter()
@@ -120,13 +119,17 @@ impl ModuleId {
 }
 
 impl LinkId {
-    fn owner(self, tree: &ModuleTree) -> ModuleId {
+    pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.links[self].owner
     }
-    fn name(self, tree: &ModuleTree) -> &Name {
+    pub(crate) fn name(self, tree: &ModuleTree) -> &Name {
         &tree.links[self].name
     }
-    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl HirDatabase) -> ast::ModuleNode {
+    pub(crate) fn bind_source<'a>(
+        self,
+        tree: &ModuleTree,
+        db: &impl HirDatabase,
+    ) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::SourceFile(root) => {

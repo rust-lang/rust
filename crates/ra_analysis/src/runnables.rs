@@ -73,11 +73,11 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Opti
     let module =
         hir::source_binder::module_from_child_node(db, file_id, module.syntax()).ok()??;
     let path = module
-        .path_to_root()
+        .path_to_root(db)
+        .ok()?
         .into_iter()
         .rev()
-        .into_iter()
-        .filter_map(|it| it.name().map(Clone::clone))
+        .filter_map(|it| it.name(db).map(Clone::clone))
         .join("::");
     Some(Runnable {
         range,

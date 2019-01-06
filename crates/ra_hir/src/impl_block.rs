@@ -10,10 +10,10 @@ use crate::{
     Function,
     db::HirDatabase,
     type_ref::TypeRef,
-    module::{ModuleSourceNode, ModuleId},
+    module::ModuleId,
 };
 
-use crate::code_model_api::Module;
+use crate::code_model_api::{Module, ModuleSource};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplBlock {
@@ -150,13 +150,13 @@ impl ModuleImplBlocks {
     }
 
     fn collect(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
-        let module_source_node = module.source(db)?.resolve(db);
-        let node = match &module_source_node {
-            ModuleSourceNode::SourceFile(node) => node.borrowed().syntax(),
-            ModuleSourceNode::Module(node) => node.borrowed().syntax(),
+        let (file_id, module_source) = module.defenition_source(db)?;
+        let node = match &module_source {
+            ModuleSource::SourceFile(node) => node.borrowed().syntax(),
+            ModuleSource::Module(node) => node.borrowed().syntax(),
         };
 
-        let source_file_items = db.file_items(module.source(db)?.file_id());
+        let source_file_items = db.file_items(file_id.into());
 
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
             let impl_block = ImplData::from_ast(db, &source_file_items, &module, impl_block_ast);

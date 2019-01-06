@@ -1,12 +1,13 @@
-use ra_db::{CrateId, Cancelable, SourceRootId};
+use ra_db::{CrateId, Cancelable, SourceRootId, FileId};
+use ra_syntax::{ast, SyntaxNode, AstNode};
 
 use crate::{
     HirFileId, Crate, CrateDependency, AsName, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def, ModuleId,
-    module::{ModuleSource, ModuleScope},
+    module::{ModuleScope, Problem},
     db::HirDatabase,
 };
 
-use crate::code_model_api::Module;
+use crate::code_model_api::{Module, ModuleSource};
 
 impl Crate {
     pub(crate) fn new(crate_id: CrateId) -> Crate {
@@ -68,9 +69,44 @@ impl Module {
         Ok(module)
     }
 
-    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> ModuleSource {
+    pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
         let loc = self.def_id.loc(db);
-        ModuleSource(loc.source_item_id)
+        let module_tree = db.module_tree(loc.source_root_id)?;
+        let link = ctry!(loc.module_id.parent_link(&module_tree));
+        Ok(Some(link.name(&module_tree).clone()))
+    }
+
+    pub fn defenition_source_impl(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<(FileId, ModuleSource)> {
+        let loc = self.def_id.loc(db);
+        let file_id = loc.source_item_id.file_id.as_original_file();
+        let syntax_node = db.file_item(loc.source_item_id);
+        let syntax_node = syntax_node.borrowed();
+        let module_source = if let Some(source_file) = ast::SourceFile::cast(syntax_node) {
+            ModuleSource::SourceFile(source_file.owned())
+        } else {
+            let module = ast::Module::cast(syntax_node).unwrap();
+            ModuleSource::Module(module.owned())
+        };
+        Ok((file_id, module_source))
+    }
+
+    pub fn declaration_source_impl(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<Option<(FileId, ast::ModuleNode)>> {
+        let loc = self.def_id.loc(db);
+        let module_tree = db.module_tree(loc.source_root_id)?;
+        let link = ctry!(loc.module_id.parent_link(&module_tree));
+        let file_id = link
+            .owner(&module_tree)
+            .source(&module_tree)
+            .file_id()
+            .as_original_file();
+        let src = link.bind_source(&module_tree, db);
+        Ok(Some((file_id, src)))
     }
 
     pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
@@ -149,5 +185,10 @@ impl Module {
             };
         }
         Ok(curr_per_ns)
+    }
+    pub fn problems_impl(&self, db: &impl HirDatabase) -> Cancelable<Vec<(SyntaxNode, Problem)>> {
+        let loc = self.def_id.loc(db);
+        let module_tree = db.module_tree(loc.source_root_id)?;
+        Ok(loc.module_id.problems(&module_tree, db))
     }
 }
