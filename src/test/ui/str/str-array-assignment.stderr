@@ -1,8 +1,10 @@
 error[E0308]: if and else have incompatible types
-  --> $DIR/str-array-assignment.rs:3:11
+  --> $DIR/str-array-assignment.rs:3:37
    |
 LL |   let t = if true { s[..2] } else { s };
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected str, found &str
+   |                     ------          ^ expected str, found &str
+   |                     |
+   |                     expected because of this
    |
    = note: expected type `str`
               found type `&str`

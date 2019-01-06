@@ -1,0 +1,92 @@
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-else-type-mismatch.rs:5:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |         42i32
+   | |         ----- expected because of this
+LL | |     } else {
+LL | |         42u32
+   | |         ^^^^^ expected i32, found u32
+LL | |     };
+   | |_____- if and else have incompatible types
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-else-type-mismatch.rs:8:38
+   |
+LL |     let _ = if true { 42i32 } else { 42u32 };
+   |                       -----          ^^^^^ expected i32, found u32
+   |                       |
+   |                       expected because of this
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-else-type-mismatch.rs:13:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |         42i32;
+   | |         ------ expected because of this
+LL | |     } else {
+LL | |         42u32
+   | |         ^^^^^ expected (), found u32
+LL | |     };
+   | |_____- if and else have incompatible types
+   |
+   = note: expected type `()`
+              found type `u32`
+
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-else-type-mismatch.rs:19:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |         42i32
+   | |         ----- expected because of this
+LL | |     } else {
+LL | |         42u32;
+   | |         ^^^^^^ expected i32, found ()
+LL | |     };
+   | |_____- if and else have incompatible types
+   |
+   = note: expected type `i32`
+              found type `()`
+
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-else-type-mismatch.rs:25:9
+   |
+LL |       let _ = if true {
+   |  _____________________-
+LL | |
+LL | |     } else {
+   | |_____- expected because of this
+LL |           42u32
+   |           ^^^^^ expected (), found u32
+   |
+   = note: expected type `()`
+              found type `u32`
+
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-else-type-mismatch.rs:30:12
+   |
+LL |       let _ = if true {
+   |               ------- if and else have incompatible types
+LL |           42i32
+   |           ----- expected because of this
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |     };
+   | |_____^ expected i32, found ()
+   |
+   = note: expected type `i32`
+              found type `()`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

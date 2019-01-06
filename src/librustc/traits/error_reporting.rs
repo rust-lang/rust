@@ -1445,7 +1445,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::ExprAssignable |
             ObligationCauseCode::MatchExpressionArm { .. } |
             ObligationCauseCode::MatchExpressionArmPattern { .. } |
-            ObligationCauseCode::IfExpression |
+            ObligationCauseCode::IfExpression { .. } |
             ObligationCauseCode::IfExpressionWithNoElse |
             ObligationCauseCode::MainFunctionType |
             ObligationCauseCode::StartFunctionType |

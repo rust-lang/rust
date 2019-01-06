@@ -3366,7 +3366,93 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let coerce_to_ty = expected.coercion_target_type(self, sp);
         let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
 
-        let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
+        let mut outer_sp = if self.tcx.sess.source_map().is_multiline(sp) {
+            // The `if`/`else` isn't in one line in the output, include some context to make it
+            // clear it is an if/else expression:
+            // ```
+            // LL |      let x = if true {
+            //    | _____________-
+            // LL ||         10i32
+            //    ||         ----- expected because of this
+            // LL ||     } else {
+            // LL ||         10u32
+            //    ||         ^^^^^ expected i32, found u32
+            // LL ||     };
+            //    ||_____- if and else have incompatible types
+            // ```
+            Some(sp)
+        } else {
+            // The entire expression is in one line, only point at the arms
+            // ```
+            // LL |     let x = if true { 10i32 } else { 10u32 };
+            //    |                       -----          ^^^^^ expected i32, found u32
+            //    |                       |
+            //    |                       expected because of this
+            // ```
+            None
+        };
+        let error_sp = opt_else_expr.map(|expr| {
+            if let ExprKind::Block(block, _) = &expr.node {
+                if let Some(expr) = &block.expr {
+                    expr.span
+                } else if let Some(stmt) = block.stmts.last() {
+                    // possibly incorrect trailing `;` in the else arm
+                    stmt.span
+                } else {  // empty block, point at its entirety
+                    // Avoid overlapping spans that aren't as readable:
+                    // ```
+                    // 2 |        let x = if true {
+                    //   |   _____________-
+                    // 3 |  |         3
+                    //   |  |         - expected because of this
+                    // 4 |  |     } else {
+                    //   |  |____________^
+                    // 5 | ||
+                    // 6 | ||     };
+                    //   | ||     ^
+                    //   | ||_____|
+                    //   | |______if and else have incompatible types
+                    //   |        expected integer, found ()
+                    // ```
+                    // by not pointing at the entire expression:
+                    // ```
+                    // 2 |       let x = if true {
+                    //   |               ------- if and else have incompatible types
+                    // 3 |           3
+                    //   |           - expected because of this
+                    // 4 |       } else {
+                    //   |  ____________^
+                    // 5 | |
+                    // 6 | |     };
+                    //   | |_____^ expected integer, found ()
+                    // ```
+                    if outer_sp.is_some() {
+                        outer_sp = Some(self.tcx.sess.source_map().def_span(sp));
+                    }
+                    expr.span
+                }
+            } else { // shouldn't happen unless the parser has done something weird
+                expr.span
+            }
+        }).unwrap_or(sp);  // shouldn't be needed
+        let then_sp = if let ExprKind::Block(block, _) = &then_expr.node {
+            if let Some(expr) = &block.expr {
+                expr.span
+            } else if let Some(stmt) = block.stmts.last() {
+                // possibly incorrect trailing `;` in the else arm
+                stmt.span
+            } else {  // empty block, point at its entirety
+                outer_sp = None;  // same as in `error_sp`, cleanup output
+                then_expr.span
+            }
+        } else {  // shouldn't happen unless the parser has done something weird
+            then_expr.span
+        };
+
+        let if_cause = self.cause(error_sp, ObligationCauseCode::IfExpression {
+            then: then_sp,
+            outer: outer_sp,
+        });
         coerce.coerce(self, &if_cause, then_expr, then_ty);
 
         if let Some(else_expr) = opt_else_expr {
