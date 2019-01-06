@@ -26,7 +26,7 @@ use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
 
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::{
-    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp},
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp, BinOp},
     SyntaxNodeRef
 };
 
@@ -527,6 +527,20 @@ struct InferenceContext<'a, D: HirDatabase> {
     return_ty: Ty,
 }
 
+// helper function that determines whether a binary operator
+// always returns a boolean
+fn is_boolean_operator(op: BinOp) -> bool {
+    match op {
+        BinOp::BooleanOr
+        | BinOp::BooleanAnd
+        | BinOp::EqualityTest
+        | BinOp::LesserEqualTest
+        | BinOp::GreaterEqualTest
+        | BinOp::LesserTest
+        | BinOp::GreaterTest => true,
+    }
+}
+
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(
         db: &'a D,
@@ -899,7 +913,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             ast::Expr::RangeExpr(_e) => Ty::Unknown,
-            ast::Expr::BinExpr(_e) => Ty::Unknown,
+            ast::Expr::BinExpr(e) => match e.op() {
+                Some(op) => {
+                    let subtype_expectation = match op {
+                        BinOp::BooleanAnd | BinOp::BooleanOr => Expectation::has_type(Ty::Bool),
+                        _ => Expectation::none(),
+                    };
+                    let (lhs, rhs) = e.sub_exprs();
+                    let _lhs_ty = self.infer_expr_opt(lhs, &subtype_expectation)?;
+                    let _rhs_ty = self.infer_expr_opt(rhs, &subtype_expectation)?;
+
+                    if is_boolean_operator(op) {
+                        Ty::Bool
+                    } else {
+                        Ty::Unknown
+                    }
+                }
+                _ => Ty::Unknown,
+            },
             ast::Expr::Literal(_e) => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here
