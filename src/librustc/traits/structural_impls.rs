@@ -517,6 +517,9 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 arm_span,
                 source: source,
             }),
+            super::MatchExpressionArmPattern { span, ty } => {
+                tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
+            }
             super::IfExpression => Some(super::IfExpression),
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
             super::MainFunctionType => Some(super::MainFunctionType),

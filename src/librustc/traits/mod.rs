@@ -220,8 +220,13 @@ pub enum ObligationCauseCode<'tcx> {
     ExprAssignable,
 
     /// Computing common supertype in the arms of a match expression
-    MatchExpressionArm { arm_span: Span,
-                         source: hir::MatchSource },
+    MatchExpressionArm {
+        arm_span: Span,
+        source: hir::MatchSource,
+    },
+
+    /// Computing common supertype in the pattern guard for the arms of a match expression
+    MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
 
     /// Computing common supertype in an if expression
     IfExpression,

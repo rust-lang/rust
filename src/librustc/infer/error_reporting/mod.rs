@@ -487,6 +487,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn note_error_origin(&self, err: &mut DiagnosticBuilder<'tcx>, cause: &ObligationCause<'tcx>) {
         match cause.code {
+            ObligationCauseCode::MatchExpressionArmPattern { span, ty } => {
+                err.span_label(span, format!("this match expression evaluates to `{}`", ty));
+            }
             ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arm with an incompatible type";

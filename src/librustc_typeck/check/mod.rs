@@ -1084,8 +1084,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
-        fcx.check_pat_walk(&arg.pat, arg_ty,
-            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
+        fcx.check_pat_walk(
+            &arg.pat,
+            arg_ty,
+            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+            None,
+        );
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -4723,9 +4727,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.check_pat_walk(&local.pat, t,
-                            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
-                            true);
+        self.check_pat_walk(
+            &local.pat,
+            t,
+            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+            None,
+        );
         let pat_ty = self.node_ty(local.pat.hir_id);
         if pat_ty.references_error() {
             self.write_ty(local.hir_id, pat_ty);

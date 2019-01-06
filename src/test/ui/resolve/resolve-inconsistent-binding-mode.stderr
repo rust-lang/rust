@@ -23,6 +23,8 @@ LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:7:32
    |
+LL |     match x {
+   |           - this match expression evaluates to `_`
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
    |
@@ -32,6 +34,8 @@ LL |       Opts::A(ref i) | Opts::B(i) => {}
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
    |
+LL |     match x {
+   |           - this match expression evaluates to `_`
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
    |
@@ -41,6 +45,8 @@ LL |       Opts::A(ref i) | Opts::B(i) => {}
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:25:36
    |
+LL |     match x {
+   |           - this match expression evaluates to `_`
 LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
    |                                    ^^^^^ types differ in mutability
    |
