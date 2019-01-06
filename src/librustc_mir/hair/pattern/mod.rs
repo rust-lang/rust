@@ -14,8 +14,8 @@ use hair::constant::*;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
-use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotations, UserType};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
+use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -78,7 +78,7 @@ impl<'tcx> PatternTypeProjection<'tcx> {
         span: Span,
     ) -> UserTypeProjection<'tcx> {
         UserTypeProjection {
-            base: annotations.push((span, self.base)),
+            base: annotations.push(CanonicalUserTypeAnnotation{ span, user_ty: self.base }),
             projs: self.projs
         }
     }

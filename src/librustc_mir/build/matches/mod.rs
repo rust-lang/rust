@@ -9,7 +9,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
 use rustc::mir::*;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
@@ -570,7 +570,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 //
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
-                let annotation = (user_ty_span, user_ty.base);
+                let annotation = CanonicalUserTypeAnnotation {
+                    span: user_ty_span,
+                    user_ty: user_ty.base,
+                };
                 let projection = UserTypeProjection {
                     base: self.canonical_user_type_annotations.push(annotation),
                     projs: user_ty.projs.clone(),

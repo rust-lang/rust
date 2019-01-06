@@ -38,7 +38,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{
     self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
-    UserTypeAnnotationIndex,
+    CanonicalUserTypeAnnotation, UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -920,13 +920,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
              self.mir.user_type_annotations
         );
         for annotation_index in self.mir.user_type_annotations.indices() {
-            let (span, canonical_annotation) = &self.mir.user_type_annotations[annotation_index];
+            let CanonicalUserTypeAnnotation { span, ref user_ty } =
+                self.mir.user_type_annotations[annotation_index];
             let (mut annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                *span, &canonical_annotation
+                span, user_ty
             );
             match annotation {
                 UserType::Ty(ref mut ty) =>
-                    *ty = self.normalize(ty, Locations::All(*span)),
+                    *ty = self.normalize(ty, Locations::All(span)),
                 _ => {},
             }
             self.instantiated_type_annotations.insert(annotation_index, annotation);

@@ -807,7 +807,27 @@ newtype_index! {
 
 /// Mapping of type annotation indices to canonical user type annotations.
 pub type CanonicalUserTypeAnnotations<'tcx> =
-    IndexVec<UserTypeAnnotationIndex, (Span, CanonicalUserType<'tcx>)>;
+    IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct CanonicalUserTypeAnnotation<'tcx> {
+    pub user_ty: CanonicalUserType<'tcx>,
+    pub span: Span,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for CanonicalUserTypeAnnotation<'tcx> {
+        user_ty, span
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for CanonicalUserTypeAnnotation<'a> {
+        type Lifted = CanonicalUserTypeAnnotation<'tcx>;
+        user_ty, span
+    }
+}
+
 
 /// Canonicalized user type annotation.
 pub type CanonicalUserType<'gcx> = Canonical<'gcx, UserType<'gcx>>;

@@ -1240,6 +1240,12 @@ impl_stable_hash_for!(
     }
 );
 
+impl_stable_hash_for!(
+    struct ty::CanonicalUserTypeAnnotation<'tcx> {
+        user_ty, span
+    }
+);
+
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::UserType<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
