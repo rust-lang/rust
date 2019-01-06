@@ -109,8 +109,7 @@ impl db::RootDatabase {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let (file_id, ast_module) = module.source(self);
-        let ast_module = match ast_module {
+        let (file_id, ast_module) = match module.declaration_source(self)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -206,7 +205,7 @@ impl db::RootDatabase {
             })
             .collect::<Vec<_>>();
         if let Some(m) = source_binder::module_from_file_id(self, file_id)? {
-            for (name_node, problem) in m.problems(self) {
+            for (name_node, problem) in m.problems(self)? {
                 let source_root = self.file_source_root(file_id);
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {

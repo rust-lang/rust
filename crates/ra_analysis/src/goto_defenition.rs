@@ -60,8 +60,8 @@ fn name_defenition(
             if let Some(child_module) =
                 hir::source_binder::module_from_declaration(db, file_id, module)?
             {
-                let file_id = child_module.file_id();
-                let name = match child_module.name() {
+                let (file_id, _) = child_module.defenition_source(db)?;
+                let name = match child_module.name(db)? {
                     Some(name) => name.to_string().into(),
                     None => "".into(),
                 };
