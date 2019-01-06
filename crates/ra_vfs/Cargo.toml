@@ -18,3 +18,4 @@ ra_arena = { path = "../ra_arena" }
 
 [dev-dependencies]
 tempfile = "3"
+flexi_logger = "0.10.0"

@@ -1009,6 +1009,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "notify 4.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",

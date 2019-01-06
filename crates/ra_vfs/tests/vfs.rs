@@ -1,14 +1,13 @@
-use std::{
-    fs,
-    collections::HashSet,
-};
+use std::{collections::HashSet, fs};
 
-use tempfile::tempdir;
-
+use flexi_logger::Logger;
 use ra_vfs::{Vfs, VfsChange};
+use tempfile::tempdir;
 
 #[test]
 fn test_vfs_works() -> std::io::Result<()> {
+    Logger::with_str("debug").start().unwrap();
+
     let files = [
         ("a/foo.rs", "hello"),
         ("a/bar.rs", "world"),
@@ -58,42 +57,89 @@ fn test_vfs_works() -> std::io::Result<()> {
         assert_eq!(files, expected_files);
     }
 
-    vfs.add_file_overlay(&dir.path().join("a/b/baz.rs"), "quux".to_string());
-    let change = vfs.commit_changes().pop().unwrap();
-    match change {
-        VfsChange::ChangeFile { text, .. } => assert_eq!(&*text, "quux"),
-        _ => panic!("unexpected change"),
+    // on disk change
+    fs::write(&dir.path().join("a/b/baz.rs"), "quux").unwrap();
+    let change = vfs.change_receiver().recv().unwrap();
+    vfs.handle_change(change);
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
+        _ => panic!("unexpected changes"),
     }
 
-    vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
-    let change = vfs.commit_changes().pop().unwrap();
-    match change {
-        VfsChange::ChangeFile { text, .. } => assert_eq!(&*text, "m"),
-        _ => panic!("unexpected change"),
+    // in memory change
+    vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), Some("m".to_string()));
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "m"),
+        _ => panic!("unexpected changes"),
     }
 
+    // in memory remove, restores data on disk
     vfs.remove_file_overlay(&dir.path().join("a/b/baz.rs"));
-    let change = vfs.commit_changes().pop().unwrap();
-    match change {
-        VfsChange::ChangeFile { text, .. } => assert_eq!(&*text, "nested hello"),
-        _ => panic!("unexpected change"),
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
+        _ => panic!("unexpected changes"),
     }
 
-    vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
-    let change = vfs.commit_changes().pop().unwrap();
-    match change {
-        VfsChange::AddFile { text, path, .. } => {
-            assert_eq!(&*text, "spam");
+    // in memory add
+    vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), Some("spam".to_string()));
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::AddFile { text, path, .. }] => {
+            assert_eq!(text.as_str(), "spam");
             assert_eq!(path, "spam.rs");
         }
-        _ => panic!("unexpected change"),
+        _ => panic!("unexpected changes"),
     }
 
+    // in memory remove
     vfs.remove_file_overlay(&dir.path().join("a/b/spam.rs"));
-    let change = vfs.commit_changes().pop().unwrap();
-    match change {
-        VfsChange::RemoveFile { .. } => (),
-        _ => panic!("unexpected change"),
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "spam.rs"),
+        _ => panic!("unexpected changes"),
+    }
+
+    // on disk add
+    fs::write(&dir.path().join("a/new.rs"), "new hello").unwrap();
+    let change = vfs.change_receiver().recv().unwrap();
+    vfs.handle_change(change);
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::AddFile { text, path, .. }] => {
+            assert_eq!(text.as_str(), "new hello");
+            assert_eq!(path, "new.rs");
+        }
+        _ => panic!("unexpected changes"),
+    }
+
+    // on disk rename
+    fs::rename(&dir.path().join("a/new.rs"), &dir.path().join("a/new1.rs")).unwrap();
+    let change = vfs.change_receiver().recv().unwrap();
+    vfs.handle_change(change);
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::RemoveFile {
+            path: removed_path, ..
+        }, VfsChange::AddFile {
+            text,
+            path: added_path,
+            ..
+        }] => {
+            assert_eq!(removed_path, "new.rs");
+            assert_eq!(added_path, "new1.rs");
+            assert_eq!(text.as_str(), "new hello");
+        }
+        _ => panic!("unexpected changes"),
+    }
+
+    // on disk remove
+    fs::remove_file(&dir.path().join("a/new1.rs")).unwrap();
+    let change = vfs.change_receiver().recv().unwrap();
+    vfs.handle_change(change);
+    match vfs.commit_changes().as_slice() {
+        [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "new1.rs"),
+        _ => panic!("unexpected changes"),
+    }
+
+    match vfs.change_receiver().try_recv() {
+        Err(crossbeam_channel::TryRecvError::Empty) => (),
+        res => panic!("unexpected {:?}", res),
     }
 
     vfs.shutdown().unwrap();

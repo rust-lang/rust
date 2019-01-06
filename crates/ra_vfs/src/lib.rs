@@ -98,7 +98,7 @@ impl Vfs {
     pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let (worker, worker_handle) = io::start();
 
-        let watcher = Watcher::new().unwrap(); // TODO return Result?
+        let watcher = Watcher::start().unwrap(); // TODO return Result?
 
         let mut res = Vfs {
             roots: Arena::default(),

@@ -39,7 +39,6 @@ impl WatcherChange {
             DebouncedEvent::Remove(path) => Some(WatcherChange::Remove(path)),
             DebouncedEvent::Rename(src, dst) => Some(WatcherChange::Rename(src, dst)),
             DebouncedEvent::Error(err, path) => {
-                // TODO
                 log::warn!("watch error {}, {:?}", err, path);
                 None
             }
@@ -48,23 +47,17 @@ impl WatcherChange {
 }
 
 impl Watcher {
-    pub fn new() -> Result<Watcher, Box<std::error::Error>> {
+    pub fn start() -> Result<Watcher, Box<std::error::Error>> {
         let (input_sender, input_receiver) = mpsc::channel();
         let watcher = notify::watcher(input_sender, Duration::from_millis(250))?;
         let (output_sender, output_receiver) = crossbeam_channel::unbounded();
-        let thread = thread::spawn(move || loop {
-            match input_receiver.recv() {
-                Ok(ev) => {
-                    // forward relevant events only
-                    if let Some(change) = WatcherChange::from_debounced_event(ev) {
-                        output_sender.send(change).unwrap();
-                    }
-                }
-                Err(err) => {
-                    log::debug!("Watcher stopped ({})", err);
-                    break;
-                }
-            }
+        let thread = thread::spawn(move || {
+            input_receiver
+                .into_iter()
+                // forward relevant events only
+                .filter_map(WatcherChange::from_debounced_event)
+                .try_for_each(|change| output_sender.send(change))
+                .unwrap()
         });
         Ok(Watcher {
             receiver: output_receiver,
@@ -86,11 +79,13 @@ impl Watcher {
     pub fn shutdown(mut self) -> thread::Result<()> {
         self.bomb.defuse();
         drop(self.watcher);
-        let res = self.thread.join();
-        match &res {
-            Ok(()) => log::info!("... Watcher terminated with ok"),
-            Err(_) => log::error!("... Watcher terminated with err"),
-        }
-        res
+        // TODO this doesn't terminate for some reason
+        // let res = self.thread.join();
+        // match &res {
+        //     Ok(()) => log::info!("... Watcher terminated with ok"),
+        //     Err(_) => log::error!("... Watcher terminated with err"),
+        // }
+        // res
+        Ok(())
     }
 }
