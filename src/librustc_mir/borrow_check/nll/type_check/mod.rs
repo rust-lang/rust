@@ -37,7 +37,7 @@ use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{
-    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserTypeAnnotation,
+    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
     UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -748,7 +748,7 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     /// annotations. Part of the reason for this setup is that it allows us to enforce basic
     /// WF criteria on the types even if the code that referenced them is dead
     /// code (see #54943).
-    instantiated_type_annotations: FxHashMap<UserTypeAnnotationIndex, UserTypeAnnotation<'tcx>>,
+    instantiated_type_annotations: FxHashMap<UserTypeAnnotationIndex, UserType<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -925,7 +925,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 *span, &canonical_annotation
             );
             match annotation {
-                UserTypeAnnotation::Ty(ref mut ty) =>
+                UserType::Ty(ref mut ty) =>
                     *ty = self.normalize(ty, Locations::All(*span)),
                 _ => {},
             }
@@ -1068,7 +1068,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let type_annotation = self.instantiated_type_annotations[&user_ty.base];
         match type_annotation {
-            UserTypeAnnotation::Ty(ty) => {
+            UserType::Ty(ty) => {
                 // The `TypeRelating` code assumes that "unresolved inference
                 // variables" appear in the "a" side, so flip `Contravariant`
                 // ambient variance to get the right relationship.
@@ -1107,7 +1107,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.relate_types(ty, v1, a, locations, category)?;
                 }
             }
-            UserTypeAnnotation::TypeOf(def_id, user_substs) => {
+            UserType::TypeOf(def_id, user_substs) => {
                 let projs = self.infcx.tcx.intern_projs(&user_ty.projs);
                 self.fully_perform_op(
                     locations,

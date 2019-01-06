@@ -221,7 +221,7 @@ macro_rules! make_mir_visitor {
             fn visit_user_type_annotation(
                 &mut self,
                 index: UserTypeAnnotationIndex,
-                ty: & $($mutability)* Canonical<'tcx, UserTypeAnnotation<'tcx>>,
+                ty: & $($mutability)* Canonical<'tcx, UserType<'tcx>>,
             ) {
                 self.super_user_type_annotation(index, ty);
             }
@@ -882,7 +882,7 @@ macro_rules! make_mir_visitor {
             fn super_user_type_annotation(
                 &mut self,
                 _index: UserTypeAnnotationIndex,
-                _ty: & $($mutability)* Canonical<'tcx, UserTypeAnnotation<'tcx>>,
+                _ty: & $($mutability)* Canonical<'tcx, UserType<'tcx>>,
             ) {
             }
 

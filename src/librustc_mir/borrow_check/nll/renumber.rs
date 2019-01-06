@@ -1,7 +1,7 @@
 use rustc::infer::canonical::Canonical;
 use rustc::ty::subst::Substs;
 use rustc::ty::{
-    self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable, UserTypeAnnotation,
+    self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable, UserType,
     UserTypeAnnotationIndex,
 };
 use rustc::mir::{Location, Mir};
@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_user_type_annotation(
         &mut self,
         _index: UserTypeAnnotationIndex,
-        _ty: &mut Canonical<'tcx, UserTypeAnnotation<'tcx>>,
+        _ty: &mut Canonical<'tcx, UserType<'tcx>>,
     ) {
         // User type annotations represent the types that the user
         // wrote in the progarm. We don't want to erase the regions

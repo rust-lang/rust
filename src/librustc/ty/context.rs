@@ -800,7 +800,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
 newtype_index! {
     pub struct UserTypeAnnotationIndex {
-        DEBUG_FORMAT = "UserTypeAnnotation({})",
+        DEBUG_FORMAT = "UserType({})",
         const START_INDEX = 0,
     }
 }
@@ -810,15 +810,15 @@ pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, (Span, CanonicalUserTypeAnnotation<'tcx>)>;
 
 /// Canonicalized user type annotation.
-pub type CanonicalUserTypeAnnotation<'gcx> = Canonical<'gcx, UserTypeAnnotation<'gcx>>;
+pub type CanonicalUserTypeAnnotation<'gcx> = Canonical<'gcx, UserType<'gcx>>;
 
 impl CanonicalUserTypeAnnotation<'gcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e. each thing is mapped to a canonical variable with the same index.
     pub fn is_identity(&self) -> bool {
         match self.value {
-            UserTypeAnnotation::Ty(_) => false,
-            UserTypeAnnotation::TypeOf(_, user_substs) => {
+            UserType::Ty(_) => false,
+            UserType::TypeOf(_, user_substs) => {
                 if user_substs.user_self_ty.is_some() {
                     return false;
                 }
@@ -853,7 +853,7 @@ impl CanonicalUserTypeAnnotation<'gcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub enum UserTypeAnnotation<'tcx> {
+pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
@@ -862,17 +862,17 @@ pub enum UserTypeAnnotation<'tcx> {
 }
 
 EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserTypeAnnotation<'tcx> {
-        (UserTypeAnnotation::Ty)(ty),
-        (UserTypeAnnotation::TypeOf)(def, substs),
+    impl<'tcx> TypeFoldable<'tcx> for UserType<'tcx> {
+        (UserType::Ty)(ty),
+        (UserType::TypeOf)(def, substs),
     }
 }
 
 EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for UserTypeAnnotation<'a> {
-        type Lifted = UserTypeAnnotation<'tcx>;
-        (UserTypeAnnotation::Ty)(ty),
-        (UserTypeAnnotation::TypeOf)(def, substs),
+    impl<'a, 'tcx> Lift<'tcx> for UserType<'a> {
+        type Lifted = UserType<'tcx>;
+        (UserType::Ty)(ty),
+        (UserType::TypeOf)(def, substs),
     }
 }
 

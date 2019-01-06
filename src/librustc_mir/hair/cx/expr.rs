@@ -278,7 +278,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let user_ty = user_provided_types.get(fun.hir_id)
                         .map(|u_ty| *u_ty)
                         .map(|mut u_ty| {
-                            if let UserTypeAnnotation::TypeOf(ref mut did, _) = &mut u_ty.value {
+                            if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
                                 *did = adt_def.did;
                             }
                             u_ty
