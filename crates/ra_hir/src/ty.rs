@@ -526,6 +526,20 @@ struct InferenceContext<'a, D: HirDatabase> {
     return_ty: Ty,
 }
 
+// helper function that determines whether a binary operator
+// always returns a boolean
+fn is_boolean_operator(op: BinOp) -> bool {
+    match op {
+        BinOp::BooleanOr
+        | BinOp::BooleanAnd
+        | BinOp::EqualityTest
+        | BinOp::LesserEqualTest
+        | BinOp::GreaterEqualTest
+        | BinOp::LesserTest
+        | BinOp::GreaterTest => true,
+    }
+}
+
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(
         db: &'a D,
@@ -907,13 +921,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             ast::Expr::RangeExpr(_e) => Ty::Unknown,
             ast::Expr::BinExpr(e) => match e.op() {
-                Some(BinOp::BooleanOr)
-                | Some(BinOp::BooleanAnd)
-                | Some(BinOp::EqualityTest)
-                | Some(BinOp::LesserEqualTest)
-                | Some(BinOp::GreaterEqualTest)
-                | Some(BinOp::LesserTest)
-                | Some(BinOp::GreaterTest) => Ty::Bool,
+                Some(op) => {
+                    let subtype_expectation = match op {
+                        BinOp::BooleanAnd | BinOp::BooleanOr => Expectation::has_type(Ty::Bool),
+                        _ => Expectation::none(),
+                    };
+                    let (lhs, rhs) = e.sub_exprs();
+                    let _lhs_ty = self.infer_expr_opt(lhs, &subtype_expectation)?;
+                    let _rhs_ty = self.infer_expr_opt(rhs, &subtype_expectation)?;
+
+                    if is_boolean_operator(op) {
+                        Ty::Bool
+                    } else {
+                        Ty::Unknown
+                    }
+                }
                 _ => Ty::Unknown,
             },
             ast::Expr::Literal(_e) => Ty::Unknown,

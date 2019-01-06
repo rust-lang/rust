@@ -157,11 +157,18 @@ impl S {
 fn infer_boolean_op() {
     check_inference(
         r#"
+fn f(x: bool) -> i32 {
+    0i32
+}
+
 fn test() {
     let x = a && b;
     let y = true || false;
     let z = x == y;
     let h = CONST_1 <= CONST_2;
+    let c = f(z || y) + 5;
+    let d = b;
+    let e = 3i32 && "hello world";
 
     10 < 3
 }

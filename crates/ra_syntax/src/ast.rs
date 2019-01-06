@@ -511,19 +511,32 @@ impl<'a> BinExpr<'a> {
     pub fn op(&self) -> Option<BinOp> {
         self.syntax()
             .children()
-            .filter_map(|c| {
-                match c.kind() {
-                    PIPEPIPE => Some(BinOp::BooleanOr),
-                    AMPAMP => Some(BinOp::BooleanAnd),
-                    EQEQ => Some(BinOp::EqualityTest),
-                    LTEQ => Some(BinOp::LesserEqualTest),
-                    GTEQ => Some(BinOp::GreaterEqualTest),
-                    L_ANGLE => Some(BinOp::LesserTest),
-                    R_ANGLE => Some(BinOp::GreaterTest),
-                    _ => None,
-                }
+            .filter_map(|c| match c.kind() {
+                PIPEPIPE => Some(BinOp::BooleanOr),
+                AMPAMP => Some(BinOp::BooleanAnd),
+                EQEQ => Some(BinOp::EqualityTest),
+                LTEQ => Some(BinOp::LesserEqualTest),
+                GTEQ => Some(BinOp::GreaterEqualTest),
+                L_ANGLE => Some(BinOp::LesserTest),
+                R_ANGLE => Some(BinOp::GreaterTest),
+                _ => None,
             })
             .next()
+    }
+
+    pub fn lhs(self) -> Option<Expr<'a>> {
+        children(self).nth(0)
+    }
+
+    pub fn rhs(self) -> Option<Expr<'a>> {
+        children(self).nth(1)
+    }
+
+    pub fn sub_exprs(self) -> (Option<Expr<'a>>, Option<Expr<'a>>) {
+        let mut children = children(self);
+        let first = children.next();
+        let second = children.next();
+        (first, second)
     }
 }
 
