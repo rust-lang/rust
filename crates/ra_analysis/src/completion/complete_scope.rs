@@ -20,14 +20,17 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
     }
 
     let module_scope = module.scope(ctx.db)?;
+    let (file_id, _) = module.defenition_source(ctx.db)?;
     module_scope
         .entries()
         .filter(|(_name, res)| {
             // Don't expose this item
+            // FIXME: this penetrates through all kinds of abstractions,
+            // we need to figura out the way to do it less ugly.
             match res.import {
                 None => true,
                 Some(import) => {
-                    let range = import.range(ctx.db, module.file_id());
+                    let range = import.range(ctx.db, file_id);
                     !range.is_subrange(&ctx.leaf.range())
                 }
             }

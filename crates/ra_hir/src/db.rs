@@ -9,8 +9,8 @@ use crate::{
     query_definitions,
     FnSignature, FnScopes,
     macros::MacroExpansion,
-    module::{ModuleId, ModuleTree, ModuleSource,
-    nameres::{ItemMap, InputModuleItems}},
+    module_tree::{ModuleId, ModuleTree, ModuleSource},
+    nameres::{ItemMap, InputModuleItems},
     ty::{InferenceResult, Ty},
     adt::{StructData, EnumData},
     impl_block::ModuleImplBlocks,
@@ -71,9 +71,9 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::file_item;
     }
 
-    fn submodules(source: ModuleSource) -> Cancelable<Arc<Vec<crate::module::imp::Submodule>>> {
+    fn submodules(source: ModuleSource) -> Cancelable<Arc<Vec<crate::module_tree::Submodule>>> {
         type SubmodulesQuery;
-        use fn query_definitions::submodules;
+        use fn crate::module_tree::Submodule::submodules_query;
     }
 
     fn input_module_items(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<InputModuleItems>> {
@@ -86,7 +86,7 @@ pub trait HirDatabase: SyntaxDatabase
     }
     fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
         type ModuleTreeQuery;
-        use fn crate::module::imp::module_tree;
+        use fn crate::module_tree::ModuleTree::module_tree_query;
     }
 
     fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {

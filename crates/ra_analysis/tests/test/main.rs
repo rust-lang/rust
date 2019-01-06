@@ -31,6 +31,7 @@ fn test_unresolved_module_diagnostic() {
     );
 }
 
+// FIXME: move this test to hir
 #[test]
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
     let (analysis, file_id) = single_file("mod foo {}");

@@ -31,7 +31,7 @@ use crate::{
     Path, PathKind,
     HirDatabase, Crate,
     Name, AsName,
-    module::{Module, ModuleId, ModuleTree},
+    module_tree::{ModuleId, ModuleTree},
 };
 
 /// Item map is the result of the name resolution. Item map contains, for each
@@ -177,11 +177,11 @@ impl<T> PerNs<T> {
     }
 
     pub fn take_types(self) -> Option<T> {
-        self.types
+        self.take(Namespace::Types)
     }
 
     pub fn take_values(self) -> Option<T> {
-        self.values
+        self.take(Namespace::Values)
     }
 
     pub fn get(&self, namespace: Namespace) -> Option<&T> {
@@ -344,9 +344,9 @@ where
             if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
             {
                 let krate = Crate::new(crate_id);
-                for dep in krate.dependencies(self.db) {
+                for dep in krate.dependencies(self.db)? {
                     if let Some(module) = dep.krate.root_module(self.db)? {
-                        let def_id = module.def_id(self.db);
+                        let def_id = module.def_id;
                         self.add_module_item(
                             &mut module_items,
                             dep.name.clone(),
@@ -466,7 +466,7 @@ where
                         if source_root_id == self.source_root {
                             target_module_id
                         } else {
-                            let module = Module::new(self.db, source_root_id, target_module_id)?;
+                            let module = crate::code_model_api::Module::new(type_def_id);
                             let path = Path {
                                 segments: import.path.segments[i + 1..].iter().cloned().collect(),
                                 kind: PathKind::Crate,

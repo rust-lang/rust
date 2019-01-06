@@ -24,15 +24,17 @@ pub mod source_binder;
 mod ids;
 mod macros;
 mod name;
-// can't use `crate` or `r#crate` here :(
-mod krate;
-mod module;
+mod module_tree;
+mod nameres;
 mod function;
 mod adt;
 mod type_ref;
 mod ty;
 mod impl_block;
 mod expr;
+
+mod code_model_api;
+mod code_model_impl;
 
 use crate::{
     db::HirDatabase,
@@ -43,10 +45,10 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    krate::Crate,
     ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc},
     macros::{MacroDef, MacroInput, MacroExpansion},
-    module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
+    module_tree::ModuleId,
+    nameres::{ItemMap, PerNs, Namespace, Resolution},
     function::{Function, FnSignature, FnScopes, ScopesWithSyntaxMapping},
     adt::{Struct, Enum},
     ty::Ty,
@@ -54,6 +56,11 @@ pub use self::{
 };
 
 pub use self::function::FnSignatureInfo;
+
+pub use self::code_model_api::{
+    Crate, CrateDependency,
+    Module, ModuleSource, Problem,
+};
 
 pub enum Def {
     Module(Module),

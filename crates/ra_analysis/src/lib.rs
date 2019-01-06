@@ -397,7 +397,7 @@ impl Analysis {
     }
     /// Returns the root file of the given crate.
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
-        Ok(self.db.crate_root(crate_id))
+        Ok(self.db.crate_graph().crate_root(crate_id))
     }
     /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {

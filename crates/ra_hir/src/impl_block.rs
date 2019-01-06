@@ -7,11 +7,13 @@ use ra_db::{LocationIntener, Cancelable, SourceRootId};
 
 use crate::{
     DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
-    Module, Function,
+    Function,
     db::HirDatabase,
     type_ref::TypeRef,
-    module::{ModuleSourceNode, ModuleId},
+    module_tree::ModuleId,
 };
+
+use crate::code_model_api::{Module, ModuleSource};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplBlock {
@@ -64,7 +66,7 @@ impl ImplData {
     ) -> Self {
         let target_trait = node.target_type().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
-        let file_id = module.source().file_id();
+        let module_loc = module.def_id.loc(db);
         let items = if let Some(item_list) = node.item_list() {
             item_list
                 .impl_items()
@@ -75,14 +77,14 @@ impl ImplData {
                         ast::ImplItem::TypeDef(..) => DefKind::Item,
                     };
                     let item_id = file_items.id_of_unchecked(item_node.syntax());
+                    let source_item_id = SourceItemId {
+                        file_id: module_loc.source_item_id.file_id,
+                        item_id: Some(item_id),
+                    };
                     let def_loc = DefLoc {
                         kind,
-                        source_root_id: module.source_root_id,
-                        module_id: module.module_id,
-                        source_item_id: SourceItemId {
-                            file_id,
-                            item_id: Some(item_id),
-                        },
+                        source_item_id,
+                        ..module_loc
                     };
                     let def_id = def_loc.id(db);
                     match item_node {
@@ -148,13 +150,13 @@ impl ModuleImplBlocks {
     }
 
     fn collect(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
-        let module_source_node = module.source().resolve(db);
-        let node = match &module_source_node {
-            ModuleSourceNode::SourceFile(node) => node.borrowed().syntax(),
-            ModuleSourceNode::Module(node) => node.borrowed().syntax(),
+        let (file_id, module_source) = module.defenition_source(db)?;
+        let node = match &module_source {
+            ModuleSource::SourceFile(node) => node.borrowed().syntax(),
+            ModuleSource::Module(node) => node.borrowed().syntax(),
         };
 
-        let source_file_items = db.file_items(module.source().file_id());
+        let source_file_items = db.file_items(file_id.into());
 
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
             let impl_block = ImplData::from_ast(db, &source_file_items, &module, impl_block_ast);
@@ -174,7 +176,7 @@ pub(crate) fn impls_in_module(
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleImplBlocks>> {
     let mut result = ModuleImplBlocks::new();
-    let module = Module::new(db, source_root_id, module_id)?;
+    let module = Module::from_module_id(db, source_root_id, module_id)?;
     result.collect(db, module)?;
     Ok(Arc::new(result))
 }
