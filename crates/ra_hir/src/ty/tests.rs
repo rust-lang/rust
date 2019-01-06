@@ -195,16 +195,16 @@ fn infer(content: &str) -> String {
         let inference_result = func.infer(&db).unwrap();
         let body_syntax_mapping = func.body_syntax_mapping(&db).unwrap();
         let mut types = Vec::new();
-        for (pat, ty) in &inference_result.type_of_pat {
-            let syntax_ptr = if let Some(sp) = body_syntax_mapping.pat_syntax(*pat) {
+        for (pat, ty) in inference_result.type_of_pat.iter() {
+            let syntax_ptr = if let Some(sp) = body_syntax_mapping.pat_syntax(pat) {
                 sp
             } else {
                 continue;
             };
             types.push((syntax_ptr, ty));
         }
-        for (expr, ty) in &inference_result.type_of_expr {
-            let syntax_ptr = if let Some(sp) = body_syntax_mapping.expr_syntax(*expr) {
+        for (expr, ty) in inference_result.type_of_expr.iter() {
+            let syntax_ptr = if let Some(sp) = body_syntax_mapping.expr_syntax(expr) {
                 sp
             } else {
                 continue;

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 
-use ra_arena::{Arena, RawId, impl_arena_id};
+use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::{SyntaxNodeRef, ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner}};
 
@@ -39,9 +39,9 @@ pub struct Body {
 pub struct BodySyntaxMapping {
     body: Arc<Body>,
     expr_syntax_mapping: FxHashMap<LocalSyntaxPtr, ExprId>,
-    expr_syntax_mapping_back: FxHashMap<ExprId, LocalSyntaxPtr>,
+    expr_syntax_mapping_back: ArenaMap<ExprId, LocalSyntaxPtr>,
     pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
-    pat_syntax_mapping_back: FxHashMap<PatId, LocalSyntaxPtr>,
+    pat_syntax_mapping_back: ArenaMap<PatId, LocalSyntaxPtr>,
 }
 
 impl Body {
@@ -72,7 +72,7 @@ impl Index<PatId> for Body {
 
 impl BodySyntaxMapping {
     pub fn expr_syntax(&self, expr: ExprId) -> Option<LocalSyntaxPtr> {
-        self.expr_syntax_mapping_back.get(&expr).cloned()
+        self.expr_syntax_mapping_back.get(expr).cloned()
     }
     pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
@@ -83,7 +83,7 @@ impl BodySyntaxMapping {
             .cloned()
     }
     pub fn pat_syntax(&self, pat: PatId) -> Option<LocalSyntaxPtr> {
-        self.pat_syntax_mapping_back.get(&pat).cloned()
+        self.pat_syntax_mapping_back.get(pat).cloned()
     }
     pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
@@ -334,9 +334,9 @@ struct ExprCollector {
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     expr_syntax_mapping: FxHashMap<LocalSyntaxPtr, ExprId>,
-    expr_syntax_mapping_back: FxHashMap<ExprId, LocalSyntaxPtr>,
+    expr_syntax_mapping_back: ArenaMap<ExprId, LocalSyntaxPtr>,
     pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
-    pat_syntax_mapping_back: FxHashMap<PatId, LocalSyntaxPtr>,
+    pat_syntax_mapping_back: ArenaMap<PatId, LocalSyntaxPtr>,
 }
 
 impl ExprCollector {
@@ -345,9 +345,9 @@ impl ExprCollector {
             exprs: Arena::default(),
             pats: Arena::default(),
             expr_syntax_mapping: FxHashMap::default(),
-            expr_syntax_mapping_back: FxHashMap::default(),
+            expr_syntax_mapping_back: ArenaMap::default(),
             pat_syntax_mapping: FxHashMap::default(),
-            pat_syntax_mapping_back: FxHashMap::default(),
+            pat_syntax_mapping_back: ArenaMap::default(),
         }
     }
 

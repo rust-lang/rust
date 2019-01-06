@@ -22,8 +22,8 @@ use std::sync::Arc;
 use std::{fmt, mem};
 
 use log;
-use rustc_hash::FxHashMap;
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
+use ra_arena::map::ArenaMap;
 
 use ra_db::Cancelable;
 
@@ -470,15 +470,15 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
-    type_of_expr: FxHashMap<ExprId, Ty>,
-    type_of_pat: FxHashMap<PatId, Ty>,
+    type_of_expr: ArenaMap<ExprId, Ty>,
+    type_of_pat: ArenaMap<PatId, Ty>,
 }
 
 impl Index<ExprId> for InferenceResult {
     type Output = Ty;
 
     fn index(&self, expr: ExprId) -> &Ty {
-        self.type_of_expr.get(&expr).unwrap_or(&Ty::Unknown)
+        self.type_of_expr.get(expr).unwrap_or(&Ty::Unknown)
     }
 }
 
@@ -486,7 +486,7 @@ impl Index<PatId> for InferenceResult {
     type Output = Ty;
 
     fn index(&self, pat: PatId) -> &Ty {
-        self.type_of_pat.get(&pat).unwrap_or(&Ty::Unknown)
+        self.type_of_pat.get(pat).unwrap_or(&Ty::Unknown)
     }
 }
 
@@ -499,8 +499,8 @@ struct InferenceContext<'a, D: HirDatabase> {
     module: Module,
     impl_block: Option<ImplBlock>,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
-    type_of_expr: FxHashMap<ExprId, Ty>,
-    type_of_pat: FxHashMap<PatId, Ty>,
+    type_of_expr: ArenaMap<ExprId, Ty>,
+    type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
     return_ty: Ty,
 }
@@ -528,8 +528,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         impl_block: Option<ImplBlock>,
     ) -> Self {
         InferenceContext {
-            type_of_expr: FxHashMap::default(),
-            type_of_pat: FxHashMap::default(),
+            type_of_expr: ArenaMap::default(),
+            type_of_pat: ArenaMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
@@ -541,12 +541,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_all(mut self) -> InferenceResult {
-        let mut expr_types = mem::replace(&mut self.type_of_expr, FxHashMap::default());
+        let mut expr_types = mem::replace(&mut self.type_of_expr, ArenaMap::default());
         for ty in expr_types.values_mut() {
             let resolved = self.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
-        let mut pat_types = mem::replace(&mut self.type_of_pat, FxHashMap::default());
+        let mut pat_types = mem::replace(&mut self.type_of_pat, ArenaMap::default());
         for ty in pat_types.values_mut() {
             let resolved = self.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
             *ty = resolved;
@@ -666,7 +666,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // resolve locally
             let name = path.as_ident().cloned().unwrap_or_else(Name::self_param);
             if let Some(scope_entry) = self.scopes.resolve_local_name(expr, name) {
-                let ty = ctry!(self.type_of_pat.get(&scope_entry.pat()));
+                let ty = ctry!(self.type_of_pat.get(scope_entry.pat()));
                 let ty = self.resolve_ty_as_possible(ty.clone());
                 return Ok(Some(ty));
             };
