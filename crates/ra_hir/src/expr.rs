@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
-use ra_syntax::{SyntaxNodeRef, ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner}};
+use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner};
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
 
@@ -77,9 +77,9 @@ impl BodySyntaxMapping {
     pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
     }
-    pub fn node_expr(&self, node: SyntaxNodeRef) -> Option<ExprId> {
+    pub fn node_expr(&self, node: ast::Expr) -> Option<ExprId> {
         self.expr_syntax_mapping
-            .get(&LocalSyntaxPtr::new(node))
+            .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()
     }
     pub fn pat_syntax(&self, pat: PatId) -> Option<LocalSyntaxPtr> {
@@ -88,9 +88,9 @@ impl BodySyntaxMapping {
     pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
     }
-    pub fn node_pat(&self, node: SyntaxNodeRef) -> Option<PatId> {
+    pub fn node_pat(&self, node: ast::Pat) -> Option<PatId> {
         self.pat_syntax_mapping
-            .get(&LocalSyntaxPtr::new(node))
+            .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()
     }
 

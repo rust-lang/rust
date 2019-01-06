@@ -1,5 +1,3 @@
-use ra_db::LocalSyntaxPtr;
-use ra_syntax::ast::AstNode;
 use hir::{Ty, Def};
 
 use crate::Cancelable;
@@ -13,12 +11,10 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
     };
     let infer_result = function.infer(ctx.db)?;
     let syntax_mapping = function.body_syntax_mapping(ctx.db)?;
-    let expr =
-        if let Some(expr) = syntax_mapping.syntax_expr(LocalSyntaxPtr::new(receiver.syntax())) {
-            expr
-        } else {
-            return Ok(());
-        };
+    let expr = match syntax_mapping.node_expr(receiver) {
+        Some(expr) => expr,
+        None => return Ok(()),
+    };
     let receiver_ty = infer_result[expr].clone();
     if !ctx.is_method_call {
         complete_fields(acc, ctx, receiver_ty)?;

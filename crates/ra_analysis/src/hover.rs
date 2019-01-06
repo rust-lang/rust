@@ -65,9 +65,9 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Cancelable<Option
     )?);
     let infer = function.infer(db)?;
     let syntax_mapping = function.body_syntax_mapping(db)?;
-    if let Some(expr) = syntax_mapping.node_expr(node) {
+    if let Some(expr) = ast::Expr::cast(node).and_then(|e| syntax_mapping.node_expr(e)) {
         Ok(Some(infer[expr].to_string()))
-    } else if let Some(pat) = syntax_mapping.node_pat(node) {
+    } else if let Some(pat) = ast::Pat::cast(node).and_then(|p| syntax_mapping.node_pat(p)) {
         Ok(Some(infer[pat].to_string()))
     } else {
         Ok(None)
