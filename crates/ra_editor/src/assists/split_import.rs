@@ -19,7 +19,10 @@ pub fn split_import(ctx: AssistCtx) -> Option<Assist> {
     }
 
     let l_curly = colon_colon.range().end();
-    let r_curly = top_path.syntax().range().end();
+    let r_curly = match top_path.syntax().parent().and_then(ast::UseTree::cast) {
+        Some(tree) => tree.syntax().range().end(),
+        None => top_path.syntax().range().end(),
+    };
 
     ctx.build("split import", |edit| {
         edit.insert(l_curly, "{");
@@ -39,6 +42,15 @@ mod tests {
             split_import,
             "use crate::<|>db::RootDatabase;",
             "use crate::{<|>db::RootDatabase};",
+        )
+    }
+
+    #[test]
+    fn split_import_works_with_trees() {
+        check_assist(
+            split_import,
+            "use algo:<|>:visitor::{Visitor, visit}",
+            "use algo::{<|>visitor::{Visitor, visit}}",
         )
     }
 }
