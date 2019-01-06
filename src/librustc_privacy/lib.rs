@@ -51,7 +51,8 @@ mod diagnostics;
 /// in `impl Trait`, see individual commits in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'a, 'tcx: 'a> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
-    fn recurse_into_assoc_tys(&self) -> bool { true }
+    fn shallow(&self) -> bool { false }
+    fn skip_assoc_tys(&self) -> bool { false }
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool;
 
     /// Not overridden, but used to actually visit types and traits.
@@ -86,7 +87,8 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         let TraitRef { def_id, substs } = trait_ref;
-        self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) || substs.visit_with(self)
+        self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) ||
+        (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 
     fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
@@ -138,6 +140,9 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 if self.def_id_visitor.visit_def_id(def_id, "type", ty) {
                     return true;
                 }
+                if self.def_id_visitor.shallow() {
+                    return false;
+                }
                 // Default type visitor doesn't visit signatures of fn types.
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
@@ -159,7 +164,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 }
             }
             ty::Projection(proj) | ty::UnnormalizedProjection(proj) => {
-                if !self.def_id_visitor.recurse_into_assoc_tys() {
+                if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `<Type as Trait>::Alias`
                     // as visible/reachable even if both `Type` and `Trait` are private.
@@ -167,10 +172,12 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                     // free type aliases, but this isn't done yet.
                     return false;
                 }
-                // This will also visit substs, so we don't need to recurse.
+                // This will also visit substs if necessary, so we don't need to recurse.
                 return self.visit_trait(proj.trait_ref(tcx));
             }
             ty::Dynamic(predicates, ..) => {
+                // All traits in the list are considered the "primary" part of the type
+                // and are visited by shallow visitors.
                 for predicate in *predicates.skip_binder() {
                     let trait_ref = match *predicate {
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
@@ -187,9 +194,13 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
             ty::Opaque(def_id, ..) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
                 if self.visited_opaque_tys.insert(def_id) {
-                    // Default type visitor doesn't visit traits in `impl Trait`.
-                    // Something like `impl PrivTr` is considered a private type,
-                    // so we need to visit the traits additionally.
+                    // The intent is to treat `impl Trait1 + Trait2` identically to
+                    // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
+                    // (it either has no visibility, or its visibility is insignificant, like
+                    // visibilities of type aliases) and recurse into predicates instead to go
+                    // through the trait list (default type visitor doesn't visit those traits).
+                    // All traits in the list are considered the "primary" part of the type
+                    // and are visited by shallow visitors.
                     if self.visit_predicates(tcx.predicates_of(def_id)) {
                         return true;
                     }
@@ -206,7 +217,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 bug!("unexpected type: {:?}", ty),
         }
 
-        ty.super_visit_with(self)
+        !self.def_id_visitor.shallow() && ty.super_visit_with(self)
     }
 }
 
@@ -325,7 +336,8 @@ struct FindMin<'a, 'tcx, VL: VisibilityLike> {
 
 impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'a, 'tcx> for FindMin<'a, 'tcx, VL> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
-    fn recurse_into_assoc_tys(&self) -> bool { false }
+    fn shallow(&self) -> bool { VL::SHALLOW }
+    fn skip_assoc_tys(&self) -> bool { true }
     fn visit_def_id(&mut self, def_id: DefId, _kind: &str, _descr: &dyn fmt::Display) -> bool {
         self.min = VL::new_min(self, def_id);
         false
@@ -334,9 +346,10 @@ impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'a, 'tcx> for FindMin<'a, 'tcx, 
 
 trait VisibilityLike: Sized {
     const MAX: Self;
+    const SHALLOW: bool = false;
     fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self;
 
-    // Returns an over-approximation (`recurse_into_assoc_tys` = false) of visibility due to
+    // Returns an over-approximation (`skip_assoc_tys` = true) of visibility due to
     // associated types for which we can't determine visibility precisely.
     fn of_impl<'a, 'tcx>(node_id: ast::NodeId, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          access_levels: &'a AccessLevels) -> Self {
@@ -357,6 +370,16 @@ impl VisibilityLike for ty::Visibility {
 }
 impl VisibilityLike for Option<AccessLevel> {
     const MAX: Self = Some(AccessLevel::Public);
+    // Type inference is very smart sometimes.
+    // It can make an impl reachable even some components of its type or trait are unreachable.
+    // E.g. methods of `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
+    // can be usable from other crates (#57264). So we skip substs when calculating reachability
+    // and consider an impl reachable if its "shallow" type and trait are reachable.
+    //
+    // The assumption we make here is that type-inference won't let you use an impl without knowing
+    // both "shallow" version of its self type and "shallow" version of its trait if it exists
+    // (which require reaching the `DefId`s in them).
+    const SHALLOW: bool = true;
     fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self {
         cmp::min(if let Some(node_id) = find.tcx.hir().as_local_node_id(def_id) {
             find.access_levels.map.get(&node_id).cloned()
@@ -542,7 +565,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             // Visit everything except for private impl items.
             hir::ItemKind::Impl(.., ref impl_item_refs) => {
                 if item_level.is_some() {
-                    self.reach(item.id, item_level).generics().predicates();
+                    self.reach(item.id, item_level).generics().predicates().ty().trait_ref();
 
                     for impl_item_ref in impl_item_refs {
                         let impl_item_level = self.get(impl_item_ref.id.node_id);
@@ -699,6 +722,13 @@ impl<'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
 
     fn ty(&mut self) -> &mut Self {
         self.visit(self.ev.tcx.type_of(self.item_def_id));
+        self
+    }
+
+    fn trait_ref(&mut self) -> &mut Self {
+        if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
+            self.visit_trait(trait_ref);
+        }
         self
     }
 }
