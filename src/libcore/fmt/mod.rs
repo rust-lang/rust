@@ -247,7 +247,7 @@ struct Void {
 /// family of functions. It contains a function to format the given value. At
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
            issue = "0")]
@@ -255,14 +255,6 @@ struct Void {
 pub struct ArgumentV1<'a> {
     value: &'a Void,
     formatter: fn(&Void, &mut Formatter) -> Result,
-}
-
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-           issue = "0")]
-impl Clone for ArgumentV1<'_> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl<'a> ArgumentV1<'a> {
