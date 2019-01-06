@@ -488,7 +488,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn note_error_origin(&self, err: &mut DiagnosticBuilder<'tcx>, cause: &ObligationCause<'tcx>) {
         match cause.code {
             ObligationCauseCode::MatchExpressionArmPattern { span, ty } => {
-                err.span_label(span, format!("this match expression has type `{}`", ty));
+                if ty.is_suggestable() {  // don't show type `_`
+                    err.span_label(span, format!("this match expression has type `{}`", ty));
+                }
             }
             ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
