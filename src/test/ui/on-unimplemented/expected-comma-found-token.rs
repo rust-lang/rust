@@ -4,11 +4,10 @@
 
 #![feature(on_unimplemented)]
 
-#[rustc_on_unimplemented(
+#[rustc_on_unimplemented( //~ ERROR `#[rustc_on_unimplemented]` requires a value
     message="the message"
-    label="the label"
+    label="the label" //~ ERROR expected one of `)` or `,`, found `label`
 )]
 trait T {}
-//~^^^ ERROR expected one of `)` or `,`, found `label`
 
 fn main() {  }

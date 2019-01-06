@@ -1,7 +1,7 @@
 #[repr(simd)] //~ ERROR are experimental
-struct Weapon {
-    name: String,
-    damage: u32
+struct Coord {
+    x: u32,
+    y: u32,
 }
 
 fn main() {}

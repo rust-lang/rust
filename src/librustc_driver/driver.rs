@@ -1098,23 +1098,20 @@ where
         ast_validation::check_crate(sess, &krate)
     });
 
-    time(sess, "name resolution", || -> CompileResult {
+    time(sess, "name resolution", || {
         resolver.resolve_crate(&krate);
-        Ok(())
-    })?;
+    });
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(sess, "complete gated feature checking", || {
-        sess.track_errors(|| {
-            syntax::feature_gate::check_crate(
-                &krate,
-                &sess.parse_sess,
-                &sess.features_untracked(),
-                &attributes,
-                sess.opts.unstable_features,
-            );
-        })
-    })?;
+        syntax::feature_gate::check_crate(
+            &krate,
+            &sess.parse_sess,
+            &sess.features_untracked(),
+            &attributes,
+            sess.opts.unstable_features,
+        );
+    });
 
     // Lower ast -> hir.
     // First, we need to collect the dep_graph.
