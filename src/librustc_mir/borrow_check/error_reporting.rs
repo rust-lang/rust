@@ -217,6 +217,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         break;
                     }
                 }
+                if let ty::TyKind::Param(param_ty) = ty.sty {
+                    let tcx = self.infcx.tcx;
+                    let generics = tcx.generics_of(self.mir_def_id);
+                    let def_id = generics.type_param(&param_ty, tcx).def_id;
+                    if let Some(sp) = tcx.hir().span_if_local(def_id) {
+                        err.span_label(
+                            sp,
+                            "consider adding a `Copy` constraint to this type argument",
+                        );
+                    }
+                }
                 if note {
                     err.note(&format!(
                         "move occurs because {} has type `{}`, \
