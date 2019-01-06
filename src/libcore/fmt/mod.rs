@@ -1076,7 +1076,7 @@ impl<'a> Formatter<'a> {
                 self.args[i].as_usize()
             }
             rt::v1::Count::NextParam => {
-                self.curarg.next().and_then(|arg| arg.as_usize())
+                self.curarg.next()?.as_usize()
             }
         }
     }
@@ -1142,15 +1142,15 @@ impl<'a> Formatter<'a> {
             sign = Some('+'); width += 1;
         }
 
-        let mut prefixed = false;
-        if self.alternate() {
-            prefixed = true; width += prefix.chars().count();
+        let prefixed = self.alternate();
+        if prefixed {
+            width += prefix.chars().count();
         }
 
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             if let Some(c) = sign {
-                f.buf.write_str(c.encode_utf8(&mut [0; 4]))?;
+                f.buf.write_char(c)?;
             }
             if prefixed { f.buf.write_str(prefix) }
             else { Ok(()) }
@@ -1312,7 +1312,7 @@ impl<'a> Formatter<'a> {
 
                 // remove the sign from the formatted parts
                 formatted.sign = b"";
-                width = if width < sign.len() { 0 } else { width - sign.len() };
+                width = width.saturating_sub(sign.len());
                 align = rt::v1::Alignment::Right;
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
