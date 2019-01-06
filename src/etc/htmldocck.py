@@ -137,6 +137,7 @@ class CustomHTMLParser(HTMLParser):
     attributes."""
     def __init__(self, target=None):
         HTMLParser.__init__(self)
+        self.convert_charrefs = False
         self.__builder = target or ET.TreeBuilder()
 
     def handle_starttag(self, tag, attrs):
