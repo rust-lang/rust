@@ -243,7 +243,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
         data_ctx.define(alloc.bytes.to_vec().into_boxed_slice());
 
         for &(offset, (_tag, reloc)) in alloc.relocations.iter() {
-            let reloc_offset = {
+            let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
                 let ptr_size = tcx.data_layout.pointer_size;
@@ -253,9 +253,10 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
 
             let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {
                 AllocKind::Function(instance) => {
+                    assert_eq!(addend, 0);
                     let func_id = crate::abi::import_function(tcx, module, instance);
                     let local_func_id = module.declare_func_in_data(func_id, &mut data_ctx);
-                    data_ctx.write_function_addr(reloc_offset as u32, local_func_id);
+                    data_ctx.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;
                 }
                 AllocKind::Memory(_) => {
@@ -269,7 +270,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             };
 
             let global_value = module.declare_data_in_data(data_id, &mut data_ctx);
-            data_ctx.write_data_addr(reloc_offset as u32, global_value, 0);
+            data_ctx.write_data_addr(offset.bytes() as u32, global_value, addend as i64);
         }
 
         module.define_data(data_id, &data_ctx).unwrap();
