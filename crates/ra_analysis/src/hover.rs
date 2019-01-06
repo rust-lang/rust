@@ -3,7 +3,7 @@ use ra_editor::find_node_at_offset;
 use ra_syntax::{
     AstNode, SyntaxNode,
     ast::{self, NameOwner},
-    algo::{find_covering_node, visit::{visitor, Visitor}},
+    algo::{find_covering_node, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};
@@ -26,13 +26,17 @@ pub(crate) fn hover(
         }
     }
     if range.is_none() {
-        let expr: ast::Expr = ctry!(find_node_at_offset(file.syntax(), position.offset));
+        let node = find_leaf_at_offset(file.syntax(), position.offset).find_map(|leaf| {
+            leaf.ancestors()
+                .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
+        });
+        let node = ctry!(node);
         let frange = FileRange {
             file_id: position.file_id,
-            range: expr.syntax().range(),
+            range: node.range(),
         };
         res.extend(type_of(db, frange)?);
-        range = Some(expr.syntax().range());
+        range = Some(node.range());
     };
 
     let range = ctry!(range);
@@ -188,6 +192,13 @@ mod tests {
     #[test]
     fn hover_for_local_variable() {
         let (analysis, position) = single_file_with_position("fn func(foo: i32) { fo<|>o; }");
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(hover.info, "i32");
+    }
+
+    #[test]
+    fn hover_for_local_variable_pat() {
+        let (analysis, position) = single_file_with_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.info, "i32");
     }
