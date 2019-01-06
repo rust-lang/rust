@@ -28,7 +28,6 @@ use syntax_pos::symbol::keywords::SelfUpper;
 /// **Known problems:**
 /// - False positive when using associated types (#2843)
 /// - False positives in some situations when using generics (#3410)
-/// - False positive when type from outer function can't be used (#3463)
 ///
 /// **Example:**
 /// ```rust
