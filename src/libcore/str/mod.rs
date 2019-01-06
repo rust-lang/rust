@@ -3011,6 +3011,101 @@ impl str {
         ext::rsplitn(self, n, pat)
     }
 
+    // FIXME: Someone should enhance the docs before stabilizing.
+
+    /// An iterator over substrings of this mutable string slice, separated by
+    /// characters matched by a pattern.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn split_mut<'a, P>(&'a mut self, pat: P) -> ext::Split<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::split(self, pat)
+    }
+
+    /// An iterator over substrings of the given mutable string slice, separated by
+    /// characters matched by a pattern and yielded in reverse order.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rsplit_mut<'a, P>(&'a mut self, pat: P) -> ext::RSplit<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rsplit(self, pat)
+    }
+
+    /// An iterator over substrings of the given mutable string slice, separated by
+    /// characters matched by a pattern.
+    ///
+    /// Equivalent to [`split_mut`], except that the trailing substring
+    /// is skipped if empty.
+    ///
+    /// [`split_mut`]: #method.split_mut
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn split_terminator_mut<'a, P>(&'a mut self, pat: P)
+        -> ext::SplitTerminator<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::split_terminator(self, pat)
+    }
+
+    /// An iterator over substrings of the given mutable string slice, separated by
+    /// characters matched by a pattern and yielded in reverse order.
+    ///
+    /// Equivalent to [`rsplit_mut`], except that the trailing substring
+    /// is skipped if empty.
+    ///
+    /// [`rsplit_mut`]: #method.rsplit_mut
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rsplit_terminator_mut<'a, P>(&'a mut self, pat: P)
+        -> ext::RSplitTerminator<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rsplit_terminator(self, pat)
+    }
+
+    /// An iterator over substrings of the given mutable string slice, separated by a
+    /// pattern, restricted to returning at most `n` items.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn splitn_mut<'a, P>(&'a mut self, n: usize, pat: P)
+        -> ext::SplitN<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::splitn(self, n, pat)
+    }
+
+    /// An iterator over substrings of this mutable string slice, separated by a
+    /// pattern, starting from the end of the string, restricted to returning
+    /// at most `n` items.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rsplitn_mut<'a, P>(&'a mut self, n: usize, pat: P)
+        -> ext::RSplitN<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rsplitn(self, n, pat)
+    }
+
     /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
@@ -3268,6 +3363,88 @@ impl str {
     pub fn rmatch_ranges<'a, P>(&'a self, pat: P) -> ext::RMatchRanges<&'a str, P::Searcher>
     where
         P: Needle<&'a str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rmatch_ranges(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within the given
+    /// mutable string slice.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn matches_mut<'a, P>(&'a mut self, pat: P) -> ext::Matches<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::matches(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within this
+    /// mutable string slice, yielded in reverse order.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatches_mut<'a, P>(&'a mut self, pat: P) -> ext::RMatches<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rmatches(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within this mutable string
+    /// slice as well as the index that the match starts at.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn match_indices_mut<'a, P>(&'a mut self, pat: P)
+        -> ext::MatchIndices<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::match_indices(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within this mutable string slice,
+    /// yielded in reverse order along with the index of the match.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatch_indices_mut<'a, P>(&'a mut self, pat: P)
+        -> ext::RMatchIndices<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::rmatch_indices(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within this mutable string
+    /// slice as well as the range that the match covers.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn match_ranges_mut<'a, P>(&'a mut self, pat: P)
+        -> ext::MatchRanges<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::match_ranges(self, pat)
+    }
+
+    /// An iterator over the disjoint matches of a pattern within this mutable string slice,
+    /// yielded in reverse order along with the range of the match.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn rmatch_ranges_mut<'a, P>(&'a mut self, pat: P)
+        -> ext::RMatchRanges<&'a mut str, P::Searcher>
+    where
+        P: Needle<&'a mut str>,
         P::Searcher: ReverseSearcher<str>,
         P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
@@ -3645,6 +3822,63 @@ impl str {
         P::Consumer: ReverseConsumer<str>,
     {
         self.trim_end_matches(pat)
+    }
+
+    /// Returns a mutable string slice with leading and trailing whitespace removed.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_mut(&mut self) -> &mut str {
+        self.trim_matches_mut(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a mutable string slice with leading whitespace removed.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_start_mut(&mut self) -> &mut str {
+        self.trim_start_matches_mut(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a mutable string slice with trailing whitespace removed.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_end_mut(&mut self) -> &mut str {
+        self.trim_end_matches_mut(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a mutable string slice with all prefixes and suffixes that match a
+    /// pattern repeatedly removed.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_matches_mut<'a, P: Needle<&'a mut str>>(&'a mut self, pat: P) -> &'a mut str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: DoubleEndedConsumer<str>,
+    {
+        ext::trim(self, pat)
+    }
+
+    /// Returns a mutable string slice with all prefixes that match a pattern
+    /// repeatedly removed.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_start_matches_mut<'a, P: Needle<&'a mut str>>(&'a mut self, pat: P) -> &'a mut str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::trim_start(self, pat)
+    }
+
+    /// Returns a mutable string slice with all suffixes that match a pattern
+    /// repeatedly removed.
+    #[unstable(feature = "mut_str_needle_methods", issue = "56345")]
+    #[inline]
+    pub fn trim_end_matches_mut<'a, P: Needle<&'a mut str>>(&'a mut self, pat: P) -> &'a mut str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: ReverseConsumer<str>,
+    {
+        ext::trim_end(self, pat)
     }
 
     /// Parses this string slice into another type.

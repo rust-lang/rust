@@ -1709,3 +1709,38 @@ fn different_str_pattern_forwarding_lifetimes() {
 
     foo("x");
 }
+
+#[test]
+fn test_mut_str() {
+    use std::ops::Range;
+
+    let mut s = String::from("a1b2c3d4e");
+    {
+        let res: &mut str = s.trim_matches_mut(|c: char| c.is_ascii_alphabetic());
+        assert_eq!(res, "1b2c3d4");
+    }
+    {
+        let res: Vec<&mut str> = s.split_mut(|c: char| c.is_ascii_digit()).collect();
+        assert_eq!(res, vec!["a", "b", "c", "d", "e"]);
+    }
+    {
+        let res: Vec<(Range<usize>, &mut str)> = s.match_ranges_mut(|c: char| c.is_ascii_digit()).collect();
+        let res = res.into_iter().map(|(r, ss)| (r, &*ss)).collect::<Vec<_>>();
+        assert_eq!(res, vec![
+            (1..2, "1"),
+            (3..4, "2"),
+            (5..6, "3"),
+            (7..8, "4"),
+        ]);
+    }
+    {
+        let res: Vec<(Range<usize>, &mut str)> = s.rmatch_ranges_mut(|c: char| c.is_ascii_digit()).collect();
+        let res = res.into_iter().map(|(r, ss)| (r, &*ss)).collect::<Vec<_>>();
+        assert_eq!(res, vec![
+            (7..8, "4"),
+            (5..6, "3"),
+            (3..4, "2"),
+            (1..2, "1"),
+        ]);
+    }
+}
