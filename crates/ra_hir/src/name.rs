@@ -31,6 +31,14 @@ impl Name {
         Name::new("[missing name]".into())
     }
 
+    pub(crate) fn self_param() -> Name {
+        Name::new("self".into())
+    }
+
+    pub(crate) fn self_type() -> Name {
+        Name::new("Self".into())
+    }
+
     pub(crate) fn tuple_field_name(idx: usize) -> Name {
         Name::new(idx.to_string().into())
     }
@@ -51,7 +59,8 @@ impl Name {
             "u128" => KnownName::U128,
             "f32" => KnownName::F32,
             "f64" => KnownName::F64,
-            "Self" => KnownName::Self_,
+            "Self" => KnownName::SelfType,
+            "self" => KnownName::SelfParam,
             _ => return None,
         };
         Some(name)
@@ -104,5 +113,6 @@ pub(crate) enum KnownName {
     F32,
     F64,
 
-    Self_,
+    SelfType,
+    SelfParam,
 }

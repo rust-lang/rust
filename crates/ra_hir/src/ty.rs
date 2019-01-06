@@ -31,10 +31,11 @@ use ra_syntax::{
 };
 
 use crate::{
-    Def, DefId, FnScopes, Module, Function, Struct, Enum, Path, Name, AsName, ImplBlock,
+    Def, DefId, Module, Function, Struct, Enum, Path, Name, AsName, ImplBlock,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
+    ScopesWithSyntaxMapping,
 };
 
 /// The ID of a type variable.
@@ -305,7 +306,7 @@ impl Ty {
                 return Ok(Ty::Uint(uint_ty));
             } else if let Some(float_ty) = primitive::FloatTy::from_name(name) {
                 return Ok(Ty::Float(float_ty));
-            } else if name.as_known_name() == Some(KnownName::Self_) {
+            } else if name.as_known_name() == Some(KnownName::SelfType) {
                 return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target_type()));
             }
         }
@@ -515,7 +516,7 @@ impl InferenceResult {
 #[derive(Clone, Debug)]
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
-    scopes: Arc<FnScopes>,
+    scopes: ScopesWithSyntaxMapping,
     /// The self param for the current method, if it exists.
     self_param: Option<LocalSyntaxPtr>,
     module: Module,
@@ -529,7 +530,7 @@ struct InferenceContext<'a, D: HirDatabase> {
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(
         db: &'a D,
-        scopes: Arc<FnScopes>,
+        scopes: ScopesWithSyntaxMapping,
         module: Module,
         impl_block: Option<ImplBlock>,
     ) -> Self {
@@ -826,10 +827,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_expr_opt(e.expr(), &Expectation::none())?;
                 Ty::Never
             }
-            ast::Expr::MatchArmList(_) | ast::Expr::MatchArm(_) | ast::Expr::MatchGuard(_) => {
-                // Can this even occur outside of a match expression?
-                Ty::Unknown
-            }
             ast::Expr::StructLit(e) => {
                 let (ty, def_id) = self.resolve_variant(e.path())?;
                 if let Some(nfl) = e.named_field_list() {
@@ -844,10 +841,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                 }
                 ty
-            }
-            ast::Expr::NamedFieldList(_) | ast::Expr::NamedField(_) => {
-                // Can this even occur outside of a struct literal?
-                Ty::Unknown
             }
             ast::Expr::IndexExpr(_e) => Ty::Unknown,
             ast::Expr::FieldExpr(e) => {
@@ -1016,7 +1009,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
 pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
     let function = Function::new(def_id); // TODO: consts also need inference
-    let scopes = function.scopes(db);
+    let scopes = function.scopes(db)?;
     let module = function.module(db)?;
     let impl_block = function.impl_block(db)?;
     let mut ctx = InferenceContext::new(db, scopes, module, impl_block);

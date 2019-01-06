@@ -11,7 +11,7 @@ use ra_syntax::{
 use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName, HirFileId,
+    SourceFileItems, SourceItemId, DefKind, DefId, Name, AsName, HirFileId,
     MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
@@ -23,11 +23,10 @@ use crate::{
     adt::{StructData, EnumData},
 };
 
-pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Arc<FnScopes> {
-    let function = Function::new(def_id);
-    let syntax = function.syntax(db);
-    let res = FnScopes::new(syntax.borrowed());
-    Arc::new(res)
+pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<FnScopes>> {
+    let body = db.body_hir(def_id)?;
+    let res = FnScopes::new(body);
+    Ok(Arc::new(res))
 }
 
 pub(super) fn struct_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<StructData>> {

@@ -1,6 +1,6 @@
 use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
 
-/// A pionter to a syntax node inside a file.
+/// A pointer to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LocalSyntaxPtr {
     range: TextRange,

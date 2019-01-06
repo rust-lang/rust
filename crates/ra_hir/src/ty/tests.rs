@@ -1,6 +1,9 @@
+use std::sync::Arc;
 use std::fmt::Write;
 use std::path::{PathBuf, Path};
 use std::fs;
+
+use salsa::Database;
 
 use ra_db::{SyntaxDatabase};
 use ra_syntax::ast::{self, AstNode};
@@ -216,4 +219,45 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
 
 fn test_data_dir() -> PathBuf {
     project_dir().join("crates/ra_hir/src/ty/tests/data")
+}
+
+#[test]
+#[should_panic] // TODO this should work once hir::Expr is used
+fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
+    let (mut db, pos) = MockDatabase::with_position(
+        "
+        //- /lib.rs
+        fn foo() -> i32 {
+            <|>1 + 1
+        }
+    ",
+    );
+    let func = source_binder::function_from_position(&db, pos)
+        .unwrap()
+        .unwrap();
+    {
+        let events = db.log_executed(|| {
+            func.infer(&db).unwrap();
+        });
+        assert!(format!("{:?}", events).contains("infer"))
+    }
+
+    let new_text = "
+        fn foo() -> i32 {
+            1
+            +
+            1
+        }
+    "
+    .to_string();
+
+    db.query_mut(ra_db::FileTextQuery)
+        .set(pos.file_id, Arc::new(new_text));
+
+    {
+        let events = db.log_executed(|| {
+            func.infer(&db).unwrap();
+        });
+        assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
+    }
 }

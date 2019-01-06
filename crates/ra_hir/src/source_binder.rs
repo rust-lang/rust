@@ -87,6 +87,18 @@ fn module_from_source(
     Ok(Some(Module::new(db, source_root_id, module_id)?))
 }
 
+pub fn function_from_position(
+    db: &impl HirDatabase,
+    position: FilePosition,
+) -> Cancelable<Option<Function>> {
+    let file = db.source_file(position.file_id);
+    let fn_def = ctry!(find_node_at_offset::<ast::FnDef>(
+        file.syntax(),
+        position.offset
+    ));
+    function_from_source(db, position.file_id, fn_def)
+}
+
 pub fn function_from_source(
     db: &impl HirDatabase,
     file_id: FileId,

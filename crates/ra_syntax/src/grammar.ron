@@ -384,7 +384,7 @@ Grammar(
             options: [ "Condition" ]
         ),
         "ContinueExpr": (),
-        "BreakExpr": (),
+        "BreakExpr": (options: ["Expr"]),
         "Label": (),
         "BlockExpr": (
             options: [ "Block" ]
@@ -404,7 +404,7 @@ Grammar(
             collections: [ [ "pats", "Pat" ] ]
         ),
         "MatchGuard": (),
-        "StructLit": (options: ["Path", "NamedFieldList"]),
+        "StructLit": (options: ["Path", "NamedFieldList", ["spread", "Expr"]]),
         "NamedFieldList": (collections: [ ["fields", "NamedField"] ]),
         "NamedField": (options: ["NameRef", "Expr"]),
         "CallExpr": (
@@ -446,12 +446,7 @@ Grammar(
                 "BlockExpr",
                 "ReturnExpr",
                 "MatchExpr",
-                "MatchArmList",
-                "MatchArm",
-                "MatchGuard",
                 "StructLit",
-                "NamedFieldList",
-                "NamedField",
                 "CallExpr",
                 "IndexExpr",
                 "MethodCallExpr",
@@ -472,7 +467,10 @@ Grammar(
         "PathPat": (),
         "StructPat": (),
         "FieldPatList": (),
-        "TupleStructPat": (),
+        "TupleStructPat": (
+            options: ["Path"],
+            collections: [["args", "Pat"]],
+        ),
         "TuplePat": (),
         "SlicePat": (),
         "RangePat": (),

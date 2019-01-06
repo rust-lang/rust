@@ -208,6 +208,9 @@ salsa::database_storage! {
             fn struct_data() for db::StructDataQuery;
             fn enum_data() for db::EnumDataQuery;
             fn impls_in_module() for db::ImplsInModuleQuery;
+            fn body_hir() for db::BodyHirQuery;
+            fn body_syntax_mapping() for db::BodySyntaxMappingQuery;
+            fn fn_signature() for db::FnSignatureQuery;
         }
     }
 }

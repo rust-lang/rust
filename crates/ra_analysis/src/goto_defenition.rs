@@ -28,7 +28,7 @@ pub(crate) fn reference_defenition(
     if let Some(fn_descr) =
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())?
     {
-        let scope = fn_descr.scopes(db);
+        let scope = fn_descr.scopes(db)?;
         // First try to resolve the symbol locally
         if let Some(entry) = scope.resolve_local_name(name_ref) {
             let nav = NavigationTarget {

@@ -7,7 +7,7 @@ use crate::{
     DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
-    FnScopes,
+    FnSignature, FnScopes,
     macros::MacroExpansion,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
@@ -31,7 +31,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::macros::expand_macro_invocation;
     }
 
-    fn fn_scopes(def_id: DefId) -> Arc<FnScopes> {
+    fn fn_scopes(def_id: DefId) -> Cancelable<Arc<FnScopes>> {
         type FnScopesQuery;
         use fn query_definitions::fn_scopes;
     }
@@ -92,6 +92,21 @@ pub trait HirDatabase: SyntaxDatabase
     fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {
         type ImplsInModuleQuery;
         use fn crate::impl_block::impls_in_module;
+    }
+
+    fn body_hir(def_id: DefId) -> Cancelable<Arc<crate::expr::Body>> {
+        type BodyHirQuery;
+        use fn crate::expr::body_hir;
+    }
+
+    fn body_syntax_mapping(def_id: DefId) -> Cancelable<Arc<crate::expr::BodySyntaxMapping>> {
+        type BodySyntaxMappingQuery;
+        use fn crate::expr::body_syntax_mapping;
+    }
+
+    fn fn_signature(def_id: DefId) -> Arc<FnSignature> {
+        type FnSignatureQuery;
+        use fn crate::function::fn_signature;
     }
 }
 

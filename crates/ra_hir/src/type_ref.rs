@@ -107,4 +107,8 @@ impl TypeRef {
             TypeRef::Error
         }
     }
+
+    pub fn unit() -> TypeRef {
+        TypeRef::Tuple(Vec::new())
+    }
 }
