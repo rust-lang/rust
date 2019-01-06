@@ -611,6 +611,15 @@ mod tests {
     }
 
     #[test]
+    fn instant_math_is_associative() {
+        let now = Instant::now();
+        let offset = Duration::from_millis(5);
+        // Changing the order of instant math shouldn't change the results,
+        // especially when the expression reduces to X + identity.
+        assert_eq!((now + offset) - now, (now - now) + offset);
+    }
+
+    #[test]
     #[should_panic]
     fn instant_duration_panic() {
         let a = Instant::now();
