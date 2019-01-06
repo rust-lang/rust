@@ -355,6 +355,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         panic_if_uninhabited, <T> () {
             if fx.layout_of(T).abi.is_uninhabited() {
                 crate::trap::trap_panic(&mut fx.bcx);
+                return;
             }
         };
 
