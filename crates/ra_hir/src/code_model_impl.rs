@@ -1,4 +1,5 @@
-use ra_db::{CrateId, Cancelable};
+use ra_db::{CrateId, Cancelable, FileId};
+use ra_syntax::{AstNode, ast};
 
 use crate::{HirFileId, db::HirDatabase, Crate, CrateDependency, AsName, DefId, DefLoc, DefKind, Name};
 
@@ -46,6 +47,22 @@ impl Crate {
 impl Module {
     pub(crate) fn new(def_id: DefId) -> Self {
         crate::code_model_api::Module { def_id }
+    }
+
+    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (FileId, Option<ast::ModuleNode>) {
+        let loc = self.def_id.loc(db);
+        let source_item_id = loc.source_item_id;
+        let module = match source_item_id.item_id {
+            None => None,
+            Some(_) => {
+                let syntax_node = db.file_item(source_item_id);
+                let module = ast::Module::cast(syntax_node.borrowed()).unwrap().owned();
+                Some(module)
+            }
+        };
+        // FIXME: remove `as_original_file` here
+        let file_id = source_item_id.file_id.as_original_file();
+        (file_id, module)
     }
 
     pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {

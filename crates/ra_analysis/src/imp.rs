@@ -105,39 +105,36 @@ impl db::RootDatabase {
         &self,
         position: FilePosition,
     ) -> Cancelable<Vec<NavigationTarget>> {
-        let descr = match source_binder::module_from_position(self, position)? {
+        let module = match source_binder::module_from_position(self, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let (file_id, decl) = match descr.parent_link_source(self) {
+        let (file_id, ast_module) = module.source(self);
+        let ast_module = match ast_module {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let decl = decl.borrowed();
-        let decl_name = decl.name().unwrap();
+        let ast_module = ast_module.borrowed();
+        let name = ast_module.name().unwrap();
         Ok(vec![NavigationTarget {
             file_id,
-            name: decl_name.text(),
-            range: decl_name.syntax().range(),
+            name: name.text(),
+            range: name.syntax().range(),
             kind: MODULE,
             ptr: None,
         }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let descr = match source_binder::module_from_file_id(self, file_id)? {
-            None => return Ok(Vec::new()),
+        let module = match source_binder::module_from_file_id(self, file_id)? {
             Some(it) => it,
+            None => return Ok(Vec::new()),
         };
-        let root = descr.crate_root();
-        let file_id = root.file_id();
-
-        let crate_graph = self.crate_graph();
-        let crate_id = crate_graph.crate_id_for_crate_root(file_id);
-        Ok(crate_id.into_iter().collect())
-    }
-    pub(crate) fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.crate_graph().crate_root(crate_id)
+        let krate = match module.krate(self)? {
+            Some(it) => it,
+            None => return Ok(Vec::new()),
+        };
+        Ok(vec![krate.crate_id()])
     }
     pub(crate) fn find_all_refs(
         &self,

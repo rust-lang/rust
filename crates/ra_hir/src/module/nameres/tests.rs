@@ -17,7 +17,7 @@ fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
     let module = hir::source_binder::module_from_position(&db, pos)
         .unwrap()
         .unwrap();
-    let module_id = module.module_id;
+    let module_id = module.def_id.loc(&db).module_id;
     (db.item_map(source_root).unwrap(), module_id)
 }
 
@@ -155,7 +155,7 @@ fn item_map_across_crates() {
     let module = hir::source_binder::module_from_file_id(&db, main_id)
         .unwrap()
         .unwrap();
-    let module_id = module.module_id;
+    let module_id = module.def_id.loc(&db).module_id;
     let item_map = db.item_map(source_root).unwrap();
 
     check_module_item_map(
