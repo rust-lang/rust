@@ -37,7 +37,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         document_range_formatting_provider: None,
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
             first_trigger_character: "=".to_string(),
-            more_trigger_character: None,
+            more_trigger_character: Some(vec![".".to_string()]),
         }),
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
         rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
