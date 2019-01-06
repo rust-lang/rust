@@ -14,26 +14,26 @@
 //! which are watched for changes. Typically, there will be a root for each
 //! Cargo package.
 mod io;
+mod watcher;
 
 use std::{
-    fmt,
-    mem,
-    thread,
     cmp::Reverse,
-    path::{Path, PathBuf},
     ffi::OsStr,
+    fmt, fs, mem,
+    path::{Path, PathBuf},
     sync::Arc,
-    fs,
+    thread,
 };
 
-use rustc_hash::{FxHashMap, FxHashSet};
-use relative_path::RelativePathBuf;
 use crossbeam_channel::Receiver;
-use walkdir::DirEntry;
+use ra_arena::{impl_arena_id, Arena, RawId};
+use relative_path::RelativePathBuf;
+use rustc_hash::{FxHashMap, FxHashSet};
 use thread_worker::WorkerHandle;
-use ra_arena::{Arena, RawId, impl_arena_id};
+use walkdir::DirEntry;
 
 pub use crate::io::TaskResult as VfsTask;
+pub use crate::watcher::{Watcher, WatcherChange};
 
 /// `RootFilter` is a predicate that checks if a file can belong to a root. If
 /// several filters match a file (nested dirs), the most nested one wins.
@@ -85,6 +85,7 @@ pub struct Vfs {
     pending_changes: Vec<VfsChange>,
     worker: io::Worker,
     worker_handle: WorkerHandle,
+    watcher: Watcher,
 }
 
 impl fmt::Debug for Vfs {
@@ -97,12 +98,15 @@ impl Vfs {
     pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let (worker, worker_handle) = io::start();
 
+        let watcher = Watcher::new().unwrap(); // TODO return Result?
+
         let mut res = Vfs {
             roots: Arena::default(),
             files: Arena::default(),
             root2files: FxHashMap::default(),
             worker,
             worker_handle,
+            watcher,
             pending_changes: Vec::new(),
         };
 
@@ -129,6 +133,7 @@ impl Vfs {
                 filter: Box::new(filter),
             };
             res.worker.inp.send(task).unwrap();
+            res.watcher.watch(path).unwrap();
         }
         let roots = res.roots.iter().map(|(id, _)| id).collect();
         (res, roots)
@@ -183,6 +188,10 @@ impl Vfs {
         &self.worker.out
     }
 
+    pub fn change_receiver(&self) -> &Receiver<WatcherChange> {
+        &self.watcher.change_receiver()
+    }
+
     pub fn handle_task(&mut self, task: io::TaskResult) {
         let mut files = Vec::new();
         // While we were scanning the root in the backgound, a file might have
@@ -209,22 +218,41 @@ impl Vfs {
         self.pending_changes.push(change);
     }
 
-    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
+    pub fn handle_change(&mut self, change: WatcherChange) {
+        match change {
+            WatcherChange::Create(path) => {
+                self.add_file_overlay(&path, None);
+            }
+            WatcherChange::Remove(path) => {
+                self.remove_file_overlay(&path);
+            }
+            WatcherChange::Rename(src, dst) => {
+                self.remove_file_overlay(&src);
+                self.add_file_overlay(&dst, None);
+            }
+            WatcherChange::Write(path) => {
+                self.change_file_overlay(&path, None);
+            }
+        }
+    }
+
+    pub fn add_file_overlay(&mut self, path: &Path, text: Option<String>) -> Option<VfsFile> {
         let mut res = None;
-        if let Some((root, path, file)) = self.find_root(path) {
+        if let Some((root, rel_path, file)) = self.find_root(path) {
+            let text = text.unwrap_or_else(|| fs::read_to_string(&path).unwrap_or_default());
             let text = Arc::new(text);
             let change = if let Some(file) = file {
                 res = Some(file);
                 self.change_file(file, Arc::clone(&text));
                 VfsChange::ChangeFile { file, text }
             } else {
-                let file = self.add_file(root, path.clone(), Arc::clone(&text));
+                let file = self.add_file(root, rel_path.clone(), Arc::clone(&text));
                 res = Some(file);
                 VfsChange::AddFile {
                     file,
                     text,
                     root,
-                    path,
+                    path: rel_path,
                 }
             };
             self.pending_changes.push(change);
@@ -232,8 +260,10 @@ impl Vfs {
         res
     }
 
-    pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
+    pub fn change_file_overlay(&mut self, path: &Path, new_text: Option<String>) {
         if let Some((_root, _path, file)) = self.find_root(path) {
+            let new_text =
+                new_text.unwrap_or_else(|| fs::read_to_string(&path).unwrap_or_default());
             let file = file.expect("can't change a file which wasn't added");
             let text = Arc::new(new_text);
             self.change_file(file, Arc::clone(&text));
@@ -267,6 +297,7 @@ impl Vfs {
 
     /// Sutdown the VFS and terminate the background watching thread.
     pub fn shutdown(self) -> thread::Result<()> {
+        let _ = self.watcher.shutdown();
         let _ = self.worker.shutdown();
         self.worker_handle.shutdown()
     }

@@ -11,7 +11,7 @@ use gen_lsp_server::{
 };
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
-use ra_vfs::VfsTask;
+use ra_vfs::{VfsTask, WatcherChange};
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
@@ -113,6 +113,7 @@ enum Event {
     Msg(RawMessage),
     Task(Task),
     Vfs(VfsTask),
+    Watcher(WatcherChange),
     Lib(LibraryData),
 }
 
@@ -149,6 +150,7 @@ impl fmt::Debug for Event {
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Lib(it) => fmt::Debug::fmt(it, f),
+            Event::Watcher(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -183,6 +185,10 @@ fn main_loop_inner(
                 Ok(task) => Event::Vfs(task),
                 Err(RecvError) => bail!("vfs died"),
             },
+            recv(state.vfs.read().change_receiver()) -> change => match change {
+                Ok(change) => Event::Watcher(change),
+                Err(RecvError) => bail!("vfs watcher died"),
+            },
             recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
         };
         log::info!("loop_turn = {:?}", event);
@@ -192,6 +198,10 @@ fn main_loop_inner(
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
             Event::Vfs(task) => {
                 state.vfs.write().handle_task(task);
+                state_changed = true;
+            }
+            Event::Watcher(change) => {
+                state.vfs.write().handle_change(change);
                 state_changed = true;
             }
             Event::Lib(lib) => {
@@ -365,7 +375,7 @@ fn on_notification(
             if let Some(file_id) = state
                 .vfs
                 .write()
-                .add_file_overlay(&path, params.text_document.text)
+                .add_file_overlay(&path, Some(params.text_document.text))
             {
                 subs.add_sub(FileId(file_id.0.into()));
             }
@@ -384,7 +394,10 @@ fn on_notification(
                 .pop()
                 .ok_or_else(|| format_err!("empty changes"))?
                 .text;
-            state.vfs.write().change_file_overlay(path.as_path(), text);
+            state
+                .vfs
+                .write()
+                .change_file_overlay(path.as_path(), Some(text));
             return Ok(());
         }
         Err(not) => not,

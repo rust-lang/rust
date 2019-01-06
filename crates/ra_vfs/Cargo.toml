@@ -10,6 +10,8 @@ relative-path = "0.4.0"
 rustc-hash = "1.0"
 crossbeam-channel = "0.3.5"
 log = "0.4.6"
+notify = "4"
+drop_bomb = "0.1.0"
 
 thread_worker = { path = "../thread_worker" }
 ra_arena = { path = "../ra_arena" }
