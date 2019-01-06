@@ -93,36 +93,31 @@ pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
-    if params.ch != "=" || params.ch != "." {
-        return Ok(None);
-    }
-
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let position = FilePosition {
-        file_id,
-        offset: params.position.conv_with(&line_index),
+    let analysis: Option<Box<Fn(FilePosition) -> Option<SourceChange>>> = match params.ch.as_str() {
+        "=" => Some(Box::new(|pos| world.analysis().on_eq_typed(pos))),
+        "." => Some(Box::new(|pos| world.analysis().on_dot_typed(pos))),
+        _ => None,
     };
 
-    let analysis: Vec<Box<Fn(FilePosition) -> Option<SourceChange>>> = vec![
-        Box::new(|pos| world.analysis().on_eq_typed(pos)),
-        Box::new(|pos| world.analysis().on_dot_typed(pos)),
-    ];
+    if let Some(ana) = analysis {
+        let file_id = params.text_document.try_conv_with(&world)?;
+        let line_index = world.analysis().file_line_index(file_id);
+        let position = FilePosition {
+            file_id,
+            offset: params.position.conv_with(&line_index),
+        };
 
-    // try all analysis until one succeeds
-    for ana in analysis {
         if let Some(mut action) = ana(position) {
-            return Ok(Some(
-                action
-                    .source_file_edits
-                    .pop()
-                    .unwrap()
-                    .edit
-                    .as_atoms()
-                    .iter()
-                    .map_conv_with(&line_index)
-                    .collect(),
-            ));
+            let change: Vec<TextEdit> = action
+                .source_file_edits
+                .pop()
+                .unwrap()
+                .edit
+                .as_atoms()
+                .iter()
+                .map_conv_with(&line_index)
+                .collect();
+            return Ok(Some(change));
         }
     }
 

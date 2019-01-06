@@ -1,13 +1,11 @@
 mod handlers;
 mod subscriptions;
 
-use std::{
-    fmt,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{fmt, path::PathBuf, sync::Arc};
 
-use crossbeam_channel::{unbounded, select, Receiver, Sender, RecvError};
+use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
+use failure::{bail, format_err};
+use failure_derive::Fail;
 use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
@@ -15,11 +13,9 @@ use languageserver_types::NumberOrString;
 use ra_analysis::{Canceled, FileId, LibraryData};
 use ra_vfs::VfsTask;
 use rayon;
-use threadpool::ThreadPool;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
-use failure::{format_err, bail};
-use failure_derive::Fail;
+use threadpool::ThreadPool;
 
 use crate::{
     main_loop::subscriptions::Subscriptions,
