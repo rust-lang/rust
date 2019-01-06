@@ -70,7 +70,7 @@ fn test_resolve_parent_module_for_inline() {
     );
     let symbols = analysis.parent_module(pos).unwrap();
     assert_eq_dbg(
-        r#"[NavigationTarget { file_id: FileId(1), name: "bar", kind: MODULE, range: [18; 21), ptr: None }]"#,
+        r#"[NavigationTarget { file_id: FileId(1), name: "baz", kind: MODULE, range: [36; 39), ptr: None }]"#,
         &symbols,
     );
 }

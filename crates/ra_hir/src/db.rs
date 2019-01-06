@@ -9,7 +9,7 @@ use crate::{
     query_definitions,
     FnSignature, FnScopes,
     macros::MacroExpansion,
-    module_tree::{ModuleId, ModuleTree, ModuleSource},
+    module_tree::{ModuleId, ModuleTree},
     nameres::{ItemMap, InputModuleItems},
     ty::{InferenceResult, Ty},
     adt::{StructData, EnumData},
@@ -71,7 +71,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::file_item;
     }
 
-    fn submodules(source: ModuleSource) -> Cancelable<Arc<Vec<crate::module_tree::Submodule>>> {
+    fn submodules(source: SourceItemId) -> Cancelable<Arc<Vec<crate::module_tree::Submodule>>> {
         type SubmodulesQuery;
         use fn crate::module_tree::Submodule::submodules_query;
     }

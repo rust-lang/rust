@@ -14,15 +14,15 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, SourceItemId,
-    module_tree::ModuleSource,
-    DefKind, DefLoc, AsName,
+    DefKind, DefLoc, AsName, Module,
 };
-
-use crate::code_model_api::Module;
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Cancelable<Option<Module>> {
-    let module_source = ModuleSource::new_file(file_id.into());
+    let module_source = SourceItemId {
+        file_id: file_id.into(),
+        item_id: None,
+    };
     module_from_source(db, module_source)
 }
 
@@ -51,11 +51,26 @@ pub fn module_from_position(
     position: FilePosition,
 ) -> Cancelable<Option<Module>> {
     let file = db.source_file(position.file_id);
-    let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset) {
-        Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id.into(), m),
-        _ => ModuleSource::new_file(position.file_id.into()),
+    match find_node_at_offset::<ast::Module>(file.syntax(), position.offset) {
+        Some(m) if !m.has_semi() => module_from_inline(db, position.file_id.into(), m),
+        _ => module_from_file_id(db, position.file_id.into()),
+    }
+}
+
+fn module_from_inline(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    module: ast::Module,
+) -> Cancelable<Option<Module>> {
+    assert!(!module.has_semi());
+    let file_id = file_id.into();
+    let file_items = db.file_items(file_id);
+    let item_id = file_items.id_of(file_id, module.syntax());
+    let source = SourceItemId {
+        file_id,
+        item_id: Some(item_id),
     };
-    module_from_source(db, module_source)
+    module_from_source(db, source)
 }
 
 /// Locates the module by child syntax element within the module
@@ -64,37 +79,22 @@ pub fn module_from_child_node(
     file_id: FileId,
     child: SyntaxNodeRef,
 ) -> Cancelable<Option<Module>> {
-    let module_source = if let Some(m) = child
+    if let Some(m) = child
         .ancestors()
         .filter_map(ast::Module::cast)
         .find(|it| !it.has_semi())
     {
-        ModuleSource::new_inline(db, file_id.into(), m)
+        module_from_inline(db, file_id.into(), m)
     } else {
-        ModuleSource::new_file(file_id.into())
-    };
-    module_from_source(db, module_source)
+        module_from_file_id(db, file_id.into())
+    }
 }
 
-fn module_from_source(
-    db: &impl HirDatabase,
-    module_source: ModuleSource,
-) -> Cancelable<Option<Module>> {
-    let source_root_id = db.file_source_root(module_source.file_id().as_original_file());
+fn module_from_source(db: &impl HirDatabase, source: SourceItemId) -> Cancelable<Option<Module>> {
+    let source_root_id = db.file_source_root(source.file_id.as_original_file());
     let module_tree = db.module_tree(source_root_id)?;
-    let m = module_tree
-        .modules_with_sources()
-        .find(|(_id, src)| src == &module_source);
-    let module_id = ctry!(m).0;
-    let def_loc = DefLoc {
-        kind: DefKind::Module,
-        source_root_id,
-        module_id,
-        source_item_id: module_source.0,
-    };
-    let def_id = def_loc.id(db);
-
-    Ok(Some(Module::new(def_id)))
+    let module_id = ctry!(module_tree.find_module_by_source(source));
+    Ok(Some(Module::from_module_id(db, source_root_id, module_id)?))
 }
 
 pub fn function_from_position(
