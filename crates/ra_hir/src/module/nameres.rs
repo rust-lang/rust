@@ -344,7 +344,7 @@ where
             if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
             {
                 let krate = Crate::new(crate_id);
-                for dep in krate.dependencies(self.db) {
+                for dep in krate.dependencies(self.db)? {
                     if let Some(module) = dep.krate.root_module(self.db)? {
                         let def_id = module.def_id;
                         self.add_module_item(
