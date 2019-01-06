@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/pattern-tyvar.rs:5:18
    |
 LL |     match t {
-   |           - this match expression evaluates to `std::option::Option<std::vec::Vec<isize>>`
+   |           - this match expression has type `std::option::Option<std::vec::Vec<isize>>`
 LL |       Bar::T1(_, Some::<isize>(x)) => { //~ ERROR mismatched types
    |                  ^^^^^^^^^^^^^^^^ expected struct `std::vec::Vec`, found isize
    |
