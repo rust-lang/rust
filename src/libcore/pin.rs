@@ -175,11 +175,11 @@ impl<P: DerefMut> Pin<P> {
     /// Assign a new value to the memory behind the pinned reference.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn set(mut self: Pin<P>, value: P::Target)
+    pub fn set(self: &mut Pin<P>, value: P::Target)
     where
         P::Target: Sized,
     {
-        *self.pointer = value;
+        *(self.pointer) = value;
     }
 }
 
