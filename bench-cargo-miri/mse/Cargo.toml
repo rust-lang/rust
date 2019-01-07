@@ -1,0 +1,7 @@
+[package]
+name = "mse"
+version = "0.1.0"
+authors = ["Ralf Jung <post@ralfj.de>"]
+edition = "2018"
+
+[dependencies]
