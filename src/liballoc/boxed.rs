@@ -201,6 +201,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
     #[inline]
+    #[deprecated(note = "Use `.into()`")]
     pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
         Box::into_unique(b).into()
     }
