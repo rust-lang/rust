@@ -14,7 +14,7 @@
 //! recording the output.
 
 use rustc::hir::def::Def as HirDef;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -56,14 +56,14 @@ macro_rules! access_from {
     ($save_ctxt:expr, $vis:expr, $id:expr) => {
         Access {
             public: $vis.node.is_pub(),
-            reachable: $save_ctxt.tcx.privacy_access_levels(LOCAL_CRATE).is_reachable($id),
+            reachable: $save_ctxt.access_levels.is_reachable($id),
         }
     };
 
     ($save_ctxt:expr, $item:expr) => {
         Access {
             public: $item.vis.node.is_pub(),
-            reachable: $save_ctxt.tcx.privacy_access_levels(LOCAL_CRATE).is_reachable($item.id),
+            reachable: $save_ctxt.access_levels.is_reachable($item.id),
         }
     };
 }
