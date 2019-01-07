@@ -117,6 +117,7 @@ impl<T> RangeMap<T> {
     /// Provide mutable iteration over everything in the given range.  As a side-effect,
     /// this will split entries in the map that are only partially hit by the given range,
     /// to make sure that when they are mutated, the effect is constrained to the given range.
+    /// Moreover, this will opportunistically merge neighbouring equal blocks.
     pub fn iter_mut<'a>(
         &'a mut self,
         offset: Size,
