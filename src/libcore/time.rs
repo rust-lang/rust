@@ -23,6 +23,22 @@ const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
 const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
 
+/// The duration of one second.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const SECOND: Duration = Duration::from_secs(1);
+
+/// The duration of one millisecond.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const MILLISECOND: Duration = Duration::from_millis(1);
+
+/// The duration of one microsecond.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const MICROSECOND: Duration = Duration::from_micros(1);
+
+/// The duration of one nanosecond.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const NANOSECOND: Duration = Duration::from_nanos(1);
+
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
 ///
