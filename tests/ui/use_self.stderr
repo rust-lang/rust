@@ -159,7 +159,7 @@ LL |                 fn bar() -> Bar {
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:256:21
    |
-LL |                     Bar {
+LL |                     Bar { foo: Foo {} }
    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: aborting due to 26 previous errors

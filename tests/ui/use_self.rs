@@ -253,9 +253,7 @@ mod nesting {
 
             impl Bar {
                 fn bar() -> Bar {
-                    Bar {
-                        foo: Foo{},
-                    }
+                    Bar { foo: Foo {} }
                 }
             }
         }
