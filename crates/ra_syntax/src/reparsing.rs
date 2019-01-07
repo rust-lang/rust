@@ -4,12 +4,12 @@ use crate::lexer::{tokenize, Token};
 use crate::parser_api::Parser;
 use crate::parser_impl;
 use crate::text_utils::replace_range;
-use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNodeRef};
+use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNode};
 use crate::{SyntaxKind::*, TextRange, TextUnit};
 use ra_text_edit::AtomTextEdit;
 
 pub(crate) fn incremental_reparse(
-    node: SyntaxNodeRef,
+    node: &SyntaxNode,
     edit: &AtomTextEdit,
     errors: Vec<SyntaxError>,
 ) -> Option<(GreenNode, Vec<SyntaxError>)> {
@@ -21,9 +21,9 @@ pub(crate) fn incremental_reparse(
 }
 
 fn reparse_leaf<'node>(
-    node: SyntaxNodeRef<'node>,
+    node: &'node SyntaxNode,
     edit: &AtomTextEdit,
-) -> Option<(SyntaxNodeRef<'node>, GreenNode, Vec<SyntaxError>)> {
+) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
     let node = algo::find_covering_node(node, edit.delete);
     match node.kind() {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
@@ -47,9 +47,9 @@ fn reparse_leaf<'node>(
 }
 
 fn reparse_block<'node>(
-    node: SyntaxNodeRef<'node>,
+    node: &'node SyntaxNode,
     edit: &AtomTextEdit,
-) -> Option<(SyntaxNodeRef<'node>, GreenNode, Vec<SyntaxError>)> {
+) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
     let (node, reparser) = find_reparsable_node(node, edit.delete)?;
     let text = get_text_after_edit(node, &edit);
     let tokens = tokenize(&text);
@@ -61,7 +61,7 @@ fn reparse_block<'node>(
     Some((node, green, new_errors))
 }
 
-fn get_text_after_edit(node: SyntaxNodeRef, edit: &AtomTextEdit) -> String {
+fn get_text_after_edit(node: &SyntaxNode, edit: &AtomTextEdit) -> String {
     replace_range(
         node.text().to_string(),
         edit.delete - node.range().start(),
@@ -77,17 +77,14 @@ fn is_contextual_kw(text: &str) -> bool {
 }
 
 type ParseFn = fn(&mut Parser);
-fn find_reparsable_node(
-    node: SyntaxNodeRef<'_>,
-    range: TextRange,
-) -> Option<(SyntaxNodeRef<'_>, ParseFn)> {
+fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, ParseFn)> {
     let node = algo::find_covering_node(node, range);
     return node
         .ancestors()
         .filter_map(|node| reparser(node).map(|r| (node, r)))
         .next();
 
-    fn reparser(node: SyntaxNodeRef) -> Option<ParseFn> {
+    fn reparser(node: &SyntaxNode) -> Option<ParseFn> {
         let res = match node.kind() {
             BLOCK => grammar::block,
             NAMED_FIELD_DEF_LIST => grammar::named_field_def_list,
@@ -138,7 +135,7 @@ fn is_balanced(tokens: &[Token]) -> bool {
 fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
-    old_node: SyntaxNodeRef,
+    old_node: &SyntaxNode,
     edit: &AtomTextEdit,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
@@ -159,22 +156,22 @@ fn merge_errors(
 mod tests {
     use test_utils::{extract_range, assert_eq_text};
 
-    use crate::{SourceFileNode, text_utils::replace_range, utils::dump_tree };
+    use crate::{SourceFile, AstNode, text_utils::replace_range, utils::dump_tree};
     use super::*;
 
     fn do_check<F>(before: &str, replace_with: &str, reparser: F)
     where
         for<'a> F: Fn(
-            SyntaxNodeRef<'a>,
+            &'a SyntaxNode,
             &AtomTextEdit,
-        ) -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>,
+        ) -> Option<(&'a SyntaxNode, GreenNode, Vec<SyntaxError>)>,
     {
         let (range, before) = extract_range(before);
         let after = replace_range(before.clone(), range, replace_with);
 
-        let fully_reparsed = SourceFileNode::parse(&after);
+        let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed = {
-            let f = SourceFileNode::parse(&before);
+            let f = SourceFile::parse(&before);
             let edit = AtomTextEdit {
                 delete: range,
                 insert: replace_with.to_string(),
@@ -183,7 +180,7 @@ mod tests {
                 reparser(f.syntax(), &edit).expect("cannot incrementally reparse");
             let green_root = node.replace_with(green);
             let errors = super::merge_errors(f.errors(), new_errors, node, &edit);
-            SourceFileNode::new(green_root, errors)
+            SourceFile::new(green_root, errors)
         };
 
         assert_eq_text!(

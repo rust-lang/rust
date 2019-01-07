@@ -1,11 +1,11 @@
-use crate::{SourceFileNode, SyntaxKind, SyntaxNodeRef, WalkEvent, AstNode};
-use std::fmt::Write;
-use std::str;
+use std::{str, fmt::Write};
+
+use crate::{SourceFile, SyntaxKind, WalkEvent, AstNode, SyntaxNode};
 
 /// Parse a file and create a string representation of the resulting parse tree.
-pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
-    let mut errors: Vec<_> = match syntax.ancestors().find_map(SourceFileNode::cast) {
-        Some(file) => file.owned().errors(),
+pub fn dump_tree(syntax: &SyntaxNode) -> String {
+    let mut errors: Vec<_> = match syntax.ancestors().find_map(SourceFile::cast) {
+        Some(file) => file.errors(),
         None => syntax.root_data().to_vec(),
     };
     errors.sort_by_key(|e| e.offset());
@@ -48,14 +48,13 @@ pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
 }
 
 pub fn check_fuzz_invariants(text: &str) {
-    let file = SourceFileNode::parse(text);
+    let file = SourceFile::parse(text);
     let root = file.syntax();
     validate_block_structure(root);
-    let _ = file.ast();
     let _ = file.errors();
 }
 
-pub(crate) fn validate_block_structure(root: SyntaxNodeRef) {
+pub(crate) fn validate_block_structure(root: &SyntaxNode) {
     let mut stack = Vec::new();
     for node in root.descendants() {
         match node.kind() {

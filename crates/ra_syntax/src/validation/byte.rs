@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-pub(super) fn validate_byte_node(node: ast::Byte, errors: &mut Vec<SyntaxError>) {
+pub(super) fn validate_byte_node(node: &ast::Byte, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
     let literal_range = node.syntax().range();
     let mut components = string_lexing::parse_byte_literal(literal_text);
@@ -106,11 +106,11 @@ fn validate_byte_code_escape(text: &str, range: TextRange, errors: &mut Vec<Synt
 
 #[cfg(test)]
 mod test {
-    use crate::SourceFileNode;
+    use crate::{SourceFile, TreePtr};
 
-    fn build_file(literal: &str) -> SourceFileNode {
+    fn build_file(literal: &str) -> TreePtr<SourceFile> {
         let src = format!("const C: u8 = b'{}';", literal);
-        SourceFileNode::parse(&src)
+        SourceFile::parse(&src)
     }
 
     fn assert_valid_byte(literal: &str) {

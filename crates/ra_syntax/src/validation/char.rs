@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-pub(super) fn validate_char_node(node: ast::Char, errors: &mut Vec<SyntaxError>) {
+pub(super) fn validate_char_node(node: &ast::Char, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
     let literal_range = node.syntax().range();
     let mut components = string_lexing::parse_char_literal(literal_text);
@@ -175,11 +175,11 @@ fn validate_unicode_escape(text: &str, range: TextRange, errors: &mut Vec<Syntax
 
 #[cfg(test)]
 mod test {
-    use crate::SourceFileNode;
+    use crate::{SourceFile, TreePtr};
 
-    fn build_file(literal: &str) -> SourceFileNode {
+    fn build_file(literal: &str) -> TreePtr<SourceFile> {
         let src = format!("const C: char = '{}';", literal);
-        SourceFileNode::parse(&src)
+        SourceFile::parse(&src)
     }
 
     fn assert_valid_char(literal: &str) {

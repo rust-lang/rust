@@ -9,7 +9,7 @@ use crate::{
 
 use super::char;
 
-pub(crate) fn validate_string_node(node: ast::String, errors: &mut Vec<SyntaxError>) {
+pub(crate) fn validate_string_node(node: &ast::String, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
     let literal_range = node.syntax().range();
     let mut components = string_lexing::parse_string_literal(literal_text);
@@ -38,12 +38,12 @@ pub(crate) fn validate_string_node(node: ast::String, errors: &mut Vec<SyntaxErr
 
 #[cfg(test)]
 mod test {
-    use crate::SourceFileNode;
+    use crate::{SourceFile, TreePtr};
 
-    fn build_file(literal: &str) -> SourceFileNode {
+    fn build_file(literal: &str) -> TreePtr<SourceFile> {
         let src = format!(r#"const S: &'static str = "{}";"#, literal);
         println!("Source: {}", src);
-        SourceFileNode::parse(&src)
+        SourceFile::parse(&src)
     }
 
     fn assert_valid_str(literal: &str) {

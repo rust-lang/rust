@@ -4,15 +4,12 @@ mod syntax_text;
 
 use self::syntax_text::SyntaxText;
 use crate::{SmolStr, SyntaxKind, TextRange};
-use rowan::Types;
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
+use rowan::{Types, TransparentNewType};
+use std::fmt;
 
 pub(crate) use self::builder::GreenBuilder;
 pub use self::syntax_error::{SyntaxError, SyntaxErrorKind, Location};
-pub use rowan::{TreeRoot, WalkEvent};
+pub use rowan::WalkEvent;
 
 #[derive(Debug, Clone, Copy)]
 pub enum RaTypes {}
@@ -21,35 +18,19 @@ impl Types for RaTypes {
     type RootData = Vec<SyntaxError>;
 }
 
-pub type OwnedRoot = ::rowan::OwnedRoot<RaTypes>;
-pub type RefRoot<'a> = ::rowan::RefRoot<'a, RaTypes>;
-
 pub type GreenNode = ::rowan::GreenNode<RaTypes>;
+pub type TreePtr<T> = ::rowan::TreePtr<RaTypes, T>;
 
-#[derive(Clone, Copy)]
-pub struct SyntaxNode<R: TreeRoot<RaTypes> = OwnedRoot>(pub(crate) ::rowan::SyntaxNode<RaTypes, R>);
-pub type SyntaxNodeRef<'a> = SyntaxNode<RefRoot<'a>>;
-
-impl<R1, R2> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2>
-where
-    R1: TreeRoot<RaTypes>,
-    R2: TreeRoot<RaTypes>,
-{
-    fn eq(&self, other: &SyntaxNode<R1>) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<R: TreeRoot<RaTypes>> Eq for SyntaxNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for SyntaxNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state)
-    }
+#[derive(PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct SyntaxNode(pub(crate) ::rowan::SyntaxNode<RaTypes>);
+unsafe impl TransparentNewType for SyntaxNode {
+    type Repr = ::rowan::SyntaxNode<RaTypes>;
 }
 
 impl SyntaxNode {
-    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SyntaxNode {
-        SyntaxNode(::rowan::SyntaxNode::new(green, errors))
+    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreePtr<SyntaxNode> {
+        TreePtr::cast(::rowan::SyntaxNode::new(green, errors))
     }
 }
 
@@ -59,45 +40,42 @@ pub enum Direction {
     Prev,
 }
 
-impl<'a> SyntaxNodeRef<'a> {
-    pub fn leaf_text(self) -> Option<&'a SmolStr> {
+impl SyntaxNode {
+    pub fn leaf_text(&self) -> Option<&SmolStr> {
         self.0.leaf_text()
     }
-    pub fn ancestors(self) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
+    pub fn ancestors(&self) -> impl Iterator<Item = &SyntaxNode> {
         crate::algo::generate(Some(self), |&node| node.parent())
     }
-    pub fn descendants(self) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
+    pub fn descendants(&self) -> impl Iterator<Item = &SyntaxNode> {
         self.preorder().filter_map(|event| match event {
             WalkEvent::Enter(node) => Some(node),
             WalkEvent::Leave(_) => None,
         })
     }
-    pub fn siblings(self, direction: Direction) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
+    pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = &SyntaxNode> {
         crate::algo::generate(Some(self), move |&node| match direction {
             Direction::Next => node.next_sibling(),
             Direction::Prev => node.prev_sibling(),
         })
     }
-    pub fn preorder(self) -> impl Iterator<Item = WalkEvent<SyntaxNodeRef<'a>>> {
+    pub fn preorder(&self) -> impl Iterator<Item = WalkEvent<&SyntaxNode>> {
         self.0.preorder().map(|event| match event {
-            WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxNode(n)),
-            WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxNode(n)),
+            WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxNode::from_repr(n)),
+            WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxNode::from_repr(n)),
         })
     }
 }
 
-impl<R: TreeRoot<RaTypes>> SyntaxNode<R> {
+impl SyntaxNode {
     pub(crate) fn root_data(&self) -> &Vec<SyntaxError> {
         self.0.root_data()
     }
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
-        self.0.replace_with(replacement)
+        self.0.replace_self(replacement)
     }
-    pub fn borrowed<'a>(&'a self) -> SyntaxNode<RefRoot<'a>> {
-        SyntaxNode(self.0.borrowed())
-    }
-    pub fn owned(&self) -> SyntaxNode<OwnedRoot> {
-        SyntaxNode(self.0.owned())
+    pub fn to_owned(&self) -> TreePtr<SyntaxNode> {
+        TreePtr::cast(self.0.to_owned())
     }
     pub fn kind(&self) -> SyntaxKind {
         self.0.kind()
@@ -106,32 +84,32 @@ impl<R: TreeRoot<RaTypes>> SyntaxNode<R> {
         self.0.range()
     }
     pub fn text(&self) -> SyntaxText {
-        SyntaxText::new(self.borrowed())
+        SyntaxText::new(self)
     }
     pub fn is_leaf(&self) -> bool {
         self.0.is_leaf()
     }
-    pub fn parent(&self) -> Option<SyntaxNode<R>> {
-        self.0.parent().map(SyntaxNode)
+    pub fn parent(&self) -> Option<&SyntaxNode> {
+        self.0.parent().map(SyntaxNode::from_repr)
     }
-    pub fn first_child(&self) -> Option<SyntaxNode<R>> {
-        self.0.first_child().map(SyntaxNode)
+    pub fn first_child(&self) -> Option<&SyntaxNode> {
+        self.0.first_child().map(SyntaxNode::from_repr)
     }
-    pub fn last_child(&self) -> Option<SyntaxNode<R>> {
-        self.0.last_child().map(SyntaxNode)
+    pub fn last_child(&self) -> Option<&SyntaxNode> {
+        self.0.last_child().map(SyntaxNode::from_repr)
     }
-    pub fn next_sibling(&self) -> Option<SyntaxNode<R>> {
-        self.0.next_sibling().map(SyntaxNode)
+    pub fn next_sibling(&self) -> Option<&SyntaxNode> {
+        self.0.next_sibling().map(SyntaxNode::from_repr)
     }
-    pub fn prev_sibling(&self) -> Option<SyntaxNode<R>> {
-        self.0.prev_sibling().map(SyntaxNode)
+    pub fn prev_sibling(&self) -> Option<&SyntaxNode> {
+        self.0.prev_sibling().map(SyntaxNode::from_repr)
     }
-    pub fn children(&self) -> SyntaxNodeChildren<R> {
+    pub fn children(&self) -> SyntaxNodeChildren {
         SyntaxNodeChildren(self.0.children())
     }
 }
 
-impl<R: TreeRoot<RaTypes>> fmt::Debug for SyntaxNode<R> {
+impl fmt::Debug for SyntaxNode {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
         if has_short_text(self.kind()) {
@@ -142,13 +120,13 @@ impl<R: TreeRoot<RaTypes>> fmt::Debug for SyntaxNode<R> {
 }
 
 #[derive(Debug)]
-pub struct SyntaxNodeChildren<R: TreeRoot<RaTypes>>(::rowan::SyntaxNodeChildren<RaTypes, R>);
+pub struct SyntaxNodeChildren<'a>(::rowan::SyntaxNodeChildren<'a, RaTypes>);
 
-impl<R: TreeRoot<RaTypes>> Iterator for SyntaxNodeChildren<R> {
-    type Item = SyntaxNode<R>;
+impl<'a> Iterator for SyntaxNodeChildren<'a> {
+    type Item = &'a SyntaxNode;
 
-    fn next(&mut self) -> Option<SyntaxNode<R>> {
-        self.0.next().map(SyntaxNode)
+    fn next(&mut self) -> Option<&'a SyntaxNode> {
+        self.0.next().map(SyntaxNode::from_repr)
     }
 }
 
