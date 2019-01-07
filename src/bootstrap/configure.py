@@ -62,6 +62,7 @@ o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
 o("lldb", "rust.lldb", "build lldb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
+o("use-libcxx", "llvm.use_libcxx", "build LLVM with libc++")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.

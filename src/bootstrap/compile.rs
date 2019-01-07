@@ -723,6 +723,9 @@ pub fn build_codegen_backend(builder: &Builder,
             {
                 cargo.env("LLVM_LINK_SHARED", "1");
             }
+            if builder.config.llvm_use_libcxx {
+                cargo.env("LLVM_USE_LIBCXX", "1");
+            }
         }
         _ => panic!("unknown backend: {}", backend),
     }
