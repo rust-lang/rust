@@ -36,8 +36,8 @@ fn main() {
     // build anything and we rely on the upstream implementation of compiler-rt
     // functions
     if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
-        // no C compiler for wasm
-        if !target.contains("wasm32") {
+        // Don't use C compiler for bitcode-only wasm and nvptx
+        if !target.contains("wasm32") && !target.contains("nvptx") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target);
             println!("cargo:rustc-cfg=use_c");
