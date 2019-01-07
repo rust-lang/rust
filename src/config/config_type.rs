@@ -345,9 +345,19 @@ macro_rules! create_config {
 
                         // If the current directory has no parent, we're done searching.
                         if !current.pop() {
-                            return Ok(None);
+                            break;
                         }
                     }
+
+                    // If none was found, check in the global configuration directory.
+                    if let Some(mut config_dir) = dirs::config_dir() {
+                        config_dir.push("rustfmt");
+                        if let Some(path) = get_toml_path(&config_dir)? {
+                            return Ok(Some(path));
+                        }
+                    }
+
+                    return Ok(None);
                 }
 
                 match resolve_project_file(dir)? {

@@ -13,6 +13,7 @@ extern crate derive_new;
 extern crate atty;
 extern crate bytecount;
 extern crate diff;
+extern crate dirs;
 extern crate failure;
 extern crate itertools;
 #[cfg(test)]
