@@ -43,6 +43,7 @@ impl FnSignature {
             .map(|n| n.as_name())
             .unwrap_or_else(Name::missing);
         let mut args = Vec::new();
+        let mut has_self_arg = false;
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = if let Some(type_ref) = self_param.type_ref() {
@@ -60,6 +61,7 @@ impl FnSignature {
                     }
                 };
                 args.push(self_type);
+                has_self_arg = true;
             }
             for param in param_list.params() {
                 let type_ref = TypeRef::from_ast_opt(param.type_ref());
@@ -75,6 +77,7 @@ impl FnSignature {
             name,
             args,
             ret_type,
+            has_self_arg,
         };
         Arc::new(sig)
     }

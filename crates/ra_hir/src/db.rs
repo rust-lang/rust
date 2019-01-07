@@ -5,13 +5,13 @@ use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
     DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
-    SourceFileItems, SourceItemId,
+    SourceFileItems, SourceItemId, Crate,
     query_definitions,
     FnSignature, FnScopes,
     macros::MacroExpansion,
     module_tree::{ModuleId, ModuleTree},
     nameres::{ItemMap, InputModuleItems},
-    ty::{InferenceResult, Ty},
+    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks},
     adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
 };
@@ -100,6 +100,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {
         type ImplsInModuleQuery;
         use fn crate::impl_block::impls_in_module;
+    }
+
+    fn impls_in_crate(krate: Crate) -> Cancelable<Arc<CrateImplBlocks>> {
+        type ImplsInCrateQuery;
+        use fn crate::ty::method_resolution::impls_in_crate;
     }
 
     fn body_hir(def_id: DefId) -> Cancelable<Arc<crate::expr::Body>> {

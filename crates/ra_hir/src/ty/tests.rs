@@ -242,6 +242,32 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_inherent_method() {
+    check_inference(
+        r#"
+struct A;
+
+impl A {
+    fn foo(self, x: u32) -> i32 {}
+}
+
+mod b {
+    impl super::A {
+        fn bar(&self, x: u64) -> i64 {}
+    }
+}
+
+fn test(a: A) {
+    a.foo(1);
+    (&a).bar(1);
+    a.bar(1);
+}
+"#,
+        "inherent_method.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

@@ -33,20 +33,27 @@ impl ImplBlock {
         })
     }
 
+    pub(crate) fn from_id(module_impl_blocks: Arc<ModuleImplBlocks>, impl_id: ImplId) -> ImplBlock {
+        ImplBlock {
+            module_impl_blocks,
+            impl_id,
+        }
+    }
+
     fn impl_data(&self) -> &ImplData {
         &self.module_impl_blocks.impls[self.impl_id]
     }
 
     pub fn target_trait(&self) -> Option<&TypeRef> {
-        self.impl_data().target_trait.as_ref()
+        self.impl_data().target_trait()
     }
 
     pub fn target_type(&self) -> &TypeRef {
-        &self.impl_data().target_type
+        self.impl_data().target_type()
     }
 
     pub fn items(&self) -> &[ImplItem] {
-        &self.impl_data().items
+        self.impl_data().items()
     }
 }
 
@@ -64,7 +71,7 @@ impl ImplData {
         module: &Module,
         node: &ast::ImplBlock,
     ) -> Self {
-        let target_trait = node.target_type().map(TypeRef::from_ast);
+        let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
         let module_loc = module.def_id.loc(db);
         let items = if let Some(item_list) = node.item_list() {
@@ -103,6 +110,18 @@ impl ImplData {
             items,
         }
     }
+
+    pub fn target_trait(&self) -> Option<&TypeRef> {
+        self.target_trait.as_ref()
+    }
+
+    pub fn target_type(&self) -> &TypeRef {
+        &self.target_type
+    }
+
+    pub fn items(&self) -> &[ImplItem] {
+        &self.items
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,11 +152,9 @@ impl_arena_id!(ImplId);
 /// This way, we avoid having to do this process for the whole crate whenever
 /// a file is changed; as long as the impl blocks in the file don't change,
 /// we don't need to do the second step again.
-///
-/// (The second step does not yet exist.)
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleImplBlocks {
-    impls: Arena<ImplId, ImplData>,
+    pub(crate) impls: Arena<ImplId, ImplData>,
     impls_by_def: FxHashMap<DefId, ImplId>,
 }
 
@@ -153,7 +170,10 @@ impl ModuleImplBlocks {
         let (file_id, module_source) = module.definition_source(db)?;
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
-            ModuleSource::Module(node) => node.syntax(),
+            ModuleSource::Module(node) => match node.item_list() {
+                Some(item_list) => item_list.syntax(),
+                None => return Ok(()),
+            },
         };
 
         let source_file_items = db.file_items(file_id.into());
