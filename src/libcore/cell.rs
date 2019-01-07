@@ -1216,6 +1216,14 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
     }
 }
 
+#[unstable(feature = "refcell_downgrade", issue = "0")] // TODO issue number
+impl<'b, T: ?Sized> From<RefMut<'b, T>> for Ref<'b, T> {
+    #[inline]
+    fn from(orig: RefMut<'b, T>) -> Ref<'b, T> {
+        RefMut::downgrade(orig)
+    }
+}
+
 impl<'b, T: ?Sized> RefMut<'b, T> {
     /// Make a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
