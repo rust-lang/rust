@@ -51,9 +51,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
-    // Note that external items for which `doc(hidden)` applies to are shown as
-    // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from crateanalysis.
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
