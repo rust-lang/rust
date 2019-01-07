@@ -928,6 +928,7 @@ impl<'tcx> ChangeSet<'tcx> {
 #[cfg(test)]
 pub mod tests {
     pub use super::*;
+    extern crate quickcheck;
     use quickcheck::*;
 
     use rustc::hir::def_id::DefId;

@@ -9,6 +9,14 @@
 //! that have been matched. Trait and inherent impls can't be matched by name, and are processed
 //! in a fourth pass that uses trait bounds to find matching impls.
 
+use crate::{
+    changes::{ChangeSet, ChangeType},
+    mapping::{IdMapping, NameMapping},
+    mismatch::MismatchRelation,
+    translate::TranslationContext,
+    typeck::{BoundContext, TypeComparisonContext},
+};
+use log::{debug, info};
 use rustc::{
     hir::{
         def::{CtorKind, Def, Export},
@@ -19,13 +27,6 @@ use rustc::{
         AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt, Visibility,
         Visibility::Public,
     },
-};
-use semcheck::{
-    changes::{ChangeSet, ChangeType},
-    mapping::{IdMapping, NameMapping},
-    mismatch::MismatchRelation,
-    translate::TranslationContext,
-    typeck::{BoundContext, TypeComparisonContext},
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
@@ -386,11 +387,11 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
     let mut fields = BTreeMap::new();
 
     for variant in &old_def.variants {
-        variants.entry(variant.name).or_insert((None, None)).0 = Some(variant);
+        variants.entry(variant.ident.name).or_insert((None, None)).0 = Some(variant);
     }
 
     for variant in &new_def.variants {
-        variants.entry(variant.name).or_insert((None, None)).1 = Some(variant);
+        variants.entry(variant.ident.name).or_insert((None, None)).1 = Some(variant);
     }
 
     for items in variants.values() {

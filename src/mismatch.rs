@@ -4,6 +4,8 @@
 //! are treated as renamed instances of the same item (as long as they are both unknown to us at
 //! the time of analysis). Thus, we may match them up to avoid some false positives.
 
+use crate::mapping::IdMapping;
+use log::debug;
 use rustc::{
     hir::def_id::DefId,
     ty::{
@@ -14,7 +16,6 @@ use rustc::{
         Visibility::Public,
     },
 };
-use semcheck::mapping::IdMapping;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// A relation searching for items appearing at the same spot in a type.
@@ -22,7 +23,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 /// Keeps track of item pairs found that way that correspond to item matchings not yet known.
 /// This allows to match up some items that aren't exported, and which possibly even differ in
 /// their names across versions.
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
 pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
     tcx: TyCtxt<'a, 'gcx, 'tcx>,

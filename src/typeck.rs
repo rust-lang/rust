@@ -3,6 +3,12 @@
 //! Multiple context structures are provided that modularize the needed functionality to allow
 //! for code reuse across analysis steps.
 
+use crate::{
+    changes::ChangeSet,
+    mapping::IdMapping,
+    translate::{InferenceCleanupFolder, TranslationContext},
+};
+use log::debug;
 use rustc::{
     hir::def_id::DefId,
     infer::InferCtxt,
@@ -13,11 +19,6 @@ use rustc::{
         subst::{Kind, Substs},
         GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt,
     },
-};
-use semcheck::{
-    changes::ChangeSet,
-    mapping::IdMapping,
-    translate::{InferenceCleanupFolder, TranslationContext},
 };
 
 /// The context in which bounds analysis happens.
@@ -222,7 +223,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
         if let Err(err) = error {
             let scope_tree = ScopeTree::default();
-            let mut outlives_env = OutlivesEnvironment::new(target_param_env);
+            let outlives_env = OutlivesEnvironment::new(target_param_env);
 
             // The old code here added the bounds from the target param env by hand. However, at
             // least the explicit bounds are added when the OutlivesEnvironment is created. This
@@ -296,7 +297,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         orig_substs: &Substs<'tcx>,
         target_substs: &Substs<'tcx>,
     ) {
-        use semcheck::changes::ChangeType::{BoundsLoosened, BoundsTightened};
+        use crate::changes::ChangeType::{BoundsLoosened, BoundsTightened};
 
         let tcx = self.infcx.tcx;
 
