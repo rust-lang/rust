@@ -159,6 +159,7 @@ impl_stable_hash_for!(struct hir::Label {
 
 impl_stable_hash_for!(struct hir::Lifetime {
     id,
+    hir_id,
     span,
     name
 });

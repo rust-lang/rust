@@ -156,6 +156,7 @@ impl fmt::Debug for Label {
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
 
     /// Either "'a", referring to a named lifetime definition,

@@ -209,6 +209,7 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
 
                     args.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         id: ast::DUMMY_NODE_ID,
+                        hir_id: hir::DUMMY_HIR_ID,
                         span: DUMMY_SP,
                         name: hir::LifetimeName::Param(name),
                     }));
