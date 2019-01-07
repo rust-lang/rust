@@ -743,10 +743,10 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            pub fn record_query_hits(&self, sess: &Session) {
+            pub fn record_computed_queries(&self, sess: &Session) {
                 sess.profiler(|p| {
                     $(
-                        p.record_queries(
+                        p.record_computed_queries(
                             <queries::$name<'_> as QueryConfig<'_>>::CATEGORY,
                             self.$name.lock().results.len()
                         );

@@ -170,7 +170,7 @@ impl SelfProfiler {
         self.timer_stack.push(category);
     }
 
-    pub fn record_queries(&mut self, category: ProfileCategory, count: usize) {
+    pub fn record_computed_queries(&mut self, category: ProfileCategory, count: usize) {
         let (hits, computed) = *self.data.query_counts.get(category);
         self.data.query_counts.set(category, (hits, computed + count as u64));
     }

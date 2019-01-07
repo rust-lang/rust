@@ -1250,7 +1250,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let r = tls::enter_global(gcx, f);
 
-        gcx.queries.record_query_hits(s);
+        gcx.queries.record_computed_queries(s);
 
         r
     }
