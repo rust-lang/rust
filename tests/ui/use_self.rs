@@ -250,6 +250,14 @@ mod nesting {
             struct Bar {
                 foo: Foo, // Foo != Self
             }
+
+            impl Bar {
+                fn bar() -> Bar {
+                    Bar {
+                        foo: Foo{},
+                    }
+                }
+            }
         }
     }
 
@@ -258,7 +266,7 @@ mod nesting {
     }
     impl Enum {
         fn method() {
-            use self::Enum::*;
+            use self::Enum::*; // Issue 3425
             static STATIC: Enum = Enum::A; // Can't use Self as type
         }
     }

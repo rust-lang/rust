@@ -246,7 +246,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
             | ItemKind::Static(..)
             | ItemKind::Enum(..)
             | ItemKind::Struct(..)
-            | ItemKind::Union(..) => {
+            | ItemKind::Union(..)
+            | ItemKind::Impl(..) => {
                 // Don't check statements that shadow `Self` or where `Self` can't be used
             },
             _ => walk_item(self, item),
