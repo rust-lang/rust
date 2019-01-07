@@ -139,32 +139,30 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
 pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let before_dot_offset = offset - TextUnit::of_char('.');
 
-    let _whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset).left_biased()?;
+    let whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset).left_biased()?;
 
     // find whitespace just left of the dot
-    ast::Whitespace::cast(_whitespace)?;
+    ast::Whitespace::cast(whitespace)?;
 
     // make sure there is a method call
-    let _method_call = _whitespace
+    let method_call = whitespace
         .siblings(Direction::Prev)
         // first is whitespace
         .skip(1)
         .next()?;
 
-    ast::MethodCallExprNode::cast(_method_call)?;
+    ast::MethodCallExprNode::cast(method_call)?;
 
     // find how much the _method call is indented
-    let method_chain_indent = _method_call
-        .ancestors()
-        .skip(1)
-        .next()?
+    let method_chain_indent = method_call
+        .parent()?
         .siblings(Direction::Prev)
         .skip(1)
         .next()?
         .leaf_text()
         .map(|x| last_line_indent_in_whitespace(x))?;
 
-    let current_indent = TextUnit::of_str(last_line_indent_in_whitespace(_whitespace.leaf_text()?));
+    let current_indent = TextUnit::of_str(last_line_indent_in_whitespace(whitespace.leaf_text()?));
     // TODO: indent is always 4 spaces now. A better heuristic could look on the previous line(s)
 
     let target_indent = TextUnit::of_str(method_chain_indent) + TextUnit::from_usize(4);
@@ -337,7 +335,7 @@ mod tests {
     use super::*;
     use crate::test_utils::{
         add_cursor, assert_eq_text, check_action, extract_offset, extract_range,
-};
+    };
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
