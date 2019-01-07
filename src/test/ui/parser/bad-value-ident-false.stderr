@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `false`
-  --> $DIR/bad-value-ident-false.rs:3:4
+  --> $DIR/bad-value-ident-false.rs:1:4
    |
 LL | fn false() { } //~ ERROR expected identifier, found keyword `false`
    |    ^^^^^ expected identifier, found keyword

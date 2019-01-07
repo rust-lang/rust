@@ -1,4 +1,5 @@
 // compile-pass
-// compile-flags: -Z parse-only
 
-type A = Box<(Fn(D::Error) -> E) + 'static + Send + Sync>; // OK (but see #39318)
+type A = Box<(Fn(u8) -> u8) + 'static + Send + Sync>; // OK (but see #39318)
+
+fn main() {}

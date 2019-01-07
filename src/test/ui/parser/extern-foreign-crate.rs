@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Verifies that the expected token errors for `extern crate` are
 // raised
 

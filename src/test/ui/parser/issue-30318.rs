@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn foo() { }
 
 //! Misplaced comment...

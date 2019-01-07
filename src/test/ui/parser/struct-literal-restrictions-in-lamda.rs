@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 struct Foo {
     x: isize,
 }
@@ -11,9 +9,10 @@ impl Foo {
 }
 
 fn main() {
-    while || Foo {
+    while || Foo { //~ ERROR expected value, found struct `Foo`
         x: 3    //~ ERROR expected type, found `3`
     }.hi() { //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
+             //~| ERROR no method named `hi` found for type `()` in the current scope
         println!("yo");
     }
 }

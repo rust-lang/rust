@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // error-pattern:nonexistent
 class cat : nonexistent {
   let meows: usize;

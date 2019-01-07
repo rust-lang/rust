@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only
+struct S;
 
 impl S {
     pub

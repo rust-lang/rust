@@ -1,5 +1,5 @@
 error: expected pattern, found `,`
-  --> $DIR/pat-tuple-1.rs:5:10
+  --> $DIR/pat-tuple-1.rs:3:10
    |
 LL |         (, ..) => {} //~ ERROR expected pattern, found `,`
    |          ^ expected pattern

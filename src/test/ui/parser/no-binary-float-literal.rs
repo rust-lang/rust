@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // error-pattern:binary float literal is not supported
 
 fn main() {

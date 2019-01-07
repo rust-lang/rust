@@ -1,5 +1,5 @@
 error: an inner attribute is not permitted following an outer attribute
-  --> $DIR/inner-attr.rs:5:3
+  --> $DIR/inner-attr.rs:3:3
    |
 LL | #![recursion_limit="100"] //~ ERROR an inner attribute is not permitted following an outer attribute
    |   ^

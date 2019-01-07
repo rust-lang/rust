@@ -1,5 +1,5 @@
 error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-5.rs:5:5
+  --> $DIR/lex-bad-char-literals-5.rs:4:5
    |
 LL |     '/x10/x10'  //~ ERROR: character literal may only contain one codepoint
    |     ^^^^^^^^^^
@@ -8,5 +8,15 @@ help: if you meant to write a `str` literal, use double quotes
 LL |     "/x10/x10"  //~ ERROR: character literal may only contain one codepoint
    |     ^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/lex-bad-char-literals-5.rs:4:5
+   |
+LL |     '/x10/x10'  //~ ERROR: character literal may only contain one codepoint
+   |     ^^^^^^^^^^ expected char, found reference
+   |
+   = note: expected type `char`
+              found type `&'static str`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

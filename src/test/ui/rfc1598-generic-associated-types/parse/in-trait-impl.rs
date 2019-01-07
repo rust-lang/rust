@@ -1,5 +1,5 @@
-// compile-flags: -Z parse-only
 // compile-pass
+// compile-flags: -Z parse-only
 
 #![feature(generic_associated_types)]
 

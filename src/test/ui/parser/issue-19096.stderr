@@ -1,8 +1,21 @@
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
-  --> $DIR/issue-19096.rs:5:8
+  --> $DIR/issue-19096.rs:3:8
    |
 LL |     t.0::<isize>; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
    |        ^^ expected one of `.`, `;`, `?`, `}`, or an operator here
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/issue-19096.rs:3:5
+   |
+LL | fn main() {
+   |           - expected `()` because of default return type
+LL |     let t = (42, 42);
+LL |     t.0::<isize>; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
+   |     ^^^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

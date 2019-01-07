@@ -1,6 +1,6 @@
-// compile-flags: -Z parse-only
+struct X<T>(T);
 
-struct X { x: isize }
-
-impl<'a, T, 'b> X {}
+impl<'a, T, 'b> X<T> {}
 //~^ ERROR lifetime parameters must be declared prior to type parameters
+
+fn main() {}

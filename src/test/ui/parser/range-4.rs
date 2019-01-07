@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Test range syntax - syntax errors.
 
 pub fn main() {

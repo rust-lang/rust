@@ -1,19 +1,19 @@
 error: parenthesized lifetime bounds are not supported
-  --> $DIR/trait-object-lifetime-parens.rs:3:19
+  --> $DIR/trait-object-lifetime-parens.rs:5:24
    |
-LL | fn f<T: Copy + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported
-   |                   ^
+LL | fn f<'a, T: Trait + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported
+   |                        ^
 
 error: parenthesized lifetime bounds are not supported
-  --> $DIR/trait-object-lifetime-parens.rs:6:26
+  --> $DIR/trait-object-lifetime-parens.rs:8:27
    |
-LL |     let _: Box<Copy + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
-   |                          ^
+LL |     let _: Box<Trait + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
+   |                           ^
 
 error: expected type, found `'a`
-  --> $DIR/trait-object-lifetime-parens.rs:7:17
+  --> $DIR/trait-object-lifetime-parens.rs:9:17
    |
-LL |     let _: Box<('a) + Copy>; //~ ERROR expected type, found `'a`
+LL |     let _: Box<('a) + Trait>; //~ ERROR expected type, found `'a`
    |         -       ^^
    |         |
    |         while parsing the type for `_`

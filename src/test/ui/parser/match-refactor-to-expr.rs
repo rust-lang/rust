@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     let foo =
         match //~ NOTE while parsing this match expression

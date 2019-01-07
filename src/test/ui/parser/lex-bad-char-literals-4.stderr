@@ -1,5 +1,5 @@
 error: character literal may only contain one codepoint: '●
-  --> $DIR/lex-bad-char-literals-4.rs:5:5
+  --> $DIR/lex-bad-char-literals-4.rs:4:5
    |
 LL |     '●  //~ ERROR: character literal may only contain one codepoint: '●
    |     ^^

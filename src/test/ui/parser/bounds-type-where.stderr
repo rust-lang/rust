@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `::`, `:`, `<`, `==`, or `=`, found `,`
-  --> $DIR/bounds-type-where.rs:10:15
+  --> $DIR/bounds-type-where.rs:8:15
    |
 LL | type A where T, = u8;
    |               ^ expected one of 8 possible tokens here

@@ -1,8 +1,8 @@
 error: type parameters must be declared prior to associated type bindings
-  --> $DIR/issue-32214.rs:3:37
+  --> $DIR/issue-32214.rs:5:34
    |
-LL | pub fn test<W, I: Iterator<Item=(), W> >() {}
-   |                                     ^
+LL | pub fn test<W, I: Trait<Item=(), W> >() {}
+   |                                  ^
 
 error: aborting due to previous error
 

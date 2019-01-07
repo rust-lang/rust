@@ -1,3 +1,3 @@
-// compile-flags: -Z parse-only
+fn main() {}
 
 /// hi //~ERROR expected item after doc comment

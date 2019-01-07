@@ -1,5 +1,5 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `<`
-  --> $DIR/issue-22647.rs:4:15
+  --> $DIR/issue-22647.rs:2:15
    |
 LL |     let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
    |               ^ expected one of `:`, `;`, `=`, or `@` here

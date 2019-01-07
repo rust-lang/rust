@@ -1,5 +1,5 @@
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/underscore_static.rs:3:8
+  --> $DIR/underscore_static.rs:1:8
    |
 LL | static _: () = (); //~ ERROR expected identifier, found reserved identifier `_`
    |        ^ expected identifier, found reserved identifier

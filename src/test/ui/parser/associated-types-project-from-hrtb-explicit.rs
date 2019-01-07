@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
 // Test you can't use a higher-ranked trait bound inside of a qualified
 // path (just won't parse).

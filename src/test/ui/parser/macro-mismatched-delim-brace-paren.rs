@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only
+macro_rules! foo { ($($tt:tt)*) => () }
 
 fn main() {
     foo! {

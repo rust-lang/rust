@@ -1,8 +1,15 @@
 error: expected `,`
-  --> $DIR/bind-struct-early-modifiers.rs:6:19
+  --> $DIR/bind-struct-early-modifiers.rs:4:19
    |
 LL |         Foo { ref x: ref x } => {}, //~ ERROR expected `,`
    |                   ^
 
-error: aborting due to previous error
+error[E0027]: pattern does not mention field `x`
+  --> $DIR/bind-struct-early-modifiers.rs:4:9
+   |
+LL |         Foo { ref x: ref x } => {}, //~ ERROR expected `,`
+   |         ^^^^^^^^^^^^^^^^^^^^ missing field `x`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0027`.

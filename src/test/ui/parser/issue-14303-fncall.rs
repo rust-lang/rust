@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     (0..4)
     .map(|x| x * 2)

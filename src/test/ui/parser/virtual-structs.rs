@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Test diagnostics for the removed struct inheritance feature.
 
 virtual struct SuperStruct {

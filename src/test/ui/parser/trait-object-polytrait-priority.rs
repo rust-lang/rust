@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 trait Trait<'a> {}
 
 fn main() {

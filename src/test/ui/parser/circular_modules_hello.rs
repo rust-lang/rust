@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // ignore-test: this is an auxiliary file for circular-modules-main.rs
 
 #[path = "circular_modules_main.rs"]

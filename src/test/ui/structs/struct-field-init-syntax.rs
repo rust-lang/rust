@@ -1,6 +1,9 @@
-// compile-flags: -Z parse-only
-
 // issue #41834
+
+#[derive(Default)]
+struct Foo {
+    one: u8,
+}
 
 fn main() {
     let foo = Foo {

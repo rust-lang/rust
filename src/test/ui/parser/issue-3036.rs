@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Testing that semicolon tokens are printed correctly in errors
 
 fn main()

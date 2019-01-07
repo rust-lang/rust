@@ -1,5 +1,5 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `{`
-  --> $DIR/mut-patterns.rs:7:17
+  --> $DIR/mut-patterns.rs:5:17
    |
 LL |     let mut Foo { x: x } = Foo { x: 3 }; //~ ERROR: expected one of `:`, `;`, `=`, or `@`, found `{`
    |                 ^ expected one of `:`, `;`, `=`, or `@` here

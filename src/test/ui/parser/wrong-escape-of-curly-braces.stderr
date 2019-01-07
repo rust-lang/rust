@@ -1,23 +1,23 @@
 error: unknown character escape: {
-  --> $DIR/wrong-escape-of-curly-braces.rs:5:17
+  --> $DIR/wrong-escape-of-curly-braces.rs:3:17
    |
 LL |     let bad = "/{it is wrong/}";
    |                 ^
    |
 help: if used in a formatting string, curly braces are escaped with `{{` and `}}`
-  --> $DIR/wrong-escape-of-curly-braces.rs:5:17
+  --> $DIR/wrong-escape-of-curly-braces.rs:3:17
    |
 LL |     let bad = "/{it is wrong/}";
    |                 ^
 
 error: unknown character escape: }
-  --> $DIR/wrong-escape-of-curly-braces.rs:5:30
+  --> $DIR/wrong-escape-of-curly-braces.rs:3:30
    |
 LL |     let bad = "/{it is wrong/}";
    |                              ^
    |
 help: if used in a formatting string, curly braces are escaped with `{{` and `}}`
-  --> $DIR/wrong-escape-of-curly-braces.rs:5:30
+  --> $DIR/wrong-escape-of-curly-braces.rs:3:30
    |
 LL |     let bad = "/{it is wrong/}";
    |                              ^

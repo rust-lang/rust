@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Constants (static variables) can be used to match in patterns, but mutable
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.

@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // issue #17123
 
 fn main() {

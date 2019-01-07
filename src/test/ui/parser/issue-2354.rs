@@ -1,7 +1,5 @@
-// compile-flags: -Z parse-only
-
 fn foo() { //~ NOTE un-closed delimiter
-  match Some(x) {
+  match Some(10) {
   //~^ NOTE this delimiter might not be properly closed...
       Some(y) => { panic!(); }
       None => { panic!(); }
@@ -13,4 +11,5 @@ fn bar() {
     while (i < 1000) {}
 }
 
-fn main() {} //~ ERROR this file contains an un-closed delimiter
+fn main() {} //~ NOTE here is a function named 'main'
+             //~ ERROR this file contains an un-closed delimiter

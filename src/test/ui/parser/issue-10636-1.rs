@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 struct Obj {
     //~^ NOTE: un-closed delimiter
     member: usize

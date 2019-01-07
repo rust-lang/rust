@@ -1,5 +1,5 @@
 error: expected one of `::`, `:`, `;`, or `=`, found `!`
-  --> $DIR/pat-ranges-2.rs:6:26
+  --> $DIR/pat-ranges-2.rs:4:26
    |
 LL |     let 10 ..= makropulos!() = 12; //~ error: expected one of `::`, `:`, `;`, or `=`, found `!`
    |                          ^ expected one of `::`, `:`, `;`, or `=` here

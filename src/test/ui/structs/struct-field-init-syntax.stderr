@@ -1,5 +1,5 @@
 error: cannot use a comma after the base struct
-  --> $DIR/struct-field-init-syntax.rs:8:9
+  --> $DIR/struct-field-init-syntax.rs:11:9
    |
 LL |         ..Foo::default(),
    |         ^^^^^^^^^^^^^^^^- help: remove this comma
@@ -7,7 +7,7 @@ LL |         ..Foo::default(),
    = note: the base struct must always be the last field
 
 error: cannot use a comma after the base struct
-  --> $DIR/struct-field-init-syntax.rs:13:9
+  --> $DIR/struct-field-init-syntax.rs:16:9
    |
 LL |         ..Foo::default(),
    |         ^^^^^^^^^^^^^^^^- help: remove this comma
