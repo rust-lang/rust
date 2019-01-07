@@ -538,6 +538,7 @@ fn is_boolean_operator(op: BinaryOp) -> bool {
         | BinaryOp::GreaterEqualTest
         | BinaryOp::LesserTest
         | BinaryOp::GreaterTest => true,
+        _ => false,
     }
 }
 

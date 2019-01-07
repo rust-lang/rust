@@ -49,6 +49,7 @@ Grammar(
         ["^=", "CARETEQ"],
         ["/=", "SLASHEQ"],
         ["*=", "STAREQ"],
+        ["%=", "PERCENTEQ"],
         ["&&", "AMPAMP"],
         ["||", "PIPEPIPE"],
         ["<<", "SHL"],
