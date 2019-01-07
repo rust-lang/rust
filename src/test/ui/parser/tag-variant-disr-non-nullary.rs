@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 //error-pattern: discriminator values can only be used with a field-less enum
 
 enum color {
@@ -10,3 +8,5 @@ enum color {
     white = 0xffffff,
     other (str),
 }
+
+fn main() {}

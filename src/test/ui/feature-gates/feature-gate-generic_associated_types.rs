@@ -11,9 +11,9 @@ trait PointerFamily<U> {
 struct Foo;
 
 impl PointerFamily<u32> for Foo {
-    type Pointer<usize> = Box<usize>;
+    type Pointer<Usize> = Box<Usize>;
     //~^ ERROR generic associated types are unstable
-    type Pointer2<u32> = Box<u32>;
+    type Pointer2<U32> = Box<U32>;
     //~^ ERROR generic associated types are unstable
 }
 

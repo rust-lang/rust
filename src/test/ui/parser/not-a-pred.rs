@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // error-pattern: lt
 
 fn f(a: isize, b: isize) : lt(a, b) { }

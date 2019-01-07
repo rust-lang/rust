@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
   match 42 {
     x < 7 => (),

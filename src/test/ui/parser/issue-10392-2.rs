@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 struct A { foo: isize }
 
 fn a() -> A { panic!() }

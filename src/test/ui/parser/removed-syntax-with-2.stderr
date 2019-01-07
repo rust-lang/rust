@@ -1,8 +1,24 @@
 error: expected one of `,` or `}`, found `a`
-  --> $DIR/removed-syntax-with-2.rs:10:31
+  --> $DIR/removed-syntax-with-2.rs:8:31
    |
 LL |     let b = S { foo: (), with a };
    |                               ^ expected one of `,` or `}` here
 
-error: aborting due to previous error
+error[E0425]: cannot find value `with` in this scope
+  --> $DIR/removed-syntax-with-2.rs:8:26
+   |
+LL |     let b = S { foo: (), with a };
+   |                          ^^^^ not found in this scope
 
+error[E0560]: struct `main::S` has no field named `with`
+  --> $DIR/removed-syntax-with-2.rs:8:26
+   |
+LL |     let b = S { foo: (), with a };
+   |                          ^^^^ `main::S` does not have this field
+   |
+   = note: available fields are: `foo`, `bar`
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0425, E0560.
+For more information about an error, try `rustc --explain E0425`.

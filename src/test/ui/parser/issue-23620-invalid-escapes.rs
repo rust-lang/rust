@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
 fn main() {
     let _ = b"\u{a66e}";

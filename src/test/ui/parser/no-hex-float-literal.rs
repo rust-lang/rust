@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // error-pattern:hexadecimal float literal is not supported
 
 fn main() {

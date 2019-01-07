@@ -1,5 +1,5 @@
 error: discriminator values can only be used with a field-less enum
-  --> $DIR/tag-variant-disr-non-nullary.rs:10:13
+  --> $DIR/tag-variant-disr-non-nullary.rs:8:13
    |
 LL |     white = 0xffffff,
    |             ^^^^^^^^

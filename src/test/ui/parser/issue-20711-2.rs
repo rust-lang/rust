@@ -1,4 +1,3 @@
-// compile-flags: -Z parse-only
 // ignore-tidy-linelength
 
 struct Foo;

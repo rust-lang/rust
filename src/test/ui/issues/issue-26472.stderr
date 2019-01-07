@@ -1,11 +1,17 @@
 error[E0616]: field `len` of struct `sub::S` is private
   --> $DIR/issue-26472.rs:11:13
    |
-LL |     let v = s.len;
-   |             ^^^^^
-   |
-   = note: a method `len` also exists, perhaps you wish to call it
+LL |     let v = s.len; //~ ERROR field `len` of struct `sub::S` is private
+   |             ^^---
+   |               |
+   |               help: a method `len` also exists, call it with parentheses: `len()`
 
-error: aborting due to previous error
+error[E0616]: field `len` of struct `sub::S` is private
+  --> $DIR/issue-26472.rs:12:5
+   |
+LL |     s.len = v; //~ ERROR field `len` of struct `sub::S` is private
+   |     ^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0616`.

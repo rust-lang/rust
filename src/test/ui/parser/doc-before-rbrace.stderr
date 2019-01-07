@@ -1,5 +1,5 @@
 error[E0585]: found a documentation comment that doesn't document anything
-  --> $DIR/doc-before-rbrace.rs:4:21
+  --> $DIR/doc-before-rbrace.rs:2:21
    |
 LL |     println!("Hi"); /// hi
    |                     ^^^^^^

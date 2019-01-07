@@ -1543,7 +1543,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
-            ast::ItemKind::Static(..) |
             ast::ItemKind::Const(_,_) => {
                 if i.ident.name == "_" {
                     gate_feature_post!(&self, underscore_const_names, i.span,

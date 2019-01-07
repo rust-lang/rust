@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Issue #50974
 
 struct Foo {
@@ -14,4 +12,3 @@ fn main() {
         b: 42
     };
 }
-

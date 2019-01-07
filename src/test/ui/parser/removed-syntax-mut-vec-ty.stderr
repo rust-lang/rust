@@ -1,5 +1,5 @@
 error: expected type, found keyword `mut`
-  --> $DIR/removed-syntax-mut-vec-ty.rs:3:11
+  --> $DIR/removed-syntax-mut-vec-ty.rs:1:11
    |
 LL | type v = [mut isize]; //~ ERROR expected type, found keyword `mut`
    |           ^^^

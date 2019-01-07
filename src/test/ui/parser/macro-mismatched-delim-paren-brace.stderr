@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/macro-mismatched-delim-paren-brace.rs:6:5
+  --> $DIR/macro-mismatched-delim-paren-brace.rs:4:5
    |
 LL |     foo! (
    |          - un-closed delimiter
@@ -8,7 +8,7 @@ LL |     } //~ ERROR incorrect close delimiter
    |     ^ incorrect close delimiter
 
 error: unexpected close delimiter: `}`
-  --> $DIR/macro-mismatched-delim-paren-brace.rs:7:1
+  --> $DIR/macro-mismatched-delim-paren-brace.rs:5:1
    |
 LL | } //~ ERROR unexpected close delimiter: `}`
    | ^ unexpected close delimiter

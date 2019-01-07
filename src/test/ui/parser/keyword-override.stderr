@@ -1,5 +1,5 @@
 error: expected pattern, found reserved keyword `override`
-  --> $DIR/keyword-override.rs:4:9
+  --> $DIR/keyword-override.rs:2:9
    |
 LL |     let override = (); //~ ERROR expected pattern, found reserved keyword `override`
    |         ^^^^^^^^ expected pattern

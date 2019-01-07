@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     let _: Option<()> = do catch {};
     //~^ ERROR found removed `do catch` syntax

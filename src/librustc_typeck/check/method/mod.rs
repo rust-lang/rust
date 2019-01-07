@@ -11,6 +11,7 @@ pub use self::CandidateSource::*;
 pub use self::suggest::{SelfSource, TraitInfo};
 
 use check::FnCtxt;
+use errors::{Applicability, DiagnosticBuilder};
 use namespace::Namespace;
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
@@ -121,6 +122,42 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
         }
+    }
+
+    /// Add a suggestion to call the given method to the provided diagnostic.
+    crate fn suggest_method_call(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        msg: &str,
+        method_name: ast::Ident,
+        self_ty: Ty<'tcx>,
+        call_expr_id: ast::NodeId,
+    ) {
+        let has_params = self
+            .probe_for_name(
+                method_name.span,
+                probe::Mode::MethodCall,
+                method_name,
+                IsSuggestion(false),
+                self_ty,
+                call_expr_id,
+                ProbeScope::TraitsInScope,
+            )
+            .and_then(|pick| {
+                let sig = self.tcx.fn_sig(pick.item.def_id);
+                Ok(sig.inputs().skip_binder().len() > 1)
+            });
+
+        let (suggestion, applicability) = if has_params.unwrap_or_default() {
+            (
+                format!("{}(...)", method_name),
+                Applicability::HasPlaceholders,
+            )
+        } else {
+            (format!("{}()", method_name), Applicability::MaybeIncorrect)
+        };
+
+        err.span_suggestion_with_applicability(method_name.span, msg, suggestion, applicability);
     }
 
     /// Performs method lookup. If lookup is successful, it will return the callee

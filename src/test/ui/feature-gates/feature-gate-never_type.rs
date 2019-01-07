@@ -6,8 +6,8 @@ trait Foo {
 
 type Ma = (u32, !, i32); //~ ERROR type is experimental
 type Meeshka = Vec<!>; //~ ERROR type is experimental
-type Mow = &fn(!) -> !; //~ ERROR type is experimental
-type Skwoz = &mut !; //~ ERROR type is experimental
+type Mow = &'static fn(!) -> !; //~ ERROR type is experimental
+type Skwoz = &'static mut !; //~ ERROR type is experimental
 
 impl Foo for Meeshka {
     type Wub = !; //~ ERROR type is experimental

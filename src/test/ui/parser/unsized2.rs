@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Test syntax checks for `type` keyword.
 
 fn f<X>() {}

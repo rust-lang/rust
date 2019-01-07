@@ -1,5 +1,5 @@
 error: expected identifier, found `=`
-  --> $DIR/keyword-ref-as-identifier.rs:4:13
+  --> $DIR/keyword-ref-as-identifier.rs:2:13
    |
 LL |     let ref = "foo"; //~ error: expected identifier, found `=`
    |             ^ expected identifier

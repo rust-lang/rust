@@ -329,36 +329,6 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
     }
 }
 
-struct BorrowedLocals(liveness::LiveVarSet<Local>);
-
-fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
-    match *place {
-        Place::Local(l) => { locals.0.insert(l); },
-        Place::Promoted(_) |
-        Place::Static(..) => (),
-        Place::Projection(ref proj) => {
-            match proj.elem {
-                // For derefs we don't look any further.
-                // If it pointed to a Local, it would already be borrowed elsewhere
-                ProjectionElem::Deref => (),
-                _ => mark_as_borrowed(&proj.base, locals)
-            }
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for BorrowedLocals {
-    fn visit_rvalue(&mut self,
-                    rvalue: &Rvalue<'tcx>,
-                    location: Location) {
-        if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            mark_as_borrowed(place, self);
-        }
-
-        self.super_rvalue(rvalue, location)
-    }
-}
-
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,

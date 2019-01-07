@@ -1,5 +1,5 @@
 error: expected outer doc comment
-  --> $DIR/issue-30318.rs:5:1
+  --> $DIR/issue-30318.rs:3:1
    |
 LL | //! Misplaced comment...
    | ^^^^^^^^^^^^^^^^^^^^^^^^

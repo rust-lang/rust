@@ -1,5 +1,5 @@
 error: expected one of `>`, lifetime, or type, found `mut`
-  --> $DIR/removed-syntax-uniq-mut-ty.rs:3:20
+  --> $DIR/removed-syntax-uniq-mut-ty.rs:1:20
    |
 LL | type mut_box = Box<mut isize>; //~ ERROR expected one of `>`, lifetime, or type, found `mut`
    |                    ^^^ expected one of `>`, lifetime, or type here

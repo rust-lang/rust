@@ -1,5 +1,5 @@
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures.rs:6:5
+  --> $DIR/feature-gate-unboxed-closures.rs:9:5
    |
 LL | /     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
 LL | |         a + b
@@ -8,6 +8,14 @@ LL | |     }
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures.rs:5:6
+   |
+LL | impl FnOnce<(u32, u32)> for Test {
+   |      ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unboxed_closures)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

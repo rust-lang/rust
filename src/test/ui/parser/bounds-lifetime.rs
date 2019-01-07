@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 type A = for<'a:> fn(); // OK
 type A = for<'a:,> fn(); // OK
 type A = for<'a> fn(); // OK

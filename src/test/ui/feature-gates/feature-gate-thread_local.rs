@@ -8,8 +8,4 @@
 #[thread_local] //~ ERROR `#[thread_local]` is an experimental feature
 static FOO: i32 = 3;
 
-pub fn main() {
-    FOO.with(|x| {
-        println!("x: {}", x);
-    });
-}
+pub fn main() {}

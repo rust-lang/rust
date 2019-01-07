@@ -1,5 +1,7 @@
 // compile-pass
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
+
+#![feature(box_syntax)]
 
 use std::fmt::Debug;
 

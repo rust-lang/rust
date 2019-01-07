@@ -1,5 +1,5 @@
 error: expected one of `::`, `;`, or `as`, found `.`
-  --> $DIR/issue-33455.rs:3:8
+  --> $DIR/issue-33455.rs:1:8
    |
 LL | use foo.bar; //~ ERROR expected one of `::`, `;`, or `as`, found `.`
    |        ^ expected one of `::`, `;`, or `as` here

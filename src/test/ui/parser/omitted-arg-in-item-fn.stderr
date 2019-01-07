@@ -1,5 +1,5 @@
 error: expected one of `:` or `@`, found `)`
-  --> $DIR/omitted-arg-in-item-fn.rs:3:9
+  --> $DIR/omitted-arg-in-item-fn.rs:1:9
    |
 LL | fn foo(x) { //~ ERROR expected one of `:` or `@`, found `)`
    |         ^ expected one of `:` or `@` here

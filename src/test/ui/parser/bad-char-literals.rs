@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
 // ignore-tidy-cr
 // ignore-tidy-tab
