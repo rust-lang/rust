@@ -70,4 +70,3 @@ rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
-rustc_tools_util = { path = "src/tools/clippy/rustc_tools_util" }
