@@ -232,6 +232,7 @@ pub enum ObligationCauseCode<'tcx> {
     IfExpression {
         then: Span,
         outer: Option<Span>,
+        semicolon: Option<Span>,
     },
 
     /// Computing common supertype of an if expression with no else counter-part

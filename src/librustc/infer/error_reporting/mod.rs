@@ -511,9 +511,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfExpression { then, outer } => {
+            ObligationCauseCode::IfExpression { then, outer, semicolon } => {
                 err.span_label(then, "expected because of this");
                 outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
+                if let Some(sp) = semicolon {
+                    err.span_suggestion_short_with_applicability(
+                        sp,
+                        "consider removing this semicolon",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             _ => (),
         }
