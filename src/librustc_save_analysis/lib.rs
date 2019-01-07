@@ -71,7 +71,6 @@ pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
     access_levels: &'l AccessLevels,
-    analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
     config: Config,
     impl_counter: Cell<u32>,
@@ -1120,7 +1119,6 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
 pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     krate: &ast::Crate,
-    analysis: &'l ty::CrateAnalysis,
     cratename: &str,
     input: &'l Input,
     config: Option<Config>,
@@ -1139,7 +1137,6 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
         let save_ctxt = SaveContext {
             tcx,
             tables: &ty::TypeckTables::empty(None),
-            analysis,
             access_levels: &access_levels,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),

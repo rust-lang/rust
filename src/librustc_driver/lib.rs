@@ -879,7 +879,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     pretty::print_after_hir_lowering(state.session,
                                                      state.cstore.unwrap(),
                                                      state.hir_map.unwrap(),
-                                                     state.analysis.unwrap(),
                                                      state.resolutions.unwrap(),
                                                      state.input,
                                                      &state.expanded_crate.take().unwrap(),
@@ -940,7 +939,6 @@ pub fn enable_save_analysis(control: &mut CompileController) {
         time(state.session, "save analysis", || {
             save::process_crate(state.tcx.unwrap(),
                                 state.expanded_crate.unwrap(),
-                                state.analysis.unwrap(),
                                 state.crate_name.unwrap(),
                                 state.input,
                                 None,

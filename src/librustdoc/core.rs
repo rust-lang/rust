@@ -465,14 +465,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             freevars: resolver.freevars.clone(),
             export_map: resolver.export_map.clone(),
             trait_map: resolver.trait_map.clone(),
+            glob_map: resolver.glob_map.clone(),
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
             extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
                 (ident.name, entry.introduced_by_item)
             }).collect(),
-        };
-        let analysis = ty::CrateAnalysis {
-            glob_map: resolver.glob_map.clone(),
         };
 
         let mut arenas = AllArenas::new();
@@ -489,12 +487,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         &sess,
                                                         &*cstore,
                                                         hir_map,
-                                                        analysis,
                                                         resolutions,
                                                         &mut arenas,
                                                         &name,
                                                         &output_filenames,
-                                                        |tcx, _, _, result| {
+                                                        |tcx, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }

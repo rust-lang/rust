@@ -1413,6 +1413,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::MaybeUnusedTraitImport => {
             force!(maybe_unused_trait_import, def_id!());
         }
+        DepKind::NamesImportedByGlobUse => { force!(names_imported_by_glob_use, def_id!()); }
         DepKind::MaybeUnusedExternCrates => { force!(maybe_unused_extern_crates, LOCAL_CRATE); }
         DepKind::StabilityIndex => { force!(stability_index, LOCAL_CRATE); }
         DepKind::AllTraits => { force!(all_traits, LOCAL_CRATE); }

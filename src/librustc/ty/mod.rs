@@ -4,7 +4,7 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
 
-use hir::{map as hir_map, FreevarMap, TraitMap};
+use hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
 use hir::Node;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -115,16 +115,6 @@ mod sty;
 
 // Data types
 
-/// The complete set of all analyses described in this module. This is
-/// produced by the driver and fed to codegen and later passes.
-///
-/// N.B., these contents are being migrated into queries using the
-/// *on-demand* infrastructure.
-#[derive(Clone)]
-pub struct CrateAnalysis {
-    pub glob_map: hir::GlobMap,
-}
-
 #[derive(Clone)]
 pub struct Resolutions {
     pub freevars: FreevarMap,
@@ -132,6 +122,7 @@ pub struct Resolutions {
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
     pub export_map: ExportMap,
+    pub glob_map: GlobMap,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Name, bool>,

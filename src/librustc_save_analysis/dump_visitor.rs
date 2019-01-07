@@ -1238,12 +1238,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
 
                 // Make a comma-separated list of names of imported modules.
-                let glob_map = &self.save_ctxt.analysis.glob_map;
-                let names = if glob_map.contains_key(&id) {
-                    glob_map.get(&id).unwrap().iter().map(|n| n.to_string()).collect()
-                } else {
-                    Vec::new()
-                };
+                let def_id = self.tcx.hir().local_def_id(id);
+                let names = self.tcx.names_imported_by_glob_use(def_id);
+                let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`

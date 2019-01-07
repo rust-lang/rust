@@ -309,7 +309,7 @@ pub struct Cache {
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from crateanalysis.
+    // the access levels from the privacy check pass.
     pub access_levels: AccessLevels<DefId>,
 
     /// The version of the crate being documented, if given from the `--crate-version` flag.

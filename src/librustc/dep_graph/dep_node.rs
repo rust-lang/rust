@@ -630,6 +630,7 @@ define_dep_nodes!( <'tcx>
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),
     [input] MaybeUnusedExternCrates,
+    [input] NamesImportedByGlobUse(DefId),
     [eval_always] StabilityIndex,
     [eval_always] AllTraits,
     [input] AllCrateNums,

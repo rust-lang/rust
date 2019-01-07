@@ -541,6 +541,8 @@ define_queries! { <'tcx>
         [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(DefId) -> bool,
         [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
             -> Lrc<Vec<(DefId, Span)>>,
+        [] fn names_imported_by_glob_use: NamesImportedByGlobUse(DefId)
+            -> Lrc<FxHashSet<ast::Name>>,
 
         [] fn stability_index: stability_index_node(CrateNum) -> Lrc<stability::Index<'tcx>>,
         [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
