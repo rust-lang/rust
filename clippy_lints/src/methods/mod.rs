@@ -1628,14 +1628,13 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
     // Handle the case where the result is immedately dereferenced
     // by not requiring ref and pulling the dereference into the
     // suggestion.
-    if needs_ref {
-        if let Some(parent) = get_parent_expr(cx, expr) {
-            if let hir::ExprKind::Unary(op, _) = parent.node {
-                if op == hir::UnOp::UnDeref {
-                    needs_ref = false;
-                    span = parent.span;
-                }
-            }
+    if_chain! {
+        if needs_ref;
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, _) = parent.node;
+        then {
+            needs_ref = false;
+            span = parent.span;
         }
     }
 

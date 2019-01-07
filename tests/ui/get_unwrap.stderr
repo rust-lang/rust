@@ -36,41 +36,47 @@ error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more
 LL |         let _ = some_btreemap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
 
+error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
+  --> $DIR/get_unwrap.rs:50:21
+   |
+LL |         let _: u8 = *boxed_slice.get(1).unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `boxed_slice[1]`
+
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:53:9
+  --> $DIR/get_unwrap.rs:55:9
    |
 LL |         *boxed_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `boxed_slice[0]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:54:9
+  --> $DIR/get_unwrap.rs:56:9
    |
 LL |         *some_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_slice[0]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:55:9
+  --> $DIR/get_unwrap.rs:57:9
    |
 LL |         *some_vec.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0]`
 
 error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:56:9
+  --> $DIR/get_unwrap.rs:58:9
    |
 LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vecdeque[0]`
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:65:17
+  --> $DIR/get_unwrap.rs:67:17
    |
 LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0..1]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:66:17
+  --> $DIR/get_unwrap.rs:68:17
    |
 LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0..1]`
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

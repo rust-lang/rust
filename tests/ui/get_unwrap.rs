@@ -46,6 +46,8 @@ fn main() {
         let _ = some_hashmap.get(&1).unwrap();
         let _ = some_btreemap.get(&1).unwrap();
         let _ = false_positive.get(0).unwrap();
+        // Test with deref
+        let _: u8 = *boxed_slice.get(1).unwrap();
     }
 
     {
