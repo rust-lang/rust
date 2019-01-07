@@ -23,31 +23,35 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
 }
 
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) -> Cancelable<()> {
-    // TODO: autoderef etc.
-    match receiver {
-        Ty::Adt { def_id, .. } => {
-            match def_id.resolve(ctx.db)? {
-                Def::Struct(s) => {
-                    let variant_data = s.variant_data(ctx.db)?;
-                    for field in variant_data.fields() {
-                        CompletionItem::new(CompletionKind::Reference, field.name().to_string())
+    for receiver in receiver.autoderef(ctx.db) {
+        match receiver {
+            Ty::Adt { def_id, .. } => {
+                match def_id.resolve(ctx.db)? {
+                    Def::Struct(s) => {
+                        let variant_data = s.variant_data(ctx.db)?;
+                        for field in variant_data.fields() {
+                            CompletionItem::new(
+                                CompletionKind::Reference,
+                                field.name().to_string(),
+                            )
                             .kind(CompletionItemKind::Field)
                             .add_to(acc);
+                        }
                     }
+                    // TODO unions
+                    _ => {}
                 }
-                // TODO unions
-                _ => {}
             }
-        }
-        Ty::Tuple(fields) => {
-            for (i, _ty) in fields.iter().enumerate() {
-                CompletionItem::new(CompletionKind::Reference, i.to_string())
-                    .kind(CompletionItemKind::Field)
-                    .add_to(acc);
+            Ty::Tuple(fields) => {
+                for (i, _ty) in fields.iter().enumerate() {
+                    CompletionItem::new(CompletionKind::Reference, i.to_string())
+                        .kind(CompletionItemKind::Field)
+                        .add_to(acc);
+                }
             }
-        }
-        _ => {}
-    };
+            _ => {}
+        };
+    }
     Ok(())
 }
 
@@ -79,6 +83,21 @@ mod tests {
             struct A { the_field: u32 }
             impl A {
                 fn foo(self) {
+                    self.<|>
+                }
+            }
+            ",
+            r#"the_field"#,
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_autoderef() {
+        check_ref_completion(
+            r"
+            struct A { the_field: u32 }
+            impl A {
+                fn foo(&self) {
                     self.<|>
                 }
             }

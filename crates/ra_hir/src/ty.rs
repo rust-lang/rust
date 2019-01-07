@@ -13,6 +13,7 @@
 //! the union-find implementation from the `ena` crate, which is extracted from
 //! rustc.
 
+mod autoderef;
 mod primitive;
 #[cfg(test)]
 mod tests;
@@ -35,6 +36,14 @@ use crate::{
     name::KnownName,
     expr::{Body, Expr, ExprId, PatId, UnaryOp, BinaryOp, Statement},
 };
+
+fn transpose<T>(x: Cancelable<Option<T>>) -> Option<Cancelable<T>> {
+    match x {
+        Ok(Some(t)) => Some(Ok(t)),
+        Ok(None) => None,
+        Err(e) => Some(Err(e)),
+    }
+}
 
 /// The ID of a type variable.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -357,6 +366,14 @@ impl Ty {
         });
         self
     }
+
+    fn builtin_deref(&self) -> Option<Ty> {
+        match self {
+            Ty::Ref(t, _) => Some(Ty::clone(t)),
+            Ty::RawPtr(t, _) => Some(Ty::clone(t)),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Ty {
@@ -443,7 +460,11 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<T
     }
 }
 
-pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) -> Cancelable<Ty> {
+pub(super) fn type_for_field(
+    db: &impl HirDatabase,
+    def_id: DefId,
+    field: Name,
+) -> Cancelable<Option<Ty>> {
     let def = def_id.resolve(db)?;
     let variant_data = match def {
         Def::Struct(s) => {
@@ -459,12 +480,13 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
     };
     let module = def_id.module(db)?;
     let impl_block = def_id.impl_block(db)?;
-    let type_ref = if let Some(tr) = variant_data.get_field_type_ref(&field) {
-        tr
-    } else {
-        return Ok(Ty::Unknown);
-    };
-    Ty::from_hir(db, &module, impl_block.as_ref(), &type_ref)
+    let type_ref = ctry!(variant_data.get_field_type_ref(&field));
+    Ok(Some(Ty::from_hir(
+        db,
+        &module,
+        impl_block.as_ref(),
+        &type_ref,
+    )?))
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
@@ -802,7 +824,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (ty, def_id) = self.resolve_variant(path.as_ref())?;
                 for field in fields {
                     let field_ty = if let Some(def_id) = def_id {
-                        self.db.type_for_field(def_id, field.name.clone())?
+                        self.db
+                            .type_for_field(def_id, field.name.clone())?
+                            .unwrap_or(Ty::Unknown)
                     } else {
                         Ty::Unknown
                     };
@@ -815,15 +839,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Field { expr, name } => {
                 let receiver_ty = self.infer_expr(*expr, &Expectation::none())?;
-                let ty = match receiver_ty {
-                    Ty::Tuple(fields) => {
-                        let i = name.to_string().parse::<usize>().ok();
-                        i.and_then(|i| fields.get(i).cloned())
-                            .unwrap_or(Ty::Unknown)
-                    }
-                    Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, name.clone())?,
-                    _ => Ty::Unknown,
-                };
+                let ty = receiver_ty
+                    .autoderef(self.db)
+                    .find_map(|derefed_ty| match derefed_ty {
+                        // this is more complicated than necessary because type_for_field is cancelable
+                        Ty::Tuple(fields) => {
+                            let i = name.to_string().parse::<usize>().ok();
+                            i.and_then(|i| fields.get(i).cloned()).map(Ok)
+                        }
+                        Ty::Adt { def_id, .. } => {
+                            transpose(self.db.type_for_field(def_id, name.clone()))
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or(Ok(Ty::Unknown))?;
                 self.insert_type_vars(ty)
             }
             Expr::Try { expr } => {
@@ -848,12 +877,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none())?;
                 match op {
                     Some(UnaryOp::Deref) => {
-                        match inner_ty {
-                            // builtin deref:
-                            Ty::Ref(ref_inner, _) => (*ref_inner).clone(),
-                            Ty::RawPtr(ptr_inner, _) => (*ptr_inner).clone(),
+                        if let Some(derefed_ty) = inner_ty.builtin_deref() {
+                            derefed_ty
+                        } else {
                             // TODO Deref::deref
-                            _ => Ty::Unknown,
+                            Ty::Unknown
                         }
                     }
                     _ => Ty::Unknown,

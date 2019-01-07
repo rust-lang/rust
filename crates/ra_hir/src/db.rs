@@ -56,7 +56,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::ty::type_for_def;
     }
 
-    fn type_for_field(def_id: DefId, field: Name) -> Cancelable<Ty> {
+    fn type_for_field(def_id: DefId, field: Name) -> Cancelable<Option<Ty>> {
         type TypeForFieldQuery;
         use fn crate::ty::type_for_field;
     }
