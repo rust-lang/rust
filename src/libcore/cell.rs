@@ -1313,9 +1313,9 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// use std::cell::{RefCell, RefMut};
     ///
     /// let cell = RefCell::new(vec![1, 2]);
-    /// let borrow_mut = cell.borrow_mut();
+    /// let mut borrow_mut = cell.borrow_mut();
     /// borrow_mut.push(3);
-    /// let borrow1 = RefMut::downgrade(borrow_mut.downgrade);
+    /// let borrow1 = RefMut::downgrade(borrow_mut);
     /// let borrow2 = cell.borrow();
     /// assert_eq!(*borrow1, *borrow2);
     /// ```
