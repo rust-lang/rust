@@ -59,7 +59,7 @@ pub fn rewrite_closure(
         }
 
         let result = match fn_decl.output {
-            ast::FunctionRetTy::Default(_) => {
+            ast::FunctionRetTy::Default(_) if !context.inside_macro() => {
                 try_rewrite_without_block(body, &prefix, context, shape, body_shape)
             }
             _ => None,
@@ -306,6 +306,7 @@ pub fn rewrite_last_closure(
         let body = match body.node {
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
+                    && !context.inside_macro()
                     && is_simple_block(block, Some(&body.attrs), context.source_map) =>
             {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)

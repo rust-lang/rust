@@ -583,7 +583,13 @@ impl Rewrite for ast::Ty {
                 let is_dyn = tobj_syntax == ast::TraitObjectSyntax::Dyn;
                 // 4 is length of 'dyn '
                 let shape = if is_dyn { shape.offset_left(4)? } else { shape };
-                let res = bounds.rewrite(context, shape)?;
+                let mut res = bounds.rewrite(context, shape)?;
+                // We may have falsely removed a trailing `+` inside macro call.
+                if context.inside_macro() && bounds.len() == 1 {
+                    if context.snippet(self.span).ends_with('+') && !res.ends_with('+') {
+                        res.push('+');
+                    }
+                }
                 if is_dyn {
                     Some(format!("dyn {}", res))
                 } else {
