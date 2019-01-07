@@ -8,7 +8,7 @@
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use hir::map::Map;
-use hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
+use hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName};
 use ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
 use errors::{Applicability, DiagnosticBuilder};
@@ -23,7 +23,7 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
+use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet, ItemLocalMap, ItemLocalSet};
 
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use hir::{self, GenericParamKind, LifetimeParamKind};
@@ -210,10 +210,10 @@ struct NamedRegionMap {
 /// See `NamedRegionMap`.
 #[derive(Default)]
 pub struct ResolveLifetimes {
-    defs: FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Region>>>,
-    late_bound: FxHashMap<LocalDefId, Lrc<FxHashSet<ItemLocalId>>>,
+    defs: FxHashMap<LocalDefId, Lrc<ItemLocalMap<Region>>>,
+    late_bound: FxHashMap<LocalDefId, Lrc<ItemLocalSet>>,
     object_lifetime_defaults:
-        FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>>,
+        FxHashMap<LocalDefId, Lrc<ItemLocalMap<Lrc<Vec<ObjectLifetimeDefault>>>>>,
 }
 
 impl_stable_hash_for!(struct ::middle::resolve_lifetime::ResolveLifetimes {
