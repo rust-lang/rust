@@ -1,5 +1,6 @@
 //! Aarch64 run-time features.
 
+/// Checks if `aarch64` feature is enabled.
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "27731")]
 #[allow_internal_unstable]
