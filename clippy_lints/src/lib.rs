@@ -486,6 +486,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
     reg.register_late_lint_pass(box redundant_clone::RedundantClone);
     reg.register_late_lint_pass(box slow_vector_initialization::Pass);
+    reg.register_late_lint_pass(box types::RefToMut);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -758,6 +759,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         types::BOX_VEC,
         types::CAST_LOSSLESS,
         types::CAST_PTR_ALIGNMENT,
+        types::CAST_REF_TO_MUT,
         types::CHAR_LIT_AS_U8,
         types::FN_TO_NUMERIC_CAST,
         types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
@@ -989,6 +991,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::CAST_PTR_ALIGNMENT,
+        types::CAST_REF_TO_MUT,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
         unused_io_amount::UNUSED_IO_AMOUNT,
