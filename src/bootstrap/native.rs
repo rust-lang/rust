@@ -235,7 +235,7 @@ impl Step for Llvm {
             cfg.define("PYTHON_EXECUTABLE", python);
         }
 
-        configure_cmake(builder, target, &mut cfg, false);
+        configure_cmake(builder, target, &mut cfg);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g., we just want a few components and a few
@@ -277,8 +277,7 @@ fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
 
 fn configure_cmake(builder: &Builder,
                    target: Interned<String>,
-                   cfg: &mut cmake::Config,
-                   building_dist_binaries: bool) {
+                   cfg: &mut cmake::Config) {
     if builder.config.ninja {
         cfg.generator("Ninja");
     }
@@ -363,10 +362,11 @@ fn configure_cmake(builder: &Builder,
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
     cfg.define("CMAKE_C_FLAGS", builder.cflags(target, GitRepo::Llvm).join(" "));
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
-    if building_dist_binaries {
-        if builder.config.llvm_static_stdcpp && !target.contains("windows") {
-            cxxflags.push_str(" -static-libstdc++");
-        }
+    if builder.config.llvm_static_stdcpp &&
+        !target.contains("windows") &&
+        !target.contains("netbsd")
+    {
+        cxxflags.push_str(" -static-libstdc++");
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -431,7 +431,7 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/lld"));
-        configure_cmake(builder, target, &mut cfg, true);
+        configure_cmake(builder, target, &mut cfg);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
