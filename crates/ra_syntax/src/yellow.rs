@@ -18,19 +18,56 @@ impl Types for RaTypes {
     type RootData = Vec<SyntaxError>;
 }
 
-pub type GreenNode = ::rowan::GreenNode<RaTypes>;
-pub type TreePtr<T> = ::rowan::TreePtr<RaTypes, T>;
+pub type GreenNode = rowan::GreenNode<RaTypes>;
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct TreePtr<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>>(
+    pub(crate) rowan::TreePtr<RaTypes, T>,
+);
+
+impl<T> TreePtr<T>
+where
+    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+{
+    pub(crate) fn cast<U>(this: TreePtr<T>) -> TreePtr<U>
+    where
+        U: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    {
+        TreePtr(rowan::TreePtr::cast(this.0))
+    }
+}
+
+impl<T> std::ops::Deref for TreePtr<T>
+where
+    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+{
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0.deref()
+    }
+}
+
+impl<T> fmt::Debug for TreePtr<T>
+where
+    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: fmt::Debug,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, fmt)
+    }
+}
 
 #[derive(PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct SyntaxNode(pub(crate) ::rowan::SyntaxNode<RaTypes>);
+pub struct SyntaxNode(pub(crate) rowan::SyntaxNode<RaTypes>);
 unsafe impl TransparentNewType for SyntaxNode {
-    type Repr = ::rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
 impl SyntaxNode {
     pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreePtr<SyntaxNode> {
-        TreePtr::cast(::rowan::SyntaxNode::new(green, errors))
+        let ptr = TreePtr(rowan::SyntaxNode::new(green, errors));
+        TreePtr::cast(ptr)
     }
 }
 
@@ -75,7 +112,8 @@ impl SyntaxNode {
         self.0.replace_self(replacement)
     }
     pub fn to_owned(&self) -> TreePtr<SyntaxNode> {
-        TreePtr::cast(self.0.to_owned())
+        let ptr = TreePtr(self.0.to_owned());
+        TreePtr::cast(ptr)
     }
     pub fn kind(&self) -> SyntaxKind {
         self.0.kind()
@@ -120,7 +158,7 @@ impl fmt::Debug for SyntaxNode {
 }
 
 #[derive(Debug)]
-pub struct SyntaxNodeChildren<'a>(::rowan::SyntaxNodeChildren<'a, RaTypes>);
+pub struct SyntaxNodeChildren<'a>(rowan::SyntaxNodeChildren<'a, RaTypes>);
 
 impl<'a> Iterator for SyntaxNodeChildren<'a> {
     type Item = &'a SyntaxNode;
