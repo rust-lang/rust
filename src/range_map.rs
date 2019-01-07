@@ -145,7 +145,12 @@ impl<T> RangeMap<T> {
                 // is doing the same linear scan anyway -- no increase in complexity.
                 // We combine this scan with a scan for duplicates that we can merge, to reduce
                 // the number of elements.
+                // We stop searching after the first "block" of size 1, to avoid spending excessive
+                // amounts of time on the merging.
                 let mut equal_since_idx = first_idx;
+                // Once we see too many non-mergeable blocks, we stop.
+                // The initial value is chosen via... magic.  Benchmarking and magic.
+                let mut successful_merge_count = 3usize;
                 let mut end_idx = first_idx; // when the loop is done, this is the first excluded element.
                 loop {
                     // Compute if `end` is the last element we need to look at.
@@ -154,21 +159,28 @@ impl<T> RangeMap<T> {
                     end_idx += 1;
                     debug_assert!(done || end_idx < self.v.len(), "iter_mut: end-offset {} is out-of-bounds", offset+len);
                     // see if we want to merge everything in `equal_since..end` (exclusive at the end!)
-                    if done || self.v[end_idx].data != self.v[equal_since_idx].data {
-                        // Everything in `equal_since..end` was equal.  Make them just one element covering
-                        // the entire range.
-                        let equal_elems = end_idx - equal_since_idx; // number of equal elements
-                        if equal_elems > 1 {
-                            // Adjust the range of the first element to cover all of them.
-                            let equal_until = self.v[end_idx - 1].range.end; // end of range of last of the equal elements
-                            self.v[equal_since_idx].range.end = equal_until;
-                            // Delete the rest of them.
-                            self.v.splice(equal_since_idx+1..end_idx, std::iter::empty());
-                            // Adjust `end_idx` because we made the list shorter.
-                            end_idx -= (equal_elems - 1);
+                    if successful_merge_count > 0 {
+                        if done || self.v[end_idx].data != self.v[equal_since_idx].data {
+                            // Everything in `equal_since..end` was equal.  Make them just one element covering
+                            // the entire range.
+                            let removed_elems = end_idx - equal_since_idx - 1; // number of elements that we would remove
+                            if removed_elems > 0 {
+                                // Adjust the range of the first element to cover all of them.
+                                let equal_until = self.v[end_idx - 1].range.end; // end of range of last of the equal elements
+                                self.v[equal_since_idx].range.end = equal_until;
+                                // Delete the rest of them.
+                                self.v.splice(equal_since_idx+1..end_idx, std::iter::empty());
+                                // Adjust `end_idx` because we made the list shorter.
+                                end_idx -= removed_elems;
+                                // adjust the count for the cutoff
+                                successful_merge_count += removed_elems;
+                            } else {
+                                // adjust the count for the cutoff
+                                successful_merge_count -= 1;
+                            }
+                            // Go on scanning for the next block starting here.
+                            equal_since_idx = end_idx;
                         }
-                        // Go on scanning.
-                        equal_since_idx = end_idx;
                     }
                     // Leave loop if this is the last element.
                     if done {
