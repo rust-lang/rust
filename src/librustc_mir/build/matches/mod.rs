@@ -284,6 +284,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ..
                 },
                 user_ty: pat_ascription_ty,
+                variance: _,
                 user_ty_span,
             } => {
                 let place =
@@ -310,6 +311,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
                             place,
+                            // We always use invariant as the variance here. This is because the
+                            // variance field from the ascription refers to the variance to use
+                            // when applying the type to the value being matched, but this
+                            // ascription applies rather to the type of the binding. e.g., in this
+                            // example:
+                            //
+                            // ```
+                            // let x: T = <expr>
+                            // ```
+                            //
+                            // We are creating an ascription that defines the type of `x` to be
+                            // exactly `T` (i.e., with invariance). The variance field, in
+                            // contrast, is intended to be used to relate `T` to the type of
+                            // `<expr>`.
                             ty::Variance::Invariant,
                             user_ty,
                         ),
@@ -541,12 +556,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
             }
-            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType {
+                ref subpattern,
+                ref user_ty,
+                user_ty_span,
+                variance: _,
+            } => {
                 // This corresponds to something like
                 //
                 // ```
                 // let A::<'a>(_): A<'static> = ...;
                 // ```
+                //
+                // Note that the variance doesn't apply here, as we are tracking the effect
+                // of `user_ty` on any bindings contained with subpattern.
                 let annotation = (user_ty_span, user_ty.base);
                 let projection = UserTypeProjection {
                     base: self.canonical_user_type_annotations.push(annotation),
@@ -628,6 +651,7 @@ struct Ascription<'tcx> {
     span: Span,
     source: Place<'tcx>,
     user_ty: PatternTypeProjection<'tcx>,
+    variance: ty::Variance,
 }
 
 #[derive(Clone, Debug)]
@@ -1321,7 +1345,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     source_info,
                     kind: StatementKind::AscribeUserType(
                         ascription.source.clone(),
-                        ty::Variance::Covariant,
+                        ascription.variance,
                         user_ty,
                     ),
                 },

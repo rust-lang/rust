@@ -91,6 +91,25 @@ pub enum PatternKind<'tcx> {
     AscribeUserType {
         user_ty: PatternTypeProjection<'tcx>,
         subpattern: Pattern<'tcx>,
+        /// Variance to use when relating the type `user_ty` to the **type of the value being
+        /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
+        /// have a type that is some subtype of the ascribed type.
+        ///
+        /// Note that this variance does not apply for any bindings within subpatterns. The type
+        /// assigned to those bindings must be exactly equal to the `user_ty` given here.
+        ///
+        /// The only place where this field is not `Covariant` is when matching constants, where
+        /// we currently use `Contravariant` -- this is because the constant type just needs to
+        /// be "comparable" to the type of the input value. So, for example:
+        ///
+        /// ```text
+        /// match x { "foo" => .. }
+        /// ```
+        ///
+        /// requires that `&'static str <: T_x`, where `T_x` is the type of `x`. Really, we should
+        /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
+        /// of the old type-check for now. See #57280 for details.
+        variance: ty::Variance,
         user_ty_span: Span,
     },
 
@@ -714,6 +733,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 },
                 user_ty: PatternTypeProjection::from_user_type(user_ty),
                 user_ty_span: span,
+                variance: ty::Variance::Covariant,
             };
         }
 
@@ -763,6 +783,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                         kind: Box::new(
                                             PatternKind::AscribeUserType {
                                                 subpattern: pattern,
+                                                /// Note that use `Contravariant` here. See the
+                                                /// `variance` field documentation for details.
+                                                variance: ty::Variance::Contravariant,
                                                 user_ty,
                                                 user_ty_span: span,
                                             }
@@ -1057,11 +1080,13 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Wild => PatternKind::Wild,
             PatternKind::AscribeUserType {
                 ref subpattern,
+                variance,
                 ref user_ty,
                 user_ty_span,
             } => PatternKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
                 user_ty: user_ty.fold_with(folder),
+                variance,
                 user_ty_span,
             },
             PatternKind::Binding {
