@@ -43,7 +43,6 @@ extern crate rustc_target;
 extern crate rustc_demangle;
 extern crate rustc_incremental;
 extern crate rustc_llvm;
-extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_codegen_utils;
 extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;

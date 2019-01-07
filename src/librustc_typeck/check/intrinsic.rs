@@ -1,17 +1,13 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
-use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::subst::Subst;
-use rustc::util::nodemap::FxHashMap;
 use require_same_types;
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::Span;
 
 use rustc::hir;
 
@@ -402,8 +398,6 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.mk_ty_param(n, name)
     };
 
-    let def_id = tcx.hir().local_def_id(it.id);
-    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     let name = it.ident.as_str();
 
     let (n_tps, inputs, output) = match &*name {
@@ -461,159 +455,12 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
         _ => {
-            match intrinsics::Intrinsic::find(&name) {
-                Some(intr) => {
-                    // this function is a platform specific intrinsic
-                    if i_n_tps != 0 {
-                        span_err!(tcx.sess, it.span, E0440,
-                                  "platform-specific intrinsic has wrong number of type \
-                                   parameters: found {}, expected 0",
-                                  i_n_tps);
-                        return
-                    }
-
-                    let mut structural_to_nomimal = FxHashMap::default();
-
-                    let sig = tcx.fn_sig(def_id);
-                    let sig = sig.no_bound_vars().unwrap();
-                    if intr.inputs.len() != sig.inputs().len() {
-                        span_err!(tcx.sess, it.span, E0444,
-                                  "platform-specific intrinsic has invalid number of \
-                                   arguments: found {}, expected {}",
-                                  sig.inputs().len(), intr.inputs.len());
-                        return
-                    }
-                    let input_pairs = intr.inputs.iter().zip(sig.inputs());
-                    for (i, (expected_arg, arg)) in input_pairs.enumerate() {
-                        match_intrinsic_type_to_type(tcx, &format!("argument {}", i + 1), it.span,
-                                                     &mut structural_to_nomimal, expected_arg, arg);
-                    }
-                    match_intrinsic_type_to_type(tcx, "return value", it.span,
-                                                 &mut structural_to_nomimal,
-                                                 &intr.output, sig.output());
-                    return
-                }
-                None => {
-                    span_err!(tcx.sess, it.span, E0441,
-                              "unrecognized platform-specific intrinsic function: `{}`", name);
-                    return;
-                }
-            }
+            let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
+            tcx.sess.span_err(it.span, &msg);
+            return;
         }
     };
 
     equate_intrinsic_type(tcx, it, n_tps, Abi::PlatformIntrinsic, hir::Unsafety::Unsafe,
                           inputs, output)
-}
-
-// walk the expected type and the actual type in lock step, checking they're
-// the same, in a kinda-structural way, i.e., `Vector`s have to be simd structs with
-// exactly the right element type
-fn match_intrinsic_type_to_type<'a, 'tcx>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        position: &str,
-        span: Span,
-        structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, Ty<'tcx>>,
-        expected: &'a intrinsics::Type, t: Ty<'tcx>)
-{
-    use intrinsics::Type::*;
-
-    let simple_error = |real: &str, expected: &str| {
-        span_err!(tcx.sess, span, E0442,
-                  "intrinsic {} has wrong type: found {}, expected {}",
-                  position, real, expected)
-    };
-
-    match *expected {
-        Void => match t.sty {
-            ty::Tuple(ref v) if v.is_empty() => {},
-            _ => simple_error(&format!("`{}`", t), "()"),
-        },
-        // (The width we pass to LLVM doesn't concern the type checker.)
-        Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
-            (true,  8,  &ty::Int(ast::IntTy::I8)) |
-            (false, 8,  &ty::Uint(ast::UintTy::U8)) |
-            (true,  16, &ty::Int(ast::IntTy::I16)) |
-            (false, 16, &ty::Uint(ast::UintTy::U16)) |
-            (true,  32, &ty::Int(ast::IntTy::I32)) |
-            (false, 32, &ty::Uint(ast::UintTy::U32)) |
-            (true,  64, &ty::Int(ast::IntTy::I64)) |
-            (false, 64, &ty::Uint(ast::UintTy::U64)) |
-            (true,  128, &ty::Int(ast::IntTy::I128)) |
-            (false, 128, &ty::Uint(ast::UintTy::U128)) => {},
-            _ => simple_error(&format!("`{}`", t),
-                              &format!("`{}{n}`",
-                                       if signed {"i"} else {"u"},
-                                       n = bits)),
-        },
-        Float(bits) => match (bits, &t.sty) {
-            (32, &ty::Float(ast::FloatTy::F32)) |
-            (64, &ty::Float(ast::FloatTy::F64)) => {},
-            _ => simple_error(&format!("`{}`", t),
-                              &format!("`f{n}`", n = bits)),
-        },
-        Pointer(ref inner_expected, ref _llvm_type, const_) => {
-            match t.sty {
-                ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                    if (mutbl == hir::MutImmutable) != const_ {
-                        simple_error(&format!("`{}`", t),
-                                     if const_ {"const pointer"} else {"mut pointer"})
-                    }
-                    match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
-                                                 inner_expected, ty)
-                }
-                _ => simple_error(&format!("`{}`", t), "raw pointer"),
-            }
-        }
-        Vector(ref inner_expected, ref _llvm_type, len) => {
-            if !t.is_simd() {
-                simple_error(&format!("non-simd type `{}`", t), "simd type");
-                return;
-            }
-            let t_len = t.simd_size(tcx);
-            if len as usize != t_len {
-                simple_error(&format!("vector with length {}", t_len),
-                             &format!("length {}", len));
-                return;
-            }
-            let t_ty = t.simd_type(tcx);
-            {
-                // check that a given structural type always has the same an intrinsic definition
-                let previous = structural_to_nominal.entry(expected).or_insert(t);
-                if *previous != t {
-                    // this gets its own error code because it is non-trivial
-                    span_err!(tcx.sess, span, E0443,
-                              "intrinsic {} has wrong type: found `{}`, expected `{}` which \
-                               was used for this vector type previously in this signature",
-                              position,
-                              t,
-                              *previous);
-                    return;
-                }
-            }
-            match_intrinsic_type_to_type(tcx,
-                                         position,
-                                         span,
-                                         structural_to_nominal,
-                                         inner_expected,
-                                         t_ty)
-        }
-        Aggregate(_flatten, ref expected_contents) => {
-            match t.sty {
-                ty::Tuple(contents) => {
-                    if contents.len() != expected_contents.len() {
-                        simple_error(&format!("tuple with length {}", contents.len()),
-                                     &format!("tuple with length {}", expected_contents.len()));
-                        return
-                    }
-                    for (e, c) in expected_contents.iter().zip(contents) {
-                        match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
-                                                     e, c)
-                    }
-                }
-                _ => simple_error(&format!("`{}`", t),
-                                  "tuple"),
-            }
-        }
-    }
 }

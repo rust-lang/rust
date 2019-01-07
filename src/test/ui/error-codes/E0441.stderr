@@ -1,9 +1,0 @@
-error[E0441]: unrecognized platform-specific intrinsic function: `x86_mm_adds_ep16`
-  --> $DIR/E0441.rs:9:5
-   |
-LL |     fn x86_mm_adds_ep16(x: i16x8, y: i16x8) -> i16x8; //~ ERROR E0441
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0441`.

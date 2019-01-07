@@ -1,9 +1,0 @@
-[package]
-authors = ["The Rust Project Developers"]
-name = "rustc_platform_intrinsics"
-version = "0.0.0"
-
-[lib]
-name = "rustc_platform_intrinsics"
-path = "lib.rs"
-crate-type = ["dylib"]

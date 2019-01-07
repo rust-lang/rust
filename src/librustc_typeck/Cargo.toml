@@ -15,7 +15,6 @@ log = "0.4"
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }

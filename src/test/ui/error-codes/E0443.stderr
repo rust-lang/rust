@@ -1,9 +1,0 @@
-error[E0443]: intrinsic return value has wrong type: found `i64x8`, expected `i16x8` which was used for this vector type previously in this signature
-  --> $DIR/E0443.rs:11:5
-   |
-LL |     fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i64x8; //~ ERROR E0443
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0443`.
