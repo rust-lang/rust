@@ -27,7 +27,7 @@ use syntax::source_map::Span;
 /// It detects both the case when a manual
 /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
 /// implementation is required and also when it can be created with
-/// `#[derive(Default)]
+/// `#[derive(Default)]`
 ///
 /// **Why is this bad?** The user might expect to be able to use
 /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html) as the
