@@ -1290,6 +1290,38 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         let borrow = orig.borrow.clone();
         (RefMut { value: a, borrow }, RefMut { value: b, borrow: orig.borrow })
     }
+
+    /// Downgrade a `RefMut` to a `Ref`.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::downgrade(...)`. A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(refcell_downgrade)]
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let cell = RefCell::new(vec![1, 2]);
+    /// let borrow_mut = cell.borrow_mut();
+    /// borrow_mut.push(3);
+    /// let borrow1 = RefMut::downgrade(borrow_mut.downgrade);
+    /// let borrow2 = cell.borrow();
+    /// assert_eq!(*borrow1, *borrow2);
+    /// ```
+    #[unstable(feature = "refcell_downgrade", issue = "0")] // TODO issue number
+    #[inline]
+    pub fn downgrade(orig: RefMut<'b, T>) -> Ref<'b, T> {
+        let borrow = orig.borrow.borrow;
+        mem::drop(orig.borrow);
+
+        Ref {
+            value: orig.value,
+            borrow: BorrowRef::new(borrow).expect("inconsistent RefCell state"),
+        }
+    }
 }
 
 struct BorrowRefMut<'b> {
