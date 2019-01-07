@@ -6,3 +6,4 @@ incremental = true
 debug = true
 
 [patch.'crates-io']
+rowan = { git = "https://github.com/rust-analyzer/rowan.git", branch = "new-impl"}
