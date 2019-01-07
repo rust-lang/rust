@@ -1603,7 +1603,7 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
     } else {
         return; // not linting on a .get().unwrap() chain or variant
     };
-    let needs_ref;
+    let mut needs_ref;
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
@@ -1623,6 +1623,21 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
         return; // caller is not a type that we want to lint
     };
 
+    let mut span = expr.span;
+
+    // Handle the case where the result is immedately dereferenced
+    // by not requiring ref and pulling the dereference into the
+    // suggestion.
+    if_chain! {
+        if needs_ref;
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, _) = parent.node;
+        then {
+            needs_ref = false;
+            span = parent.span;
+        }
+    }
+
     let mut_str = if is_mut { "_mut" } else { "" };
     let borrow_str = if !needs_ref {
         ""
@@ -1631,10 +1646,11 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
     } else {
         "&"
     };
+
     span_lint_and_sugg(
         cx,
         GET_UNWRAP,
-        expr.span,
+        span,
         &format!(
             "called `.get{0}().unwrap()` on a {1}. Using `[]` is more clear and more concise",
             mut_str, caller_type

@@ -39,23 +39,23 @@ fn main() {
 
     {
         // Test `get().unwrap()`
-        let _ = boxed_slice.get(1).unwrap();
-        let _ = some_slice.get(0).unwrap();
-        let _ = some_vec.get(0).unwrap();
-        let _ = some_vecdeque.get(0).unwrap();
-        let _ = some_hashmap.get(&1).unwrap();
-        let _ = some_btreemap.get(&1).unwrap();
+        let _ = &boxed_slice[1];
+        let _ = &some_slice[0];
+        let _ = &some_vec[0];
+        let _ = &some_vecdeque[0];
+        let _ = &some_hashmap[&1];
+        let _ = &some_btreemap[&1];
         let _ = false_positive.get(0).unwrap();
         // Test with deref
-        let _: u8 = *boxed_slice.get(1).unwrap();
+        let _: u8 = boxed_slice[1];
     }
 
     {
         // Test `get_mut().unwrap()`
-        *boxed_slice.get_mut(0).unwrap() = 1;
-        *some_slice.get_mut(0).unwrap() = 1;
-        *some_vec.get_mut(0).unwrap() = 1;
-        *some_vecdeque.get_mut(0).unwrap() = 1;
+        boxed_slice[0] = 1;
+        some_slice[0] = 1;
+        some_vec[0] = 1;
+        some_vecdeque[0] = 1;
         // Check false positives
         *some_hashmap.get_mut(&1).unwrap() = 'b';
         *some_btreemap.get_mut(&1).unwrap() = 'b';
@@ -64,7 +64,7 @@ fn main() {
 
     {
         // Test `get().unwrap().foo()` and `get_mut().unwrap().bar()`
-        let _ = some_vec.get(0..1).unwrap().to_vec();
-        let _ = some_vec.get_mut(0..1).unwrap().to_vec();
+        let _ = some_vec[0..1].to_vec();
+        let _ = some_vec[0..1].to_vec();
     }
 }
