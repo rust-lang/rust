@@ -736,7 +736,7 @@ impl<'a> LoweringContext<'a> {
                 // Add a definition for the in-band lifetime def.
                 self.resolver.definitions().create_def_with_parent(
                     parent_id.index,
-                    def_node_id,
+                    node_id,
                     DefPathData::LifetimeParam(str_name),
                     DefIndexAddressSpace::High,
                     Mark::root(),
@@ -744,7 +744,8 @@ impl<'a> LoweringContext<'a> {
                 );
 
                 hir::GenericParam {
-                    id: def_node_id,
+                    id: node_id,
+                    hir_id,
                     name: hir_name,
                     attrs: hir_vec![],
                     bounds: hir_vec![],
@@ -1233,7 +1234,7 @@ impl<'a> LoweringContext<'a> {
                         )
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
-                        self.lower_node_id(def_node_id);
+                        let LoweredNodeId { hir_id, .. } = self.lower_node_id(def_node_id);
                         // Add a definition for the in-band `Param`.
                         let def_index = self
                             .resolver
@@ -1249,6 +1250,7 @@ impl<'a> LoweringContext<'a> {
                         let ident = Ident::from_str(&pprust::ty_to_string(t)).with_span_pos(span);
                         in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
+                            hir_id,
                             name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
                             attrs: hir_vec![],
@@ -1514,6 +1516,7 @@ impl<'a> LoweringContext<'a> {
 
                     self.output_lifetime_params.push(hir::GenericParam {
                         id: def_node_id,
+                        hir_id,
                         name,
                         span: lifetime.span,
                         pure_wrt_drop: false,
@@ -2404,6 +2407,7 @@ impl<'a> LoweringContext<'a> {
                 };
                 let param = hir::GenericParam {
                     id: lt.id,
+                    hir_id: lt.hir_id,
                     name: param_name,
                     span: lt.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
@@ -2436,8 +2440,11 @@ impl<'a> LoweringContext<'a> {
                                    .collect();
                 }
 
+                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(param.id);
+
                 hir::GenericParam {
-                    id: self.lower_node_id(param.id).node_id,
+                    id: node_id,
+                    hir_id,
                     name: hir::ParamName::Plain(ident),
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     attrs: self.lower_attrs(&param.attrs),
