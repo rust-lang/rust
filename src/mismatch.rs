@@ -10,7 +10,7 @@ use rustc::{
     hir::def_id::DefId,
     ty::{
         self,
-        relate::{Relate, RelateResult, TraitObjectMode, TypeRelation},
+        relate::{Relate, RelateResult, TypeRelation},
         subst::Substs,
         Ty, TyCtxt,
         Visibility::Public,
@@ -93,10 +93,6 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
 
     fn tag(&self) -> &'static str {
         "Mismatch"
-    }
-
-    fn trait_object_mode(&self) -> TraitObjectMode {
-        TraitObjectMode::NoSquash
     }
 
     fn a_is_expected(&self) -> bool {
@@ -189,9 +185,13 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                 let a = a_obj.principal();
                 let b = b_obj.principal();
 
-                if self.check_substs(a.skip_binder().substs, b.skip_binder().substs) {
-                    let _ = self.relate(&a.skip_binder().substs, &b.skip_binder().substs)?;
-                    Some((a.skip_binder().def_id, b.skip_binder().def_id))
+                if let (Some(a), Some(b)) = (a, b) {
+                    if self.check_substs(a.skip_binder().substs, b.skip_binder().substs) {
+                        let _ = self.relate(&a.skip_binder().substs, &b.skip_binder().substs)?;
+                        Some((a.skip_binder().def_id, b.skip_binder().def_id))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
