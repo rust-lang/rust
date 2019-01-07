@@ -2269,7 +2269,7 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
 /// ```
 declare_clippy_lint! {
     pub CAST_REF_TO_MUT,
-    nursery,
+    correctness,
     "a cast of reference to a mutable pointer"
 }
 
