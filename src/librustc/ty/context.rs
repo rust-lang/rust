@@ -2930,9 +2930,6 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    // FIXME(#44234): almost all of these queries have no sub-queries and
-    // therefore no actual inputs, they're just reading tables calculated in
-    // resolve! Does this work? Unsure! That's what the issue is about.
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id).cloned();
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
     providers.crate_name = |tcx, id| {
