@@ -10,15 +10,45 @@ use relative_path::RelativePathBuf;
 
 use crate::{VfsRoot, has_rs_extension};
 
-pub(crate) struct Task {
-    pub(crate) root: VfsRoot,
-    pub(crate) path: PathBuf,
-    pub(crate) filter: Box<Fn(&DirEntry) -> bool + Send>,
+pub(crate) enum Task {
+    AddRoot {
+        root: VfsRoot,
+        path: PathBuf,
+        filter: Box<Fn(&DirEntry) -> bool + Send>,
+    },
+    WatcherChange(crate::watcher::WatcherChange),
 }
 
-pub struct TaskResult {
+#[derive(Debug)]
+pub struct AddRootResult {
     pub(crate) root: VfsRoot,
     pub(crate) files: Vec<(RelativePathBuf, String)>,
+}
+
+#[derive(Debug)]
+pub enum WatcherChangeResult {
+    Create {
+        path: PathBuf,
+        text: String,
+    },
+    Write {
+        path: PathBuf,
+        text: String,
+    },
+    Remove {
+        path: PathBuf,
+    },
+    // can this be replaced and use Remove and Create instead?
+    Rename {
+        src: PathBuf,
+        dst: PathBuf,
+        text: String,
+    },
+}
+
+pub enum TaskResult {
+    AddRoot(AddRootResult),
+    WatcherChange(WatcherChangeResult),
 }
 
 impl fmt::Debug for TaskResult {
@@ -40,11 +70,18 @@ pub(crate) fn start() -> (Worker, WorkerHandle) {
 }
 
 fn handle_task(task: Task) -> TaskResult {
-    let Task { root, path, filter } = task;
-    log::debug!("loading {} ...", path.as_path().display());
-    let files = load_root(path.as_path(), &*filter);
-    log::debug!("... loaded {}", path.as_path().display());
-    TaskResult { root, files }
+    match task {
+        Task::AddRoot { root, path, filter } => {
+            log::debug!("loading {} ...", path.as_path().display());
+            let files = load_root(path.as_path(), &*filter);
+            log::debug!("... loaded {}", path.as_path().display());
+            TaskResult::AddRoot(AddRootResult { root, files })
+        }
+        Task::WatcherChange(change) => {
+            // TODO
+            unimplemented!()
+        }
+    }
 }
 
 fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePathBuf, String)> {

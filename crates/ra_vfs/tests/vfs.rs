@@ -59,15 +59,15 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     // on disk change
     fs::write(&dir.path().join("a/b/baz.rs"), "quux").unwrap();
-    let change = vfs.change_receiver().recv().unwrap();
-    vfs.handle_change(change);
+    let task = vfs.task_receiver().recv().unwrap();
+    vfs.handle_task(task);
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
         _ => panic!("unexpected changes"),
     }
 
     // in memory change
-    vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), Some("m".to_string()));
+    vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "m"),
         _ => panic!("unexpected changes"),
@@ -81,7 +81,7 @@ fn test_vfs_works() -> std::io::Result<()> {
     }
 
     // in memory add
-    vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), Some("spam".to_string()));
+    vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
     match vfs.commit_changes().as_slice() {
         [VfsChange::AddFile { text, path, .. }] => {
             assert_eq!(text.as_str(), "spam");
@@ -99,8 +99,8 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     // on disk add
     fs::write(&dir.path().join("a/new.rs"), "new hello").unwrap();
-    let change = vfs.change_receiver().recv().unwrap();
-    vfs.handle_change(change);
+    let task = vfs.task_receiver().recv().unwrap();
+    vfs.handle_task(task);
     match vfs.commit_changes().as_slice() {
         [VfsChange::AddFile { text, path, .. }] => {
             assert_eq!(text.as_str(), "new hello");
@@ -111,8 +111,8 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     // on disk rename
     fs::rename(&dir.path().join("a/new.rs"), &dir.path().join("a/new1.rs")).unwrap();
-    let change = vfs.change_receiver().recv().unwrap();
-    vfs.handle_change(change);
+    let task = vfs.task_receiver().recv().unwrap();
+    vfs.handle_task(task);
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile {
             path: removed_path, ..
@@ -130,14 +130,14 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     // on disk remove
     fs::remove_file(&dir.path().join("a/new1.rs")).unwrap();
-    let change = vfs.change_receiver().recv().unwrap();
-    vfs.handle_change(change);
+    let task = vfs.task_receiver().recv().unwrap();
+    vfs.handle_task(task);
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "new1.rs"),
         _ => panic!("unexpected changes"),
     }
 
-    match vfs.change_receiver().try_recv() {
+    match vfs.task_receiver().try_recv() {
         Err(crossbeam_channel::TryRecvError::Empty) => (),
         res => panic!("unexpected {:?}", res),
     }

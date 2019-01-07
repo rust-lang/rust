@@ -60,7 +60,7 @@ impl RootFilter {
     }
 }
 
-fn has_rs_extension(p: &Path) -> bool {
+pub(crate) fn has_rs_extension(p: &Path) -> bool {
     p.extension() == Some(OsStr::new("rs"))
 }
 
@@ -98,7 +98,7 @@ impl Vfs {
     pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let (worker, worker_handle) = io::start();
 
-        let watcher = Watcher::start().unwrap(); // TODO return Result?
+        let watcher = Watcher::start(worker.inp.clone()).unwrap(); // TODO return Result?
 
         let mut res = Vfs {
             roots: Arena::default(),
@@ -127,7 +127,7 @@ impl Vfs {
                     nested.iter().all(|it| it != entry.path())
                 }
             };
-            let task = io::Task {
+            let task = io::Task::AddRoot {
                 root,
                 path: path.clone(),
                 filter: Box::new(filter),
@@ -188,58 +188,43 @@ impl Vfs {
         &self.worker.out
     }
 
-    pub fn change_receiver(&self) -> &Receiver<WatcherChange> {
-        &self.watcher.change_receiver()
-    }
-
     pub fn handle_task(&mut self, task: io::TaskResult) {
-        let mut files = Vec::new();
-        // While we were scanning the root in the backgound, a file might have
-        // been open in the editor, so we need to account for that.
-        let exising = self.root2files[&task.root]
-            .iter()
-            .map(|&file| (self.files[file].path.clone(), file))
-            .collect::<FxHashMap<_, _>>();
-        for (path, text) in task.files {
-            if let Some(&file) = exising.get(&path) {
-                let text = Arc::clone(&self.files[file].text);
-                files.push((file, path, text));
-                continue;
-            }
-            let text = Arc::new(text);
-            let file = self.add_file(task.root, path.clone(), Arc::clone(&text));
-            files.push((file, path, text));
-        }
+        match task {
+            io::TaskResult::AddRoot(task) => {
+                let mut files = Vec::new();
+                // While we were scanning the root in the backgound, a file might have
+                // been open in the editor, so we need to account for that.
+                let exising = self.root2files[&task.root]
+                    .iter()
+                    .map(|&file| (self.files[file].path.clone(), file))
+                    .collect::<FxHashMap<_, _>>();
+                for (path, text) in task.files {
+                    if let Some(&file) = exising.get(&path) {
+                        let text = Arc::clone(&self.files[file].text);
+                        files.push((file, path, text));
+                        continue;
+                    }
+                    let text = Arc::new(text);
+                    let file = self.add_file(task.root, path.clone(), Arc::clone(&text));
+                    files.push((file, path, text));
+                }
 
-        let change = VfsChange::AddRoot {
-            root: task.root,
-            files,
-        };
-        self.pending_changes.push(change);
-    }
-
-    pub fn handle_change(&mut self, change: WatcherChange) {
-        match change {
-            WatcherChange::Create(path) => {
-                self.add_file_overlay(&path, None);
+                let change = VfsChange::AddRoot {
+                    root: task.root,
+                    files,
+                };
+                self.pending_changes.push(change);
             }
-            WatcherChange::Remove(path) => {
-                self.remove_file_overlay(&path);
-            }
-            WatcherChange::Rename(src, dst) => {
-                self.remove_file_overlay(&src);
-                self.add_file_overlay(&dst, None);
-            }
-            WatcherChange::Write(path) => {
-                self.change_file_overlay(&path, None);
+            io::TaskResult::WatcherChange(change) => {
+                // TODO
+                unimplemented!()
             }
         }
     }
 
-    pub fn add_file_overlay(&mut self, path: &Path, text: Option<String>) -> Option<VfsFile> {
+    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
         let mut res = None;
         if let Some((root, rel_path, file)) = self.find_root(path) {
-            let text = text.unwrap_or_else(|| fs::read_to_string(&path).unwrap_or_default());
             let text = Arc::new(text);
             let change = if let Some(file) = file {
                 res = Some(file);
@@ -260,10 +245,8 @@ impl Vfs {
         res
     }
 
-    pub fn change_file_overlay(&mut self, path: &Path, new_text: Option<String>) {
+    pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
         if let Some((_root, _path, file)) = self.find_root(path) {
-            let new_text =
-                new_text.unwrap_or_else(|| fs::read_to_string(&path).unwrap_or_default());
             let file = file.expect("can't change a file which wasn't added");
             let text = Arc::new(new_text);
             self.change_file(file, Arc::clone(&text));
