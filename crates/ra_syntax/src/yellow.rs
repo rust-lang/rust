@@ -20,7 +20,7 @@ impl Types for RaTypes {
 
 pub type GreenNode = rowan::GreenNode<RaTypes>;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct TreePtr<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>>(
     pub(crate) rowan::TreePtr<RaTypes, T>,
 );
@@ -44,6 +44,15 @@ where
     type Target = T;
     fn deref(&self) -> &T {
         self.0.deref()
+    }
+}
+
+impl<T> Clone for TreePtr<T>
+where
+    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+{
+    fn clone(&self) -> TreePtr<T> {
+        TreePtr(self.0.clone())
     }
 }
 
