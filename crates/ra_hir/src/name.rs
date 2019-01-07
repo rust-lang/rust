@@ -59,6 +59,9 @@ impl Name {
             "u128" => KnownName::U128,
             "f32" => KnownName::F32,
             "f64" => KnownName::F64,
+            "bool" => KnownName::Bool,
+            "char" => KnownName::Char,
+            "str" => KnownName::Str,
             "Self" => KnownName::SelfType,
             "self" => KnownName::SelfParam,
             _ => return None,
@@ -112,6 +115,10 @@ pub(crate) enum KnownName {
 
     F32,
     F64,
+
+    Bool,
+    Char,
+    Str,
 
     SelfType,
     SelfParam,
