@@ -504,7 +504,52 @@ pub enum BinOp {
     LesserTest,
     /// The `>` operator for comparison
     GreaterTest,
-    // TODO: lots of others
+    /// The `+` operator for addition
+    Addition,
+    /// The `*` operator for multiplication
+    Multiplication,
+    /// The `-` operator for subtraction
+    Subtraction,
+    /// The `/` operator for division
+    Division,
+    /// The `%` operator for remainder after division
+    Remainder,
+    /// The `<<` operator for left shift
+    LeftShift,
+    /// The `>>` operator for right shift
+    RightShift,
+    /// The `^` operator for bitwise XOR
+    BitwiseXor,
+    /// The `|` operator for bitwise OR
+    BitwiseOr,
+    /// The `&` operator for bitwise AND
+    BitwiseAnd,
+    /// The `..` operator for right-open ranges
+    RangeRightOpen,
+    /// The `..=` operator for right-closed ranges
+    RangeRightClosed,
+    /// The `=` operator for assignment
+    Assignment,
+    /// The `+=` operator for assignment after additon
+    AddAssign,
+    /// The `/=` operator for assignment after division
+    DivAssign,
+    /// The `*=` operator for assignment after multiplication
+    MulAssign,
+    /// The `%=` operator for assignment after remainders
+    RemAssign,
+    /// The `>>=` operator for assignment after shifting right
+    ShrAssign,
+    /// The `<<=` operator for assignment after shifting left
+    ShlAssign,
+    /// The `-=` operator for assignment after subtraction
+    SubAssign,
+    /// The `|=` operator for assignment after bitwise OR
+    BitOrAssign,
+    /// The `&=` operator for assignment after bitwise AND
+    BitAndAssign,
+    /// The `^=` operator for assignment after bitwise XOR
+    BitXorAssign,
 }
 
 impl<'a> BinExpr<'a> {
@@ -519,6 +564,29 @@ impl<'a> BinExpr<'a> {
                 GTEQ => Some(BinOp::GreaterEqualTest),
                 L_ANGLE => Some(BinOp::LesserTest),
                 R_ANGLE => Some(BinOp::GreaterTest),
+                PLUS => Some(BinOp::Addition),
+                STAR => Some(BinOp::Multiplication),
+                MINUS => Some(BinOp::Subtraction),
+                SLASH => Some(BinOp::Division),
+                PERCENT => Some(BinOp::Remainder),
+                SHL => Some(BinOp::LeftShift),
+                SHR => Some(BinOp::RightShift),
+                CARET => Some(BinOp::BitwiseXor),
+                PIPE => Some(BinOp::BitwiseOr),
+                AMP => Some(BinOp::BitwiseAnd),
+                DOTDOT => Some(BinOp::RangeRightOpen),
+                DOTDOTEQ => Some(BinOp::RangeRightClosed),
+                EQ => Some(BinOp::Assignment),
+                PLUSEQ => Some(BinOp::AddAssign),
+                SLASHEQ => Some(BinOp::DivAssign),
+                STAREQ => Some(BinOp::MulAssign),
+                PERCENTEQ => Some(BinOp::RemAssign),
+                SHREQ => Some(BinOp::ShrAssign),
+                SHLEQ => Some(BinOp::ShlAssign),
+                MINUSEQ => Some(BinOp::SubAssign),
+                PIPEEQ => Some(BinOp::BitOrAssign),
+                AMPEQ => Some(BinOp::BitAndAssign),
+                CARETEQ => Some(BinOp::BitXorAssign),
                 _ => None,
             })
             .next()

@@ -527,9 +527,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     return_ty: Ty,
 }
 
-// helper function that determines whether a binary operator
-// always returns a boolean
-fn is_boolean_operator(op: BinaryOp) -> bool {
+fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
     match op {
         BinaryOp::BooleanOr
         | BinaryOp::BooleanAnd
@@ -537,7 +535,70 @@ fn is_boolean_operator(op: BinaryOp) -> bool {
         | BinaryOp::LesserEqualTest
         | BinaryOp::GreaterEqualTest
         | BinaryOp::LesserTest
-        | BinaryOp::GreaterTest => true,
+        | BinaryOp::GreaterTest => Ty::Bool,
+        BinaryOp::Assignment
+        | BinaryOp::AddAssign
+        | BinaryOp::SubAssign
+        | BinaryOp::DivAssign
+        | BinaryOp::MulAssign
+        | BinaryOp::RemAssign
+        | BinaryOp::ShrAssign
+        | BinaryOp::ShlAssign
+        | BinaryOp::BitAndAssign
+        | BinaryOp::BitOrAssign
+        | BinaryOp::BitXorAssign => Ty::unit(),
+        BinaryOp::Addition
+        | BinaryOp::Subtraction
+        | BinaryOp::Multiplication
+        | BinaryOp::Division
+        | BinaryOp::Remainder
+        | BinaryOp::LeftShift
+        | BinaryOp::RightShift
+        | BinaryOp::BitwiseAnd
+        | BinaryOp::BitwiseOr
+        | BinaryOp::BitwiseXor => match rhs_ty {
+            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) => rhs_ty,
+            _ => Ty::Unknown,
+        },
+        BinaryOp::RangeRightOpen | BinaryOp::RangeRightClosed => Ty::Unknown,
+    }
+}
+
+fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
+    match op {
+        BinaryOp::BooleanAnd | BinaryOp::BooleanOr => Ty::Bool,
+        BinaryOp::Assignment | BinaryOp::EqualityTest => match lhs_ty {
+            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) | Ty::Str | Ty::Char | Ty::Bool => lhs_ty,
+            _ => Ty::Unknown,
+        },
+        BinaryOp::LesserEqualTest
+        | BinaryOp::GreaterEqualTest
+        | BinaryOp::LesserTest
+        | BinaryOp::GreaterTest
+        | BinaryOp::AddAssign
+        | BinaryOp::SubAssign
+        | BinaryOp::DivAssign
+        | BinaryOp::MulAssign
+        | BinaryOp::RemAssign
+        | BinaryOp::ShrAssign
+        | BinaryOp::ShlAssign
+        | BinaryOp::BitAndAssign
+        | BinaryOp::BitOrAssign
+        | BinaryOp::BitXorAssign
+        | BinaryOp::Addition
+        | BinaryOp::Subtraction
+        | BinaryOp::Multiplication
+        | BinaryOp::Division
+        | BinaryOp::Remainder
+        | BinaryOp::LeftShift
+        | BinaryOp::RightShift
+        | BinaryOp::BitwiseAnd
+        | BinaryOp::BitwiseOr
+        | BinaryOp::BitwiseXor => match lhs_ty {
+            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) => lhs_ty,
+            _ => Ty::Unknown,
+        },
+        _ => Ty::Unknown,
     }
 }
 
@@ -889,20 +950,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(op) => {
-                    let subtype_expectation = match op {
+                    let lhs_expectation = match op {
                         BinaryOp::BooleanAnd | BinaryOp::BooleanOr => {
                             Expectation::has_type(Ty::Bool)
                         }
                         _ => Expectation::none(),
                     };
-                    let _lhs_ty = self.infer_expr(*lhs, &subtype_expectation)?;
-                    let _rhs_ty = self.infer_expr(*rhs, &subtype_expectation)?;
+                    let lhs_ty = self.infer_expr(*lhs, &lhs_expectation)?;
+                    // TODO: find implementation of trait corresponding to operation
+                    // symbol and resolve associated `Output` type
+                    let rhs_expectation = binary_op_rhs_expectation(*op, lhs_ty);
+                    let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation))?;
 
-                    if is_boolean_operator(*op) {
-                        Ty::Bool
-                    } else {
-                        Ty::Unknown
-                    }
+                    // TODO: similar as above, return ty is often associated trait type
+                    binary_op_return_ty(*op, rhs_ty)
                 }
                 _ => Ty::Unknown,
             },
