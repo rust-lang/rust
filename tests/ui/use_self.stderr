@@ -150,5 +150,17 @@ LL |                 Foo {}
 LL |         use_self_expand!(); // Should lint in local macros
    |         ------------------- in this macro invocation
 
-error: aborting due to 24 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:255:29
+   |
+LL |                 fn bar() -> Bar {
+   |                             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:256:21
+   |
+LL |                     Bar { foo: Foo {} }
+   |                     ^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 26 previous errors
 
