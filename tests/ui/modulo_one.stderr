@@ -1,5 +1,5 @@
 error: any number modulo 1 will be 0
-  --> $DIR/modulo_one.rs:14:5
+  --> $DIR/modulo_one.rs:5:5
    |
 LL |     10 % 1;
    |     ^^^^^^

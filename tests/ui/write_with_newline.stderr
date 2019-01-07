@@ -1,5 +1,5 @@
 error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
-  --> $DIR/write_with_newline.rs:19:5
+  --> $DIR/write_with_newline.rs:10:5
    |
 LL |     write!(&mut v, "Hello/n");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,25 +7,25 @@ LL |     write!(&mut v, "Hello/n");
    = note: `-D clippy::write-with-newline` implied by `-D warnings`
 
 error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
-  --> $DIR/write_with_newline.rs:20:5
+  --> $DIR/write_with_newline.rs:11:5
    |
 LL |     write!(&mut v, "Hello {}/n", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
-  --> $DIR/write_with_newline.rs:21:5
+  --> $DIR/write_with_newline.rs:12:5
    |
 LL |     write!(&mut v, "Hello {} {}/n", "world", "#2");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
-  --> $DIR/write_with_newline.rs:22:5
+  --> $DIR/write_with_newline.rs:13:5
    |
 LL |     write!(&mut v, "{}/n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
-  --> $DIR/write_with_newline.rs:41:5
+  --> $DIR/write_with_newline.rs:32:5
    |
 LL |     write!(&mut v, "//n");
    |     ^^^^^^^^^^^^^^^^^^^^^^

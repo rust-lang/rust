@@ -1,5 +1,5 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:15:1
+  --> $DIR/len_zero.rs:6:1
    |
 LL | / impl PubOne {
 LL | |     pub fn len(self: &Self) -> isize {
@@ -11,7 +11,7 @@ LL | | }
    = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_zero.rs:64:1
+  --> $DIR/len_zero.rs:55:1
    |
 LL | / pub trait PubTraitsToo {
 LL | |     fn len(self: &Self) -> isize;
@@ -19,7 +19,7 @@ LL | | }
    | |_^
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
-  --> $DIR/len_zero.rs:98:1
+  --> $DIR/len_zero.rs:89:1
    |
 LL | / impl HasIsEmpty {
 LL | |     pub fn len(self: &Self) -> isize {
@@ -31,7 +31,7 @@ LL | | }
    | |_^
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:127:1
+  --> $DIR/len_zero.rs:118:1
    |
 LL | / impl HasWrongIsEmpty {
 LL | |     pub fn len(self: &Self) -> isize {
@@ -43,7 +43,7 @@ LL | | }
    | |_^
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:148:8
+  --> $DIR/len_zero.rs:139:8
    |
 LL |     if x.len() == 0 {
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `x.is_empty()`
@@ -51,85 +51,85 @@ LL |     if x.len() == 0 {
    = note: `-D clippy::len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:152:8
+  --> $DIR/len_zero.rs:143:8
    |
 LL |     if "".len() == 0 {}
    |        ^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `"".is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:167:8
+  --> $DIR/len_zero.rs:158:8
    |
 LL |     if has_is_empty.len() == 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:170:8
+  --> $DIR/len_zero.rs:161:8
    |
 LL |     if has_is_empty.len() != 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:173:8
+  --> $DIR/len_zero.rs:164:8
    |
 LL |     if has_is_empty.len() > 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:176:8
+  --> $DIR/len_zero.rs:167:8
    |
 LL |     if has_is_empty.len() < 1 {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:179:8
+  --> $DIR/len_zero.rs:170:8
    |
 LL |     if has_is_empty.len() >= 1 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:190:8
+  --> $DIR/len_zero.rs:181:8
    |
 LL |     if 0 == has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:193:8
+  --> $DIR/len_zero.rs:184:8
    |
 LL |     if 0 != has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:196:8
+  --> $DIR/len_zero.rs:187:8
    |
 LL |     if 0 < has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:199:8
+  --> $DIR/len_zero.rs:190:8
    |
 LL |     if 1 <= has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:202:8
+  --> $DIR/len_zero.rs:193:8
    |
 LL |     if 1 > has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:216:8
+  --> $DIR/len_zero.rs:207:8
    |
 LL |     if with_is_empty.len() == 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `with_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:229:8
+  --> $DIR/len_zero.rs:220:8
    |
 LL |     if b.len() != 0 {}
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `!b.is_empty()`
 
 error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_zero.rs:235:1
+  --> $DIR/len_zero.rs:226:1
    |
 LL | / pub trait DependsOnFoo: Foo {
 LL | |     fn len(&mut self) -> usize;

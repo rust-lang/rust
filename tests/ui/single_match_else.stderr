@@ -1,5 +1,5 @@
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:21:5
+  --> $DIR/single_match_else.rs:12:5
    |
 LL | /     match ExprNode::Butterflies {
 LL | |         ExprNode::ExprAddrOf => Some(&NODE),

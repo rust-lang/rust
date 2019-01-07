@@ -1,5 +1,5 @@
 error: Suspicious use of binary operator in `Add` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:20:20
+  --> $DIR/suspicious_arithmetic_impl.rs:11:20
    |
 LL |         Foo(self.0 - other.0)
    |                    ^
@@ -7,7 +7,7 @@ LL |         Foo(self.0 - other.0)
    = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
 
 error: Suspicious use of binary operator in `AddAssign` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:26:23
+  --> $DIR/suspicious_arithmetic_impl.rs:17:23
    |
 LL |         *self = *self - other;
    |                       ^

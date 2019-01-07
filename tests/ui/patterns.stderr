@@ -1,5 +1,5 @@
 error: the `y @ _` pattern can be written as just `y`
-  --> $DIR/patterns.rs:17:9
+  --> $DIR/patterns.rs:8:9
    |
 LL |         y @ _ => (),
    |         ^^^^^

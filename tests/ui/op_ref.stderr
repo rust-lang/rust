@@ -1,5 +1,5 @@
 error: needlessly taken reference of both operands
-  --> $DIR/op_ref.rs:19:15
+  --> $DIR/op_ref.rs:10:15
    |
 LL |     let foo = &5 - &6;
    |               ^^^^^^^
@@ -11,7 +11,7 @@ LL |     let foo = 5 - 6;
    |               ^   ^
 
 error: taken reference of right operand
-  --> $DIR/op_ref.rs:27:8
+  --> $DIR/op_ref.rs:18:8
    |
 LL |     if b < &a {
    |        ^^^^--

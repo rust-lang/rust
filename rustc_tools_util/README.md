@@ -49,7 +49,7 @@ This gives the following output in clippy:
 
 ## License
 
-Copyright 2014-2018 The Rust Project Developers
+Copyright 2014-2019 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 http://www.apache.org/licenses/LICENSE-2.0> or the MIT license

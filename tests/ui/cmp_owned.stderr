@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:14:14
+  --> $DIR/cmp_owned.rs:5:14
    |
 LL |         x != "foo".to_string();
    |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
@@ -7,49 +7,49 @@ LL |         x != "foo".to_string();
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:16:9
+  --> $DIR/cmp_owned.rs:7:9
    |
 LL |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:23:10
+  --> $DIR/cmp_owned.rs:14:10
    |
 LL |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:25:10
+  --> $DIR/cmp_owned.rs:16:10
    |
 LL |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:29:5
+  --> $DIR/cmp_owned.rs:20:5
    |
 LL |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:31:30
+  --> $DIR/cmp_owned.rs:22:30
    |
 LL |     "abc".chars().filter(|c| c.to_owned() != 'X');
    |                              ^^^^^^^^^^^^ help: try: `*c`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:38:5
+  --> $DIR/cmp_owned.rs:29:5
    |
 LL |     y.to_owned() == *x;
    |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:43:5
+  --> $DIR/cmp_owned.rs:34:5
    |
 LL |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:50:9
+  --> $DIR/cmp_owned.rs:41:9
    |
 LL |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating

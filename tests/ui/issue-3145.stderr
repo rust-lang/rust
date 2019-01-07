@@ -1,5 +1,5 @@
 error: expected token: `,`
-  --> $DIR/issue-3145.rs:11:19
+  --> $DIR/issue-3145.rs:2:19
    |
 LL |     println!("{}" a); //~ERROR expected token: `,`
    |                   ^

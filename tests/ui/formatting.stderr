@@ -1,5 +1,5 @@
 error: this looks like an `else {..}` but the `else` is missing
-  --> $DIR/formatting.rs:21:6
+  --> $DIR/formatting.rs:12:6
    |
 LL |     } {
    |      ^
@@ -8,7 +8,7 @@ LL |     } {
    = note: to remove this lint, add the missing `else` or add a new line before the next block
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:25:6
+  --> $DIR/formatting.rs:16:6
    |
 LL |     } if foo() {
    |      ^
@@ -16,7 +16,7 @@ LL |     } if foo() {
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:32:10
+  --> $DIR/formatting.rs:23:10
    |
 LL |         } if foo() {
    |          ^
@@ -24,7 +24,7 @@ LL |         } if foo() {
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:40:10
+  --> $DIR/formatting.rs:31:10
    |
 LL |         } if foo() {
    |          ^
@@ -32,7 +32,7 @@ LL |         } if foo() {
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/formatting.rs:49:6
+  --> $DIR/formatting.rs:40:6
    |
 LL |       } else
    |  ______^
@@ -42,7 +42,7 @@ LL | |     {
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
 
 error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/formatting.rs:54:6
+  --> $DIR/formatting.rs:45:6
    |
 LL |       }
    |  ______^
@@ -53,7 +53,7 @@ LL | |     {
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
 
 error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:60:6
+  --> $DIR/formatting.rs:51:6
    |
 LL |       } else
    |  ______^
@@ -63,7 +63,7 @@ LL | |     if foo() { // the span of the above error should continue here
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:65:6
+  --> $DIR/formatting.rs:56:6
    |
 LL |       }
    |  ______^
@@ -74,7 +74,7 @@ LL | |     if foo() { // the span of the above error should continue here
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-  --> $DIR/formatting.rs:106:6
+  --> $DIR/formatting.rs:97:6
    |
 LL |     a =- 35;
    |      ^^^^
@@ -83,7 +83,7 @@ LL |     a =- 35;
    = note: to remove this lint, use either `-=` or `= -`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-  --> $DIR/formatting.rs:107:6
+  --> $DIR/formatting.rs:98:6
    |
 LL |     a =* &191;
    |      ^^^^
@@ -91,7 +91,7 @@ LL |     a =* &191;
    = note: to remove this lint, use either `*=` or `= *`
 
 error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-  --> $DIR/formatting.rs:110:6
+  --> $DIR/formatting.rs:101:6
    |
 LL |     b =! false;
    |      ^^^^
@@ -99,7 +99,7 @@ LL |     b =! false;
    = note: to remove this lint, use either `!=` or `= !`
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:119:19
+  --> $DIR/formatting.rs:110:19
    |
 LL |         -1, -2, -3 // <= no comma here
    |                   ^
@@ -108,7 +108,7 @@ LL |         -1, -2, -3 // <= no comma here
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:123:19
+  --> $DIR/formatting.rs:114:19
    |
 LL |         -1, -2, -3 // <= no comma here
    |                   ^

@@ -1,6 +1,6 @@
 error: This else block is redundant.
 
-  --> $DIR/needless_continue.rs:36:16
+  --> $DIR/needless_continue.rs:27:16
    |
 LL |           } else {
    |  ________________^
@@ -37,7 +37,7 @@ LL | |         }
 
 error: There is no need for an explicit `else` block for this `if` expression
 
-  --> $DIR/needless_continue.rs:51:9
+  --> $DIR/needless_continue.rs:42:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 LL | |             continue;

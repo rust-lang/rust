@@ -1,5 +1,5 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:32:9
+  --> $DIR/unit_arg.rs:23:9
    |
 LL |     foo({});
    |         ^^
@@ -11,7 +11,7 @@ LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:33:9
+  --> $DIR/unit_arg.rs:24:9
    |
 LL |       foo({
    |  _________^
@@ -24,7 +24,7 @@ LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:36:9
+  --> $DIR/unit_arg.rs:27:9
    |
 LL |     foo(foo(1));
    |         ^^^^^^
@@ -34,7 +34,7 @@ LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:37:9
+  --> $DIR/unit_arg.rs:28:9
    |
 LL |       foo({
    |  _________^
@@ -48,7 +48,7 @@ LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:41:10
+  --> $DIR/unit_arg.rs:32:10
    |
 LL |     foo3({}, 2, 2);
    |          ^^
@@ -58,7 +58,7 @@ LL |     foo3((), 2, 2);
    |          ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:43:11
+  --> $DIR/unit_arg.rs:34:11
    |
 LL |       b.bar({
    |  ___________^

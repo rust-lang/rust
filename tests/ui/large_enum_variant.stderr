@@ -1,5 +1,5 @@
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:16:5
+  --> $DIR/large_enum_variant.rs:7:5
    |
 LL |     B([i32; 8000]),
    |     ^^^^^^^^^^^^^^
@@ -11,19 +11,19 @@ LL |     B(Box<[i32; 8000]>),
    |       ^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:27:5
+  --> $DIR/large_enum_variant.rs:18:5
    |
 LL |     C(T, [i32; 8000]),
    |     ^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
-  --> $DIR/large_enum_variant.rs:27:5
+  --> $DIR/large_enum_variant.rs:18:5
    |
 LL |     C(T, [i32; 8000]),
    |     ^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:40:5
+  --> $DIR/large_enum_variant.rs:31:5
    |
 LL |     ContainingLargeEnum(LargeEnum),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,31 +33,31 @@ LL |     ContainingLargeEnum(Box<LargeEnum>),
    |                         ^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:43:5
+  --> $DIR/large_enum_variant.rs:34:5
    |
 LL |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
-  --> $DIR/large_enum_variant.rs:43:5
+  --> $DIR/large_enum_variant.rs:34:5
    |
 LL |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:50:5
+  --> $DIR/large_enum_variant.rs:41:5
    |
 LL |     StructLikeLarge { x: [i32; 8000], y: i32 },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
-  --> $DIR/large_enum_variant.rs:50:5
+  --> $DIR/large_enum_variant.rs:41:5
    |
 LL |     StructLikeLarge { x: [i32; 8000], y: i32 },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:55:5
+  --> $DIR/large_enum_variant.rs:46:5
    |
 LL |     StructLikeLarge2 { x: [i32; 8000] },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

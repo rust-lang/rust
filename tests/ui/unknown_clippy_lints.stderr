@@ -1,5 +1,5 @@
 error: unknown clippy lint: clippy::if_not_els
-  --> $DIR/unknown_clippy_lints.rs:13:8
+  --> $DIR/unknown_clippy_lints.rs:4:8
    |
 LL | #[warn(clippy::if_not_els)]
    |        ^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[warn(clippy::if_not_els)]
    = note: `-D clippy::unknown-clippy-lints` implied by `-D warnings`
 
 error: unknown clippy lint: clippy::All
-  --> $DIR/unknown_clippy_lints.rs:10:10
+  --> $DIR/unknown_clippy_lints.rs:1:10
    |
 LL | #![allow(clippy::All)]
    |          ^^^^^^^^^^^ help: lowercase the lint name: `all`

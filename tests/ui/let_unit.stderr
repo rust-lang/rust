@@ -1,5 +1,5 @@
 error: this let-binding has unit value. Consider omitting `let _x =`
-  --> $DIR/let_unit.rs:20:5
+  --> $DIR/let_unit.rs:11:5
    |
 LL |     let _x = println!("x");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let _x = println!("x");
    = note: `-D clippy::let-unit-value` implied by `-D warnings`
 
 error: this let-binding has unit value. Consider omitting `let _a =`
-  --> $DIR/let_unit.rs:24:9
+  --> $DIR/let_unit.rs:15:9
    |
 LL |         let _a = ();
    |         ^^^^^^^^^^^^
