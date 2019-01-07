@@ -286,6 +286,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_scalar(result_ptr, dest)?;
             }
 
+            "panic_if_uninhabited" => {
+                let ty = substs.type_at(0);
+                let layout = this.layout_of(ty)?;
+                if layout.abi.is_uninhabited() {
+                    return err!(Intrinsic(format!("Trying to instantiate uninhabited type {}", ty)))
+                }
+            }
+
             "powf32" => {
                 let f = this.read_scalar(args[0])?.to_f32()?;
                 let f2 = this.read_scalar(args[1])?.to_f32()?;
