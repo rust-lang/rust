@@ -1,0 +1,46 @@
+[6; 7) 'x': [unknown]
+[22; 34) '{     0i32 }': i32
+[28; 32) '0i32': i32
+[46; 342) '{     ... < 3 }': bool
+[56; 57) 'x': bool
+[60; 61) 'a': bool
+[60; 66) 'a && b': bool
+[65; 66) 'b': bool
+[76; 77) 'y': bool
+[80; 84) 'true': bool
+[80; 93) 'true || false': bool
+[88; 93) 'false': bool
+[103; 104) 'z': bool
+[107; 108) 'x': bool
+[107; 113) 'x == y': bool
+[112; 113) 'y': bool
+[123; 134) 'minus_forty': isize
+[144; 152) '-40isize': isize
+[145; 152) '40isize': [unknown]
+[162; 163) 'h': bool
+[166; 177) 'minus_forty': isize
+[166; 188) 'minus_...ONST_2': bool
+[181; 188) 'CONST_2': isize
+[198; 199) 'c': i32
+[202; 203) 'f': fn([unknown],) -> i32
+[202; 211) 'f(z || y)': i32
+[202; 215) 'f(z || y) + 5': i32
+[204; 205) 'z': bool
+[204; 210) 'z || y': bool
+[209; 210) 'y': bool
+[214; 215) '5': i32
+[225; 226) 'd': [unknown]
+[229; 230) 'b': [unknown]
+[240; 241) 'g': ()
+[244; 255) 'minus_forty': isize
+[244; 260) 'minus_...y ^= i': ()
+[259; 260) 'i': isize
+[270; 273) 'ten': usize
+[283; 285) '10': usize
+[295; 308) 'ten_is_eleven': bool
+[311; 314) 'ten': usize
+[311; 326) 'ten == some_num': bool
+[318; 326) 'some_num': usize
+[333; 336) 'ten': usize
+[333; 340) 'ten < 3': bool
+[339; 340) '3': usize
