@@ -122,6 +122,8 @@
 #![feature(reverse_bits)]
 #![feature(non_exhaustive)]
 #![feature(structural_match)]
+#![feature(abi_unadjusted)]
+#![cfg_attr(not(stage0), feature(adx_target_feature))]
 
 #[prelude_import]
 #[allow(unused)]
