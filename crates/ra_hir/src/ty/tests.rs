@@ -157,7 +157,7 @@ impl S {
 }
 
 #[test]
-fn infer_boolean_op() {
+fn infer_binary_op() {
     check_inference(
         r#"
 fn f(x: bool) -> i32 {
@@ -168,15 +168,18 @@ fn test() {
     let x = a && b;
     let y = true || false;
     let z = x == y;
-    let h = CONST_1 <= CONST_2;
+    let minus_forty: isize = -40isize;
+    let h = minus_forty <= CONST_2;
     let c = f(z || y) + 5;
     let d = b;
-    let e = 3i32 && "hello world";
+    let g = minus_forty ^= i;
+    let ten: usize = 10;
+    let ten_is_eleven = ten == some_num;
 
-    10 < 3
+    ten < 3
 }
 "#,
-        "boolean_op.txt",
+        "binary_op.txt",
     );
 }
 

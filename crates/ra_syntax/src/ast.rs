@@ -549,7 +549,7 @@ pub enum BinOp {
     /// The `&=` operator for assignment after bitwise AND
     BitAndAssign,
     /// The `^=` operator for assignment after bitwise XOR
-    BitXorAssin,
+    BitXorAssign,
 }
 
 impl<'a> BinExpr<'a> {
@@ -586,7 +586,7 @@ impl<'a> BinExpr<'a> {
                 MINUSEQ => Some(BinOp::SubAssign),
                 PIPEEQ => Some(BinOp::BitOrAssign),
                 AMPEQ => Some(BinOp::BitAndAssign),
-                CARETEQ =>  Some(BinOp::BitXorAssin),
+                CARETEQ => Some(BinOp::BitXorAssign),
                 _ => None,
             })
             .next()
