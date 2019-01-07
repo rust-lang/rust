@@ -1,7 +1,7 @@
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::WHITESPACE,
-    SyntaxNodeRef, TextUnit,
+    SyntaxNode, TextUnit,
 };
 
 use crate::assists::{AssistCtx, Assist};
@@ -39,7 +39,7 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
 
 /// Statement or last in the block expression, which will follow
 /// the freshly introduced var.
-fn anchor_stmt(expr: ast::Expr) -> Option<SyntaxNodeRef> {
+fn anchor_stmt(expr: &ast::Expr) -> Option<&SyntaxNode> {
     expr.syntax().ancestors().find(|&node| {
         if ast::Stmt::cast(node).is_some() {
             return true;

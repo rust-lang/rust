@@ -1,9 +1,8 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    ast, AstNode, Direction, SourceFileNode,
+    ast, AstNode, Direction, SourceFile, SyntaxNode, TextRange,
     SyntaxKind::{self, *},
-    SyntaxNodeRef, TextRange,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,7 +18,7 @@ pub struct Fold {
     pub kind: FoldKind,
 }
 
-pub fn folding_ranges(file: &SourceFileNode) -> Vec<Fold> {
+pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_imports = FxHashSet::default();
@@ -69,7 +68,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     }
 }
 
-fn has_newline(node: SyntaxNodeRef) -> bool {
+fn has_newline(node: &SyntaxNode) -> bool {
     for descendant in node.descendants() {
         if let Some(ws) = ast::Whitespace::cast(descendant) {
             if ws.has_newlines() {
@@ -86,8 +85,8 @@ fn has_newline(node: SyntaxNodeRef) -> bool {
 }
 
 fn contiguous_range_for_group<'a>(
-    first: SyntaxNodeRef<'a>,
-    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
+    first: &'a SyntaxNode,
+    visited: &mut FxHashSet<&'a SyntaxNode>,
 ) -> Option<TextRange> {
     visited.insert(first);
 
@@ -124,8 +123,8 @@ fn contiguous_range_for_group<'a>(
 }
 
 fn contiguous_range_for_comment<'a>(
-    first: SyntaxNodeRef<'a>,
-    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
+    first: &'a SyntaxNode,
+    visited: &mut FxHashSet<&'a SyntaxNode>,
 ) -> Option<TextRange> {
     visited.insert(first);
 
@@ -174,7 +173,7 @@ mod tests {
 
     fn do_check(text: &str, fold_kinds: &[FoldKind]) {
         let (ranges, text) = extract_ranges(text, "fold");
-        let file = SourceFileNode::parse(&text);
+        let file = SourceFile::parse(&text);
         let folds = folding_ranges(&file);
 
         assert_eq!(

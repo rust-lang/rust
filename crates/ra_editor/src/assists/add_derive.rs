@@ -28,7 +28,7 @@ pub fn add_derive(ctx: AssistCtx) -> Option<Assist> {
 }
 
 // Insert `derive` after doc comments.
-fn derive_insertion_offset(nominal: ast::NominalDef) -> Option<TextUnit> {
+fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextUnit> {
     let non_ws_child = nominal
         .syntax()
         .children()

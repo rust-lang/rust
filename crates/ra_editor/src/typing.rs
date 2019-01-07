@@ -5,15 +5,15 @@ use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
     text_utils::intersect,
-    AstNode, Direction, SourceFileNode, SyntaxKind,
+    AstNode, Direction, SourceFile, SyntaxKind,
     SyntaxKind::*,
-    SyntaxNodeRef, TextRange, TextUnit,
+    SyntaxNode, TextRange, TextUnit,
 };
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 
 use crate::{find_node_at_offset, LocalEdit, TextEditBuilder};
 
-pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
+pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
@@ -59,7 +59,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     }
 }
 
-pub fn on_enter(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
+pub fn on_enter(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     let comment = find_leaf_at_offset(file.syntax(), offset)
         .left_biased()
         .and_then(ast::Comment::cast)?;
@@ -85,7 +85,7 @@ pub fn on_enter(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     })
 }
 
-fn node_indent<'a>(file: &'a SourceFileNode, node: SyntaxNodeRef) -> Option<&'a str> {
+fn node_indent<'a>(file: &'a SourceFile, node: &SyntaxNode) -> Option<&'a str> {
     let ws = match find_leaf_at_offset(file.syntax(), node.range().start()) {
         LeafAtOffset::Between(l, r) => {
             assert!(r == node);
@@ -105,8 +105,8 @@ fn node_indent<'a>(file: &'a SourceFileNode, node: SyntaxNodeRef) -> Option<&'a 
     Some(&text[pos..])
 }
 
-pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
-    let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
+pub fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
+    let let_stmt: &ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.has_semi() {
         return None;
     }
@@ -136,7 +136,7 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
     })
 }
 
-pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
+pub fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     let before_dot_offset = offset - TextUnit::of_char('.');
 
     let whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset).left_biased()?;
@@ -151,7 +151,7 @@ pub fn on_dot_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit
         .skip(1)
         .next()?;
 
-    ast::MethodCallExprNode::cast(method_call)?;
+    ast::MethodCallExpr::cast(method_call)?;
 
     // find how much the _method call is indented
     let method_chain_indent = method_call
@@ -188,7 +188,7 @@ fn last_line_indent_in_whitespace(ws: &str) -> &str {
 
 fn remove_newline(
     edit: &mut TextEditBuilder,
-    node: SyntaxNodeRef,
+    node: &SyntaxNode,
     node_text: &str,
     offset: TextUnit,
 ) {
@@ -266,7 +266,7 @@ fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     }
 }
 
-fn join_single_expr_block(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Option<()> {
+fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = single_expr(block)?;
@@ -277,7 +277,7 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Op
     Some(())
 }
 
-fn single_expr(block: ast::Block) -> Option<ast::Expr> {
+fn single_expr(block: &ast::Block) -> Option<&ast::Expr> {
     let mut res = None;
     for child in block.syntax().children() {
         if let Some(expr) = ast::Expr::cast(child) {
@@ -297,7 +297,7 @@ fn single_expr(block: ast::Block) -> Option<ast::Expr> {
     res
 }
 
-fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Option<()> {
+fn join_single_use_tree(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.parent()?)?;
     let (tree,) = use_tree_list.use_trees().collect_tuple()?;
     edit.replace(
@@ -307,7 +307,7 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Opti
     Some(())
 }
 
-fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
+fn compute_ws(left: &SyntaxNode, right: &SyntaxNode) -> &'static str {
     match left.kind() {
         L_PAREN | L_BRACK => return "",
         L_CURLY => {
@@ -547,7 +547,7 @@ fn foo() {
 
     fn check_join_lines_sel(before: &str, after: &str) {
         let (sel, before) = extract_range(before);
-        let file = SourceFileNode::parse(&before);
+        let file = SourceFile::parse(&before);
         let result = join_lines(&file, sel);
         let actual = result.edit.apply(&before);
         assert_eq_text!(after, &actual);
@@ -626,7 +626,7 @@ pub fn handle_find_matching_brace() {
     fn test_on_eq_typed() {
         fn do_check(before: &str, after: &str) {
             let (offset, before) = extract_offset(before);
-            let file = SourceFileNode::parse(&before);
+            let file = SourceFile::parse(&before);
             let result = on_eq_typed(&file, offset).unwrap();
             let actual = result.edit.apply(&before);
             assert_eq_text!(after, &actual);
@@ -670,7 +670,7 @@ fn foo() {
     fn test_on_dot_typed() {
         fn do_check(before: &str, after: &str) {
             let (offset, before) = extract_offset(before);
-            let file = SourceFileNode::parse(&before);
+            let file = SourceFile::parse(&before);
             if let Some(result) = on_eq_typed(&file, offset) {
                 let actual = result.edit.apply(&before);
                 assert_eq_text!(after, &actual);
@@ -779,7 +779,7 @@ fn foo() {
     fn test_on_enter() {
         fn apply_on_enter(before: &str) -> Option<String> {
             let (offset, before) = extract_offset(before);
-            let file = SourceFileNode::parse(&before);
+            let file = SourceFile::parse(&before);
             let result = on_enter(&file, offset)?;
             let actual = result.edit.apply(&before);
             let actual = add_cursor(&actual, result.cursor_position.unwrap());
