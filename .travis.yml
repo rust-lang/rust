@@ -213,6 +213,10 @@ before_install:
 install:
   - case "$TRAVIS_OS_NAME" in
         linux)
+          $HOME/.nvm/nvm.sh &&
+            nvm install stable &&
+            nvm use stable &&
+            npm install eslint;
           travis_retry curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
             chmod +x $HOME/stamp &&
             export PATH=$PATH:$HOME
