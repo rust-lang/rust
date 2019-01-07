@@ -593,6 +593,9 @@ pub use self::rdrand::*;
 mod sha;
 pub use self::sha::*;
 
+mod adx;
+pub use self::adx::*;
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 

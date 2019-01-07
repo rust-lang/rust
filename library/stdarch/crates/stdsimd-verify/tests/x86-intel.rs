@@ -240,8 +240,12 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     // ensuring that we've actually enabled the right instruction
     // set for this intrinsic.
     match rust.name {
-        "_bswap" => {}
-        "_bswap64" => {}
+        "_bswap" | "_bswap64" => {}
+
+        // These don't actually have a target feature unlike their brethren with
+        // the `x` inside the name which requires adx
+        "_addcarry_u32" | "_addcarry_u64" | "_subborrow_u32" | "_subborrow_u64" => {}
+
         _ => {
             if intel.cpuid.is_empty() {
                 bail!("missing cpuid for {}", rust.name);

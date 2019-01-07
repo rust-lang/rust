@@ -41,3 +41,6 @@ pub use self::rdrand::*;
 
 mod cmpxchg16b;
 pub use self::cmpxchg16b::*;
+
+mod adx;
+pub use self::adx::*;
