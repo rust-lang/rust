@@ -9,4648 +9,3387 @@
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
-use std::hash::{Hash, Hasher};
+use rowan::TransparentNewType;
 
 use crate::{
-    ast,
-    SyntaxNode, SyntaxNodeRef, AstNode,
-    yellow::{TreeRoot, RaTypes, OwnedRoot, RefRoot},
-    SyntaxKind::*,
+    SyntaxNode, SyntaxKind::*,
+    yellow::{RaTypes, TreePtr},
+    ast::{self, AstNode},
 };
 
 // ArgList
-#[derive(Debug, Clone, Copy,)]
-pub struct ArgListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ArgList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ArgList<'a> = ArgListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ArgListNode<R1>> for ArgListNode<R2> {
-    fn eq(&self, other: &ArgListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ArgListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ArgListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ArgList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ArgList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ArgList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ARG_LIST => Some(ArgList { syntax }),
+            ARG_LIST => Some(ArgList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ArgListNode<R> {
-    pub fn borrowed(&self) -> ArgList {
-        ArgListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ArgListNode {
-        ArgListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ArgList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ArgList<'a> {
-    pub fn args(self) -> impl Iterator<Item = Expr<'a>> + 'a {
+impl ArgList {
+    pub fn args(&self) -> impl Iterator<Item = &Expr> {
         super::children(self)
     }
 }
 
 // ArrayExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct ArrayExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ArrayExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ArrayExpr<'a> = ArrayExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ArrayExprNode<R1>> for ArrayExprNode<R2> {
-    fn eq(&self, other: &ArrayExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ArrayExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ArrayExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ArrayExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ArrayExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ArrayExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ARRAY_EXPR => Some(ArrayExpr { syntax }),
+            ARRAY_EXPR => Some(ArrayExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ArrayExprNode<R> {
-    pub fn borrowed(&self) -> ArrayExpr {
-        ArrayExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ArrayExprNode {
-        ArrayExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ArrayExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ArrayExpr<'a> {}
+impl ArrayExpr {}
 
 // ArrayType
-#[derive(Debug, Clone, Copy,)]
-pub struct ArrayTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ArrayType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ArrayType<'a> = ArrayTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ArrayTypeNode<R1>> for ArrayTypeNode<R2> {
-    fn eq(&self, other: &ArrayTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ArrayTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ArrayTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ArrayType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ArrayType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ArrayType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ARRAY_TYPE => Some(ArrayType { syntax }),
+            ARRAY_TYPE => Some(ArrayType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ArrayTypeNode<R> {
-    pub fn borrowed(&self) -> ArrayType {
-        ArrayTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ArrayTypeNode {
-        ArrayTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ArrayType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ArrayType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl ArrayType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 
-    pub fn expr(self) -> Option<Expr<'a>> {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // Attr
-#[derive(Debug, Clone, Copy,)]
-pub struct AttrNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Attr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Attr<'a> = AttrNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<AttrNode<R1>> for AttrNode<R2> {
-    fn eq(&self, other: &AttrNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for AttrNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for AttrNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Attr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Attr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Attr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ATTR => Some(Attr { syntax }),
+            ATTR => Some(Attr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> AttrNode<R> {
-    pub fn borrowed(&self) -> Attr {
-        AttrNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> AttrNode {
-        AttrNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Attr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Attr<'a> {
-    pub fn value(self) -> Option<TokenTree<'a>> {
+impl Attr {
+    pub fn value(&self) -> Option<&TokenTree> {
         super::child_opt(self)
     }
 }
 
 // BinExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct BinExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct BinExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type BinExpr<'a> = BinExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BinExprNode<R1>> for BinExprNode<R2> {
-    fn eq(&self, other: &BinExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for BinExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for BinExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for BinExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for BinExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for BinExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BIN_EXPR => Some(BinExpr { syntax }),
+            BIN_EXPR => Some(BinExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> BinExprNode<R> {
-    pub fn borrowed(&self) -> BinExpr {
-        BinExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> BinExprNode {
-        BinExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<BinExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> BinExpr<'a> {}
+impl BinExpr {}
 
 // BindPat
-#[derive(Debug, Clone, Copy,)]
-pub struct BindPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct BindPat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type BindPat<'a> = BindPatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BindPatNode<R1>> for BindPatNode<R2> {
-    fn eq(&self, other: &BindPatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for BindPatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for BindPatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for BindPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for BindPat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for BindPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BIND_PAT => Some(BindPat { syntax }),
+            BIND_PAT => Some(BindPat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> BindPatNode<R> {
-    pub fn borrowed(&self) -> BindPat {
-        BindPatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> BindPatNode {
-        BindPatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<BindPat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::NameOwner<'a> for BindPat<'a> {}
-impl<'a> BindPat<'a> {}
+impl ast::NameOwner for BindPat {}
+impl BindPat {}
 
 // Block
-#[derive(Debug, Clone, Copy,)]
-pub struct BlockNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Block {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Block<'a> = BlockNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BlockNode<R1>> for BlockNode<R2> {
-    fn eq(&self, other: &BlockNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for BlockNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for BlockNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Block {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Block<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Block {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BLOCK => Some(Block { syntax }),
+            BLOCK => Some(Block::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> BlockNode<R> {
-    pub fn borrowed(&self) -> Block {
-        BlockNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> BlockNode {
-        BlockNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Block> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Block<'a> {
-    pub fn statements(self) -> impl Iterator<Item = Stmt<'a>> + 'a {
+impl Block {
+    pub fn statements(&self) -> impl Iterator<Item = &Stmt> {
         super::children(self)
     }
 
-    pub fn expr(self) -> Option<Expr<'a>> {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // BlockExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct BlockExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct BlockExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type BlockExpr<'a> = BlockExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BlockExprNode<R1>> for BlockExprNode<R2> {
-    fn eq(&self, other: &BlockExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for BlockExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for BlockExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for BlockExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for BlockExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for BlockExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BLOCK_EXPR => Some(BlockExpr { syntax }),
+            BLOCK_EXPR => Some(BlockExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> BlockExprNode<R> {
-    pub fn borrowed(&self) -> BlockExpr {
-        BlockExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> BlockExprNode {
-        BlockExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<BlockExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> BlockExpr<'a> {
-    pub fn block(self) -> Option<Block<'a>> {
+impl BlockExpr {
+    pub fn block(&self) -> Option<&Block> {
         super::child_opt(self)
     }
 }
 
 // BreakExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct BreakExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct BreakExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type BreakExpr<'a> = BreakExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BreakExprNode<R1>> for BreakExprNode<R2> {
-    fn eq(&self, other: &BreakExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for BreakExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for BreakExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for BreakExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for BreakExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for BreakExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BREAK_EXPR => Some(BreakExpr { syntax }),
+            BREAK_EXPR => Some(BreakExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> BreakExprNode<R> {
-    pub fn borrowed(&self) -> BreakExpr {
-        BreakExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> BreakExprNode {
-        BreakExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<BreakExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> BreakExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl BreakExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // Byte
-#[derive(Debug, Clone, Copy,)]
-pub struct ByteNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Byte {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Byte<'a> = ByteNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ByteNode<R1>> for ByteNode<R2> {
-    fn eq(&self, other: &ByteNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ByteNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ByteNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Byte {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Byte<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Byte {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BYTE => Some(Byte { syntax }),
+            BYTE => Some(Byte::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ByteNode<R> {
-    pub fn borrowed(&self) -> Byte {
-        ByteNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ByteNode {
-        ByteNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Byte> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Byte<'a> {}
+impl Byte {}
 
 // ByteString
-#[derive(Debug, Clone, Copy,)]
-pub struct ByteStringNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ByteString {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ByteString<'a> = ByteStringNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ByteStringNode<R1>> for ByteStringNode<R2> {
-    fn eq(&self, other: &ByteStringNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ByteStringNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ByteStringNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ByteString {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ByteString<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ByteString {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            BYTE_STRING => Some(ByteString { syntax }),
+            BYTE_STRING => Some(ByteString::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ByteStringNode<R> {
-    pub fn borrowed(&self) -> ByteString {
-        ByteStringNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ByteStringNode {
-        ByteStringNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ByteString> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ByteString<'a> {}
+impl ByteString {}
 
 // CallExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct CallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct CallExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type CallExpr<'a> = CallExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CallExprNode<R1>> for CallExprNode<R2> {
-    fn eq(&self, other: &CallExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for CallExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for CallExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for CallExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for CallExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for CallExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            CALL_EXPR => Some(CallExpr { syntax }),
+            CALL_EXPR => Some(CallExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> CallExprNode<R> {
-    pub fn borrowed(&self) -> CallExpr {
-        CallExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> CallExprNode {
-        CallExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<CallExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::ArgListOwner<'a> for CallExpr<'a> {}
-impl<'a> CallExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl ast::ArgListOwner for CallExpr {}
+impl CallExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // CastExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct CastExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct CastExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type CastExpr<'a> = CastExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CastExprNode<R1>> for CastExprNode<R2> {
-    fn eq(&self, other: &CastExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for CastExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for CastExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for CastExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for CastExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for CastExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            CAST_EXPR => Some(CastExpr { syntax }),
+            CAST_EXPR => Some(CastExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> CastExprNode<R> {
-    pub fn borrowed(&self) -> CastExpr {
-        CastExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> CastExprNode {
-        CastExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<CastExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> CastExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl CastExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // Char
-#[derive(Debug, Clone, Copy,)]
-pub struct CharNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Char {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Char<'a> = CharNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CharNode<R1>> for CharNode<R2> {
-    fn eq(&self, other: &CharNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for CharNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for CharNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Char {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Char<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Char {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            CHAR => Some(Char { syntax }),
+            CHAR => Some(Char::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> CharNode<R> {
-    pub fn borrowed(&self) -> Char {
-        CharNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> CharNode {
-        CharNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Char> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Char<'a> {}
+impl Char {}
 
 // Comment
-#[derive(Debug, Clone, Copy,)]
-pub struct CommentNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Comment {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Comment<'a> = CommentNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CommentNode<R1>> for CommentNode<R2> {
-    fn eq(&self, other: &CommentNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for CommentNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for CommentNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Comment {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Comment<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Comment {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            COMMENT => Some(Comment { syntax }),
+            COMMENT => Some(Comment::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> CommentNode<R> {
-    pub fn borrowed(&self) -> Comment {
-        CommentNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> CommentNode {
-        CommentNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Comment> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Comment<'a> {}
+impl Comment {}
 
 // Condition
-#[derive(Debug, Clone, Copy,)]
-pub struct ConditionNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Condition {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Condition<'a> = ConditionNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ConditionNode<R1>> for ConditionNode<R2> {
-    fn eq(&self, other: &ConditionNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ConditionNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ConditionNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Condition {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Condition<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Condition {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            CONDITION => Some(Condition { syntax }),
+            CONDITION => Some(Condition::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ConditionNode<R> {
-    pub fn borrowed(&self) -> Condition {
-        ConditionNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ConditionNode {
-        ConditionNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Condition> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Condition<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl Condition {
+    pub fn pat(&self) -> Option<&Pat> {
         super::child_opt(self)
     }
 
-    pub fn expr(self) -> Option<Expr<'a>> {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // ConstDef
-#[derive(Debug, Clone, Copy,)]
-pub struct ConstDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ConstDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ConstDef<'a> = ConstDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ConstDefNode<R1>> for ConstDefNode<R2> {
-    fn eq(&self, other: &ConstDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ConstDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ConstDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ConstDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ConstDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ConstDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            CONST_DEF => Some(ConstDef { syntax }),
+            CONST_DEF => Some(ConstDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ConstDefNode<R> {
-    pub fn borrowed(&self) -> ConstDef {
-        ConstDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ConstDefNode {
-        ConstDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ConstDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for ConstDef<'a> {}
-impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for ConstDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for ConstDef<'a> {}
-impl<'a> ConstDef<'a> {}
+impl ast::VisibilityOwner for ConstDef {}
+impl ast::NameOwner for ConstDef {}
+impl ast::TypeParamsOwner for ConstDef {}
+impl ast::AttrsOwner for ConstDef {}
+impl ast::DocCommentsOwner for ConstDef {}
+impl ConstDef {}
 
 // ContinueExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct ContinueExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ContinueExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ContinueExpr<'a> = ContinueExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ContinueExprNode<R1>> for ContinueExprNode<R2> {
-    fn eq(&self, other: &ContinueExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ContinueExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ContinueExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ContinueExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ContinueExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ContinueExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            CONTINUE_EXPR => Some(ContinueExpr { syntax }),
+            CONTINUE_EXPR => Some(ContinueExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ContinueExprNode<R> {
-    pub fn borrowed(&self) -> ContinueExpr {
-        ContinueExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ContinueExprNode {
-        ContinueExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ContinueExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ContinueExpr<'a> {}
+impl ContinueExpr {}
 
 // DynTraitType
-#[derive(Debug, Clone, Copy,)]
-pub struct DynTraitTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct DynTraitType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type DynTraitType<'a> = DynTraitTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<DynTraitTypeNode<R1>> for DynTraitTypeNode<R2> {
-    fn eq(&self, other: &DynTraitTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for DynTraitTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for DynTraitTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for DynTraitType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for DynTraitType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for DynTraitType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            DYN_TRAIT_TYPE => Some(DynTraitType { syntax }),
+            DYN_TRAIT_TYPE => Some(DynTraitType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> DynTraitTypeNode<R> {
-    pub fn borrowed(&self) -> DynTraitType {
-        DynTraitTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> DynTraitTypeNode {
-        DynTraitTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<DynTraitType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> DynTraitType<'a> {}
+impl DynTraitType {}
 
 // EnumDef
-#[derive(Debug, Clone, Copy,)]
-pub struct EnumDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct EnumDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type EnumDef<'a> = EnumDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<EnumDefNode<R1>> for EnumDefNode<R2> {
-    fn eq(&self, other: &EnumDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for EnumDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for EnumDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for EnumDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for EnumDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for EnumDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ENUM_DEF => Some(EnumDef { syntax }),
+            ENUM_DEF => Some(EnumDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> EnumDefNode<R> {
-    pub fn borrowed(&self) -> EnumDef {
-        EnumDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> EnumDefNode {
-        EnumDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<EnumDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for EnumDef<'a> {}
-impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for EnumDef<'a> {}
-impl<'a> EnumDef<'a> {
-    pub fn variant_list(self) -> Option<EnumVariantList<'a>> {
+impl ast::VisibilityOwner for EnumDef {}
+impl ast::NameOwner for EnumDef {}
+impl ast::TypeParamsOwner for EnumDef {}
+impl ast::AttrsOwner for EnumDef {}
+impl ast::DocCommentsOwner for EnumDef {}
+impl EnumDef {
+    pub fn variant_list(&self) -> Option<&EnumVariantList> {
         super::child_opt(self)
     }
 }
 
 // EnumVariant
-#[derive(Debug, Clone, Copy,)]
-pub struct EnumVariantNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct EnumVariant {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type EnumVariant<'a> = EnumVariantNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<EnumVariantNode<R1>> for EnumVariantNode<R2> {
-    fn eq(&self, other: &EnumVariantNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for EnumVariantNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for EnumVariantNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for EnumVariant {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for EnumVariant<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for EnumVariant {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ENUM_VARIANT => Some(EnumVariant { syntax }),
+            ENUM_VARIANT => Some(EnumVariant::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> EnumVariantNode<R> {
-    pub fn borrowed(&self) -> EnumVariant {
-        EnumVariantNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> EnumVariantNode {
-        EnumVariantNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<EnumVariant> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::NameOwner<'a> for EnumVariant<'a> {}
-impl<'a> EnumVariant<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl ast::NameOwner for EnumVariant {}
+impl EnumVariant {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // EnumVariantList
-#[derive(Debug, Clone, Copy,)]
-pub struct EnumVariantListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct EnumVariantList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type EnumVariantList<'a> = EnumVariantListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<EnumVariantListNode<R1>> for EnumVariantListNode<R2> {
-    fn eq(&self, other: &EnumVariantListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for EnumVariantListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for EnumVariantListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for EnumVariantList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for EnumVariantList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for EnumVariantList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ENUM_VARIANT_LIST => Some(EnumVariantList { syntax }),
+            ENUM_VARIANT_LIST => Some(EnumVariantList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> EnumVariantListNode<R> {
-    pub fn borrowed(&self) -> EnumVariantList {
-        EnumVariantListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> EnumVariantListNode {
-        EnumVariantListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<EnumVariantList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> EnumVariantList<'a> {
-    pub fn variants(self) -> impl Iterator<Item = EnumVariant<'a>> + 'a {
+impl EnumVariantList {
+    pub fn variants(&self) -> impl Iterator<Item = &EnumVariant> {
         super::children(self)
     }
 }
 
 // Expr
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Expr<'a> {
-    TupleExpr(TupleExpr<'a>),
-    ArrayExpr(ArrayExpr<'a>),
-    ParenExpr(ParenExpr<'a>),
-    PathExpr(PathExpr<'a>),
-    LambdaExpr(LambdaExpr<'a>),
-    IfExpr(IfExpr<'a>),
-    LoopExpr(LoopExpr<'a>),
-    ForExpr(ForExpr<'a>),
-    WhileExpr(WhileExpr<'a>),
-    ContinueExpr(ContinueExpr<'a>),
-    BreakExpr(BreakExpr<'a>),
-    Label(Label<'a>),
-    BlockExpr(BlockExpr<'a>),
-    ReturnExpr(ReturnExpr<'a>),
-    MatchExpr(MatchExpr<'a>),
-    StructLit(StructLit<'a>),
-    CallExpr(CallExpr<'a>),
-    IndexExpr(IndexExpr<'a>),
-    MethodCallExpr(MethodCallExpr<'a>),
-    FieldExpr(FieldExpr<'a>),
-    TryExpr(TryExpr<'a>),
-    CastExpr(CastExpr<'a>),
-    RefExpr(RefExpr<'a>),
-    PrefixExpr(PrefixExpr<'a>),
-    RangeExpr(RangeExpr<'a>),
-    BinExpr(BinExpr<'a>),
-    Literal(Literal<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Expr {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for Expr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Expr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExprKind<'a> {
+    TupleExpr(&'a TupleExpr),
+    ArrayExpr(&'a ArrayExpr),
+    ParenExpr(&'a ParenExpr),
+    PathExpr(&'a PathExpr),
+    LambdaExpr(&'a LambdaExpr),
+    IfExpr(&'a IfExpr),
+    LoopExpr(&'a LoopExpr),
+    ForExpr(&'a ForExpr),
+    WhileExpr(&'a WhileExpr),
+    ContinueExpr(&'a ContinueExpr),
+    BreakExpr(&'a BreakExpr),
+    Label(&'a Label),
+    BlockExpr(&'a BlockExpr),
+    ReturnExpr(&'a ReturnExpr),
+    MatchExpr(&'a MatchExpr),
+    StructLit(&'a StructLit),
+    CallExpr(&'a CallExpr),
+    IndexExpr(&'a IndexExpr),
+    MethodCallExpr(&'a MethodCallExpr),
+    FieldExpr(&'a FieldExpr),
+    TryExpr(&'a TryExpr),
+    CastExpr(&'a CastExpr),
+    RefExpr(&'a RefExpr),
+    PrefixExpr(&'a PrefixExpr),
+    RangeExpr(&'a RangeExpr),
+    BinExpr(&'a BinExpr),
+    Literal(&'a Literal),
+}
+
+impl AstNode for Expr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TUPLE_EXPR => Some(Expr::TupleExpr(TupleExpr { syntax })),
-            ARRAY_EXPR => Some(Expr::ArrayExpr(ArrayExpr { syntax })),
-            PAREN_EXPR => Some(Expr::ParenExpr(ParenExpr { syntax })),
-            PATH_EXPR => Some(Expr::PathExpr(PathExpr { syntax })),
-            LAMBDA_EXPR => Some(Expr::LambdaExpr(LambdaExpr { syntax })),
-            IF_EXPR => Some(Expr::IfExpr(IfExpr { syntax })),
-            LOOP_EXPR => Some(Expr::LoopExpr(LoopExpr { syntax })),
-            FOR_EXPR => Some(Expr::ForExpr(ForExpr { syntax })),
-            WHILE_EXPR => Some(Expr::WhileExpr(WhileExpr { syntax })),
-            CONTINUE_EXPR => Some(Expr::ContinueExpr(ContinueExpr { syntax })),
-            BREAK_EXPR => Some(Expr::BreakExpr(BreakExpr { syntax })),
-            LABEL => Some(Expr::Label(Label { syntax })),
-            BLOCK_EXPR => Some(Expr::BlockExpr(BlockExpr { syntax })),
-            RETURN_EXPR => Some(Expr::ReturnExpr(ReturnExpr { syntax })),
-            MATCH_EXPR => Some(Expr::MatchExpr(MatchExpr { syntax })),
-            STRUCT_LIT => Some(Expr::StructLit(StructLit { syntax })),
-            CALL_EXPR => Some(Expr::CallExpr(CallExpr { syntax })),
-            INDEX_EXPR => Some(Expr::IndexExpr(IndexExpr { syntax })),
-            METHOD_CALL_EXPR => Some(Expr::MethodCallExpr(MethodCallExpr { syntax })),
-            FIELD_EXPR => Some(Expr::FieldExpr(FieldExpr { syntax })),
-            TRY_EXPR => Some(Expr::TryExpr(TryExpr { syntax })),
-            CAST_EXPR => Some(Expr::CastExpr(CastExpr { syntax })),
-            REF_EXPR => Some(Expr::RefExpr(RefExpr { syntax })),
-            PREFIX_EXPR => Some(Expr::PrefixExpr(PrefixExpr { syntax })),
-            RANGE_EXPR => Some(Expr::RangeExpr(RangeExpr { syntax })),
-            BIN_EXPR => Some(Expr::BinExpr(BinExpr { syntax })),
-            LITERAL => Some(Expr::Literal(Literal { syntax })),
+            | TUPLE_EXPR
+            | ARRAY_EXPR
+            | PAREN_EXPR
+            | PATH_EXPR
+            | LAMBDA_EXPR
+            | IF_EXPR
+            | LOOP_EXPR
+            | FOR_EXPR
+            | WHILE_EXPR
+            | CONTINUE_EXPR
+            | BREAK_EXPR
+            | LABEL
+            | BLOCK_EXPR
+            | RETURN_EXPR
+            | MATCH_EXPR
+            | STRUCT_LIT
+            | CALL_EXPR
+            | INDEX_EXPR
+            | METHOD_CALL_EXPR
+            | FIELD_EXPR
+            | TRY_EXPR
+            | CAST_EXPR
+            | REF_EXPR
+            | PREFIX_EXPR
+            | RANGE_EXPR
+            | BIN_EXPR
+            | LITERAL => Some(Expr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            Expr::TupleExpr(inner) => inner.syntax(),
-            Expr::ArrayExpr(inner) => inner.syntax(),
-            Expr::ParenExpr(inner) => inner.syntax(),
-            Expr::PathExpr(inner) => inner.syntax(),
-            Expr::LambdaExpr(inner) => inner.syntax(),
-            Expr::IfExpr(inner) => inner.syntax(),
-            Expr::LoopExpr(inner) => inner.syntax(),
-            Expr::ForExpr(inner) => inner.syntax(),
-            Expr::WhileExpr(inner) => inner.syntax(),
-            Expr::ContinueExpr(inner) => inner.syntax(),
-            Expr::BreakExpr(inner) => inner.syntax(),
-            Expr::Label(inner) => inner.syntax(),
-            Expr::BlockExpr(inner) => inner.syntax(),
-            Expr::ReturnExpr(inner) => inner.syntax(),
-            Expr::MatchExpr(inner) => inner.syntax(),
-            Expr::StructLit(inner) => inner.syntax(),
-            Expr::CallExpr(inner) => inner.syntax(),
-            Expr::IndexExpr(inner) => inner.syntax(),
-            Expr::MethodCallExpr(inner) => inner.syntax(),
-            Expr::FieldExpr(inner) => inner.syntax(),
-            Expr::TryExpr(inner) => inner.syntax(),
-            Expr::CastExpr(inner) => inner.syntax(),
-            Expr::RefExpr(inner) => inner.syntax(),
-            Expr::PrefixExpr(inner) => inner.syntax(),
-            Expr::RangeExpr(inner) => inner.syntax(),
-            Expr::BinExpr(inner) => inner.syntax(),
-            Expr::Literal(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Expr> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl Expr {
+    pub fn kind(&self) -> ExprKind {
+        match self.syntax.kind() {
+            TUPLE_EXPR => ExprKind::TupleExpr(TupleExpr::cast(&self.syntax).unwrap()),
+            ARRAY_EXPR => ExprKind::ArrayExpr(ArrayExpr::cast(&self.syntax).unwrap()),
+            PAREN_EXPR => ExprKind::ParenExpr(ParenExpr::cast(&self.syntax).unwrap()),
+            PATH_EXPR => ExprKind::PathExpr(PathExpr::cast(&self.syntax).unwrap()),
+            LAMBDA_EXPR => ExprKind::LambdaExpr(LambdaExpr::cast(&self.syntax).unwrap()),
+            IF_EXPR => ExprKind::IfExpr(IfExpr::cast(&self.syntax).unwrap()),
+            LOOP_EXPR => ExprKind::LoopExpr(LoopExpr::cast(&self.syntax).unwrap()),
+            FOR_EXPR => ExprKind::ForExpr(ForExpr::cast(&self.syntax).unwrap()),
+            WHILE_EXPR => ExprKind::WhileExpr(WhileExpr::cast(&self.syntax).unwrap()),
+            CONTINUE_EXPR => ExprKind::ContinueExpr(ContinueExpr::cast(&self.syntax).unwrap()),
+            BREAK_EXPR => ExprKind::BreakExpr(BreakExpr::cast(&self.syntax).unwrap()),
+            LABEL => ExprKind::Label(Label::cast(&self.syntax).unwrap()),
+            BLOCK_EXPR => ExprKind::BlockExpr(BlockExpr::cast(&self.syntax).unwrap()),
+            RETURN_EXPR => ExprKind::ReturnExpr(ReturnExpr::cast(&self.syntax).unwrap()),
+            MATCH_EXPR => ExprKind::MatchExpr(MatchExpr::cast(&self.syntax).unwrap()),
+            STRUCT_LIT => ExprKind::StructLit(StructLit::cast(&self.syntax).unwrap()),
+            CALL_EXPR => ExprKind::CallExpr(CallExpr::cast(&self.syntax).unwrap()),
+            INDEX_EXPR => ExprKind::IndexExpr(IndexExpr::cast(&self.syntax).unwrap()),
+            METHOD_CALL_EXPR => ExprKind::MethodCallExpr(MethodCallExpr::cast(&self.syntax).unwrap()),
+            FIELD_EXPR => ExprKind::FieldExpr(FieldExpr::cast(&self.syntax).unwrap()),
+            TRY_EXPR => ExprKind::TryExpr(TryExpr::cast(&self.syntax).unwrap()),
+            CAST_EXPR => ExprKind::CastExpr(CastExpr::cast(&self.syntax).unwrap()),
+            REF_EXPR => ExprKind::RefExpr(RefExpr::cast(&self.syntax).unwrap()),
+            PREFIX_EXPR => ExprKind::PrefixExpr(PrefixExpr::cast(&self.syntax).unwrap()),
+            RANGE_EXPR => ExprKind::RangeExpr(RangeExpr::cast(&self.syntax).unwrap()),
+            BIN_EXPR => ExprKind::BinExpr(BinExpr::cast(&self.syntax).unwrap()),
+            LITERAL => ExprKind::Literal(Literal::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> Expr<'a> {}
+impl Expr {}
 
 // ExprStmt
-#[derive(Debug, Clone, Copy,)]
-pub struct ExprStmtNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ExprStmt {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ExprStmt<'a> = ExprStmtNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ExprStmtNode<R1>> for ExprStmtNode<R2> {
-    fn eq(&self, other: &ExprStmtNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ExprStmtNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ExprStmtNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ExprStmt {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ExprStmt<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ExprStmt {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            EXPR_STMT => Some(ExprStmt { syntax }),
+            EXPR_STMT => Some(ExprStmt::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ExprStmtNode<R> {
-    pub fn borrowed(&self) -> ExprStmt {
-        ExprStmtNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ExprStmtNode {
-        ExprStmtNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ExprStmt> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ExprStmt<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl ExprStmt {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // ExternCrateItem
-#[derive(Debug, Clone, Copy,)]
-pub struct ExternCrateItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ExternCrateItem {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ExternCrateItem<'a> = ExternCrateItemNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ExternCrateItemNode<R1>> for ExternCrateItemNode<R2> {
-    fn eq(&self, other: &ExternCrateItemNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ExternCrateItemNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ExternCrateItemNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ExternCrateItem {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ExternCrateItem<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ExternCrateItem {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            EXTERN_CRATE_ITEM => Some(ExternCrateItem { syntax }),
+            EXTERN_CRATE_ITEM => Some(ExternCrateItem::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ExternCrateItemNode<R> {
-    pub fn borrowed(&self) -> ExternCrateItem {
-        ExternCrateItemNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ExternCrateItemNode {
-        ExternCrateItemNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ExternCrateItem> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ExternCrateItem<'a> {}
+impl ExternCrateItem {}
 
 // FieldExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct FieldExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct FieldExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type FieldExpr<'a> = FieldExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FieldExprNode<R1>> for FieldExprNode<R2> {
-    fn eq(&self, other: &FieldExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for FieldExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for FieldExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for FieldExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for FieldExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for FieldExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FIELD_EXPR => Some(FieldExpr { syntax }),
+            FIELD_EXPR => Some(FieldExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> FieldExprNode<R> {
-    pub fn borrowed(&self) -> FieldExpr {
-        FieldExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> FieldExprNode {
-        FieldExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<FieldExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> FieldExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl FieldExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 
-    pub fn name_ref(self) -> Option<NameRef<'a>> {
+    pub fn name_ref(&self) -> Option<&NameRef> {
         super::child_opt(self)
     }
 }
 
 // FieldPatList
-#[derive(Debug, Clone, Copy,)]
-pub struct FieldPatListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct FieldPatList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type FieldPatList<'a> = FieldPatListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FieldPatListNode<R1>> for FieldPatListNode<R2> {
-    fn eq(&self, other: &FieldPatListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for FieldPatListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for FieldPatListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for FieldPatList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for FieldPatList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for FieldPatList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FIELD_PAT_LIST => Some(FieldPatList { syntax }),
+            FIELD_PAT_LIST => Some(FieldPatList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> FieldPatListNode<R> {
-    pub fn borrowed(&self) -> FieldPatList {
-        FieldPatListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> FieldPatListNode {
-        FieldPatListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<FieldPatList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> FieldPatList<'a> {}
+impl FieldPatList {}
 
 // FnDef
-#[derive(Debug, Clone, Copy,)]
-pub struct FnDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct FnDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type FnDef<'a> = FnDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FnDefNode<R1>> for FnDefNode<R2> {
-    fn eq(&self, other: &FnDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for FnDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for FnDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for FnDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for FnDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for FnDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FN_DEF => Some(FnDef { syntax }),
+            FN_DEF => Some(FnDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> FnDefNode<R> {
-    pub fn borrowed(&self) -> FnDef {
-        FnDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> FnDefNode {
-        FnDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<FnDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for FnDef<'a> {}
-impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for FnDef<'a> {}
-impl<'a> FnDef<'a> {
-    pub fn param_list(self) -> Option<ParamList<'a>> {
+impl ast::VisibilityOwner for FnDef {}
+impl ast::NameOwner for FnDef {}
+impl ast::TypeParamsOwner for FnDef {}
+impl ast::AttrsOwner for FnDef {}
+impl ast::DocCommentsOwner for FnDef {}
+impl FnDef {
+    pub fn param_list(&self) -> Option<&ParamList> {
         super::child_opt(self)
     }
 
-    pub fn body(self) -> Option<Block<'a>> {
+    pub fn body(&self) -> Option<&Block> {
         super::child_opt(self)
     }
 
-    pub fn ret_type(self) -> Option<RetType<'a>> {
+    pub fn ret_type(&self) -> Option<&RetType> {
         super::child_opt(self)
     }
 }
 
 // FnPointerType
-#[derive(Debug, Clone, Copy,)]
-pub struct FnPointerTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct FnPointerType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type FnPointerType<'a> = FnPointerTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FnPointerTypeNode<R1>> for FnPointerTypeNode<R2> {
-    fn eq(&self, other: &FnPointerTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for FnPointerTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for FnPointerTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for FnPointerType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for FnPointerType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for FnPointerType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FN_POINTER_TYPE => Some(FnPointerType { syntax }),
+            FN_POINTER_TYPE => Some(FnPointerType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> FnPointerTypeNode<R> {
-    pub fn borrowed(&self) -> FnPointerType {
-        FnPointerTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> FnPointerTypeNode {
-        FnPointerTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<FnPointerType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> FnPointerType<'a> {
-    pub fn param_list(self) -> Option<ParamList<'a>> {
+impl FnPointerType {
+    pub fn param_list(&self) -> Option<&ParamList> {
         super::child_opt(self)
     }
 
-    pub fn ret_type(self) -> Option<RetType<'a>> {
+    pub fn ret_type(&self) -> Option<&RetType> {
         super::child_opt(self)
     }
 }
 
 // ForExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct ForExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ForExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ForExpr<'a> = ForExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ForExprNode<R1>> for ForExprNode<R2> {
-    fn eq(&self, other: &ForExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ForExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ForExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ForExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ForExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ForExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FOR_EXPR => Some(ForExpr { syntax }),
+            FOR_EXPR => Some(ForExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ForExprNode<R> {
-    pub fn borrowed(&self) -> ForExpr {
-        ForExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ForExprNode {
-        ForExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ForExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::LoopBodyOwner<'a> for ForExpr<'a> {}
-impl<'a> ForExpr<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl ast::LoopBodyOwner for ForExpr {}
+impl ForExpr {
+    pub fn pat(&self) -> Option<&Pat> {
         super::child_opt(self)
     }
 
-    pub fn iterable(self) -> Option<Expr<'a>> {
+    pub fn iterable(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // ForType
-#[derive(Debug, Clone, Copy,)]
-pub struct ForTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ForType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ForType<'a> = ForTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ForTypeNode<R1>> for ForTypeNode<R2> {
-    fn eq(&self, other: &ForTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ForTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ForTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ForType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ForType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ForType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FOR_TYPE => Some(ForType { syntax }),
+            FOR_TYPE => Some(ForType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ForTypeNode<R> {
-    pub fn borrowed(&self) -> ForType {
-        ForTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ForTypeNode {
-        ForTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ForType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ForType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl ForType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // IfExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct IfExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct IfExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type IfExpr<'a> = IfExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<IfExprNode<R1>> for IfExprNode<R2> {
-    fn eq(&self, other: &IfExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for IfExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for IfExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for IfExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for IfExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for IfExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            IF_EXPR => Some(IfExpr { syntax }),
+            IF_EXPR => Some(IfExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> IfExprNode<R> {
-    pub fn borrowed(&self) -> IfExpr {
-        IfExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> IfExprNode {
-        IfExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<IfExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> IfExpr<'a> {
-    pub fn condition(self) -> Option<Condition<'a>> {
+impl IfExpr {
+    pub fn condition(&self) -> Option<&Condition> {
         super::child_opt(self)
     }
 }
 
 // ImplBlock
-#[derive(Debug, Clone, Copy,)]
-pub struct ImplBlockNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ImplBlock {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ImplBlock<'a> = ImplBlockNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ImplBlockNode<R1>> for ImplBlockNode<R2> {
-    fn eq(&self, other: &ImplBlockNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ImplBlockNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ImplBlockNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ImplBlock {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ImplBlock<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ImplBlock {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            IMPL_BLOCK => Some(ImplBlock { syntax }),
+            IMPL_BLOCK => Some(ImplBlock::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ImplBlockNode<R> {
-    pub fn borrowed(&self) -> ImplBlock {
-        ImplBlockNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ImplBlockNode {
-        ImplBlockNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ImplBlock> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ImplBlock<'a> {
-    pub fn item_list(self) -> Option<ItemList<'a>> {
+impl ImplBlock {
+    pub fn item_list(&self) -> Option<&ItemList> {
         super::child_opt(self)
     }
 }
 
 // ImplItem
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImplItem<'a> {
-    FnDef(FnDef<'a>),
-    TypeDef(TypeDef<'a>),
-    ConstDef(ConstDef<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ImplItem {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for ImplItem {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ImplItem<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImplItemKind<'a> {
+    FnDef(&'a FnDef),
+    TypeDef(&'a TypeDef),
+    ConstDef(&'a ConstDef),
+}
+
+impl AstNode for ImplItem {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            FN_DEF => Some(ImplItem::FnDef(FnDef { syntax })),
-            TYPE_DEF => Some(ImplItem::TypeDef(TypeDef { syntax })),
-            CONST_DEF => Some(ImplItem::ConstDef(ConstDef { syntax })),
+            | FN_DEF
+            | TYPE_DEF
+            | CONST_DEF => Some(ImplItem::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            ImplItem::FnDef(inner) => inner.syntax(),
-            ImplItem::TypeDef(inner) => inner.syntax(),
-            ImplItem::ConstDef(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ImplItem> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl ImplItem {
+    pub fn kind(&self) -> ImplItemKind {
+        match self.syntax.kind() {
+            FN_DEF => ImplItemKind::FnDef(FnDef::cast(&self.syntax).unwrap()),
+            TYPE_DEF => ImplItemKind::TypeDef(TypeDef::cast(&self.syntax).unwrap()),
+            CONST_DEF => ImplItemKind::ConstDef(ConstDef::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> ImplItem<'a> {}
+impl ImplItem {}
 
 // ImplTraitType
-#[derive(Debug, Clone, Copy,)]
-pub struct ImplTraitTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ImplTraitType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ImplTraitType<'a> = ImplTraitTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ImplTraitTypeNode<R1>> for ImplTraitTypeNode<R2> {
-    fn eq(&self, other: &ImplTraitTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ImplTraitTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ImplTraitTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ImplTraitType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ImplTraitType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ImplTraitType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            IMPL_TRAIT_TYPE => Some(ImplTraitType { syntax }),
+            IMPL_TRAIT_TYPE => Some(ImplTraitType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ImplTraitTypeNode<R> {
-    pub fn borrowed(&self) -> ImplTraitType {
-        ImplTraitTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ImplTraitTypeNode {
-        ImplTraitTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ImplTraitType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ImplTraitType<'a> {}
+impl ImplTraitType {}
 
 // IndexExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct IndexExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct IndexExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type IndexExpr<'a> = IndexExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<IndexExprNode<R1>> for IndexExprNode<R2> {
-    fn eq(&self, other: &IndexExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for IndexExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for IndexExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for IndexExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for IndexExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for IndexExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            INDEX_EXPR => Some(IndexExpr { syntax }),
+            INDEX_EXPR => Some(IndexExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> IndexExprNode<R> {
-    pub fn borrowed(&self) -> IndexExpr {
-        IndexExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> IndexExprNode {
-        IndexExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<IndexExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> IndexExpr<'a> {}
+impl IndexExpr {}
 
 // ItemList
-#[derive(Debug, Clone, Copy,)]
-pub struct ItemListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ItemList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ItemList<'a> = ItemListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ItemListNode<R1>> for ItemListNode<R2> {
-    fn eq(&self, other: &ItemListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ItemListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ItemListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ItemList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ItemList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ItemList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            ITEM_LIST => Some(ItemList { syntax }),
+            ITEM_LIST => Some(ItemList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ItemListNode<R> {
-    pub fn borrowed(&self) -> ItemList {
-        ItemListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ItemListNode {
-        ItemListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ItemList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::FnDefOwner<'a> for ItemList<'a> {}
-impl<'a> ast::ModuleItemOwner<'a> for ItemList<'a> {}
-impl<'a> ItemList<'a> {
-    pub fn impl_items(self) -> impl Iterator<Item = ImplItem<'a>> + 'a {
+impl ast::FnDefOwner for ItemList {}
+impl ast::ModuleItemOwner for ItemList {}
+impl ItemList {
+    pub fn impl_items(&self) -> impl Iterator<Item = &ImplItem> {
         super::children(self)
     }
 }
 
 // Label
-#[derive(Debug, Clone, Copy,)]
-pub struct LabelNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Label {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Label<'a> = LabelNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LabelNode<R1>> for LabelNode<R2> {
-    fn eq(&self, other: &LabelNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LabelNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LabelNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Label {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Label<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Label {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LABEL => Some(Label { syntax }),
+            LABEL => Some(Label::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LabelNode<R> {
-    pub fn borrowed(&self) -> Label {
-        LabelNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LabelNode {
-        LabelNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Label> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Label<'a> {}
+impl Label {}
 
 // LambdaExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct LambdaExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct LambdaExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type LambdaExpr<'a> = LambdaExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LambdaExprNode<R1>> for LambdaExprNode<R2> {
-    fn eq(&self, other: &LambdaExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LambdaExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LambdaExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for LambdaExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for LambdaExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for LambdaExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LAMBDA_EXPR => Some(LambdaExpr { syntax }),
+            LAMBDA_EXPR => Some(LambdaExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LambdaExprNode<R> {
-    pub fn borrowed(&self) -> LambdaExpr {
-        LambdaExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LambdaExprNode {
-        LambdaExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<LambdaExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> LambdaExpr<'a> {
-    pub fn param_list(self) -> Option<ParamList<'a>> {
+impl LambdaExpr {
+    pub fn param_list(&self) -> Option<&ParamList> {
         super::child_opt(self)
     }
 
-    pub fn body(self) -> Option<Expr<'a>> {
+    pub fn body(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // LetStmt
-#[derive(Debug, Clone, Copy,)]
-pub struct LetStmtNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct LetStmt {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type LetStmt<'a> = LetStmtNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LetStmtNode<R1>> for LetStmtNode<R2> {
-    fn eq(&self, other: &LetStmtNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LetStmtNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LetStmtNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for LetStmt {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for LetStmt<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for LetStmt {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LET_STMT => Some(LetStmt { syntax }),
+            LET_STMT => Some(LetStmt::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LetStmtNode<R> {
-    pub fn borrowed(&self) -> LetStmt {
-        LetStmtNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LetStmtNode {
-        LetStmtNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<LetStmt> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> LetStmt<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl LetStmt {
+    pub fn pat(&self) -> Option<&Pat> {
         super::child_opt(self)
     }
 
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 
-    pub fn initializer(self) -> Option<Expr<'a>> {
+    pub fn initializer(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // Lifetime
-#[derive(Debug, Clone, Copy,)]
-pub struct LifetimeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Lifetime {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Lifetime<'a> = LifetimeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LifetimeNode<R1>> for LifetimeNode<R2> {
-    fn eq(&self, other: &LifetimeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LifetimeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LifetimeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Lifetime {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Lifetime<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Lifetime {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LIFETIME => Some(Lifetime { syntax }),
+            LIFETIME => Some(Lifetime::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LifetimeNode<R> {
-    pub fn borrowed(&self) -> Lifetime {
-        LifetimeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LifetimeNode {
-        LifetimeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Lifetime> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Lifetime<'a> {}
+impl Lifetime {}
 
 // LifetimeParam
-#[derive(Debug, Clone, Copy,)]
-pub struct LifetimeParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct LifetimeParam {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type LifetimeParam<'a> = LifetimeParamNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LifetimeParamNode<R1>> for LifetimeParamNode<R2> {
-    fn eq(&self, other: &LifetimeParamNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LifetimeParamNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LifetimeParamNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for LifetimeParam {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for LifetimeParam<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for LifetimeParam {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LIFETIME_PARAM => Some(LifetimeParam { syntax }),
+            LIFETIME_PARAM => Some(LifetimeParam::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LifetimeParamNode<R> {
-    pub fn borrowed(&self) -> LifetimeParam {
-        LifetimeParamNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LifetimeParamNode {
-        LifetimeParamNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<LifetimeParam> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> LifetimeParam<'a> {
-    pub fn lifetime(self) -> Option<Lifetime<'a>> {
+impl LifetimeParam {
+    pub fn lifetime(&self) -> Option<&Lifetime> {
         super::child_opt(self)
     }
 }
 
 // Literal
-#[derive(Debug, Clone, Copy,)]
-pub struct LiteralNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Literal {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Literal<'a> = LiteralNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LiteralNode<R1>> for LiteralNode<R2> {
-    fn eq(&self, other: &LiteralNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LiteralNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LiteralNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Literal {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Literal<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Literal {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LITERAL => Some(Literal { syntax }),
+            LITERAL => Some(Literal::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LiteralNode<R> {
-    pub fn borrowed(&self) -> Literal {
-        LiteralNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LiteralNode {
-        LiteralNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Literal> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Literal<'a> {}
+impl Literal {}
 
 // LoopExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct LoopExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct LoopExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type LoopExpr<'a> = LoopExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LoopExprNode<R1>> for LoopExprNode<R2> {
-    fn eq(&self, other: &LoopExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for LoopExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for LoopExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for LoopExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for LoopExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for LoopExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LOOP_EXPR => Some(LoopExpr { syntax }),
+            LOOP_EXPR => Some(LoopExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> LoopExprNode<R> {
-    pub fn borrowed(&self) -> LoopExpr {
-        LoopExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> LoopExprNode {
-        LoopExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<LoopExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::LoopBodyOwner<'a> for LoopExpr<'a> {}
-impl<'a> LoopExpr<'a> {}
+impl ast::LoopBodyOwner for LoopExpr {}
+impl LoopExpr {}
 
 // MacroCall
-#[derive(Debug, Clone, Copy,)]
-pub struct MacroCallNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MacroCall {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type MacroCall<'a> = MacroCallNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MacroCallNode<R1>> for MacroCallNode<R2> {
-    fn eq(&self, other: &MacroCallNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for MacroCallNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for MacroCallNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for MacroCall {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for MacroCall<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for MacroCall {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            MACRO_CALL => Some(MacroCall { syntax }),
+            MACRO_CALL => Some(MacroCall::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> MacroCallNode<R> {
-    pub fn borrowed(&self) -> MacroCall {
-        MacroCallNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> MacroCallNode {
-        MacroCallNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<MacroCall> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> MacroCall<'a> {
-    pub fn token_tree(self) -> Option<TokenTree<'a>> {
+impl MacroCall {
+    pub fn token_tree(&self) -> Option<&TokenTree> {
         super::child_opt(self)
     }
 
-    pub fn path(self) -> Option<Path<'a>> {
+    pub fn path(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 }
 
 // MatchArm
-#[derive(Debug, Clone, Copy,)]
-pub struct MatchArmNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MatchArm {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type MatchArm<'a> = MatchArmNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchArmNode<R1>> for MatchArmNode<R2> {
-    fn eq(&self, other: &MatchArmNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for MatchArmNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for MatchArmNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for MatchArm {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for MatchArm<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for MatchArm {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            MATCH_ARM => Some(MatchArm { syntax }),
+            MATCH_ARM => Some(MatchArm::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> MatchArmNode<R> {
-    pub fn borrowed(&self) -> MatchArm {
-        MatchArmNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> MatchArmNode {
-        MatchArmNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<MatchArm> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> MatchArm<'a> {
-    pub fn pats(self) -> impl Iterator<Item = Pat<'a>> + 'a {
+impl MatchArm {
+    pub fn pats(&self) -> impl Iterator<Item = &Pat> {
         super::children(self)
     }
 
-    pub fn guard(self) -> Option<MatchGuard<'a>> {
+    pub fn guard(&self) -> Option<&MatchGuard> {
         super::child_opt(self)
     }
 
-    pub fn expr(self) -> Option<Expr<'a>> {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // MatchArmList
-#[derive(Debug, Clone, Copy,)]
-pub struct MatchArmListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MatchArmList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type MatchArmList<'a> = MatchArmListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchArmListNode<R1>> for MatchArmListNode<R2> {
-    fn eq(&self, other: &MatchArmListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for MatchArmListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for MatchArmListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for MatchArmList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for MatchArmList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for MatchArmList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            MATCH_ARM_LIST => Some(MatchArmList { syntax }),
+            MATCH_ARM_LIST => Some(MatchArmList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> MatchArmListNode<R> {
-    pub fn borrowed(&self) -> MatchArmList {
-        MatchArmListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> MatchArmListNode {
-        MatchArmListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<MatchArmList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> MatchArmList<'a> {
-    pub fn arms(self) -> impl Iterator<Item = MatchArm<'a>> + 'a {
+impl MatchArmList {
+    pub fn arms(&self) -> impl Iterator<Item = &MatchArm> {
         super::children(self)
     }
 }
 
 // MatchExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct MatchExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MatchExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type MatchExpr<'a> = MatchExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchExprNode<R1>> for MatchExprNode<R2> {
-    fn eq(&self, other: &MatchExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for MatchExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for MatchExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for MatchExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for MatchExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for MatchExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            MATCH_EXPR => Some(MatchExpr { syntax }),
+            MATCH_EXPR => Some(MatchExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> MatchExprNode<R> {
-    pub fn borrowed(&self) -> MatchExpr {
-        MatchExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> MatchExprNode {
-        MatchExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<MatchExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> MatchExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl MatchExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 
-    pub fn match_arm_list(self) -> Option<MatchArmList<'a>> {
+    pub fn match_arm_list(&self) -> Option<&MatchArmList> {
         super::child_opt(self)
     }
 }
 
 // MatchGuard
-#[derive(Debug, Clone, Copy,)]
-pub struct MatchGuardNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MatchGuard {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type MatchGuard<'a> = MatchGuardNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchGuardNode<R1>> for MatchGuardNode<R2> {
-    fn eq(&self, other: &MatchGuardNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for MatchGuardNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for MatchGuardNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for MatchGuard {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for MatchGuard<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for MatchGuard {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            MATCH_GUARD => Some(MatchGuard { syntax }),
+            MATCH_GUARD => Some(MatchGuard::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> MatchGuardNode<R> {
-    pub fn borrowed(&self) -> MatchGuard {
-        MatchGuardNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> MatchGuardNode {
-        MatchGuardNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<MatchGuard> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> MatchGuard<'a> {}
+impl MatchGuard {}
 
 // MethodCallExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct MethodCallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MethodCallExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type MethodCallExpr<'a> = MethodCallExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MethodCallExprNode<R1>> for MethodCallExprNode<R2> {
-    fn eq(&self, other: &MethodCallExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for MethodCallExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for MethodCallExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for MethodCallExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for MethodCallExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for MethodCallExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            METHOD_CALL_EXPR => Some(MethodCallExpr { syntax }),
+            METHOD_CALL_EXPR => Some(MethodCallExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> MethodCallExprNode<R> {
-    pub fn borrowed(&self) -> MethodCallExpr {
-        MethodCallExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> MethodCallExprNode {
-        MethodCallExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<MethodCallExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::ArgListOwner<'a> for MethodCallExpr<'a> {}
-impl<'a> MethodCallExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl ast::ArgListOwner for MethodCallExpr {}
+impl MethodCallExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 
-    pub fn name_ref(self) -> Option<NameRef<'a>> {
+    pub fn name_ref(&self) -> Option<&NameRef> {
         super::child_opt(self)
     }
 }
 
 // Module
-#[derive(Debug, Clone, Copy,)]
-pub struct ModuleNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Module {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Module<'a> = ModuleNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ModuleNode<R1>> for ModuleNode<R2> {
-    fn eq(&self, other: &ModuleNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ModuleNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ModuleNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Module {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Module<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Module {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            MODULE => Some(Module { syntax }),
+            MODULE => Some(Module::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ModuleNode<R> {
-    pub fn borrowed(&self) -> Module {
-        ModuleNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ModuleNode {
-        ModuleNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Module> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for Module<'a> {}
-impl<'a> ast::NameOwner<'a> for Module<'a> {}
-impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for Module<'a> {}
-impl<'a> Module<'a> {
-    pub fn item_list(self) -> Option<ItemList<'a>> {
+impl ast::VisibilityOwner for Module {}
+impl ast::NameOwner for Module {}
+impl ast::AttrsOwner for Module {}
+impl ast::DocCommentsOwner for Module {}
+impl Module {
+    pub fn item_list(&self) -> Option<&ItemList> {
         super::child_opt(self)
     }
 }
 
 // ModuleItem
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModuleItem<'a> {
-    StructDef(StructDef<'a>),
-    EnumDef(EnumDef<'a>),
-    FnDef(FnDef<'a>),
-    TraitDef(TraitDef<'a>),
-    TypeDef(TypeDef<'a>),
-    ImplBlock(ImplBlock<'a>),
-    UseItem(UseItem<'a>),
-    ExternCrateItem(ExternCrateItem<'a>),
-    ConstDef(ConstDef<'a>),
-    StaticDef(StaticDef<'a>),
-    Module(Module<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ModuleItem {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for ModuleItem {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ModuleItem<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModuleItemKind<'a> {
+    StructDef(&'a StructDef),
+    EnumDef(&'a EnumDef),
+    FnDef(&'a FnDef),
+    TraitDef(&'a TraitDef),
+    TypeDef(&'a TypeDef),
+    ImplBlock(&'a ImplBlock),
+    UseItem(&'a UseItem),
+    ExternCrateItem(&'a ExternCrateItem),
+    ConstDef(&'a ConstDef),
+    StaticDef(&'a StaticDef),
+    Module(&'a Module),
+}
+
+impl AstNode for ModuleItem {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STRUCT_DEF => Some(ModuleItem::StructDef(StructDef { syntax })),
-            ENUM_DEF => Some(ModuleItem::EnumDef(EnumDef { syntax })),
-            FN_DEF => Some(ModuleItem::FnDef(FnDef { syntax })),
-            TRAIT_DEF => Some(ModuleItem::TraitDef(TraitDef { syntax })),
-            TYPE_DEF => Some(ModuleItem::TypeDef(TypeDef { syntax })),
-            IMPL_BLOCK => Some(ModuleItem::ImplBlock(ImplBlock { syntax })),
-            USE_ITEM => Some(ModuleItem::UseItem(UseItem { syntax })),
-            EXTERN_CRATE_ITEM => Some(ModuleItem::ExternCrateItem(ExternCrateItem { syntax })),
-            CONST_DEF => Some(ModuleItem::ConstDef(ConstDef { syntax })),
-            STATIC_DEF => Some(ModuleItem::StaticDef(StaticDef { syntax })),
-            MODULE => Some(ModuleItem::Module(Module { syntax })),
+            | STRUCT_DEF
+            | ENUM_DEF
+            | FN_DEF
+            | TRAIT_DEF
+            | TYPE_DEF
+            | IMPL_BLOCK
+            | USE_ITEM
+            | EXTERN_CRATE_ITEM
+            | CONST_DEF
+            | STATIC_DEF
+            | MODULE => Some(ModuleItem::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            ModuleItem::StructDef(inner) => inner.syntax(),
-            ModuleItem::EnumDef(inner) => inner.syntax(),
-            ModuleItem::FnDef(inner) => inner.syntax(),
-            ModuleItem::TraitDef(inner) => inner.syntax(),
-            ModuleItem::TypeDef(inner) => inner.syntax(),
-            ModuleItem::ImplBlock(inner) => inner.syntax(),
-            ModuleItem::UseItem(inner) => inner.syntax(),
-            ModuleItem::ExternCrateItem(inner) => inner.syntax(),
-            ModuleItem::ConstDef(inner) => inner.syntax(),
-            ModuleItem::StaticDef(inner) => inner.syntax(),
-            ModuleItem::Module(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ModuleItem> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl ModuleItem {
+    pub fn kind(&self) -> ModuleItemKind {
+        match self.syntax.kind() {
+            STRUCT_DEF => ModuleItemKind::StructDef(StructDef::cast(&self.syntax).unwrap()),
+            ENUM_DEF => ModuleItemKind::EnumDef(EnumDef::cast(&self.syntax).unwrap()),
+            FN_DEF => ModuleItemKind::FnDef(FnDef::cast(&self.syntax).unwrap()),
+            TRAIT_DEF => ModuleItemKind::TraitDef(TraitDef::cast(&self.syntax).unwrap()),
+            TYPE_DEF => ModuleItemKind::TypeDef(TypeDef::cast(&self.syntax).unwrap()),
+            IMPL_BLOCK => ModuleItemKind::ImplBlock(ImplBlock::cast(&self.syntax).unwrap()),
+            USE_ITEM => ModuleItemKind::UseItem(UseItem::cast(&self.syntax).unwrap()),
+            EXTERN_CRATE_ITEM => ModuleItemKind::ExternCrateItem(ExternCrateItem::cast(&self.syntax).unwrap()),
+            CONST_DEF => ModuleItemKind::ConstDef(ConstDef::cast(&self.syntax).unwrap()),
+            STATIC_DEF => ModuleItemKind::StaticDef(StaticDef::cast(&self.syntax).unwrap()),
+            MODULE => ModuleItemKind::Module(Module::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> ModuleItem<'a> {}
+impl ModuleItem {}
 
 // Name
-#[derive(Debug, Clone, Copy,)]
-pub struct NameNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Name {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Name<'a> = NameNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NameNode<R1>> for NameNode<R2> {
-    fn eq(&self, other: &NameNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NameNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NameNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Name {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Name<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Name {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NAME => Some(Name { syntax }),
+            NAME => Some(Name::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NameNode<R> {
-    pub fn borrowed(&self) -> Name {
-        NameNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NameNode {
-        NameNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Name> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Name<'a> {}
+impl Name {}
 
 // NameRef
-#[derive(Debug, Clone, Copy,)]
-pub struct NameRefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NameRef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type NameRef<'a> = NameRefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NameRefNode<R1>> for NameRefNode<R2> {
-    fn eq(&self, other: &NameRefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NameRefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NameRefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for NameRef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NameRef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for NameRef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NAME_REF => Some(NameRef { syntax }),
+            NAME_REF => Some(NameRef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NameRefNode<R> {
-    pub fn borrowed(&self) -> NameRef {
-        NameRefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NameRefNode {
-        NameRefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NameRef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> NameRef<'a> {}
+impl NameRef {}
 
 // NamedField
-#[derive(Debug, Clone, Copy,)]
-pub struct NamedFieldNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NamedField {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type NamedField<'a> = NamedFieldNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldNode<R1>> for NamedFieldNode<R2> {
-    fn eq(&self, other: &NamedFieldNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NamedFieldNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NamedFieldNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for NamedField {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NamedField<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for NamedField {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NAMED_FIELD => Some(NamedField { syntax }),
+            NAMED_FIELD => Some(NamedField::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NamedFieldNode<R> {
-    pub fn borrowed(&self) -> NamedField {
-        NamedFieldNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NamedFieldNode {
-        NamedFieldNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NamedField> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> NamedField<'a> {
-    pub fn name_ref(self) -> Option<NameRef<'a>> {
+impl NamedField {
+    pub fn name_ref(&self) -> Option<&NameRef> {
         super::child_opt(self)
     }
 
-    pub fn expr(self) -> Option<Expr<'a>> {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // NamedFieldDef
-#[derive(Debug, Clone, Copy,)]
-pub struct NamedFieldDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NamedFieldDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type NamedFieldDef<'a> = NamedFieldDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldDefNode<R1>> for NamedFieldDefNode<R2> {
-    fn eq(&self, other: &NamedFieldDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NamedFieldDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NamedFieldDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for NamedFieldDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NamedFieldDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for NamedFieldDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NAMED_FIELD_DEF => Some(NamedFieldDef { syntax }),
+            NAMED_FIELD_DEF => Some(NamedFieldDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NamedFieldDefNode<R> {
-    pub fn borrowed(&self) -> NamedFieldDef {
-        NamedFieldDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NamedFieldDefNode {
-        NamedFieldDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NamedFieldDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for NamedFieldDef<'a> {}
-impl<'a> ast::NameOwner<'a> for NamedFieldDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
-impl<'a> NamedFieldDef<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl ast::VisibilityOwner for NamedFieldDef {}
+impl ast::NameOwner for NamedFieldDef {}
+impl ast::AttrsOwner for NamedFieldDef {}
+impl NamedFieldDef {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // NamedFieldDefList
-#[derive(Debug, Clone, Copy,)]
-pub struct NamedFieldDefListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NamedFieldDefList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type NamedFieldDefList<'a> = NamedFieldDefListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldDefListNode<R1>> for NamedFieldDefListNode<R2> {
-    fn eq(&self, other: &NamedFieldDefListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NamedFieldDefListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NamedFieldDefListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for NamedFieldDefList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NamedFieldDefList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for NamedFieldDefList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NAMED_FIELD_DEF_LIST => Some(NamedFieldDefList { syntax }),
+            NAMED_FIELD_DEF_LIST => Some(NamedFieldDefList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NamedFieldDefListNode<R> {
-    pub fn borrowed(&self) -> NamedFieldDefList {
-        NamedFieldDefListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NamedFieldDefListNode {
-        NamedFieldDefListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NamedFieldDefList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> NamedFieldDefList<'a> {
-    pub fn fields(self) -> impl Iterator<Item = NamedFieldDef<'a>> + 'a {
+impl NamedFieldDefList {
+    pub fn fields(&self) -> impl Iterator<Item = &NamedFieldDef> {
         super::children(self)
     }
 }
 
 // NamedFieldList
-#[derive(Debug, Clone, Copy,)]
-pub struct NamedFieldListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NamedFieldList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type NamedFieldList<'a> = NamedFieldListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldListNode<R1>> for NamedFieldListNode<R2> {
-    fn eq(&self, other: &NamedFieldListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NamedFieldListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NamedFieldListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for NamedFieldList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NamedFieldList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for NamedFieldList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NAMED_FIELD_LIST => Some(NamedFieldList { syntax }),
+            NAMED_FIELD_LIST => Some(NamedFieldList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NamedFieldListNode<R> {
-    pub fn borrowed(&self) -> NamedFieldList {
-        NamedFieldListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NamedFieldListNode {
-        NamedFieldListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NamedFieldList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> NamedFieldList<'a> {
-    pub fn fields(self) -> impl Iterator<Item = NamedField<'a>> + 'a {
+impl NamedFieldList {
+    pub fn fields(&self) -> impl Iterator<Item = &NamedField> {
         super::children(self)
     }
 }
 
 // NeverType
-#[derive(Debug, Clone, Copy,)]
-pub struct NeverTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NeverType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type NeverType<'a> = NeverTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NeverTypeNode<R1>> for NeverTypeNode<R2> {
-    fn eq(&self, other: &NeverTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for NeverTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for NeverTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for NeverType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NeverType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for NeverType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            NEVER_TYPE => Some(NeverType { syntax }),
+            NEVER_TYPE => Some(NeverType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> NeverTypeNode<R> {
-    pub fn borrowed(&self) -> NeverType {
-        NeverTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> NeverTypeNode {
-        NeverTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NeverType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> NeverType<'a> {}
+impl NeverType {}
 
 // NominalDef
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NominalDef<'a> {
-    StructDef(StructDef<'a>),
-    EnumDef(EnumDef<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NominalDef {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for NominalDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for NominalDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NominalDefKind<'a> {
+    StructDef(&'a StructDef),
+    EnumDef(&'a EnumDef),
+}
+
+impl AstNode for NominalDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STRUCT_DEF => Some(NominalDef::StructDef(StructDef { syntax })),
-            ENUM_DEF => Some(NominalDef::EnumDef(EnumDef { syntax })),
+            | STRUCT_DEF
+            | ENUM_DEF => Some(NominalDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            NominalDef::StructDef(inner) => inner.syntax(),
-            NominalDef::EnumDef(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<NominalDef> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl NominalDef {
+    pub fn kind(&self) -> NominalDefKind {
+        match self.syntax.kind() {
+            STRUCT_DEF => NominalDefKind::StructDef(StructDef::cast(&self.syntax).unwrap()),
+            ENUM_DEF => NominalDefKind::EnumDef(EnumDef::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> ast::NameOwner<'a> for NominalDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for NominalDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
-impl<'a> NominalDef<'a> {}
+impl ast::NameOwner for NominalDef {}
+impl ast::TypeParamsOwner for NominalDef {}
+impl ast::AttrsOwner for NominalDef {}
+impl NominalDef {}
 
 // Param
-#[derive(Debug, Clone, Copy,)]
-pub struct ParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Param {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Param<'a> = ParamNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParamNode<R1>> for ParamNode<R2> {
-    fn eq(&self, other: &ParamNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ParamNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ParamNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Param {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Param<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Param {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PARAM => Some(Param { syntax }),
+            PARAM => Some(Param::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ParamNode<R> {
-    pub fn borrowed(&self) -> Param {
-        ParamNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ParamNode {
-        ParamNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Param> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Param<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl Param {
+    pub fn pat(&self) -> Option<&Pat> {
         super::child_opt(self)
     }
 
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // ParamList
-#[derive(Debug, Clone, Copy,)]
-pub struct ParamListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ParamList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ParamList<'a> = ParamListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParamListNode<R1>> for ParamListNode<R2> {
-    fn eq(&self, other: &ParamListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ParamListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ParamListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ParamList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ParamList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ParamList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PARAM_LIST => Some(ParamList { syntax }),
+            PARAM_LIST => Some(ParamList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ParamListNode<R> {
-    pub fn borrowed(&self) -> ParamList {
-        ParamListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ParamListNode {
-        ParamListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ParamList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ParamList<'a> {
-    pub fn params(self) -> impl Iterator<Item = Param<'a>> + 'a {
+impl ParamList {
+    pub fn params(&self) -> impl Iterator<Item = &Param> {
         super::children(self)
     }
 
-    pub fn self_param(self) -> Option<SelfParam<'a>> {
+    pub fn self_param(&self) -> Option<&SelfParam> {
         super::child_opt(self)
     }
 }
 
 // ParenExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct ParenExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ParenExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ParenExpr<'a> = ParenExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParenExprNode<R1>> for ParenExprNode<R2> {
-    fn eq(&self, other: &ParenExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ParenExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ParenExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ParenExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ParenExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ParenExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PAREN_EXPR => Some(ParenExpr { syntax }),
+            PAREN_EXPR => Some(ParenExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ParenExprNode<R> {
-    pub fn borrowed(&self) -> ParenExpr {
-        ParenExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ParenExprNode {
-        ParenExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ParenExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ParenExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl ParenExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // ParenType
-#[derive(Debug, Clone, Copy,)]
-pub struct ParenTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ParenType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ParenType<'a> = ParenTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParenTypeNode<R1>> for ParenTypeNode<R2> {
-    fn eq(&self, other: &ParenTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ParenTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ParenTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ParenType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ParenType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ParenType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PAREN_TYPE => Some(ParenType { syntax }),
+            PAREN_TYPE => Some(ParenType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ParenTypeNode<R> {
-    pub fn borrowed(&self) -> ParenType {
-        ParenTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ParenTypeNode {
-        ParenTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ParenType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ParenType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl ParenType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // Pat
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Pat<'a> {
-    RefPat(RefPat<'a>),
-    BindPat(BindPat<'a>),
-    PlaceholderPat(PlaceholderPat<'a>),
-    PathPat(PathPat<'a>),
-    StructPat(StructPat<'a>),
-    FieldPatList(FieldPatList<'a>),
-    TupleStructPat(TupleStructPat<'a>),
-    TuplePat(TuplePat<'a>),
-    SlicePat(SlicePat<'a>),
-    RangePat(RangePat<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Pat {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for Pat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Pat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PatKind<'a> {
+    RefPat(&'a RefPat),
+    BindPat(&'a BindPat),
+    PlaceholderPat(&'a PlaceholderPat),
+    PathPat(&'a PathPat),
+    StructPat(&'a StructPat),
+    FieldPatList(&'a FieldPatList),
+    TupleStructPat(&'a TupleStructPat),
+    TuplePat(&'a TuplePat),
+    SlicePat(&'a SlicePat),
+    RangePat(&'a RangePat),
+}
+
+impl AstNode for Pat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            REF_PAT => Some(Pat::RefPat(RefPat { syntax })),
-            BIND_PAT => Some(Pat::BindPat(BindPat { syntax })),
-            PLACEHOLDER_PAT => Some(Pat::PlaceholderPat(PlaceholderPat { syntax })),
-            PATH_PAT => Some(Pat::PathPat(PathPat { syntax })),
-            STRUCT_PAT => Some(Pat::StructPat(StructPat { syntax })),
-            FIELD_PAT_LIST => Some(Pat::FieldPatList(FieldPatList { syntax })),
-            TUPLE_STRUCT_PAT => Some(Pat::TupleStructPat(TupleStructPat { syntax })),
-            TUPLE_PAT => Some(Pat::TuplePat(TuplePat { syntax })),
-            SLICE_PAT => Some(Pat::SlicePat(SlicePat { syntax })),
-            RANGE_PAT => Some(Pat::RangePat(RangePat { syntax })),
+            | REF_PAT
+            | BIND_PAT
+            | PLACEHOLDER_PAT
+            | PATH_PAT
+            | STRUCT_PAT
+            | FIELD_PAT_LIST
+            | TUPLE_STRUCT_PAT
+            | TUPLE_PAT
+            | SLICE_PAT
+            | RANGE_PAT => Some(Pat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            Pat::RefPat(inner) => inner.syntax(),
-            Pat::BindPat(inner) => inner.syntax(),
-            Pat::PlaceholderPat(inner) => inner.syntax(),
-            Pat::PathPat(inner) => inner.syntax(),
-            Pat::StructPat(inner) => inner.syntax(),
-            Pat::FieldPatList(inner) => inner.syntax(),
-            Pat::TupleStructPat(inner) => inner.syntax(),
-            Pat::TuplePat(inner) => inner.syntax(),
-            Pat::SlicePat(inner) => inner.syntax(),
-            Pat::RangePat(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Pat> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl Pat {
+    pub fn kind(&self) -> PatKind {
+        match self.syntax.kind() {
+            REF_PAT => PatKind::RefPat(RefPat::cast(&self.syntax).unwrap()),
+            BIND_PAT => PatKind::BindPat(BindPat::cast(&self.syntax).unwrap()),
+            PLACEHOLDER_PAT => PatKind::PlaceholderPat(PlaceholderPat::cast(&self.syntax).unwrap()),
+            PATH_PAT => PatKind::PathPat(PathPat::cast(&self.syntax).unwrap()),
+            STRUCT_PAT => PatKind::StructPat(StructPat::cast(&self.syntax).unwrap()),
+            FIELD_PAT_LIST => PatKind::FieldPatList(FieldPatList::cast(&self.syntax).unwrap()),
+            TUPLE_STRUCT_PAT => PatKind::TupleStructPat(TupleStructPat::cast(&self.syntax).unwrap()),
+            TUPLE_PAT => PatKind::TuplePat(TuplePat::cast(&self.syntax).unwrap()),
+            SLICE_PAT => PatKind::SlicePat(SlicePat::cast(&self.syntax).unwrap()),
+            RANGE_PAT => PatKind::RangePat(RangePat::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> Pat<'a> {}
+impl Pat {}
 
 // Path
-#[derive(Debug, Clone, Copy,)]
-pub struct PathNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Path {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Path<'a> = PathNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathNode<R1>> for PathNode<R2> {
-    fn eq(&self, other: &PathNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PathNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PathNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Path {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Path<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Path {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PATH => Some(Path { syntax }),
+            PATH => Some(Path::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PathNode<R> {
-    pub fn borrowed(&self) -> Path {
-        PathNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PathNode {
-        PathNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Path> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Path<'a> {
-    pub fn segment(self) -> Option<PathSegment<'a>> {
+impl Path {
+    pub fn segment(&self) -> Option<&PathSegment> {
         super::child_opt(self)
     }
 
-    pub fn qualifier(self) -> Option<Path<'a>> {
+    pub fn qualifier(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 }
 
 // PathExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct PathExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PathExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PathExpr<'a> = PathExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathExprNode<R1>> for PathExprNode<R2> {
-    fn eq(&self, other: &PathExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PathExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PathExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PathExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PathExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PathExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PATH_EXPR => Some(PathExpr { syntax }),
+            PATH_EXPR => Some(PathExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PathExprNode<R> {
-    pub fn borrowed(&self) -> PathExpr {
-        PathExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PathExprNode {
-        PathExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PathExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PathExpr<'a> {
-    pub fn path(self) -> Option<Path<'a>> {
+impl PathExpr {
+    pub fn path(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 }
 
 // PathPat
-#[derive(Debug, Clone, Copy,)]
-pub struct PathPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PathPat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PathPat<'a> = PathPatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathPatNode<R1>> for PathPatNode<R2> {
-    fn eq(&self, other: &PathPatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PathPatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PathPatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PathPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PathPat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PathPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PATH_PAT => Some(PathPat { syntax }),
+            PATH_PAT => Some(PathPat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PathPatNode<R> {
-    pub fn borrowed(&self) -> PathPat {
-        PathPatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PathPatNode {
-        PathPatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PathPat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PathPat<'a> {}
+impl PathPat {}
 
 // PathSegment
-#[derive(Debug, Clone, Copy,)]
-pub struct PathSegmentNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PathSegment {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PathSegment<'a> = PathSegmentNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathSegmentNode<R1>> for PathSegmentNode<R2> {
-    fn eq(&self, other: &PathSegmentNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PathSegmentNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PathSegmentNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PathSegment {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PathSegment<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PathSegment {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PATH_SEGMENT => Some(PathSegment { syntax }),
+            PATH_SEGMENT => Some(PathSegment::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PathSegmentNode<R> {
-    pub fn borrowed(&self) -> PathSegment {
-        PathSegmentNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PathSegmentNode {
-        PathSegmentNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PathSegment> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PathSegment<'a> {
-    pub fn name_ref(self) -> Option<NameRef<'a>> {
+impl PathSegment {
+    pub fn name_ref(&self) -> Option<&NameRef> {
         super::child_opt(self)
     }
 }
 
 // PathType
-#[derive(Debug, Clone, Copy,)]
-pub struct PathTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PathType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PathType<'a> = PathTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathTypeNode<R1>> for PathTypeNode<R2> {
-    fn eq(&self, other: &PathTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PathTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PathTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PathType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PathType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PathType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PATH_TYPE => Some(PathType { syntax }),
+            PATH_TYPE => Some(PathType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PathTypeNode<R> {
-    pub fn borrowed(&self) -> PathType {
-        PathTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PathTypeNode {
-        PathTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PathType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PathType<'a> {
-    pub fn path(self) -> Option<Path<'a>> {
+impl PathType {
+    pub fn path(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 }
 
 // PlaceholderPat
-#[derive(Debug, Clone, Copy,)]
-pub struct PlaceholderPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PlaceholderPat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PlaceholderPat<'a> = PlaceholderPatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PlaceholderPatNode<R1>> for PlaceholderPatNode<R2> {
-    fn eq(&self, other: &PlaceholderPatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PlaceholderPatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PlaceholderPatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PlaceholderPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PlaceholderPat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PlaceholderPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PLACEHOLDER_PAT => Some(PlaceholderPat { syntax }),
+            PLACEHOLDER_PAT => Some(PlaceholderPat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PlaceholderPatNode<R> {
-    pub fn borrowed(&self) -> PlaceholderPat {
-        PlaceholderPatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PlaceholderPatNode {
-        PlaceholderPatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PlaceholderPat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PlaceholderPat<'a> {}
+impl PlaceholderPat {}
 
 // PlaceholderType
-#[derive(Debug, Clone, Copy,)]
-pub struct PlaceholderTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PlaceholderType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PlaceholderType<'a> = PlaceholderTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PlaceholderTypeNode<R1>> for PlaceholderTypeNode<R2> {
-    fn eq(&self, other: &PlaceholderTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PlaceholderTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PlaceholderTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PlaceholderType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PlaceholderType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PlaceholderType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PLACEHOLDER_TYPE => Some(PlaceholderType { syntax }),
+            PLACEHOLDER_TYPE => Some(PlaceholderType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PlaceholderTypeNode<R> {
-    pub fn borrowed(&self) -> PlaceholderType {
-        PlaceholderTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PlaceholderTypeNode {
-        PlaceholderTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PlaceholderType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PlaceholderType<'a> {}
+impl PlaceholderType {}
 
 // PointerType
-#[derive(Debug, Clone, Copy,)]
-pub struct PointerTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PointerType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PointerType<'a> = PointerTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PointerTypeNode<R1>> for PointerTypeNode<R2> {
-    fn eq(&self, other: &PointerTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PointerTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PointerTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PointerType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PointerType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PointerType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            POINTER_TYPE => Some(PointerType { syntax }),
+            POINTER_TYPE => Some(PointerType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PointerTypeNode<R> {
-    pub fn borrowed(&self) -> PointerType {
-        PointerTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PointerTypeNode {
-        PointerTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PointerType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PointerType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl PointerType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // PosField
-#[derive(Debug, Clone, Copy,)]
-pub struct PosFieldNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PosField {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PosField<'a> = PosFieldNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PosFieldNode<R1>> for PosFieldNode<R2> {
-    fn eq(&self, other: &PosFieldNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PosFieldNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PosFieldNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PosField {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PosField<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PosField {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            POS_FIELD => Some(PosField { syntax }),
+            POS_FIELD => Some(PosField::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PosFieldNode<R> {
-    pub fn borrowed(&self) -> PosField {
-        PosFieldNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PosFieldNode {
-        PosFieldNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PosField> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for PosField<'a> {}
-impl<'a> ast::AttrsOwner<'a> for PosField<'a> {}
-impl<'a> PosField<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl ast::VisibilityOwner for PosField {}
+impl ast::AttrsOwner for PosField {}
+impl PosField {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // PosFieldList
-#[derive(Debug, Clone, Copy,)]
-pub struct PosFieldListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PosFieldList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PosFieldList<'a> = PosFieldListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PosFieldListNode<R1>> for PosFieldListNode<R2> {
-    fn eq(&self, other: &PosFieldListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PosFieldListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PosFieldListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PosFieldList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PosFieldList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PosFieldList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            POS_FIELD_LIST => Some(PosFieldList { syntax }),
+            POS_FIELD_LIST => Some(PosFieldList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PosFieldListNode<R> {
-    pub fn borrowed(&self) -> PosFieldList {
-        PosFieldListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PosFieldListNode {
-        PosFieldListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PosFieldList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PosFieldList<'a> {
-    pub fn fields(self) -> impl Iterator<Item = PosField<'a>> + 'a {
+impl PosFieldList {
+    pub fn fields(&self) -> impl Iterator<Item = &PosField> {
         super::children(self)
     }
 }
 
 // PrefixExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct PrefixExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PrefixExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type PrefixExpr<'a> = PrefixExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PrefixExprNode<R1>> for PrefixExprNode<R2> {
-    fn eq(&self, other: &PrefixExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for PrefixExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for PrefixExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for PrefixExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for PrefixExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for PrefixExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PREFIX_EXPR => Some(PrefixExpr { syntax }),
+            PREFIX_EXPR => Some(PrefixExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> PrefixExprNode<R> {
-    pub fn borrowed(&self) -> PrefixExpr {
-        PrefixExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> PrefixExprNode {
-        PrefixExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<PrefixExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> PrefixExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl PrefixExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // RangeExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct RangeExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RangeExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type RangeExpr<'a> = RangeExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RangeExprNode<R1>> for RangeExprNode<R2> {
-    fn eq(&self, other: &RangeExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for RangeExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for RangeExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for RangeExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for RangeExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for RangeExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            RANGE_EXPR => Some(RangeExpr { syntax }),
+            RANGE_EXPR => Some(RangeExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> RangeExprNode<R> {
-    pub fn borrowed(&self) -> RangeExpr {
-        RangeExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> RangeExprNode {
-        RangeExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<RangeExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> RangeExpr<'a> {}
+impl RangeExpr {}
 
 // RangePat
-#[derive(Debug, Clone, Copy,)]
-pub struct RangePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RangePat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type RangePat<'a> = RangePatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RangePatNode<R1>> for RangePatNode<R2> {
-    fn eq(&self, other: &RangePatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for RangePatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for RangePatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for RangePat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for RangePat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for RangePat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            RANGE_PAT => Some(RangePat { syntax }),
+            RANGE_PAT => Some(RangePat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> RangePatNode<R> {
-    pub fn borrowed(&self) -> RangePat {
-        RangePatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> RangePatNode {
-        RangePatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<RangePat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> RangePat<'a> {}
+impl RangePat {}
 
 // RefExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct RefExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RefExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type RefExpr<'a> = RefExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RefExprNode<R1>> for RefExprNode<R2> {
-    fn eq(&self, other: &RefExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for RefExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for RefExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for RefExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for RefExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for RefExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            REF_EXPR => Some(RefExpr { syntax }),
+            REF_EXPR => Some(RefExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> RefExprNode<R> {
-    pub fn borrowed(&self) -> RefExpr {
-        RefExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> RefExprNode {
-        RefExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<RefExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> RefExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl RefExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // RefPat
-#[derive(Debug, Clone, Copy,)]
-pub struct RefPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RefPat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type RefPat<'a> = RefPatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RefPatNode<R1>> for RefPatNode<R2> {
-    fn eq(&self, other: &RefPatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for RefPatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for RefPatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for RefPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for RefPat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for RefPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            REF_PAT => Some(RefPat { syntax }),
+            REF_PAT => Some(RefPat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> RefPatNode<R> {
-    pub fn borrowed(&self) -> RefPat {
-        RefPatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> RefPatNode {
-        RefPatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<RefPat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> RefPat<'a> {}
+impl RefPat {}
 
 // ReferenceType
-#[derive(Debug, Clone, Copy,)]
-pub struct ReferenceTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ReferenceType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ReferenceType<'a> = ReferenceTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ReferenceTypeNode<R1>> for ReferenceTypeNode<R2> {
-    fn eq(&self, other: &ReferenceTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ReferenceTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ReferenceTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ReferenceType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ReferenceType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ReferenceType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            REFERENCE_TYPE => Some(ReferenceType { syntax }),
+            REFERENCE_TYPE => Some(ReferenceType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ReferenceTypeNode<R> {
-    pub fn borrowed(&self) -> ReferenceType {
-        ReferenceTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ReferenceTypeNode {
-        ReferenceTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ReferenceType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ReferenceType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl ReferenceType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // RetType
-#[derive(Debug, Clone, Copy,)]
-pub struct RetTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RetType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type RetType<'a> = RetTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RetTypeNode<R1>> for RetTypeNode<R2> {
-    fn eq(&self, other: &RetTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for RetTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for RetTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for RetType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for RetType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for RetType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            RET_TYPE => Some(RetType { syntax }),
+            RET_TYPE => Some(RetType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> RetTypeNode<R> {
-    pub fn borrowed(&self) -> RetType {
-        RetTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> RetTypeNode {
-        RetTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<RetType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> RetType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl RetType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // ReturnExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct ReturnExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ReturnExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type ReturnExpr<'a> = ReturnExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ReturnExprNode<R1>> for ReturnExprNode<R2> {
-    fn eq(&self, other: &ReturnExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for ReturnExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for ReturnExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for ReturnExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for ReturnExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for ReturnExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            RETURN_EXPR => Some(ReturnExpr { syntax }),
+            RETURN_EXPR => Some(ReturnExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> ReturnExprNode<R> {
-    pub fn borrowed(&self) -> ReturnExpr {
-        ReturnExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> ReturnExprNode {
-        ReturnExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<ReturnExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ReturnExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl ReturnExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // SelfKw
-#[derive(Debug, Clone, Copy,)]
-pub struct SelfKwNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct SelfKw {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type SelfKw<'a> = SelfKwNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SelfKwNode<R1>> for SelfKwNode<R2> {
-    fn eq(&self, other: &SelfKwNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for SelfKwNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for SelfKwNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for SelfKw {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for SelfKw<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for SelfKw {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            SELF_KW => Some(SelfKw { syntax }),
+            SELF_KW => Some(SelfKw::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> SelfKwNode<R> {
-    pub fn borrowed(&self) -> SelfKw {
-        SelfKwNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> SelfKwNode {
-        SelfKwNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<SelfKw> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> SelfKw<'a> {}
+impl SelfKw {}
 
 // SelfParam
-#[derive(Debug, Clone, Copy,)]
-pub struct SelfParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct SelfParam {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type SelfParam<'a> = SelfParamNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SelfParamNode<R1>> for SelfParamNode<R2> {
-    fn eq(&self, other: &SelfParamNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for SelfParamNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for SelfParamNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for SelfParam {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for SelfParam<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for SelfParam {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            SELF_PARAM => Some(SelfParam { syntax }),
+            SELF_PARAM => Some(SelfParam::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> SelfParamNode<R> {
-    pub fn borrowed(&self) -> SelfParam {
-        SelfParamNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> SelfParamNode {
-        SelfParamNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<SelfParam> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> SelfParam<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl SelfParam {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 
-    pub fn self_kw(self) -> Option<SelfKw<'a>> {
+    pub fn self_kw(&self) -> Option<&SelfKw> {
         super::child_opt(self)
     }
 }
 
 // SlicePat
-#[derive(Debug, Clone, Copy,)]
-pub struct SlicePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct SlicePat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type SlicePat<'a> = SlicePatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SlicePatNode<R1>> for SlicePatNode<R2> {
-    fn eq(&self, other: &SlicePatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for SlicePatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for SlicePatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for SlicePat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for SlicePat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for SlicePat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            SLICE_PAT => Some(SlicePat { syntax }),
+            SLICE_PAT => Some(SlicePat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> SlicePatNode<R> {
-    pub fn borrowed(&self) -> SlicePat {
-        SlicePatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> SlicePatNode {
-        SlicePatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<SlicePat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> SlicePat<'a> {}
+impl SlicePat {}
 
 // SliceType
-#[derive(Debug, Clone, Copy,)]
-pub struct SliceTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct SliceType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type SliceType<'a> = SliceTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SliceTypeNode<R1>> for SliceTypeNode<R2> {
-    fn eq(&self, other: &SliceTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for SliceTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for SliceTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for SliceType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for SliceType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for SliceType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            SLICE_TYPE => Some(SliceType { syntax }),
+            SLICE_TYPE => Some(SliceType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> SliceTypeNode<R> {
-    pub fn borrowed(&self) -> SliceType {
-        SliceTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> SliceTypeNode {
-        SliceTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<SliceType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> SliceType<'a> {
-    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+impl SliceType {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
 // SourceFile
-#[derive(Debug, Clone, Copy,)]
-pub struct SourceFileNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct SourceFile {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type SourceFile<'a> = SourceFileNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SourceFileNode<R1>> for SourceFileNode<R2> {
-    fn eq(&self, other: &SourceFileNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for SourceFileNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for SourceFileNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for SourceFile {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for SourceFile<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for SourceFile {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            SOURCE_FILE => Some(SourceFile { syntax }),
+            SOURCE_FILE => Some(SourceFile::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> SourceFileNode<R> {
-    pub fn borrowed(&self) -> SourceFile {
-        SourceFileNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> SourceFileNode {
-        SourceFileNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<SourceFile> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::ModuleItemOwner<'a> for SourceFile<'a> {}
-impl<'a> ast::FnDefOwner<'a> for SourceFile<'a> {}
-impl<'a> SourceFile<'a> {
-    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
+impl ast::ModuleItemOwner for SourceFile {}
+impl ast::FnDefOwner for SourceFile {}
+impl SourceFile {
+    pub fn modules(&self) -> impl Iterator<Item = &Module> {
         super::children(self)
     }
 }
 
 // StaticDef
-#[derive(Debug, Clone, Copy,)]
-pub struct StaticDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct StaticDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type StaticDef<'a> = StaticDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StaticDefNode<R1>> for StaticDefNode<R2> {
-    fn eq(&self, other: &StaticDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for StaticDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for StaticDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for StaticDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for StaticDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for StaticDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STATIC_DEF => Some(StaticDef { syntax }),
+            STATIC_DEF => Some(StaticDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> StaticDefNode<R> {
-    pub fn borrowed(&self) -> StaticDef {
-        StaticDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> StaticDefNode {
-        StaticDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<StaticDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for StaticDef<'a> {}
-impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for StaticDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for StaticDef<'a> {}
-impl<'a> StaticDef<'a> {}
+impl ast::VisibilityOwner for StaticDef {}
+impl ast::NameOwner for StaticDef {}
+impl ast::TypeParamsOwner for StaticDef {}
+impl ast::AttrsOwner for StaticDef {}
+impl ast::DocCommentsOwner for StaticDef {}
+impl StaticDef {}
 
 // Stmt
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Stmt<'a> {
-    ExprStmt(ExprStmt<'a>),
-    LetStmt(LetStmt<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Stmt {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for Stmt {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Stmt<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StmtKind<'a> {
+    ExprStmt(&'a ExprStmt),
+    LetStmt(&'a LetStmt),
+}
+
+impl AstNode for Stmt {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            EXPR_STMT => Some(Stmt::ExprStmt(ExprStmt { syntax })),
-            LET_STMT => Some(Stmt::LetStmt(LetStmt { syntax })),
+            | EXPR_STMT
+            | LET_STMT => Some(Stmt::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            Stmt::ExprStmt(inner) => inner.syntax(),
-            Stmt::LetStmt(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Stmt> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl Stmt {
+    pub fn kind(&self) -> StmtKind {
+        match self.syntax.kind() {
+            EXPR_STMT => StmtKind::ExprStmt(ExprStmt::cast(&self.syntax).unwrap()),
+            LET_STMT => StmtKind::LetStmt(LetStmt::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> Stmt<'a> {}
+impl Stmt {}
 
 // String
-#[derive(Debug, Clone, Copy,)]
-pub struct StringNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct String {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type String<'a> = StringNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StringNode<R1>> for StringNode<R2> {
-    fn eq(&self, other: &StringNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for StringNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for StringNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for String {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for String<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for String {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STRING => Some(String { syntax }),
+            STRING => Some(String::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> StringNode<R> {
-    pub fn borrowed(&self) -> String {
-        StringNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> StringNode {
-        StringNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<String> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> String<'a> {}
+impl String {}
 
 // StructDef
-#[derive(Debug, Clone, Copy,)]
-pub struct StructDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct StructDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type StructDef<'a> = StructDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StructDefNode<R1>> for StructDefNode<R2> {
-    fn eq(&self, other: &StructDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for StructDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for StructDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for StructDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for StructDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for StructDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STRUCT_DEF => Some(StructDef { syntax }),
+            STRUCT_DEF => Some(StructDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> StructDefNode<R> {
-    pub fn borrowed(&self) -> StructDef {
-        StructDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> StructDefNode {
-        StructDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<StructDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for StructDef<'a> {}
-impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for StructDef<'a> {}
-impl<'a> StructDef<'a> {}
+impl ast::VisibilityOwner for StructDef {}
+impl ast::NameOwner for StructDef {}
+impl ast::TypeParamsOwner for StructDef {}
+impl ast::AttrsOwner for StructDef {}
+impl ast::DocCommentsOwner for StructDef {}
+impl StructDef {}
 
 // StructLit
-#[derive(Debug, Clone, Copy,)]
-pub struct StructLitNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct StructLit {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type StructLit<'a> = StructLitNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StructLitNode<R1>> for StructLitNode<R2> {
-    fn eq(&self, other: &StructLitNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for StructLitNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for StructLitNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for StructLit {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for StructLit<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for StructLit {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STRUCT_LIT => Some(StructLit { syntax }),
+            STRUCT_LIT => Some(StructLit::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> StructLitNode<R> {
-    pub fn borrowed(&self) -> StructLit {
-        StructLitNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> StructLitNode {
-        StructLitNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<StructLit> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> StructLit<'a> {
-    pub fn path(self) -> Option<Path<'a>> {
+impl StructLit {
+    pub fn path(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 
-    pub fn named_field_list(self) -> Option<NamedFieldList<'a>> {
+    pub fn named_field_list(&self) -> Option<&NamedFieldList> {
         super::child_opt(self)
     }
 
-    pub fn spread(self) -> Option<Expr<'a>> {
+    pub fn spread(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // StructPat
-#[derive(Debug, Clone, Copy,)]
-pub struct StructPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct StructPat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type StructPat<'a> = StructPatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StructPatNode<R1>> for StructPatNode<R2> {
-    fn eq(&self, other: &StructPatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for StructPatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for StructPatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for StructPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for StructPat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for StructPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            STRUCT_PAT => Some(StructPat { syntax }),
+            STRUCT_PAT => Some(StructPat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> StructPatNode<R> {
-    pub fn borrowed(&self) -> StructPat {
-        StructPatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> StructPatNode {
-        StructPatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<StructPat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> StructPat<'a> {}
+impl StructPat {}
 
 // TokenTree
-#[derive(Debug, Clone, Copy,)]
-pub struct TokenTreeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TokenTree {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TokenTree<'a> = TokenTreeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TokenTreeNode<R1>> for TokenTreeNode<R2> {
-    fn eq(&self, other: &TokenTreeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TokenTreeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TokenTreeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TokenTree {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TokenTree<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TokenTree {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TOKEN_TREE => Some(TokenTree { syntax }),
+            TOKEN_TREE => Some(TokenTree::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TokenTreeNode<R> {
-    pub fn borrowed(&self) -> TokenTree {
-        TokenTreeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TokenTreeNode {
-        TokenTreeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TokenTree> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TokenTree<'a> {}
+impl TokenTree {}
 
 // TraitDef
-#[derive(Debug, Clone, Copy,)]
-pub struct TraitDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TraitDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TraitDef<'a> = TraitDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TraitDefNode<R1>> for TraitDefNode<R2> {
-    fn eq(&self, other: &TraitDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TraitDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TraitDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TraitDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TraitDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TraitDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TRAIT_DEF => Some(TraitDef { syntax }),
+            TRAIT_DEF => Some(TraitDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TraitDefNode<R> {
-    pub fn borrowed(&self) -> TraitDef {
-        TraitDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TraitDefNode {
-        TraitDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TraitDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for TraitDef<'a> {}
-impl<'a> ast::NameOwner<'a> for TraitDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for TraitDef<'a> {}
-impl<'a> TraitDef<'a> {}
+impl ast::VisibilityOwner for TraitDef {}
+impl ast::NameOwner for TraitDef {}
+impl ast::AttrsOwner for TraitDef {}
+impl ast::DocCommentsOwner for TraitDef {}
+impl TraitDef {}
 
 // TryExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct TryExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TryExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TryExpr<'a> = TryExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TryExprNode<R1>> for TryExprNode<R2> {
-    fn eq(&self, other: &TryExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TryExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TryExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TryExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TryExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TryExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TRY_EXPR => Some(TryExpr { syntax }),
+            TRY_EXPR => Some(TryExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TryExprNode<R> {
-    pub fn borrowed(&self) -> TryExpr {
-        TryExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TryExprNode {
-        TryExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TryExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TryExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl TryExpr {
+    pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }
 
 // TupleExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct TupleExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TupleExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TupleExpr<'a> = TupleExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TupleExprNode<R1>> for TupleExprNode<R2> {
-    fn eq(&self, other: &TupleExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TupleExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TupleExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TupleExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TupleExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TupleExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TUPLE_EXPR => Some(TupleExpr { syntax }),
+            TUPLE_EXPR => Some(TupleExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TupleExprNode<R> {
-    pub fn borrowed(&self) -> TupleExpr {
-        TupleExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TupleExprNode {
-        TupleExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TupleExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TupleExpr<'a> {}
+impl TupleExpr {}
 
 // TuplePat
-#[derive(Debug, Clone, Copy,)]
-pub struct TuplePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TuplePat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TuplePat<'a> = TuplePatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TuplePatNode<R1>> for TuplePatNode<R2> {
-    fn eq(&self, other: &TuplePatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TuplePatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TuplePatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TuplePat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TuplePat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TuplePat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TUPLE_PAT => Some(TuplePat { syntax }),
+            TUPLE_PAT => Some(TuplePat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TuplePatNode<R> {
-    pub fn borrowed(&self) -> TuplePat {
-        TuplePatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TuplePatNode {
-        TuplePatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TuplePat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TuplePat<'a> {}
+impl TuplePat {}
 
 // TupleStructPat
-#[derive(Debug, Clone, Copy,)]
-pub struct TupleStructPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TupleStructPat {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TupleStructPat<'a> = TupleStructPatNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TupleStructPatNode<R1>> for TupleStructPatNode<R2> {
-    fn eq(&self, other: &TupleStructPatNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TupleStructPatNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TupleStructPatNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TupleStructPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TupleStructPat<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TupleStructPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TUPLE_STRUCT_PAT => Some(TupleStructPat { syntax }),
+            TUPLE_STRUCT_PAT => Some(TupleStructPat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TupleStructPatNode<R> {
-    pub fn borrowed(&self) -> TupleStructPat {
-        TupleStructPatNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TupleStructPatNode {
-        TupleStructPatNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TupleStructPat> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TupleStructPat<'a> {
-    pub fn args(self) -> impl Iterator<Item = Pat<'a>> + 'a {
+impl TupleStructPat {
+    pub fn args(&self) -> impl Iterator<Item = &Pat> {
         super::children(self)
     }
 
-    pub fn path(self) -> Option<Path<'a>> {
+    pub fn path(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 }
 
 // TupleType
-#[derive(Debug, Clone, Copy,)]
-pub struct TupleTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TupleType {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TupleType<'a> = TupleTypeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TupleTypeNode<R1>> for TupleTypeNode<R2> {
-    fn eq(&self, other: &TupleTypeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TupleTypeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TupleTypeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TupleType {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TupleType<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TupleType {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TUPLE_TYPE => Some(TupleType { syntax }),
+            TUPLE_TYPE => Some(TupleType::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TupleTypeNode<R> {
-    pub fn borrowed(&self) -> TupleType {
-        TupleTypeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TupleTypeNode {
-        TupleTypeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TupleType> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TupleType<'a> {
-    pub fn fields(self) -> impl Iterator<Item = TypeRef<'a>> + 'a {
+impl TupleType {
+    pub fn fields(&self) -> impl Iterator<Item = &TypeRef> {
         super::children(self)
     }
 }
 
 // TypeDef
-#[derive(Debug, Clone, Copy,)]
-pub struct TypeDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeDef {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TypeDef<'a> = TypeDefNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TypeDefNode<R1>> for TypeDefNode<R2> {
-    fn eq(&self, other: &TypeDefNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TypeDefNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TypeDefNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TypeDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TypeDef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TypeDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TYPE_DEF => Some(TypeDef { syntax }),
+            TYPE_DEF => Some(TypeDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TypeDefNode<R> {
-    pub fn borrowed(&self) -> TypeDef {
-        TypeDefNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TypeDefNode {
-        TypeDefNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TypeDef> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::VisibilityOwner<'a> for TypeDef<'a> {}
-impl<'a> ast::NameOwner<'a> for TypeDef<'a> {}
-impl<'a> ast::TypeParamsOwner<'a> for TypeDef<'a> {}
-impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
-impl<'a> ast::DocCommentsOwner<'a> for TypeDef<'a> {}
-impl<'a> TypeDef<'a> {}
+impl ast::VisibilityOwner for TypeDef {}
+impl ast::NameOwner for TypeDef {}
+impl ast::TypeParamsOwner for TypeDef {}
+impl ast::AttrsOwner for TypeDef {}
+impl ast::DocCommentsOwner for TypeDef {}
+impl TypeDef {}
 
 // TypeParam
-#[derive(Debug, Clone, Copy,)]
-pub struct TypeParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeParam {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TypeParam<'a> = TypeParamNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TypeParamNode<R1>> for TypeParamNode<R2> {
-    fn eq(&self, other: &TypeParamNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TypeParamNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TypeParamNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TypeParam {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TypeParam<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TypeParam {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TYPE_PARAM => Some(TypeParam { syntax }),
+            TYPE_PARAM => Some(TypeParam::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TypeParamNode<R> {
-    pub fn borrowed(&self) -> TypeParam {
-        TypeParamNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TypeParamNode {
-        TypeParamNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TypeParam> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::NameOwner<'a> for TypeParam<'a> {}
-impl<'a> TypeParam<'a> {}
+impl ast::NameOwner for TypeParam {}
+impl TypeParam {}
 
 // TypeParamList
-#[derive(Debug, Clone, Copy,)]
-pub struct TypeParamListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeParamList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type TypeParamList<'a> = TypeParamListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TypeParamListNode<R1>> for TypeParamListNode<R2> {
-    fn eq(&self, other: &TypeParamListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for TypeParamListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for TypeParamListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for TypeParamList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TypeParamList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for TypeParamList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            TYPE_PARAM_LIST => Some(TypeParamList { syntax }),
+            TYPE_PARAM_LIST => Some(TypeParamList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> TypeParamListNode<R> {
-    pub fn borrowed(&self) -> TypeParamList {
-        TypeParamListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> TypeParamListNode {
-        TypeParamListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TypeParamList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> TypeParamList<'a> {
-    pub fn type_params(self) -> impl Iterator<Item = TypeParam<'a>> + 'a {
+impl TypeParamList {
+    pub fn type_params(&self) -> impl Iterator<Item = &TypeParam> {
         super::children(self)
     }
 
-    pub fn lifetime_params(self) -> impl Iterator<Item = LifetimeParam<'a>> + 'a {
+    pub fn lifetime_params(&self) -> impl Iterator<Item = &LifetimeParam> {
         super::children(self)
     }
 }
 
 // TypeRef
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypeRef<'a> {
-    ParenType(ParenType<'a>),
-    TupleType(TupleType<'a>),
-    NeverType(NeverType<'a>),
-    PathType(PathType<'a>),
-    PointerType(PointerType<'a>),
-    ArrayType(ArrayType<'a>),
-    SliceType(SliceType<'a>),
-    ReferenceType(ReferenceType<'a>),
-    PlaceholderType(PlaceholderType<'a>),
-    FnPointerType(FnPointerType<'a>),
-    ForType(ForType<'a>),
-    ImplTraitType(ImplTraitType<'a>),
-    DynTraitType(DynTraitType<'a>),
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeRef {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TypeRef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for TypeRef<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypeRefKind<'a> {
+    ParenType(&'a ParenType),
+    TupleType(&'a TupleType),
+    NeverType(&'a NeverType),
+    PathType(&'a PathType),
+    PointerType(&'a PointerType),
+    ArrayType(&'a ArrayType),
+    SliceType(&'a SliceType),
+    ReferenceType(&'a ReferenceType),
+    PlaceholderType(&'a PlaceholderType),
+    FnPointerType(&'a FnPointerType),
+    ForType(&'a ForType),
+    ImplTraitType(&'a ImplTraitType),
+    DynTraitType(&'a DynTraitType),
+}
+
+impl AstNode for TypeRef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            PAREN_TYPE => Some(TypeRef::ParenType(ParenType { syntax })),
-            TUPLE_TYPE => Some(TypeRef::TupleType(TupleType { syntax })),
-            NEVER_TYPE => Some(TypeRef::NeverType(NeverType { syntax })),
-            PATH_TYPE => Some(TypeRef::PathType(PathType { syntax })),
-            POINTER_TYPE => Some(TypeRef::PointerType(PointerType { syntax })),
-            ARRAY_TYPE => Some(TypeRef::ArrayType(ArrayType { syntax })),
-            SLICE_TYPE => Some(TypeRef::SliceType(SliceType { syntax })),
-            REFERENCE_TYPE => Some(TypeRef::ReferenceType(ReferenceType { syntax })),
-            PLACEHOLDER_TYPE => Some(TypeRef::PlaceholderType(PlaceholderType { syntax })),
-            FN_POINTER_TYPE => Some(TypeRef::FnPointerType(FnPointerType { syntax })),
-            FOR_TYPE => Some(TypeRef::ForType(ForType { syntax })),
-            IMPL_TRAIT_TYPE => Some(TypeRef::ImplTraitType(ImplTraitType { syntax })),
-            DYN_TRAIT_TYPE => Some(TypeRef::DynTraitType(DynTraitType { syntax })),
+            | PAREN_TYPE
+            | TUPLE_TYPE
+            | NEVER_TYPE
+            | PATH_TYPE
+            | POINTER_TYPE
+            | ARRAY_TYPE
+            | SLICE_TYPE
+            | REFERENCE_TYPE
+            | PLACEHOLDER_TYPE
+            | FN_POINTER_TYPE
+            | FOR_TYPE
+            | IMPL_TRAIT_TYPE
+            | DYN_TRAIT_TYPE => Some(TypeRef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            TypeRef::ParenType(inner) => inner.syntax(),
-            TypeRef::TupleType(inner) => inner.syntax(),
-            TypeRef::NeverType(inner) => inner.syntax(),
-            TypeRef::PathType(inner) => inner.syntax(),
-            TypeRef::PointerType(inner) => inner.syntax(),
-            TypeRef::ArrayType(inner) => inner.syntax(),
-            TypeRef::SliceType(inner) => inner.syntax(),
-            TypeRef::ReferenceType(inner) => inner.syntax(),
-            TypeRef::PlaceholderType(inner) => inner.syntax(),
-            TypeRef::FnPointerType(inner) => inner.syntax(),
-            TypeRef::ForType(inner) => inner.syntax(),
-            TypeRef::ImplTraitType(inner) => inner.syntax(),
-            TypeRef::DynTraitType(inner) => inner.syntax(),
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<TypeRef> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl TypeRef {
+    pub fn kind(&self) -> TypeRefKind {
+        match self.syntax.kind() {
+            PAREN_TYPE => TypeRefKind::ParenType(ParenType::cast(&self.syntax).unwrap()),
+            TUPLE_TYPE => TypeRefKind::TupleType(TupleType::cast(&self.syntax).unwrap()),
+            NEVER_TYPE => TypeRefKind::NeverType(NeverType::cast(&self.syntax).unwrap()),
+            PATH_TYPE => TypeRefKind::PathType(PathType::cast(&self.syntax).unwrap()),
+            POINTER_TYPE => TypeRefKind::PointerType(PointerType::cast(&self.syntax).unwrap()),
+            ARRAY_TYPE => TypeRefKind::ArrayType(ArrayType::cast(&self.syntax).unwrap()),
+            SLICE_TYPE => TypeRefKind::SliceType(SliceType::cast(&self.syntax).unwrap()),
+            REFERENCE_TYPE => TypeRefKind::ReferenceType(ReferenceType::cast(&self.syntax).unwrap()),
+            PLACEHOLDER_TYPE => TypeRefKind::PlaceholderType(PlaceholderType::cast(&self.syntax).unwrap()),
+            FN_POINTER_TYPE => TypeRefKind::FnPointerType(FnPointerType::cast(&self.syntax).unwrap()),
+            FOR_TYPE => TypeRefKind::ForType(ForType::cast(&self.syntax).unwrap()),
+            IMPL_TRAIT_TYPE => TypeRefKind::ImplTraitType(ImplTraitType::cast(&self.syntax).unwrap()),
+            DYN_TRAIT_TYPE => TypeRefKind::DynTraitType(DynTraitType::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
 
-impl<'a> TypeRef<'a> {}
+impl TypeRef {}
 
 // UseItem
-#[derive(Debug, Clone, Copy,)]
-pub struct UseItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct UseItem {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type UseItem<'a> = UseItemNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<UseItemNode<R1>> for UseItemNode<R2> {
-    fn eq(&self, other: &UseItemNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for UseItemNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for UseItemNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for UseItem {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for UseItem<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for UseItem {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            USE_ITEM => Some(UseItem { syntax }),
+            USE_ITEM => Some(UseItem::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> UseItemNode<R> {
-    pub fn borrowed(&self) -> UseItem {
-        UseItemNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> UseItemNode {
-        UseItemNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<UseItem> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> UseItem<'a> {
-    pub fn use_tree(self) -> Option<UseTree<'a>> {
+impl UseItem {
+    pub fn use_tree(&self) -> Option<&UseTree> {
         super::child_opt(self)
     }
 }
 
 // UseTree
-#[derive(Debug, Clone, Copy,)]
-pub struct UseTreeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct UseTree {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type UseTree<'a> = UseTreeNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<UseTreeNode<R1>> for UseTreeNode<R2> {
-    fn eq(&self, other: &UseTreeNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for UseTreeNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for UseTreeNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for UseTree {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for UseTree<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for UseTree {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            USE_TREE => Some(UseTree { syntax }),
+            USE_TREE => Some(UseTree::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> UseTreeNode<R> {
-    pub fn borrowed(&self) -> UseTree {
-        UseTreeNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> UseTreeNode {
-        UseTreeNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<UseTree> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> UseTree<'a> {
-    pub fn path(self) -> Option<Path<'a>> {
+impl UseTree {
+    pub fn path(&self) -> Option<&Path> {
         super::child_opt(self)
     }
 
-    pub fn use_tree_list(self) -> Option<UseTreeList<'a>> {
+    pub fn use_tree_list(&self) -> Option<&UseTreeList> {
         super::child_opt(self)
     }
 }
 
 // UseTreeList
-#[derive(Debug, Clone, Copy,)]
-pub struct UseTreeListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct UseTreeList {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type UseTreeList<'a> = UseTreeListNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<UseTreeListNode<R1>> for UseTreeListNode<R2> {
-    fn eq(&self, other: &UseTreeListNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for UseTreeListNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for UseTreeListNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for UseTreeList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for UseTreeList<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for UseTreeList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            USE_TREE_LIST => Some(UseTreeList { syntax }),
+            USE_TREE_LIST => Some(UseTreeList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> UseTreeListNode<R> {
-    pub fn borrowed(&self) -> UseTreeList {
-        UseTreeListNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> UseTreeListNode {
-        UseTreeListNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<UseTreeList> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> UseTreeList<'a> {
-    pub fn use_trees(self) -> impl Iterator<Item = UseTree<'a>> + 'a {
+impl UseTreeList {
+    pub fn use_trees(&self) -> impl Iterator<Item = &UseTree> {
         super::children(self)
     }
 }
 
 // Visibility
-#[derive(Debug, Clone, Copy,)]
-pub struct VisibilityNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Visibility {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Visibility<'a> = VisibilityNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<VisibilityNode<R1>> for VisibilityNode<R2> {
-    fn eq(&self, other: &VisibilityNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for VisibilityNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for VisibilityNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Visibility {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Visibility<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Visibility {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            VISIBILITY => Some(Visibility { syntax }),
+            VISIBILITY => Some(Visibility::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> VisibilityNode<R> {
-    pub fn borrowed(&self) -> Visibility {
-        VisibilityNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> VisibilityNode {
-        VisibilityNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Visibility> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Visibility<'a> {}
+impl Visibility {}
 
 // WhereClause
-#[derive(Debug, Clone, Copy,)]
-pub struct WhereClauseNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct WhereClause {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type WhereClause<'a> = WhereClauseNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<WhereClauseNode<R1>> for WhereClauseNode<R2> {
-    fn eq(&self, other: &WhereClauseNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for WhereClauseNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for WhereClauseNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for WhereClause {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for WhereClause<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for WhereClause {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            WHERE_CLAUSE => Some(WhereClause { syntax }),
+            WHERE_CLAUSE => Some(WhereClause::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> WhereClauseNode<R> {
-    pub fn borrowed(&self) -> WhereClause {
-        WhereClauseNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> WhereClauseNode {
-        WhereClauseNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<WhereClause> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> WhereClause<'a> {}
+impl WhereClause {}
 
 // WhileExpr
-#[derive(Debug, Clone, Copy,)]
-pub struct WhileExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct WhileExpr {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type WhileExpr<'a> = WhileExprNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<WhileExprNode<R1>> for WhileExprNode<R2> {
-    fn eq(&self, other: &WhileExprNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for WhileExprNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for WhileExprNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for WhileExpr {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for WhileExpr<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for WhileExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            WHILE_EXPR => Some(WhileExpr { syntax }),
+            WHILE_EXPR => Some(WhileExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> WhileExprNode<R> {
-    pub fn borrowed(&self) -> WhileExpr {
-        WhileExprNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> WhileExprNode {
-        WhileExprNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<WhileExpr> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> ast::LoopBodyOwner<'a> for WhileExpr<'a> {}
-impl<'a> WhileExpr<'a> {
-    pub fn condition(self) -> Option<Condition<'a>> {
+impl ast::LoopBodyOwner for WhileExpr {}
+impl WhileExpr {
+    pub fn condition(&self) -> Option<&Condition> {
         super::child_opt(self)
     }
 }
 
 // Whitespace
-#[derive(Debug, Clone, Copy,)]
-pub struct WhitespaceNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Whitespace {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type Whitespace<'a> = WhitespaceNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<WhitespaceNode<R1>> for WhitespaceNode<R2> {
-    fn eq(&self, other: &WhitespaceNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for WhitespaceNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for WhitespaceNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for Whitespace {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for Whitespace<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for Whitespace {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            WHITESPACE => Some(Whitespace { syntax }),
+            WHITESPACE => Some(Whitespace::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> WhitespaceNode<R> {
-    pub fn borrowed(&self) -> Whitespace {
-        WhitespaceNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> WhitespaceNode {
-        WhitespaceNode { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<Whitespace> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 
-impl<'a> Whitespace<'a> {}
+impl Whitespace {}
 
