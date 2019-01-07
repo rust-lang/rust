@@ -1216,7 +1216,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
     }
 }
 
-#[unstable(feature = "refcell_downgrade", issue = "0")] // TODO issue number
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
 impl<'b, T: ?Sized> From<RefMut<'b, T>> for Ref<'b, T> {
     #[inline]
     fn from(orig: RefMut<'b, T>) -> Ref<'b, T> {
@@ -1319,7 +1319,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// let borrow2 = cell.borrow();
     /// assert_eq!(*borrow1, *borrow2);
     /// ```
-    #[unstable(feature = "refcell_downgrade", issue = "0")] // TODO issue number
+    #[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
     #[inline]
     pub fn downgrade(orig: RefMut<'b, T>) -> Ref<'b, T> {
         let borrow = orig.borrow.borrow;
