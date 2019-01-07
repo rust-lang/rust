@@ -308,7 +308,13 @@ impl Ty {
         path: &Path,
     ) -> Cancelable<Self> {
         if let Some(name) = path.as_ident() {
-            if let Some(int_ty) = primitive::IntTy::from_name(name) {
+            if let Some(KnownName::Bool) = name.as_known_name() {
+                return Ok(Ty::Bool);
+            } else if let Some(KnownName::Char) = name.as_known_name() {
+                return Ok(Ty::Char);
+            } else if let Some(KnownName::Str) = name.as_known_name() {
+                return Ok(Ty::Str);
+            } else if let Some(int_ty) = primitive::IntTy::from_name(name) {
                 return Ok(Ty::Int(int_ty));
             } else if let Some(uint_ty) = primitive::UintTy::from_name(name) {
                 return Ok(Ty::Uint(uint_ty));
