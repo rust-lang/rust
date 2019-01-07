@@ -42,6 +42,24 @@ pub(crate) fn reference_definition(
             return Ok(vec![nav]);
         };
     }
+    // Then try module name resolution
+    if let Some(module) =
+        hir::source_binder::module_from_child_node(db, file_id, name_ref.syntax())?
+    {
+        if let Some(path) = name_ref
+            .syntax()
+            .ancestors()
+            .find_map(ast::Path::cast)
+            .and_then(hir::Path::from_ast)
+        {
+            let resolved = module.resolve_path(db, &path)?;
+            if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
+                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)?)? {
+                    return Ok(vec![target]);
+                }
+            }
+        }
+    }
     // If that fails try the index based approach.
     let navs = db
         .index_resolve(name_ref)?
@@ -98,6 +116,31 @@ mod tests {
         let symbols = analysis.goto_definition(pos).unwrap().unwrap();
         assert_eq_dbg(
             r#"[NavigationTarget { file_id: FileId(1), name: "Foo",
+                                   kind: STRUCT_DEF, range: [0; 11),
+                                   ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
+            &symbols,
+        );
+    }
+
+    #[test]
+    fn goto_definition_resolves_correct_name() {
+        let (analysis, pos) = analysis_and_position(
+            "
+            //- /lib.rs
+            use a::Foo;
+            mod a;
+            mod b;
+            enum E { X(Foo<|>) }
+            //- /a.rs
+            struct Foo;
+            //- /b.rs
+            struct Foo;
+            ",
+        );
+
+        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
+        assert_eq_dbg(
+            r#"[NavigationTarget { file_id: FileId(2), name: "Foo",
                                    kind: STRUCT_DEF, range: [0; 11),
                                    ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
             &symbols,

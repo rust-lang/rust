@@ -34,7 +34,7 @@ pub struct HirFileId(HirFileIdRepr);
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansionoriginated from.
-    pub(crate) fn original_file(self, db: &impl HirDatabase) -> FileId {
+    pub fn original_file(self, db: &impl HirDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_call_id) => {
@@ -177,6 +177,12 @@ impl DefId {
             DefKind::Item => Def::Item,
         };
         Ok(res)
+    }
+
+    pub(crate) fn source(self, db: &impl HirDatabase) -> (HirFileId, TreePtr<SyntaxNode>) {
+        let loc = self.loc(db);
+        let syntax = db.file_item(loc.source_item_id);
+        (loc.source_item_id.file_id, syntax)
     }
 
     /// For a module, returns that module; for any other def, returns the containing module.

@@ -5,11 +5,11 @@ use std::sync::Arc;
 use ra_db::Cancelable;
 use ra_syntax::{
     TreePtr,
-    ast::{self, AstNode},
+    ast::{self, AstNode, NameOwner},
 };
 
 use crate::{
-    DefId, DefKind, HirDatabase, Name, Function, FnSignature, Module,
+    DefId, DefKind, HirDatabase, Name, AsName, Function, FnSignature, Module, HirFileId,
     type_ref::{TypeRef, Mutability},
     expr::Body,
     impl_block::ImplBlock,
@@ -22,11 +22,14 @@ impl Function {
         Function { def_id }
     }
 
-    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> TreePtr<ast::FnDef> {
+    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, TreePtr<ast::FnDef>) {
         let def_loc = self.def_id.loc(db);
         assert!(def_loc.kind == DefKind::Function);
         let syntax = db.file_item(def_loc.source_item_id);
-        ast::FnDef::cast(&syntax).unwrap().to_owned()
+        (
+            def_loc.source_item_id.file_id,
+            ast::FnDef::cast(&syntax).unwrap().to_owned(),
+        )
     }
 
     pub(crate) fn body(&self, db: &impl HirDatabase) -> Cancelable<Arc<Body>> {
@@ -46,7 +49,11 @@ impl Function {
 impl FnSignature {
     pub(crate) fn fn_signature_query(db: &impl HirDatabase, def_id: DefId) -> Arc<FnSignature> {
         let func = Function::new(def_id);
-        let node = func.source(db);
+        let node = func.source_impl(db).1; // TODO we're using source_impl here to avoid returning Cancelable... this is a bit hacky
+        let name = node
+            .name()
+            .map(|n| n.as_name())
+            .unwrap_or_else(Name::missing);
         let mut args = Vec::new();
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
@@ -76,7 +83,11 @@ impl FnSignature {
         } else {
             TypeRef::unit()
         };
-        let sig = FnSignature { args, ret_type };
+        let sig = FnSignature {
+            name,
+            args,
+            ret_type,
+        };
         Arc::new(sig)
     }
 }

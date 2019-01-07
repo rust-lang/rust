@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
-use ra_syntax::{ast, TreePtr, SyntaxNode};
+use ra_syntax::{ast, TreePtr, SyntaxNode, AstNode};
 
 use crate::{
-    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty,
+    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
     type_ref::TypeRef,
     nameres::ModuleScope,
     db::HirDatabase,
@@ -181,6 +181,19 @@ impl Struct {
             .collect();
         Ok(res)
     }
+
+    pub fn source(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<(HirFileId, TreePtr<ast::StructDef>)> {
+        let (file_id, syntax) = self.def_id.source(db);
+        Ok((
+            file_id,
+            ast::StructDef::cast(&syntax)
+                .expect("struct def should point to StructDef node")
+                .to_owned(),
+        ))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -203,6 +216,16 @@ impl Enum {
 
     pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, EnumVariant)>> {
         Ok(db.enum_data(self.def_id)?.variants.clone())
+    }
+
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreePtr<ast::EnumDef>)> {
+        let (file_id, syntax) = self.def_id.source(db);
+        Ok((
+            file_id,
+            ast::EnumDef::cast(&syntax)
+                .expect("enum def should point to EnumDef node")
+                .to_owned(),
+        ))
     }
 }
 
@@ -231,6 +254,19 @@ impl EnumVariant {
     pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
         Ok(db.enum_variant_data(self.def_id)?.variant_data.clone())
     }
+
+    pub fn source(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<(HirFileId, TreePtr<ast::EnumVariant>)> {
+        let (file_id, syntax) = self.def_id.source(db);
+        Ok((
+            file_id,
+            ast::EnumVariant::cast(&syntax)
+                .expect("variant def should point to EnumVariant node")
+                .to_owned(),
+        ))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -241,11 +277,16 @@ pub struct Function {
 /// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnSignature {
+    pub(crate) name: Name,
     pub(crate) args: Vec<TypeRef>,
     pub(crate) ret_type: TypeRef,
 }
 
 impl FnSignature {
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+
     pub fn args(&self) -> &[TypeRef] {
         &self.args
     }
@@ -260,8 +301,8 @@ impl Function {
         self.def_id
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> TreePtr<ast::FnDef> {
-        self.source_impl(db)
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreePtr<ast::FnDef>)> {
+        Ok(self.source_impl(db))
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Cancelable<Arc<BodySyntaxMapping>> {
