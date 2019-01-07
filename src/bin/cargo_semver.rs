@@ -1,16 +1,21 @@
 #![feature(rustc_private)]
 #![feature(uniform_paths)]
+#![feature(set_stdio)]
 
 extern crate getopts;
+extern crate serde_json;
 
+use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, Workspace};
 use log::debug;
+use serde_json::Value;
 use std::{
-    io::Write,
     env,
+    io::BufReader,
+    io::Write,
+    fs::File,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, Workspace};
 
 pub type Result<T> = cargo::util::CargoResult<T>;
 
@@ -105,6 +110,9 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
 
     let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name, true)?;
     let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name, false)?;
+
+    println!("current_rlib: {:?}", current_rlib);
+    println!("stable_rlib: {:?}", stable_rlib);
 
     if matches.opt_present("d") {
         println!(
@@ -335,7 +343,7 @@ impl<'a> WorkInfo<'a> {
     ) -> Result<WorkInfo<'a>> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
-        let package_ids = [PackageId::new(name, version, source.id)?];
+        let package_ids = [PackageId::new(name, version, &source.id)?];
         debug!("(remote) package id: {:?}", package_ids[0]);
         let sources = {
             let mut s = SourceMap::new();
@@ -344,7 +352,7 @@ impl<'a> WorkInfo<'a> {
         };
 
         let package_set = PackageSet::new(&package_ids, sources, config)?;
-        let package = package_set.get_one(package_ids[0])?;
+        let package = package_set.get_one(&package_ids[0])?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
         Ok(Self {
@@ -360,21 +368,55 @@ impl<'a> WorkInfo<'a> {
         name: &str,
         current: bool,
     ) -> Result<(PathBuf, PathBuf)> {
-        let opts =
-            cargo::ops::CompileOptions::new(config, cargo::core::compiler::CompileMode::Build)
-                .unwrap();
+        let mut opts =
+            cargo::ops::CompileOptions::new(config, cargo::core::compiler::CompileMode::Build)?;
+        // we need the build plan to find our build artifacts
+        opts.build_config.build_plan = true;
+        // TODO: this is where we could insert feature flag builds (or using the CLI mechanisms)
 
-        env::set_var("RUSTFLAGS", format!("-C metadata={}", if current { "new" } else { "old" }));
+        env::set_var("RUSTFLAGS",
+                     format!("-C metadata={}", if current { "new" } else { "old" }));
+
+        let mut outdir = env::temp_dir();
+        outdir.push(&format!("cargo_semver_{}_{}", name, current));
+
+        // redirection gang
+        let outfile = File::create(&outdir)?;
+        let old_stdio = std::io::set_print(Some(Box::new(outfile)));
+
+        let _ = cargo::ops::compile(&self.workspace, &opts)?;
+
+        std::io::set_print(old_stdio);
+
+        // actually compile things now
+        opts.build_config.build_plan = false;
+
         let compilation = cargo::ops::compile(&self.workspace, &opts)?;
         env::remove_var("RUSTFLAGS");
 
-        // TODO: use cargo metadata to fetch the rlib path here:
-        let rlib = compilation.libraries[&self.package.package_id()]
-            .iter()
-            .find(|t| t.0.name() == name)
-            .ok_or_else(|| failure::err_msg("lost a build artifact".to_owned()))?;
+        let build_plan: Value =
+            serde_json::from_reader(BufReader::new(File::open(&outdir)?))?;
 
-        Ok((rlib.1.clone(), compilation.deps_output))
+        // FIXME: yuck drilling
+        if let Value::Object(m) = build_plan {
+            if let Some(Value::Array(v)) = m.get("invocations") {
+                for s in v {
+                    if let Value::Object(m2) = s {
+                        if let Some(Value::String(s2)) = m2.get("package_name") {
+                            if s2 != name { continue; }
+                        }
+
+                        if let Some(Value::Array(v2)) = m2.get("outputs") {
+                            if let Some(Value::String(s)) = v2.get(0) {
+                                return Ok((PathBuf::from(s), compilation.deps_output));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Err(failure::err_msg("lost build artifact".to_owned()))
     }
 }
 
