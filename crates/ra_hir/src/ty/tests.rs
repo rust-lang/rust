@@ -5,7 +5,7 @@ use std::fs;
 
 use salsa::Database;
 
-use ra_db::{SyntaxDatabase};
+use ra_db::SyntaxDatabase;
 use ra_syntax::ast::{self, AstNode};
 use test_utils::{project_dir, assert_eq_text, read_text};
 
@@ -34,7 +34,7 @@ fn test(a: u32, b: isize, c: !, d: &str) {
     "test";
     1.0f32;
 }"#,
-        "0001_basics.txt",
+        "basics.txt",
     );
 }
 
@@ -48,7 +48,7 @@ fn test() {
     let c = b;
 }
 }"#,
-        "0002_let.txt",
+        "let.txt",
     );
 }
 
@@ -67,7 +67,7 @@ fn test() {
     b::c();
 }
 }"#,
-        "0003_paths.txt",
+        "paths.txt",
     );
 }
 
@@ -90,7 +90,7 @@ fn test() {
     a.c;
 }
 "#,
-        "0004_struct.txt",
+        "struct.txt",
     );
 }
 
@@ -112,7 +112,7 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
     *d;
 }
 "#,
-        "0005_refs.txt",
+        "refs_and_ptrs.txt",
     );
 }
 
@@ -133,7 +133,7 @@ fn test() -> &mut &f64 {
     &mut &c
 }
 "#,
-        "0006_backwards.txt",
+        "backwards.txt",
     );
 }
 
@@ -152,7 +152,7 @@ impl S {
     }
 }
 "#,
-        "0007_self.txt",
+        "self.txt",
     );
 }
 
@@ -176,7 +176,7 @@ fn test() {
     10 < 3
 }
 "#,
-        "0008_boolean_op.txt",
+        "boolean_op.txt",
     );
 }
 
@@ -193,7 +193,25 @@ fn infer(content: &str) -> String {
             .unwrap()
             .unwrap();
         let inference_result = func.infer(&db).unwrap();
-        for (syntax_ptr, ty) in &inference_result.type_of {
+        let body_syntax_mapping = func.body_syntax_mapping(&db).unwrap();
+        let mut types = Vec::new();
+        for (pat, ty) in inference_result.type_of_pat.iter() {
+            let syntax_ptr = match body_syntax_mapping.pat_syntax(pat) {
+                Some(sp) => sp,
+                None => continue,
+            };
+            types.push((syntax_ptr, ty));
+        }
+        for (expr, ty) in inference_result.type_of_expr.iter() {
+            let syntax_ptr = match body_syntax_mapping.expr_syntax(expr) {
+                Some(sp) => sp,
+                None => continue,
+            };
+            types.push((syntax_ptr, ty));
+        }
+        // sort ranges for consistency
+        types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
+        for (syntax_ptr, ty) in &types {
             let node = syntax_ptr.resolve(&source_file);
             write!(
                 acc,
@@ -246,7 +264,6 @@ fn test_data_dir() -> PathBuf {
 }
 
 #[test]
-#[should_panic] // TODO this should work once hir::Expr is used
 fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     let (mut db, pos) = MockDatabase::with_position(
         "

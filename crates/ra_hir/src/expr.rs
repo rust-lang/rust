@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 
-use ra_arena::{Arena, RawId, impl_arena_id};
+use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner};
 
@@ -39,9 +39,9 @@ pub struct Body {
 pub struct BodySyntaxMapping {
     body: Arc<Body>,
     expr_syntax_mapping: FxHashMap<LocalSyntaxPtr, ExprId>,
-    expr_syntax_mapping_back: FxHashMap<ExprId, LocalSyntaxPtr>,
+    expr_syntax_mapping_back: ArenaMap<ExprId, LocalSyntaxPtr>,
     pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
-    pat_syntax_mapping_back: FxHashMap<PatId, LocalSyntaxPtr>,
+    pat_syntax_mapping_back: ArenaMap<PatId, LocalSyntaxPtr>,
 }
 
 impl Body {
@@ -72,16 +72,26 @@ impl Index<PatId> for Body {
 
 impl BodySyntaxMapping {
     pub fn expr_syntax(&self, expr: ExprId) -> Option<LocalSyntaxPtr> {
-        self.expr_syntax_mapping_back.get(&expr).cloned()
+        self.expr_syntax_mapping_back.get(expr).cloned()
     }
     pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
     }
+    pub fn node_expr(&self, node: ast::Expr) -> Option<ExprId> {
+        self.expr_syntax_mapping
+            .get(&LocalSyntaxPtr::new(node.syntax()))
+            .cloned()
+    }
     pub fn pat_syntax(&self, pat: PatId) -> Option<LocalSyntaxPtr> {
-        self.pat_syntax_mapping_back.get(&pat).cloned()
+        self.pat_syntax_mapping_back.get(pat).cloned()
     }
     pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
+    }
+    pub fn node_pat(&self, node: ast::Pat) -> Option<PatId> {
+        self.pat_syntax_mapping
+            .get(&LocalSyntaxPtr::new(node.syntax()))
+            .cloned()
     }
 
     pub fn body(&self) -> &Arc<Body> {
@@ -159,6 +169,11 @@ pub enum Expr {
         expr: ExprId,
         op: Option<UnaryOp>,
     },
+    BinaryOp {
+        lhs: ExprId,
+        rhs: ExprId,
+        op: Option<BinaryOp>,
+    },
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
@@ -166,7 +181,8 @@ pub enum Expr {
     },
 }
 
-pub type UnaryOp = ast::PrefixOp;
+pub use ra_syntax::ast::PrefixOp as UnaryOp;
+pub use ra_syntax::ast::BinOp as BinaryOp;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
@@ -266,6 +282,10 @@ impl Expr {
             Expr::Lambda { body, .. } => {
                 f(*body);
             }
+            Expr::BinaryOp { lhs, rhs, .. } => {
+                f(*lhs);
+                f(*rhs);
+            }
             Expr::Field { expr, .. }
             | Expr::Try { expr }
             | Expr::Cast { expr, .. }
@@ -314,9 +334,9 @@ struct ExprCollector {
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     expr_syntax_mapping: FxHashMap<LocalSyntaxPtr, ExprId>,
-    expr_syntax_mapping_back: FxHashMap<ExprId, LocalSyntaxPtr>,
+    expr_syntax_mapping_back: ArenaMap<ExprId, LocalSyntaxPtr>,
     pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
-    pat_syntax_mapping_back: FxHashMap<PatId, LocalSyntaxPtr>,
+    pat_syntax_mapping_back: ArenaMap<PatId, LocalSyntaxPtr>,
 }
 
 impl ExprCollector {
@@ -325,9 +345,9 @@ impl ExprCollector {
             exprs: Arena::default(),
             pats: Arena::default(),
             expr_syntax_mapping: FxHashMap::default(),
-            expr_syntax_mapping_back: FxHashMap::default(),
+            expr_syntax_mapping_back: ArenaMap::default(),
             pat_syntax_mapping: FxHashMap::default(),
-            pat_syntax_mapping_back: FxHashMap::default(),
+            pat_syntax_mapping_back: ArenaMap::default(),
         }
     }
 
@@ -586,6 +606,12 @@ impl ExprCollector {
                     syntax_ptr,
                 )
             }
+            ast::Expr::BinExpr(e) => {
+                let lhs = self.collect_expr_opt(e.lhs());
+                let rhs = self.collect_expr_opt(e.rhs());
+                let op = e.op();
+                self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
+            }
 
             // TODO implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
@@ -593,7 +619,6 @@ impl ExprCollector {
             ast::Expr::TupleExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::BinExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::Literal(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }

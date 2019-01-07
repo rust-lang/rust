@@ -17,25 +17,23 @@ mod primitive;
 #[cfg(test)]
 mod tests;
 
+use std::ops::Index;
 use std::sync::Arc;
 use std::{fmt, mem};
 
 use log;
-use rustc_hash::FxHashMap;
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
+use ra_arena::map::ArenaMap;
 
-use ra_db::{LocalSyntaxPtr, Cancelable};
-use ra_syntax::{
-    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp, BinOp},
-    SyntaxNodeRef
-};
+use ra_db::Cancelable;
 
 use crate::{
-    Def, DefId, Module, Function, Struct, Enum, Path, Name, AsName, ImplBlock,
+    Def, DefId, Module, Function, Struct, Enum, Path, Name, ImplBlock,
+    FnSignature, FnScopes,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    ScopesWithSyntaxMapping,
+    expr::{Body, Expr, ExprId, PatId, UnaryOp, BinaryOp, Statement},
 };
 
 /// The ID of a type variable.
@@ -82,9 +80,10 @@ impl UnifyValue for TypeVarValue {
         match (value1, value2) {
             // We should never equate two type variables, both of which have
             // known types. Instead, we recursively equate those types.
-            (TypeVarValue::Known(..), TypeVarValue::Known(..)) => {
-                panic!("equating two type variables, both of which have known types")
-            }
+            (TypeVarValue::Known(t1), TypeVarValue::Known(t2)) => panic!(
+                "equating two type variables, both of which have known types: {:?} and {:?}",
+                t1, t2
+            ),
 
             // If one side is known, prefer that one.
             (TypeVarValue::Known(..), TypeVarValue::Unknown) => Ok(value1.clone()),
@@ -321,26 +320,6 @@ impl Ty {
         Ok(ty)
     }
 
-    // TODO: These should not be necessary long-term, since everything will work on HIR
-    pub(crate) fn from_ast_opt(
-        db: &impl HirDatabase,
-        module: &Module,
-        impl_block: Option<&ImplBlock>,
-        node: Option<ast::TypeRef>,
-    ) -> Cancelable<Self> {
-        node.map(|n| Ty::from_ast(db, module, impl_block, n))
-            .unwrap_or(Ok(Ty::Unknown))
-    }
-
-    pub(crate) fn from_ast(
-        db: &impl HirDatabase,
-        module: &Module,
-        impl_block: Option<&ImplBlock>,
-        node: ast::TypeRef,
-    ) -> Cancelable<Self> {
-        Ty::from_hir(db, module, impl_block, &TypeRef::from_ast(node))
-    }
-
     pub fn unit() -> Self {
         Ty::Tuple(Arc::new([]))
     }
@@ -417,26 +396,18 @@ impl fmt::Display for Ty {
 // Functions returning declared types for items
 
 /// Compute the declared type of a function. This should not need to look at the
-/// function body (but currently uses the function AST, so does anyway - TODO).
+/// function body.
 fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
-    let syntax = f.syntax(db);
+    let signature = f.signature(db);
     let module = f.module(db)?;
     let impl_block = f.impl_block(db)?;
-    let node = syntax.borrowed();
     // TODO we ignore type parameters for now
-    let input = node
-        .param_list()
-        .map(|pl| {
-            pl.params()
-                .map(|p| Ty::from_ast_opt(db, &module, impl_block.as_ref(), p.type_ref()))
-                .collect()
-        })
-        .unwrap_or_else(|| Ok(Vec::new()))?;
-    let output = if let Some(type_ref) = node.ret_type().and_then(|rt| rt.type_ref()) {
-        Ty::from_ast(db, &module, impl_block.as_ref(), type_ref)?
-    } else {
-        Ty::unit()
-    };
+    let input = signature
+        .args()
+        .iter()
+        .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), tr))
+        .collect::<Cancelable<Vec<_>>>()?;
+    let output = Ty::from_hir(db, &module, impl_block.as_ref(), signature.ret_type())?;
     let sig = FnSig { input, output };
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
@@ -499,16 +470,23 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
-    type_of: FxHashMap<LocalSyntaxPtr, Ty>,
+    type_of_expr: ArenaMap<ExprId, Ty>,
+    type_of_pat: ArenaMap<PatId, Ty>,
 }
 
-impl InferenceResult {
-    /// Returns the type of the given syntax node, if it was inferred. Will
-    /// return `None` for syntax nodes not in the inferred function or not
-    /// pointing to an expression/pattern, `Some(Ty::Unknown)` for
-    /// expressions/patterns that could not be inferred.
-    pub fn type_of_node(&self, node: SyntaxNodeRef) -> Option<Ty> {
-        self.type_of.get(&LocalSyntaxPtr::new(node)).cloned()
+impl Index<ExprId> for InferenceResult {
+    type Output = Ty;
+
+    fn index(&self, expr: ExprId) -> &Ty {
+        self.type_of_expr.get(expr).unwrap_or(&Ty::Unknown)
+    }
+}
+
+impl Index<PatId> for InferenceResult {
+    type Output = Ty;
+
+    fn index(&self, pat: PatId) -> &Ty {
+        self.type_of_pat.get(pat).unwrap_or(&Ty::Unknown)
     }
 }
 
@@ -516,44 +494,46 @@ impl InferenceResult {
 #[derive(Clone, Debug)]
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
-    scopes: ScopesWithSyntaxMapping,
-    /// The self param for the current method, if it exists.
-    self_param: Option<LocalSyntaxPtr>,
+    body: Arc<Body>,
+    scopes: Arc<FnScopes>,
     module: Module,
     impl_block: Option<ImplBlock>,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
-    type_of: FxHashMap<LocalSyntaxPtr, Ty>,
+    type_of_expr: ArenaMap<ExprId, Ty>,
+    type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
     return_ty: Ty,
 }
 
 // helper function that determines whether a binary operator
 // always returns a boolean
-fn is_boolean_operator(op: BinOp) -> bool {
+fn is_boolean_operator(op: BinaryOp) -> bool {
     match op {
-        BinOp::BooleanOr
-        | BinOp::BooleanAnd
-        | BinOp::EqualityTest
-        | BinOp::LesserEqualTest
-        | BinOp::GreaterEqualTest
-        | BinOp::LesserTest
-        | BinOp::GreaterTest => true,
+        BinaryOp::BooleanOr
+        | BinaryOp::BooleanAnd
+        | BinaryOp::EqualityTest
+        | BinaryOp::LesserEqualTest
+        | BinaryOp::GreaterEqualTest
+        | BinaryOp::LesserTest
+        | BinaryOp::GreaterTest => true,
     }
 }
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(
         db: &'a D,
-        scopes: ScopesWithSyntaxMapping,
+        body: Arc<Body>,
+        scopes: Arc<FnScopes>,
         module: Module,
         impl_block: Option<ImplBlock>,
     ) -> Self {
         InferenceContext {
-            type_of: FxHashMap::default(),
+            type_of_expr: ArenaMap::default(),
+            type_of_pat: ArenaMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
-            self_param: None,       // set during parameter typing
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
+            body,
             scopes,
             module,
             impl_block,
@@ -561,24 +541,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_all(mut self) -> InferenceResult {
-        let mut types = mem::replace(&mut self.type_of, FxHashMap::default());
-        for ty in types.values_mut() {
+        let mut expr_types = mem::replace(&mut self.type_of_expr, ArenaMap::default());
+        for ty in expr_types.values_mut() {
             let resolved = self.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
-        InferenceResult { type_of: types }
+        let mut pat_types = mem::replace(&mut self.type_of_pat, ArenaMap::default());
+        for ty in pat_types.values_mut() {
+            let resolved = self.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
+            *ty = resolved;
+        }
+        InferenceResult {
+            type_of_expr: expr_types,
+            type_of_pat: pat_types,
+        }
     }
 
-    fn write_ty(&mut self, node: SyntaxNodeRef, ty: Ty) {
-        self.type_of.insert(LocalSyntaxPtr::new(node), ty);
+    fn write_expr_ty(&mut self, expr: ExprId, ty: Ty) {
+        self.type_of_expr.insert(expr, ty);
+    }
+
+    fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
+        self.type_of_pat.insert(pat, ty);
     }
 
     fn make_ty(&self, type_ref: &TypeRef) -> Cancelable<Ty> {
         Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), type_ref)
-    }
-
-    fn make_ty_opt(&self, type_ref: Option<&TypeRef>) -> Cancelable<Ty> {
-        Ty::from_hir_opt(self.db, &self.module, self.impl_block.as_ref(), type_ref)
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -673,23 +661,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn infer_path_expr(&mut self, expr: ast::PathExpr) -> Cancelable<Option<Ty>> {
-        let ast_path = ctry!(expr.path());
-        let path = ctry!(Path::from_ast(ast_path));
-        if path.is_ident() {
+    fn infer_path_expr(&mut self, expr: ExprId, path: &Path) -> Cancelable<Option<Ty>> {
+        if path.is_ident() || path.is_self() {
             // resolve locally
-            let name = ctry!(ast_path.segment().and_then(|s| s.name_ref()));
-            if let Some(scope_entry) = self.scopes.resolve_local_name(name) {
-                let ty = ctry!(self.type_of.get(&scope_entry.ptr()));
+            let name = path.as_ident().cloned().unwrap_or_else(Name::self_param);
+            if let Some(scope_entry) = self.scopes.resolve_local_name(expr, name) {
+                let ty = ctry!(self.type_of_pat.get(scope_entry.pat()));
                 let ty = self.resolve_ty_as_possible(ty.clone());
                 return Ok(Some(ty));
             };
-        } else if path.is_self() {
-            // resolve `self` param
-            let self_param = ctry!(self.self_param);
-            let ty = ctry!(self.type_of.get(&self_param));
-            let ty = self.resolve_ty_as_possible(ty.clone());
-            return Ok(Some(ty));
         };
 
         // resolve in module
@@ -699,8 +679,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         Ok(Some(ty))
     }
 
-    fn resolve_variant(&self, path: Option<ast::Path>) -> Cancelable<(Ty, Option<DefId>)> {
-        let path = if let Some(path) = path.and_then(Path::from_ast) {
+    fn resolve_variant(&self, path: Option<&Path>) -> Cancelable<(Ty, Option<DefId>)> {
+        let path = if let Some(path) = path {
             path
         } else {
             return Ok((Ty::Unknown, None));
@@ -719,74 +699,51 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn infer_expr_opt(
-        &mut self,
-        expr: Option<ast::Expr>,
-        expected: &Expectation,
-    ) -> Cancelable<Ty> {
-        if let Some(e) = expr {
-            self.infer_expr(e, expected)
-        } else {
-            Ok(Ty::Unknown)
-        }
-    }
-
-    fn infer_expr(&mut self, expr: ast::Expr, expected: &Expectation) -> Cancelable<Ty> {
-        let ty = match expr {
-            ast::Expr::IfExpr(e) => {
-                if let Some(condition) = e.condition() {
-                    let expected = if condition.pat().is_none() {
-                        Expectation::has_type(Ty::Bool)
-                    } else {
-                        Expectation::none()
-                    };
-                    self.infer_expr_opt(condition.expr(), &expected)?;
-                    // TODO write type for pat
-                };
-                let if_ty = self.infer_block_opt(e.then_branch(), expected)?;
-                if let Some(else_branch) = e.else_branch() {
-                    self.infer_block(else_branch, expected)?;
+    fn infer_expr(&mut self, expr: ExprId, expected: &Expectation) -> Cancelable<Ty> {
+        let body = Arc::clone(&self.body); // avoid borrow checker problem
+        let ty = match &body[expr] {
+            Expr::Missing => Ty::Unknown,
+            Expr::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                // if let is desugared to match, so this is always simple if
+                self.infer_expr(*condition, &Expectation::has_type(Ty::Bool))?;
+                let then_ty = self.infer_expr(*then_branch, expected)?;
+                if let Some(else_branch) = else_branch {
+                    self.infer_expr(*else_branch, expected)?;
                 } else {
                     // no else branch -> unit
                     self.unify(&expected.ty, &Ty::unit()); // actually coerce
                 }
-                if_ty
+                then_ty
             }
-            ast::Expr::BlockExpr(e) => self.infer_block_opt(e.block(), expected)?,
-            ast::Expr::LoopExpr(e) => {
-                self.infer_block_opt(e.loop_body(), &Expectation::has_type(Ty::unit()))?;
-                // TODO never, or the type of the break param
-                Ty::Unknown
+            Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected)?,
+            Expr::Loop { body } => {
+                self.infer_expr(*body, &Expectation::has_type(Ty::unit()))?;
+                // TODO handle break with value
+                Ty::Never
             }
-            ast::Expr::WhileExpr(e) => {
-                if let Some(condition) = e.condition() {
-                    let expected = if condition.pat().is_none() {
-                        Expectation::has_type(Ty::Bool)
-                    } else {
-                        Expectation::none()
-                    };
-                    self.infer_expr_opt(condition.expr(), &expected)?;
-                    // TODO write type for pat
-                };
-                self.infer_block_opt(e.loop_body(), &Expectation::has_type(Ty::unit()))?;
-                // TODO always unit?
+            Expr::While { condition, body } => {
+                // while let is desugared to a match loop, so this is always simple while
+                self.infer_expr(*condition, &Expectation::has_type(Ty::Bool))?;
+                self.infer_expr(*body, &Expectation::has_type(Ty::unit()))?;
                 Ty::unit()
             }
-            ast::Expr::ForExpr(e) => {
-                let _iterable_ty = self.infer_expr_opt(e.iterable(), &Expectation::none());
-                if let Some(_pat) = e.pat() {
-                    // TODO write type for pat
-                }
-                self.infer_block_opt(e.loop_body(), &Expectation::has_type(Ty::unit()))?;
-                // TODO always unit?
+            Expr::For { iterable, body, .. } => {
+                let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
+                // TODO write type for pat
+                self.infer_expr(*body, &Expectation::has_type(Ty::unit()))?;
                 Ty::unit()
             }
-            ast::Expr::LambdaExpr(e) => {
-                let _body_ty = self.infer_expr_opt(e.body(), &Expectation::none())?;
+            Expr::Lambda { body, .. } => {
+                // TODO write types for args, infer lambda type etc.
+                let _body_ty = self.infer_expr(*body, &Expectation::none())?;
                 Ty::Unknown
             }
-            ast::Expr::CallExpr(e) => {
-                let callee_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
+            Expr::Call { callee, args } => {
+                let callee_ty = self.infer_expr(*callee, &Expectation::none())?;
                 let (arg_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (&sig.input[..], sig.output.clone()),
                     _ => {
@@ -795,112 +752,102 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         (&[][..], Ty::Unknown)
                     }
                 };
-                if let Some(arg_list) = e.arg_list() {
-                    for (i, arg) in arg_list.args().enumerate() {
-                        self.infer_expr(
-                            arg,
-                            &Expectation::has_type(arg_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
-                        )?;
-                    }
+                for (i, arg) in args.iter().enumerate() {
+                    self.infer_expr(
+                        *arg,
+                        &Expectation::has_type(arg_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
+                    )?;
                 }
                 ret_ty
             }
-            ast::Expr::MethodCallExpr(e) => {
-                let _receiver_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
-                if let Some(arg_list) = e.arg_list() {
-                    for arg in arg_list.args() {
-                        // TODO unify / expect argument type
-                        self.infer_expr(arg, &Expectation::none())?;
-                    }
+            Expr::MethodCall { receiver, args, .. } => {
+                let _receiver_ty = self.infer_expr(*receiver, &Expectation::none())?;
+                // TODO resolve method...
+                for (_i, arg) in args.iter().enumerate() {
+                    // TODO unify / expect argument type
+                    self.infer_expr(*arg, &Expectation::none())?;
                 }
                 Ty::Unknown
             }
-            ast::Expr::MatchExpr(e) => {
-                let _ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
-                if let Some(match_arm_list) = e.match_arm_list() {
-                    for arm in match_arm_list.arms() {
-                        // TODO type the bindings in pat
-                        // TODO type the guard
-                        let _ty = self.infer_expr_opt(arm.expr(), &Expectation::none())?;
-                    }
-                    // TODO unify all the match arm types
-                    Ty::Unknown
-                } else {
-                    Ty::Unknown
+            Expr::Match { expr, arms } => {
+                let _ty = self.infer_expr(*expr, &Expectation::none())?;
+                for arm in arms {
+                    // TODO type the bindings in pats
+                    // TODO type the guard
+                    let _ty = self.infer_expr(arm.expr, &Expectation::none())?;
                 }
+                // TODO unify all the match arm types
+                Ty::Unknown
             }
-            ast::Expr::TupleExpr(_e) => Ty::Unknown,
-            ast::Expr::ArrayExpr(_e) => Ty::Unknown,
-            ast::Expr::PathExpr(e) => self.infer_path_expr(e)?.unwrap_or(Ty::Unknown),
-            ast::Expr::ContinueExpr(_e) => Ty::Never,
-            ast::Expr::BreakExpr(_e) => Ty::Never,
-            ast::Expr::ParenExpr(e) => self.infer_expr_opt(e.expr(), expected)?,
-            ast::Expr::Label(_e) => Ty::Unknown,
-            ast::Expr::ReturnExpr(e) => {
-                // TODO expect return type of function
-                self.infer_expr_opt(e.expr(), &Expectation::none())?;
+            Expr::Path(p) => self.infer_path_expr(expr, p)?.unwrap_or(Ty::Unknown),
+            Expr::Continue => Ty::Never,
+            Expr::Break { expr } => {
+                if let Some(expr) = expr {
+                    // TODO handle break with value
+                    self.infer_expr(*expr, &Expectation::none())?;
+                }
                 Ty::Never
             }
-            ast::Expr::StructLit(e) => {
-                let (ty, def_id) = self.resolve_variant(e.path())?;
-                if let Some(nfl) = e.named_field_list() {
-                    for field in nfl.fields() {
-                        let field_ty = if let (Some(def_id), Some(nr)) = (def_id, field.name_ref())
-                        {
-                            self.db.type_for_field(def_id, nr.as_name())?
-                        } else {
-                            Ty::Unknown
-                        };
-                        self.infer_expr_opt(field.expr(), &Expectation::has_type(field_ty))?;
-                    }
+            Expr::Return { expr } => {
+                if let Some(expr) = expr {
+                    self.infer_expr(*expr, &Expectation::has_type(self.return_ty.clone()))?;
+                }
+                Ty::Never
+            }
+            Expr::StructLit {
+                path,
+                fields,
+                spread,
+            } => {
+                let (ty, def_id) = self.resolve_variant(path.as_ref())?;
+                for field in fields {
+                    let field_ty = if let Some(def_id) = def_id {
+                        self.db.type_for_field(def_id, field.name.clone())?
+                    } else {
+                        Ty::Unknown
+                    };
+                    self.infer_expr(field.expr, &Expectation::has_type(field_ty))?;
+                }
+                if let Some(expr) = spread {
+                    self.infer_expr(*expr, &Expectation::has_type(ty.clone()))?;
                 }
                 ty
             }
-            ast::Expr::IndexExpr(_e) => Ty::Unknown,
-            ast::Expr::FieldExpr(e) => {
-                let receiver_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
-                if let Some(nr) = e.name_ref() {
-                    let ty = match receiver_ty {
-                        Ty::Tuple(fields) => {
-                            let i = nr.text().parse::<usize>().ok();
-                            i.and_then(|i| fields.get(i).cloned())
-                                .unwrap_or(Ty::Unknown)
-                        }
-                        Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, nr.as_name())?,
-                        _ => Ty::Unknown,
-                    };
-                    self.insert_type_vars(ty)
-                } else {
-                    Ty::Unknown
-                }
+            Expr::Field { expr, name } => {
+                let receiver_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let ty = match receiver_ty {
+                    Ty::Tuple(fields) => {
+                        let i = name.to_string().parse::<usize>().ok();
+                        i.and_then(|i| fields.get(i).cloned())
+                            .unwrap_or(Ty::Unknown)
+                    }
+                    Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, name.clone())?,
+                    _ => Ty::Unknown,
+                };
+                self.insert_type_vars(ty)
             }
-            ast::Expr::TryExpr(e) => {
-                let _inner_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
+            Expr::Try { expr } => {
+                let _inner_ty = self.infer_expr(*expr, &Expectation::none())?;
                 Ty::Unknown
             }
-            ast::Expr::CastExpr(e) => {
-                let _inner_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
-                let cast_ty = Ty::from_ast_opt(
-                    self.db,
-                    &self.module,
-                    self.impl_block.as_ref(),
-                    e.type_ref(),
-                )?;
+            Expr::Cast { expr, type_ref } => {
+                let _inner_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let cast_ty =
+                    Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), type_ref)?;
                 let cast_ty = self.insert_type_vars(cast_ty);
-                // TODO do the coercion...
+                // TODO check the cast...
                 cast_ty
             }
-            ast::Expr::RefExpr(e) => {
+            Expr::Ref { expr, mutability } => {
                 // TODO pass the expectation down
-                let inner_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
-                let m = Mutability::from_mutable(e.is_mut());
+                let inner_ty = self.infer_expr(*expr, &Expectation::none())?;
                 // TODO reference coercions etc.
-                Ty::Ref(Arc::new(inner_ty), m)
+                Ty::Ref(Arc::new(inner_ty), *mutability)
             }
-            ast::Expr::PrefixExpr(e) => {
-                let inner_ty = self.infer_expr_opt(e.expr(), &Expectation::none())?;
-                match e.op() {
-                    Some(PrefixOp::Deref) => {
+            Expr::UnaryOp { expr, op } => {
+                let inner_ty = self.infer_expr(*expr, &Expectation::none())?;
+                match op {
+                    Some(UnaryOp::Deref) => {
                         match inner_ty {
                             // builtin deref:
                             Ty::Ref(ref_inner, _) => (*ref_inner).clone(),
@@ -912,18 +859,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     _ => Ty::Unknown,
                 }
             }
-            ast::Expr::RangeExpr(_e) => Ty::Unknown,
-            ast::Expr::BinExpr(e) => match e.op() {
+            Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(op) => {
                     let subtype_expectation = match op {
-                        BinOp::BooleanAnd | BinOp::BooleanOr => Expectation::has_type(Ty::Bool),
+                        BinaryOp::BooleanAnd | BinaryOp::BooleanOr => {
+                            Expectation::has_type(Ty::Bool)
+                        }
                         _ => Expectation::none(),
                     };
-                    let (lhs, rhs) = e.sub_exprs();
-                    let _lhs_ty = self.infer_expr_opt(lhs, &subtype_expectation)?;
-                    let _rhs_ty = self.infer_expr_opt(rhs, &subtype_expectation)?;
+                    let _lhs_ty = self.infer_expr(*lhs, &subtype_expectation)?;
+                    let _rhs_ty = self.infer_expr(*rhs, &subtype_expectation)?;
 
-                    if is_boolean_operator(op) {
+                    if is_boolean_operator(*op) {
                         Ty::Bool
                     } else {
                         Ty::Unknown
@@ -931,128 +878,93 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 _ => Ty::Unknown,
             },
-            ast::Expr::Literal(_e) => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
         self.unify(&ty, &expected.ty);
-        self.write_ty(expr.syntax(), ty.clone());
+        let ty = self.resolve_ty_as_possible(ty);
+        self.write_expr_ty(expr, ty.clone());
         Ok(ty)
     }
 
-    fn infer_block_opt(
+    fn infer_block(
         &mut self,
-        node: Option<ast::Block>,
+        statements: &[Statement],
+        tail: Option<ExprId>,
         expected: &Expectation,
     ) -> Cancelable<Ty> {
-        if let Some(b) = node {
-            self.infer_block(b, expected)
-        } else {
-            Ok(Ty::Unknown)
-        }
-    }
-
-    fn infer_block(&mut self, node: ast::Block, expected: &Expectation) -> Cancelable<Ty> {
-        for stmt in node.statements() {
+        for stmt in statements {
             match stmt {
-                ast::Stmt::LetStmt(stmt) => {
-                    let decl_ty = Ty::from_ast_opt(
+                Statement::Let {
+                    pat,
+                    type_ref,
+                    initializer,
+                } => {
+                    let decl_ty = Ty::from_hir_opt(
                         self.db,
                         &self.module,
                         self.impl_block.as_ref(),
-                        stmt.type_ref(),
+                        type_ref.as_ref(),
                     )?;
                     let decl_ty = self.insert_type_vars(decl_ty);
-                    let ty = if let Some(expr) = stmt.initializer() {
-                        let expr_ty = self.infer_expr(expr, &Expectation::has_type(decl_ty))?;
+                    let ty = if let Some(expr) = initializer {
+                        let expr_ty = self.infer_expr(*expr, &Expectation::has_type(decl_ty))?;
                         expr_ty
                     } else {
                         decl_ty
                     };
 
-                    if let Some(pat) = stmt.pat() {
-                        self.write_ty(pat.syntax(), ty);
-                    };
+                    self.write_pat_ty(*pat, ty);
                 }
-                ast::Stmt::ExprStmt(expr_stmt) => {
-                    self.infer_expr_opt(expr_stmt.expr(), &Expectation::none())?;
+                Statement::Expr(expr) => {
+                    self.infer_expr(*expr, &Expectation::none())?;
                 }
             }
         }
-        let ty = if let Some(expr) = node.expr() {
+        let ty = if let Some(expr) = tail {
             self.infer_expr(expr, expected)?
         } else {
             Ty::unit()
         };
-        self.write_ty(node.syntax(), ty.clone());
         Ok(ty)
     }
 
-    fn collect_fn_signature(&mut self, node: ast::FnDef) -> Cancelable<()> {
-        if let Some(param_list) = node.param_list() {
-            if let Some(self_param) = param_list.self_param() {
-                let self_type = if let Some(type_ref) = self_param.type_ref() {
-                    let ty = self.make_ty(&TypeRef::from_ast(type_ref))?;
-                    self.insert_type_vars(ty)
-                } else {
-                    // TODO this should be handled by desugaring during HIR conversion
-                    let ty = self.make_ty_opt(self.impl_block.as_ref().map(|i| i.target_type()))?;
-                    let ty = match self_param.flavor() {
-                        ast::SelfParamFlavor::Owned => ty,
-                        ast::SelfParamFlavor::Ref => Ty::Ref(Arc::new(ty), Mutability::Shared),
-                        ast::SelfParamFlavor::MutRef => Ty::Ref(Arc::new(ty), Mutability::Mut),
-                    };
-                    self.insert_type_vars(ty)
-                };
-                if let Some(self_kw) = self_param.self_kw() {
-                    let self_param = LocalSyntaxPtr::new(self_kw.syntax());
-                    self.self_param = Some(self_param);
-                    self.type_of.insert(self_param, self_type);
-                }
-            }
-            for param in param_list.params() {
-                let pat = if let Some(pat) = param.pat() {
-                    pat
-                } else {
-                    continue;
-                };
-                let ty = if let Some(type_ref) = param.type_ref() {
-                    let ty = self.make_ty(&TypeRef::from_ast(type_ref))?;
-                    self.insert_type_vars(ty)
-                } else {
-                    // missing type annotation
-                    self.new_type_var()
-                };
-                self.type_of.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
-            }
+    fn collect_fn_signature(&mut self, signature: &FnSignature) -> Cancelable<()> {
+        let body = Arc::clone(&self.body); // avoid borrow checker problem
+        for (type_ref, pat) in signature.args().iter().zip(body.args()) {
+            let ty = self.make_ty(type_ref)?;
+            let ty = self.insert_type_vars(ty);
+            self.write_pat_ty(*pat, ty);
         }
-
-        self.return_ty = if let Some(type_ref) = node.ret_type().and_then(|n| n.type_ref()) {
-            let ty = self.make_ty(&TypeRef::from_ast(type_ref))?;
-            self.insert_type_vars(ty)
-        } else {
-            Ty::unit()
+        self.return_ty = {
+            let ty = self.make_ty(signature.ret_type())?;
+            let ty = self.insert_type_vars(ty);
+            ty
         };
+        Ok(())
+    }
 
+    fn infer_body(&mut self) -> Cancelable<()> {
+        self.infer_expr(
+            self.body.body_expr(),
+            &Expectation::has_type(self.return_ty.clone()),
+        )?;
         Ok(())
     }
 }
 
 pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
     let function = Function::new(def_id); // TODO: consts also need inference
-    let scopes = function.scopes(db)?;
+    let body = function.body(db)?;
+    let scopes = db.fn_scopes(def_id)?;
     let module = function.module(db)?;
     let impl_block = function.impl_block(db)?;
-    let mut ctx = InferenceContext::new(db, scopes, module, impl_block);
+    let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);
 
-    let syntax = function.syntax(db);
-    let node = syntax.borrowed();
+    let signature = function.signature(db);
+    ctx.collect_fn_signature(&signature)?;
 
-    ctx.collect_fn_signature(node)?;
-
-    if let Some(block) = node.body() {
-        ctx.infer_block(block, &Expectation::has_type(ctx.return_ty.clone()))?;
-    }
+    ctx.infer_body()?;
 
     Ok(Arc::new(ctx.resolve_all()))
 }
