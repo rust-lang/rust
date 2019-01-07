@@ -30,6 +30,8 @@ failure = "0.1"
 log = "0.4"
 rand = "0.6"
 semver = "0.9"
+serde = "1.0.84"
+serde_derive = "1.0.84"
 serde_json = "1.0.34"
 
 [dev-dependencies]

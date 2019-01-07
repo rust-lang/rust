@@ -3,11 +3,13 @@
 #![feature(set_stdio)]
 
 extern crate getopts;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 
 use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, Workspace};
 use log::debug;
-use serde_json::Value;
 use std::{
     env,
     io::BufReader,
@@ -18,6 +20,17 @@ use std::{
 };
 
 pub type Result<T> = cargo::util::CargoResult<T>;
+
+#[derive(Debug, Deserialize)]
+struct Invocation {
+    package_name: String,
+    outputs: Vec<PathBuf>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BuildPlan {
+    invocations: Vec<Invocation>,
+}
 
 /// Main entry point.
 ///
@@ -394,25 +407,13 @@ impl<'a> WorkInfo<'a> {
         let compilation = cargo::ops::compile(&self.workspace, &opts)?;
         env::remove_var("RUSTFLAGS");
 
-        let build_plan: Value =
+        let build_plan: BuildPlan =
             serde_json::from_reader(BufReader::new(File::open(&outdir)?))?;
 
-        // FIXME: yuck drilling
-        if let Value::Object(m) = build_plan {
-            if let Some(Value::Array(v)) = m.get("invocations") {
-                for s in v {
-                    if let Value::Object(m2) = s {
-                        if let Some(Value::String(s2)) = m2.get("package_name") {
-                            if s2 != name { continue; }
-                        }
-
-                        if let Some(Value::Array(v2)) = m2.get("outputs") {
-                            if let Some(Value::String(s)) = v2.get(0) {
-                                return Ok((PathBuf::from(s), compilation.deps_output));
-                            }
-                        }
-                    }
-                }
+        // TODO: handle multiple outputs gracefully
+        for i in &build_plan.invocations {
+            if i.package_name == name {
+                return Ok((i.outputs[0].clone(), compilation.deps_output));
             }
         }
 
