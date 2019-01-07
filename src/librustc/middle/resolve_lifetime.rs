@@ -23,7 +23,7 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
+use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
 
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use hir::{self, GenericParamKind, LifetimeParamKind};
@@ -151,7 +151,7 @@ impl Region {
         if let Region::EarlyBound(index, _, _) = self {
             params
                 .nth(index as usize)
-                .and_then(|lifetime| map.defs.get(&lifetime.id).cloned())
+                .and_then(|lifetime| map.defs.get(&lifetime.hir_id).cloned())
         } else {
             Some(self)
         }
@@ -195,16 +195,16 @@ pub type ObjectLifetimeDefault = Set1<Region>;
 struct NamedRegionMap {
     // maps from every use of a named (not anonymous) lifetime to a
     // `Region` describing how that region is bound
-    pub defs: NodeMap<Region>,
+    pub defs: HirIdMap<Region>,
 
     // the set of lifetime def ids that are late-bound; a region can
     // be late-bound if (a) it does NOT appear in a where-clause and
     // (b) it DOES appear in the arguments.
-    pub late_bound: NodeSet,
+    pub late_bound: HirIdSet,
 
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
-    pub object_lifetime_defaults: NodeMap<Vec<ObjectLifetimeDefault>>,
+    pub object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
 /// See `NamedRegionMap`.
@@ -387,20 +387,17 @@ fn resolve_lifetimes<'tcx>(
 
     let mut rl = ResolveLifetimes::default();
 
-    for (k, v) in named_region_map.defs {
-        let hir_id = tcx.hir().node_to_hir_id(k);
+    for (hir_id, v) in named_region_map.defs {
         let map = rl.defs.entry(hir_id.owner_local_def_id()).or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id, v);
     }
-    for k in named_region_map.late_bound {
-        let hir_id = tcx.hir().node_to_hir_id(k);
+    for hir_id in named_region_map.late_bound {
         let map = rl.late_bound
             .entry(hir_id.owner_local_def_id())
             .or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id);
     }
-    for (k, v) in named_region_map.object_lifetime_defaults {
-        let hir_id = tcx.hir().node_to_hir_id(k);
+    for (hir_id, v) in named_region_map.object_lifetime_defaults {
         let map = rl.object_lifetime_defaults
             .entry(hir_id.owner_local_def_id())
             .or_default();
@@ -634,7 +631,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::TyKind::Rptr(ref lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
-                    lifetime: self.map.defs.get(&lifetime_ref.id).cloned(),
+                    lifetime: self.map.defs.get(&lifetime_ref.hir_id).cloned(),
                     s: self.scope,
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
@@ -677,7 +674,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // and ban them. Type variables instantiated inside binders aren't
                         // well-supported at the moment, so this doesn't work.
                         // In the future, this should be fixed and this error should be removed.
-                        let def = self.map.defs.get(&lifetime.id).cloned();
+                        let def = self.map.defs.get(&lifetime.hir_id).cloned();
                         if let Some(Region::LateBound(_, def_id, _)) = def {
                             if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
                                 // Ensure that the parent of the def is an item, not HRTB
@@ -1267,8 +1264,8 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
 
 fn compute_object_lifetime_defaults(
     tcx: TyCtxt<'_, '_, '_>,
-) -> NodeMap<Vec<ObjectLifetimeDefault>> {
-    let mut map = NodeMap::default();
+) -> HirIdMap<Vec<ObjectLifetimeDefault>> {
+    let mut map = HirIdMap::default();
     for item in tcx.hir().krate().items.values() {
         match item.node {
             hir::ItemKind::Struct(_, ref generics)
@@ -1312,7 +1309,7 @@ fn compute_object_lifetime_defaults(
                     tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
                 }
 
-                map.insert(item.id, result);
+                map.insert(item.hir_id, result);
             }
             _ => {}
         }
@@ -1711,7 +1708,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             .iter()
             .filter_map(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => {
-                    if self.map.late_bound.contains(&param.id) {
+                    if self.map.late_bound.contains(&param.hir_id) {
                         Some(Region::late(&self.tcx.hir(), param))
                     } else {
                         Some(Region::early(&self.tcx.hir(), &mut index, param))
@@ -1957,8 +1954,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             };
 
             let map = &self.map;
-            let unsubst = if let Some(id) = self.tcx.hir().as_local_node_id(def_id) {
-                &map.object_lifetime_defaults[&id]
+            let hir = self.tcx.hir();
+            let unsubst = if let Some(node_id) = hir.as_local_node_id(def_id) {
+                let hir_id = hir.definitions().node_to_hir_id(node_id);
+                &map.object_lifetime_defaults[&hir_id]
             } else {
                 let tcx = self.tcx;
                 self.xcrate_object_lifetime_defaults
@@ -2145,7 +2144,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             if let hir::TyKind::Rptr(lifetime_ref, ref mt) = inputs[0].node {
                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
                     if is_self_ty(path.def) {
-                        if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
+                        if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
                             let scope = Scope::Elision {
                                 elide: Elide::Exact(lifetime),
                                 s: self.scope,
@@ -2264,7 +2263,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
-                if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
+                if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
                     match lifetime {
                         Region::LateBound(debruijn, _, _) | Region::LateBoundAnon(debruijn, _)
                             if debruijn < self.outer_index =>
@@ -2669,7 +2668,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             def,
             self.tcx.sess.source_map().span_to_string(lifetime_ref.span)
         );
-        self.map.defs.insert(lifetime_ref.id, def);
+        self.map.defs.insert(lifetime_ref.hir_id, def);
 
         match def {
             Region::LateBoundAnon(..) | Region::Static => {
@@ -2701,7 +2700,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// error (esp. around impl trait). In that case, we remove the
     /// entry into `map.defs` so as not to confuse later code.
     fn uninsert_lifetime_on_error(&mut self, lifetime_ref: &'tcx hir::Lifetime, bad_def: Region) {
-        let old_value = self.map.defs.remove(&lifetime_ref.id);
+        let old_value = self.map.defs.remove(&lifetime_ref.hir_id);
         assert_eq!(old_value, Some(bad_def));
     }
 }
@@ -2793,7 +2792,7 @@ fn insert_late_bound_lifetimes(
             param.id
         );
 
-        let inserted = map.late_bound.insert(param.id);
+        let inserted = map.late_bound.insert(param.hir_id);
         assert!(inserted, "visited lifetime {:?} twice", param.id);
     }
 
