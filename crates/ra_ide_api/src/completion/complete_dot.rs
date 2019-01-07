@@ -17,8 +17,9 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
     };
     let receiver_ty = infer_result[expr].clone();
     if !ctx.is_call {
-        complete_fields(acc, ctx, receiver_ty)?;
+        complete_fields(acc, ctx, receiver_ty.clone())?;
     }
+    complete_methods(acc, ctx, receiver_ty)?;
     Ok(())
 }
 
@@ -55,6 +56,24 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
     Ok(())
 }
 
+fn complete_methods(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    receiver: Ty,
+) -> Cancelable<()> {
+    receiver.iterate_methods(ctx.db, |func| {
+        let sig = func.signature(ctx.db);
+        if sig.has_self_arg() {
+            CompletionItem::new(CompletionKind::Reference, sig.name().to_string())
+                .from_function(ctx, func)
+                .kind(CompletionItemKind::Method)
+                .add_to(acc);
+        }
+        Ok(None::<()>)
+    })?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::completion::*;
@@ -87,7 +106,8 @@ mod tests {
                 }
             }
             ",
-            r#"the_field "(u32,)""#,
+            r#"the_field "(u32,)"
+               foo "foo($0)""#,
         );
     }
 
@@ -102,7 +122,8 @@ mod tests {
                 }
             }
             ",
-            r#"the_field "(u32, i32)""#,
+            r#"the_field "(u32, i32)"
+               foo "foo($0)""#,
         );
     }
 
@@ -113,6 +134,38 @@ mod tests {
             struct A { the_field: u32 }
             fn foo(a: A) {
                a.<|>()
+            }
+            ",
+            r#""#,
+        );
+    }
+
+    #[test]
+    fn test_method_completion() {
+        check_ref_completion(
+            r"
+            struct A {}
+            impl A {
+                fn the_method(&self) {}
+            }
+            fn foo(a: A) {
+               a.<|>
+            }
+            ",
+            r#"the_method "the_method($0)""#,
+        );
+    }
+
+    #[test]
+    fn test_no_non_self_method() {
+        check_ref_completion(
+            r"
+            struct A {}
+            impl A {
+                fn the_method() {}
+            }
+            fn foo(a: A) {
+               a.<|>
             }
             ",
             r#""#,

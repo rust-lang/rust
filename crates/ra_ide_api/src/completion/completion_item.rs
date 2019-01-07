@@ -37,6 +37,7 @@ pub enum CompletionItemKind {
     Const,
     Trait,
     TypeAlias,
+    Method,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -183,7 +184,11 @@ impl Builder {
         self
     }
 
-    fn from_function(mut self, ctx: &CompletionContext, function: hir::Function) -> Builder {
+    pub(super) fn from_function(
+        mut self,
+        ctx: &CompletionContext,
+        function: hir::Function,
+    ) -> Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             if function.signature(ctx.db).args().is_empty() {
