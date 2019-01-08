@@ -368,8 +368,39 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
         mod foo;
 
         use crate::foo::bar::Baz;
-
+{
         fn foo() -> i32 { 92 }
+        ",
+    );
+}
+
+#[test]
+fn adding_inner_items_should_not_invalidate_item_map() {
+    check_item_map_is_not_recomputed(
+        "
+        //- /lib.rs
+        struct S { a: i32}
+        mod foo;<|>
+        enum E { A }
+        use crate::foo::bar::Baz;
+        trait T {
+            fn a() {}
+        }
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        ",
+        "
+        struct S { a: i32, b: () }
+        mod foo;<|>
+        enum E { A, B }
+        use crate::foo::bar::Baz;
+        trait T {
+            fn a() {}
+            fn b() {}
+        }
         ",
     );
 }
