@@ -6,7 +6,7 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 publish = false
 
 [dependencies]
-text_unit = "0.1.5"
+text_unit = "0.1.6"
 proptest = "0.8.7"
 
 [dev-dependencies]

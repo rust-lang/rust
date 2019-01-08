@@ -11,8 +11,7 @@ use languageserver_types::{
 use ra_analysis::{
     FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, SourceChange,
 };
-use ra_syntax::{text_utils::intersect, TextUnit, AstNode};
-use ra_text_edit::text_utils::contains_offset_nonstrict;
+use ra_syntax::{TextUnit, AstNode};
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
 use std::io::Write;
@@ -248,7 +247,7 @@ pub fn handle_runnables(
     let mut res = Vec::new();
     for runnable in world.analysis().runnables(file_id)? {
         if let Some(offset) = offset {
-            if !contains_offset_nonstrict(runnable.range, offset) {
+            if !runnable.range.contains_inclusive(offset) {
                 continue;
             }
         }
@@ -650,7 +649,7 @@ pub fn handle_code_action(
         .diagnostics(file_id)?
         .into_iter()
         .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(diag_range, _fix)| intersect(*diag_range, range).is_some())
+        .filter(|(diag_range, _fix)| diag_range.intersection(&range).is_some())
         .map(|(_range, fix)| fix);
 
     let mut res = Vec::new();

@@ -1,5 +1,4 @@
 mod text_edit;
-pub mod text_utils;
 pub mod test_utils;
 
 pub use crate::text_edit::{TextEdit, TextEditBuilder};
@@ -28,5 +27,12 @@ impl AtomTextEdit {
 
     pub fn insert(offset: TextUnit, text: String) -> AtomTextEdit {
         AtomTextEdit::replace(TextRange::offset_len(offset, 0.into()), text)
+    }
+
+    pub fn apply(&self, mut text: String) -> String {
+        let start = u32::from(self.delete.start()) as usize;
+        let end = u32::from(self.delete.end()) as usize;
+        text.replace_range(start..end, &self.insert);
+        text
     }
 }

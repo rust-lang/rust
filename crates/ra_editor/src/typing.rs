@@ -4,12 +4,10 @@ use itertools::Itertools;
 use ra_syntax::{
     algo::{find_node_at_offset, find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
-    text_utils::intersect,
     AstNode, Direction, SourceFile, SyntaxKind,
     SyntaxKind::*,
     SyntaxNode, TextRange, TextUnit,
 };
-use ra_text_edit::text_utils::contains_offset_nonstrict;
 
 use crate::{LocalEdit, TextEditBuilder};
 
@@ -39,7 +37,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
             Some(text) => text,
             None => continue,
         };
-        let range = match intersect(range, node.range()) {
+        let range = match range.intersection(&node.range()) {
             Some(range) => range,
             None => continue,
         } - node.range().start();
@@ -112,7 +110,7 @@ pub fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     }
     if let Some(expr) = let_stmt.initializer() {
         let expr_range = expr.syntax().range();
-        if contains_offset_nonstrict(expr_range, offset) && offset != expr_range.start() {
+        if expr_range.contains(offset) && offset != expr_range.start() {
             return None;
         }
         if file

@@ -1,5 +1,4 @@
 use crate::AtomTextEdit;
-use crate::text_utils::contains_offset_nonstrict;
 use text_unit::{TextRange, TextUnit};
 
 #[derive(Debug, Clone)]
@@ -28,7 +27,7 @@ impl TextEditBuilder {
     pub fn invalidates_offset(&self, offset: TextUnit) -> bool {
         self.atoms
             .iter()
-            .any(|atom| contains_offset_nonstrict(atom.delete, offset))
+            .any(|atom| atom.delete.contains_inclusive(offset))
     }
 }
 

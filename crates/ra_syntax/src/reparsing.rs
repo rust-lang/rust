@@ -3,7 +3,6 @@ use crate::grammar;
 use crate::lexer::{tokenize, Token};
 use crate::parser_api::Parser;
 use crate::parser_impl;
-use crate::text_utils::replace_range;
 use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNode};
 use crate::{SyntaxKind::*, TextRange, TextUnit};
 use ra_text_edit::AtomTextEdit;
@@ -62,11 +61,8 @@ fn reparse_block<'node>(
 }
 
 fn get_text_after_edit(node: &SyntaxNode, edit: &AtomTextEdit) -> String {
-    replace_range(
-        node.text().to_string(),
-        edit.delete - node.range().start(),
-        &edit.insert,
-    )
+    let edit = AtomTextEdit::replace(edit.delete - node.range().start(), edit.insert.clone());
+    edit.apply(node.text().to_string())
 }
 
 fn is_contextual_kw(text: &str) -> bool {
@@ -156,7 +152,7 @@ fn merge_errors(
 mod tests {
     use test_utils::{extract_range, assert_eq_text};
 
-    use crate::{SourceFile, AstNode, text_utils::replace_range, utils::dump_tree};
+    use crate::{SourceFile, AstNode, utils::dump_tree};
     use super::*;
 
     fn do_check<F>(before: &str, replace_with: &str, reparser: F)
@@ -167,7 +163,8 @@ mod tests {
         ) -> Option<(&'a SyntaxNode, GreenNode, Vec<SyntaxError>)>,
     {
         let (range, before) = extract_range(before);
-        let after = replace_range(before.clone(), range, replace_with);
+        let edit = AtomTextEdit::replace(range, replace_with.to_owned());
+        let after = edit.apply(before.clone());
 
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed = {
