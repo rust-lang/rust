@@ -5,7 +5,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
-    AstNode, SyntaxNode,
+    AstNode, SyntaxNode, TreePtr,
     ast::{self, ModuleItemOwner}
 };
 use ra_db::{SourceRootId, Cancelable,};
@@ -31,30 +31,34 @@ pub(super) fn struct_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ar
     assert!(def_loc.kind == DefKind::Struct);
     let syntax = db.file_item(def_loc.source_item_id);
     let struct_def =
-        ast::StructDef::cast(syntax.borrowed()).expect("struct def should point to StructDef node");
-    Ok(Arc::new(StructData::new(struct_def.borrowed())))
+        ast::StructDef::cast(&syntax).expect("struct def should point to StructDef node");
+    Ok(Arc::new(StructData::new(struct_def)))
 }
 
 pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<EnumData>> {
     let def_loc = def_id.loc(db);
     assert!(def_loc.kind == DefKind::Enum);
     let syntax = db.file_item(def_loc.source_item_id);
-    let enum_def =
-        ast::EnumDef::cast(syntax.borrowed()).expect("enum def should point to EnumDef node");
-    Ok(Arc::new(EnumData::new(enum_def.borrowed())))
+    let enum_def = ast::EnumDef::cast(&syntax).expect("enum def should point to EnumDef node");
+    Ok(Arc::new(EnumData::new(enum_def)))
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {
     let source_file = db.hir_source_file(file_id);
-    let source_file = source_file.borrowed();
-    let res = SourceFileItems::new(file_id, source_file);
+    let res = SourceFileItems::new(file_id, &source_file);
     Arc::new(res)
 }
 
-pub(super) fn file_item(db: &impl HirDatabase, source_item_id: SourceItemId) -> SyntaxNode {
+pub(super) fn file_item(
+    db: &impl HirDatabase,
+    source_item_id: SourceItemId,
+) -> TreePtr<SyntaxNode> {
     match source_item_id.item_id {
-        Some(id) => db.file_items(source_item_id.file_id)[id].clone(),
-        None => db.hir_source_file(source_item_id.file_id).syntax().owned(),
+        Some(id) => db.file_items(source_item_id.file_id)[id].to_owned(),
+        None => db
+            .hir_source_file(source_item_id.file_id)
+            .syntax()
+            .to_owned(),
     }
 }
 
@@ -88,7 +92,7 @@ pub(super) fn input_module_items(
                     let file_id = HirFileId::from(id);
                     let file_items = db.file_items(file_id);
                     //FIXME: expand recursively
-                    for item in db.hir_source_file(file_id).borrowed().items() {
+                    for item in db.hir_source_file(file_id).items() {
                         acc.add_item(file_id, &file_items, item);
                     }
                 }
@@ -98,9 +102,9 @@ pub(super) fn input_module_items(
 
     let mut res = InputModuleItems::default();
     match source {
-        ModuleSource::SourceFile(it) => fill(&mut res, &mut it.borrowed().items_with_macros()),
+        ModuleSource::SourceFile(it) => fill(&mut res, &mut it.items_with_macros()),
         ModuleSource::Module(it) => {
-            if let Some(item_list) = it.borrowed().item_list() {
+            if let Some(item_list) = it.item_list() {
                 fill(&mut res, &mut item_list.items_with_macros())
             }
         }

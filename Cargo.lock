@@ -295,7 +295,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "flexi_logger"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -706,7 +706,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ena 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "flexi_logger 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.10.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
@@ -728,7 +728,7 @@ dependencies = [
  "drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "flexi_logger 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.10.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "gen_lsp_server 0.1.0",
  "im 12.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "languageserver-types 0.53.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -970,7 +970,7 @@ dependencies = [
 [[package]]
 name = "rowan"
 version = "0.2.0"
-source = "git+https://github.com/rust-analyzer/rowan.git?branch=new-impl#6b50db0f68a989c512e3bbebfbc8ede70ca7f221"
+source = "git+https://github.com/rust-analyzer/rowan.git?branch=new-impl#c921101ffb102cfa5bd27ff3a746dc12cf56af5e"
 dependencies = [
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1510,7 +1510,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
 "checksum failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "ea1063915fd7ef4309e222a5a07cf9c319fb9c7836b1f89b85458672dbb127e1"
 "checksum fake-simd 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
-"checksum flexi_logger 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4dda06444ccc8b0a6da19d939989b4a4e83f328710ada449eedaed48c8b903cd"
+"checksum flexi_logger 0.10.4 (registry+https://github.com/rust-lang/crates.io-index)" = "7d3681306880a7ce87740ceb3d1ce98ca92ae636ff30a629494488cbbcf85ff8"
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum fst 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "db72126ca7dff566cdbbdd54af44668c544897d9d3862b198141f176f1238bdf"
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"

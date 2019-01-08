@@ -18,14 +18,14 @@ pub enum PathKind {
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
-    pub fn expand_use_item(item: ast::UseItem, mut cb: impl FnMut(Path, Option<TextRange>)) {
+    pub fn expand_use_item(item: &ast::UseItem, mut cb: impl FnMut(Path, Option<TextRange>)) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
         }
     }
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
-    pub fn from_ast(mut path: ast::Path) -> Option<Path> {
+    pub fn from_ast(mut path: &ast::Path) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
@@ -53,7 +53,7 @@ impl Path {
         segments.reverse();
         return Some(Path { kind, segments });
 
-        fn qualifier(path: ast::Path) -> Option<ast::Path> {
+        fn qualifier(path: &ast::Path) -> Option<&ast::Path> {
             if let Some(q) = path.qualifier() {
                 return Some(q);
             }
@@ -66,7 +66,7 @@ impl Path {
     }
 
     /// Converts an `ast::NameRef` into a single-identifier `Path`.
-    pub fn from_name_ref(name_ref: ast::NameRef) -> Path {
+    pub fn from_name_ref(name_ref: &ast::NameRef) -> Path {
         name_ref.as_name().into()
     }
 
@@ -100,7 +100,7 @@ impl From<Name> for Path {
 
 fn expand_use_tree(
     prefix: Option<Path>,
-    tree: ast::UseTree,
+    tree: &ast::UseTree,
     cb: &mut impl FnMut(Path, Option<TextRange>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
@@ -146,7 +146,7 @@ fn expand_use_tree(
     }
 }
 
-fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
+fn convert_path(prefix: Option<Path>, path: &ast::Path) -> Option<Path> {
     let prefix = if let Some(qual) = path.qualifier() {
         Some(convert_path(prefix, qual)?)
     } else {

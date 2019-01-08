@@ -53,9 +53,36 @@ pub trait FnDefOwner: AstNode {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ItemOrMacro<'a> {
+    Item(&'a ModuleItem),
+    Macro(&'a MacroCall),
+}
+
 pub trait ModuleItemOwner: AstNode {
     fn items(&self) -> AstChildren<ModuleItem> {
         children(self)
+    }
+    fn items_with_macros(&self) -> ItemOrMacroIter {
+        ItemOrMacroIter(self.syntax().children())
+    }
+}
+
+#[derive(Debug)]
+pub struct ItemOrMacroIter<'a>(SyntaxNodeChildren<'a>);
+
+impl<'a> Iterator for ItemOrMacroIter<'a> {
+    type Item = ItemOrMacro<'a>;
+    fn next(&mut self) -> Option<ItemOrMacro<'a>> {
+        loop {
+            let n = self.0.next()?;
+            if let Some(item) = ModuleItem::cast(n) {
+                return Some(ItemOrMacro::Item(item));
+            }
+            if let Some(call) = MacroCall::cast(n) {
+                return Some(ItemOrMacro::Macro(call));
+            }
+        }
     }
 }
 

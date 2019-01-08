@@ -47,6 +47,17 @@ where
     }
 }
 
+impl<T> PartialEq<T> for TreePtr<T>
+where
+    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: PartialEq<T>,
+{
+    fn eq(&self, other: &T) -> bool {
+        let t: &T = self;
+        t == other
+    }
+}
+
 impl<T> Clone for TreePtr<T>
 where
     T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,

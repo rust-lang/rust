@@ -1,6 +1,6 @@
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
-use ra_syntax::{ast, SyntaxNode};
+use ra_syntax::{ast, TreePtr, SyntaxNode};
 
 use crate::{Name, db::HirDatabase, DefId, Path, PerNs, nameres::ModuleScope};
 
@@ -36,8 +36,8 @@ pub struct Module {
 }
 
 pub enum ModuleSource {
-    SourceFile(ast::SourceFileNode),
-    Module(ast::ModuleNode),
+    SourceFile(TreePtr<ast::SourceFile>),
+    Module(TreePtr<ast::Module>),
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -66,7 +66,7 @@ impl Module {
     pub fn declaration_source(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, ast::ModuleNode)>> {
+    ) -> Cancelable<Option<(FileId, TreePtr<ast::Module>)>> {
         self.declaration_source_impl(db)
     }
 
@@ -104,7 +104,10 @@ impl Module {
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
         self.resolve_path_impl(db, path)
     }
-    pub fn problems(&self, db: &impl HirDatabase) -> Cancelable<Vec<(SyntaxNode, Problem)>> {
+    pub fn problems(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
         self.problems_impl(db)
     }
 }

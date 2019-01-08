@@ -74,13 +74,13 @@ pub(crate) trait AsName {
     fn as_name(&self) -> Name;
 }
 
-impl AsName for ast::NameRef<'_> {
+impl AsName for ast::NameRef {
     fn as_name(&self) -> Name {
         Name::new(self.text())
     }
 }
 
-impl AsName for ast::Name<'_> {
+impl AsName for ast::Name {
     fn as_name(&self) -> Name {
         Name::new(self.text())
     }

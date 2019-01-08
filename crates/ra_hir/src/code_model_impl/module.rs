@@ -1,5 +1,5 @@
 use ra_db::{Cancelable, SourceRootId, FileId};
-use ra_syntax::{ast, SyntaxNode, AstNode};
+use ra_syntax::{ast, SyntaxNode, AstNode, TreePtr};
 
 use crate::{
     Module, ModuleSource, Problem,
@@ -43,12 +43,11 @@ impl Module {
         let loc = self.def_id.loc(db);
         let file_id = loc.source_item_id.file_id.as_original_file();
         let syntax_node = db.file_item(loc.source_item_id);
-        let syntax_node = syntax_node.borrowed();
-        let module_source = if let Some(source_file) = ast::SourceFile::cast(syntax_node) {
-            ModuleSource::SourceFile(source_file.owned())
+        let module_source = if let Some(source_file) = ast::SourceFile::cast(&syntax_node) {
+            ModuleSource::SourceFile(source_file.to_owned())
         } else {
-            let module = ast::Module::cast(syntax_node).unwrap();
-            ModuleSource::Module(module.owned())
+            let module = ast::Module::cast(&syntax_node).unwrap();
+            ModuleSource::Module(module.to_owned())
         };
         Ok((file_id, module_source))
     }
@@ -56,7 +55,7 @@ impl Module {
     pub fn declaration_source_impl(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, ast::ModuleNode)>> {
+    ) -> Cancelable<Option<(FileId, TreePtr<ast::Module>)>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         let link = ctry!(loc.module_id.parent_link(&module_tree));
@@ -146,7 +145,10 @@ impl Module {
         }
         Ok(curr_per_ns)
     }
-    pub fn problems_impl(&self, db: &impl HirDatabase) -> Cancelable<Vec<(SyntaxNode, Problem)>> {
+    pub fn problems_impl(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         Ok(loc.module_id.problems(&module_tree, db))

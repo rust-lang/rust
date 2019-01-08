@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
-    TextRange, TextUnit, SourceFileNode, AstNode, SyntaxNode,
+    TextRange, TextUnit, SourceFile, AstNode, SyntaxNode, TreePtr,
     ast::{self, NameOwner},
 };
 
@@ -28,14 +28,14 @@ pub enum MacroDef {
 impl MacroDef {
     /// Expands macro call, returning the expansion and offset to be used to
     /// convert ranges between expansion and original source.
-    pub fn ast_expand(macro_call: ast::MacroCall) -> Option<(TextUnit, MacroExpansion)> {
+    pub fn ast_expand(macro_call: &ast::MacroCall) -> Option<(TextUnit, MacroExpansion)> {
         let (def, input) = MacroDef::from_call(macro_call)?;
         let exp = def.expand(input)?;
         let off = macro_call.token_tree()?.syntax().range().start();
         Some((off, exp))
     }
 
-    fn from_call(macro_call: ast::MacroCall) -> Option<(MacroDef, MacroInput)> {
+    fn from_call(macro_call: &ast::MacroCall) -> Option<(MacroDef, MacroInput)> {
         let def = {
             let path = macro_call.path()?;
             let name_ref = path.segment()?.name_ref()?;
@@ -77,7 +77,7 @@ impl MacroDef {
                 }}",
             input.text
         );
-        let file = SourceFileNode::parse(&text);
+        let file = SourceFile::parse(&text);
         let match_expr = file.syntax().descendants().find_map(ast::MatchExpr::cast)?;
         let match_arg = match_expr.expr()?;
         let ptr = LocalSyntaxPtr::new(match_arg.syntax());
@@ -92,7 +92,7 @@ impl MacroDef {
     }
     fn expand_vec(self, input: MacroInput) -> Option<MacroExpansion> {
         let text = format!(r"fn dummy() {{ {}; }}", input.text);
-        let file = SourceFileNode::parse(&text);
+        let file = SourceFile::parse(&text);
         let array_expr = file.syntax().descendants().find_map(ast::ArrayExpr::cast)?;
         let ptr = LocalSyntaxPtr::new(array_expr.syntax());
         let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
@@ -116,7 +116,7 @@ impl MacroDef {
         }
         let src_range = TextRange::offset_len((pos as u32).into(), TextUnit::of_str(&trait_name));
         let text = format!(r"trait {} {{ }}", trait_name);
-        let file = SourceFileNode::parse(&text);
+        let file = SourceFile::parse(&text);
         let trait_def = file.syntax().descendants().find_map(ast::TraitDef::cast)?;
         let name = trait_def.name()?;
         let ptr = LocalSyntaxPtr::new(trait_def.syntax());
@@ -152,11 +152,11 @@ pub struct MacroExpansion {
 impl MacroExpansion {
     // FIXME: does not really make sense, macro expansion is not neccessary a
     // whole file. See `MacroExpansion::ptr` as well.
-    pub(crate) fn file(&self) -> SourceFileNode {
-        SourceFileNode::parse(&self.text)
+    pub(crate) fn file(&self) -> TreePtr<SourceFile> {
+        SourceFile::parse(&self.text)
     }
 
-    pub fn syntax(&self) -> SyntaxNode {
+    pub fn syntax(&self) -> TreePtr<SyntaxNode> {
         self.ptr.resolve(&self.file())
     }
     /// Maps range in the source code to the range in the expanded code.
@@ -191,8 +191,7 @@ pub(crate) fn expand_macro_invocation(
 ) -> Option<Arc<MacroExpansion>> {
     let loc = invoc.loc(db);
     let syntax = db.file_item(loc.source_item_id);
-    let syntax = syntax.borrowed();
-    let macro_call = ast::MacroCall::cast(syntax).unwrap();
+    let macro_call = ast::MacroCall::cast(&syntax).unwrap();
 
     let (def, input) = MacroDef::from_call(macro_call)?;
     def.expand(input).map(Arc::new)
