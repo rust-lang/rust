@@ -40,7 +40,10 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
 };
-pub use ra_editor::{Fold, FoldKind, HighlightedRange, LineIndex, Severity, StructureNode};
+pub use ra_editor::{
+    Fold, FoldKind, HighlightedRange, Severity, StructureNode,
+    LineIndex, LineCol, translate_offset_with_edit,
+};
 
 pub use ra_db::{
     Cancelable, Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, FilesDatabase,

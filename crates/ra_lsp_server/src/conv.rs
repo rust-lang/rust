@@ -7,8 +7,8 @@ use languageserver_types::{
 use ra_analysis::{
     CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
     InsertText, NavigationTarget, SourceChange, SourceFileEdit,
+    LineCol, LineIndex, translate_offset_with_edit
 };
-use ra_editor::{translate_offset_with_edit, LineCol, LineIndex};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 

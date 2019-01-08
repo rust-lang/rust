@@ -736,7 +736,6 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_analysis 0.1.0",
- "ra_editor 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
  "ra_vfs 0.1.0",
