@@ -43,6 +43,16 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
+    mk_eval_cx_inner(tcx, instance, mir, span, param_env)
+}
+
+fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: Instance<'tcx>,
+    mir: &'mir mir::Mir<'tcx>,
+    span: Span,
+    param_env: ty::ParamEnv<'tcx>,
+) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
     // insert a stack frame so any queries have the correct substs
     // cannot use `push_stack_frame`; if we do `const_prop` explodes
@@ -67,41 +77,8 @@ pub fn mk_eval_cx<'a, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'tcx, 'tcx>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
     let span = tcx.def_span(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    let mir = mir::Mir::new(
-        ::std::iter::once(
-            mir::BasicBlockData {
-                statements: Vec::new(),
-                is_cleanup: false,
-                terminator: Some(mir::Terminator {
-                    source_info: mir::SourceInfo {
-                        scope: mir::OUTERMOST_SOURCE_SCOPE,
-                        span: DUMMY_SP,
-                    },
-                    kind: mir::TerminatorKind::Return,
-                }),
-            }
-        ).collect(), // basic blocks
-        IndexVec::new(), // source_scopes
-        mir::ClearCrossCrate::Clear, // source_scope_local_data
-        IndexVec::new(), // promoted
-        None, // yield ty
-        ::std::iter::once(mir::LocalDecl::new_return_place(tcx.types.unit, DUMMY_SP)).collect(),
-        IndexVec::new(), //user_type_annotations
-        0, // arg_count
-        Vec::new(), // upvar_decls
-        DUMMY_SP, // span
-        Vec::new(), // control_flow_destroyed
-    );
-    // insert a stack frame so any queries have the correct substs
-    ecx.push_stack_frame(
-        instance,
-        span,
-        tcx.alloc_mir(mir),
-        None,
-        StackPopCleanup::Goto(None), // never pop
-    )?;
-    Ok(ecx)
+    let mir = tcx.optimized_mir(instance.def.def_id());
+    mk_eval_cx_inner(tcx, instance, mir, span, param_env)
 }
 
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
