@@ -50,7 +50,6 @@ pub use self::{
     module_tree::ModuleId,
     nameres::{ItemMap, PerNs, Namespace, Resolution},
     function::{Function, FnSignature, FnScopes, ScopesWithSyntaxMapping},
-    adt::Enum,
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},
 };
@@ -60,7 +59,7 @@ pub use self::function::FnSignatureInfo;
 pub use self::code_model_api::{
     Crate, CrateDependency,
     Module, ModuleSource, Problem,
-    Struct,
+    Struct, Enum,
 };
 
 pub enum Def {

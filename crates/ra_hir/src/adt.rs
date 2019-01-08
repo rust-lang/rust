@@ -1,21 +1,15 @@
 use std::sync::Arc;
 
-use ra_db::Cancelable;
 use ra_syntax::ast::{self, NameOwner, StructFlavor};
 
 use crate::{
-    DefId, Name, AsName, Struct,
-    db::HirDatabase,
+    DefId, Name, AsName, Struct, Enum,
     type_ref::TypeRef,
 };
 
 impl Struct {
     pub(crate) fn new(def_id: DefId) -> Self {
         Struct { def_id }
-    }
-
-    pub(crate) fn struct_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<StructData>> {
-        Ok(db.struct_data(self.def_id)?)
     }
 }
 
@@ -42,32 +36,16 @@ impl StructData {
     }
 }
 
-pub struct Enum {
-    def_id: DefId,
-}
-
 impl Enum {
     pub(crate) fn new(def_id: DefId) -> Self {
         Enum { def_id }
-    }
-
-    pub fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.enum_data(self.def_id)?.name.clone())
-    }
-
-    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, Arc<VariantData>)>> {
-        Ok(db.enum_data(self.def_id)?.variants.clone())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
-    name: Option<Name>,
-    variants: Vec<(Name, Arc<VariantData>)>,
+    pub(crate) name: Option<Name>,
+    pub(crate) variants: Vec<(Name, Arc<VariantData>)>,
 }
 
 impl EnumData {
