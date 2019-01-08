@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(rustc_private, range_contains)]
 
 #![allow(clippy::cast_lossless)]
 

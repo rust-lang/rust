@@ -67,7 +67,7 @@ pub enum BorStackItem {
 }
 
 /// Extra per-location state
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stack {
     borrows: Vec<BorStackItem>, // used as a stack; never empty
     frozen_since: Option<Timestamp>, // virtual frozen "item" on top of the stack
