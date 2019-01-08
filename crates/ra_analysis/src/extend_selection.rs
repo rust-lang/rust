@@ -1,6 +1,6 @@
 use ra_db::SyntaxDatabase;
 use ra_syntax::{
-    SyntaxNodeRef, AstNode, SourceFileNode,
+    SyntaxNode, AstNode, SourceFile,
     ast, algo::find_covering_node,
 };
 
@@ -19,18 +19,18 @@ pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRang
 
 fn extend_selection_in_macro(
     _db: &RootDatabase,
-    source_file: &SourceFileNode,
+    source_file: &SourceFile,
     frange: FileRange,
 ) -> Option<TextRange> {
     let macro_call = find_macro_call(source_file.syntax(), frange.range)?;
     let (off, exp) = hir::MacroDef::ast_expand(macro_call)?;
     let dst_range = exp.map_range_forward(frange.range - off)?;
-    let dst_range = ra_editor::extend_selection(exp.syntax().borrowed(), dst_range)?;
+    let dst_range = ra_editor::extend_selection(&exp.syntax(), dst_range)?;
     let src_range = exp.map_range_back(dst_range)? + off;
     Some(src_range)
 }
 
-fn find_macro_call(node: SyntaxNodeRef, range: TextRange) -> Option<ast::MacroCall> {
+fn find_macro_call(node: &SyntaxNode, range: TextRange) -> Option<&ast::MacroCall> {
     find_covering_node(node, range)
         .ancestors()
         .find_map(ast::MacroCall::cast)

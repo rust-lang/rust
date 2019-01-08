@@ -39,9 +39,9 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
                 .add_to(acc)
         });
 
-    fn process<'a, N: ast::FnDefOwner<'a>>(
-        node: N,
-        params: &mut FxHashMap<String, (u32, ast::Param<'a>)>,
+    fn process<'a, N: ast::FnDefOwner>(
+        node: &'a N,
+        params: &mut FxHashMap<String, (u32, &'a ast::Param)>,
     ) {
         node.functions()
             .filter_map(|it| it.param_list())

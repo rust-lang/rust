@@ -77,7 +77,7 @@ impl BodySyntaxMapping {
     pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
     }
-    pub fn node_expr(&self, node: ast::Expr) -> Option<ExprId> {
+    pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_syntax_mapping
             .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()
@@ -88,7 +88,7 @@ impl BodySyntaxMapping {
     pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
     }
-    pub fn node_pat(&self, node: ast::Pat) -> Option<PatId> {
+    pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_syntax_mapping
             .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()

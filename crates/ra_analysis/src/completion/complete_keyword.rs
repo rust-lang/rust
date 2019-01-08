@@ -2,7 +2,7 @@ use ra_syntax::{
     algo::visit::{visitor, Visitor},
     AstNode,
     ast::{self, LoopBodyOwner},
-    SyntaxKind::*, SyntaxNodeRef,
+    SyntaxKind::*, SyntaxNode,
 };
 
 use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind, CompletionItemKind};
@@ -76,7 +76,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     acc.add_all(complete_return(fn_def, ctx.can_be_stmt));
 }
 
-fn is_in_loop_body(leaf: SyntaxNodeRef) -> bool {
+fn is_in_loop_body(leaf: &SyntaxNode) -> bool {
     for node in leaf.ancestors() {
         if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
             break;
@@ -95,7 +95,7 @@ fn is_in_loop_body(leaf: SyntaxNodeRef) -> bool {
     false
 }
 
-fn complete_return(fn_def: ast::FnDef, can_be_stmt: bool) -> Option<CompletionItem> {
+fn complete_return(fn_def: &ast::FnDef, can_be_stmt: bool) -> Option<CompletionItem> {
     let snip = match (can_be_stmt, fn_def.ret_type().is_some()) {
         (true, true) => "return $0;",
         (true, false) => "return;",

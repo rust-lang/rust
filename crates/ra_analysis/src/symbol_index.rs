@@ -27,7 +27,7 @@ use std::{
 
 use fst::{self, Streamer};
 use ra_syntax::{
-    SyntaxNodeRef, SourceFileNode, SmolStr,
+    SyntaxNode, SourceFile, SmolStr, TreePtr, AstNode,
     algo::{visit::{visitor, Visitor}, find_covering_node},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
@@ -141,7 +141,7 @@ impl SymbolIndex {
     }
 
     pub(crate) fn for_files(
-        files: impl ParallelIterator<Item = (FileId, SourceFileNode)>,
+        files: impl ParallelIterator<Item = (FileId, TreePtr<SourceFile>)>,
     ) -> SymbolIndex {
         let symbols = files
             .flat_map(|(file_id, file)| {
@@ -203,8 +203,8 @@ pub(crate) struct FileSymbol {
     pub(crate) ptr: LocalSyntaxPtr,
 }
 
-fn to_symbol(node: SyntaxNodeRef) -> Option<(SmolStr, LocalSyntaxPtr)> {
-    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<(SmolStr, LocalSyntaxPtr)> {
+fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, LocalSyntaxPtr)> {
+    fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, LocalSyntaxPtr)> {
         let name = node.name()?.text();
         let ptr = LocalSyntaxPtr::new(node.syntax());
         Some((name, ptr))

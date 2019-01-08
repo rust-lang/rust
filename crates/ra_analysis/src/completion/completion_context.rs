@@ -1,13 +1,9 @@
 use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
-    algo::{find_leaf_at_offset, find_covering_node},
+    AstNode, SyntaxNode, SourceFile, TextUnit, TextRange,
     ast,
-    AstNode,
-    SyntaxNodeRef,
-    SourceFileNode,
-    TextUnit,
-    TextRange,
+    algo::{find_leaf_at_offset, find_covering_node},
     SyntaxKind::*,
 };
 use hir::source_binder;
@@ -20,11 +16,11 @@ use crate::{db, FilePosition, Cancelable};
 pub(super) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
     pub(super) offset: TextUnit,
-    pub(super) leaf: SyntaxNodeRef<'a>,
+    pub(super) leaf: &'a SyntaxNode,
     pub(super) module: Option<hir::Module>,
     pub(super) function: Option<hir::Function>,
-    pub(super) function_syntax: Option<ast::FnDef<'a>>,
-    pub(super) use_item_syntax: Option<ast::UseItem<'a>>,
+    pub(super) function_syntax: Option<&'a ast::FnDef>,
+    pub(super) use_item_syntax: Option<&'a ast::UseItem>,
     pub(super) is_param: bool,
     /// A single-indent path, like `foo`.
     pub(super) is_trivial_path: bool,
@@ -36,7 +32,7 @@ pub(super) struct CompletionContext<'a> {
     /// Something is typed at the "top" level, in module or impl/trait.
     pub(super) is_new_item: bool,
     /// The receiver if this is a field or method access, i.e. writing something.<|>
-    pub(super) dot_receiver: Option<ast::Expr<'a>>,
+    pub(super) dot_receiver: Option<&'a ast::Expr>,
     /// If this is a method call in particular, i.e. the () are already there.
     pub(super) is_method_call: bool,
 }
@@ -44,7 +40,7 @@ pub(super) struct CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a db::RootDatabase,
-        original_file: &'a SourceFileNode,
+        original_file: &'a SourceFile,
         position: FilePosition,
     ) -> Cancelable<Option<CompletionContext<'a>>> {
         let module = source_binder::module_from_position(db, position)?;
@@ -71,7 +67,7 @@ impl<'a> CompletionContext<'a> {
         Ok(Some(ctx))
     }
 
-    fn fill(&mut self, original_file: &'a SourceFileNode, offset: TextUnit) {
+    fn fill(&mut self, original_file: &'a SourceFile, offset: TextUnit) {
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
@@ -100,7 +96,7 @@ impl<'a> CompletionContext<'a> {
             }
         }
     }
-    fn classify_name_ref(&mut self, original_file: &'a SourceFileNode, name_ref: ast::NameRef) {
+    fn classify_name_ref(&mut self, original_file: &'a SourceFile, name_ref: &ast::NameRef) {
         let name_range = name_ref.syntax().range();
         let top_node = name_ref
             .syntax()
@@ -197,15 +193,12 @@ impl<'a> CompletionContext<'a> {
     }
 }
 
-fn find_node_with_range<'a, N: AstNode<'a>>(
-    syntax: SyntaxNodeRef<'a>,
-    range: TextRange,
-) -> Option<N> {
+fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<&N> {
     let node = find_covering_node(syntax, range);
     node.ancestors().find_map(N::cast)
 }
 
-fn is_node<'a, N: AstNode<'a>>(node: SyntaxNodeRef<'a>) -> bool {
+fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {
     match node.ancestors().filter_map(N::cast).next() {
         None => false,
         Some(n) => n.syntax().range() == node.range(),

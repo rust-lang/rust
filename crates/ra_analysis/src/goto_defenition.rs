@@ -23,7 +23,7 @@ pub(crate) fn goto_defenition(
 pub(crate) fn reference_defenition(
     db: &RootDatabase,
     file_id: FileId,
-    name_ref: ast::NameRef,
+    name_ref: &ast::NameRef,
 ) -> Cancelable<Vec<NavigationTarget>> {
     if let Some(fn_descr) =
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())?
@@ -53,7 +53,7 @@ pub(crate) fn reference_defenition(
 fn name_defenition(
     db: &RootDatabase,
     file_id: FileId,
-    name: ast::Name,
+    name: &ast::Name,
 ) -> Cancelable<Option<Vec<NavigationTarget>>> {
     if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
         if module.has_semi() {
