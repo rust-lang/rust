@@ -12,11 +12,13 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+use cmp;
 use error::Error;
 use fmt;
 use ops::{Add, Sub, AddAssign, SubAssign};
 use sys::time;
 use sys_common::FromInner;
+use sys_common::mutex::Mutex;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
@@ -153,7 +155,45 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn now() -> Instant {
-        Instant(time::Instant::now())
+        let os_now = time::Instant::now();
+
+        // And here we come upon a sad state of affairs. The whole point of
+        // `Instant` is that it's monotonically increasing. We've found in the
+        // wild, however, that it's not actually monotonically increasing for
+        // one reason or another. These appear to be OS and hardware level bugs,
+        // and there's not really a whole lot we can do about them. Here's a
+        // taste of what we've found:
+        //
+        // * #48514 - OpenBSD, x86_64
+        // * #49281 - linux arm64 and s390x
+        // * #51648 - windows, x86
+        // * #56560 - windows, x86_64, AWS
+        // * #56612 - windows, x86, vm (?)
+        // * #56940 - linux, arm64
+        // * https://bugzilla.mozilla.org/show_bug.cgi?id=1487778 - a similar
+        //   Firefox bug
+        //
+        // It simply seems that this it just happens so that a lot in the wild
+        // we're seeing panics across various platforms where consecutive calls
+        // to `Instant::now`, such as via the `elapsed` function, are panicking
+        // as they're going backwards. Placed here is a last-ditch effort to try
+        // to fix things up. We keep a global "latest now" instance which is
+        // returned instead of what the OS says if the OS goes backwards.
+        //
+        // To hopefully mitigate the impact of this though a few platforms are
+        // whitelisted as "these at least haven't gone backwards yet".
+        if time::Instant::actually_monotonic() {
+            return Instant(os_now)
+        }
+
+        static LOCK: Mutex = Mutex::new();
+        static mut LAST_NOW: time::Instant = time::Instant::zero();
+        unsafe {
+            let _lock = LOCK.lock();
+            let now = cmp::max(LAST_NOW, os_now);
+            LAST_NOW = now;
+            Instant(now)
+        }
     }
 
     /// Returns the amount of time elapsed from another instant to this one.

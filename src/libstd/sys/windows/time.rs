@@ -40,6 +40,14 @@ impl Instant {
         t
     }
 
+    pub fn actually_monotonic() -> bool {
+        false
+    }
+
+    pub const fn zero() -> Instant {
+        Instant { t: 0 }
+    }
+
     pub fn sub_instant(&self, other: &Instant) -> Duration {
         // Values which are +- 1 need to be considered as basically the same
         // units in time due to various measurement oddities, according to

@@ -2,7 +2,7 @@ use session::config::Options;
 
 use std::fs;
 use std::io::{self, StderrLock, Write};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 macro_rules! define_categories {
     ($($name:ident,)*) => {
@@ -205,20 +205,7 @@ impl SelfProfiler {
     }
 
     fn stop_timer(&mut self) -> u64 {
-        let elapsed = if cfg!(windows) {
-            // On Windows, timers don't always appear to be monotonic (see #51648)
-            // which can lead to panics when calculating elapsed time.
-            // Work around this by testing to see if the current time is less than
-            // our recorded time, and if it is, just returning 0.
-            let now = Instant::now();
-            if self.current_timer >= now {
-                Duration::new(0, 0)
-            } else {
-                self.current_timer.elapsed()
-            }
-        } else {
-            self.current_timer.elapsed()
-        };
+        let elapsed = self.current_timer.elapsed();
 
         self.current_timer = Instant::now();
 
