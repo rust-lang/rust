@@ -225,7 +225,7 @@ impl Whitespace {
     }
 
     pub fn has_newlines(&self) -> bool {
-        self.count_newlines_lazy().count() > 0
+        self.text().contains('\n')
     }
 }
 

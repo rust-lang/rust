@@ -171,24 +171,21 @@ impl VariantData {
         }
     }
     pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self {
-            true
-        } else {
-            false
+        match self {
+            VariantData::Struct(..) => true,
+            _ => false,
         }
     }
     pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self {
-            true
-        } else {
-            false
+        match self {
+            VariantData::Tuple(..) => true,
+            _ => false,
         }
     }
     pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit = *self {
-            true
-        } else {
-            false
+        match self {
+            VariantData::Unit => true,
+            _ => false,
         }
     }
 }
