@@ -989,8 +989,8 @@ index b12ee04..fe0faad 100644
  const MICROS_PER_SEC: u64 = 1_000_000;
 -const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
 
- /// A `Duration` type to represent a span of time, typically used for system
- /// timeouts.
+ /// The duration of one second.
+ #[unstable(feature = "duration_constants", issue = "57391")]
 @@ -260,54 +259,6 @@ impl Duration {
      #[inline]
      pub const fn subsec_nanos(&self) -> u32 { self.nanos }
