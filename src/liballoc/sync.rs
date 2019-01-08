@@ -300,7 +300,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
+        Arc { ptr: x.into(), phantom: PhantomData }
     }
 
     #[unstable(feature = "pin", issue = "49150")]

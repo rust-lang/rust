@@ -316,11 +316,11 @@ impl<T> Rc<T> {
             // pointers, which ensures that the weak destructor never frees
             // the allocation while the strong destructor is running, even
             // if the weak pointer is stored inside the strong one.
-            ptr: Box::into_raw_non_null(box RcBox {
+            ptr: (box RcBox {
                 strong: Cell::new(1),
                 weak: Cell::new(1),
                 value,
-            }),
+            }).into(),
             phantom: PhantomData,
         }
     }

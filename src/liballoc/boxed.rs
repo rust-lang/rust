@@ -170,7 +170,8 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_raw_non_null(b).as_ptr()
+        let p: NonNull<T> = b.into();
+        p.as_ptr()
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
