@@ -29,22 +29,27 @@ use std::{fmt, sync::Arc};
 
 use ra_syntax::{SmolStr, SourceFile, TreePtr, SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
+use ra_db::{SyntaxDatabase, FilesDatabase, LocalSyntaxPtr};
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
 use salsa::ParallelDatabase;
 
-use crate::symbol_index::{FileSymbol, SymbolIndex};
+use crate::{
+    symbol_index::{FileSymbol, SymbolIndex},
+    db::LineIndexDatabase,
+};
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
 };
-pub use ra_editor::{Fold, FoldKind, HighlightedRange, LineIndex, Severity, StructureNode};
-
+pub use ra_editor::{
+    Fold, FoldKind, HighlightedRange, Severity, StructureNode,
+    LineIndex, LineCol, translate_offset_with_edit,
+};
 pub use ra_db::{
-    Cancelable, Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, FilesDatabase,
-    LocalSyntaxPtr, SourceRootId, SyntaxDatabase,
+    Cancelable, Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
 };
 
 #[derive(Default)]
@@ -322,7 +327,7 @@ impl Analysis {
     /// Gets the file's `LineIndex`: data structure to convert between absolute
     /// offsets and line/column representation.
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.file_lines(file_id)
+        self.db.line_index(file_id)
     }
     /// Selects the next syntactic nodes encopasing the range.
     pub fn extend_selection(&self, frange: FileRange) -> TextRange {

@@ -120,10 +120,6 @@ pub fn syntax_tree(file: &SourceFile) -> String {
     ::ra_syntax::utils::dump_tree(file.syntax())
 }
 
-pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
-    find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
-}
-
 #[cfg(test)]
 mod tests {
     use ra_syntax::AstNode;

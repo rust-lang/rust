@@ -308,8 +308,7 @@ pub struct ReferenceDescriptor {
 
 #[cfg(test)]
 mod tests {
-    use ra_editor::find_node_at_offset;
-    use ra_syntax::SourceFile;
+    use ra_syntax::{SourceFile, algo::find_node_at_offset};
     use test_utils::{extract_offset, assert_eq_text};
 
     use crate::expr;

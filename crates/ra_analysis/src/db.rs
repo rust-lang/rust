@@ -1,10 +1,9 @@
 use std::{fmt, sync::Arc};
-use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase};
 
-use crate::{
-    symbol_index,
-};
+use salsa::{self, Database};
+use ra_db::{LocationIntener, BaseDatabase, FileId};
+
+use crate::{symbol_index, LineIndex};
 
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
@@ -71,6 +70,19 @@ impl AsRef<LocationIntener<hir::MacroCallLoc, hir::MacroCallId>> for RootDatabas
     }
 }
 
+salsa::query_group! {
+    pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + BaseDatabase {
+        fn line_index(file_id: FileId) -> Arc<LineIndex> {
+            type LineIndexQuery;
+        }
+    }
+}
+
+fn line_index(db: &impl ra_db::FilesDatabase, file_id: FileId) -> Arc<LineIndex> {
+    let text = db.file_text(file_id);
+    Arc::new(LineIndex::new(&*text))
+}
+
 salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
         impl ra_db::FilesDatabase {
@@ -84,7 +96,9 @@ salsa::database_storage! {
         }
         impl ra_db::SyntaxDatabase {
             fn source_file() for ra_db::SourceFileQuery;
-            fn file_lines() for ra_db::FileLinesQuery;
+        }
+        impl LineIndexDatabase {
+            fn line_index() for LineIndexQuery;
         }
         impl symbol_index::SymbolsDatabase {
             fn file_symbols() for symbol_index::FileSymbolsQuery;

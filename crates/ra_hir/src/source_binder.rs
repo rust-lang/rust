@@ -6,10 +6,10 @@
 /// So, this modules should not be used during hir construction, it exists
 /// purely for "IDE needs".
 use ra_db::{FileId, FilePosition, Cancelable};
-use ra_editor::find_node_at_offset;
 use ra_syntax::{
     SmolStr, TextRange, SyntaxNode,
     ast::{self, AstNode, NameOwner},
+    algo::find_node_at_offset,
 };
 
 use crate::{

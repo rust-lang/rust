@@ -1,9 +1,8 @@
 use ra_db::{Cancelable, SyntaxDatabase};
-use ra_editor::find_node_at_offset;
 use ra_syntax::{
     AstNode, SyntaxNode, TreePtr,
     ast::{self, NameOwner},
-    algo::{find_covering_node, find_leaf_at_offset, visit::{visitor, Visitor}},
+    algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};

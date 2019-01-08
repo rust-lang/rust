@@ -28,7 +28,6 @@ parking_lot = "0.7.0"
 
 thread_worker = { path = "../thread_worker" }
 ra_syntax = { path = "../ra_syntax" }
-ra_editor = { path = "../ra_editor" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_analysis = { path = "../ra_analysis" }
 gen_lsp_server = { path = "../gen_lsp_server" }

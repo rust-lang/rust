@@ -2,7 +2,7 @@ use std::mem;
 
 use itertools::Itertools;
 use ra_syntax::{
-    algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
+    algo::{find_node_at_offset, find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
     text_utils::intersect,
     AstNode, Direction, SourceFile, SyntaxKind,
@@ -11,7 +11,7 @@ use ra_syntax::{
 };
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 
-use crate::{find_node_at_offset, LocalEdit, TextEditBuilder};
+use crate::{LocalEdit, TextEditBuilder};
 
 pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {

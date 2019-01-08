@@ -5,9 +5,6 @@ mod input;
 mod loc2id;
 pub mod mock;
 
-use std::sync::Arc;
-
-use ra_editor::LineIndex;
 use ra_syntax::{TextUnit, TextRange, SourceFile, TreePtr};
 
 pub use crate::{
@@ -36,19 +33,12 @@ salsa::query_group! {
         fn source_file(file_id: FileId) -> TreePtr<SourceFile> {
             type SourceFileQuery;
         }
-        fn file_lines(file_id: FileId) -> Arc<LineIndex> {
-            type FileLinesQuery;
-        }
     }
 }
 
 fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> TreePtr<SourceFile> {
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
-}
-fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id);
-    Arc::new(LineIndex::new(&*text))
 }
 
 #[derive(Clone, Copy, Debug)]
