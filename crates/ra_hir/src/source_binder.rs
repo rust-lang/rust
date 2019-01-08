@@ -177,7 +177,7 @@ pub fn macro_symbols(
                 if let Some(name) = trait_def.name() {
                     let dst_range = name.syntax().range();
                     if let Some(src_range) = exp.map_range_back(dst_range) {
-                        res.push((name.text(), src_range + off))
+                        res.push((name.text().clone(), src_range + off))
                     }
                 }
             }

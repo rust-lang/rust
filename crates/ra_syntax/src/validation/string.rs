@@ -1,5 +1,5 @@
 use crate::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, AstToken},
     string_lexing,
     yellow::{
         SyntaxError,

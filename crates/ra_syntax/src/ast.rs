@@ -23,6 +23,12 @@ pub trait AstNode: rowan::TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>> 
     fn to_owned(&self) -> TreePtr<Self>;
 }
 
+pub trait AstToken: AstNode {
+    fn text(&self) -> &SmolStr {
+        self.syntax().leaf_text().unwrap()
+    }
+}
+
 pub trait NameOwner: AstNode {
     fn name(&self) -> Option<&Name> {
         child_opt(self)
@@ -155,41 +161,7 @@ impl Attr {
     }
 }
 
-impl Lifetime {
-    pub fn text(&self) -> SmolStr {
-        self.syntax().leaf_text().unwrap().clone()
-    }
-}
-
-impl Char {
-    pub fn text(&self) -> &SmolStr {
-        &self.syntax().leaf_text().unwrap()
-    }
-}
-
-impl Byte {
-    pub fn text(&self) -> &SmolStr {
-        &self.syntax().leaf_text().unwrap()
-    }
-}
-
-impl ByteString {
-    pub fn text(&self) -> &SmolStr {
-        &self.syntax().leaf_text().unwrap()
-    }
-}
-
-impl String {
-    pub fn text(&self) -> &SmolStr {
-        &self.syntax().leaf_text().unwrap()
-    }
-}
-
 impl Comment {
-    pub fn text(&self) -> &SmolStr {
-        self.syntax().leaf_text().unwrap()
-    }
-
     pub fn flavor(&self) -> CommentFlavor {
         let text = self.text();
         if text.starts_with("///") {
@@ -248,10 +220,6 @@ impl CommentFlavor {
 }
 
 impl Whitespace {
-    pub fn text(&self) -> &SmolStr {
-        &self.syntax().leaf_text().unwrap()
-    }
-
     pub fn count_newlines_lazy(&self) -> impl Iterator<Item = &()> {
         self.text().chars().filter(|&c| c == '\n').map(|_| &())
     }
@@ -262,16 +230,16 @@ impl Whitespace {
 }
 
 impl Name {
-    pub fn text(&self) -> SmolStr {
+    pub fn text(&self) -> &SmolStr {
         let ident = self.syntax().first_child().unwrap();
-        ident.leaf_text().unwrap().clone()
+        ident.leaf_text().unwrap()
     }
 }
 
 impl NameRef {
-    pub fn text(&self) -> SmolStr {
+    pub fn text(&self) -> &SmolStr {
         let ident = self.syntax().first_child().unwrap();
-        ident.leaf_text().unwrap().clone()
+        ident.leaf_text().unwrap()
     }
 }
 

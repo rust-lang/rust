@@ -288,6 +288,7 @@ impl AstNode for Byte {
 }
 
 
+impl ast::AstToken for Byte {}
 impl Byte {}
 
 // ByteString
@@ -312,6 +313,7 @@ impl AstNode for ByteString {
 }
 
 
+impl ast::AstToken for ByteString {}
 impl ByteString {}
 
 // CallExpr
@@ -397,6 +399,7 @@ impl AstNode for Char {
 }
 
 
+impl ast::AstToken for Char {}
 impl Char {}
 
 // Comment
@@ -421,6 +424,7 @@ impl AstNode for Comment {
 }
 
 
+impl ast::AstToken for Comment {}
 impl Comment {}
 
 // Condition
@@ -1270,6 +1274,7 @@ impl AstNode for Lifetime {
 }
 
 
+impl ast::AstToken for Lifetime {}
 impl Lifetime {}
 
 // LifetimeParam
@@ -2766,6 +2771,7 @@ impl AstNode for String {
 }
 
 
+impl ast::AstToken for String {}
 impl String {}
 
 // StructDef
@@ -3391,5 +3397,6 @@ impl AstNode for Whitespace {
 }
 
 
+impl ast::AstToken for Whitespace {}
 impl Whitespace {}
 
