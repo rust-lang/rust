@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "ra_editor"
+name = "ra_ide_api_light"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 publish = false

@@ -14,7 +14,7 @@ pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRang
     if let Some(range) = extend_selection_in_macro(db, &source_file, frange) {
         return range;
     }
-    ra_editor::extend_selection(source_file.syntax(), frange.range).unwrap_or(frange.range)
+    ra_ide_api_light::extend_selection(source_file.syntax(), frange.range).unwrap_or(frange.range)
 }
 
 fn extend_selection_in_macro(
@@ -25,7 +25,7 @@ fn extend_selection_in_macro(
     let macro_call = find_macro_call(source_file.syntax(), frange.range)?;
     let (off, exp) = hir::MacroDef::ast_expand(macro_call)?;
     let dst_range = exp.map_range_forward(frange.range - off)?;
-    let dst_range = ra_editor::extend_selection(&exp.syntax(), dst_range)?;
+    let dst_range = ra_ide_api_light::extend_selection(&exp.syntax(), dst_range)?;
     let src_range = exp.map_range_back(dst_range)? + off;
     Some(src_range)
 }
