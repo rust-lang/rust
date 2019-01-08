@@ -351,6 +351,34 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
     check_item_map_is_not_recomputed(
         "
         //- /lib.rs
+        mod foo;<|>
+
+        use crate::foo::bar::Baz;
+
+        fn foo() -> i32 {
+            1 + 1
+        }
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        ",
+        "
+        mod foo;
+
+        use crate::foo::bar::Baz;
+
+        fn foo() -> i32 { 92 }
+        ",
+    );
+}
+
+#[test]
+fn typing_inside_a_function_inside_a_macro_should_not_invalidate_item_map() {
+    check_item_map_is_not_recomputed(
+        "
+        //- /lib.rs
         mod foo;
 
         use crate::foo::bar::Baz;
@@ -372,34 +400,6 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
                 fn foo() -> i32 { 92 }
             }
         }
-        ",
-    );
-}
-
-#[test]
-fn typing_inside_a_function_inside_a_macro_should_not_invalidate_item_map() {
-    check_item_map_is_not_recomputed(
-        "
-        //- /lib.rs
-        mod foo;<|>
-
-        use crate::foo::bar::Baz;
-
-        fn foo() -> i32 {
-            1 + 1
-        }
-        //- /foo/mod.rs
-        pub mod bar;
-
-        //- /foo/bar.rs
-        pub struct Baz;
-        ",
-        "
-        mod foo;
-
-        use crate::foo::bar::Baz;
-
-        fn foo() -> i32 { 92 }
         ",
     );
 }
