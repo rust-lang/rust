@@ -2064,7 +2064,7 @@ pub enum LazyConst<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(LAZY_CONST_SIZE: ::std::mem::size_of::<LazyConst<'static>>() == 72);
+static_assert!(LAZY_CONST_SIZE: ::std::mem::size_of::<LazyConst<'static>>() == 56);
 
 impl<'tcx> LazyConst<'tcx> {
     pub fn map_evaluated<R>(self, f: impl FnOnce(Const<'tcx>) -> Option<R>) -> Option<R> {
@@ -2093,7 +2093,7 @@ pub struct Const<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(CONST_SIZE: ::std::mem::size_of::<Const<'static>>() == 64);
+static_assert!(CONST_SIZE: ::std::mem::size_of::<Const<'static>>() == 48);
 
 impl<'tcx> Const<'tcx> {
     #[inline]

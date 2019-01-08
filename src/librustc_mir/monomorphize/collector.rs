@@ -1254,12 +1254,7 @@ fn collect_const<'a, 'tcx>(
     debug!("visiting const {:?}", constant);
 
     match constant.val {
-        ConstValue::ScalarPair(Scalar::Ptr(a), Scalar::Ptr(b)) => {
-            collect_miri(tcx, a.alloc_id, output);
-            collect_miri(tcx, b.alloc_id, output);
-        }
-        ConstValue::ScalarPair(_, Scalar::Ptr(ptr)) |
-        ConstValue::ScalarPair(Scalar::Ptr(ptr), _) |
+        ConstValue::Slice(Scalar::Ptr(ptr), _) |
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::ByRef(_id, alloc, _offset) => {
