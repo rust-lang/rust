@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use ra_syntax::ast::{self, NameOwner, StructFlavor};
+use ra_db::Cancelable;
+use ra_syntax::ast::{self, NameOwner, StructFlavor, AstNode};
 
 use crate::{
-    DefId, Name, AsName, Struct, Enum, VariantData, StructField,
+    DefId, Name, AsName, Struct, Enum, VariantData, StructField, HirDatabase, DefKind,
     type_ref::TypeRef,
 };
 
@@ -20,11 +21,23 @@ pub struct StructData {
 }
 
 impl StructData {
-    pub(crate) fn new(struct_def: &ast::StructDef) -> StructData {
+    fn new(struct_def: &ast::StructDef) -> StructData {
         let name = struct_def.name().map(|n| n.as_name());
         let variant_data = VariantData::new(struct_def.flavor());
         let variant_data = Arc::new(variant_data);
         StructData { name, variant_data }
+    }
+
+    pub(crate) fn struct_data_query(
+        db: &impl HirDatabase,
+        def_id: DefId,
+    ) -> Cancelable<Arc<StructData>> {
+        let def_loc = def_id.loc(db);
+        assert!(def_loc.kind == DefKind::Struct);
+        let syntax = db.file_item(def_loc.source_item_id);
+        let struct_def =
+            ast::StructDef::cast(&syntax).expect("struct def should point to StructDef node");
+        Ok(Arc::new(StructData::new(struct_def)))
     }
 }
 
@@ -41,7 +54,7 @@ pub struct EnumData {
 }
 
 impl EnumData {
-    pub(crate) fn new(enum_def: &ast::EnumDef) -> Self {
+    fn new(enum_def: &ast::EnumDef) -> Self {
         let name = enum_def.name().map(|n| n.as_name());
         let variants = if let Some(evl) = enum_def.variant_list() {
             evl.variants()
@@ -56,6 +69,17 @@ impl EnumData {
             Vec::new()
         };
         EnumData { name, variants }
+    }
+
+    pub(crate) fn enum_data_query(
+        db: &impl HirDatabase,
+        def_id: DefId,
+    ) -> Cancelable<Arc<EnumData>> {
+        let def_loc = def_id.loc(db);
+        assert!(def_loc.kind == DefKind::Enum);
+        let syntax = db.file_item(def_loc.source_item_id);
+        let enum_def = ast::EnumDef::cast(&syntax).expect("enum def should point to EnumDef node");
+        Ok(Arc::new(EnumData::new(enum_def)))
     }
 }
 

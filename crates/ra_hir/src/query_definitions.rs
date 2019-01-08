@@ -11,36 +11,18 @@ use ra_syntax::{
 use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, DefId, HirFileId, ModuleSource,
+    SourceFileItems, SourceItemId, DefId, HirFileId, ModuleSource,
     MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
     module_tree::ModuleId,
     nameres::{InputModuleItems, ItemMap, Resolver},
-    adt::{StructData, EnumData},
 };
 
 pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<FnScopes>> {
     let body = db.body_hir(def_id)?;
     let res = FnScopes::new(body);
     Ok(Arc::new(res))
-}
-
-pub(super) fn struct_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<StructData>> {
-    let def_loc = def_id.loc(db);
-    assert!(def_loc.kind == DefKind::Struct);
-    let syntax = db.file_item(def_loc.source_item_id);
-    let struct_def =
-        ast::StructDef::cast(&syntax).expect("struct def should point to StructDef node");
-    Ok(Arc::new(StructData::new(struct_def)))
-}
-
-pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<EnumData>> {
-    let def_loc = def_id.loc(db);
-    assert!(def_loc.kind == DefKind::Enum);
-    let syntax = db.file_item(def_loc.source_item_id);
-    let enum_def = ast::EnumDef::cast(&syntax).expect("enum def should point to EnumDef node");
-    Ok(Arc::new(EnumData::new(enum_def)))
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {

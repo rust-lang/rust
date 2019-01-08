@@ -38,12 +38,12 @@ pub trait HirDatabase: SyntaxDatabase
 
     fn struct_data(def_id: DefId) -> Cancelable<Arc<StructData>> {
         type StructDataQuery;
-        use fn query_definitions::struct_data;
+        use fn crate::adt::StructData::struct_data_query;
     }
 
     fn enum_data(def_id: DefId) -> Cancelable<Arc<EnumData>> {
         type EnumDataQuery;
-        use fn query_definitions::enum_data;
+        use fn crate::adt::EnumData::enum_data_query;
     }
 
     fn infer(def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
