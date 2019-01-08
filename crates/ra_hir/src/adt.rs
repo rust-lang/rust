@@ -1,93 +1,60 @@
 use std::sync::Arc;
 
 use ra_db::Cancelable;
-use ra_syntax::ast::{self, NameOwner, StructFlavor};
+use ra_syntax::ast::{self, NameOwner, StructFlavor, AstNode};
 
 use crate::{
-    DefId, Name, AsName,
-    db::HirDatabase,
+    DefId, Name, AsName, Struct, Enum, VariantData, StructField, HirDatabase, DefKind,
     type_ref::TypeRef,
 };
-
-pub struct Struct {
-    def_id: DefId,
-}
 
 impl Struct {
     pub(crate) fn new(def_id: DefId) -> Self {
         Struct { def_id }
     }
-
-    pub fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
-    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.struct_data(self.def_id)?.variant_data.clone())
-    }
-
-    pub fn struct_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<StructData>> {
-        Ok(db.struct_data(self.def_id)?)
-    }
-
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.struct_data(self.def_id)?.name.clone())
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
-    name: Option<Name>,
-    variant_data: Arc<VariantData>,
+    pub(crate) name: Option<Name>,
+    pub(crate) variant_data: Arc<VariantData>,
 }
 
 impl StructData {
-    pub(crate) fn new(struct_def: &ast::StructDef) -> StructData {
+    fn new(struct_def: &ast::StructDef) -> StructData {
         let name = struct_def.name().map(|n| n.as_name());
         let variant_data = VariantData::new(struct_def.flavor());
         let variant_data = Arc::new(variant_data);
         StructData { name, variant_data }
     }
 
-    pub fn name(&self) -> Option<&Name> {
-        self.name.as_ref()
+    pub(crate) fn struct_data_query(
+        db: &impl HirDatabase,
+        def_id: DefId,
+    ) -> Cancelable<Arc<StructData>> {
+        let def_loc = def_id.loc(db);
+        assert!(def_loc.kind == DefKind::Struct);
+        let syntax = db.file_item(def_loc.source_item_id);
+        let struct_def =
+            ast::StructDef::cast(&syntax).expect("struct def should point to StructDef node");
+        Ok(Arc::new(StructData::new(struct_def)))
     }
-
-    pub fn variant_data(&self) -> &Arc<VariantData> {
-        &self.variant_data
-    }
-}
-
-pub struct Enum {
-    def_id: DefId,
 }
 
 impl Enum {
     pub(crate) fn new(def_id: DefId) -> Self {
         Enum { def_id }
     }
-
-    pub fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.enum_data(self.def_id)?.name.clone())
-    }
-
-    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, Arc<VariantData>)>> {
-        Ok(db.enum_data(self.def_id)?.variants.clone())
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
-    name: Option<Name>,
-    variants: Vec<(Name, Arc<VariantData>)>,
+    pub(crate) name: Option<Name>,
+    pub(crate) variants: Vec<(Name, Arc<VariantData>)>,
 }
 
 impl EnumData {
-    pub(crate) fn new(enum_def: &ast::EnumDef) -> Self {
+    fn new(enum_def: &ast::EnumDef) -> Self {
         let name = enum_def.name().map(|n| n.as_name());
         let variants = if let Some(evl) = enum_def.variant_list() {
             evl.variants()
@@ -103,34 +70,21 @@ impl EnumData {
         };
         EnumData { name, variants }
     }
-}
 
-/// A single field of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StructField {
-    name: Name,
-    type_ref: TypeRef,
-}
-
-impl StructField {
-    pub fn name(&self) -> Name {
-        self.name.clone()
+    pub(crate) fn enum_data_query(
+        db: &impl HirDatabase,
+        def_id: DefId,
+    ) -> Cancelable<Arc<EnumData>> {
+        let def_loc = def_id.loc(db);
+        assert!(def_loc.kind == DefKind::Enum);
+        let syntax = db.file_item(def_loc.source_item_id);
+        let enum_def = ast::EnumDef::cast(&syntax).expect("enum def should point to EnumDef node");
+        Ok(Arc::new(EnumData::new(enum_def)))
     }
-    pub fn type_ref(&self) -> &TypeRef {
-        &self.type_ref
-    }
-}
-
-/// Fields of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VariantData {
-    Struct(Vec<StructField>),
-    Tuple(Vec<StructField>),
-    Unit,
 }
 
 impl VariantData {
-    pub fn new(flavor: StructFlavor) -> Self {
+    fn new(flavor: StructFlavor) -> Self {
         match flavor {
             StructFlavor::Tuple(fl) => {
                 let fields = fl
@@ -160,32 +114,7 @@ impl VariantData {
     pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
         self.fields()
             .iter()
-            .find(|f| f.name == *field_name)
-            .map(|f| &f.type_ref)
-    }
-
-    pub fn fields(&self) -> &[StructField] {
-        match *self {
-            VariantData::Struct(ref fields) | VariantData::Tuple(ref fields) => fields,
-            _ => &[],
-        }
-    }
-    pub fn is_struct(&self) -> bool {
-        match self {
-            VariantData::Struct(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_tuple(&self) -> bool {
-        match self {
-            VariantData::Tuple(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_unit(&self) -> bool {
-        match self {
-            VariantData::Unit => true,
-            _ => false,
-        }
+            .find(|f| f.name() == field_name)
+            .map(|f| f.type_ref())
     }
 }

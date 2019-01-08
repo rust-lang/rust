@@ -1,8 +1,15 @@
+use std::sync::Arc;
+
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{ast, TreePtr, SyntaxNode};
 
-use crate::{Name, db::HirDatabase, DefId, Path, PerNs, nameres::ModuleScope};
+use crate::{
+    Name, DefId, Path, PerNs,
+    type_ref::TypeRef,
+    nameres::ModuleScope,
+    db::HirDatabase,
+};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -109,5 +116,94 @@ impl Module {
         db: &impl HirDatabase,
     ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
         self.problems_impl(db)
+    }
+}
+
+/// A single field of an enum variant or struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructField {
+    pub(crate) name: Name,
+    pub(crate) type_ref: TypeRef,
+}
+
+impl StructField {
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+    pub fn type_ref(&self) -> &TypeRef {
+        &self.type_ref
+    }
+}
+
+/// Fields of an enum variant or struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VariantData {
+    Struct(Vec<StructField>),
+    Tuple(Vec<StructField>),
+    Unit,
+}
+
+impl VariantData {
+    pub fn fields(&self) -> &[StructField] {
+        match self {
+            VariantData::Struct(fields) | VariantData::Tuple(fields) => fields,
+            _ => &[],
+        }
+    }
+    pub fn is_struct(&self) -> bool {
+        match self {
+            VariantData::Struct(..) => true,
+            _ => false,
+        }
+    }
+    pub fn is_tuple(&self) -> bool {
+        match self {
+            VariantData::Tuple(..) => true,
+            _ => false,
+        }
+    }
+    pub fn is_unit(&self) -> bool {
+        match self {
+            VariantData::Unit => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Struct {
+    pub(crate) def_id: DefId,
+}
+
+impl Struct {
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+        Ok(db.struct_data(self.def_id)?.name.clone())
+    }
+
+    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
+        Ok(db.struct_data(self.def_id)?.variant_data.clone())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Enum {
+    pub(crate) def_id: DefId,
+}
+
+impl Enum {
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+        Ok(db.enum_data(self.def_id)?.name.clone())
+    }
+
+    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, Arc<VariantData>)>> {
+        Ok(db.enum_data(self.def_id)?.variants.clone())
     }
 }
