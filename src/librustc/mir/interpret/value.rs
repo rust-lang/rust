@@ -32,6 +32,9 @@ pub enum ConstValue<'tcx> {
     ByRef(AllocId, &'tcx Allocation, Size),
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert!(CONST_SIZE: ::std::mem::size_of::<ConstValue<'static>>() == 56);
+
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
@@ -89,6 +92,9 @@ pub enum Scalar<Tag=(), Id=AllocId> {
     /// relocation and its associated offset together as a `Pointer` here.
     Ptr(Pointer<Tag, Id>),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert!(SCALAR_SIZE: ::std::mem::size_of::<Scalar>() == 24);
 
 impl<Tag> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
