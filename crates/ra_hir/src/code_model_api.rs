@@ -5,10 +5,12 @@ use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{ast, TreePtr, SyntaxNode};
 
 use crate::{
-    Name, DefId, Path, PerNs,
+    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping,
     type_ref::TypeRef,
     nameres::ModuleScope,
     db::HirDatabase,
+    expr::BodySyntaxMapping,
+    ty::InferenceResult,
 };
 
 /// hir::Crate describes a single crate. It's the main inteface with which
@@ -35,6 +37,14 @@ impl Crate {
     pub fn root_module(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         self.root_module_impl(db)
     }
+}
+
+pub enum Def {
+    Module(Module),
+    Struct(Struct),
+    Enum(Enum),
+    Function(Function),
+    Item,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -205,5 +215,58 @@ impl Enum {
 
     pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, Arc<VariantData>)>> {
         Ok(db.enum_data(self.def_id)?.variants.clone())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Function {
+    pub(crate) def_id: DefId,
+}
+
+/// The declared signature of a function.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FnSignature {
+    pub(crate) args: Vec<TypeRef>,
+    pub(crate) ret_type: TypeRef,
+}
+
+impl FnSignature {
+    pub fn args(&self) -> &[TypeRef] {
+        &self.args
+    }
+
+    pub fn ret_type(&self) -> &TypeRef {
+        &self.ret_type
+    }
+}
+
+impl Function {
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
+    pub fn source(&self, db: &impl HirDatabase) -> TreePtr<ast::FnDef> {
+        self.source_impl(db)
+    }
+
+    pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Cancelable<Arc<BodySyntaxMapping>> {
+        db.body_syntax_mapping(self.def_id)
+    }
+
+    pub fn scopes(&self, db: &impl HirDatabase) -> Cancelable<ScopesWithSyntaxMapping> {
+        let scopes = db.fn_scopes(self.def_id)?;
+        let syntax_mapping = db.body_syntax_mapping(self.def_id)?;
+        Ok(ScopesWithSyntaxMapping {
+            scopes,
+            syntax_mapping,
+        })
+    }
+
+    pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
+        db.fn_signature(self.def_id)
+    }
+
+    pub fn infer(&self, db: &impl HirDatabase) -> Cancelable<Arc<InferenceResult>> {
+        db.infer(self.def_id)
     }
 }
