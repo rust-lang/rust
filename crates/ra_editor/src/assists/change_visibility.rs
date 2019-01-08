@@ -46,7 +46,7 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
-fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
+fn change_vis(ctx: AssistCtx, vis: &ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() != "pub" {
         return None;
     }

@@ -9,8 +9,8 @@ use std::{
 
 use test_utils::{project_dir, dir_tests, read_text, collect_tests};
 use ra_syntax::{
+    SourceFile, AstNode,
     utils::{check_fuzz_invariants, dump_tree},
-    SourceFileNode,
 };
 
 #[test]
@@ -27,7 +27,7 @@ fn parser_tests() {
         &test_data_dir(),
         &["parser/inline/ok", "parser/ok"],
         |text, path| {
-            let file = SourceFileNode::parse(text);
+            let file = SourceFile::parse(text);
             let errors = file.errors();
             assert_eq!(
                 &*errors,
@@ -42,7 +42,7 @@ fn parser_tests() {
         &test_data_dir(),
         &["parser/err", "parser/inline/err"],
         |text, path| {
-            let file = SourceFileNode::parse(text);
+            let file = SourceFile::parse(text);
             let errors = file.errors();
             assert_ne!(
                 &*errors,
@@ -85,7 +85,7 @@ fn self_hosting_parsing() {
     {
         count += 1;
         let text = read_text(entry.path());
-        let node = SourceFileNode::parse(&text);
+        let node = SourceFile::parse(&text);
         let errors = node.errors();
         assert_eq!(
             &*errors,

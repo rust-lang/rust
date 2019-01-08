@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use ra_syntax::{
+    TextRange, SyntaxNode,
     ast::{self, AstNode, NameOwner, ModuleItemOwner},
-    TextRange, SyntaxNodeRef,
 };
 use ra_db::{Cancelable, SyntaxDatabase};
 
@@ -30,7 +30,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Ru
     Ok(res)
 }
 
-fn runnable(db: &RootDatabase, file_id: FileId, item: SyntaxNodeRef) -> Option<Runnable> {
+fn runnable(db: &RootDatabase, file_id: FileId, item: &SyntaxNode) -> Option<Runnable> {
     if let Some(fn_def) = ast::FnDef::cast(item) {
         runnable_fn(fn_def)
     } else if let Some(m) = ast::Module::cast(item) {
@@ -40,7 +40,7 @@ fn runnable(db: &RootDatabase, file_id: FileId, item: SyntaxNodeRef) -> Option<R
     }
 }
 
-fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
+fn runnable_fn(fn_def: &ast::FnDef) -> Option<Runnable> {
     let name = fn_def.name()?.text();
     let kind = if name == "main" {
         RunnableKind::Bin
@@ -57,12 +57,12 @@ fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
     })
 }
 
-fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Option<Runnable> {
+fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Option<Runnable> {
     let has_test_function = module
         .item_list()?
         .items()
-        .filter_map(|it| match it {
-            ast::ModuleItem::FnDef(it) => Some(it),
+        .filter_map(|it| match it.kind() {
+            ast::ModuleItemKind::FnDef(it) => Some(it),
             _ => None,
         })
         .any(|f| f.has_atom_attr("test"));

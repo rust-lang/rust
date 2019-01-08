@@ -1,4 +1,4 @@
-use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
+use ra_syntax::{AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TreePtr};
 
 /// A pointer to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -8,18 +8,18 @@ pub struct LocalSyntaxPtr {
 }
 
 impl LocalSyntaxPtr {
-    pub fn new(node: SyntaxNodeRef) -> LocalSyntaxPtr {
+    pub fn new(node: &SyntaxNode) -> LocalSyntaxPtr {
         LocalSyntaxPtr {
             range: node.range(),
             kind: node.kind(),
         }
     }
 
-    pub fn resolve(self, file: &SourceFileNode) -> SyntaxNode {
+    pub fn resolve(self, file: &SourceFile) -> TreePtr<SyntaxNode> {
         let mut curr = file.syntax();
         loop {
             if curr.range() == self.range && curr.kind() == self.kind {
-                return curr.owned();
+                return curr.to_owned();
             }
             curr = curr
                 .children()
@@ -40,7 +40,7 @@ impl LocalSyntaxPtr {
 #[test]
 fn test_local_syntax_ptr() {
     use ra_syntax::{ast, AstNode};
-    let file = SourceFileNode::parse("struct Foo { f: u32, }");
+    let file = SourceFile::parse("struct Foo { f: u32, }");
     let field = file
         .syntax()
         .descendants()
@@ -48,5 +48,5 @@ fn test_local_syntax_ptr() {
         .unwrap();
     let ptr = LocalSyntaxPtr::new(field.syntax());
     let field_syntax = ptr.resolve(&file);
-    assert_eq!(field.syntax(), field_syntax);
+    assert_eq!(field.syntax(), &*field_syntax);
 }

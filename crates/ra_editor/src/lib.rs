@@ -21,11 +21,10 @@ pub use self::{
 };
 use ra_text_edit::TextEditBuilder;
 use ra_syntax::{
-    algo::find_leaf_at_offset,
-    ast::{self, AstNode},
-    SourceFileNode,
+    SourceFile, SyntaxNode, TextRange, TextUnit, Direction,
     SyntaxKind::{self, *},
-    SyntaxNodeRef, TextRange, TextUnit, Direction,
+    ast::{self, AstNode},
+    algo::find_leaf_at_offset,
 };
 use rustc_hash::FxHashSet;
 
@@ -49,7 +48,7 @@ pub struct Diagnostic {
     pub fix: Option<LocalEdit>,
 }
 
-pub fn matching_brace(file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
+pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] = &[
         L_CURLY, R_CURLY, L_BRACK, R_BRACK, L_PAREN, R_PAREN, L_ANGLE, R_ANGLE,
     ];
@@ -67,7 +66,7 @@ pub fn matching_brace(file: &SourceFileNode, offset: TextUnit) -> Option<TextUni
     Some(matching_node.range().start())
 }
 
-pub fn highlight(root: SyntaxNodeRef) -> Vec<HighlightedRange> {
+pub fn highlight(root: &SyntaxNode) -> Vec<HighlightedRange> {
     // Visited nodes to handle highlighting priorities
     let mut highlighted = FxHashSet::default();
     let mut res = Vec::new();
@@ -117,26 +116,25 @@ pub fn highlight(root: SyntaxNodeRef) -> Vec<HighlightedRange> {
     res
 }
 
-pub fn syntax_tree(file: &SourceFileNode) -> String {
+pub fn syntax_tree(file: &SourceFile) -> String {
     ::ra_syntax::utils::dump_tree(file.syntax())
 }
 
-pub fn find_node_at_offset<'a, N: AstNode<'a>>(
-    syntax: SyntaxNodeRef<'a>,
-    offset: TextUnit,
-) -> Option<N> {
+pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
     find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
 }
 
 #[cfg(test)]
 mod tests {
+    use ra_syntax::AstNode;
+
     use crate::test_utils::{add_cursor, assert_eq_dbg, assert_eq_text, extract_offset};
 
     use super::*;
 
     #[test]
     fn test_highlighting() {
-        let file = SourceFileNode::parse(
+        let file = SourceFile::parse(
             r#"
 // comment
 fn main() {}
@@ -159,7 +157,7 @@ fn main() {}
     fn test_matching_brace() {
         fn do_check(before: &str, after: &str) {
             let (pos, before) = extract_offset(before);
-            let file = SourceFileNode::parse(&before);
+            let file = SourceFile::parse(&before);
             let new_pos = match matching_brace(&file, pos) {
                 None => pos,
                 Some(pos) => pos,

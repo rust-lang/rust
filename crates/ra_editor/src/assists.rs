@@ -12,7 +12,7 @@ mod split_import;
 
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
-    Direction, SyntaxNodeRef, TextUnit, TextRange,SourceFileNode, AstNode,
+    Direction, SyntaxNode, TextUnit, TextRange, SourceFile, AstNode,
     algo::{find_leaf_at_offset, find_covering_node, LeafAtOffset},
 };
 
@@ -28,7 +28,7 @@ pub use self::{
 };
 
 /// Return all the assists applicable at the given position.
-pub fn assists(file: &SourceFileNode, range: TextRange) -> Vec<LocalEdit> {
+pub fn assists(file: &SourceFile, range: TextRange) -> Vec<LocalEdit> {
     let ctx = AssistCtx::new(file, range);
     [
         flip_comma,
@@ -50,7 +50,7 @@ pub struct LocalEdit {
     pub cursor_position: Option<TextUnit>,
 }
 
-fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<SyntaxNodeRef> {
+fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&SyntaxNode> {
     node.siblings(direction)
         .skip(1)
         .find(|node| !node.kind().is_trivia())
@@ -88,7 +88,7 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
 /// easier to just compute the edit eagarly :-)
 #[derive(Debug, Clone)]
 pub struct AssistCtx<'a> {
-    source_file: &'a SourceFileNode,
+    source_file: &'a SourceFile,
     range: TextRange,
     should_compute_edit: bool,
 }
@@ -106,7 +106,7 @@ struct AssistBuilder {
 }
 
 impl<'a> AssistCtx<'a> {
-    pub fn new(source_file: &'a SourceFileNode, range: TextRange) -> AssistCtx {
+    pub fn new(source_file: &'a SourceFile, range: TextRange) -> AssistCtx {
         AssistCtx {
             source_file,
             range,
@@ -145,13 +145,13 @@ impl<'a> AssistCtx<'a> {
         }))
     }
 
-    pub(crate) fn leaf_at_offset(&self) -> LeafAtOffset<SyntaxNodeRef<'a>> {
+    pub(crate) fn leaf_at_offset(&self) -> LeafAtOffset<&'a SyntaxNode> {
         find_leaf_at_offset(self.source_file.syntax(), self.range.start())
     }
-    pub(crate) fn node_at_offset<N: AstNode<'a>>(&self) -> Option<N> {
+    pub(crate) fn node_at_offset<N: AstNode>(&self) -> Option<&'a N> {
         find_node_at_offset(self.source_file.syntax(), self.range.start())
     }
-    pub(crate) fn covering_node(&self) -> SyntaxNodeRef<'a> {
+    pub(crate) fn covering_node(&self) -> &'a SyntaxNode {
         find_covering_node(self.source_file.syntax(), self.range)
     }
 }

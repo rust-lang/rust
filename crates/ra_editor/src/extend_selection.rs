@@ -1,11 +1,10 @@
 use ra_syntax::{
+    Direction, SyntaxNode, TextRange, TextUnit,
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
-    Direction,
     SyntaxKind::*,
-    SyntaxNodeRef, TextRange, TextUnit,
 };
 
-pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
+pub fn extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange> {
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     if range.is_empty() {
         let offset = range.start();
@@ -40,7 +39,7 @@ pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRan
 }
 
 fn extend_single_word_in_comment_or_string(
-    leaf: SyntaxNodeRef,
+    leaf: &SyntaxNode,
     offset: TextUnit,
 ) -> Option<TextRange> {
     let text: &str = leaf.leaf_text()?;
@@ -66,7 +65,7 @@ fn extend_single_word_in_comment_or_string(
     }
 }
 
-fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRange {
+fn extend_ws(root: &SyntaxNode, ws: &SyntaxNode, offset: TextUnit) -> TextRange {
     let ws_text = ws.leaf_text().unwrap();
     let suffix = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
     let prefix = TextRange::from_to(ws.range().start(), offset) - ws.range().start();
@@ -89,9 +88,9 @@ fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRa
     ws.range()
 }
 
-fn pick_best<'a>(l: SyntaxNodeRef<'a>, r: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a> {
+fn pick_best<'a>(l: &'a SyntaxNode, r: &'a SyntaxNode) -> &'a SyntaxNode {
     return if priority(r) > priority(l) { r } else { l };
-    fn priority(n: SyntaxNodeRef) -> usize {
+    fn priority(n: &SyntaxNode) -> usize {
         match n.kind() {
             WHITESPACE => 0,
             IDENT | SELF_KW | SUPER_KW | CRATE_KW | LIFETIME => 2,
@@ -100,7 +99,7 @@ fn pick_best<'a>(l: SyntaxNodeRef<'a>, r: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a
     }
 }
 
-fn extend_comments(node: SyntaxNodeRef) -> Option<TextRange> {
+fn extend_comments(node: &SyntaxNode) -> Option<TextRange> {
     let prev = adj_comments(node, Direction::Prev);
     let next = adj_comments(node, Direction::Next);
     if prev != next {
@@ -110,7 +109,7 @@ fn extend_comments(node: SyntaxNodeRef) -> Option<TextRange> {
     }
 }
 
-fn adj_comments(node: SyntaxNodeRef, dir: Direction) -> SyntaxNodeRef {
+fn adj_comments(node: &SyntaxNode, dir: Direction) -> &SyntaxNode {
     let mut res = node;
     for node in node.siblings(dir) {
         match node.kind() {
@@ -124,13 +123,14 @@ fn adj_comments(node: SyntaxNodeRef, dir: Direction) -> SyntaxNodeRef {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ra_syntax::SourceFileNode;
+    use ra_syntax::{SourceFile, AstNode};
     use test_utils::extract_offset;
+
+    use super::*;
 
     fn do_check(before: &str, afters: &[&str]) {
         let (cursor, before) = extract_offset(before);
-        let file = SourceFileNode::parse(&before);
+        let file = SourceFile::parse(&before);
         let mut range = TextRange::offset_len(cursor, 0.into());
         for &after in afters {
             range = extend_selection(file.syntax(), range).unwrap();

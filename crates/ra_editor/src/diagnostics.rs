@@ -1,25 +1,15 @@
 use itertools::Itertools;
 
 use ra_syntax::{
+    Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
     ast::{self, AstNode},
-    Location,
-    SourceFileNode,
-    SyntaxKind,
-    TextRange,
-};
-use ra_syntax::SyntaxNodeRef;
-use ra_text_edit::{
-    TextEdit,
-    TextEditBuilder,
-};
 
-use crate::{
-    Diagnostic,
-    LocalEdit,
-    Severity,
 };
+use ra_text_edit::{TextEdit, TextEditBuilder};
 
-pub fn diagnostics(file: &SourceFileNode) -> Vec<Diagnostic> {
+use crate::{Diagnostic, LocalEdit, Severity};
+
+pub fn diagnostics(file: &SourceFile) -> Vec<Diagnostic> {
     fn location_to_range(location: Location) -> TextRange {
         match location {
             Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
@@ -48,7 +38,7 @@ pub fn diagnostics(file: &SourceFileNode) -> Vec<Diagnostic> {
 
 fn check_unnecessary_braces_in_use_statement(
     acc: &mut Vec<Diagnostic>,
-    node: SyntaxNodeRef,
+    node: &SyntaxNode,
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node)?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
@@ -79,7 +69,7 @@ fn check_unnecessary_braces_in_use_statement(
 }
 
 fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
-    single_use_tree: ast::UseTree,
+    single_use_tree: &ast::UseTree,
 ) -> Option<TextEdit> {
     let use_tree_list_node = single_use_tree.syntax().parent()?;
     if single_use_tree
@@ -102,7 +92,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
 
 fn check_struct_shorthand_initialization(
     acc: &mut Vec<Diagnostic>,
-    node: SyntaxNodeRef,
+    node: &SyntaxNode,
 ) -> Option<()> {
     let struct_lit = ast::StructLit::cast(node)?;
     let named_field_list = struct_lit.named_field_list()?;
@@ -138,10 +128,10 @@ mod tests {
 
     use super::*;
 
-    type DiagnosticChecker = fn(&mut Vec<Diagnostic>, SyntaxNodeRef) -> Option<()>;
+    type DiagnosticChecker = fn(&mut Vec<Diagnostic>, &SyntaxNode) -> Option<()>;
 
     fn check_not_applicable(code: &str, func: DiagnosticChecker) {
-        let file = SourceFileNode::parse(code);
+        let file = SourceFile::parse(code);
         let mut diagnostics = Vec::new();
         for node in file.syntax().descendants() {
             func(&mut diagnostics, node);
@@ -150,7 +140,7 @@ mod tests {
     }
 
     fn check_apply(before: &str, after: &str, func: DiagnosticChecker) {
-        let file = SourceFileNode::parse(before);
+        let file = SourceFile::parse(before);
         let mut diagnostics = Vec::new();
         for node in file.syntax().descendants() {
             func(&mut diagnostics, node);

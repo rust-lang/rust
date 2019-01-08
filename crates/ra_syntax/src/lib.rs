@@ -42,52 +42,42 @@ pub use crate::{
     ast::AstNode,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
-    yellow::{
-        Direction, OwnedRoot, RefRoot, SyntaxError, SyntaxNode, SyntaxNodeRef, TreeRoot, WalkEvent, Location,
-    },
+    yellow::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreePtr},
 };
 
 use ra_text_edit::AtomTextEdit;
 use crate::yellow::GreenNode;
 
-/// `SourceFileNode` represents a parse tree for a single Rust file.
-pub use crate::ast::{SourceFile, SourceFileNode};
+/// `SourceFile` represents a parse tree for a single Rust file.
+pub use crate::ast::SourceFile;
 
-impl SourceFileNode {
-    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SourceFileNode {
+impl SourceFile {
+    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreePtr<SourceFile> {
         let root = SyntaxNode::new(green, errors);
         if cfg!(debug_assertions) {
-            utils::validate_block_structure(root.borrowed());
+            utils::validate_block_structure(&root);
         }
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        ast::SourceFileNode { syntax: root }
+        TreePtr::cast(root)
     }
-    pub fn parse(text: &str) -> SourceFileNode {
+    pub fn parse(text: &str) -> TreePtr<SourceFile> {
         let tokens = tokenize(&text);
         let (green, errors) =
             parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
-        SourceFileNode::new(green, errors)
+        SourceFile::new(green, errors)
     }
-    pub fn reparse(&self, edit: &AtomTextEdit) -> SourceFileNode {
+    pub fn reparse(&self, edit: &AtomTextEdit) -> TreePtr<SourceFile> {
         self.incremental_reparse(edit)
             .unwrap_or_else(|| self.full_reparse(edit))
     }
-    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<SourceFileNode> {
+    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreePtr<SourceFile>> {
         reparsing::incremental_reparse(self.syntax(), edit, self.errors())
-            .map(|(green_node, errors)| SourceFileNode::new(green_node, errors))
+            .map(|(green_node, errors)| SourceFile::new(green_node, errors))
     }
-    fn full_reparse(&self, edit: &AtomTextEdit) -> SourceFileNode {
+    fn full_reparse(&self, edit: &AtomTextEdit) -> TreePtr<SourceFile> {
         let text =
             text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
-        SourceFileNode::parse(&text)
-    }
-    /// Typed AST representation of the parse tree.
-    pub fn ast(&self) -> ast::SourceFile {
-        self.borrowed()
-    }
-    /// Untyped homogeneous representation of the parse tree.
-    pub fn syntax(&self) -> SyntaxNodeRef {
-        self.syntax.borrowed()
+        SourceFile::parse(&text)
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
         let mut errors = self.syntax.root_data().clone();

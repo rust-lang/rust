@@ -11,89 +11,92 @@ the below applies to the result of this template
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
-use std::hash::{Hash, Hasher};
+use rowan::TransparentNewType;
 
 use crate::{
-    ast,
-    SyntaxNode, SyntaxNodeRef, AstNode,
-    yellow::{TreeRoot, RaTypes, OwnedRoot, RefRoot},
-    SyntaxKind::*,
+    SyntaxNode, SyntaxKind::*,
+    yellow::{RaTypes, TreePtr},
+    ast::{self, AstNode},
 };
 {% for node, methods in ast %}
 // {{ node }}
 
 {%- if methods.enum %}
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct {{ node }} {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for {{ node }} {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {{ node }}<'a> {
+pub enum {{ node }}Kind<'a> {
 {%- for kind in methods.enum %}
-    {{ kind }}({{ kind }}<'a>),
+    {{ kind }}(&'a {{ kind }}),
 {%- endfor %}
 }
 
-impl<'a> AstNode<'a> for {{ node }}<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for {{ node }} {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-{%- for kind in methods.enum %}
-            {{ kind | SCREAM }} => Some({{ node }}::{{ kind }}({{ kind }} { syntax })),
-{%- endfor %}
+            {%- for kind in methods.enum %}
+            | {{ kind | SCREAM }}
+            {%- endfor %} => Some({{ node }}::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-{%- for kind in methods.enum %}
-            {{ node }}::{{ kind }}(inner) => inner.syntax(),
-{%- endfor %}
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<{{ node }}> { TreePtr::cast(self.syntax.to_owned()) }
+}
+
+impl {{ node }} {
+    pub fn kind(&self) -> {{ node }}Kind {
+        match self.syntax.kind() {
+            {%- for kind in methods.enum %}
+            {{ kind | SCREAM }} => {{ node }}Kind::{{ kind }}({{ kind }}::cast(&self.syntax).unwrap()),
+            {%- endfor %}
+            _ => unreachable!(),
         }
     }
 }
 {% else %}
-#[derive(Debug, Clone, Copy,)]
-pub struct {{ node }}Node<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct {{ node }} {
+    pub(crate) syntax: SyntaxNode,
 }
-pub type {{ node }}<'a> = {{ node }}Node<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<{{node}}Node<R1>> for {{node}}Node<R2> {
-    fn eq(&self, other: &{{node}}Node<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for {{node}}Node<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for {{node}}Node<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+unsafe impl TransparentNewType for {{ node }} {
+    type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl<'a> AstNode<'a> for {{ node }}<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+impl AstNode for {{ node }} {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            {{ node | SCREAM }} => Some({{ node }} { syntax }),
+            {{ node | SCREAM }} => Some({{ node }}::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> {{ node }}Node<R> {
-    pub fn borrowed(&self) -> {{ node }} {
-        {{ node }}Node { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> {{ node }}Node {
-        {{ node }}Node { syntax: self.syntax.owned() }
-    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreePtr<{{ node }}> { TreePtr::cast(self.syntax.to_owned()) }
 }
 
 {% endif %}
 {% if methods.traits -%}
+
 {%- for t in methods.traits -%}
-impl<'a> ast::{{ t }}<'a> for {{ node }}<'a> {}
+impl ast::{{ t }} for {{ node }} {}
 {% endfor -%}
+
 {%- endif -%}
 
-impl<'a> {{ node }}<'a> {
+impl {{ node }} {
 {%- if methods.collections -%}
 {%- for m in methods.collections -%}
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
-    pub fn {{ method_name }}(self) -> impl Iterator<Item = {{ ChildName }}<'a>> + 'a {
+    pub fn {{ method_name }}(&self) -> impl Iterator<Item = &{{ ChildName }}> {
         super::children(self)
     }
 {% endfor -%}
@@ -109,7 +112,7 @@ impl<'a> {{ node }}<'a> {
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
 {%- endif %}
-    pub fn {{ method_name }}(self) -> Option<{{ ChildName }}<'a>> {
+    pub fn {{ method_name }}(&self) -> Option<&{{ ChildName }}> {
         super::child_opt(self)
     }
 {% endfor -%}

@@ -7,7 +7,7 @@ use std::{
 
 use ra_db::Cancelable;
 use ra_syntax::{
-    TextRange, TextUnit,
+    TextRange, TextUnit, TreePtr,
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
 };
 
@@ -29,11 +29,11 @@ impl Function {
         self.def_id
     }
 
-    pub fn syntax(&self, db: &impl HirDatabase) -> ast::FnDefNode {
+    pub fn syntax(&self, db: &impl HirDatabase) -> TreePtr<ast::FnDef> {
         let def_loc = self.def_id.loc(db);
         assert!(def_loc.kind == DefKind::Function);
         let syntax = db.file_item(def_loc.source_item_id);
-        ast::FnDef::cast(syntax.borrowed()).unwrap().owned()
+        ast::FnDef::cast(&syntax).unwrap().to_owned()
     }
 
     pub fn body(&self, db: &impl HirDatabase) -> Cancelable<Arc<Body>> {
@@ -59,7 +59,7 @@ impl Function {
 
     pub fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
         let syntax = self.syntax(db);
-        FnSignatureInfo::new(syntax.borrowed())
+        FnSignatureInfo::new(&syntax)
     }
 
     pub fn infer(&self, db: &impl HirDatabase) -> Cancelable<Arc<InferenceResult>> {
@@ -99,8 +99,7 @@ impl FnSignature {
 
 pub(crate) fn fn_signature(db: &impl HirDatabase, def_id: DefId) -> Arc<FnSignature> {
     let func = Function::new(def_id);
-    let syntax = func.syntax(db);
-    let node = syntax.borrowed();
+    let node = func.syntax(db);
     let mut args = Vec::new();
     if let Some(param_list) = node.param_list() {
         if let Some(self_param) = param_list.self_param() {
@@ -144,7 +143,7 @@ pub struct FnSignatureInfo {
 }
 
 impl FnSignatureInfo {
-    fn new(node: ast::FnDef) -> Option<Self> {
+    fn new(node: &ast::FnDef) -> Option<Self> {
         let name = node.name()?.text().to_string();
 
         let mut doc = None;
@@ -207,7 +206,7 @@ impl FnSignatureInfo {
         })
     }
 
-    fn extract_doc_comments(node: ast::FnDef) -> Option<(TextRange, String)> {
+    fn extract_doc_comments(node: &ast::FnDef) -> Option<(TextRange, String)> {
         if node.doc_comments().count() == 0 {
             return None;
         }
@@ -227,7 +226,7 @@ impl FnSignatureInfo {
         Some((range, comment_text))
     }
 
-    fn param_list(node: ast::FnDef) -> Vec<String> {
+    fn param_list(node: &ast::FnDef) -> Vec<String> {
         let mut res = vec![];
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {

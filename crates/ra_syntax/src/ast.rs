@@ -1,119 +1,115 @@
 mod generated;
 
 use std::marker::PhantomData;
-use std::string::String as RustString;
 
 use itertools::Itertools;
 
 pub use self::generated::*;
 use crate::{
-    yellow::{RefRoot, SyntaxNodeChildren},
+    yellow::{SyntaxNode, SyntaxNodeChildren, TreePtr, RaTypes},
     SmolStr,
     SyntaxKind::*,
-    SyntaxNodeRef,
 };
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
-pub trait AstNode<'a>: Clone + Copy + 'a {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self>
+pub trait AstNode: rowan::TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>> {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self>
     where
         Self: Sized;
-    fn syntax(self) -> SyntaxNodeRef<'a>;
+    fn syntax(&self) -> &SyntaxNode;
+    fn to_owned(&self) -> TreePtr<Self>;
 }
 
-pub trait NameOwner<'a>: AstNode<'a> {
-    fn name(self) -> Option<Name<'a>> {
+pub trait NameOwner: AstNode {
+    fn name(&self) -> Option<&Name> {
         child_opt(self)
     }
 }
 
-pub trait VisibilityOwner<'a>: AstNode<'a> {
-    fn visibility(self) -> Option<Visibility<'a>> {
+pub trait VisibilityOwner: AstNode {
+    fn visibility(&self) -> Option<&Visibility> {
         child_opt(self)
     }
 }
 
-pub trait LoopBodyOwner<'a>: AstNode<'a> {
-    fn loop_body(self) -> Option<Block<'a>> {
+pub trait LoopBodyOwner: AstNode {
+    fn loop_body(&self) -> Option<&Block> {
         child_opt(self)
     }
 }
 
-pub trait ArgListOwner<'a>: AstNode<'a> {
-    fn arg_list(self) -> Option<ArgList<'a>> {
+pub trait ArgListOwner: AstNode {
+    fn arg_list(&self) -> Option<&ArgList> {
         child_opt(self)
     }
 }
 
-pub trait FnDefOwner<'a>: AstNode<'a> {
-    fn functions(self) -> AstChildren<'a, FnDef<'a>> {
+pub trait FnDefOwner: AstNode {
+    fn functions(&self) -> AstChildren<FnDef> {
         children(self)
     }
 }
 
-// ModuleItem
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ItemOrMacro<'a> {
-    Item(ModuleItem<'a>),
-    Macro(MacroCall<'a>),
+    Item(&'a ModuleItem),
+    Macro(&'a MacroCall),
 }
 
-impl<'a> AstNode<'a> for ItemOrMacro<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
-        let res = if let Some(item) = ModuleItem::cast(syntax) {
-            ItemOrMacro::Item(item)
-        } else if let Some(macro_call) = MacroCall::cast(syntax) {
-            ItemOrMacro::Macro(macro_call)
-        } else {
-            return None;
-        };
-        Some(res)
+pub trait ModuleItemOwner: AstNode {
+    fn items(&self) -> AstChildren<ModuleItem> {
+        children(self)
     }
-    fn syntax(self) -> SyntaxNodeRef<'a> {
-        match self {
-            ItemOrMacro::Item(it) => it.syntax(),
-            ItemOrMacro::Macro(it) => it.syntax(),
+    fn items_with_macros(&self) -> ItemOrMacroIter {
+        ItemOrMacroIter(self.syntax().children())
+    }
+}
+
+#[derive(Debug)]
+pub struct ItemOrMacroIter<'a>(SyntaxNodeChildren<'a>);
+
+impl<'a> Iterator for ItemOrMacroIter<'a> {
+    type Item = ItemOrMacro<'a>;
+    fn next(&mut self) -> Option<ItemOrMacro<'a>> {
+        loop {
+            let n = self.0.next()?;
+            if let Some(item) = ModuleItem::cast(n) {
+                return Some(ItemOrMacro::Item(item));
+            }
+            if let Some(call) = MacroCall::cast(n) {
+                return Some(ItemOrMacro::Macro(call));
+            }
         }
     }
 }
 
-pub trait ModuleItemOwner<'a>: AstNode<'a> {
-    fn items(self) -> AstChildren<'a, ModuleItem<'a>> {
-        children(self)
-    }
-
-    fn items_with_macros(self) -> AstChildren<'a, ItemOrMacro<'a>> {
-        children(self)
-    }
-}
-
-pub trait TypeParamsOwner<'a>: AstNode<'a> {
-    fn type_param_list(self) -> Option<TypeParamList<'a>> {
+pub trait TypeParamsOwner: AstNode {
+    fn type_param_list(&self) -> Option<&TypeParamList> {
         child_opt(self)
     }
 
-    fn where_clause(self) -> Option<WhereClause<'a>> {
+    fn where_clause(&self) -> Option<&WhereClause> {
         child_opt(self)
     }
 }
 
-pub trait AttrsOwner<'a>: AstNode<'a> {
-    fn attrs(self) -> AstChildren<'a, Attr<'a>> {
+pub trait AttrsOwner: AstNode {
+    fn attrs(&self) -> AstChildren<Attr> {
         children(self)
     }
 }
 
-pub trait DocCommentsOwner<'a>: AstNode<'a> {
-    fn doc_comments(self) -> AstChildren<'a, Comment<'a>> {
+pub trait DocCommentsOwner: AstNode {
+    fn doc_comments(&self) -> AstChildren<Comment> {
         children(self)
     }
 
     /// Returns the textual content of a doc comment block as a single string.
     /// That is, strips leading `///` and joins lines
-    fn doc_comment_text(self) -> RustString {
+    fn doc_comment_text(&self) -> std::string::String {
         self.doc_comments()
             .filter(|comment| comment.is_doc_comment())
             .map(|comment| {
@@ -130,13 +126,13 @@ pub trait DocCommentsOwner<'a>: AstNode<'a> {
     }
 }
 
-impl<'a> FnDef<'a> {
+impl FnDef {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_atom()).any(|x| x == atom)
     }
 }
 
-impl<'a> Attr<'a> {
+impl Attr {
     pub fn as_atom(&self) -> Option<SmolStr> {
         let tt = self.value()?;
         let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;
@@ -147,7 +143,7 @@ impl<'a> Attr<'a> {
         }
     }
 
-    pub fn as_call(&self) -> Option<(SmolStr, TokenTree<'a>)> {
+    pub fn as_call(&self) -> Option<(SmolStr, &TokenTree)> {
         let tt = self.value()?;
         let (_bra, attr, args, _ket) = tt.syntax().children().collect_tuple()?;
         let args = TokenTree::cast(args)?;
@@ -159,37 +155,37 @@ impl<'a> Attr<'a> {
     }
 }
 
-impl<'a> Lifetime<'a> {
+impl Lifetime {
     pub fn text(&self) -> SmolStr {
         self.syntax().leaf_text().unwrap().clone()
     }
 }
 
-impl<'a> Char<'a> {
+impl Char {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
     }
 }
 
-impl<'a> Byte<'a> {
+impl Byte {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
     }
 }
 
-impl<'a> ByteString<'a> {
+impl ByteString {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
     }
 }
 
-impl<'a> String<'a> {
+impl String {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
     }
 }
 
-impl<'a> Comment<'a> {
+impl Comment {
     pub fn text(&self) -> &SmolStr {
         self.syntax().leaf_text().unwrap()
     }
@@ -251,7 +247,7 @@ impl CommentFlavor {
     }
 }
 
-impl<'a> Whitespace<'a> {
+impl Whitespace {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
     }
@@ -265,36 +261,36 @@ impl<'a> Whitespace<'a> {
     }
 }
 
-impl<'a> Name<'a> {
+impl Name {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child().unwrap();
         ident.leaf_text().unwrap().clone()
     }
 }
 
-impl<'a> NameRef<'a> {
+impl NameRef {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child().unwrap();
         ident.leaf_text().unwrap().clone()
     }
 }
 
-impl<'a> ImplBlock<'a> {
-    pub fn target_type(self) -> Option<TypeRef<'a>> {
+impl ImplBlock {
+    pub fn target_type(&self) -> Option<&TypeRef> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(self) -> Option<TypeRef<'a>> {
+    pub fn target_trait(&self) -> Option<&TypeRef> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,
         }
     }
 
-    fn target(self) -> (Option<TypeRef<'a>>, Option<TypeRef<'a>>) {
+    fn target(&self) -> (Option<&TypeRef>, Option<&TypeRef>) {
         let mut types = children(self);
         let first = types.next();
         let second = types.next();
@@ -302,8 +298,8 @@ impl<'a> ImplBlock<'a> {
     }
 }
 
-impl<'a> Module<'a> {
-    pub fn has_semi(self) -> bool {
+impl Module {
+    pub fn has_semi(&self) -> bool {
         match self.syntax().last_child() {
             None => false,
             Some(node) => node.kind() == SEMI,
@@ -311,8 +307,8 @@ impl<'a> Module<'a> {
     }
 }
 
-impl<'a> LetStmt<'a> {
-    pub fn has_semi(self) -> bool {
+impl LetStmt {
+    pub fn has_semi(&self) -> bool {
         match self.syntax().last_child() {
             None => false,
             Some(node) => node.kind() == SEMI,
@@ -320,35 +316,35 @@ impl<'a> LetStmt<'a> {
     }
 }
 
-impl<'a> IfExpr<'a> {
-    pub fn then_branch(self) -> Option<Block<'a>> {
+impl IfExpr {
+    pub fn then_branch(&self) -> Option<&Block> {
         self.blocks().nth(0)
     }
-    pub fn else_branch(self) -> Option<Block<'a>> {
+    pub fn else_branch(&self) -> Option<&Block> {
         self.blocks().nth(1)
     }
-    fn blocks(self) -> AstChildren<'a, Block<'a>> {
+    fn blocks(&self) -> AstChildren<Block> {
         children(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathSegmentKind<'a> {
-    Name(NameRef<'a>),
+    Name(&'a NameRef),
     SelfKw,
     SuperKw,
     CrateKw,
 }
 
-impl<'a> PathSegment<'a> {
-    pub fn parent_path(self) -> Path<'a> {
+impl PathSegment {
+    pub fn parent_path(&self) -> &Path {
         self.syntax()
             .parent()
             .and_then(Path::cast)
             .expect("segments are always nested in paths")
     }
 
-    pub fn kind(self) -> Option<PathSegmentKind<'a>> {
+    pub fn kind(&self) -> Option<PathSegmentKind> {
         let res = if let Some(name_ref) = self.name_ref() {
             PathSegmentKind::Name(name_ref)
         } else {
@@ -363,20 +359,20 @@ impl<'a> PathSegment<'a> {
     }
 }
 
-impl<'a> Path<'a> {
-    pub fn parent_path(self) -> Option<Path<'a>> {
+impl Path {
+    pub fn parent_path(&self) -> Option<&Path> {
         self.syntax().parent().and_then(Path::cast)
     }
 }
 
-impl<'a> UseTree<'a> {
-    pub fn has_star(self) -> bool {
+impl UseTree {
+    pub fn has_star(&self) -> bool {
         self.syntax().children().any(|it| it.kind() == STAR)
     }
 }
 
-impl<'a> UseTreeList<'a> {
-    pub fn parent_use_tree(self) -> UseTree<'a> {
+impl UseTreeList {
+    pub fn parent_use_tree(&self) -> &UseTree {
         self.syntax()
             .parent()
             .and_then(UseTree::cast)
@@ -384,22 +380,22 @@ impl<'a> UseTreeList<'a> {
     }
 }
 
-fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
+fn child_opt<P: AstNode, C: AstNode>(parent: &P) -> Option<&C> {
     children(parent).next()
 }
 
-fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> AstChildren<'a, C> {
+fn children<P: AstNode, C: AstNode>(parent: &P) -> AstChildren<C> {
     AstChildren::new(parent.syntax())
 }
 
 #[derive(Debug)]
 pub struct AstChildren<'a, N> {
-    inner: SyntaxNodeChildren<RefRoot<'a>>,
+    inner: SyntaxNodeChildren<'a>,
     ph: PhantomData<N>,
 }
 
 impl<'a, N> AstChildren<'a, N> {
-    fn new(parent: SyntaxNodeRef<'a>) -> Self {
+    fn new(parent: &'a SyntaxNode) -> Self {
         AstChildren {
             inner: parent.children(),
             ph: PhantomData,
@@ -407,9 +403,9 @@ impl<'a, N> AstChildren<'a, N> {
     }
 }
 
-impl<'a, N: AstNode<'a>> Iterator for AstChildren<'a, N> {
-    type Item = N;
-    fn next(&mut self) -> Option<N> {
+impl<'a, N: AstNode + 'a> Iterator for AstChildren<'a, N> {
+    type Item = &'a N;
+    fn next(&mut self) -> Option<&'a N> {
         loop {
             if let Some(n) = N::cast(self.inner.next()?) {
                 return Some(n);
@@ -420,13 +416,13 @@ impl<'a, N: AstNode<'a>> Iterator for AstChildren<'a, N> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructFlavor<'a> {
-    Tuple(PosFieldList<'a>),
-    Named(NamedFieldDefList<'a>),
+    Tuple(&'a PosFieldList),
+    Named(&'a NamedFieldDefList),
     Unit,
 }
 
-impl<'a> StructFlavor<'a> {
-    fn from_node<N: AstNode<'a>>(node: N) -> StructFlavor<'a> {
+impl StructFlavor<'_> {
+    fn from_node<N: AstNode>(node: &N) -> StructFlavor {
         if let Some(nfdl) = child_opt::<_, NamedFieldDefList>(node) {
             StructFlavor::Named(nfdl)
         } else if let Some(pfl) = child_opt::<_, PosFieldList>(node) {
@@ -437,31 +433,31 @@ impl<'a> StructFlavor<'a> {
     }
 }
 
-impl<'a> StructDef<'a> {
-    pub fn flavor(self) -> StructFlavor<'a> {
+impl StructDef {
+    pub fn flavor(&self) -> StructFlavor {
         StructFlavor::from_node(self)
     }
 }
 
-impl<'a> EnumVariant<'a> {
-    pub fn flavor(self) -> StructFlavor<'a> {
+impl EnumVariant {
+    pub fn flavor(&self) -> StructFlavor {
         StructFlavor::from_node(self)
     }
 }
 
-impl<'a> PointerType<'a> {
+impl PointerType {
     pub fn is_mut(&self) -> bool {
         self.syntax().children().any(|n| n.kind() == MUT_KW)
     }
 }
 
-impl<'a> ReferenceType<'a> {
+impl ReferenceType {
     pub fn is_mut(&self) -> bool {
         self.syntax().children().any(|n| n.kind() == MUT_KW)
     }
 }
 
-impl<'a> RefExpr<'a> {
+impl RefExpr {
     pub fn is_mut(&self) -> bool {
         self.syntax().children().any(|n| n.kind() == MUT_KW)
     }
@@ -477,7 +473,7 @@ pub enum PrefixOp {
     Neg,
 }
 
-impl<'a> PrefixExpr<'a> {
+impl PrefixExpr {
     pub fn op(&self) -> Option<PrefixOp> {
         match self.syntax().first_child()?.kind() {
             STAR => Some(PrefixOp::Deref),
@@ -552,7 +548,7 @@ pub enum BinOp {
     BitXorAssign,
 }
 
-impl<'a> BinExpr<'a> {
+impl BinExpr {
     pub fn op(&self) -> Option<BinOp> {
         self.syntax()
             .children()
@@ -592,15 +588,15 @@ impl<'a> BinExpr<'a> {
             .next()
     }
 
-    pub fn lhs(self) -> Option<Expr<'a>> {
+    pub fn lhs(&self) -> Option<&Expr> {
         children(self).nth(0)
     }
 
-    pub fn rhs(self) -> Option<Expr<'a>> {
+    pub fn rhs(&self) -> Option<&Expr> {
         children(self).nth(1)
     }
 
-    pub fn sub_exprs(self) -> (Option<Expr<'a>>, Option<Expr<'a>>) {
+    pub fn sub_exprs(&self) -> (Option<&Expr>, Option<&Expr>) {
         let mut children = children(self);
         let first = children.next();
         let second = children.next();
@@ -618,7 +614,7 @@ pub enum SelfParamFlavor {
     MutRef,
 }
 
-impl<'a> SelfParam<'a> {
+impl SelfParam {
     pub fn flavor(&self) -> SelfParamFlavor {
         let borrowed = self.syntax().children().any(|n| n.kind() == AMP);
         if borrowed {
@@ -641,7 +637,7 @@ impl<'a> SelfParam<'a> {
 
 #[test]
 fn test_doc_comment_of_items() {
-    let file = SourceFileNode::parse(
+    let file = SourceFile::parse(
         r#"
         //! doc
         // non-doc

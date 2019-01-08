@@ -103,7 +103,7 @@ impl NamedImport {
             item_id: Some(self.file_item_id),
         };
         let syntax = db.file_item(source_item_id);
-        let offset = syntax.borrowed().range().start();
+        let offset = syntax.range().start();
         self.relative_range + offset
     }
 }
@@ -215,45 +215,45 @@ impl InputModuleItems {
         &mut self,
         file_id: HirFileId,
         file_items: &SourceFileItems,
-        item: ast::ModuleItem,
+        item: &ast::ModuleItem,
     ) -> Option<()> {
-        match item {
-            ast::ModuleItem::StructDef(it) => {
+        match item.kind() {
+            ast::ModuleItemKind::StructDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::EnumDef(it) => {
+            ast::ModuleItemKind::EnumDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::FnDef(it) => {
+            ast::ModuleItemKind::FnDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::TraitDef(it) => {
+            ast::ModuleItemKind::TraitDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::TypeDef(it) => {
+            ast::ModuleItemKind::TypeDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::ImplBlock(_) => {
+            ast::ModuleItemKind::ImplBlock(_) => {
                 // impls don't define items
             }
-            ast::ModuleItem::UseItem(it) => self.add_use_item(file_items, it),
-            ast::ModuleItem::ExternCrateItem(_) => {
+            ast::ModuleItemKind::UseItem(it) => self.add_use_item(file_items, it),
+            ast::ModuleItemKind::ExternCrateItem(_) => {
                 // TODO
             }
-            ast::ModuleItem::ConstDef(it) => {
+            ast::ModuleItemKind::ConstDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::StaticDef(it) => {
+            ast::ModuleItemKind::StaticDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::Module(it) => {
+            ast::ModuleItemKind::Module(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
         }
         Some(())
     }
 
-    fn add_use_item(&mut self, file_items: &SourceFileItems, item: ast::UseItem) {
+    fn add_use_item(&mut self, file_items: &SourceFileItems, item: &ast::UseItem) {
         let file_item_id = file_items.id_of_unchecked(item.syntax());
         let start_offset = item.syntax().range().start();
         Path::expand_use_item(item, |path, range| {
@@ -270,10 +270,10 @@ impl InputModuleItems {
 }
 
 impl ModuleItem {
-    fn new<'a>(
+    fn new(
         file_id: HirFileId,
         file_items: &SourceFileItems,
-        item: impl ast::NameOwner<'a>,
+        item: &impl ast::NameOwner,
     ) -> Option<ModuleItem> {
         let name = item.name()?.as_name();
         let kind = item.syntax().kind();

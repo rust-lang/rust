@@ -77,7 +77,7 @@ impl BodySyntaxMapping {
     pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
     }
-    pub fn node_expr(&self, node: ast::Expr) -> Option<ExprId> {
+    pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_syntax_mapping
             .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()
@@ -88,7 +88,7 @@ impl BodySyntaxMapping {
     pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
     }
-    pub fn node_pat(&self, node: ast::Pat) -> Option<PatId> {
+    pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_syntax_mapping
             .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()
@@ -373,10 +373,10 @@ impl ExprCollector {
         self.exprs.alloc(block)
     }
 
-    fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
+    fn collect_expr(&mut self, expr: &ast::Expr) -> ExprId {
         let syntax_ptr = LocalSyntaxPtr::new(expr.syntax());
-        match expr {
-            ast::Expr::IfExpr(e) => {
+        match expr.kind() {
+            ast::ExprKind::IfExpr(e) => {
                 if let Some(pat) = e.condition().and_then(|c| c.pat()) {
                     // if let -- desugar to match
                     let pat = self.collect_pat(pat);
@@ -419,12 +419,12 @@ impl ExprCollector {
                     )
                 }
             }
-            ast::Expr::BlockExpr(e) => self.collect_block_opt(e.block()),
-            ast::Expr::LoopExpr(e) => {
+            ast::ExprKind::BlockExpr(e) => self.collect_block_opt(e.block()),
+            ast::ExprKind::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
                 self.alloc_expr(Expr::Loop { body }, syntax_ptr)
             }
-            ast::Expr::WhileExpr(e) => {
+            ast::ExprKind::WhileExpr(e) => {
                 let condition = if let Some(condition) = e.condition() {
                     if condition.pat().is_none() {
                         self.collect_expr_opt(condition.expr())
@@ -438,7 +438,7 @@ impl ExprCollector {
                 let body = self.collect_block_opt(e.loop_body());
                 self.alloc_expr(Expr::While { condition, body }, syntax_ptr)
             }
-            ast::Expr::ForExpr(e) => {
+            ast::ExprKind::ForExpr(e) => {
                 let iterable = self.collect_expr_opt(e.iterable());
                 let pat = self.collect_pat_opt(e.pat());
                 let body = self.collect_block_opt(e.loop_body());
@@ -451,7 +451,7 @@ impl ExprCollector {
                     syntax_ptr,
                 )
             }
-            ast::Expr::CallExpr(e) => {
+            ast::ExprKind::CallExpr(e) => {
                 let callee = self.collect_expr_opt(e.expr());
                 let args = if let Some(arg_list) = e.arg_list() {
                     arg_list.args().map(|e| self.collect_expr(e)).collect()
@@ -460,7 +460,7 @@ impl ExprCollector {
                 };
                 self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
             }
-            ast::Expr::MethodCallExpr(e) => {
+            ast::ExprKind::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.expr());
                 let args = if let Some(arg_list) = e.arg_list() {
                     arg_list.args().map(|e| self.collect_expr(e)).collect()
@@ -480,7 +480,7 @@ impl ExprCollector {
                     syntax_ptr,
                 )
             }
-            ast::Expr::MatchExpr(e) => {
+            ast::ExprKind::MatchExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let arms = if let Some(match_arm_list) = e.match_arm_list() {
                     match_arm_list
@@ -495,7 +495,7 @@ impl ExprCollector {
                 };
                 self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
             }
-            ast::Expr::PathExpr(e) => {
+            ast::ExprKind::PathExpr(e) => {
                 let path = e
                     .path()
                     .and_then(Path::from_ast)
@@ -503,25 +503,25 @@ impl ExprCollector {
                     .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
             }
-            ast::Expr::ContinueExpr(_e) => {
+            ast::ExprKind::ContinueExpr(_e) => {
                 // TODO: labels
                 self.alloc_expr(Expr::Continue, syntax_ptr)
             }
-            ast::Expr::BreakExpr(e) => {
+            ast::ExprKind::BreakExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Break { expr }, syntax_ptr)
             }
-            ast::Expr::ParenExpr(e) => {
+            ast::ExprKind::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
                 self.expr_syntax_mapping.insert(syntax_ptr, inner);
                 inner
             }
-            ast::Expr::ReturnExpr(e) => {
+            ast::ExprKind::ReturnExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
-            ast::Expr::StructLit(e) => {
+            ast::ExprKind::StructLit(e) => {
                 let path = e.path().and_then(Path::from_ast);
                 let fields = if let Some(nfl) = e.named_field_list() {
                     nfl.fields()
@@ -558,7 +558,7 @@ impl ExprCollector {
                     syntax_ptr,
                 )
             }
-            ast::Expr::FieldExpr(e) => {
+            ast::ExprKind::FieldExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let name = e
                     .name_ref()
@@ -566,26 +566,26 @@ impl ExprCollector {
                     .unwrap_or_else(Name::missing);
                 self.alloc_expr(Expr::Field { expr, name }, syntax_ptr)
             }
-            ast::Expr::TryExpr(e) => {
+            ast::ExprKind::TryExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 self.alloc_expr(Expr::Try { expr }, syntax_ptr)
             }
-            ast::Expr::CastExpr(e) => {
+            ast::ExprKind::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let type_ref = TypeRef::from_ast_opt(e.type_ref());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
-            ast::Expr::RefExpr(e) => {
+            ast::ExprKind::RefExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let mutability = Mutability::from_mutable(e.is_mut());
                 self.alloc_expr(Expr::Ref { expr, mutability }, syntax_ptr)
             }
-            ast::Expr::PrefixExpr(e) => {
+            ast::ExprKind::PrefixExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let op = e.op();
                 self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr)
             }
-            ast::Expr::LambdaExpr(e) => {
+            ast::ExprKind::LambdaExpr(e) => {
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {
@@ -606,7 +606,7 @@ impl ExprCollector {
                     syntax_ptr,
                 )
             }
-            ast::Expr::BinExpr(e) => {
+            ast::ExprKind::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
                 let rhs = self.collect_expr_opt(e.rhs());
                 let op = e.op();
@@ -614,16 +614,16 @@ impl ExprCollector {
             }
 
             // TODO implement HIR for these:
-            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::TupleExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::Literal(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::TupleExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::Literal(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 
-    fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
+    fn collect_expr_opt(&mut self, expr: Option<&ast::Expr>) -> ExprId {
         if let Some(expr) = expr {
             self.collect_expr(expr)
         } else {
@@ -631,11 +631,11 @@ impl ExprCollector {
         }
     }
 
-    fn collect_block(&mut self, block: ast::Block) -> ExprId {
+    fn collect_block(&mut self, block: &ast::Block) -> ExprId {
         let statements = block
             .statements()
-            .map(|s| match s {
-                ast::Stmt::LetStmt(stmt) => {
+            .map(|s| match s.kind() {
+                ast::StmtKind::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
                     let type_ref = stmt.type_ref().map(TypeRef::from_ast);
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
@@ -645,7 +645,9 @@ impl ExprCollector {
                         initializer,
                     }
                 }
-                ast::Stmt::ExprStmt(stmt) => Statement::Expr(self.collect_expr_opt(stmt.expr())),
+                ast::StmtKind::ExprStmt(stmt) => {
+                    Statement::Expr(self.collect_expr_opt(stmt.expr()))
+                }
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
@@ -655,7 +657,7 @@ impl ExprCollector {
         )
     }
 
-    fn collect_block_opt(&mut self, block: Option<ast::Block>) -> ExprId {
+    fn collect_block_opt(&mut self, block: Option<&ast::Block>) -> ExprId {
         if let Some(block) = block {
             self.collect_block(block)
         } else {
@@ -663,17 +665,17 @@ impl ExprCollector {
         }
     }
 
-    fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
+    fn collect_pat(&mut self, pat: &ast::Pat) -> PatId {
         let syntax_ptr = LocalSyntaxPtr::new(pat.syntax());
-        match pat {
-            ast::Pat::BindPat(bp) => {
+        match pat.kind() {
+            ast::PatKind::BindPat(bp) => {
                 let name = bp
                     .name()
                     .map(|nr| nr.as_name())
                     .unwrap_or_else(Name::missing);
                 self.alloc_pat(Pat::Bind { name }, syntax_ptr)
             }
-            ast::Pat::TupleStructPat(p) => {
+            ast::PatKind::TupleStructPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
                 self.alloc_pat(Pat::TupleStruct { path, args }, syntax_ptr)
@@ -685,7 +687,7 @@ impl ExprCollector {
         }
     }
 
-    fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
+    fn collect_pat_opt(&mut self, pat: Option<&ast::Pat>) -> PatId {
         if let Some(pat) = pat {
             self.collect_pat(pat)
         } else {
@@ -710,7 +712,7 @@ impl ExprCollector {
     }
 }
 
-pub(crate) fn collect_fn_body_syntax(node: ast::FnDef) -> BodySyntaxMapping {
+pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
     let mut collector = ExprCollector::new();
 
     let args = if let Some(param_list) = node.param_list() {
@@ -758,9 +760,7 @@ pub(crate) fn body_syntax_mapping(
     let body_syntax_mapping = match def {
         Def::Function(f) => {
             let node = f.syntax(db);
-            let node = node.borrowed();
-
-            collect_fn_body_syntax(node)
+            collect_fn_body_syntax(&node)
         }
         // TODO: consts, etc.
         _ => panic!("Trying to get body for item type without body"),

@@ -42,7 +42,7 @@ pub struct StructData {
 }
 
 impl StructData {
-    pub(crate) fn new(struct_def: ast::StructDef) -> StructData {
+    pub(crate) fn new(struct_def: &ast::StructDef) -> StructData {
         let name = struct_def.name().map(|n| n.as_name());
         let variant_data = VariantData::new(struct_def.flavor());
         let variant_data = Arc::new(variant_data);
@@ -87,7 +87,7 @@ pub struct EnumData {
 }
 
 impl EnumData {
-    pub(crate) fn new(enum_def: ast::EnumDef) -> Self {
+    pub(crate) fn new(enum_def: &ast::EnumDef) -> Self {
         let name = enum_def.name().map(|n| n.as_name());
         let variants = if let Some(evl) = enum_def.variant_list() {
             evl.variants()

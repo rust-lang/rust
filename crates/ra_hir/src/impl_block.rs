@@ -62,7 +62,7 @@ impl ImplData {
         db: &impl AsRef<LocationIntener<DefLoc, DefId>>,
         file_items: &SourceFileItems,
         module: &Module,
-        node: ast::ImplBlock,
+        node: &ast::ImplBlock,
     ) -> Self {
         let target_trait = node.target_type().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
@@ -71,10 +71,10 @@ impl ImplData {
             item_list
                 .impl_items()
                 .map(|item_node| {
-                    let kind = match item_node {
-                        ast::ImplItem::FnDef(..) => DefKind::Function,
-                        ast::ImplItem::ConstDef(..) => DefKind::Item,
-                        ast::ImplItem::TypeDef(..) => DefKind::Item,
+                    let kind = match item_node.kind() {
+                        ast::ImplItemKind::FnDef(..) => DefKind::Function,
+                        ast::ImplItemKind::ConstDef(..) => DefKind::Item,
+                        ast::ImplItemKind::TypeDef(..) => DefKind::Item,
                     };
                     let item_id = file_items.id_of_unchecked(item_node.syntax());
                     let source_item_id = SourceItemId {
@@ -87,10 +87,10 @@ impl ImplData {
                         ..module_loc
                     };
                     let def_id = def_loc.id(db);
-                    match item_node {
-                        ast::ImplItem::FnDef(..) => ImplItem::Method(Function::new(def_id)),
-                        ast::ImplItem::ConstDef(..) => ImplItem::Const(def_id),
-                        ast::ImplItem::TypeDef(..) => ImplItem::Type(def_id),
+                    match item_node.kind() {
+                        ast::ImplItemKind::FnDef(..) => ImplItem::Method(Function::new(def_id)),
+                        ast::ImplItemKind::ConstDef(..) => ImplItem::Const(def_id),
+                        ast::ImplItemKind::TypeDef(..) => ImplItem::Type(def_id),
                     }
                 })
                 .collect()
@@ -152,8 +152,8 @@ impl ModuleImplBlocks {
     fn collect(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
         let (file_id, module_source) = module.defenition_source(db)?;
         let node = match &module_source {
-            ModuleSource::SourceFile(node) => node.borrowed().syntax(),
-            ModuleSource::Module(node) => node.borrowed().syntax(),
+            ModuleSource::SourceFile(node) => node.syntax(),
+            ModuleSource::Module(node) => node.syntax(),
         };
 
         let source_file_items = db.file_items(file_id.into());

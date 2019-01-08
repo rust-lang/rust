@@ -1,7 +1,7 @@
 use ra_db::{Cancelable, SyntaxDatabase};
 use ra_editor::find_node_at_offset;
 use ra_syntax::{
-    AstNode, SyntaxNode,
+    AstNode, SyntaxNode, TreePtr,
     ast::{self, NameOwner},
     algo::{find_covering_node, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
@@ -88,20 +88,19 @@ fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Cancelable<Option<S
 }
 
 impl NavigationTarget {
-    fn node(&self, db: &RootDatabase) -> Option<SyntaxNode> {
+    fn node(&self, db: &RootDatabase) -> Option<TreePtr<SyntaxNode>> {
         let source_file = db.source_file(self.file_id);
         let source_file = source_file.syntax();
         let node = source_file
             .descendants()
             .find(|node| node.kind() == self.kind && node.range() == self.range)?
-            .owned();
+            .to_owned();
         Some(node)
     }
 
     fn docs(&self, db: &RootDatabase) -> Option<String> {
         let node = self.node(db)?;
-        let node = node.borrowed();
-        fn doc_comments<'a, N: ast::DocCommentsOwner<'a>>(node: N) -> Option<String> {
+        fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
             let comments = node.doc_comment_text();
             if comments.is_empty() {
                 None
@@ -119,7 +118,7 @@ impl NavigationTarget {
             .visit(doc_comments::<ast::TypeDef>)
             .visit(doc_comments::<ast::ConstDef>)
             .visit(doc_comments::<ast::StaticDef>)
-            .accept(node)?
+            .accept(&node)?
     }
 
     /// Get a description of this node.
@@ -128,50 +127,49 @@ impl NavigationTarget {
     fn description(&self, db: &RootDatabase) -> Option<String> {
         // TODO: After type inference is done, add type information to improve the output
         let node = self.node(db)?;
-        let node = node.borrowed();
         // TODO: Refactor to be have less repetition
         visitor()
-            .visit(|node: ast::FnDef| {
+            .visit(|node: &ast::FnDef| {
                 let mut string = "fn ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::StructDef| {
+            .visit(|node: &ast::StructDef| {
                 let mut string = "struct ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::EnumDef| {
+            .visit(|node: &ast::EnumDef| {
                 let mut string = "enum ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::TraitDef| {
+            .visit(|node: &ast::TraitDef| {
                 let mut string = "trait ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::Module| {
+            .visit(|node: &ast::Module| {
                 let mut string = "mod ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::TypeDef| {
+            .visit(|node: &ast::TypeDef| {
                 let mut string = "type ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::ConstDef| {
+            .visit(|node: &ast::ConstDef| {
                 let mut string = "const ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .visit(|node: ast::StaticDef| {
+            .visit(|node: &ast::StaticDef| {
                 let mut string = "static ".to_string();
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
-            .accept(node)?
+            .accept(&node)?
     }
 }
 

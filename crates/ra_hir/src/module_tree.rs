@@ -5,9 +5,9 @@ use arrayvec::ArrayVec;
 use relative_path::RelativePathBuf;
 use ra_db::{FileId, SourceRootId, Cancelable, SourceRoot};
 use ra_syntax::{
+    SyntaxNode, TreePtr,
     algo::generate,
     ast::{self, AstNode, NameOwner},
-    SyntaxNode,
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
 
@@ -19,12 +19,11 @@ impl ModuleSource {
         source_item_id: SourceItemId,
     ) -> ModuleSource {
         let module_syntax = db.file_item(source_item_id);
-        let module_syntax = module_syntax.borrowed();
-        if let Some(source_file) = ast::SourceFile::cast(module_syntax) {
-            ModuleSource::SourceFile(source_file.owned())
-        } else if let Some(module) = ast::Module::cast(module_syntax) {
+        if let Some(source_file) = ast::SourceFile::cast(&module_syntax) {
+            ModuleSource::SourceFile(source_file.to_owned())
+        } else if let Some(module) = ast::Module::cast(&module_syntax) {
             assert!(module.item_list().is_some(), "expected inline module");
-            ModuleSource::Module(module.owned())
+            ModuleSource::Module(module.to_owned())
         } else {
             panic!("expected file or inline module")
         }
@@ -49,19 +48,18 @@ impl Submodule {
         let module_source = ModuleSource::from_source_item_id(db, source);
         let submodules = match module_source {
             ModuleSource::SourceFile(source_file) => {
-                collect_submodules(file_id, &file_items, source_file.borrowed())
+                collect_submodules(file_id, &file_items, &*source_file)
             }
             ModuleSource::Module(module) => {
-                let module = module.borrowed();
                 collect_submodules(file_id, &file_items, module.item_list().unwrap())
             }
         };
         return Ok(Arc::new(submodules));
 
-        fn collect_submodules<'a>(
+        fn collect_submodules(
             file_id: HirFileId,
             file_items: &SourceFileItems,
-            root: impl ast::ModuleItemOwner<'a>,
+            root: &impl ast::ModuleItemOwner,
         ) -> Vec<Submodule> {
             modules(root)
                 .map(|(name, m)| Submodule {
@@ -120,8 +118,8 @@ impl ModuleTree {
         source_root: SourceRootId,
     ) -> Cancelable<Arc<ModuleTree>> {
         db.check_canceled()?;
-        let res = create_module_tree(db, source_root)?;
-        Ok(Arc::new(res))
+        let res = create_module_tree(db, source_root);
+        Ok(Arc::new(res?))
     }
 
     pub(crate) fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
@@ -172,14 +170,14 @@ impl ModuleId {
         self,
         tree: &ModuleTree,
         db: &impl HirDatabase,
-    ) -> Vec<(SyntaxNode, Problem)> {
+    ) -> Vec<(TreePtr<SyntaxNode>, Problem)> {
         tree.mods[self]
             .children
             .iter()
             .filter_map(|&link| {
                 let p = tree.links[link].problem.clone()?;
                 let s = link.source(tree, db);
-                let s = s.borrowed().name().unwrap().syntax().owned();
+                let s = s.name().unwrap().syntax().to_owned();
                 Some((s, p))
             })
             .collect()
@@ -193,11 +191,9 @@ impl LinkId {
     pub(crate) fn name(self, tree: &ModuleTree) -> &Name {
         &tree.links[self].name
     }
-    pub(crate) fn source(self, tree: &ModuleTree, db: &impl HirDatabase) -> ast::ModuleNode {
+    pub(crate) fn source(self, tree: &ModuleTree, db: &impl HirDatabase) -> TreePtr<ast::Module> {
         let syntax_node = db.file_item(tree.links[self].source);
-        ast::ModuleNode::cast(syntax_node.borrowed())
-            .unwrap()
-            .owned()
+        ast::Module::cast(&syntax_node).unwrap().to_owned()
     }
 }
 
@@ -213,12 +209,10 @@ impl ModuleTree {
     }
 }
 
-fn modules<'a>(
-    root: impl ast::ModuleItemOwner<'a>,
-) -> impl Iterator<Item = (Name, ast::Module<'a>)> {
+fn modules(root: &impl ast::ModuleItemOwner) -> impl Iterator<Item = (Name, &ast::Module)> {
     root.items()
-        .filter_map(|item| match item {
-            ast::ModuleItem::Module(m) => Some(m),
+        .filter_map(|item| match item.kind() {
+            ast::ModuleItemKind::Module(m) => Some(m),
             _ => None,
         })
         .filter_map(|module| {

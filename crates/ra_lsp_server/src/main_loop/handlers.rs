@@ -11,7 +11,7 @@ use languageserver_types::{
 use ra_analysis::{
     FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, SourceChange,
 };
-use ra_syntax::{text_utils::intersect, TextUnit};
+use ra_syntax::{text_utils::intersect, TextUnit, AstNode};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
 use serde_json::to_value;

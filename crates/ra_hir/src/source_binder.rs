@@ -8,7 +8,7 @@
 use ra_db::{FileId, FilePosition, Cancelable};
 use ra_editor::find_node_at_offset;
 use ra_syntax::{
-    SmolStr, TextRange, SyntaxNodeRef,
+    SmolStr, TextRange, SyntaxNode,
     ast::{self, AstNode, NameOwner},
 };
 
@@ -30,7 +30,7 @@ pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Cancelable
 pub fn module_from_declaration(
     db: &impl HirDatabase,
     file_id: FileId,
-    decl: ast::Module,
+    decl: &ast::Module,
 ) -> Cancelable<Option<Module>> {
     let parent_module = module_from_file_id(db, file_id)?;
     let child_name = decl.name();
@@ -60,7 +60,7 @@ pub fn module_from_position(
 fn module_from_inline(
     db: &impl HirDatabase,
     file_id: FileId,
-    module: ast::Module,
+    module: &ast::Module,
 ) -> Cancelable<Option<Module>> {
     assert!(!module.has_semi());
     let file_id = file_id.into();
@@ -77,7 +77,7 @@ fn module_from_inline(
 pub fn module_from_child_node(
     db: &impl HirDatabase,
     file_id: FileId,
-    child: SyntaxNodeRef,
+    child: &SyntaxNode,
 ) -> Cancelable<Option<Module>> {
     if let Some(m) = child
         .ancestors()
@@ -112,7 +112,7 @@ pub fn function_from_position(
 pub fn function_from_source(
     db: &impl HirDatabase,
     file_id: FileId,
-    fn_def: ast::FnDef,
+    fn_def: &ast::FnDef,
 ) -> Cancelable<Option<Function>> {
     let module = ctry!(module_from_child_node(db, file_id, fn_def.syntax())?);
     let res = function_from_module(db, &module, fn_def);
@@ -122,7 +122,7 @@ pub fn function_from_source(
 pub fn function_from_module(
     db: &impl HirDatabase,
     module: &Module,
-    fn_def: ast::FnDef,
+    fn_def: &ast::FnDef,
 ) -> Function {
     let loc = module.def_id.loc(db);
     let file_id = loc.source_item_id.file_id;
@@ -144,7 +144,7 @@ pub fn function_from_module(
 pub fn function_from_child_node(
     db: &impl HirDatabase,
     file_id: FileId,
-    node: SyntaxNodeRef,
+    node: &SyntaxNode,
 ) -> Cancelable<Option<Function>> {
     let fn_def = ctry!(node.ancestors().find_map(ast::FnDef::cast));
     function_from_source(db, file_id, fn_def)
@@ -170,8 +170,7 @@ pub fn macro_symbols(
         if let Some(exp) = db.expand_macro_invocation(macro_call_id) {
             let loc = macro_call_id.loc(db);
             let syntax = db.file_item(loc.source_item_id);
-            let syntax = syntax.borrowed();
-            let macro_call = ast::MacroCall::cast(syntax).unwrap();
+            let macro_call = ast::MacroCall::cast(&syntax).unwrap();
             let off = macro_call.token_tree().unwrap().syntax().range().start();
             let file = exp.file();
             for trait_def in file.syntax().descendants().filter_map(ast::TraitDef::cast) {

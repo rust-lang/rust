@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
-    AstNode, SyntaxNodeRef, TextUnit, TextRange,
+    AstNode, SyntaxNode, TextUnit, TextRange,
     algo::generate,
     ast,
 };
@@ -127,7 +127,7 @@ impl ScopeEntryWithSyntax {
 }
 
 impl ScopesWithSyntaxMapping {
-    pub fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item = ScopeId> + 'a {
+    pub fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
         generate(self.scope_for(node), move |&scope| {
             self.scopes.scopes[scope].parent
         })
@@ -178,7 +178,7 @@ impl ScopesWithSyntaxMapping {
             .unwrap_or(original_scope)
     }
 
-    pub fn resolve_local_name(&self, name_ref: ast::NameRef) -> Option<ScopeEntryWithSyntax> {
+    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
         let mut shadowed = FxHashSet::default();
         let name = name_ref.as_name();
         let ret = self
@@ -195,7 +195,7 @@ impl ScopesWithSyntaxMapping {
         })
     }
 
-    pub fn find_all_refs(&self, pat: ast::BindPat) -> Vec<ReferenceDescriptor> {
+    pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
         let name_ptr = LocalSyntaxPtr::new(pat.syntax());
         fn_def
@@ -213,7 +213,7 @@ impl ScopesWithSyntaxMapping {
             .collect()
     }
 
-    fn scope_for(&self, node: SyntaxNodeRef) -> Option<ScopeId> {
+    fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
         node.ancestors()
             .map(LocalSyntaxPtr::new)
             .filter_map(|ptr| self.syntax_mapping.syntax_expr(ptr))
@@ -309,7 +309,7 @@ pub struct ReferenceDescriptor {
 #[cfg(test)]
 mod tests {
     use ra_editor::find_node_at_offset;
-    use ra_syntax::SourceFileNode;
+    use ra_syntax::SourceFile;
     use test_utils::{extract_offset, assert_eq_text};
 
     use crate::expr;
@@ -326,9 +326,9 @@ mod tests {
             buf.push_str(&code[off..]);
             buf
         };
-        let file = SourceFileNode::parse(&code);
-        let marker: ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
-        let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
+        let file = SourceFile::parse(&code);
+        let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
+        let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let body_hir = expr::collect_fn_body_syntax(fn_def);
         let scopes = FnScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
@@ -422,9 +422,9 @@ mod tests {
 
     fn do_check_local_name(code: &str, expected_offset: u32) {
         let (off, code) = extract_offset(code);
-        let file = SourceFileNode::parse(&code);
-        let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
-        let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
+        let file = SourceFile::parse(&code);
+        let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
+        let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
         let body_hir = expr::collect_fn_body_syntax(fn_def);
         let scopes = FnScopes::new(Arc::clone(body_hir.body()));

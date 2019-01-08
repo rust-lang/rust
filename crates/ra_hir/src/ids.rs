@@ -1,5 +1,5 @@
 use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
-use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, SourceFile, AstNode, ast};
+use ra_syntax::{TreePtr, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{HirDatabase, PerNs, ModuleId, Def, Function, Struct, Enum, ImplBlock, Crate};
@@ -55,7 +55,10 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_source_file(db: &impl HirDatabase, file_id: HirFileId) -> SourceFileNode {
+    pub(crate) fn hir_source_file(
+        db: &impl HirDatabase,
+        file_id: HirFileId,
+    ) -> TreePtr<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.source_file(file_id),
             HirFileIdRepr::Macro(m) => {
@@ -63,7 +66,7 @@ impl HirFileId {
                     return exp.file();
                 }
                 // returning an empty string looks fishy...
-                SourceFileNode::parse("")
+                SourceFile::parse("")
             }
         }
     }
@@ -233,11 +236,11 @@ pub struct SourceItemId {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
     file_id: HirFileId,
-    arena: Arena<SourceFileItemId, SyntaxNode>,
+    arena: Arena<SourceFileItemId, TreePtr<SyntaxNode>>,
 }
 
 impl SourceFileItems {
-    pub(crate) fn new(file_id: HirFileId, source_file: SourceFile) -> SourceFileItems {
+    pub(crate) fn new(file_id: HirFileId, source_file: &SourceFile) -> SourceFileItems {
         let mut res = SourceFileItems {
             file_id,
             arena: Arena::default(),
@@ -246,20 +249,20 @@ impl SourceFileItems {
         res
     }
 
-    fn init(&mut self, source_file: SourceFile) {
+    fn init(&mut self, source_file: &SourceFile) {
         source_file.syntax().descendants().for_each(|it| {
             if let Some(module_item) = ast::ModuleItem::cast(it) {
-                self.alloc(module_item.syntax().owned());
+                self.alloc(module_item.syntax().to_owned());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
-                self.alloc(macro_call.syntax().owned());
+                self.alloc(macro_call.syntax().to_owned());
             }
         });
     }
 
-    fn alloc(&mut self, item: SyntaxNode) -> SourceFileItemId {
+    fn alloc(&mut self, item: TreePtr<SyntaxNode>) -> SourceFileItemId {
         self.arena.alloc(item)
     }
-    pub(crate) fn id_of(&self, file_id: HirFileId, item: SyntaxNodeRef) -> SourceFileItemId {
+    pub(crate) fn id_of(&self, file_id: HirFileId, item: &SyntaxNode) -> SourceFileItemId {
         assert_eq!(
             self.file_id, file_id,
             "SourceFileItems: wrong file, expected {:?}, got {:?}",
@@ -267,8 +270,8 @@ impl SourceFileItems {
         );
         self.id_of_unchecked(item)
     }
-    pub(crate) fn id_of_unchecked(&self, item: SyntaxNodeRef) -> SourceFileItemId {
-        if let Some((id, _)) = self.arena.iter().find(|(_id, i)| i.borrowed() == item) {
+    pub(crate) fn id_of_unchecked(&self, item: &SyntaxNode) -> SourceFileItemId {
+        if let Some((id, _)) = self.arena.iter().find(|(_id, i)| *i == item) {
             return id;
         }
         // This should not happen. Let's try to give a sensible diagnostics.

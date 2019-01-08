@@ -8,10 +8,9 @@ use hir::{
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, find_node_at_offset, assists, LocalEdit, Severity};
 use ra_syntax::{
-    ast::{self, ArgListOwner, Expr, NameOwner},
-    AstNode, SourceFileNode,
+    SyntaxNode, TextRange, TextUnit, AstNode, SourceFile,
+    ast::{self, ArgListOwner, NameOwner},
     SyntaxKind::*,
-    SyntaxNodeRef, TextRange, TextUnit,
 };
 
 use crate::{
@@ -113,7 +112,6 @@ impl db::RootDatabase {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let ast_module = ast_module.borrowed();
         let name = ast_module.name().unwrap();
         Ok(vec![NavigationTarget {
             file_id,
@@ -163,9 +161,9 @@ impl db::RootDatabase {
 
         fn find_binding<'a>(
             db: &db::RootDatabase,
-            source_file: &'a SourceFileNode,
+            source_file: &'a SourceFile,
             position: FilePosition,
-        ) -> Cancelable<Option<(ast::BindPat<'a>, hir::Function)>> {
+        ) -> Cancelable<Option<(&'a ast::BindPat, hir::Function)>> {
             let syntax = source_file.syntax();
             if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
                 let descr = ctry!(source_binder::function_from_child_node(
@@ -281,7 +279,7 @@ impl db::RootDatabase {
             if symbol.ptr.kind() == FN_DEF {
                 let fn_file = self.source_file(symbol.file_id);
                 let fn_def = symbol.ptr.resolve(&fn_file);
-                let fn_def = ast::FnDef::cast(fn_def.borrowed()).unwrap();
+                let fn_def = ast::FnDef::cast(&fn_def).unwrap();
                 let descr = ctry!(source_binder::function_from_source(
                     self,
                     symbol.file_id,
@@ -352,7 +350,7 @@ impl db::RootDatabase {
             .collect::<Vec<_>>();
         Ok(res)
     }
-    pub(crate) fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<FileSymbol>> {
+    pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Cancelable<Vec<FileSymbol>> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
@@ -379,12 +377,12 @@ impl SourceChange {
 }
 
 enum FnCallNode<'a> {
-    CallExpr(ast::CallExpr<'a>),
-    MethodCallExpr(ast::MethodCallExpr<'a>),
+    CallExpr(&'a ast::CallExpr),
+    MethodCallExpr(&'a ast::MethodCallExpr),
 }
 
 impl<'a> FnCallNode<'a> {
-    pub fn with_node(syntax: SyntaxNodeRef, offset: TextUnit) -> Option<FnCallNode> {
+    pub fn with_node(syntax: &'a SyntaxNode, offset: TextUnit) -> Option<FnCallNode<'a>> {
         if let Some(expr) = find_node_at_offset::<ast::CallExpr>(syntax, offset) {
             return Some(FnCallNode::CallExpr(expr));
         }
@@ -394,10 +392,10 @@ impl<'a> FnCallNode<'a> {
         None
     }
 
-    pub fn name_ref(&self) -> Option<ast::NameRef> {
+    pub fn name_ref(&self) -> Option<&'a ast::NameRef> {
         match *self {
-            FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()? {
-                Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
+            FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()?.kind() {
+                ast::ExprKind::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
                 _ => return None,
             }),
 
@@ -409,7 +407,7 @@ impl<'a> FnCallNode<'a> {
         }
     }
 
-    pub fn arg_list(&self) -> Option<ast::ArgList> {
+    pub fn arg_list(&self) -> Option<&'a ast::ArgList> {
         match *self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),

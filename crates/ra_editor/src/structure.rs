@@ -3,7 +3,7 @@ use crate::TextRange;
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     ast::{self, NameOwner},
-    AstNode, SourceFileNode, SyntaxKind, SyntaxNodeRef, WalkEvent,
+    AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
 #[derive(Debug, Clone)]
@@ -15,7 +15,7 @@ pub struct StructureNode {
     pub kind: SyntaxKind,
 }
 
-pub fn file_structure(file: &SourceFileNode) -> Vec<StructureNode> {
+pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
@@ -38,8 +38,8 @@ pub fn file_structure(file: &SourceFileNode) -> Vec<StructureNode> {
     res
 }
 
-fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
-    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<StructureNode> {
+fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
+    fn decl<N: NameOwner>(node: &N) -> Option<StructureNode> {
         let name = node.name()?;
         Some(StructureNode {
             parent: None,
@@ -60,7 +60,7 @@ fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
         .visit(decl::<ast::TypeDef>)
         .visit(decl::<ast::ConstDef>)
         .visit(decl::<ast::StaticDef>)
-        .visit(|im: ast::ImplBlock| {
+        .visit(|im: &ast::ImplBlock| {
             let target_type = im.target_type()?;
             let target_trait = im.target_trait();
             let label = match target_trait {
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_file_structure() {
-        let file = SourceFileNode::parse(
+        let file = SourceFile::parse(
             r#"
 struct Foo {
     x: i32

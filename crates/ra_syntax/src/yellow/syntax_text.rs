@@ -3,17 +3,17 @@ use std::{fmt, ops};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use crate::{
     text_utils::intersect,
-    SyntaxNodeRef, TextRange, TextUnit,
+    SyntaxNode, TextRange, TextUnit,
 };
 
 #[derive(Clone)]
 pub struct SyntaxText<'a> {
-    node: SyntaxNodeRef<'a>,
+    node: &'a SyntaxNode,
     range: TextRange,
 }
 
 impl<'a> SyntaxText<'a> {
-    pub(crate) fn new(node: SyntaxNodeRef<'a>) -> SyntaxText<'a> {
+    pub(crate) fn new(node: &'a SyntaxNode) -> SyntaxText<'a> {
         SyntaxText {
             node,
             range: node.range(),

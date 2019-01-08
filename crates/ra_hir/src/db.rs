@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_syntax::{SyntaxNode, SourceFileNode};
+use ra_syntax::{SyntaxNode, TreePtr, SourceFile};
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
@@ -22,7 +22,7 @@ pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
     + AsRef<LocationIntener<MacroCallLoc, MacroCallId>>
 {
-    fn hir_source_file(file_id: HirFileId) -> SourceFileNode {
+    fn hir_source_file(file_id: HirFileId) -> TreePtr<SourceFile> {
         type HirSourceFileQuery;
         use fn HirFileId::hir_source_file;
     }
@@ -66,7 +66,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::file_items;
     }
 
-    fn file_item(source_item_id: SourceItemId) -> SyntaxNode {
+    fn file_item(source_item_id: SourceItemId) -> TreePtr<SyntaxNode> {
         type FileItemQuery;
         use fn query_definitions::file_item;
     }

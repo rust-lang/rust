@@ -26,7 +26,7 @@ mod syntax_highlighting;
 
 use std::{fmt, sync::Arc};
 
-use ra_syntax::{SmolStr, SourceFileNode, SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{SmolStr, SourceFile, TreePtr, SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
@@ -308,7 +308,7 @@ impl Analysis {
         self.db.file_text(file_id)
     }
     /// Gets the syntax tree of the file.
-    pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
+    pub fn file_syntax(&self, file_id: FileId) -> TreePtr<SourceFile> {
         self.db.source_file(file_id).clone()
     }
     /// Gets the file's `LineIndex`: data structure to convert between absolute
@@ -322,7 +322,7 @@ impl Analysis {
     }
     /// Returns position of the mathcing brace (all types of braces are
     /// supported).
-    pub fn matching_brace(&self, file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
+    pub fn matching_brace(&self, file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
         ra_editor::matching_brace(file, offset)
     }
     /// Returns a syntax tree represented as `String`, for debug purposes.
@@ -469,7 +469,7 @@ impl LibraryData {
         files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
     ) -> LibraryData {
         let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, _, text)| {
-            let file = SourceFileNode::parse(text);
+            let file = SourceFile::parse(text);
             (*file_id, file)
         }));
         let mut root_change = RootChange::default();

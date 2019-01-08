@@ -1,16 +1,15 @@
-use crate::{
-    algo::visit::{visitor_ctx, VisitorCtx},
-    ast,
-    SourceFileNode,
-    yellow::SyntaxError,
-};
-
 mod byte;
 mod byte_string;
 mod char;
 mod string;
 
-pub(crate) fn validate(file: &SourceFileNode) -> Vec<SyntaxError> {
+use crate::{
+    SourceFile, yellow::SyntaxError, AstNode,
+    ast,
+    algo::visit::{visitor_ctx, VisitorCtx},
+};
+
+pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
     for node in file.syntax().descendants() {
         let _ = visitor_ctx(&mut errors)

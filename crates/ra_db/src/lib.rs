@@ -8,7 +8,7 @@ pub mod mock;
 use std::sync::Arc;
 
 use ra_editor::LineIndex;
-use ra_syntax::{TextUnit, TextRange, SourceFileNode};
+use ra_syntax::{TextUnit, TextRange, SourceFile, TreePtr};
 
 pub use crate::{
     cancelation::{Canceled, Cancelable},
@@ -47,7 +47,7 @@ pub trait BaseDatabase: salsa::Database {
 
 salsa::query_group! {
     pub trait SyntaxDatabase: crate::input::FilesDatabase + BaseDatabase {
-        fn source_file(file_id: FileId) -> SourceFileNode {
+        fn source_file(file_id: FileId) -> TreePtr<SourceFile> {
             type SourceFileQuery;
         }
         fn file_lines(file_id: FileId) -> Arc<LineIndex> {
@@ -56,9 +56,9 @@ salsa::query_group! {
     }
 }
 
-fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
+fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> TreePtr<SourceFile> {
     let text = db.file_text(file_id);
-    SourceFileNode::parse(&*text)
+    SourceFile::parse(&*text)
 }
 fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
