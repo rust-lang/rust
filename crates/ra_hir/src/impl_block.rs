@@ -150,7 +150,7 @@ impl ModuleImplBlocks {
     }
 
     fn collect(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
-        let (file_id, module_source) = module.defenition_source(db)?;
+        let (file_id, module_source) = module.definition_source(db)?;
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
             ModuleSource::Module(node) => node.syntax(),

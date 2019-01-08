@@ -37,7 +37,7 @@ impl Module {
         Ok(Some(link.name(&module_tree).clone()))
     }
 
-    pub fn defenition_source_impl(
+    pub fn definition_source_impl(
         &self,
         db: &impl HirDatabase,
     ) -> Cancelable<(FileId, ModuleSource)> {

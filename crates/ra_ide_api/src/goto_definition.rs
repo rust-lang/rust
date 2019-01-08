@@ -6,22 +6,22 @@ use ra_syntax::{
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase};
 
-pub(crate) fn goto_defenition(
+pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Option<Vec<NavigationTarget>>> {
     let file = db.source_file(position.file_id);
     let syntax = file.syntax();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-        return Ok(Some(reference_defenition(db, position.file_id, name_ref)?));
+        return Ok(Some(reference_definition(db, position.file_id, name_ref)?));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
-        return name_defenition(db, position.file_id, name);
+        return name_definition(db, position.file_id, name);
     }
     Ok(None)
 }
 
-pub(crate) fn reference_defenition(
+pub(crate) fn reference_definition(
     db: &RootDatabase,
     file_id: FileId,
     name_ref: &ast::NameRef,
@@ -51,7 +51,7 @@ pub(crate) fn reference_defenition(
     Ok(navs)
 }
 
-fn name_defenition(
+fn name_definition(
     db: &RootDatabase,
     file_id: FileId,
     name: &ast::Name,
@@ -61,7 +61,7 @@ fn name_defenition(
             if let Some(child_module) =
                 hir::source_binder::module_from_declaration(db, file_id, module)?
             {
-                let (file_id, _) = child_module.defenition_source(db)?;
+                let (file_id, _) = child_module.definition_source(db)?;
                 let name = match child_module.name(db)? {
                     Some(name) => name.to_string().into(),
                     None => "".into(),
@@ -86,7 +86,7 @@ mod tests {
     use crate::mock_analysis::analysis_and_position;
 
     #[test]
-    fn goto_defenition_works_in_items() {
+    fn goto_definition_works_in_items() {
         let (analysis, pos) = analysis_and_position(
             "
             //- /lib.rs
@@ -95,7 +95,7 @@ mod tests {
             ",
         );
 
-        let symbols = analysis.goto_defenition(pos).unwrap().unwrap();
+        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
         assert_eq_dbg(
             r#"[NavigationTarget { file_id: FileId(1), name: "Foo",
                                    kind: STRUCT_DEF, range: [0; 11),
@@ -105,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn goto_defenition_works_for_module_declaration() {
+    fn goto_definition_works_for_module_declaration() {
         let (analysis, pos) = analysis_and_position(
             "
             //- /lib.rs
@@ -115,7 +115,7 @@ mod tests {
         ",
         );
 
-        let symbols = analysis.goto_defenition(pos).unwrap().unwrap();
+        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
         assert_eq_dbg(
             r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
             &symbols,
@@ -130,7 +130,7 @@ mod tests {
         ",
         );
 
-        let symbols = analysis.goto_defenition(pos).unwrap().unwrap();
+        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
         assert_eq_dbg(
             r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
             &symbols,

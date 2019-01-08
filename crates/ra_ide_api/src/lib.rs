@@ -20,7 +20,7 @@ macro_rules! ctry {
 
 mod completion;
 mod db;
-mod goto_defenition;
+mod goto_definition;
 mod imp;
 pub mod mock_analysis;
 mod runnables;
@@ -399,11 +399,11 @@ impl Analysis {
             .collect();
         Ok(res)
     }
-    pub fn goto_defenition(
+    pub fn goto_definition(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<Vec<NavigationTarget>>> {
-        goto_defenition::goto_defenition(&*self.db, position)
+        goto_definition::goto_definition(&*self.db, position)
     }
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {

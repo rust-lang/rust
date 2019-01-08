@@ -75,8 +75,8 @@ impl Module {
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn defenition_source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, ModuleSource)> {
-        self.defenition_source_impl(db)
+    pub fn definition_source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, ModuleSource)> {
+        self.definition_source_impl(db)
     }
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root.
