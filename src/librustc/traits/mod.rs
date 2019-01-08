@@ -188,6 +188,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
 
+    /// Obligation incurred due to a coercion.
+    Coercion { source: Ty<'tcx>, target: Ty<'tcx> },
+
     // Various cases where expressions must be sized/copy/etc:
     /// L = X implies that L is Sized
     AssignmentLhsSized,

@@ -481,6 +481,10 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                    .and_then(|r| Some(super::ObjectTypeBound(ty, r)))
             ),
             super::ObjectCastObligation(ty) => tcx.lift(&ty).map(super::ObjectCastObligation),
+            super::Coercion { source, target } => Some(super::Coercion {
+                source: tcx.lift(&source)?,
+                target: tcx.lift(&target)?,
+            }),
             super::AssignmentLhsSized => Some(super::AssignmentLhsSized),
             super::TupleInitializerSized => Some(super::TupleInitializerSized),
             super::StructInitializerSized => Some(super::StructInitializerSized),

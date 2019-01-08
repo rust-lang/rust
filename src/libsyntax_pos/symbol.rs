@@ -459,6 +459,7 @@ symbols! {
         no_std,
         not,
         note,
+        object_safe_for_dispatch,
         Ok,
         omit_gdb_pretty_printer_section,
         on,

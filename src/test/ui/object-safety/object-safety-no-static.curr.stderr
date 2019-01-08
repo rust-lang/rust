@@ -1,0 +1,12 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/object-safety-no-static.rs:12:1
+   |
+LL |     fn foo() {}
+   |        --- associated function `foo` has no `self` parameter
+...
+LL | fn diverges() -> Box<dyn Foo> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

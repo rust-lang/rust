@@ -1,0 +1,33 @@
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-convert-unsafe-trait-obj-box.rs:16:33
+   |
+LL |     let t_box: Box<dyn Trait> = Box::new(S);
+   |                                 ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
+   = note: required by cast to type `std::boxed::Box<dyn Trait>`
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-convert-unsafe-trait-obj-box.rs:17:15
+   |
+LL |     takes_box(Box::new(S));
+   |               ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
+   = note: required by cast to type `std::boxed::Box<(dyn Trait + 'static)>`
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-convert-unsafe-trait-obj-box.rs:15:5
+   |
+LL |     Box::new(S) as Box<dyn Trait>;
+   |     ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
+   = note: required by cast to type `std::boxed::Box<dyn Trait>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

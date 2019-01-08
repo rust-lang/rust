@@ -1,0 +1,15 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/object-safety-no-static.rs:22:27
+   |
+LL |     fn foo() {}
+   |        --- associated function `foo` has no `self` parameter
+...
+LL |     let b: Box<dyn Foo> = Box::new(Bar);
+   |                           ^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
+   |
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Foo>>` for `std::boxed::Box<Bar>`
+   = note: required by cast to type `std::boxed::Box<dyn Foo>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

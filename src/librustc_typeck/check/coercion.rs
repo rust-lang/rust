@@ -61,10 +61,11 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
-use rustc::ty::{self, TypeAndMut, Ty, subst::SubstsRef};
+use rustc::ty::{self, TypeAndMut, Ty};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
+use rustc::ty::subst::SubstsRef;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
@@ -196,9 +197,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // a "spurious" type variable, and we don't want to have that
         // type variable in memory if the coercion fails.
         let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
-        if unsize.is_ok() {
-            debug!("coerce: unsize successful");
-            return unsize;
+        match unsize {
+            Ok(_) => {
+                debug!("coerce: unsize successful");
+                return unsize;
+            }
+            Err(TypeError::ObjectUnsafeCoercion(did)) => {
+                debug!("coerce: unsize not object safe");
+                return Err(TypeError::ObjectUnsafeCoercion(did));
+            }
+            Err(_) => {}
         }
         debug!("coerce: unsize failed");
 
@@ -539,7 +547,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause = ObligationCause::misc(self.cause.span, self.body_id);
+        let cause = ObligationCause::new(
+            self.cause.span,
+            self.body_id,
+            ObligationCauseCode::Coercion { source, target },
+        );
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -566,14 +578,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref t) if traits.contains(&t.def_id()) => {
-                    if unsize_did == t.def_id() {
-                        if let ty::Tuple(..) = &t.skip_binder().input_types().nth(1).unwrap().kind {
+                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
+                    if unsize_did == tr.def_id() {
+                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().kind;
+                        if let ty::Tuple(..) = sty {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    t.clone()
+                    tr.clone()
                 }
                 _ => {
                     coercion.obligations.push(obligation);

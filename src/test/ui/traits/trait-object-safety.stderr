@@ -8,6 +8,7 @@ LL |     let _: &dyn Tr = &St;
    |                      ^^^ the trait `Tr` cannot be made into an object
    |
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Tr>` for `&St`
+   = note: required by cast to type `&dyn Tr`
 
 error[E0038]: the trait `Tr` cannot be made into an object
   --> $DIR/trait-object-safety.rs:15:12

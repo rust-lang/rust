@@ -790,15 +790,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.object_safety_violations(trait_def_id);
-                        if let Some(err) = self.tcx.report_object_safety_error(
+                        self.tcx.report_object_safety_error(
                             span,
                             trait_def_id,
                             violations,
-                        ) {
-                            err
-                        } else {
-                            return;
-                        }
+                        )
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
@@ -934,11 +930,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
-                if let Some(err) = self.tcx.report_object_safety_error(span, did, violations) {
-                    err
-                } else {
-                    return;
-                }
+                self.tcx.report_object_safety_error(span, did, violations)
             }
 
             // already reported in the query
@@ -1493,11 +1485,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         trait_def_id: DefId,
         violations: Vec<ObjectSafetyViolation>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
-        if self.sess.trait_methods_not_found.borrow().contains(&span) {
-            // Avoid emitting error caused by non-existing method (#58734)
-            return None;
-        }
+    ) -> DiagnosticBuilder<'tcx> {
         let trait_str = self.def_path_str(trait_def_id);
         let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(
@@ -1515,7 +1503,13 @@ impl<'tcx> TyCtxt<'tcx> {
                 };
             }
         }
-        Some(err)
+
+        if self.sess.trait_methods_not_found.borrow().contains(&span) {
+            // Avoid emitting error caused by non-existing method (#58734)
+            err.cancel();
+        }
+
+        err
     }
 }
 
@@ -1925,6 +1919,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ObjectCastObligation(object_ty) => {
                 err.note(&format!("required for the cast to the object type `{}`",
                                   self.ty_to_string(object_ty)));
+            }
+            ObligationCauseCode::Coercion { source: _, target } => {
+                err.note(&format!("required by cast to type `{}`",
+                                  self.ty_to_string(target)));
             }
             ObligationCauseCode::RepeatVec => {
                 err.note("the `Copy` trait is required because the \

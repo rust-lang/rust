@@ -1275,8 +1275,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     span,
                     item.trait_ref().def_id(),
                     object_safety_violations
-                )
-                    .map(|mut err| err.emit());
+                ).emit();
                 return tcx.types.err;
             }
         }
