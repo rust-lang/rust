@@ -1,10 +1,6 @@
 use std::{fmt, ops};
 
-use ra_text_edit::text_utils::contains_offset_nonstrict;
-use crate::{
-    text_utils::intersect,
-    SyntaxNode, TextRange, TextUnit,
-};
+use crate::{SyntaxNode, TextRange, TextUnit};
 
 #[derive(Clone)]
 pub struct SyntaxText<'a> {
@@ -23,7 +19,7 @@ impl<'a> SyntaxText<'a> {
         let range = self.range;
         self.node.descendants().filter_map(move |node| {
             let text = node.leaf_text()?;
-            let range = intersect(range, node.range())?;
+            let range = range.intersection(&node.range())?;
             let range = range - node.range().start();
             Some(&text[range])
         })
@@ -92,13 +88,13 @@ pub trait SyntaxTextSlice: fmt::Debug {
 
 impl SyntaxTextSlice for TextRange {
     fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        intersect(*self, range)
+        self.intersection(&range)
     }
 }
 
 impl SyntaxTextSlice for ops::RangeTo<TextUnit> {
     fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        if !contains_offset_nonstrict(range, self.end) {
+        if !range.contains_inclusive(self.end) {
             return None;
         }
         Some(TextRange::from_to(range.start(), self.end))
@@ -107,7 +103,7 @@ impl SyntaxTextSlice for ops::RangeTo<TextUnit> {
 
 impl SyntaxTextSlice for ops::RangeFrom<TextUnit> {
     fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        if !contains_offset_nonstrict(range, self.start) {
+        if !range.contains_inclusive(self.start) {
             return None;
         }
         Some(TextRange::from_to(self.start, range.end()))

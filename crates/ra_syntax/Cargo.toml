@@ -14,7 +14,7 @@ itertools = "0.8.0"
 drop_bomb = "0.1.4"
 parking_lot = "0.7.0"
 rowan = "0.2.0"
-text_unit = "0.1.5"
+text_unit = "0.1.6"
 ra_text_edit = { path = "../ra_text_edit" }
 
 [dev-dependencies]
