@@ -1,8 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-forgot-ret.rs:3:25
+  --> $DIR/liveness-forgot-ret.rs:3:19
    |
 LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected isize, found ()
+   |    -              ^^^^^ expected isize, found ()    - expected because of this statement
+   |    |
+   |    this function's body doesn't return
    |
    = note: expected type `isize`
               found type `()`

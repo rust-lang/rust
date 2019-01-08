@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `*`
-  --> $DIR/removed-syntax-fixed-vec.rs:3:17
+  --> $DIR/removed-syntax-fixed-vec.rs:1:17
    |
 LL | type v = [isize * 3]; //~ ERROR expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `*`
    |                 ^ expected one of 7 possible tokens here

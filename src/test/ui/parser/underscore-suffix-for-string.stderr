@@ -1,5 +1,5 @@
 warning: underscore literal suffix is not allowed
-  --> $DIR/underscore-suffix-for-string.rs:5:18
+  --> $DIR/underscore-suffix-for-string.rs:4:18
    |
 LL |     let _ = "Foo"_;
    |                  ^

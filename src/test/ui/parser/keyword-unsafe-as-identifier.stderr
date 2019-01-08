@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `unsafe`
-  --> $DIR/keyword-unsafe-as-identifier.rs:6:9
+  --> $DIR/keyword-unsafe-as-identifier.rs:4:9
    |
 LL |     let unsafe = "foo"; //~ error: expected pattern, found keyword `unsafe`
    |         ^^^^^^ expected pattern

@@ -1,4 +1,4 @@
-//! Serialization for client<->server communication.
+//! Serialization for client-server communication.
 
 use std::any::Any;
 use std::char;
@@ -71,15 +71,18 @@ macro_rules! rpc_encode_decode {
     (enum $name:ident $(<$($T:ident),+>)* { $($variant:ident $(($field:ident))*),* $(,)* }) => {
         impl<S, $($($T: Encode<S>),+)*> Encode<S> for $name $(<$($T),+>)* {
             fn encode(self, w: &mut Writer, s: &mut S) {
-                // HACK(eddyb) `Tag` enum duplicated between the
+                // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
-                #[repr(u8)] enum Tag { $($variant),* }
                 #[allow(non_upper_case_globals)]
-                impl Tag { $(const $variant: u8 = Tag::$variant as u8;)* }
+                mod tag {
+                    #[repr(u8)] enum Tag { $($variant),* }
+
+                    $(pub const $variant: u8 = Tag::$variant as u8;)*
+                }
 
                 match self {
                     $($name::$variant $(($field))* => {
-                        <Tag>::$variant.encode(w, s);
+                        tag::$variant.encode(w, s);
                         $($field.encode(w, s);)*
                     })*
                 }
@@ -90,14 +93,17 @@ macro_rules! rpc_encode_decode {
             for $name $(<$($T),+>)*
         {
             fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
-                // HACK(eddyb) `Tag` enum duplicated between the
+                // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
-                #[repr(u8)] enum Tag { $($variant),* }
                 #[allow(non_upper_case_globals)]
-                impl Tag { $(const $variant: u8 = Tag::$variant as u8;)* }
+                mod tag {
+                    #[repr(u8)] enum Tag { $($variant),* }
+
+                    $(pub const $variant: u8 = Tag::$variant as u8;)*
+                }
 
                 match u8::decode(r, s) {
-                    $(<Tag>::$variant => {
+                    $(tag::$variant => {
                         $(let $field = DecodeMut::decode(r, s);)*
                         $name::$variant $(($field))*
                     })*

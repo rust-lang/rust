@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 const
 mut //~ ERROR: const globals cannot be mutable
 //~^ HELP did you mean to declare a static?

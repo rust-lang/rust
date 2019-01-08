@@ -1,27 +1,27 @@
 error[E0308]: mismatched types
-  --> $DIR/consider-removing-last-semi.rs:1:18
+  --> $DIR/consider-removing-last-semi.rs:1:11
    |
-LL |   fn f() -> String {  //~ ERROR mismatched types
-   |  __________________^
-LL | |     0u8;
-LL | |     "bla".to_string();
-   | |                      - help: consider removing this semicolon
-LL | | }
-   | |_^ expected struct `std::string::String`, found ()
+LL | fn f() -> String {  //~ ERROR mismatched types
+   |    -      ^^^^^^ expected struct `std::string::String`, found ()
+   |    |
+   |    this function's body doesn't return
+LL |     0u8;
+LL |     "bla".to_string();
+   |                      - help: consider removing this semicolon
    |
    = note: expected type `std::string::String`
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/consider-removing-last-semi.rs:6:18
+  --> $DIR/consider-removing-last-semi.rs:6:11
    |
-LL |   fn g() -> String {  //~ ERROR mismatched types
-   |  __________________^
-LL | |     "this won't work".to_string();
-LL | |     "removeme".to_string();
-   | |                           - help: consider removing this semicolon
-LL | | }
-   | |_^ expected struct `std::string::String`, found ()
+LL | fn g() -> String {  //~ ERROR mismatched types
+   |    -      ^^^^^^ expected struct `std::string::String`, found ()
+   |    |
+   |    this function's body doesn't return
+LL |     "this won't work".to_string();
+LL |     "removeme".to_string();
+   |                           - help: consider removing this semicolon
    |
    = note: expected type `std::string::String`
               found type `()`

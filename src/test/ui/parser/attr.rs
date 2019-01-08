@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 #![feature(lang_items)]
 
 fn main() {}

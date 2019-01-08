@@ -13,3 +13,5 @@ struct Test3;
 #[derive]
 //~^ WARNING empty trait list
 struct Test4;
+
+fn main() {}

@@ -302,7 +302,7 @@ mod prim_never { }
 /// ```text
 /// error: character literal may only contain one codepoint: 'é'
 /// let c = 'é';
-///         ^^^^
+///         ^^^
 /// ```
 ///
 /// Another implication of the 4-byte fixed size of a `char` is that
@@ -923,7 +923,7 @@ mod prim_usize { }
 /// For more information on how to use references, see [the book's section on "References and
 /// Borrowing"][book-refs].
 ///
-/// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
+/// [book-refs]: ../book/ch04-02-references-and-borrowing.html
 ///
 /// # Trait implementations
 ///

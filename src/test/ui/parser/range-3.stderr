@@ -1,5 +1,5 @@
 error: expected one of `.`, `;`, `?`, or an operator, found `..`
-  --> $DIR/range-3.rs:6:17
+  --> $DIR/range-3.rs:4:17
    |
 LL |     let r = 1..2..3;
    |                 ^^ expected one of `.`, `;`, `?`, or an operator here

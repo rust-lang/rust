@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
 trait A {
     fn foo(*mut self); //~ ERROR cannot pass `self` by raw pointer

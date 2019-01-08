@@ -1,5 +1,5 @@
 error: unknown start of token: /u{37e}
-  --> $DIR/unicode-chars.rs:4:14
+  --> $DIR/unicode-chars.rs:2:14
    |
 LL |     let y = 0;
    |              ^

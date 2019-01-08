@@ -1,0 +1,11 @@
+error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
+  --> $DIR/coherence-all-remote.rs:9:1
+   |
+LL | impl<T> Remote1<T> for isize { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type
+   |
+   = note: only traits defined in the current crate can be implemented for a type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0210`.

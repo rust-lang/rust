@@ -1,3 +1,5 @@
+#![crate_type = "rlib"]
+
 #![no_core] //~ ERROR no_core is experimental
 
-fn main() {}
+pub struct S {}

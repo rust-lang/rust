@@ -1,5 +1,5 @@
 error[E0586]: inclusive range with no end
-  --> $DIR/range_inclusive.rs:6:19
+  --> $DIR/range_inclusive.rs:4:19
    |
 LL |     for _ in 1..= {} //~ERROR inclusive range with no end
    |                   ^

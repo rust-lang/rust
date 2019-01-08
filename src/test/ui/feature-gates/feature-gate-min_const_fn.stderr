@@ -11,7 +11,7 @@ LL |     const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
    |     ^^^^^ trait fns cannot be const
 
 error[E0379]: trait fns cannot be declared const
-  --> $DIR/feature-gate-min_const_fn.rs:17:5
+  --> $DIR/feature-gate-min_const_fn.rs:13:5
    |
 LL |     const fn foo() -> u32 { 0 } //~ ERROR trait fns cannot be declared const
    |     ^^^^^ trait fns cannot be const

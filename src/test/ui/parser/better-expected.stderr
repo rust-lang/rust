@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `3`
-  --> $DIR/better-expected.rs:4:19
+  --> $DIR/better-expected.rs:2:19
    |
 LL |     let x: [isize 3]; //~ ERROR expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `3`
    |         -         ^ expected one of 7 possible tokens here

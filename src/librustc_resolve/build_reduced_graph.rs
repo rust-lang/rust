@@ -42,6 +42,7 @@ impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Module(self.0),
+            ambiguity: None,
             vis: self.1,
             span: self.2,
             expansion: self.3,
@@ -53,6 +54,7 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(self.0, false),
+            ambiguity: None,
             vis: self.1,
             span: self.2,
             expansion: self.3,
@@ -66,6 +68,7 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark, IsMacroExport) 
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(self.0, true),
+            ambiguity: None,
             vis: self.1,
             span: self.2,
             expansion: self.3,
@@ -1024,16 +1027,5 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
             ));
         }
         visit::walk_attribute(self, attr);
-    }
-
-    fn visit_ident(&mut self, ident: Ident) {
-        if ident.name == keywords::DollarCrate.name() {
-            let name = match self.resolver.resolve_crate_root(ident).kind {
-                ModuleKind::Def(_, name) if name != keywords::Invalid.name() => name,
-                _ => keywords::Crate.name(),
-            };
-            ident.span.ctxt().set_dollar_crate_name(name);
-        }
-        visit::walk_ident(self, ident);
     }
 }

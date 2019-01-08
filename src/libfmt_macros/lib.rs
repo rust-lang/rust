@@ -144,7 +144,7 @@ pub struct Parser<'a> {
     /// `Some(raw count)` when the string is "raw", used to position spans correctly
     style: Option<usize>,
     /// Start and end byte offset of every successfully parsed argument
-    pub arg_places: Vec<(usize, usize)>,
+    pub arg_places: Vec<(SpanIndex, SpanIndex)>,
     /// Characters that need to be shifted
     skips: Vec<usize>,
     /// Span offset of the last opening brace seen, used for error reporting
@@ -154,7 +154,7 @@ pub struct Parser<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct SpanIndex(usize);
+pub struct SpanIndex(pub usize);
 
 impl SpanIndex {
     pub fn unwrap(self) -> usize {
@@ -166,7 +166,6 @@ impl<'a> Iterator for Parser<'a> {
     type Item = Piece<'a>;
 
     fn next(&mut self) -> Option<Piece<'a>> {
-        let raw = self.raw();
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
@@ -180,7 +179,7 @@ impl<'a> Iterator for Parser<'a> {
                     } else {
                         let arg = self.argument();
                         if let Some(arg_pos) = self.must_consume('}').map(|end| {
-                            (pos + raw + 1, end + raw + 2)
+                            (self.to_span_index(pos), self.to_span_index(end + 1))
                         }) {
                             self.arg_places.push(arg_pos);
                         }

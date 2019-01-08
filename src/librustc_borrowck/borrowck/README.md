@@ -3,7 +3,7 @@
 > WARNING: This README is more or less obsolete, and will be removed
 > soon! The new system is described in the [rustc guide].
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/borrow_check.html
 
 This pass has the job of enforcing memory safety. This is a subtle
 topic. This docs aim to explain both the practice and the theory

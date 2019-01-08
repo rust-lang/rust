@@ -4,8 +4,15 @@ error: expected one of `)` or `,`, found `(`
 LL |         struct S3(pub $t ());
    |                          ^ expected one of `)` or `,` here
 ...
-LL |     define_struct! { (foo) }
+LL |     define_struct! { (foo) } //~ ERROR cannot find type `foo` in this scope
    |     ------------------------ in this macro invocation
 
-error: aborting due to previous error
+error[E0412]: cannot find type `foo` in this scope
+  --> $DIR/test2.rs:11:23
+   |
+LL |     define_struct! { (foo) } //~ ERROR cannot find type `foo` in this scope
+   |                       ^^^ not found in this scope
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

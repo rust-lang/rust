@@ -47,20 +47,24 @@ LL |     let xe1 = XEmpty1(); //~ ERROR expected function, found struct `XEmpty1
    |               did you mean `XEmpty1 { /* fields */ }`?
 
 error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
-  --> $DIR/empty-struct-braces-expr.rs:22:15
+  --> $DIR/empty-struct-braces-expr.rs:22:19
    |
 LL |     let xe3 = XE::Empty3; //~ ERROR no variant named `Empty3` found for type
-   |               ^^^^^^^^^^ variant not found in `empty_struct::XE`
+   |               ----^^^^^^
+   |               |
+   |               variant not found in `empty_struct::XE`
    |
-   = note: did you mean `empty_struct::XE::XEmpty3`?
+   = help: did you mean `XEmpty3`?
 
 error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
-  --> $DIR/empty-struct-braces-expr.rs:23:15
+  --> $DIR/empty-struct-braces-expr.rs:23:19
    |
 LL |     let xe3 = XE::Empty3(); //~ ERROR no variant named `Empty3` found for type
-   |               ^^^^^^^^^^ variant not found in `empty_struct::XE`
+   |               ----^^^^^^
+   |               |
+   |               variant not found in `empty_struct::XE`
    |
-   = note: did you mean `empty_struct::XE::XEmpty3`?
+   = help: did you mean `XEmpty3`?
 
 error: aborting due to 8 previous errors
 

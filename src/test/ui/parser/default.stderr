@@ -4,5 +4,22 @@ error: expected one of `async`, `const`, `existential`, `extern`, `fn`, `type`, 
 LL |     default pub fn foo<T: Default>() -> T { T::default() } //~ ERROR expected one of
    |             ^^^ expected one of 7 possible tokens here
 
-error: aborting due to previous error
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/default.rs:16:5
+   |
+LL |     pub default fn foo<T: Default>() -> T { //~ ERROR unnecessary visibility qualifier
+   |     ^^^ `pub` not permitted here because it's implied
 
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/default.rs:21:1
+   |
+LL |     fn foo<T: Default>() -> T;
+   |     -------------------------- `foo` from trait
+...
+LL | impl Foo for u32 { //~ ERROR not all trait items implemented, missing: `foo`
+   | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0046, E0449.
+For more information about an error, try `rustc --explain E0046`.

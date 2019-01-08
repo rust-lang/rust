@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // error-pattern:expected `[`, found `vec`
 mod blade_runner {
     #vec[doc(

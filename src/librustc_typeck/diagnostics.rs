@@ -1291,7 +1291,7 @@ You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:
 
 ```compile_fail,E0109
-type X = u32<i32>; // error: type parameters are not allowed on this type
+type X = u32<i32>; // error: type arguments are not allowed on this entity
 ```
 
 Please check that you used the correct type and recheck its definition. Perhaps
@@ -4814,6 +4814,21 @@ An `impl` for a `#[marker]` trait tried to override an associated item.
 Because marker traits are allowed to have multiple implementations for the same
 type, it's not allowed to override anything in those implementations, as it
 would be ambiguous which override should actually be used.
+"##,
+
+
+E0720: r##"
+An `impl Trait` type expands to a recursive type.
+
+An `impl Trait` type must be expandable to a concrete type that contains no
+`impl Trait` types. For example the following example tries to create an
+`impl Trait` type `T` that is equal to `[T, T]`:
+
+```compile_fail,E0720
+fn make_recursive_type() -> impl Sized {
+    [make_recursive_type(), make_recursive_type()]
+}
+```
 "##,
 
 }

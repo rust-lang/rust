@@ -1,11 +1,11 @@
 error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-impl.rs:5:13
+  --> $DIR/issue-14303-impl.rs:3:13
    |
-LL | impl<'a, T, 'b> X {}
+LL | impl<'a, T, 'b> X<T> {}
    |             ^^
 help: move the lifetime parameter prior to the first type parameter
    |
-LL | impl<'a, 'b, T> X {}
+LL | impl<'a, 'b, T> X<T> {}
    |          ^^^ --
 
 error: aborting due to previous error

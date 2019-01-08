@@ -1,5 +1,5 @@
 error: expected pattern, found reserved keyword `abstract`
-  --> $DIR/keyword-abstract.rs:4:9
+  --> $DIR/keyword-abstract.rs:2:9
    |
 LL |     let abstract = (); //~ ERROR expected pattern, found reserved keyword `abstract`
    |         ^^^^^^^^ expected pattern

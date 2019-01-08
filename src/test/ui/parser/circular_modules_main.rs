@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 #[path = "circular_modules_hello.rs"]
 mod circular_modules_hello; //~ ERROR: circular modules
 

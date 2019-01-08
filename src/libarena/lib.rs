@@ -119,6 +119,11 @@ impl<T> Default for TypedArena<T> {
 }
 
 impl<T> TypedArena<T> {
+    pub fn in_arena(&self, ptr: *const T) -> bool {
+        let ptr = ptr as *const T as *mut T;
+
+        self.chunks.borrow().iter().any(|chunk| chunk.start() <= ptr && ptr < chunk.end())
+    }
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {

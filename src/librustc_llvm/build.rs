@@ -132,6 +132,10 @@ fn main() {
             continue;
         }
 
+        if flag.starts_with("-flto") {
+            continue;
+        }
+
         // -Wdate-time is not supported by the netbsd cross compiler
         if is_crossed && target.contains("netbsd") && flag.contains("date-time") {
             continue;
@@ -232,6 +236,7 @@ fn main() {
     }
 
     let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
+    let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
         // llvm-config on OpenBSD doesn't mention stdlib=libc++
@@ -241,6 +246,8 @@ fn main() {
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
         "stdc++_pic"
+    } else if llvm_use_libcxx.is_some() {
+        "c++"
     } else {
         "stdc++"
     };

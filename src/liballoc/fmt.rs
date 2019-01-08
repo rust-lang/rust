@@ -27,6 +27,9 @@
 //! will then parse the format string and determine if the list of arguments
 //! provided is suitable to pass to this format string.
 //!
+//! To convert a single value to a string, use the [`to_string`] method.  This
+//! will use the [`Display`] formatting trait.
+//!
 //! ## Positional parameters
 //!
 //! Each formatting argument is allowed to specify which value argument it's
@@ -487,6 +490,7 @@
 //! [`write!`]: ../../std/macro.write.html
 //! [`Debug`]: trait.Debug.html
 //! [`format!`]: ../../std/macro.format.html
+//! [`to_string`]: ../../std/string/trait.ToString.html
 //! [`writeln!`]: ../../std/macro.writeln.html
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html

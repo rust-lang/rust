@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/integral-variable-unification-error.rs:3:9
    |
 LL |     x = 5.0;
-   |         ^^^ expected integral variable, found floating-point variable
+   |         ^^^ expected integer, found floating-point number
    |
    = note: expected type `{integer}`
               found type `{float}`

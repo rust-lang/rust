@@ -4,5 +4,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `{integer}`
     //~| found type `{float}`
-    //~| expected integral variable, found floating-point variable
+    //~| expected integer, found floating-point number
 }

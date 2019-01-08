@@ -44,7 +44,7 @@ fn want_qux<B>(b: &B)
     where B : Qux
 {
     want_foo_for_any_tcx(b);
-    want_bar_for_any_ccx(b); //~ ERROR E0277
+    want_bar_for_any_ccx(b); //~ ERROR
 }
 
 fn main() {}

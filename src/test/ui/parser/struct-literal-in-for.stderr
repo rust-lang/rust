@@ -1,14 +1,21 @@
 error: expected type, found `3`
-  --> $DIR/struct-literal-in-for.rs:15:12
+  --> $DIR/struct-literal-in-for.rs:13:12
    |
 LL |         x: 3    //~ ERROR expected type, found `3`
    |            ^ expecting a type here because of type ascription
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
-  --> $DIR/struct-literal-in-for.rs:16:12
+  --> $DIR/struct-literal-in-for.rs:14:12
    |
 LL |     }.hi() { //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
    |            ^ expected one of `.`, `;`, `?`, `}`, or an operator here
 
-error: aborting due to 2 previous errors
+error[E0423]: expected value, found struct `Foo`
+  --> $DIR/struct-literal-in-for.rs:12:14
+   |
+LL |     for x in Foo { //~ ERROR expected value, found struct `Foo`
+   |              ^^^ did you mean `(Foo { /* fields */ })`?
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

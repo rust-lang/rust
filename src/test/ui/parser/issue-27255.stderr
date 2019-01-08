@@ -1,5 +1,5 @@
 error: missing `for` in a trait impl
-  --> $DIR/issue-27255.rs:3:7
+  --> $DIR/issue-27255.rs:1:7
    |
 LL | impl A .. {} //~ ERROR
    |       ^

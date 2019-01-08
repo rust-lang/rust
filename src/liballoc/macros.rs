@@ -73,9 +73,14 @@ macro_rules! vec {
 /// The same convention is used with [`print!`] and [`write!`] macros,
 /// depending on the intended destination of the string.
 ///
+/// To convert a single value to a string, use the [`to_string`] method.  This
+/// will use the [`Display`] formatting trait.
+///
 /// [fmt]: ../std/fmt/index.html
 /// [`print!`]: ../std/macro.print.html
 /// [`write!`]: ../std/macro.write.html
+/// [`to_string`]: ../std/string/trait.ToString.html
+/// [`Display`]: ../std/fmt/trait.Display.html
 ///
 /// # Panics
 ///

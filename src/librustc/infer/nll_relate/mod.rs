@@ -372,13 +372,6 @@ where
         self.infcx.tcx
     }
 
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        // squashing should only be done in coherence, not NLL
-        assert_eq!(self.infcx.trait_object_mode(),
-                   relate::TraitObjectMode::NoSquash);
-        relate::TraitObjectMode::NoSquash
-    }
-
     fn tag(&self) -> &'static str {
         "nll::subtype"
     }
@@ -691,13 +684,6 @@ where
 {
     fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
         self.infcx.tcx
-    }
-
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        // squashing should only be done in coherence, not NLL
-        assert_eq!(self.infcx.trait_object_mode(),
-                   relate::TraitObjectMode::NoSquash);
-        relate::TraitObjectMode::NoSquash
     }
 
     fn tag(&self) -> &'static str {

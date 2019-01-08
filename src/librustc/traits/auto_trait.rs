@@ -388,12 +388,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             computed_preds.extend(user_computed_preds.iter().cloned());
             let normalized_preds =
                 elaborate_predicates(tcx, computed_preds.clone().into_iter().collect());
-            new_env = ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal);
+            new_env = ty::ParamEnv::new(
+                tcx.mk_predicates(normalized_preds),
+                param_env.reveal,
+                None
+            );
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
             user_env.reveal,
+            None
         );
         debug!(
             "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
@@ -732,9 +737,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
 
                     // We can only call poly_project_and_unify_type when our predicate's
-                    // Ty is an inference variable - otherwise, there won't be anything to
+                    // Ty contains an inference variable - otherwise, there won't be anything to
                     // unify
-                    if p.ty().skip_binder().is_ty_infer() {
+                    if p.ty().skip_binder().has_infer_types() {
                         debug!("Projecting and unifying projection predicate {:?}",
                                predicate);
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
@@ -766,13 +771,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 &ty::Predicate::RegionOutlives(ref binder) => {
-                    if select
-                        .infcx()
-                        .region_outlives_predicate(&dummy_cause, binder)
-                        .is_err()
-                    {
-                        return false;
-                    }
+                    let () = select.infcx().region_outlives_predicate(&dummy_cause, binder);
                 }
                 &ty::Predicate::TypeOutlives(ref binder) => {
                     match (

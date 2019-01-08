@@ -16,7 +16,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `usize`
     //~| found type `{float}`
-    //~| expected usize, found floating-point variable
+    //~| expected usize, found floating-point number
     let e = [0; "foo"];
     //~^ ERROR mismatched types
     //~| expected type `usize`

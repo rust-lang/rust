@@ -283,13 +283,6 @@ impl Step for Rls {
                                                  SourceType::Submodule,
                                                  &[]);
 
-        // Copy `src/tools/rls/test_data` to a writable drive.
-        let test_workspace_path = builder.out.join("rls-test-data");
-        let test_data_path = test_workspace_path.join("test_data");
-        builder.create_dir(&test_data_path);
-        builder.cp_r(&builder.src.join("src/tools/rls/test_data"), &test_data_path);
-        cargo.env("RLS_TEST_WORKSPACE_DIR", test_workspace_path);
-
         builder.add_rustc_lib_path(compiler, &mut cargo);
         cargo.arg("--")
             .args(builder.config.cmd.test_args());

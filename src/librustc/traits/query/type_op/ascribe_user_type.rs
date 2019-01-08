@@ -22,7 +22,7 @@ impl<'tcx> AscribeUserType<'tcx> {
         user_substs: UserSubsts<'tcx>,
         projs: &'tcx ty::List<ProjectionKind<'tcx>>,
     ) -> Self {
-        AscribeUserType { mir_ty, variance, def_id, user_substs, projs }
+        Self { mir_ty, variance, def_id, user_substs, projs }
     }
 }
 

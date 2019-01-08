@@ -18,6 +18,5 @@ fn foo<T>(x: &T)
 {}
 
 fn main() {
-    foo(&X);
-    //~^ error: `for<'a> &'a _: Bar` is not satisfied
+    foo(&X); //~ ERROR implementation of `Bar` is not general enough
 }

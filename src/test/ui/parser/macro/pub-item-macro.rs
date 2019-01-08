@@ -14,5 +14,5 @@ mod foo {
 }
 
 fn main() {
-    let y: u32 = foo::x;
+    let y: u32 = foo::x; //~ ERROR static `x` is private
 }

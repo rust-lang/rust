@@ -12,9 +12,10 @@ use hair::util::UserAnnotatedTyHelpers;
 use hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
+use rustc::mir::{ProjectionElem, UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
+use rustc::ty::{CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, UserTypeAnnotation};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -58,113 +59,29 @@ pub struct Pattern<'tcx> {
 
 
 #[derive(Clone, Debug)]
-pub(crate) struct PatternTypeProjections<'tcx> {
-    contents: Vec<(PatternTypeProjection<'tcx>, Span)>,
+pub struct PatternTypeProjection<'tcx> {
+    pub base: CanonicalUserTypeAnnotation<'tcx>,
+    pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
-
-impl<'tcx> PatternTypeProjections<'tcx> {
-    pub(crate) fn user_ty(self) -> UserTypeProjections<'tcx> {
-        UserTypeProjections::from_projections(
-            self.contents.into_iter().map(|(pat_ty_proj, span)| (pat_ty_proj.user_ty(), span)))
-    }
-
-    pub(crate) fn none() -> Self {
-        PatternTypeProjections { contents: vec![] }
-    }
-
-    pub(crate) fn ref_binding(&self) -> Self {
-        // FIXME(#55401): ignore for now
-        PatternTypeProjections { contents: vec![] }
-    }
-
-    fn map_projs(&self,
-                 mut f: impl FnMut(&PatternTypeProjection<'tcx>) -> PatternTypeProjection<'tcx>)
-                 -> Self
-    {
-        PatternTypeProjections {
-            contents: self.contents
-                .iter()
-                .map(|(proj, span)| (f(proj), *span))
-                .collect(), }
-    }
-
-    pub(crate) fn index(&self) -> Self { self.map_projs(|pat_ty_proj| pat_ty_proj.index()) }
-
-    pub(crate) fn subslice(&self, from: u32, to: u32) -> Self {
-        self.map_projs(|pat_ty_proj| pat_ty_proj.subslice(from, to))
-    }
-
-    pub(crate) fn deref(&self) -> Self { self.map_projs(|pat_ty_proj| pat_ty_proj.deref()) }
-
-    pub(crate) fn leaf(&self, field: Field) -> Self {
-        self.map_projs(|pat_ty_proj| pat_ty_proj.leaf(field))
-    }
-
-    pub(crate) fn variant(&self,
-                          adt_def: &'tcx AdtDef,
-                          variant_index: VariantIdx,
-                          field: Field) -> Self {
-        self.map_projs(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
-    }
-
-    pub(crate) fn add_user_type(&self, user_ty: &PatternTypeProjection<'tcx>, sp: Span) -> Self {
-        let mut new = self.clone();
-        new.contents.push((user_ty.clone(), sp));
-        new
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct PatternTypeProjection<'tcx>(UserTypeProjection<'tcx>);
 
 impl<'tcx> PatternTypeProjection<'tcx> {
-    pub(crate) fn index(&self) -> Self {
-        let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Index(()));
-        new
+    pub(crate) fn from_user_type(user_annotation: CanonicalUserTypeAnnotation<'tcx>) -> Self {
+        Self {
+            base: user_annotation,
+            projs: Vec::new(),
+        }
     }
 
-    pub(crate) fn subslice(&self, from: u32, to: u32) -> Self {
-        let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Subslice { from, to });
-        new
+    pub(crate) fn user_ty(
+        self,
+        annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
+        span: Span,
+    ) -> UserTypeProjection<'tcx> {
+        UserTypeProjection {
+            base: annotations.push((span, self.base)),
+            projs: self.projs
+        }
     }
-
-    pub(crate) fn deref(&self) -> Self {
-        let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Deref);
-        new
-    }
-
-    pub(crate) fn leaf(&self, field: Field) -> Self {
-        let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Field(field, ()));
-        new
-    }
-
-    pub(crate) fn variant(&self,
-                          adt_def: &'tcx AdtDef,
-                          variant_index: VariantIdx,
-                          field: Field) -> Self {
-        let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
-        new.0.projs.push(ProjectionElem::Field(field, ()));
-        new
-    }
-
-    pub(crate) fn from_canonical_ty(c_ty: ty::CanonicalTy<'tcx>) -> Self {
-        Self::from_user_type(UserTypeAnnotation::Ty(c_ty))
-    }
-
-    pub(crate) fn from_user_type(u_ty: UserTypeAnnotation<'tcx>) -> Self {
-        Self::from_user_type_proj(UserTypeProjection { base: u_ty, projs: vec![], })
-    }
-
-    pub(crate) fn from_user_type_proj(u_ty: UserTypeProjection<'tcx>) -> Self {
-        PatternTypeProjection(u_ty)
-    }
-
-    pub(crate) fn user_ty(self) -> UserTypeProjection<'tcx> { self.0 }
 }
 
 #[derive(Clone, Debug)]
@@ -174,6 +91,25 @@ pub enum PatternKind<'tcx> {
     AscribeUserType {
         user_ty: PatternTypeProjection<'tcx>,
         subpattern: Pattern<'tcx>,
+        /// Variance to use when relating the type `user_ty` to the **type of the value being
+        /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
+        /// have a type that is some subtype of the ascribed type.
+        ///
+        /// Note that this variance does not apply for any bindings within subpatterns. The type
+        /// assigned to those bindings must be exactly equal to the `user_ty` given here.
+        ///
+        /// The only place where this field is not `Covariant` is when matching constants, where
+        /// we currently use `Contravariant` -- this is because the constant type just needs to
+        /// be "comparable" to the type of the input value. So, for example:
+        ///
+        /// ```text
+        /// match x { "foo" => .. }
+        /// ```
+        ///
+        /// requires that `&'static str <: T_x`, where `T_x` is the type of `x`. Really, we should
+        /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
+        /// of the old type-check for now. See #57280 for details.
+        variance: ty::Variance,
         user_ty_span: Span,
     },
 
@@ -206,7 +142,7 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
     },
 
     Range(PatternRange<'tcx>),
@@ -230,8 +166,8 @@ pub enum PatternKind<'tcx> {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PatternRange<'tcx> {
-    pub lo: &'tcx ty::Const<'tcx>,
-    pub hi: &'tcx ty::Const<'tcx>,
+    pub lo: ty::Const<'tcx>,
+    pub hi: ty::Const<'tcx>,
     pub ty: Ty<'tcx>,
     pub end: RangeEnd,
 }
@@ -280,7 +216,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 let mut start_or_continue = || if first { first = false; "" } else { ", " };
 
                 if let Some(variant) = variant {
-                    write!(f, "{}", variant.name)?;
+                    write!(f, "{}", variant.ident)?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
@@ -788,19 +724,16 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
 
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
-            let subpattern = Pattern {
-                span,
-                ty,
-                kind: Box::new(kind),
-            };
-
-            debug!("pattern user_ty = {:?} for pattern at {:?}", user_ty, span);
-
-            let pat_ty = PatternTypeProjection::from_user_type(user_ty);
+            debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
             kind = PatternKind::AscribeUserType {
-                subpattern,
-                user_ty: pat_ty,
+                subpattern: Pattern {
+                    span,
+                    ty,
+                    kind: Box::new(kind),
+                },
+                user_ty: PatternTypeProjection::from_user_type(user_ty),
                 user_ty_span: span,
+                variance: ty::Variance::Covariant,
             };
         }
 
@@ -837,7 +770,31 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         };
                         match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
                             Ok(value) => {
-                                return self.const_to_pat(instance, value, id, span)
+                                let pattern = self.const_to_pat(instance, value, id, span);
+                                if !is_associated_const {
+                                    return pattern;
+                                }
+
+                                let user_provided_types = self.tables().user_provided_types();
+                                return if let Some(u_ty) = user_provided_types.get(id) {
+                                    let user_ty = PatternTypeProjection::from_user_type(*u_ty);
+                                    Pattern {
+                                        span,
+                                        kind: Box::new(
+                                            PatternKind::AscribeUserType {
+                                                subpattern: pattern,
+                                                /// Note that use `Contravariant` here. See the
+                                                /// `variance` field documentation for details.
+                                                variance: ty::Variance::Contravariant,
+                                                user_ty,
+                                                user_ty_span: span,
+                                            }
+                                        ),
+                                        ty: value.ty,
+                                    }
+                                } else {
+                                    pattern
+                                }
                             },
                             Err(_) => {
                                 self.tcx.sess.span_err(
@@ -923,11 +880,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,
-        cv: &'tcx ty::Const<'tcx>,
+        cv: ty::Const<'tcx>,
         id: hir::HirId,
         span: Span,
     ) -> Pattern<'tcx> {
-        debug!("const_to_pat: cv={:#?}", cv);
+        debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
             let val = const_field(
@@ -945,6 +902,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }).collect::<Vec<_>>()
         };
+        debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
         let kind = match cv.ty.sty {
             ty::Float(_) => {
                 let id = self.tcx.hir().hir_to_node_id(id);
@@ -1083,7 +1041,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
@@ -1122,11 +1080,13 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Wild => PatternKind::Wild,
             PatternKind::AscribeUserType {
                 ref subpattern,
+                variance,
                 ref user_ty,
                 user_ty_span,
             } => PatternKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
                 user_ty: user_ty.fold_with(folder),
+                variance,
                 user_ty_span,
             },
             PatternKind::Binding {
@@ -1205,8 +1165,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
 
 pub fn compare_const_vals<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);

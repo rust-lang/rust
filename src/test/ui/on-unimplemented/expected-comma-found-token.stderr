@@ -3,8 +3,20 @@ error: expected one of `)` or `,`, found `label`
    |
 LL |     message="the message"
    |                          - expected one of `)` or `,` here
-LL |     label="the label"
+LL |     label="the label" //~ ERROR expected one of `)` or `,`, found `label`
    |     ^^^^^ unexpected token
 
-error: aborting due to previous error
+error[E0232]: `#[rustc_on_unimplemented]` requires a value
+  --> $DIR/expected-comma-found-token.rs:7:1
+   |
+LL | / #[rustc_on_unimplemented( //~ ERROR `#[rustc_on_unimplemented]` requires a value
+LL | |     message="the message"
+LL | |     label="the label" //~ ERROR expected one of `)` or `,`, found `label`
+LL | | )]
+   | |__^ value required here
+   |
+   = note: eg `#[rustc_on_unimplemented(message="foo")]`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0232`.

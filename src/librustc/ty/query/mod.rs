@@ -26,8 +26,8 @@ use session::config::OutputFilenames;
 use traits::{self, Vtable};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal,
-    CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
     CanonicalTypeOpNormalizeGoal, NoSolution,
 };
 use traits::query::method_autoderef::MethodAutoderefStepsResult;
@@ -53,6 +53,7 @@ use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::intrinsics::type_name;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
 use syntax::attr;
@@ -201,6 +202,8 @@ define_queries! { <'tcx>
 
         [] fn impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,
         [] fn impl_polarity: ImplPolarity(DefId) -> hir::ImplPolarity,
+
+        [] fn issue33140_self_ty: Issue33140SelfTy(DefId) -> Option<ty::Ty<'tcx>>,
     },
 
     TypeChecking {
@@ -381,7 +384,7 @@ define_queries! { <'tcx>
         /// might want to use `reveal_all()` method to change modes.
         [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
-        /// Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
+        /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
         /// `ty.is_copy()`, etc, since that will prune the environment where possible.
         [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
@@ -593,6 +596,13 @@ define_queries! { <'tcx>
             CanonicalPredicateGoal<'tcx>
         ) -> Result<traits::EvaluationResult, traits::OverflowError>,
 
+        [] fn evaluate_goal: EvaluateGoal(
+            traits::ChalkCanonicalGoal<'tcx>
+        ) -> Result<
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            NoSolution
+        >,
+
         /// Do not call this query directly: part of the `Eq` type-op
         [] fn type_op_ascribe_user_type: TypeOpAscribeUserType(
             CanonicalTypeOpAscribeUserTypeGoal<'tcx>
@@ -684,7 +694,7 @@ define_queries! { <'tcx>
         ) -> Clauses<'tcx>,
 
         // Get the chalk-style environment of the given item.
-        [] fn environment: Environment(DefId) -> ty::Binder<traits::Environment<'tcx>>,
+        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
     },
 
     Linking {

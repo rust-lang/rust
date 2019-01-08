@@ -279,20 +279,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
                     });
 
                     sets.gen(*index);
-
-                    // Issue #46746: Two-phase borrows handles
-                    // stmts of form `Tmp = &mut Borrow` ...
-                    match lhs {
-                        Place::Promoted(_) |
-                        Place::Local(..) | Place::Static(..) => {} // okay
-                        Place::Projection(..) => {
-                            // ... can assign into projections,
-                            // e.g., `box (&mut _)`. Current
-                            // conservative solution: force
-                            // immediate activation here.
-                            sets.gen(*index);
-                        }
-                    }
                 }
             }
 

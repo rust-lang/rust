@@ -1,5 +1,5 @@
 error: expected pattern, found `+`
-  --> $DIR/match-arrows-block-then-binop.rs:7:9
+  --> $DIR/match-arrows-block-then-binop.rs:5:9
    |
 LL |       } + 5 //~ ERROR expected pattern, found `+`
    |         ^ expected pattern

@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     let a = 0;
     let _b = 0;

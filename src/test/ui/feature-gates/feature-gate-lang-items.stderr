@@ -1,11 +1,18 @@
 error[E0658]: language items are subject to change
   --> $DIR/feature-gate-lang-items.rs:1:1
    |
-LL | #[lang="foo"]   //~ ERROR language items are subject to change
-   | ^^^^^^^^^^^^^
+LL | #[lang = "foo"] //~ ERROR language items are subject to change
+   | ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(lang_items)] to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0522]: definition of an unknown language item: `foo`
+  --> $DIR/feature-gate-lang-items.rs:1:1
+   |
+LL | #[lang = "foo"] //~ ERROR language items are subject to change
+   | ^^^^^^^^^^^^^^^ definition of unknown language item `foo`
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0522, E0658.
+For more information about an error, try `rustc --explain E0522`.

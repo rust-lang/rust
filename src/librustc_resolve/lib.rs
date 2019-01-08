@@ -1014,11 +1014,11 @@ enum ModuleOrUniformRoot<'a> {
     CurrentScope,
 }
 
-impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        match (*self, *other) {
+impl ModuleOrUniformRoot<'_> {
+    fn same_def(lhs: Self, rhs: Self) -> bool {
+        match (lhs, rhs) {
             (ModuleOrUniformRoot::Module(lhs),
-             ModuleOrUniformRoot::Module(rhs)) => ptr::eq(lhs, rhs),
+             ModuleOrUniformRoot::Module(rhs)) => lhs.def() == rhs.def(),
             (ModuleOrUniformRoot::CrateRootAndExternPrelude,
              ModuleOrUniformRoot::CrateRootAndExternPrelude) |
             (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude) |
@@ -1191,6 +1191,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
+    ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
     expansion: Mark,
     span: Span,
     vis: ty::Visibility,
@@ -1215,11 +1216,6 @@ enum NameBindingKind<'a> {
         directive: &'a ImportDirective<'a>,
         used: Cell<bool>,
     },
-    Ambiguity {
-        kind: AmbiguityKind,
-        b1: &'a NameBinding<'a>,
-        b2: &'a NameBinding<'a>,
-    }
 }
 
 struct PrivacyError<'a>(Span, Ident, &'a NameBinding<'a>);
@@ -1309,15 +1305,13 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Def(def, _) => def,
             NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
-            NameBindingKind::Ambiguity { .. } => Def::Err,
         }
     }
 
-    fn def_ignoring_ambiguity(&self) -> Def {
-        match self.kind {
-            NameBindingKind::Import { binding, .. } => binding.def_ignoring_ambiguity(),
-            NameBindingKind::Ambiguity { b1, .. } => b1.def_ignoring_ambiguity(),
-            _ => self.def(),
+    fn is_ambiguity(&self) -> bool {
+        self.ambiguity.is_some() || match self.kind {
+            NameBindingKind::Import { binding, .. } => binding.is_ambiguity(),
+            _ => false,
         }
     }
 
@@ -1362,7 +1356,6 @@ impl<'a> NameBinding<'a> {
     fn is_glob_import(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { directive, .. } => directive.is_glob(),
-            NameBindingKind::Ambiguity { b1, .. } => b1.is_glob_import(),
             _ => false,
         }
     }
@@ -1382,7 +1375,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
-        match self.def_ignoring_ambiguity() {
+        match self.def() {
             Def::Macro(_, kind) => Some(kind),
             Def::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
@@ -1576,7 +1569,6 @@ pub struct Resolver<'a> {
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
-    pub found_unresolved_macro: bool,
 
     /// List of crate local macros that we need to warn about as being unused.
     /// Right now this only includes macro_rules! macros, and macros 2.0.
@@ -1894,6 +1886,7 @@ impl<'a> Resolver<'a> {
             arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err, false),
+                ambiguity: None,
                 expansion: Mark::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
@@ -1911,7 +1904,6 @@ impl<'a> Resolver<'a> {
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: Default::default(),
-            found_unresolved_macro: false,
             unused_macros: FxHashSet::default(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
@@ -1965,33 +1957,30 @@ impl<'a> Resolver<'a> {
 
     fn record_use(&mut self, ident: Ident, ns: Namespace,
                   used_binding: &'a NameBinding<'a>, is_lexical_scope: bool) {
-        match used_binding.kind {
-            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
-                // Avoid marking `extern crate` items that refer to a name from extern prelude,
-                // but not introduce it, as used if they are accessed from lexical scope.
-                if is_lexical_scope {
-                    if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
-                        if let Some(crate_item) = entry.extern_crate_item {
-                            if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
-                                return;
-                            }
+        if let Some((b2, kind)) = used_binding.ambiguity {
+            self.ambiguity_errors.push(AmbiguityError {
+                kind, ident, b1: used_binding, b2,
+                misc1: AmbiguityErrorMisc::None,
+                misc2: AmbiguityErrorMisc::None,
+            });
+        }
+        if let NameBindingKind::Import { directive, binding, ref used } = used_binding.kind {
+            // Avoid marking `extern crate` items that refer to a name from extern prelude,
+            // but not introduce it, as used if they are accessed from lexical scope.
+            if is_lexical_scope {
+                if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                    if let Some(crate_item) = entry.extern_crate_item {
+                        if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
+                            return;
                         }
                     }
                 }
-                used.set(true);
-                directive.used.set(true);
-                self.used_imports.insert((directive.id, ns));
-                self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding, false);
             }
-            NameBindingKind::Ambiguity { kind, b1, b2 } => {
-                self.ambiguity_errors.push(AmbiguityError {
-                    kind, ident, b1, b2,
-                    misc1: AmbiguityErrorMisc::None,
-                    misc2: AmbiguityErrorMisc::None,
-                });
-            }
-            _ => {}
+            used.set(true);
+            directive.used.set(true);
+            self.used_imports.insert((directive.id, ns));
+            self.add_to_glob_map(directive.id, ident);
+            self.record_use(ident, ns, binding, false);
         }
     }
 
@@ -2024,8 +2013,10 @@ impl<'a> Resolver<'a> {
                                       record_used_id: Option<NodeId>,
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
-        let record_used = record_used_id.is_some();
         assert!(ns == TypeNS  || ns == ValueNS);
+        if ident.name == keywords::Invalid.name() {
+            return Some(LexicalScopeBinding::Def(Def::Err));
+        }
         if ns == TypeNS {
             ident.span = if ident.name == keywords::SelfUpper.name() {
                 // FIXME(jseyfried) improve `Self` hygiene
@@ -2038,6 +2029,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Walk backwards up the ribs in scope.
+        let record_used = record_used_id.is_some();
         let mut module = self.graph_root;
         for i in (0 .. self.ribs[ns].len()).rev() {
             if let Some(def) = self.ribs[ns][i].bindings.get(&ident).cloned() {
@@ -3924,8 +3916,11 @@ impl<'a> Resolver<'a> {
                         });
                         if let Some(candidate) = candidates.get(0) {
                             format!("did you mean `{}`?", candidate.path)
-                        } else {
+                        } else if !ident.is_reserved() {
                             format!("maybe a missing `extern crate {};`?", ident)
+                        } else {
+                            // the parser will already have complained about the keyword being used
+                            return PathResult::NonModule(err_path_resolution());
                         }
                     } else if i == 0 {
                         format!("use of undeclared type or module `{}`", ident)

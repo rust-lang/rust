@@ -207,6 +207,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         IndexVec::new(),
         None,
         local_decls_for_sig(&sig, span),
+        IndexVec::new(),
         sig.inputs().len(),
         vec![],
         span,
@@ -309,7 +310,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("build_clone_shim(def_id={:?})", def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
-    let is_copy = !self_ty.moves_by_default(tcx, tcx.param_env(def_id), builder.span);
+    let is_copy = self_ty.is_copy_modulo_regions(tcx, tcx.param_env(def_id), builder.span);
 
     let dest = Place::Local(RETURN_PLACE);
     let src = Place::Local(Local::new(1+0)).deref();
@@ -376,6 +377,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             IndexVec::new(),
             None,
             self.local_decls,
+            IndexVec::new(),
             self.sig.inputs().len(),
             vec![],
             self.span,
@@ -457,7 +459,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: func_ty,
             user_ty: None,
-            literal: ty::Const::zero_sized(self.tcx, func_ty),
+            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::zero_sized(func_ty),
+            )),
         });
 
         let ref_loc = self.make_place(
@@ -517,7 +521,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             user_ty: None,
-            literal: ty::Const::from_usize(self.tcx, value),
+            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_usize(self.tcx, value),
+            )),
         }
     }
 
@@ -753,7 +759,9 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 ty,
                 user_ty: None,
-                literal: ty::Const::zero_sized(tcx, ty),
+                literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                    ty::Const::zero_sized(ty)
+                )),
              }),
              vec![rcvr])
         }
@@ -825,6 +833,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         IndexVec::new(),
         None,
         local_decls,
+        IndexVec::new(),
         sig.inputs().len(),
         vec![],
         span,
@@ -903,6 +912,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         IndexVec::new(),
         None,
         local_decls,
+        IndexVec::new(),
         sig.inputs().len(),
         vec![],
         span,

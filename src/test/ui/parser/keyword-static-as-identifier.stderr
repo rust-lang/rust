@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `static`
-  --> $DIR/keyword-static-as-identifier.rs:6:9
+  --> $DIR/keyword-static-as-identifier.rs:4:9
    |
 LL |     let static = "foo"; //~ error: expected pattern, found keyword `static`
    |         ^^^^^^ expected pattern

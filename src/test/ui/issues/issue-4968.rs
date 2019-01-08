@@ -6,5 +6,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `{integer}`
     //~| found type `(isize, isize)`
-    //~| expected integral variable, found tuple
+    //~| expected integer, found tuple
 }

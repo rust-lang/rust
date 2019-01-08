@@ -297,8 +297,17 @@ LL |     struct Priv;
 LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:217:9
+   |
+LL |     struct Priv;
+   |     - `aliases_pub::Priv` declared as private
+...
+LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+   |         ^^^^^^^^^^^^^^^^^^ can't leak private type
+
 error: private trait `aliases_priv::PrivTr1` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:238:5
+  --> $DIR/private-in-public-warn.rs:247:5
    |
 LL |     pub trait Tr1: PrivUseAliasTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -306,17 +315,8 @@ LL |     pub trait Tr1: PrivUseAliasTr {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
-error: private type `aliases_priv::Priv2` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:241:5
-   |
-LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-
 error: private trait `aliases_priv::PrivTr1<aliases_priv::Priv2>` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:241:5
+  --> $DIR/private-in-public-warn.rs:250:5
    |
 LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -324,6 +324,15 @@ LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
-error: aborting due to 35 previous errors
+error: private type `aliases_priv::Priv2` in public interface (error E0446)
+  --> $DIR/private-in-public-warn.rs:250:5
+   |
+LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: aborting due to 36 previous errors
 
 For more information about this error, try `rustc --explain E0446`.

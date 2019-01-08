@@ -423,17 +423,6 @@ impl DefId {
     }
 }
 
-impl DepKind {
-    #[inline]
-    pub fn fingerprint_needed_for_crate_hash(self) -> bool {
-        match self {
-            DepKind::HirBody |
-            DepKind::Krate => true,
-            _ => false,
-        }
-    }
-}
-
 define_dep_nodes!( <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
@@ -503,6 +492,7 @@ define_dep_nodes!( <'tcx>
     [] AdtDefOfItem(DefId),
     [] ImplTraitRef(DefId),
     [] ImplPolarity(DefId),
+    [] Issue33140SelfTy(DefId),
     [] FnSignature(DefId),
     [] CoerceUnsizedInfo(DefId),
 
@@ -648,6 +638,7 @@ define_dep_nodes!( <'tcx>
     [] ImpliedOutlivesBounds(CanonicalTyGoal<'tcx>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
+    [] EvaluateGoal(traits::ChalkCanonicalGoal<'tcx>),
     [] TypeOpAscribeUserType(CanonicalTypeOpAscribeUserTypeGoal<'tcx>),
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
     [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),

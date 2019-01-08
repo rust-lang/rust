@@ -4,5 +4,12 @@ error: `derive` cannot be used on items with type macros
 LL |     concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0412]: cannot find type `FooBar` in this scope
+  --> $DIR/issue-32950.rs:5:5
+   |
+LL |     concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

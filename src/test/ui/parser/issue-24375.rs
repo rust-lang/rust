@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 static tmp : [&'static str; 2]  = ["hello", "he"];
 
 fn main() {

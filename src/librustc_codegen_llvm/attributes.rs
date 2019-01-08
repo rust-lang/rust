@@ -78,6 +78,18 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
     }
 }
 
+/// Tell LLVM what instrument function to insert.
+#[inline]
+pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    if cx.sess().instrument_mcount() {
+        // Similar to `clang -pg` behavior. Handled by the
+        // `post-inline-ee-instrument` LLVM pass.
+        llvm::AddFunctionAttrStringValue(
+            llfn, llvm::AttributePlace::Function,
+            const_cstr!("instrument-function-entry-inlined"), const_cstr!("mcount"));
+    }
+}
+
 pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
@@ -174,6 +186,7 @@ pub fn from_fn_attrs(
     }
 
     set_frame_pointer_elimination(cx, llfn);
+    set_instrument_function(cx, llfn);
     set_probestack(cx, llfn);
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {

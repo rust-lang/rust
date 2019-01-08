@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
 fn main() {
     let _ = b"\u{a66e}";
@@ -35,4 +35,7 @@ fn main() {
     //~^ ERROR invalid character in numeric character escape:
     //~^^ ERROR form of character escape may only be used with characters in the range [\x00-\x7f]
     //~^^^ ERROR incorrect unicode escape sequence
+
+    let _ = "\u8f";
+    //~^ ERROR incorrect unicode escape sequence
 }

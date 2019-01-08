@@ -1,5 +1,5 @@
 use hir::def_id::DefId;
-use ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use ty::{self, Region, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
@@ -9,7 +9,7 @@ use syntax_pos::Span;
 
 use hir;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -27,8 +27,7 @@ pub enum TypeError<'tcx> {
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
@@ -102,17 +101,8 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             RegionsDoesNotOutlive(..) => {
                 write!(f, "lifetime mismatch")
             }
-            RegionsInsufficientlyPolymorphic(br, _) => {
-                write!(f,
-                       "expected bound lifetime parameter{}{}, found concrete lifetime",
-                       if br.is_named() { " " } else { "" },
-                       br)
-            }
-            RegionsOverlyPolymorphic(br, _) => {
-                write!(f,
-                       "expected concrete lifetime, found bound lifetime parameter{}{}",
-                       if br.is_named() { " " } else { "" },
-                       br)
+            RegionsPlaceholderMismatch => {
+                write!(f, "one type is more general than the other")
             }
             Sorts(values) => ty::tls::with(|tcx| {
                 report_maybe_different(f, &values.expected.sort_string(tcx),
@@ -167,11 +157,12 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)).into(),
-            ty::Array(_, n) => {
-                match n.assert_usize(tcx) {
+            ty::Array(_, n) => match n {
+                ty::LazyConst::Evaluated(n) => match n.assert_usize(tcx) {
                     Some(n) => format!("array of {} elements", n).into(),
                     None => "array".into(),
-                }
+                },
+                ty::LazyConst::Unevaluated(..) => "array".into(),
             }
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "*-ptr".into(),
@@ -193,15 +184,19 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::FnDef(..) => "fn item".into(),
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
-                format!("trait {}", tcx.item_path_str(inner.principal().def_id())).into()
+                if let Some(principal) = inner.principal() {
+                    format!("trait {}", tcx.item_path_str(principal.def_id())).into()
+                } else {
+                    "trait".into()
+                }
             }
             ty::Closure(..) => "closure".into(),
             ty::Generator(..) => "generator".into(),
             ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
-            ty::Infer(ty::IntVar(_)) => "integral variable".into(),
-            ty::Infer(ty::FloatVar(_)) => "floating-point variable".into(),
+            ty::Infer(ty::IntVar(_)) => "integer".into(),
+            ty::Infer(ty::FloatVar(_)) => "floating-point number".into(),
             ty::Placeholder(..) => "placeholder type".into(),
             ty::Bound(..) => "bound type".into(),
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),

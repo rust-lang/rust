@@ -1,19 +1,12 @@
-error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/hrtb-higher-ranker-supertraits-transitive.rs:47:5
    |
-LL |     want_bar_for_any_ccx(b); //~ ERROR E0277
-   |     ^^^^^^^^^^^^^^^^^^^^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
+LL |     want_bar_for_any_ccx(b); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = help: consider adding a `where for<'ccx> B: Bar<'ccx>` bound
-note: required by `want_bar_for_any_ccx`
-  --> $DIR/hrtb-higher-ranker-supertraits-transitive.rs:31:1
-   |
-LL | / fn want_bar_for_any_ccx<B>(b: &B)
-LL | |     where B : for<'ccx> Bar<'ccx>
-LL | | {
-LL | | }
-   | |_^
+   = note: expected type `for<'ccx> Bar<'ccx>`
+              found type `Bar<'static>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.

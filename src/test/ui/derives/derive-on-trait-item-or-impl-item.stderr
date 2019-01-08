@@ -5,7 +5,7 @@ LL |     #[derive(Clone)]
    |     ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/derive-on-trait-item-or-impl-item.rs:8:5
+  --> $DIR/derive-on-trait-item-or-impl-item.rs:10:5
    |
 LL |     #[derive(Clone)]
    |     ^^^^^^^^^^^^^^^^

@@ -25,6 +25,6 @@ impl<'a> Foo<(&'a isize, &'a isize)> for SomeStruct
 }
 
 fn a() { want_foo1::<SomeStruct>(); } // OK -- foo wants just one region
-fn b() { want_foo2::<SomeStruct>(); } //~ ERROR E0277
+fn b() { want_foo2::<SomeStruct>(); } //~ ERROR
 
 fn main() { }

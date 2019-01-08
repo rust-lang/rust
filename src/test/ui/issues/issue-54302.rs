@@ -11,7 +11,7 @@ fn main() {
     // Then why does it implement DeserializeOwned? This compiles.
     fn assert_deserialize_owned<T: DeserializeOwned>() {}
     assert_deserialize_owned::<&'static str>();
-    //~^ ERROR the requirement `for<'de> 'de : ` is not satisfied
+    //~^ ERROR not general enough
 
     // It correctly does not implement for<'de> Deserialize<'de>.
     //fn assert_hrtb<T: for<'de> Deserialize<'de>>() {}

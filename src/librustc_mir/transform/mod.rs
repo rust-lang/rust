@@ -26,7 +26,7 @@ pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;
-mod qualify_min_const_fn;
+pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod dump_mir;
 pub mod deaggregator;

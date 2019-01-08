@@ -102,7 +102,7 @@ mod aliases_pub {
 
     // This should be OK, but associated type aliases are not substituted yet
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ ERROR private type `<aliases_pub::Priv as aliases_pub::PrivTr>::Assoc` in public interface
+    //~^ ERROR private trait `aliases_pub::PrivTr` in public interface
     //~| ERROR private type `aliases_pub::Priv` in public interface
 
     impl PrivUseAlias {
@@ -131,7 +131,7 @@ mod aliases_priv {
     pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `aliases_priv::Priv1` in public interface
     pub fn f2(arg: PrivAlias) {} //~ ERROR private type `aliases_priv::Priv2` in public interface
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ ERROR private type `<aliases_priv::Priv as aliases_priv::PrivTr>::Assoc` in public
+    //~^ ERROR private trait `aliases_priv::PrivTr` in public interface
     //~| ERROR private type `aliases_priv::Priv` in public interface
 }
 

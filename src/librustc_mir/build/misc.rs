@@ -27,13 +27,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
-                           literal: &'tcx ty::Const<'tcx>)
+                           literal: ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,
             ty,
             user_ty: None,
-            literal,
+            literal: self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(literal)),
         };
         Operand::Constant(constant)
     }
@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.hir.tcx();
         let ty = place.ty(&self.local_decls, tcx).to_ty(tcx);
-        if self.hir.type_moves_by_default(ty, DUMMY_SP) {
+        if !self.hir.type_is_copy_modulo_regions(ty, DUMMY_SP) {
             Operand::Move(place)
         } else {
             Operand::Copy(place)

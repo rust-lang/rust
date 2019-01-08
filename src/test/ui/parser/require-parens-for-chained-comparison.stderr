@@ -1,17 +1,17 @@
 error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:6:11
+  --> $DIR/require-parens-for-chained-comparison.rs:5:11
    |
 LL |     false == false == false;
    |           ^^^^^^^^^^^^^^^^^
 
 error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:9:11
+  --> $DIR/require-parens-for-chained-comparison.rs:8:11
    |
 LL |     false == 0 < 2;
    |           ^^^^^^^^
 
 error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:12:6
+  --> $DIR/require-parens-for-chained-comparison.rs:13:6
    |
 LL |     f<X>();
    |      ^^^^
@@ -19,5 +19,33 @@ LL |     f<X>();
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/require-parens-for-chained-comparison.rs:8:14
+   |
+LL |     false == 0 < 2;
+   |              ^ expected bool, found integer
+   |
+   = note: expected type `bool`
+              found type `{integer}`
 
+error[E0308]: mismatched types
+  --> $DIR/require-parens-for-chained-comparison.rs:8:18
+   |
+LL |     false == 0 < 2;
+   |                  ^ expected bool, found integer
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0369]: binary operation `<` cannot be applied to type `fn() {f::<_>}`
+  --> $DIR/require-parens-for-chained-comparison.rs:13:5
+   |
+LL |     f<X>();
+   |     ^^^
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() {f::<_>}`
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

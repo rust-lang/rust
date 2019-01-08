@@ -9,5 +9,5 @@ mod foo {
 }
 
 fn main() {
-   bar!();
+   bar!(); //~ ERROR cannot find macro `bar!` in this scope
 }

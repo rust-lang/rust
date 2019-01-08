@@ -4,6 +4,7 @@
 
 #[allow(dead_code)]
 pub mod auto_trait;
+mod chalk_fulfill;
 mod coherence;
 pub mod error_reporting;
 mod engine;
@@ -42,7 +43,8 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
-pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
+pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
+pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};
@@ -60,6 +62,11 @@ pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{supertraits, supertrait_def_ids, transitive_bounds,
                      Supertraits, SupertraitDefIds};
+
+pub use self::chalk_fulfill::{
+    CanonicalGoal as ChalkCanonicalGoal,
+    FulfillmentContext as ChalkFulfillmentContext
+};
 
 pub use self::ObligationCauseCode::*;
 pub use self::FulfillmentErrorCode::*;
@@ -318,6 +325,7 @@ pub enum GoalKind<'tcx> {
     Not(Goal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
     Quantified(QuantifierKind, ty::Binder<Goal<'tcx>>),
+    Subtype(Ty<'tcx>, Ty<'tcx>),
     CannotProve,
 }
 
@@ -340,9 +348,9 @@ impl<'tcx> DomainGoal<'tcx> {
 }
 
 impl<'tcx> GoalKind<'tcx> {
-    pub fn from_poly_domain_goal<'a>(
+    pub fn from_poly_domain_goal<'a, 'gcx>(
         domain_goal: PolyDomainGoal<'tcx>,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> GoalKind<'tcx> {
         match domain_goal.no_bound_vars() {
             Some(p) => p.into_goal(),
@@ -621,14 +629,14 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                                param_env: ty::ParamEnv<'tcx>,
-                                                ty: Ty<'tcx>,
-                                                def_id: DefId,
-                                                span: Span)
--> bool
-{
-    debug!("type_known_to_meet_bound(ty={:?}, bound={:?})",
+pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    def_id: DefId,
+    span: Span,
+) -> bool {
+    debug!("type_known_to_meet_bound_modulo_regions(ty={:?}, bound={:?})",
            ty,
            infcx.tcx.item_path_str(def_id));
 
@@ -643,7 +651,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         predicate: trait_ref.to_predicate(),
     };
 
-    let result = infcx.predicate_must_hold(&obligation);
+    let result = infcx.predicate_must_hold_modulo_regions(&obligation);
     debug!("type_known_to_meet_ty={:?} bound={} => {:?}",
            ty, infcx.tcx.item_path_str(def_id), result);
 
@@ -670,13 +678,13 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         // assume it is move; linear is always ok.
         match fulfill_cx.select_all_or_error(infcx) {
             Ok(()) => {
-                debug!("type_known_to_meet_bound: ty={:?} bound={} success",
+                debug!("type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
                        ty,
                        infcx.tcx.item_path_str(def_id));
                 true
             }
             Err(e) => {
-                debug!("type_known_to_meet_bound: ty={:?} bound={} errors={:?}",
+                debug!("type_known_to_meet_bound_modulo_regions: ty={:?} bound={} errors={:?}",
                        ty,
                        infcx.tcx.item_path_str(def_id),
                        e);
@@ -804,8 +812,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                           unnormalized_env.reveal);
+    let elaborated_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        unnormalized_env.reveal,
+        unnormalized_env.def_id
+    );
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
@@ -852,8 +863,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env: Vec<_> =
         non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
-    let outlives_env = ty::ParamEnv::new(tcx.intern_predicates(&outlives_env),
-                                         unnormalized_env.reveal);
+    let outlives_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&outlives_env),
+        unnormalized_env.reveal,
+        None
+    );
     let outlives_predicates =
         match do_normalize_predicates(tcx, region_context, cause,
                                       outlives_env, outlives_predicates) {
@@ -869,7 +883,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal)
+    ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        unnormalized_env.reveal,
+        unnormalized_env.def_id
+    )
 }
 
 pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
@@ -1164,14 +1182,26 @@ where
     ) -> bool;
 }
 
-pub trait ExClauseLift<'tcx>
+pub trait ChalkContextLift<'tcx>
 where
     Self: chalk_engine::context::Context + Clone,
 {
     type LiftedExClause: Debug + 'tcx;
+    type LiftedDelayedLiteral: Debug + 'tcx;
+    type LiftedLiteral: Debug + 'tcx;
 
     fn lift_ex_clause_to_tcx<'a, 'gcx>(
         ex_clause: &chalk_engine::ExClause<Self>,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause>;
+
+    fn lift_delayed_literal_to_tcx<'a, 'gcx>(
+        ex_clause: &chalk_engine::DelayedLiteral<Self>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> Option<Self::LiftedDelayedLiteral>;
+
+    fn lift_literal_to_tcx<'a, 'gcx>(
+        ex_clause: &chalk_engine::Literal<Self>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> Option<Self::LiftedLiteral>;
 }

@@ -1,5 +1,5 @@
 error: expected pattern, found reserved keyword `final`
-  --> $DIR/keyword-final.rs:4:9
+  --> $DIR/keyword-final.rs:2:9
    |
 LL |     let final = (); //~ ERROR expected pattern, found reserved keyword `final`
    |         ^^^^^ expected pattern

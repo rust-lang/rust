@@ -3,7 +3,7 @@
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-// Load rustc as a plugin to get macros
+// Load rustc as a plugin to get macros.
 #[macro_use]
 extern crate rustc;
 extern crate rustc_plugin;
@@ -26,7 +26,7 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        match &*it.name.as_str() {
+        match &*it.ident.as_str() {
             "lintme" => cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'"),
             "pleaselintme" => cx.span_lint(PLEASE_LINT, it.span, "item is named 'pleaselintme'"),
             _ => {}

@@ -420,7 +420,7 @@ pub struct GenericArgs {
     /// The generic arguments for this path segment.
     pub args: HirVec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
-    /// E.g., `Foo<A=Bar>`.
+    /// E.g., `Foo<A = Bar>`.
     pub bindings: HirVec<TypeBinding>,
     /// Were arguments written in parenthesized form `Fn(T) -> U`?
     /// This is required mostly for pretty-printing and diagnostics,
@@ -807,11 +807,6 @@ pub struct Block {
     /// break out of this block early.
     /// Used by `'label: {}` blocks and by `catch` statements.
     pub targeted_by_break: bool,
-    /// If true, don't emit return value type errors as the parser had
-    /// to recover from a parse error so this block will not have an
-    /// appropriate type. A parse error will have been emitted so the
-    /// compilation will never succeed if this is true.
-    pub recovered: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -1362,6 +1357,7 @@ impl Expr {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Err => ExprPrecedence::Err,
         }
     }
 
@@ -1412,7 +1408,8 @@ impl Expr {
             ExprKind::AddrOf(..) |
             ExprKind::Binary(..) |
             ExprKind::Yield(..) |
-            ExprKind::Cast(..) => {
+            ExprKind::Cast(..) |
+            ExprKind::Err => {
                 false
             }
         }
@@ -1525,6 +1522,9 @@ pub enum ExprKind {
 
     /// A suspension point for generators. This is `yield <expr>` in Rust.
     Yield(P<Expr>),
+
+    /// Placeholder for an expression that wasn't syntactically well formed in some way.
+    Err,
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.
@@ -2015,7 +2015,7 @@ pub struct EnumDef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct VariantKind {
-    pub name: Name,
+    pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`
@@ -2088,6 +2088,15 @@ impl VisibilityKind {
             VisibilityKind::Inherited => false,
             VisibilityKind::Crate(..) |
             VisibilityKind::Restricted { .. } => true,
+        }
+    }
+
+    pub fn descr(&self) -> &'static str {
+        match *self {
+            VisibilityKind::Public => "public",
+            VisibilityKind::Inherited => "private",
+            VisibilityKind::Crate(..) => "crate-visible",
+            VisibilityKind::Restricted { .. } => "restricted",
         }
     }
 }
@@ -2176,7 +2185,7 @@ pub struct ItemId {
 /// The name might be a dummy name in case of anonymous items
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
-    pub name: Name,
+    pub ident: Ident,
     pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
@@ -2331,7 +2340,7 @@ pub enum AssociatedItemKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignItem {
-    pub name: Name,
+    pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
     pub id: NodeId,

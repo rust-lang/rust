@@ -27,6 +27,8 @@ use syntax::source_map::DUMMY_SP;
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
+    #[cfg(debug_assertions)]
+    pub(super) cache_hits: usize,
 }
 
 pub(super) struct QueryValue<T> {
@@ -50,6 +52,8 @@ impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
         QueryCache {
             results: FxHashMap::default(),
             active: FxHashMap::default(),
+            #[cfg(debug_assertions)]
+            cache_hits: 0,
         }
     }
 }
@@ -114,6 +118,10 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 });
 
                 let result = Ok((value.value.clone(), value.index));
+                #[cfg(debug_assertions)]
+                {
+                    lock.cache_hits += 1;
+                }
                 return TryGetJob::JobCompleted(result);
             }
             let job = match lock.active.entry((*key).clone()) {
@@ -495,37 +503,48 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // If -Zincremental-verify-ich is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
-        if self.sess.opts.debugging_opts.incremental_verify_ich {
-            use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
-            use ich::Fingerprint;
-
-            assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
-                    self.dep_graph.prev_fingerprint_of(dep_node),
-                    "Fingerprint for green query instance not loaded \
-                     from cache: {:?}", dep_node);
-
-            debug!("BEGIN verify_ich({:?})", dep_node);
-            let mut hcx = self.create_stable_hashing_context();
-            let mut hasher = StableHasher::new();
-
-            result.hash_stable(&mut hcx, &mut hasher);
-
-            let new_hash: Fingerprint = hasher.finish();
-            debug!("END verify_ich({:?})", dep_node);
-
-            let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
-
-            assert!(new_hash == old_hash, "Found unstable fingerprints \
-                for {:?}", dep_node);
+        if unlikely!(self.sess.opts.debugging_opts.incremental_verify_ich) {
+            self.incremental_verify_ich::<Q>(&result, dep_node, dep_node_index);
         }
 
-        if self.sess.opts.debugging_opts.query_dep_graph {
+        if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, true);
         }
 
         job.complete(&result, dep_node_index);
 
         Ok(result)
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn incremental_verify_ich<Q: QueryDescription<'gcx>>(
+        self,
+        result: &Q::Value,
+        dep_node: &DepNode,
+        dep_node_index: DepNodeIndex,
+    ) {
+        use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+        use ich::Fingerprint;
+
+        assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
+                self.dep_graph.prev_fingerprint_of(dep_node),
+                "Fingerprint for green query instance not loaded \
+                    from cache: {:?}", dep_node);
+
+        debug!("BEGIN verify_ich({:?})", dep_node);
+        let mut hcx = self.create_stable_hashing_context();
+        let mut hasher = StableHasher::new();
+
+        result.hash_stable(&mut hcx, &mut hasher);
+
+        let new_hash: Fingerprint = hasher.finish();
+        debug!("END verify_ich({:?})", dep_node);
+
+        let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
+
+        assert!(new_hash == old_hash, "Found unstable fingerprints \
+            for {:?}", dep_node);
     }
 
     fn force_query_with_job<Q: QueryDescription<'gcx>>(
@@ -570,7 +589,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let ((result, dep_node_index), diagnostics) = res;
 
-        if self.sess.opts.debugging_opts.query_dep_graph {
+        if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
@@ -752,6 +771,101 @@ macro_rules! define_queries_inner {
 
                 jobs
             }
+
+            pub fn print_stats(&self) {
+                let mut queries = Vec::new();
+
+                #[derive(Clone)]
+                struct QueryStats {
+                    name: &'static str,
+                    cache_hits: usize,
+                    key_size: usize,
+                    key_type: &'static str,
+                    value_size: usize,
+                    value_type: &'static str,
+                    entry_count: usize,
+                }
+
+                fn stats<'tcx, Q: QueryConfig<'tcx>>(
+                    name: &'static str,
+                    map: &QueryCache<'tcx, Q>
+                ) -> QueryStats {
+                    QueryStats {
+                        name,
+                        #[cfg(debug_assertions)]
+                        cache_hits: map.cache_hits,
+                        #[cfg(not(debug_assertions))]
+                        cache_hits: 0,
+                        key_size: mem::size_of::<Q::Key>(),
+                        key_type: unsafe { type_name::<Q::Key>() },
+                        value_size: mem::size_of::<Q::Value>(),
+                        value_type: unsafe { type_name::<Q::Value>() },
+                        entry_count: map.results.len(),
+                    }
+                }
+
+                $(
+                    queries.push(stats::<queries::$name<'_>>(
+                        stringify!($name),
+                        &*self.$name.lock()
+                    ));
+                )*
+
+                if cfg!(debug_assertions) {
+                    let hits: usize = queries.iter().map(|s| s.cache_hits).sum();
+                    let results: usize = queries.iter().map(|s| s.entry_count).sum();
+                    println!("\nQuery cache hit rate: {}", hits as f64 / (hits + results) as f64);
+                }
+
+                let mut query_key_sizes = queries.clone();
+                query_key_sizes.sort_by_key(|q| q.key_size);
+                println!("\nLarge query keys:");
+                for q in query_key_sizes.iter().rev()
+                                        .filter(|q| q.key_size > 8) {
+                    println!(
+                        "   {} - {} x {} - {}",
+                        q.name,
+                        q.key_size,
+                        q.entry_count,
+                        q.key_type
+                    );
+                }
+
+                let mut query_value_sizes = queries.clone();
+                query_value_sizes.sort_by_key(|q| q.value_size);
+                println!("\nLarge query values:");
+                for q in query_value_sizes.iter().rev()
+                                          .filter(|q| q.value_size > 8) {
+                    println!(
+                        "   {} - {} x {} - {}",
+                        q.name,
+                        q.value_size,
+                        q.entry_count,
+                        q.value_type
+                    );
+                }
+
+                if cfg!(debug_assertions) {
+                    let mut query_cache_hits = queries.clone();
+                    query_cache_hits.sort_by_key(|q| q.cache_hits);
+                    println!("\nQuery cache hits:");
+                    for q in query_cache_hits.iter().rev() {
+                        println!(
+                            "   {} - {} ({}%)",
+                            q.name,
+                            q.cache_hits,
+                            q.cache_hits as f64 / (q.cache_hits + q.entry_count) as f64
+                        );
+                    }
+                }
+
+                let mut query_value_count = queries.clone();
+                query_value_count.sort_by_key(|q| q.entry_count);
+                println!("\nQuery value count:");
+                for q in query_value_count.iter().rev() {
+                    println!("   {} - {}", q.name, q.entry_count);
+                }
+            }
         }
 
         #[allow(nonstandard_style)]
@@ -860,7 +974,7 @@ macro_rules! define_queries_inner {
                         // HACK(eddyb) it's possible crates may be loaded after
                         // the query engine is created, and because crate loading
                         // is not yet integrated with the query engine, such crates
-                        // would be be missing appropriate entries in `providers`.
+                        // would be missing appropriate entries in `providers`.
                         .unwrap_or(&tcx.queries.fallback_extern_providers)
                         .$name;
                     provider(tcx.global_tcx(), key)
@@ -940,7 +1054,7 @@ macro_rules! define_queries_inner {
 macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
-        pub(crate) struct Queries<$tcx> {
+        pub struct Queries<$tcx> {
             /// This provides access to the incr. comp. on-disk cache for query results.
             /// Do not access this directly. It is only meant to be used by
             /// `DepGraph::try_mark_green()` and the query infrastructure.
@@ -1103,6 +1217,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ImpliedOutlivesBounds |
         DepKind::DropckOutlives |
         DepKind::EvaluateObligation |
+        DepKind::EvaluateGoal |
         DepKind::TypeOpAscribeUserType |
         DepKind::TypeOpEq |
         DepKind::TypeOpSubtype |
@@ -1160,6 +1275,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::AdtDefOfItem => { force!(adt_def, def_id!()); }
         DepKind::ImplTraitRef => { force!(impl_trait_ref, def_id!()); }
         DepKind::ImplPolarity => { force!(impl_polarity, def_id!()); }
+        DepKind::Issue33140SelfTy => { force!(issue33140_self_ty, def_id!()); }
         DepKind::FnSignature => { force!(fn_sig, def_id!()); }
         DepKind::CoerceUnsizedInfo => { force!(coerce_unsized_info, def_id!()); }
         DepKind::ItemVariances => { force!(variances_of, def_id!()); }

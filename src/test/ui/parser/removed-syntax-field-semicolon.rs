@@ -1,6 +1,6 @@
-// compile-flags: -Z parse-only
-
-struct s {
+struct S {
     bar: ();
     //~^ ERROR expected `,`, or `}`, found `;`
 }
+
+fn main() {}

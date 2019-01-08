@@ -1,5 +1,5 @@
 error: unterminated raw string
-  --> $DIR/raw_string.rs:4:13
+  --> $DIR/raw_string.rs:2:13
    |
 LL |     let x = r##"lol"#;
    |             ^ unterminated raw string

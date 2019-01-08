@@ -50,7 +50,8 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>,
+    pub vtables: RefCell<FxHashMap<
+            (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'ll Value>>,
 
@@ -311,7 +312,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
 impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
-                                ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>
+                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
     {
         &self.vtables
     }

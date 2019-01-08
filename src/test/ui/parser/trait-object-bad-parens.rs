@@ -1,12 +1,16 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
+
+#![feature(optin_builtin_traits)]
+
+auto trait Auto {}
 
 fn main() {
-    let _: Box<((Copy)) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `((Copy))`
-    let _: Box<(Copy + Copy) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `(Copy + Copy)`
-    let _: Box<(Copy +) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `(Copy)`
-    let _: Box<(dyn Copy) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `(dyn Copy)`
+    let _: Box<((Auto)) + Auto>;
+    //~^ ERROR expected a path on the left-hand side of `+`, not `((Auto))`
+    let _: Box<(Auto + Auto) + Auto>;
+    //~^ ERROR expected a path on the left-hand side of `+`, not `(Auto + Auto)`
+    let _: Box<(Auto +) + Auto>;
+    //~^ ERROR expected a path on the left-hand side of `+`, not `(Auto)`
+    let _: Box<(dyn Auto) + Auto>;
+    //~^ ERROR expected a path on the left-hand side of `+`, not `(dyn Auto)`
 }

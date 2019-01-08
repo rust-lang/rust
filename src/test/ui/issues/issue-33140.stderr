@@ -1,37 +1,25 @@
-error: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/issue-33140.rs:11:1
+error[E0119]: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`:
+  --> $DIR/issue-33140.rs:9:1
    |
 LL | impl Trait for dyn Send + Sync {
    | ------------------------------ first implementation here
 ...
 LL | impl Trait for dyn Sync + Send {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
-   |
-note: lint level defined here
-  --> $DIR/issue-33140.rs:1:9
-   |
-LL | #![deny(order_dependent_trait_objects)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
-error: conflicting implementations of trait `Trait2` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/issue-33140.rs:25:1
+error[E0119]: conflicting implementations of trait `Trait2` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`:
+  --> $DIR/issue-33140.rs:22:1
    |
 LL | impl Trait2 for dyn Send + Sync {
    | ------------------------------- first implementation here
 ...
 LL | impl Trait2 for dyn Sync + Send + Sync {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
-error: duplicate definitions with name `abc` (E0592)
-  --> $DIR/issue-33140.rs:33:5
+error[E0592]: duplicate definitions with name `abc`
+  --> $DIR/issue-33140.rs:29:5
    |
 LL | /     fn abc() -> bool { //~ ERROR duplicate definitions with name `abc`
-LL | |                        //~| hard error
 LL | |         false
 LL | |     }
    | |_____^ duplicate definitions for `abc`
@@ -40,9 +28,8 @@ LL | /     fn abc() -> bool {
 LL | |         true
 LL | |     }
    | |_____- other definition for `abc`
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: aborting due to 3 previous errors
 
+Some errors occurred: E0119, E0592.
+For more information about an error, try `rustc --explain E0119`.

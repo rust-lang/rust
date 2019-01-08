@@ -873,7 +873,7 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
             trait_ref.to_predicate()
         );
 
-        if !fcx.predicate_must_hold(&obligation) {
+        if !fcx.predicate_must_hold_modulo_regions(&obligation) {
             debug!("receiver_is_valid: type `{:?}` does not implement `Receiver` trait",
                 receiver_ty);
             return false

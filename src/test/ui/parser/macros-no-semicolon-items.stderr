@@ -1,5 +1,5 @@
 error: macros that expand to items must either be surrounded with braces or followed by a semicolon
-  --> $DIR/macros-no-semicolon-items.rs:3:17
+  --> $DIR/macros-no-semicolon-items.rs:1:17
    |
 LL | macro_rules! foo()  //~ ERROR semicolon
    |                 ^^

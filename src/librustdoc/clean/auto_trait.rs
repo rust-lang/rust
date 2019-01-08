@@ -534,7 +534,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             did, param_env, type_generics, existing_predicates
         );
 
-        // The `Sized` trait must be handled specially, since we only only display it when
+        // The `Sized` trait must be handled specially, since we only display it when
         // it is *not* required (i.e., '?Sized')
         let sized_trait = self.cx
             .tcx

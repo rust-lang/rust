@@ -2,7 +2,7 @@ error[E0609]: no field `0` on type `Point`
   --> $DIR/tuple-index-not-tuple.rs:6:12
    |
 LL |     origin.0;
-   |            ^ did you mean `x`?
+   |            ^ help: a field with a similar name exists: `x`
 
 error[E0609]: no field `0` on type `Empty`
   --> $DIR/tuple-index-not-tuple.rs:8:11

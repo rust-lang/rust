@@ -2341,7 +2341,7 @@ mod sig {
             // Our exponent should not underflow.
             *exp = exp.checked_sub(bits as ExpInt).unwrap();
 
-            // Jump is the inter-limb jump; shift is is intra-limb shift.
+            // Jump is the inter-limb jump; shift is the intra-limb shift.
             let jump = bits / LIMB_BITS;
             let shift = bits % LIMB_BITS;
 
@@ -2375,7 +2375,7 @@ mod sig {
             // Our exponent should not overflow.
             *exp = exp.checked_add(bits as ExpInt).unwrap();
 
-            // Jump is the inter-limb jump; shift is is intra-limb shift.
+            // Jump is the inter-limb jump; shift is the intra-limb shift.
             let jump = bits / LIMB_BITS;
             let shift = bits % LIMB_BITS;
 

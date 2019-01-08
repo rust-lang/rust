@@ -142,6 +142,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         }
         writeln!(file, "")?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
+        write_user_type_annotations(mir, &mut file)?;
         write_mir_fn(tcx, source, mir, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
@@ -398,12 +399,21 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
         self.push(&format!("+ literal: {:?}", literal));
     }
 
-    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
+    fn visit_const(&mut self, constant: &&'tcx ty::LazyConst<'tcx>, _: Location) {
         self.super_const(constant);
-        let ty::Const { ty, val, .. } = constant;
-        self.push("ty::Const");
-        self.push(&format!("+ ty: {:?}", ty));
-        self.push(&format!("+ val: {:?}", val));
+        match constant {
+            ty::LazyConst::Evaluated(constant) => {
+                let ty::Const { ty, val, .. } = constant;
+                self.push("ty::Const");
+                self.push(&format!("+ ty: {:?}", ty));
+                self.push(&format!("+ val: {:?}", val));
+            },
+            ty::LazyConst::Unevaluated(did, substs) => {
+                self.push("ty::LazyConst::Unevaluated");
+                self.push(&format!("+ did: {:?}", did));
+                self.push(&format!("+ substs: {:?}", substs));
+            },
+        }
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -615,6 +625,19 @@ fn write_temp_decls(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
         )?;
     }
 
+    Ok(())
+}
+
+fn write_user_type_annotations(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
+    if !mir.user_type_annotations.is_empty() {
+        writeln!(w, "| User Type Annotations")?;
+    }
+    for (index, (span, annotation)) in mir.user_type_annotations.iter_enumerated() {
+        writeln!(w, "| {:?}: {:?} at {:?}", index.index(), annotation, span)?;
+    }
+    if !mir.user_type_annotations.is_empty() {
+        writeln!(w, "|")?;
+    }
     Ok(())
 }
 

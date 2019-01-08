@@ -1,5 +1,5 @@
 error: expected item after attributes
-  --> $DIR/attrs-after-extern-mod.rs:12:19
+  --> $DIR/attrs-after-extern-mod.rs:10:19
    |
 LL |     #[cfg(stage37)] //~ ERROR expected item after attributes
    |                   ^

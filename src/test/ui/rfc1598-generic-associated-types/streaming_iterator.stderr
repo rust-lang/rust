@@ -4,35 +4,35 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/streaming_iterator.rs:18:41
    |
 LL |     bar: <T as StreamingIterator>::Item<'static>,
-   |                                         ^^^^^^^ lifetime parameter not allowed
+   |                                         ^^^^^^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/streaming_iterator.rs:26:64
    |
 LL | fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
-   |                                                                ^^ lifetime parameter not allowed
+   |                                                                ^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/streaming_iterator.rs:12:48
    |
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
-   |                                                ^^ lifetime parameter not allowed
+   |                                                ^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/streaming_iterator.rs:38:37
    |
 LL |     type Item<'a> = (usize, I::Item<'a>);
-   |                                     ^^ lifetime parameter not allowed
+   |                                     ^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/streaming_iterator.rs:40:48
    |
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
-   |                                                ^^ lifetime parameter not allowed
+   |                                                ^^ lifetime argument not allowed
 
 error: aborting due to 5 previous errors
 

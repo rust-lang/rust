@@ -1,4 +1,3 @@
 fn main() {
-    print!(testo!());
-    //~^ ERROR: format argument must be a string literal
+    print!(testo!()); //~ ERROR cannot find macro `testo!` in this scope
 }

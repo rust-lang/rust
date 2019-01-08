@@ -1,7 +1,3 @@
-error[E0601]: `main` function not found in crate `issue_55796`
-   |
-   = note: consider adding a `main` function to `$DIR/issue-55796.rs`
-
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/issue-55796.rs:16:9
    |
@@ -44,7 +40,6 @@ LL |         Box::new(self.in_edges(u).map(|e| e.target()))
            expected std::boxed::Box<(dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node> + 'static)>
               found std::boxed::Box<dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node>>
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors occurred: E0495, E0601.
-For more information about an error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0495`.

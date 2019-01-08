@@ -6,10 +6,10 @@ LL |       } else if false {
 LL | | //~^ ERROR if may be missing an else clause
 LL | | //~| expected type `()`
 LL | | //~| found type `{integer}`
-LL | | //~| expected (), found integral variable
+LL | | //~| expected (), found integer
 LL | |         1
 LL | |     };
-   | |_____^ expected (), found integral variable
+   | |_____^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`

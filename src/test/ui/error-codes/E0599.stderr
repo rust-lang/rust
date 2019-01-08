@@ -1,11 +1,11 @@
 error[E0599]: no associated item named `NotEvenReal` found for type `Foo` in the current scope
-  --> $DIR/E0599.rs:4:15
+  --> $DIR/E0599.rs:4:20
    |
 LL | struct Foo;
    | ----------- associated item `NotEvenReal` not found for this
 ...
 LL |     || if let Foo::NotEvenReal() = Foo {}; //~ ERROR E0599
-   |               ^^^^^^^^^^^^^^^^^^ associated item not found in `Foo`
+   |               -----^^^^^^^^^^^-- associated item not found in `Foo`
 
 error: aborting due to previous error
 

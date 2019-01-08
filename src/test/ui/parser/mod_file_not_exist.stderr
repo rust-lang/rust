@@ -1,5 +1,5 @@
 error[E0583]: file not found for module `not_a_real_file`
-  --> $DIR/mod_file_not_exist.rs:4:5
+  --> $DIR/mod_file_not_exist.rs:3:5
    |
 LL | mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`
    |     ^^^^^^^^^^^^^^^

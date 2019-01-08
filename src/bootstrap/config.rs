@@ -82,6 +82,8 @@ pub struct Config {
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
 
+    pub llvm_use_libcxx: bool,
+
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
@@ -252,6 +254,7 @@ struct Llvm {
     link_shared: Option<bool>,
     version_suffix: Option<String>,
     clang_cl: Option<String>,
+    use_libcxx: Option<bool>,
 }
 
 #[derive(Deserialize, Default, Clone)]
@@ -513,6 +516,7 @@ impl Config {
             config.llvm_link_jobs = llvm.link_jobs;
             config.llvm_version_suffix = llvm.version_suffix.clone();
             config.llvm_clang_cl = llvm.clang_cl.clone();
+            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
         }
 
         if let Some(ref rust) = toml.rust {

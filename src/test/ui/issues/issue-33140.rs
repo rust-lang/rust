@@ -1,5 +1,3 @@
-#![deny(order_dependent_trait_objects)]
-
 trait Trait {
     fn xyz() -> bool;
 }
@@ -10,7 +8,6 @@ impl Trait for dyn Send + Sync {
 
 impl Trait for dyn Sync + Send {
 //~^ ERROR conflicting implementations
-//~| hard error
     fn xyz() -> bool { true }
 }
 
@@ -24,14 +21,12 @@ impl Trait2 for dyn Send + Sync {
 
 impl Trait2 for dyn Sync + Send + Sync {
 //~^ ERROR conflicting implementations
-//~| hard error
     fn uvw() -> bool { true }
 }
 
 struct Foo<T: ?Sized>(T);
 impl Foo<dyn Send + Sync> {
     fn abc() -> bool { //~ ERROR duplicate definitions with name `abc`
-                       //~| hard error
         false
     }
 }

@@ -1,5 +1,5 @@
 error[E0584]: file for module `mod_file_disambig_aux` found at both mod_file_disambig_aux.rs and mod_file_disambig_aux/mod.rs
-  --> $DIR/mod_file_disambig.rs:3:5
+  --> $DIR/mod_file_disambig.rs:1:5
    |
 LL | mod mod_file_disambig_aux; //~ ERROR file for module `mod_file_disambig_aux` found at both
    |     ^^^^^^^^^^^^^^^^^^^^^

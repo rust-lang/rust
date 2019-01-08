@@ -1,5 +1,5 @@
 error: unknown start of token: /
-  --> $DIR/lex-stray-backslash.rs:3:1
+  --> $DIR/lex-stray-backslash.rs:1:1
    |
 LL | / //~ ERROR: unknown start of token: /
    | ^

@@ -44,8 +44,6 @@ use ast::AttrId;
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
 // errors; eventually we plan to convert all code using panictry to just use
 // normal try.
-// Exported for syntax_ext, not meant for general use.
-#[macro_export]
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};

@@ -4,11 +4,11 @@ error[E0071]: expected struct, variant or union type, found associated type
 LL |     let s = T::A {};
    |             ^^^^ not a struct
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-associated-type.rs:14:20
    |
 LL |     let z = T::A::<u8> {};
-   |                    ^^ type parameter not allowed
+   |                    ^^ type argument not allowed
 
 error[E0071]: expected struct, variant or union type, found associated type
   --> $DIR/struct-path-associated-type.rs:14:13
@@ -22,11 +22,11 @@ error[E0071]: expected struct, variant or union type, found associated type
 LL |         T::A {} => {}
    |         ^^^^ not a struct
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-associated-type.rs:25:20
    |
-LL |     let z = T::A::<u8> {}; //~ ERROR type parameters are not allowed on this type
-   |                    ^^ type parameter not allowed
+LL |     let z = T::A::<u8> {}; //~ ERROR type arguments are not allowed on this entity
+   |                    ^^ type argument not allowed
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:32:13
@@ -34,11 +34,11 @@ error[E0223]: ambiguous associated type
 LL |     let s = S::A {}; //~ ERROR ambiguous associated type
    |             ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-associated-type.rs:33:20
    |
 LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
-   |                    ^^ type parameter not allowed
+   |                    ^^ type argument not allowed
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:33:13

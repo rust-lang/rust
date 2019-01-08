@@ -1,6 +1,6 @@
 // compile-flags: -Z parse-only
 
-fn that_odd_parse() {
+fn main() {
     // following lines below parse and must not fail
     x = if c { a } else { b }();
     x = if true { 1 } else { 0 } as *mut _;

@@ -1,5 +1,5 @@
 error: expected one of `fn` or `{`, found `mod`
-  --> $DIR/extern-expected-fn-or-brace.rs:6:12
+  --> $DIR/extern-expected-fn-or-brace.rs:4:12
    |
 LL | extern "C" mod foo; //~ERROR expected one of `fn` or `{`, found `mod`
    |            ^^^ expected one of `fn` or `{` here

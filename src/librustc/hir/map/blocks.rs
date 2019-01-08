@@ -228,7 +228,7 @@ impl<'a> FnLikeNode<'a> {
                 ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
-                        name: i.name,
+                        name: i.ident.name,
                         decl: &decl,
                         body: block,
                         vis: &i.vis,

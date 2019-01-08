@@ -8,7 +8,8 @@ fn main() {
         foo: 0,
         bar: 0.5,
     };
-    let x = foo.baa;//~ no field `baa` on type `BuildData`
-    //~^ did you mean `bar`?
+    let x = foo.baa; //~ ERROR no field `baa` on type `BuildData`
+                     //~| HELP a field with a similar name exists
+                     //~| SUGGESTION bar
     println!("{}", x);
 }

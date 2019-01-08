@@ -257,6 +257,19 @@ impl<T: ?Sized> Box<T> {
     {
         unsafe { &mut *Box::into_raw(b) }
     }
+
+    /// Converts a `Box<T>` into a `Pin<Box<T>>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
+    ///
+    /// This is also available via [`From`].
+    #[unstable(feature = "box_into_pin", issue = "0")]
+    pub fn into_pin(boxed: Box<T>) -> Pin<Box<T>> {
+        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
+        // when `T: !Unpin`,  so it's safe to pin it directly without any
+        // additional requirements.
+        unsafe { Pin::new_unchecked(boxed) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -451,15 +464,12 @@ impl<T> From<T> for Box<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T> From<Box<T>> for Pin<Box<T>> {
+impl<T: ?Sized> From<Box<T>> for Pin<Box<T>> {
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
     fn from(boxed: Box<T>) -> Self {
-        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
-        // when `T: !Unpin`,  so it's safe to pin it directly without any
-        // additional requirements.
-        unsafe { Pin::new_unchecked(boxed) }
+        Box::into_pin(boxed)
     }
 }
 

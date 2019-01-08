@@ -90,6 +90,12 @@
 # with clang-cl, so this is special in that it only compiles LLVM with clang-cl
 #clang-cl = '/path/to/clang-cl.exe'
 
+# Use libc++ when building LLVM instead of libstdc++. This is the default on
+# platforms already use libc++ as the default C++ library, but this option
+# allows you to use libc++ even on platforms when it's not. You need to ensure
+# that your host compiler ships with libc++.
+#use-libcxx = true
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -171,7 +177,7 @@
 
 # Installs chosen set of extended tools if enables. By default builds all.
 # If chosen tool failed to build the installation fails.
-#tools = ["cargo", "rls", "rustfmt", "analysis", "src"]
+#tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0

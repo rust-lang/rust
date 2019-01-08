@@ -1,0 +1,23 @@
+error: environment variable `NON_EXISTENT` not defined
+  --> $DIR/issue-55897.rs:11:22
+   |
+LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+error[E0432]: unresolved import `prelude`
+  --> $DIR/issue-55897.rs:1:5
+   |
+LL | use prelude::*; //~ ERROR unresolved import `prelude`
+   |     ^^^^^^^ did you mean `std::prelude`?
+
+error: cannot determine resolution for the macro `env`
+  --> $DIR/issue-55897.rs:6:22
+   |
+LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
+   |                      ^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

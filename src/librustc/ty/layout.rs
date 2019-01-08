@@ -1,7 +1,7 @@
 use session::{self, DataTypeKind};
 use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 
-use syntax::ast::{self, IntTy, UintTy};
+use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
 
@@ -1228,7 +1228,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         let adt_kind = adt_def.adt_kind();
         let adt_packed = adt_def.repr.packed();
 
-        let build_variant_info = |n: Option<ast::Name>,
+        let build_variant_info = |n: Option<Ident>,
                                   flds: &[ast::Name],
                                   layout: TyLayout<'tcx>| {
             let mut min_size = Size::ZERO;
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         match layout.variants {
             Variants::Single { index } => {
                 debug!("print-type-size `{:#?}` variant {}",
-                       layout, adt_def.variants[index].name);
+                       layout, adt_def.variants[index].ident);
                 if !adt_def.variants.is_empty() {
                     let variant_def = &adt_def.variants[index];
                     let fields: Vec<_> =
@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     record(adt_kind.into(),
                            adt_packed,
                            None,
-                           vec![build_variant_info(Some(variant_def.name),
+                           vec![build_variant_info(Some(variant_def.ident),
                                                    &fields,
                                                    layout)]);
                 } else {
@@ -1299,7 +1299,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     adt_def.variants.iter_enumerated().map(|(i, variant_def)| {
                         let fields: Vec<_> =
                             variant_def.fields.iter().map(|f| f.ident.name).collect();
-                        build_variant_info(Some(variant_def.name),
+                        build_variant_info(Some(variant_def.ident),
                                            &fields,
                                            layout.for_variant(self, i))
                     })

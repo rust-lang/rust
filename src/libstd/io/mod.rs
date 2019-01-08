@@ -948,7 +948,7 @@ impl Initializer {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Write {
-    /// Write a buffer into this object, returning how many bytes were written.
+    /// Write a buffer into this writer, returning how many bytes were written.
     ///
     /// This function will attempt to write the entire contents of `buf`, but
     /// the entire write may not succeed, or the write may also generate an
@@ -1023,7 +1023,7 @@ pub trait Write {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn flush(&mut self) -> Result<()>;
 
-    /// Attempts to write an entire buffer into this write.
+    /// Attempts to write an entire buffer into this writer.
     ///
     /// This method will continuously call [`write`] until there is no more data
     /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is

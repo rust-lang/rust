@@ -3,6 +3,7 @@ use self::Position::*;
 
 use fmt_macros as parse;
 
+use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
@@ -112,7 +113,7 @@ struct Context<'a, 'b: 'a> {
     is_literal: bool,
 }
 
-/// Parses the arguments from the given list of tokens, returning None
+/// Parses the arguments from the given list of tokens, returning the diagnostic
 /// if there's a parse error so we can continue parsing other format!
 /// expressions.
 ///
@@ -121,27 +122,26 @@ struct Context<'a, 'b: 'a> {
 /// ```text
 /// Some((fmtstr, parsed arguments, index map for named arguments))
 /// ```
-fn parse_args(ecx: &mut ExtCtxt,
-              sp: Span,
-              tts: &[tokenstream::TokenTree])
-              -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<String, usize>)> {
+fn parse_args<'a>(
+    ecx: &mut ExtCtxt<'a>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree]
+) -> Result<(P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<String, usize>), DiagnosticBuilder<'a>> {
     let mut args = Vec::<P<ast::Expr>>::new();
     let mut names = FxHashMap::<String, usize>::default();
 
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        ecx.span_err(sp, "requires at least a format string argument");
-        return None;
+        return Err(ecx.struct_span_err(sp, "requires at least a format string argument"));
     }
 
-    let fmtstr = panictry!(p.parse_expr());
+    let fmtstr = p.parse_expr()?;
     let mut named = false;
 
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
-            ecx.span_err(p.span, "expected token: `,`");
-            return None;
+            return Err(ecx.struct_span_err(p.span, "expected token: `,`"));
         }
         if p.token == token::Eof {
             break;
@@ -152,16 +152,15 @@ fn parse_args(ecx: &mut ExtCtxt,
                 p.bump();
                 i
             } else {
-                ecx.span_err(
+                return Err(ecx.struct_span_err(
                     p.span,
                     "expected ident, positional arguments cannot follow named arguments",
-                );
-                return None;
+                ));
             };
             let name: &str = &ident.as_str();
 
-            panictry!(p.expect(&token::Eq));
-            let e = panictry!(p.parse_expr());
+            p.expect(&token::Eq).unwrap();
+            let e = p.parse_expr()?;
             if let Some(prev) = names.get(name) {
                 ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", name))
                     .span_note(args[*prev].span, "previously here")
@@ -177,10 +176,11 @@ fn parse_args(ecx: &mut ExtCtxt,
             names.insert(name.to_string(), slot);
             args.push(e);
         } else {
-            args.push(panictry!(p.parse_expr()));
+            let e = p.parse_expr()?;
+            args.push(e);
         }
     }
-    Some((fmtstr, args, names))
+    Ok((fmtstr, args, names))
 }
 
 impl<'a, 'b> Context<'a, 'b> {
@@ -666,7 +666,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     "X" => "UpperHex",
                     _ => {
                         ecx.span_err(sp, &format!("unknown format trait `{}`", *tyname));
-                        "Dummy"
+                        return DummyResult::raw_expr(sp, true);
                     }
                 }
             }
@@ -689,10 +689,13 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
                                -> Box<dyn base::MacResult + 'cx> {
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
-        Some((efmt, args, names)) => {
+        Ok((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, false))
         }
-        None => DummyResult::expr(sp),
+        Err(mut err) => {
+            err.emit();
+            DummyResult::expr(sp)
+        }
     }
 }
 
@@ -713,14 +716,16 @@ pub fn expand_format_args_nl<'cx>(
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_FORMAT_ARGS_NL);
-        return base::DummyResult::expr(sp);
     }
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
-        Some((efmt, args, names)) => {
+        Ok((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, true))
         }
-        None => DummyResult::expr(sp),
+        Err(mut err) => {
+            err.emit();
+            DummyResult::expr(sp)
+        }
     }
 }
 
@@ -749,19 +754,21 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             fmt
         }
         Ok(fmt) => fmt,
-        Err(mut err) => {
-            let sugg_fmt = match args.len() {
-                0 => "{}".to_string(),
-                _ => format!("{}{{}}", "{} ".repeat(args.len())),
-            };
-            err.span_suggestion_with_applicability(
-                fmt_sp.shrink_to_lo(),
-                "you might be missing a string literal to format with",
-                format!("\"{}\", ", sugg_fmt),
-                Applicability::MaybeIncorrect,
-            );
-            err.emit();
-            return DummyResult::raw_expr(sp);
+        Err(err) => {
+            if let Some(mut err) = err {
+                let sugg_fmt = match args.len() {
+                    0 => "{}".to_string(),
+                    _ => format!("{}{{}}", "{} ".repeat(args.len())),
+                };
+                err.span_suggestion_with_applicability(
+                    fmt_sp.shrink_to_lo(),
+                    "you might be missing a string literal to format with",
+                    format!("\"{}\", ", sugg_fmt),
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+            }
+            return DummyResult::raw_expr(sp, true);
         }
     };
 
@@ -807,11 +814,56 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 }
                 ('\\', Some((next_pos, 'n'))) |
                 ('\\', Some((next_pos, 't'))) |
+                ('\\', Some((next_pos, '0'))) |
                 ('\\', Some((next_pos, '\\'))) |
                 ('\\', Some((next_pos, '\''))) |
                 ('\\', Some((next_pos, '\"'))) => {
                     skips.push(*next_pos);
                     let _ = s.next();
+                }
+                ('\\', Some((_, 'x'))) if !is_raw => {
+                    for _ in 0..3 {  // consume `\xAB` literal
+                        if let Some((pos, _)) = s.next() {
+                            skips.push(pos);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                ('\\', Some((_, 'u'))) if !is_raw => {
+                    if let Some((pos, _)) = s.next() {
+                        skips.push(pos);
+                    }
+                    if let Some((next_pos, next_c)) = s.next() {
+                        if next_c == '{' {
+                            skips.push(next_pos);
+                            let mut i = 0;  // consume up to 6 hexanumeric chars + closing `}`
+                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
+                                if c.is_digit(16) {
+                                    skips.push(next_pos);
+                                } else if c == '}' {
+                                    skips.push(next_pos);
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                i += 1;
+                            }
+                        } else if next_c.is_digit(16) {
+                            skips.push(next_pos);
+                            // We suggest adding `{` and `}` when appropriate, accept it here as if
+                            // it were correct
+                            let mut i = 0;  // consume up to 6 hexanumeric chars
+                            while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
+                                if c.is_digit(16) {
+                                    skips.push(next_pos);
+                                } else {
+                                    break;
+                                }
+                                i += 1;
+                            }
+                        }
+                    }
                 }
                 _ if eat_ws => {  // `take_while(|c| c.is_whitespace())`
                     eat_ws = false;
@@ -857,11 +909,13 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             e.span_label(sp, label);
         }
         e.emit();
-        return DummyResult::raw_expr(sp);
+        return DummyResult::raw_expr(sp, true);
     }
 
     let arg_spans = parser.arg_places.iter()
-        .map(|&(start, end)| fmt.span.from_inner_byte_pos(start, end))
+        .map(|&(parse::SpanIndex(start), parse::SpanIndex(end))| {
+            fmt.span.from_inner_byte_pos(start, end)
+        })
         .collect();
 
     let mut cx = Context {
@@ -955,13 +1009,18 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         let mut diag = {
             if errs_len == 1 {
                 let (sp, msg) = errs.into_iter().next().unwrap();
-                cx.ecx.struct_span_err(sp, msg)
+                let mut diag = cx.ecx.struct_span_err(sp, msg);
+                diag.span_label(sp, msg);
+                diag
             } else {
                 let mut diag = cx.ecx.struct_span_err(
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                     "multiple unused formatting arguments",
                 );
                 diag.span_label(cx.fmtsp, "multiple missing formatting specifiers");
+                for (sp, msg) in errs {
+                    diag.span_label(sp, msg);
+                }
                 diag
             }
         };

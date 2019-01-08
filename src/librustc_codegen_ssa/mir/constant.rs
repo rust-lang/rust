@@ -2,7 +2,7 @@ use rustc::mir::interpret::ErrorHandled;
 use rustc_mir::const_eval::const_field;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, ConstValue};
+use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout;
 use syntax::source_map::Span;
@@ -14,10 +14,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn fully_evaluate(
         &mut self,
         bx: &Bx,
-        constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
-        match constant.val {
-            ConstValue::Unevaluated(def_id, ref substs) => {
+        constant: &'tcx ty::LazyConst<'tcx>,
+    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
+        match *constant {
+            ty::LazyConst::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
                 let param_env = ty::ParamEnv::reveal_all();
                 let instance = ty::Instance::resolve(tcx, param_env, def_id, substs).unwrap();
@@ -27,7 +27,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 tcx.const_eval(param_env.and(cid))
             },
-            _ => Ok(constant),
+            ty::LazyConst::Evaluated(constant) => Ok(constant),
         }
     }
 
@@ -35,7 +35,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &Bx,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
+    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         let c = self.monomorphize(&constant.literal);
         self.fully_evaluate(bx, c)
     }
@@ -46,7 +46,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
+        constant: Result<ty::Const<'tcx>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .and_then(|c| {

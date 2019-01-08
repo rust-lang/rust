@@ -1,5 +1,5 @@
 error: expected one of `>`, identifier, or lifetime, found `,`
-  --> $DIR/bounds-lifetime.rs:11:14
+  --> $DIR/bounds-lifetime.rs:9:14
    |
 LL | type A = for<,> fn(); //~ ERROR expected one of `>`, identifier, or lifetime, found `,`
    |              ^ expected one of `>`, identifier, or lifetime here

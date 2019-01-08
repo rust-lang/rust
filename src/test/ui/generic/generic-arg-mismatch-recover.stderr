@@ -8,7 +8,7 @@ error[E0308]: mismatched types
   --> $DIR/generic-arg-mismatch-recover.rs:6:33
    |
 LL |     Foo::<'static, 'static, ()>(&0); //~ ERROR wrong number of lifetime arguments
-   |                                 ^^ expected (), found integral variable
+   |                                 ^^ expected (), found integer
    |
    = note: expected type `&'static ()`
               found type `&{integer}`

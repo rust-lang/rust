@@ -1,5 +1,5 @@
 error: `r#self` is not currently supported.
-  --> $DIR/raw-literal-self.rs:3:14
+  --> $DIR/raw-literal-self.rs:1:14
    |
 LL | fn self_test(r#self: u32) {
    |              ^^^^^^

@@ -32,7 +32,7 @@ extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate serialize;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
@@ -335,6 +335,11 @@ fn opts() -> Vec<RustcOptGroup> {
                      "Path string to force loading static files from in output pages. \
                       If not set, uses combinations of '../' to reach the documentation root.",
                      "PATH")
+        }),
+        unstable("disable-per-crate-search", |o| {
+            o.optflag("",
+                      "disable-per-crate-search",
+                      "disables generating the crate selector on the search box")
         }),
     ]
 }

@@ -14,7 +14,7 @@ static foo: Foo = Foo { a: 2, ..bar }; //~  ERROR mismatched types
 static foo_i: Foo = Foo { a: 2, ..4 }; //~  ERROR mismatched types
                                        //~| expected type `Foo`
                                        //~| found type `{integer}`
-                                       //~| expected struct `Foo`, found integral variable
+                                       //~| expected struct `Foo`, found integer
 
 fn main() {
     let b = Bar { x: 5 };

@@ -25,6 +25,7 @@ mod implied_outlives_bounds;
 mod normalize_projection_ty;
 mod normalize_erasing_regions;
 pub mod lowering;
+mod generic_types;
 mod type_op;
 
 use rustc::ty::query::Providers;
@@ -34,6 +35,7 @@ pub fn provide(p: &mut Providers) {
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);
     lowering::provide(p);
+    chalk_context::provide(p);
     normalize_projection_ty::provide(p);
     normalize_erasing_regions::provide(p);
     type_op::provide(p);

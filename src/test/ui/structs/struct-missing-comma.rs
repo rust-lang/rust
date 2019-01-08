@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 // Issue #50636
 
 struct S {

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let sixteen: f32 = 16;
    |                        ^^
    |                        |
-   |                        expected f32, found integral variable
+   |                        expected f32, found integer
    |                        help: use a float literal: `16.0`
    |
    = note: expected type `f32`
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL |     let a_million_and_seventy: f64 = 1_000_070;
    |                                      ^^^^^^^^^
    |                                      |
-   |                                      expected f64, found integral variable
+   |                                      expected f64, found integer
    |                                      help: use a float literal: `1_000_070.0`
    |
    = note: expected type `f64`
@@ -28,7 +28,7 @@ error[E0308]: mismatched types
 LL |     let negative_nine: f32 = -9;
    |                              ^^
    |                              |
-   |                              expected f32, found integral variable
+   |                              expected f32, found integer
    |                              help: use a float literal: `-9.0`
    |
    = note: expected type `f32`
@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-53280-expected-float-found-integer-literal.rs:15:30
    |
 LL |     let sixteen_again: f64 = 0x10;
-   |                              ^^^^ expected f64, found integral variable
+   |                              ^^^^ expected f64, found integer
    |
    = note: expected type `f64`
               found type `{integer}`
@@ -47,7 +47,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-53280-expected-float-found-integer-literal.rs:17:30
    |
 LL |     let and_once_more: f32 = 0o20;
-   |                              ^^^^ expected f32, found integral variable
+   |                              ^^^^ expected f32, found integer
    |
    = note: expected type `f32`
               found type `{integer}`

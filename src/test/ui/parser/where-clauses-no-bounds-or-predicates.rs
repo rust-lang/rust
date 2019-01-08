@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z continue-parse-after-error
 
 // Empty predicate list is OK
 fn equal1<T>(_: &T, _: &T) -> bool where {

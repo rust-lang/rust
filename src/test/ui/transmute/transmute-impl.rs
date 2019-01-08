@@ -18,7 +18,7 @@ impl<T: ?Sized> Foo<T> {
 
     fn n(x: &T) -> &isize {
         // Not OK here, because T : Sized is not in scope.
-        unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+        unsafe { transmute(x) } //~ ERROR cannot transmute between types of different sizes
     }
 }
 

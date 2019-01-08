@@ -190,7 +190,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.deduce_sig_from_projection(None, &pb)
                     })
                     .next();
-                let kind = self.tcx.lang_items().fn_trait_kind(object_type.principal().def_id());
+                let kind = object_type.principal_def_id().and_then(|did| {
+                    self.tcx.lang_items().fn_trait_kind(did)
+                });
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
@@ -494,7 +496,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.infcx.commit_if_ok(|_| {
             let mut all_obligations = vec![];
 
-            // The liberated version of this signature should be be a subtype
+            // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
             for ((hir_ty, &supplied_ty), expected_ty) in decl.inputs.iter()
                .zip(*supplied_sig.inputs().skip_binder()) // binder moved to (*) below

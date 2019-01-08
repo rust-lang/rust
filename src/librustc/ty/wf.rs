@@ -1,5 +1,4 @@
 use hir::def_id::DefId;
-use mir::interpret::ConstValue;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
@@ -202,11 +201,10 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Pushes the obligations required for a constant value to be WF
+    /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
-    fn compute_const(&mut self, constant: &'tcx ty::Const<'tcx>) {
-        self.require_sized(constant.ty, traits::ConstSized);
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
+    fn compute_array_len(&mut self, constant: ty::LazyConst<'tcx>) {
+        if let ty::LazyConst::Unevaluated(def_id, substs) = constant {
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 
@@ -260,8 +258,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
                 ty::Array(subty, len) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
-                    assert_eq!(len.ty, self.infcx.tcx.types.usize);
-                    self.compute_const(len);
+                    self.compute_array_len(*len);
                 }
 
                 ty::Tuple(ref tys) => {
@@ -286,6 +283,11 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::Adt(def, substs) => {
                     // WfNominalType
                     let obligations = self.nominal_obligations(def.did, substs);
+                    self.out.extend(obligations);
+                }
+
+                ty::FnDef(did, substs) => {
+                    let obligations = self.nominal_obligations(did, substs);
                     self.out.extend(obligations);
                 }
 
@@ -349,7 +351,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::FnDef(..) | ty::FnPtr(_) => {
+                ty::FnPtr(_) => {
                     // let the loop iterate into the argument/return
                     // types appearing in the fn signature
                 }
@@ -379,7 +381,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
                     let cause = self.cause(traits::MiscObligation);
                     let component_traits =
-                        data.auto_traits().chain(once(data.principal().def_id()));
+                        data.auto_traits().chain(data.principal_def_id());
                     self.out.extend(
                         component_traits.map(|did| traits::Obligation::new(
                             cause.clone(),

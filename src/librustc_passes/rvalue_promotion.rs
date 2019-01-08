@@ -449,7 +449,8 @@ fn check_expr_kind<'a, 'tcx>(
             struct_result
         }
 
-        hir::ExprKind::Lit(_) => Promotable,
+        hir::ExprKind::Lit(_) |
+        hir::ExprKind::Err => Promotable,
 
         hir::ExprKind::AddrOf(_, ref expr) |
         hir::ExprKind::Repeat(ref expr, _) => {

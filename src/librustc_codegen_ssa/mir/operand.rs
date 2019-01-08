@@ -67,7 +67,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: &'tcx ty::Const<'tcx>
+        val: ty::Const<'tcx>
     ) -> Result<Self, ErrorHandled> {
         let layout = bx.cx().layout_of(val.ty);
 
@@ -76,7 +76,6 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         }
 
         let val = match val.val {
-            ConstValue::Unevaluated(..) => bug!(),
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,

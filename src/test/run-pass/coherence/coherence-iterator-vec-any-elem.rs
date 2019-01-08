@@ -1,4 +1,7 @@
 // run-pass
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 #![allow(dead_code)]
 // aux-build:coherence_lib.rs
 

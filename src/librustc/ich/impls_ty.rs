@@ -301,7 +301,6 @@ impl_stable_hash_for!(struct ty::FieldDef {
 
 impl_stable_hash_for!(
     impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
-        Unevaluated(def_id, substs),
         Scalar(val),
         ScalarPair(a, b),
         ByRef(id, alloc, offset),
@@ -376,6 +375,11 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
 impl_stable_hash_for!(struct ty::Const<'tcx> {
     ty,
     val
+});
+
+impl_stable_hash_for!(impl<'tcx> for enum ty::LazyConst<'tcx> [ty::LazyConst] {
+    Unevaluated(did, substs),
+    Evaluated(c)
 });
 
 impl_stable_hash_for!(enum mir::interpret::ErrorHandled {
@@ -471,22 +475,6 @@ impl_stable_hash_for!(
 impl_stable_hash_for!(enum mir::interpret::InboundsCheck {
     Live,
     MaybeDead
-});
-
-impl_stable_hash_for!(enum mir::interpret::Lock {
-    NoLock,
-    WriteLock(dl),
-    ReadLock(v)
-});
-
-impl_stable_hash_for!(struct mir::interpret::DynamicLifetime {
-    frame,
-    region
-});
-
-impl_stable_hash_for!(enum mir::interpret::AccessKind {
-    Read,
-    Write
 });
 
 impl_stable_hash_for!(enum ty::Variance {
@@ -885,7 +873,8 @@ for ty::steal::Steal<T>
 
 impl_stable_hash_for!(struct ty::ParamEnv<'tcx> {
     caller_bounds,
-    reveal
+    reveal,
+    def_id
 });
 
 impl_stable_hash_for!(enum traits::Reveal {
@@ -1194,6 +1183,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
                 quantifier.hash_stable(hcx, hasher);
                 goal.hash_stable(hcx, hasher);
             },
+            Subtype(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
+            }
             CannotProve => { },
         }
     }
@@ -1239,3 +1232,36 @@ impl_stable_hash_for!(
         clauses,
     }
 );
+
+impl_stable_hash_for!(
+    impl<'tcx, G> for struct traits::InEnvironment<'tcx, G> {
+        environment,
+        goal,
+    }
+);
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::UserTypeAnnotation<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            ty::UserTypeAnnotation::Ty(ref ty) => {
+                ty.hash_stable(hcx, hasher);
+            }
+            ty::UserTypeAnnotation::TypeOf(ref def_id, ref substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for ty::UserTypeAnnotationIndex {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        self.index().hash_stable(hcx, hasher);
+    }
+}

@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 fn main() {
     let y = 0;
     //~^ ERROR unknown start of token: \u{37e}

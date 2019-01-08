@@ -278,25 +278,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
-        // Check if the path in this `use` is not generic, such as `use foo::bar<T>;` While this
-        // can't happen normally thanks to the parser, a generic might sneak in if the `use` is
-        // built using a macro.
-        //
-        // macro_use foo {
-        //     ($p:path) => { use $p; }
-        // }
-        // foo!(bar::baz<T>);
-        use_tree.prefix.segments.iter().find(|segment| {
-            segment.args.is_some()
-        }).map(|segment| {
-            self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
-                                        "generic arguments in import path");
-        });
-
-        visit::walk_use_tree(self, use_tree, id);
-    }
-
     fn visit_label(&mut self, label: &'a Label) {
         self.check_label(label.ident);
         visit::walk_label(self, label);
@@ -431,17 +412,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_foreign_item(self, fi)
-    }
-
-    fn visit_vis(&mut self, vis: &'a Visibility) {
-        if let VisibilityKind::Restricted { ref path, .. } = vis.node {
-            path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
-                self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
-                                            "generic arguments in visibility path");
-            });
-        }
-
-        visit::walk_vis(self, vis)
     }
 
     fn visit_generics(&mut self, generics: &'a Generics) {

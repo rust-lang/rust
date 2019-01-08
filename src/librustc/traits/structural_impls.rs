@@ -395,6 +395,7 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
 
                 Ok(())
             }
+            Subtype(a, b) => write!(fmt, "{} <: {}", a, b),
             CannotProve => write!(fmt, "CannotProve"),
         }
     }
@@ -668,6 +669,7 @@ EnumLiftImpl! {
         (traits::GoalKind::Not)(goal),
         (traits::GoalKind::DomainGoal)(domain_goal),
         (traits::GoalKind::Quantified)(kind, goal),
+        (traits::GoalKind::Subtype)(a, b),
         (traits::GoalKind::CannotProve),
     }
 }
@@ -700,12 +702,36 @@ impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
 impl<'tcx, C> Lift<'tcx> for chalk_engine::ExClause<C>
 where
     C: chalk_engine::context::Context + Clone,
-    C: traits::ExClauseLift<'tcx>,
+    C: traits::ChalkContextLift<'tcx>,
 {
     type Lifted = C::LiftedExClause;
 
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        <C as traits::ExClauseLift>::lift_ex_clause_to_tcx(self, tcx)
+        <C as traits::ChalkContextLift>::lift_ex_clause_to_tcx(self, tcx)
+    }
+}
+
+impl<'tcx, C> Lift<'tcx> for chalk_engine::DelayedLiteral<C>
+where
+    C: chalk_engine::context::Context + Clone,
+    C: traits::ChalkContextLift<'tcx>,
+{
+    type Lifted = C::LiftedDelayedLiteral;
+
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        <C as traits::ChalkContextLift>::lift_delayed_literal_to_tcx(self, tcx)
+    }
+}
+
+impl<'tcx, C> Lift<'tcx> for chalk_engine::Literal<C>
+where
+    C: chalk_engine::context::Context + Clone,
+    C: traits::ChalkContextLift<'tcx>,
+{
+    type Lifted = C::LiftedLiteral;
+
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        <C as traits::ChalkContextLift>::lift_literal_to_tcx(self, tcx)
     }
 }
 
@@ -840,6 +866,7 @@ EnumTypeFoldableImpl! {
         (traits::GoalKind::Not)(goal),
         (traits::GoalKind::DomainGoal)(domain_goal),
         (traits::GoalKind::Quantified)(qkind, goal),
+        (traits::GoalKind::Subtype)(a, b),
         (traits::GoalKind::CannotProve),
     }
 }

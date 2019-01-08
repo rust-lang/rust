@@ -33,11 +33,11 @@ mod g {
 fn main() {
     e::foo();
     f::foo(); //~ ERROR `foo` is ambiguous
-    g::foo(); //~ ERROR `foo` is ambiguous
+    g::foo();
 }
 
 mod ambiguous_module_errors {
-    pub mod m1 { pub use super::m1 as foo; }
+    pub mod m1 { pub use super::m1 as foo; pub fn bar() {} }
     pub mod m2 { pub use super::m2 as foo; }
 
     use self::m1::*;

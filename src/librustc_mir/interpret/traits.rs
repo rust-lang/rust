@@ -1,3 +1,4 @@
+use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
@@ -14,7 +15,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn get_vtable(
         &mut self,
         ty: Ty<'tcx>,
-        poly_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
     ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
@@ -24,10 +25,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok(Pointer::from(vtable).with_default_tag());
         }
 
-        let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
-        let trait_ref = self.tcx.erase_regions(&trait_ref);
+        let methods = if let Some(poly_trait_ref) = poly_trait_ref {
+            let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
+            let trait_ref = self.tcx.erase_regions(&trait_ref);
 
-        let methods = self.tcx.vtable_methods(trait_ref);
+            self.tcx.vtable_methods(trait_ref)
+        } else {
+            Lrc::new(Vec::new())
+        };
 
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");

@@ -171,7 +171,7 @@ compiles, while only showing the parts that are relevant to that part of your
 explanation.
 
 The `#`-hiding of lines can be prevented by using two consecutive hashes
-`##`. This only needs to be done with with the first `#` which would've
+`##`. This only needs to be done with the first `#` which would've
 otherwise caused hiding. If we have a string literal like the following,
 which has a line that starts with a `#`:
 

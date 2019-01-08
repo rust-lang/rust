@@ -1,25 +1,25 @@
 error[E0308]: mismatched types
-  --> $DIR/coercion-missing-tail-expected-type.rs:3:28
+  --> $DIR/coercion-missing-tail-expected-type.rs:3:24
    |
-LL |   fn plus_one(x: i32) -> i32 { //~ ERROR mismatched types
-   |  ____________________________^
-LL | |     x + 1;
-   | |          - help: consider removing this semicolon
-LL | | }
-   | |_^ expected i32, found ()
+LL | fn plus_one(x: i32) -> i32 { //~ ERROR mismatched types
+   |    --------            ^^^ expected i32, found ()
+   |    |
+   |    this function's body doesn't return
+LL |     x + 1;
+   |          - help: consider removing this semicolon
    |
    = note: expected type `i32`
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/coercion-missing-tail-expected-type.rs:7:29
+  --> $DIR/coercion-missing-tail-expected-type.rs:7:13
    |
-LL |   fn foo() -> Result<u8, u64> { //~ ERROR mismatched types
-   |  _____________________________^
-LL | |     Ok(1);
-   | |          - help: consider removing this semicolon
-LL | | }
-   | |_^ expected enum `std::result::Result`, found ()
+LL | fn foo() -> Result<u8, u64> { //~ ERROR mismatched types
+   |    ---      ^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found ()
+   |    |
+   |    this function's body doesn't return
+LL |     Ok(1);
+   |          - help: consider removing this semicolon
    |
    = note: expected type `std::result::Result<u8, u64>`
               found type `()`

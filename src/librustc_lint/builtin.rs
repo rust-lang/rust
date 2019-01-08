@@ -540,7 +540,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
             return;
         }
         let param_env = ty::ParamEnv::empty();
-        if !ty.moves_by_default(cx.tcx, param_env, item.span) {
+        if ty.is_copy_modulo_regions(cx.tcx, param_env, item.span) {
             return;
         }
         if param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
@@ -673,7 +673,7 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-/// Checks for incorrect use use of `repr` attributes.
+/// Checks for incorrect use of `repr` attributes.
 #[derive(Clone)]
 pub struct BadRepr;
 

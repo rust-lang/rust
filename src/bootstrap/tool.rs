@@ -77,7 +77,7 @@ impl Step for ToolBuild {
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, &mut cargo, vec![], &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, &mut cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 | "rls"
@@ -140,7 +140,7 @@ impl Step for ToolBuild {
         });
 
         if is_expected && !duplicates.is_empty() {
-            println!("duplicate artfacts found when compiling a tool, this \
+            println!("duplicate artifacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n");

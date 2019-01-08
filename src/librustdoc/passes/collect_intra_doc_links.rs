@@ -632,7 +632,7 @@ fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()
     };
     let parent_def = Def::Enum(parent);
     let variant = cx.tcx.expect_variant_def(def);
-    Ok((parent_def, Some(format!("{}.v", variant.name))))
+    Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
 }
 
 const PRIMITIVES: &[(&str, Def)] = &[

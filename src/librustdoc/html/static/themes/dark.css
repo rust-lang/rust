@@ -182,12 +182,16 @@ a.test-arrow {
 
 .search-input {
 	color: #111;
-	box-shadow: 1px 0 0 1px #000, 0 0 0 2px transparent;
+	box-shadow: 0 0 0 1px #000, 0 0 0 2px transparent;
 	background-color: #f0f0f0;
 }
 
 .search-input:focus {
 	border-color: #008dfd;
+}
+
+#crate-search + .search-input {
+	box-shadow: 1px 0 0 1px #000, 0 0 0 2px transparent;
 }
 
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #404040; }

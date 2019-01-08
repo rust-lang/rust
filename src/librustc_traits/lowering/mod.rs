@@ -211,7 +211,6 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let where_clauses = &predicates
         .iter()
         .map(|(wc, _)| wc.lower())
-        .map(|wc| wc.subst(tcx, bound_vars))
         .collect::<Vec<_>>();
 
     // Rule Implied-Bound-From-Trait
@@ -232,14 +231,13 @@ fn program_clauses_for_trait<'a, 'tcx>(
         .map(|wc| {
             // we move binders to the left
             wc.map_bound(|goal| ProgramClause {
-                goal: goal.into_from_env_goal(),
-
-                // FIXME: As where clauses can only bind lifetimes for now,
-                // and that named bound regions have a def-id, it is safe
-                // to just inject `hypotheses` (which contains named vars bound at index `0`)
-                // into this binding level. This may change if we ever allow where clauses
-                // to bind types (e.g., for GATs things), because bound types only use a `BoundVar`
+                // FIXME: As where clauses can only bind lifetimes for now, and that named
+                // bound regions have a def-id, it is safe to just inject `bound_vars` and
+                // `hypotheses` (which contain named vars bound at index `0`) into this
+                // binding level. This may change if we ever allow where clauses to bind
+                // types (e.g. for GATs things), because bound types only use a `BoundVar`
                 // index (no def-id).
+                goal: goal.subst(tcx, bound_vars).into_from_env_goal(),
                 hypotheses,
 
                 category: ProgramClauseCategory::ImpliedBound,
@@ -346,7 +344,6 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     let where_clauses = tcx.predicates_of(def_id).predicates
         .iter()
         .map(|(wc, _)| wc.lower())
-        .map(|wc| wc.subst(tcx, bound_vars))
         .collect::<Vec<_>>();
 
     // `WellFormed(Ty<...>) :- WC1, ..., WCm`
@@ -355,7 +352,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
         hypotheses: tcx.mk_goals(
             where_clauses
                 .iter()
-                .cloned()
+                .map(|wc| wc.subst(tcx, bound_vars))
                 .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
         category: ProgramClauseCategory::WellFormed,
@@ -383,11 +380,10 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
         .map(|wc| {
             // move the binders to the left
             wc.map_bound(|goal| ProgramClause {
-                goal: goal.into_from_env_goal(),
-
-                // FIXME: we inject `hypotheses` into this binding level,
-                // which may be incorrect in the future: see the FIXME in
-                // `program_clauses_for_trait`
+                // FIXME: we inject `bound_vars` and `hypotheses` into this binding
+                // level, which may be incorrect in the future: see the FIXME in
+                // `program_clauses_for_trait`.
+                goal: goal.subst(tcx, bound_vars).into_from_env_goal(),
                 hypotheses,
 
                 category: ProgramClauseCategory::ImpliedBound,
@@ -626,7 +622,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
 
             if attr.check_name("rustc_dump_env_program_clauses") {
                 let environment = self.tcx.environment(def_id);
-                clauses = Some(self.tcx.program_clauses_for_env(*environment.skip_binder()));
+                clauses = Some(self.tcx.program_clauses_for_env(environment));
             }
 
             if let Some(clauses) = clauses {

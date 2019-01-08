@@ -126,7 +126,7 @@ pub trait OpenOptionsExt {
     ///
     /// By default `share_mode` is set to
     /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`. This allows
-    /// other processes to to read, write, and delete/rename the same file
+    /// other processes to read, write, and delete/rename the same file
     /// while it is open. Removing any of the flags will prevent other
     /// processes from performing the corresponding operation until the file
     /// handle is closed.

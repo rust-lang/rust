@@ -1,5 +1,3 @@
-// compile-flags: -Z parse-only
-
 type A where 'a: 'b + 'c = u8; // OK
 type A where 'a: 'b, = u8; // OK
 type A where 'a: = u8; // OK
