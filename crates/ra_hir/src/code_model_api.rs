@@ -143,6 +143,33 @@ pub enum VariantData {
     Unit,
 }
 
+impl VariantData {
+    pub fn fields(&self) -> &[StructField] {
+        match self {
+            VariantData::Struct(fields) | VariantData::Tuple(fields) => fields,
+            _ => &[],
+        }
+    }
+    pub fn is_struct(&self) -> bool {
+        match self {
+            VariantData::Struct(..) => true,
+            _ => false,
+        }
+    }
+    pub fn is_tuple(&self) -> bool {
+        match self {
+            VariantData::Tuple(..) => true,
+            _ => false,
+        }
+    }
+    pub fn is_unit(&self) -> bool {
+        match self {
+            VariantData::Unit => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub(crate) def_id: DefId,

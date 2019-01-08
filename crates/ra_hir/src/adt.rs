@@ -26,14 +26,6 @@ impl StructData {
         let variant_data = Arc::new(variant_data);
         StructData { name, variant_data }
     }
-
-    pub fn name(&self) -> Option<&Name> {
-        self.name.as_ref()
-    }
-
-    pub fn variant_data(&self) -> &Arc<VariantData> {
-        &self.variant_data
-    }
 }
 
 impl Enum {
@@ -68,7 +60,7 @@ impl EnumData {
 }
 
 impl VariantData {
-    pub fn new(flavor: StructFlavor) -> Self {
+    pub(crate) fn new(flavor: StructFlavor) -> Self {
         match flavor {
             StructFlavor::Tuple(fl) => {
                 let fields = fl
@@ -100,30 +92,5 @@ impl VariantData {
             .iter()
             .find(|f| f.name() == field_name)
             .map(|f| f.type_ref())
-    }
-
-    pub fn fields(&self) -> &[StructField] {
-        match *self {
-            VariantData::Struct(ref fields) | VariantData::Tuple(ref fields) => fields,
-            _ => &[],
-        }
-    }
-    pub fn is_struct(&self) -> bool {
-        match self {
-            VariantData::Struct(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_tuple(&self) -> bool {
-        match self {
-            VariantData::Tuple(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_unit(&self) -> bool {
-        match self {
-            VariantData::Unit => true,
-            _ => false,
-        }
     }
 }
