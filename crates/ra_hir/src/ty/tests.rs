@@ -95,6 +95,22 @@ fn test() {
 }
 
 #[test]
+fn infer_enum() {
+    check_inference(
+        r#"
+enum E {
+  V1 { field: u32 },
+  V2
+}
+fn test() {
+  E::V1 { field: 1 };
+  E::V2;
+}"#,
+        "enum.txt",
+    );
+}
+
+#[test]
 fn infer_refs() {
     check_inference(
         r#"

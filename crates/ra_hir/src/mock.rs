@@ -233,6 +233,7 @@ salsa::database_storage! {
             fn type_for_field() for db::TypeForFieldQuery;
             fn struct_data() for db::StructDataQuery;
             fn enum_data() for db::EnumDataQuery;
+            fn enum_variant_data() for db::EnumVariantDataQuery;
             fn impls_in_module() for db::ImplsInModuleQuery;
             fn body_hir() for db::BodyHirQuery;
             fn body_syntax_mapping() for db::BodySyntaxMappingQuery;

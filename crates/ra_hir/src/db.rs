@@ -12,7 +12,7 @@ use crate::{
     module_tree::{ModuleId, ModuleTree},
     nameres::{ItemMap, InputModuleItems},
     ty::{InferenceResult, Ty},
-    adt::{StructData, EnumData},
+    adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
 };
 
@@ -45,6 +45,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn enum_data(def_id: DefId) -> Cancelable<Arc<EnumData>> {
         type EnumDataQuery;
         use fn crate::adt::EnumData::enum_data_query;
+    }
+
+    fn enum_variant_data(def_id: DefId) -> Cancelable<Arc<EnumVariantData>> {
+        type EnumVariantDataQuery;
+        use fn crate::adt::EnumVariantData::enum_variant_data_query;
     }
 
     fn infer(def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
