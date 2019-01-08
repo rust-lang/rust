@@ -368,7 +368,7 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
         mod foo;
 
         use crate::foo::bar::Baz;
-{
+
         fn foo() -> i32 { 92 }
         ",
     );
@@ -380,12 +380,15 @@ fn adding_inner_items_should_not_invalidate_item_map() {
         "
         //- /lib.rs
         struct S { a: i32}
-        mod foo;<|>
         enum E { A }
-        use crate::foo::bar::Baz;
         trait T {
             fn a() {}
         }
+        mod foo;<|>
+        impl S {
+            fn a() {}
+        }
+        use crate::foo::bar::Baz;
         //- /foo/mod.rs
         pub mod bar;
 
@@ -394,13 +397,17 @@ fn adding_inner_items_should_not_invalidate_item_map() {
         ",
         "
         struct S { a: i32, b: () }
-        mod foo;<|>
         enum E { A, B }
-        use crate::foo::bar::Baz;
         trait T {
             fn a() {}
             fn b() {}
         }
+        mod foo;<|>
+        impl S {
+            fn a() {}
+            fn b() {}
+        }
+        use crate::foo::bar::Baz;
         ",
     );
 }
