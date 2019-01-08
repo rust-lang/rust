@@ -59,7 +59,7 @@ pub use self::function::FnSignatureInfo;
 pub use self::code_model_api::{
     Crate, CrateDependency,
     Module, ModuleSource, Problem,
-    Struct, Enum,
+    Struct, Enum, VariantData, StructField,
 };
 
 pub enum Def {

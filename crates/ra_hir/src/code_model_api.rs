@@ -4,7 +4,12 @@ use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{ast, TreePtr, SyntaxNode};
 
-use crate::{Name, db::HirDatabase, DefId, Path, PerNs, nameres::ModuleScope, adt::VariantData};
+use crate::{
+    Name, DefId, Path, PerNs,
+    type_ref::TypeRef,
+    nameres::ModuleScope,
+    db::HirDatabase,
+};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -112,6 +117,30 @@ impl Module {
     ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
         self.problems_impl(db)
     }
+}
+
+/// A single field of an enum variant or struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructField {
+    pub(crate) name: Name,
+    pub(crate) type_ref: TypeRef,
+}
+
+impl StructField {
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+    pub fn type_ref(&self) -> &TypeRef {
+        &self.type_ref
+    }
+}
+
+/// Fields of an enum variant or struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VariantData {
+    Struct(Vec<StructField>),
+    Tuple(Vec<StructField>),
+    Unit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

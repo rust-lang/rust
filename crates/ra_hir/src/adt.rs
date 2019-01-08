@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner, StructFlavor};
 
 use crate::{
-    DefId, Name, AsName, Struct, Enum,
+    DefId, Name, AsName, Struct, Enum, VariantData, StructField,
     type_ref::TypeRef,
 };
 
@@ -67,30 +67,6 @@ impl EnumData {
     }
 }
 
-/// A single field of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StructField {
-    name: Name,
-    type_ref: TypeRef,
-}
-
-impl StructField {
-    pub fn name(&self) -> Name {
-        self.name.clone()
-    }
-    pub fn type_ref(&self) -> &TypeRef {
-        &self.type_ref
-    }
-}
-
-/// Fields of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VariantData {
-    Struct(Vec<StructField>),
-    Tuple(Vec<StructField>),
-    Unit,
-}
-
 impl VariantData {
     pub fn new(flavor: StructFlavor) -> Self {
         match flavor {
@@ -122,8 +98,8 @@ impl VariantData {
     pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
         self.fields()
             .iter()
-            .find(|f| f.name == *field_name)
-            .map(|f| &f.type_ref)
+            .find(|f| f.name() == field_name)
+            .map(|f| f.type_ref())
     }
 
     pub fn fields(&self) -> &[StructField] {
