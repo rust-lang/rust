@@ -79,6 +79,35 @@ fn item_map_smoke_test() {
 }
 
 #[test]
+fn use_trees() {
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo;
+
+        use crate::foo::bar::{Baz, Quux};
+        <|>
+
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        pub enum Quux {};
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            Quux: t
+            foo: t
+        ",
+    );
+}
+
+#[test]
 fn re_exports() {
     let (item_map, module_id) = item_map(
         "

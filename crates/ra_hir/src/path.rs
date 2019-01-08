@@ -150,7 +150,7 @@ fn convert_path(prefix: Option<Path>, path: &ast::Path) -> Option<Path> {
     let prefix = if let Some(qual) = path.qualifier() {
         Some(convert_path(prefix, qual)?)
     } else {
-        None
+        prefix
     };
     let segment = path.segment()?;
     let res = match segment.kind()? {
