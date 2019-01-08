@@ -35,7 +35,7 @@ fn check_module_item_map(map: &hir::ItemMap, module_id: hir::ModuleId, expected:
         .map(|it| it.trim())
         .collect::<Vec<_>>()
         .join("\n");
-    assert_eq_text!(&actual, &expected);
+    assert_eq_text!(&expected, &actual);
 
     fn dump_resolution(resolution: &hir::Resolution) -> &'static str {
         match (
@@ -62,6 +62,35 @@ fn item_map_smoke_test() {
 
         //- /foo/mod.rs
         pub mod bar;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            foo: t
+        ",
+    );
+}
+
+#[test]
+fn re_exports() {
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo;
+
+        use self::foo::Baz;
+        <|>
+
+        //- /foo/mod.rs
+        pub mod bar;
+
+        pub use self::bar::Baz;
 
         //- /foo/bar.rs
         pub struct Baz;

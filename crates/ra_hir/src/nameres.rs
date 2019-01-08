@@ -16,7 +16,7 @@
 //! structure itself is modified.
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use ra_syntax::{
     TextRange,
     SyntaxKind::{self, *},
@@ -295,6 +295,7 @@ pub(crate) struct Resolver<'a, DB> {
     input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
     source_root: SourceRootId,
     module_tree: Arc<ModuleTree>,
+    processed_imports: FxHashSet<(ModuleId, usize)>,
     result: ItemMap,
 }
 
@@ -313,6 +314,7 @@ where
             input,
             source_root,
             module_tree,
+            processed_imports: FxHashSet::default(),
             result: ItemMap::default(),
         }
     }
@@ -322,9 +324,16 @@ where
             self.populate_module(module_id, Arc::clone(items))?;
         }
 
-        for &module_id in self.input.keys() {
-            self.db.check_canceled()?;
-            self.resolve_imports(module_id)?;
+        loop {
+            let processed_imports_count = self.processed_imports.len();
+            for &module_id in self.input.keys() {
+                self.db.check_canceled()?;
+                self.resolve_imports(module_id)?;
+            }
+            if processed_imports_count == self.processed_imports.len() {
+                // no new imports resolved
+                break;
+            }
         }
         Ok(self.result)
     }
@@ -418,15 +427,21 @@ where
     }
 
     fn resolve_imports(&mut self, module_id: ModuleId) -> Cancelable<()> {
-        for import in self.input[&module_id].imports.iter() {
-            self.resolve_import(module_id, import)?;
+        for (i, import) in self.input[&module_id].imports.iter().enumerate() {
+            if self.processed_imports.contains(&(module_id, i)) {
+                // already done
+                continue;
+            }
+            if self.resolve_import(module_id, import)? {
+                self.processed_imports.insert((module_id, i));
+            }
         }
         Ok(())
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> Cancelable<()> {
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> Cancelable<bool> {
         let ptr = match import.kind {
-            ImportKind::Glob => return Ok(()),
+            ImportKind::Glob => return Ok(false),
             ImportKind::Named(ptr) => ptr,
         };
 
@@ -436,7 +451,7 @@ where
                 match module_id.parent(&self.module_tree) {
                     Some(it) => it,
                     // TODO: error
-                    None => return Ok(()),
+                    None => return Ok(true), // this can't suddenly resolve if we just resolve some other imports
                 }
             }
             PathKind::Crate => module_id.crate_root(&self.module_tree),
@@ -447,14 +462,14 @@ where
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
                 Some(res) if !res.def_id.is_none() => res.def_id,
-                _ => return Ok(()),
+                _ => return Ok(false),
             };
 
             if !is_last {
                 let type_def_id = if let Some(d) = def_id.take(Namespace::Types) {
                     d
                 } else {
-                    return Ok(());
+                    return Ok(false);
                 };
                 curr = match type_def_id.loc(self.db) {
                     DefLoc {
@@ -479,12 +494,14 @@ where
                                         import: Some(ptr),
                                     };
                                     items.items.insert(name.clone(), res);
-                                })
+                                });
+                                return Ok(true);
+                            } else {
+                                return Ok(false);
                             }
-                            return Ok(());
                         }
                     }
-                    _ => return Ok(()),
+                    _ => return Ok(true), // this resolved to a non-module, so the path won't ever resolve
                 }
             } else {
                 self.update(module_id, |items| {
@@ -496,7 +513,7 @@ where
                 })
             }
         }
-        Ok(())
+        Ok(true)
     }
 
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
