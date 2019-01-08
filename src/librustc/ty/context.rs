@@ -1248,7 +1248,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         sync::assert_send_val(&gcx);
 
-        tls::enter_global(gcx, f)
+        let r = tls::enter_global(gcx, f);
+
+        gcx.queries.record_computed_queries(s);
+
+        r
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {

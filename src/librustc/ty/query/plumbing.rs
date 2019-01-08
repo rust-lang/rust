@@ -112,11 +112,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             let mut lock = cache.borrow_mut();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
-                tcx.sess.profiler(|p| {
-                    p.record_query(Q::CATEGORY);
-                    p.record_query_hit(Q::CATEGORY);
-                });
-
+                tcx.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
                 let result = Ok((value.value.clone(), value.index));
                 #[cfg(debug_assertions)]
                 {
@@ -195,6 +191,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// Executes a job by changing the ImplicitCtxt to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
+    #[inline(always)]
     pub(super) fn start<'lcx, F, R>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
@@ -382,13 +379,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             )
         );
 
-        self.sess.profiler(|p| p.record_query(Q::CATEGORY));
-
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(result) => {
                 return result.map(|(v, index)| {
-                    self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
                     self.dep_graph.read_index(index);
                     v
                 })
@@ -430,9 +424,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if !dep_node.kind.is_input() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
-                profq_msg!(self, ProfileQueriesMsg::CacheHit);
-                self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
-
                 return self.load_from_disk_and_cache_in_memory::<Q>(key,
                                                                     job,
                                                                     dep_node_index,
@@ -483,10 +474,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
 
         let result = if let Some(result) = result {
+            profq_msg!(self, ProfileQueriesMsg::CacheHit);
+            self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
+
             result
         } else {
             // We could not load a result from the on-disk cache, so
             // recompute.
+
+            self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
             // The diagnostics for this query have already been
             // promoted to the current session during
@@ -498,6 +494,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Q::compute(tcx, key)
                 })
             });
+
+            self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
             result
         };
 
@@ -547,6 +545,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             for {:?}", dep_node);
     }
 
+    #[inline(always)]
     fn force_query_with_job<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
@@ -565,10 +564,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-        self.sess.profiler(|p| {
-            p.start_activity(Q::CATEGORY);
-            p.record_query(Q::CATEGORY);
-        });
+        self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
         let res = job.start(self, |tcx| {
             if dep_node.kind.is_eval_always() {
@@ -624,14 +620,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
 
-            self.sess.profiler(|p| {
-                p.start_activity(Q::CATEGORY);
-                p.record_query(Q::CATEGORY);
-            });
-
             let _ = self.get_query::<Q>(DUMMY_SP, key);
-
-            self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
+        } else {
+            profq_msg!(self, ProfileQueriesMsg::CacheHit);
+            self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
         }
     }
 
@@ -749,6 +741,17 @@ macro_rules! define_queries_inner {
                     on_disk_cache,
                     $($name: Default::default()),*
                 }
+            }
+
+            pub fn record_computed_queries(&self, sess: &Session) {
+                sess.profiler(|p| {
+                    $(
+                        p.record_computed_queries(
+                            <queries::$name<'_> as QueryConfig<'_>>::CATEGORY,
+                            self.$name.lock().results.len()
+                        );
+                    )*
+                });
             }
 
             #[cfg(parallel_queries)]
