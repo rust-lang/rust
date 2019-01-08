@@ -88,9 +88,9 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                 );
                 OperandValue::Immediate(llval)
             },
-            ConstValue::ScalarPair(a, b) => {
-                let (a_scalar, b_scalar) = match layout.abi {
-                    layout::Abi::ScalarPair(ref a, ref b) => (a, b),
+            ConstValue::Slice(a, b) => {
+                let a_scalar = match layout.abi {
+                    layout::Abi::ScalarPair(ref a, _) => a,
                     _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
                 };
                 let a_llval = bx.cx().scalar_to_backend(
@@ -98,11 +98,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                     a_scalar,
                     bx.cx().scalar_pair_element_backend_type(layout, 0, true),
                 );
-                let b_llval = bx.cx().scalar_to_backend(
-                    b,
-                    b_scalar,
-                    bx.cx().scalar_pair_element_backend_type(layout, 1, true),
-                );
+                let b_llval = bx.cx().const_usize(b);
                 OperandValue::Pair(a_llval, b_llval)
             },
             ConstValue::ByRef(_, alloc, offset) => {

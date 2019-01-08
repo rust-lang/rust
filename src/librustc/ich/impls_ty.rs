@@ -302,7 +302,7 @@ impl_stable_hash_for!(struct ty::FieldDef {
 impl_stable_hash_for!(
     impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
         Scalar(val),
-        ScalarPair(a, b),
+        Slice(a, b),
         ByRef(id, alloc, offset),
     }
 );

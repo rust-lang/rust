@@ -2702,23 +2702,21 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: ty::Const<'_>) -> fmt::Resul
         return write!(f, "{}", item_path_str(did));
     }
     // print string literals
-    if let ConstValue::ScalarPair(ptr, len) = value {
+    if let ConstValue::Slice(ptr, len) = value {
         if let Scalar::Ptr(ptr) = ptr {
-            if let Scalar::Bits { bits: len, .. } = len {
-                if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
-                    return ty::tls::with(|tcx| {
-                        let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(interpret::AllocKind::Memory(alloc)) = alloc {
-                            assert_eq!(len as usize as u128, len);
-                            let slice =
-                                &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                            let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                            write!(f, "{:?}", s)
-                        } else {
-                            write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
-                        }
-                    });
-                }
+            if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
+                return ty::tls::with(|tcx| {
+                    let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
+                    if let Some(interpret::AllocKind::Memory(alloc)) = alloc {
+                        assert_eq!(len as usize as u64, len);
+                        let slice =
+                            &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
+                        let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                        write!(f, "{:?}", s)
+                    } else {
+                        write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                    }
+                });
             }
         }
     }

@@ -498,7 +498,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
             ConstValue::Scalar(x) => Some(ConstValue::Scalar(x)),
-            ConstValue::ScalarPair(x, y) => Some(ConstValue::ScalarPair(x, y)),
+            ConstValue::Slice(x, y) => Some(ConstValue::Slice(x, y)),
             ConstValue::ByRef(x, alloc, z) => Some(ConstValue::ByRef(
                 x, alloc.lift_to_tcx(tcx)?, z,
             )),

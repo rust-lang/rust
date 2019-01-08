@@ -122,10 +122,7 @@ pub fn op_to_const<'tcx>(
     let normalize = may_normalize
         && match op.layout.abi {
             layout::Abi::Scalar(..) => true,
-            layout::Abi::ScalarPair(..) => {
-                // Must be a fat pointer
-                op.layout.ty.builtin_deref(true).is_some()
-            },
+            layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
             _ => false,
         };
     let normalized_op = if normalize {
@@ -154,7 +151,7 @@ pub fn op_to_const<'tcx>(
         Ok(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),
         Ok(Immediate::ScalarPair(a, b)) =>
-            ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
+            ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
     };
     Ok(ty::Const { val, ty: op.layout.ty })
 }

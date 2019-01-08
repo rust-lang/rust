@@ -22,10 +22,8 @@ pub enum ConstValue<'tcx> {
     /// Not using the enum `Value` to encode that this must not be `Undef`
     Scalar(Scalar),
 
-    /// Used only for *fat pointers* with layout::abi::ScalarPair
-    ///
-    /// Needed for pattern matching code related to slices and strings.
-    ScalarPair(Scalar, Scalar),
+    /// Used only for slices and strings (`&[T]`, `&str`, `*const [T]`, `*mut str`, `Box<str>`, ...)
+    Slice(Scalar, u64),
 
     /// An allocation + offset into the allocation.
     /// Invariant: The AllocId matches the allocation.
@@ -33,14 +31,14 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(CONST_SIZE: ::std::mem::size_of::<ConstValue<'static>>() == 56);
+static_assert!(CONST_SIZE: ::std::mem::size_of::<ConstValue<'static>>() == 40);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
             ConstValue::ByRef(..) |
-            ConstValue::ScalarPair(..) => None,
+            ConstValue::Slice(..) => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -59,17 +57,8 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn new_slice(
         val: Scalar,
         len: u64,
-        cx: &impl HasDataLayout
     ) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Bits {
-            bits: len as u128,
-            size: cx.data_layout().pointer_size.bytes() as u8,
-        })
-    }
-
-    #[inline]
-    pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Ptr(vtable))
+        ConstValue::Slice(val, len)
     }
 }
 
