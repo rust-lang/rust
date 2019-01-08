@@ -209,7 +209,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 tcx: tcx.global_tcx(),
                 query: Some(self.job.clone()),
                 layout_depth: current_icx.layout_depth,
-                task: current_icx.task,
+                task_deps: current_icx.task_deps,
             };
 
             // Use the ImplicitCtxt while we execute the query
