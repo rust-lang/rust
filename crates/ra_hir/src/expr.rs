@@ -758,10 +758,7 @@ pub(crate) fn body_syntax_mapping(
     let def = def_id.resolve(db)?;
 
     let body_syntax_mapping = match def {
-        Def::Function(f) => {
-            let node = f.syntax(db);
-            collect_fn_body_syntax(&node)
-        }
+        Def::Function(f) => collect_fn_body_syntax(&f.source(db)),
         // TODO: consts, etc.
         _ => panic!("Trying to get body for item type without body"),
     };

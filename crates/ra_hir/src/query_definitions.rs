@@ -12,9 +12,8 @@ use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
     SourceFileItems, SourceItemId, DefId, HirFileId, ModuleSource,
-    MacroCallLoc,
+    MacroCallLoc, FnScopes,
     db::HirDatabase,
-    function::FnScopes,
     module_tree::ModuleId,
     nameres::{InputModuleItems, ItemMap, Resolver},
 };

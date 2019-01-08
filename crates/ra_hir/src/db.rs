@@ -106,7 +106,7 @@ pub trait HirDatabase: SyntaxDatabase
 
     fn fn_signature(def_id: DefId) -> Arc<FnSignature> {
         type FnSignatureQuery;
-        use fn crate::function::fn_signature;
+        use fn crate::FnSignature::fn_signature_query;
     }
 }
 

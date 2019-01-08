@@ -26,7 +26,6 @@ mod macros;
 mod name;
 mod module_tree;
 mod nameres;
-mod function;
 mod adt;
 mod type_ref;
 mod ty;
@@ -48,21 +47,15 @@ pub use self::{
     ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc},
     macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{ItemMap, PerNs, Namespace, Resolution},
-    function::{Function, FnSignature, FnScopes, ScopesWithSyntaxMapping},
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},
+    code_model_impl::function::{FnScopes, ScopesWithSyntaxMapping},
 };
 
 pub use self::code_model_api::{
     Crate, CrateDependency,
+    Def,
     Module, ModuleSource, Problem,
     Struct, Enum, VariantData, StructField,
+    Function, FnSignature,
 };
-
-pub enum Def {
-    Module(Module),
-    Function(Function),
-    Struct(Struct),
-    Enum(Enum),
-    Item,
-}
