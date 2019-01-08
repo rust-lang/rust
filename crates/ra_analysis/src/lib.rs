@@ -22,6 +22,7 @@ mod symbol_index;
 
 mod extend_selection;
 mod hover;
+mod call_info;
 mod syntax_highlighting;
 
 use std::{fmt, sync::Arc};
@@ -39,7 +40,6 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
 };
-pub use hir::FnSignatureInfo;
 pub use ra_editor::{Fold, FoldKind, HighlightedRange, LineIndex, Severity, StructureNode};
 
 pub use ra_db::{
@@ -272,6 +272,14 @@ impl<T> RangeInfo<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct CallInfo {
+    pub label: String,
+    pub doc: Option<String>,
+    pub parameters: Vec<String>,
+    pub active_parameter: Option<usize>,
+}
+
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug, Default)]
 pub struct AnalysisHost {
@@ -391,6 +399,10 @@ impl Analysis {
     pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
         hover::hover(&*self.db, position)
     }
+    /// Computes parameter information for the given call expression.
+    pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
+        call_info::call_info(&*self.db, position)
+    }
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         self.db.parent_module(position)
@@ -424,13 +436,6 @@ impl Analysis {
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         self.db.diagnostics(file_id)
-    }
-    /// Computes parameter information for the given call expression.
-    pub fn resolve_callable(
-        &self,
-        position: FilePosition,
-    ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
-        self.db.resolve_callable(position)
     }
     /// Computes the type of the expression at the given position.
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {

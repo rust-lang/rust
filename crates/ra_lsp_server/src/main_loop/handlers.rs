@@ -475,36 +475,30 @@ pub fn handle_signature_help(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SignatureHelp>> {
     let position = params.try_conv_with(&world)?;
-
-    if let Some((descriptor, active_param)) = world.analysis().resolve_callable(position)? {
-        let parameters: Vec<ParameterInformation> = descriptor
-            .params
-            .iter()
+    if let Some(call_info) = world.analysis().call_info(position)? {
+        let parameters: Vec<ParameterInformation> = call_info
+            .parameters
+            .into_iter()
             .map(|param| ParameterInformation {
                 label: ParameterLabel::Simple(param.clone()),
                 documentation: None,
             })
             .collect();
-
-        let documentation = if let Some(doc) = descriptor.doc {
-            Some(Documentation::MarkupContent(MarkupContent {
+        let documentation = call_info.doc.map(|value| {
+            Documentation::MarkupContent(MarkupContent {
                 kind: MarkupKind::Markdown,
-                value: doc,
-            }))
-        } else {
-            None
-        };
-
+                value,
+            })
+        });
         let sig_info = SignatureInformation {
-            label: descriptor.label,
+            label: call_info.label,
             documentation,
             parameters: Some(parameters),
         };
-
         Ok(Some(req::SignatureHelp {
             signatures: vec![sig_info],
             active_signature: Some(0),
-            active_parameter: active_param.map(|a| a as u64),
+            active_parameter: call_info.active_parameter.map(|it| it as u64),
         }))
     } else {
         Ok(None)
