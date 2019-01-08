@@ -70,7 +70,7 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
     Ok(ecx)
 }
 
-pub fn mk_eval_cx<'a, 'tcx>(
+fn mk_eval_cx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
