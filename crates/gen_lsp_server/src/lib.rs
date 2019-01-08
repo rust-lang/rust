@@ -78,10 +78,10 @@ pub use crate::{
 };
 
 /// Main entry point: runs the server from initialization to shutdown.
-/// To attach server to standard input/output streams, use `stdio_transport`
+/// To attach server to standard input/output streams, use the `stdio_transport`
 /// function to create corresponding `sender` and `receiver` pair.
 ///
-///`server` should use `handle_shutdown` function to handle the `Shutdown`
+/// `server` should use the `handle_shutdown` function to handle the `Shutdown`
 /// request.
 pub fn run_server(
     caps: ServerCapabilities,
@@ -104,7 +104,7 @@ pub fn run_server(
     Ok(())
 }
 
-/// if `req` is `Shutdown`, respond to it and return `None`, otherwise return `Some(req)`
+/// If `req` is `Shutdown`, respond to it and return `None`, otherwise return `Some(req)`
 pub fn handle_shutdown(req: RawRequest, sender: &Sender<RawMessage>) -> Option<RawRequest> {
     match req.cast::<Shutdown>() {
         Ok((id, ())) => {

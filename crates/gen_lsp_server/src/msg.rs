@@ -54,7 +54,7 @@ pub enum ErrorCode {
     ServerErrorEnd = -32000,
     ServerNotInitialized = -32002,
     UnknownErrorCode = -32001,
-    RequestCancelled = -32800,
+    RequestCanceled = -32800,
     ContentModified = -32801,
 }
 

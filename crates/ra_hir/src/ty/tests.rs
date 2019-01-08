@@ -15,7 +15,7 @@ use crate::{
 };
 
 // These tests compare the inference results for all expressions in a file
-// against snapshots of the current results. If you change something and these
+// against snapshots of the expected results. If you change something and these
 // tests fail expectedly, you can update the comparison files by deleting them
 // and running the tests again. Similarly, to add a new test, just write the
 // test here in the same pattern and it will automatically write the snapshot.

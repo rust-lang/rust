@@ -26,6 +26,7 @@ pub trait HirDatabase: SyntaxDatabase
         type HirSourceFileQuery;
         use fn HirFileId::hir_source_file;
     }
+
     fn expand_macro_invocation(invoc: MacroCallId) -> Option<Arc<MacroExpansion>> {
         type ExpandMacroCallQuery;
         use fn crate::macros::expand_macro_invocation;
@@ -80,10 +81,12 @@ pub trait HirDatabase: SyntaxDatabase
         type InputModuleItemsQuery;
         use fn query_definitions::input_module_items;
     }
+
     fn item_map(source_root_id: SourceRootId) -> Cancelable<Arc<ItemMap>> {
         type ItemMapQuery;
         use fn query_definitions::item_map;
     }
+
     fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
         type ModuleTreeQuery;
         use fn crate::module_tree::ModuleTree::module_tree_query;
