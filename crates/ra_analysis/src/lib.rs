@@ -40,7 +40,6 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
 };
-pub use hir::FnSignatureInfo;
 pub use ra_editor::{Fold, FoldKind, HighlightedRange, LineIndex, Severity, StructureNode};
 
 pub use ra_db::{

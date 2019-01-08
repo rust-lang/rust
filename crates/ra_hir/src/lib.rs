@@ -53,8 +53,6 @@ pub use self::{
     impl_block::{ImplBlock, ImplItem},
 };
 
-pub use self::function::FnSignatureInfo;
-
 pub use self::code_model_api::{
     Crate, CrateDependency,
     Module, ModuleSource, Problem,
