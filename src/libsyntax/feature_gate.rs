@@ -465,9 +465,6 @@ declare_features! (
     // Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
 
-    // `#[cfg_attr(predicate, multiple, attributes, here)]`
-    (active, cfg_attr_multi, "1.31.0", Some(54881), None),
-
     // Allows `const _: TYPE = VALUE`.
     (active, underscore_const_names, "1.31.0", Some(54912), None),
 
@@ -689,6 +686,8 @@ declare_features! (
     (accepted, repr_packed, "1.33.0", Some(33158), None),
     // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
+    // `#[cfg_attr(predicate, multiple, attributes, here)]`
+    (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
