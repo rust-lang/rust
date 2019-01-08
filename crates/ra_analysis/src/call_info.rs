@@ -10,22 +10,8 @@ use ra_editor::find_node_at_offset;
 
 use crate::{FilePosition, CallInfo, db::RootDatabase};
 
-pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable<Option<CallInfo>> {
-    let (sig_info, active_parameter) = ctry!(signature_and_active_param(db, position)?);
-    let res = CallInfo {
-        label: sig_info.label,
-        doc: sig_info.doc,
-        parameters: sig_info.params,
-        active_parameter,
-    };
-    Ok(Some(res))
-}
-
 /// Computes parameter information for the given call expression.
-fn signature_and_active_param(
-    db: &RootDatabase,
-    position: FilePosition,
-) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
+pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable<Option<CallInfo>> {
     let file = db.source_file(position.file_id);
     let syntax = file.syntax();
 
@@ -40,16 +26,14 @@ fn signature_and_active_param(
             let fn_file = db.source_file(symbol.file_id);
             let fn_def = symbol.ptr.resolve(&fn_file);
             let fn_def = ast::FnDef::cast(&fn_def).unwrap();
-            if let Some(descriptor) = FnSignatureInfo::new(fn_def) {
+            if let Some(mut call_info) = CallInfo::new(fn_def) {
                 // If we have a calling expression let's find which argument we are on
-                let mut current_parameter = None;
-
-                let num_params = descriptor.params.len();
+                let num_params = call_info.parameters.len();
                 let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
 
                 if num_params == 1 {
                     if !has_self {
-                        current_parameter = Some(0);
+                        call_info.active_parameter = Some(0);
                     }
                 } else if num_params > 1 {
                     // Count how many parameters into the call we are.
@@ -74,11 +58,11 @@ fn signature_and_active_param(
                             commas += 1;
                         }
 
-                        current_parameter = Some(commas);
+                        call_info.active_parameter = Some(commas);
                     }
                 }
 
-                return Ok(Some((descriptor, current_parameter)));
+                return Ok(Some(call_info));
             }
         }
     }
@@ -125,14 +109,7 @@ impl<'a> FnCallNode<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
-struct FnSignatureInfo {
-    label: String,
-    params: Vec<String>,
-    doc: Option<String>,
-}
-
-impl FnSignatureInfo {
+impl CallInfo {
     fn new(node: &ast::FnDef) -> Option<Self> {
         let mut doc = None;
 
@@ -150,7 +127,7 @@ impl FnSignatureInfo {
             node.syntax().text().to_string()
         };
 
-        if let Some((comment_range, docs)) = FnSignatureInfo::extract_doc_comments(node) {
+        if let Some((comment_range, docs)) = CallInfo::extract_doc_comments(node) {
             let comment_range = comment_range
                 .checked_sub(node.syntax().range().start())
                 .unwrap();
@@ -182,12 +159,11 @@ impl FnSignatureInfo {
             }
         }
 
-        let params = FnSignatureInfo::param_list(node);
-
-        Some(FnSignatureInfo {
-            params,
+        Some(CallInfo {
+            parameters: CallInfo::param_list(node),
             label: label.trim().to_owned(),
             doc,
+            active_parameter: None,
         })
     }
 
