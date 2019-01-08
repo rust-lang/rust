@@ -47,7 +47,6 @@ pub use self::{
     name::Name,
     ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc},
     macros::{MacroDef, MacroInput, MacroExpansion},
-    module_tree::ModuleId,
     nameres::{ItemMap, PerNs, Namespace, Resolution},
     function::{Function, FnSignature, FnScopes, ScopesWithSyntaxMapping},
     ty::Ty,

@@ -2,7 +2,10 @@ use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
 use ra_syntax::{TreePtr, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
-use crate::{HirDatabase, PerNs, ModuleId, Def, Function, Struct, Enum, ImplBlock, Crate};
+use crate::{
+    HirDatabase, PerNs, Def, Function, Struct, Enum, ImplBlock, Crate,
+    module_tree::ModuleId,
+};
 
 use crate::code_model_api::Module;
 

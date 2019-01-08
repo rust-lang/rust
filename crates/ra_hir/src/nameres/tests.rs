@@ -6,22 +6,23 @@ use relative_path::RelativePath;
 use test_utils::assert_eq_text;
 
 use crate::{
-    self as hir,
+    ItemMap, Resolution,
     db::HirDatabase,
     mock::MockDatabase,
+    module_tree::ModuleId,
 };
 
-fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
+fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let (db, pos) = MockDatabase::with_position(fixture);
     let source_root = db.file_source_root(pos.file_id);
-    let module = hir::source_binder::module_from_position(&db, pos)
+    let module = crate::source_binder::module_from_position(&db, pos)
         .unwrap()
         .unwrap();
     let module_id = module.def_id.loc(&db).module_id;
     (db.item_map(source_root).unwrap(), module_id)
 }
 
-fn check_module_item_map(map: &hir::ItemMap, module_id: hir::ModuleId, expected: &str) {
+fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
     let mut lines = map.per_module[&module_id]
         .items
         .iter()
@@ -37,7 +38,7 @@ fn check_module_item_map(map: &hir::ItemMap, module_id: hir::ModuleId, expected:
         .join("\n");
     assert_eq_text!(&expected, &actual);
 
-    fn dump_resolution(resolution: &hir::Resolution) -> &'static str {
+    fn dump_resolution(resolution: &Resolution) -> &'static str {
         match (
             resolution.def_id.types.is_some(),
             resolution.def_id.values.is_some(),
@@ -181,7 +182,7 @@ fn item_map_across_crates() {
     db.set_crate_graph(crate_graph);
 
     let source_root = db.file_source_root(main_id);
-    let module = hir::source_binder::module_from_file_id(&db, main_id)
+    let module = crate::source_binder::module_from_file_id(&db, main_id)
         .unwrap()
         .unwrap();
     let module_id = module.def_id.loc(&db).module_id;
