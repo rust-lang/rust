@@ -1,6 +1,6 @@
 use join_to_string::join;
 use ra_syntax::{
-    ast::{self, AstNode, NameOwner, TypeParamsOwner},
+    ast::{self, AstNode, AstToken, NameOwner, TypeParamsOwner},
     TextUnit,
 };
 

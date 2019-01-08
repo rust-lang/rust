@@ -5,7 +5,7 @@ use std::u32;
 use arrayvec::ArrayString;
 
 use crate::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, AstToken},
     string_lexing::{self, StringComponentKind},
     TextRange,
     yellow::{

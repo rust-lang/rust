@@ -424,10 +424,10 @@ Grammar(
         "PrefixExpr": (options: ["Expr"]),
         "RangeExpr": (),
         "BinExpr": (),
-        "String": (),
-        "Byte": (),
-        "ByteString": (),
-        "Char": (),
+        "String": ( traits: ["AstToken"] ),
+        "Byte": ( traits: ["AstToken"] ),
+        "ByteString": ( traits: ["AstToken"] ),
+        "Char": ( traits: ["AstToken"] ),
         "Literal": (),
 
         "Expr": (
@@ -505,7 +505,7 @@ Grammar(
         ),
         "TypeParam": ( traits: ["NameOwner"] ),
         "LifetimeParam": ( options: [ "Lifetime" ] ),
-        "Lifetime": (),
+        "Lifetime": ( traits: ["AstToken"] ),
         "WhereClause": (),
         "ExprStmt": (
             options: [ ["expr", "Expr"] ]
@@ -562,7 +562,7 @@ Grammar(
         "PathSegment": (
             options: [ "NameRef" ]
         ),
-        "Comment": (),
-        "Whitespace": (),
+        "Comment": ( traits: ["AstToken"] ),
+        "Whitespace": ( traits: ["AstToken"] ),
     },
 )

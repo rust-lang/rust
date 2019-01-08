@@ -205,7 +205,7 @@ pub(crate) struct FileSymbol {
 
 fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, LocalSyntaxPtr)> {
     fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, LocalSyntaxPtr)> {
-        let name = node.name()?.text();
+        let name = node.name()?.text().clone();
         let ptr = LocalSyntaxPtr::new(node.syntax());
         Some((name, ptr))
     }

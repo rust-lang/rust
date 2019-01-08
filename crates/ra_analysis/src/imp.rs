@@ -115,7 +115,7 @@ impl db::RootDatabase {
         let name = ast_module.name().unwrap();
         Ok(vec![NavigationTarget {
             file_id,
-            name: name.text(),
+            name: name.text().clone(),
             range: name.syntax().range(),
             kind: MODULE,
             ptr: None,
