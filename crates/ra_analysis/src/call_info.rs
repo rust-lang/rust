@@ -21,53 +21,47 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable
 
     // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
     let file_symbols = db.index_resolve(name_ref)?;
-    for symbol in file_symbols {
-        if symbol.ptr.kind() == FN_DEF {
-            let fn_file = db.source_file(symbol.file_id);
-            let fn_def = symbol.ptr.resolve(&fn_file);
-            let fn_def = ast::FnDef::cast(&fn_def).unwrap();
-            if let Some(mut call_info) = CallInfo::new(fn_def) {
-                // If we have a calling expression let's find which argument we are on
-                let num_params = call_info.parameters.len();
-                let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
+    let symbol = ctry!(file_symbols.into_iter().find(|it| it.ptr.kind() == FN_DEF));
+    let fn_file = db.source_file(symbol.file_id);
+    let fn_def = symbol.ptr.resolve(&fn_file);
+    let fn_def = ast::FnDef::cast(&fn_def).unwrap();
+    let mut call_info = ctry!(CallInfo::new(fn_def));
+    // If we have a calling expression let's find which argument we are on
+    let num_params = call_info.parameters.len();
+    let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
 
-                if num_params == 1 {
-                    if !has_self {
-                        call_info.active_parameter = Some(0);
-                    }
-                } else if num_params > 1 {
-                    // Count how many parameters into the call we are.
-                    // TODO: This is best effort for now and should be fixed at some point.
-                    // It may be better to see where we are in the arg_list and then check
-                    // where offset is in that list (or beyond).
-                    // Revisit this after we get documentation comments in.
-                    if let Some(ref arg_list) = calling_node.arg_list() {
-                        let start = arg_list.syntax().range().start();
+    if num_params == 1 {
+        if !has_self {
+            call_info.active_parameter = Some(0);
+        }
+    } else if num_params > 1 {
+        // Count how many parameters into the call we are.
+        // TODO: This is best effort for now and should be fixed at some point.
+        // It may be better to see where we are in the arg_list and then check
+        // where offset is in that list (or beyond).
+        // Revisit this after we get documentation comments in.
+        if let Some(ref arg_list) = calling_node.arg_list() {
+            let start = arg_list.syntax().range().start();
 
-                        let range_search = TextRange::from_to(start, position.offset);
-                        let mut commas: usize = arg_list
-                            .syntax()
-                            .text()
-                            .slice(range_search)
-                            .to_string()
-                            .matches(',')
-                            .count();
+            let range_search = TextRange::from_to(start, position.offset);
+            let mut commas: usize = arg_list
+                .syntax()
+                .text()
+                .slice(range_search)
+                .to_string()
+                .matches(',')
+                .count();
 
-                        // If we have a method call eat the first param since it's just self.
-                        if has_self {
-                            commas += 1;
-                        }
-
-                        call_info.active_parameter = Some(commas);
-                    }
-                }
-
-                return Ok(Some(call_info));
+            // If we have a method call eat the first param since it's just self.
+            if has_self {
+                commas += 1;
             }
+
+            call_info.active_parameter = Some(commas);
         }
     }
 
-    Ok(None)
+    Ok(Some(call_info))
 }
 
 enum FnCallNode<'a> {
