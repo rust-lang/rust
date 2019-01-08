@@ -121,7 +121,7 @@ impl CallInfo {
             node.syntax().text().to_string()
         };
 
-        if let Some((comment_range, docs)) = CallInfo::extract_doc_comments(node) {
+        if let Some((comment_range, docs)) = extract_doc_comments(node) {
             let comment_range = comment_range
                 .checked_sub(node.syntax().range().start())
                 .unwrap();
@@ -154,51 +154,51 @@ impl CallInfo {
         }
 
         Some(CallInfo {
-            parameters: CallInfo::param_list(node),
+            parameters: param_list(node),
             label: label.trim().to_owned(),
             doc,
             active_parameter: None,
         })
     }
+}
 
-    fn extract_doc_comments(node: &ast::FnDef) -> Option<(TextRange, String)> {
-        if node.doc_comments().count() == 0 {
-            return None;
-        }
-
-        let comment_text = node.doc_comment_text();
-
-        let (begin, end) = node
-            .doc_comments()
-            .map(|comment| comment.syntax().range())
-            .map(|range| (range.start().to_usize(), range.end().to_usize()))
-            .fold((std::usize::MAX, std::usize::MIN), |acc, range| {
-                (min(acc.0, range.0), max(acc.1, range.1))
-            });
-
-        let range = TextRange::from_to(TextUnit::from_usize(begin), TextUnit::from_usize(end));
-
-        Some((range, comment_text))
+fn extract_doc_comments(node: &ast::FnDef) -> Option<(TextRange, String)> {
+    if node.doc_comments().count() == 0 {
+        return None;
     }
 
-    fn param_list(node: &ast::FnDef) -> Vec<String> {
-        let mut res = vec![];
-        if let Some(param_list) = node.param_list() {
-            if let Some(self_param) = param_list.self_param() {
-                res.push(self_param.syntax().text().to_string())
-            }
+    let comment_text = node.doc_comment_text();
 
-            // Maybe use param.pat here? See if we can just extract the name?
-            //res.extend(param_list.params().map(|p| p.syntax().text().to_string()));
-            res.extend(
-                param_list
-                    .params()
-                    .filter_map(|p| p.pat())
-                    .map(|pat| pat.syntax().text().to_string()),
-            );
+    let (begin, end) = node
+        .doc_comments()
+        .map(|comment| comment.syntax().range())
+        .map(|range| (range.start().to_usize(), range.end().to_usize()))
+        .fold((std::usize::MAX, std::usize::MIN), |acc, range| {
+            (min(acc.0, range.0), max(acc.1, range.1))
+        });
+
+    let range = TextRange::from_to(TextUnit::from_usize(begin), TextUnit::from_usize(end));
+
+    Some((range, comment_text))
+}
+
+fn param_list(node: &ast::FnDef) -> Vec<String> {
+    let mut res = vec![];
+    if let Some(param_list) = node.param_list() {
+        if let Some(self_param) = param_list.self_param() {
+            res.push(self_param.syntax().text().to_string())
         }
-        res
+
+        // Maybe use param.pat here? See if we can just extract the name?
+        //res.extend(param_list.params().map(|p| p.syntax().text().to_string()));
+        res.extend(
+            param_list
+                .params()
+                .filter_map(|p| p.pat())
+                .map(|pat| pat.syntax().text().to_string()),
+        );
     }
+    res
 }
 
 #[cfg(test)]
