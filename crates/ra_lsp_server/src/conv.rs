@@ -4,7 +4,7 @@ use languageserver_types::{
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
     WorkspaceEdit,
 };
-use ra_analysis::{
+use ra_ide_api::{
     CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
     InsertText, NavigationTarget, SourceChange, SourceFileEdit,
     LineCol, LineIndex, translate_offset_with_edit

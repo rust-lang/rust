@@ -1,4 +1,4 @@
-use ra_analysis::FileId;
+use ra_ide_api::FileId;
 use rustc_hash::FxHashSet;
 
 pub struct Subscriptions {
