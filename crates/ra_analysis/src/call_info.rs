@@ -5,8 +5,8 @@ use ra_syntax::{
     AstNode, SyntaxNode, TextUnit, TextRange,
     SyntaxKind::FN_DEF,
     ast::{self, ArgListOwner, DocCommentsOwner},
+    algo::find_node_at_offset,
 };
-use ra_editor::find_node_at_offset;
 
 use crate::{FilePosition, CallInfo, db::RootDatabase};
 

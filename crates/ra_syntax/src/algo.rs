@@ -2,7 +2,7 @@ pub mod visit;
 
 use rowan::TransparentNewType;
 
-use crate::{SyntaxNode, TextRange, TextUnit};
+use crate::{SyntaxNode, TextRange, TextUnit, AstNode};
 
 pub use rowan::LeafAtOffset;
 
@@ -14,6 +14,10 @@ pub fn find_leaf_at_offset(node: &SyntaxNode, offset: TextUnit) -> LeafAtOffset<
             LeafAtOffset::Between(SyntaxNode::from_repr(l), SyntaxNode::from_repr(r))
         }
     }
+}
+
+pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
+    find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
 }
 
 pub fn find_covering_node(root: &SyntaxNode, range: TextRange) -> &SyntaxNode {

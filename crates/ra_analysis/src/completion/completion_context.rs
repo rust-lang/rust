@@ -1,9 +1,8 @@
-use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
     AstNode, SyntaxNode, SourceFile, TextUnit, TextRange,
     ast,
-    algo::{find_leaf_at_offset, find_covering_node},
+    algo::{find_leaf_at_offset, find_covering_node, find_node_at_offset},
     SyntaxKind::*,
 };
 use hir::source_binder;

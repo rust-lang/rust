@@ -14,12 +14,10 @@ mod replace_if_let_with_match;
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
     Direction, SyntaxNode, TextUnit, TextRange, SourceFile, AstNode,
-    algo::{find_leaf_at_offset, find_covering_node, LeafAtOffset},
+    algo::{find_leaf_at_offset, find_node_at_offset, find_covering_node, LeafAtOffset},
     ast::{self, AstToken},
 };
 use itertools::Itertools;
-
-use crate::find_node_at_offset;
 
 pub use self::{
     flip_comma::flip_comma,

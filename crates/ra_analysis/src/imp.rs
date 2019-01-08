@@ -6,10 +6,11 @@ use hir::{
     self, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, find_node_at_offset, assists, LocalEdit, Severity};
+use ra_editor::{self, assists, LocalEdit, Severity};
 use ra_syntax::{
     TextRange, AstNode, SourceFile,
     ast::{self, NameOwner},
+    algo::find_node_at_offset,
     SyntaxKind::*,
 };
 

@@ -1,7 +1,8 @@
 use ra_db::{FileId, Cancelable, SyntaxDatabase};
-use ra_syntax::{TextRange, AstNode, ast, SyntaxKind::{NAME, MODULE}};
-
-use ra_editor::find_node_at_offset;
+use ra_syntax::{
+    TextRange, AstNode, ast, SyntaxKind::{NAME, MODULE},
+    algo::find_node_at_offset,
+};
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase};
 
