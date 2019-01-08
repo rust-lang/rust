@@ -3,7 +3,7 @@ mod runnables;
 use ra_syntax::TextRange;
 use test_utils::{assert_eq_dbg, assert_eq_text};
 
-use ra_analysis::{
+use ra_ide_api::{
     mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
     AnalysisChange, CrateGraph, FileId, Query
 };

@@ -1,10 +1,10 @@
 use std::{
-    path::{PathBuf},
+    path::PathBuf,
     sync::Arc,
 };
 
 use languageserver_types::Url;
-use ra_analysis::{
+use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData,
     SourceRootId
 };
@@ -12,7 +12,7 @@ use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
 use rustc_hash::FxHashMap;
 use relative_path::RelativePathBuf;
 use parking_lot::RwLock;
-use failure::{format_err};
+use failure::format_err;
 
 use crate::{
     project_model::{CargoWorkspace, TargetKind},

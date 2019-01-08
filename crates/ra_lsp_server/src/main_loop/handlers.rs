@@ -8,7 +8,7 @@ use languageserver_types::{
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, RenameParams,
     SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
-use ra_analysis::{
+use ra_ide_api::{
     FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, SourceChange,
 };
 use ra_syntax::{TextUnit, AstNode};
@@ -736,7 +736,7 @@ fn highlight(world: &ServerWorld, file_id: FileId) -> Result<Vec<Decoration>> {
 }
 
 fn to_diagnostic_severity(severity: Severity) -> DiagnosticSeverity {
-    use ra_analysis::Severity::*;
+    use ra_ide_api::Severity::*;
 
     match severity {
         Error => DiagnosticSeverity::Error,

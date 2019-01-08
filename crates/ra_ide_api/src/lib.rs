@@ -1,8 +1,14 @@
-//! ra_analyzer crate provides "ide-centric" APIs for the rust-analyzer. What
-//! powers this API are the `RootDatabase` struct, which defines a `salsa`
+//! ra_ide_api crate provides "ide-centric" APIs for the rust-analyzer. That is,
+//! it generally operates with files and text ranges, and returns results as
+//! Strings, suitable for displaying to the human.
+//!
+//! What powers this API are the `RootDatabase` struct, which defines a `salsa`
 //! database, and the `ra_hir` crate, where majority of the analysis happens.
 //! However, IDE specific bits of the analysis (most notably completion) happen
 //! in this crate.
+//!
+//! The sibling `ra_ide_api_light` handles thouse bits of IDE functionality
+//! which are restricted to a single file and need only syntax.
 macro_rules! ctry {
     ($expr:expr) => {
         match $expr {
@@ -44,7 +50,7 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
 };
-pub use ra_editor::{
+pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode,
     LineIndex, LineCol, translate_offset_with_edit,
 };
@@ -336,25 +342,28 @@ impl Analysis {
     /// Returns position of the mathcing brace (all types of braces are
     /// supported).
     pub fn matching_brace(&self, file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
-        ra_editor::matching_brace(file, offset)
+        ra_ide_api_light::matching_brace(file, offset)
     }
     /// Returns a syntax tree represented as `String`, for debug purposes.
     // FIXME: use a better name here.
     pub fn syntax_tree(&self, file_id: FileId) -> String {
         let file = self.db.source_file(file_id);
-        ra_editor::syntax_tree(&file)
+        ra_ide_api_light::syntax_tree(&file)
     }
     /// Returns an edit to remove all newlines in the range, cleaning up minor
     /// stuff like trailing commas.
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
         let file = self.db.source_file(frange.file_id);
-        SourceChange::from_local_edit(frange.file_id, ra_editor::join_lines(&file, frange.range))
+        SourceChange::from_local_edit(
+            frange.file_id,
+            ra_ide_api_light::join_lines(&file, frange.range),
+        )
     }
     /// Returns an edit which should be applied when opening a new line, fixing
     /// up minor stuff like continuing the comment.
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.source_file(position.file_id);
-        let edit = ra_editor::on_enter(&file, position.offset)?;
+        let edit = ra_ide_api_light::on_enter(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
     /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -362,25 +371,25 @@ impl Analysis {
     // FIXME: use a snippet completion instead of this hack here.
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.source_file(position.file_id);
-        let edit = ra_editor::on_eq_typed(&file, position.offset)?;
+        let edit = ra_ide_api_light::on_eq_typed(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
     pub fn on_dot_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.source_file(position.file_id);
-        let edit = ra_editor::on_dot_typed(&file, position.offset)?;
+        let edit = ra_ide_api_light::on_dot_typed(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let file = self.db.source_file(file_id);
-        ra_editor::file_structure(&file)
+        ra_ide_api_light::file_structure(&file)
     }
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
         let file = self.db.source_file(file_id);
-        ra_editor::folding_ranges(&file)
+        ra_ide_api_light::folding_ranges(&file)
     }
     /// Fuzzy searches for a symbol.
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {

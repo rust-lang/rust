@@ -6,7 +6,7 @@ use hir::{
     self, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, assists, LocalEdit, Severity};
+use ra_ide_api_light::{self, assists, LocalEdit, Severity};
 use ra_syntax::{
     TextRange, AstNode, SourceFile,
     ast::{self, NameOwner},
@@ -194,7 +194,7 @@ impl db::RootDatabase {
     pub(crate) fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let syntax = self.source_file(file_id);
 
-        let mut res = ra_editor::diagnostics(&syntax)
+        let mut res = ra_ide_api_light::diagnostics(&syntax)
             .into_iter()
             .map(|d| Diagnostic {
                 range: d.range,

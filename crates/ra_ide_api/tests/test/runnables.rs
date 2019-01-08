@@ -1,6 +1,6 @@
 use test_utils::assert_eq_dbg;
 
-use ra_analysis::mock_analysis::analysis_and_position;
+use ra_ide_api::mock_analysis::analysis_and_position;
 
 #[test]
 fn test_runnables() {

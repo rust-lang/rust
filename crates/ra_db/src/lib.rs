@@ -1,4 +1,4 @@
-//! ra_db defines basic database traits. Concrete DB is defined by ra_analysis.
+//! ra_db defines basic database traits. Concrete DB is defined by ra_ide_api.
 mod cancelation;
 mod syntax_ptr;
 mod input;

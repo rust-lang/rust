@@ -15,7 +15,7 @@ More specifically, input data consists of a set of test files (`(PathBuf,
 String)` pairs) and an information about project structure, the so called
 `CrateGraph`. Crate graph specifies which files are crate roots, which cfg flags
 are specified for each crate (TODO: actually implement this) and what are
-dependencies between the crate. The analyzer keeps all these input data in
+dependencies between the crates. The analyzer keeps all these input data in
 memory and never does any IO. Because the input data is source code, which
 typically measures in tens of megabytes at most, keeping all input data in
 memory is OK.
@@ -74,9 +74,9 @@ notes.
 - `algo`: generic tree algorithms, including `walk` for O(1) stack
   space tree traversal (this is cool) and `visit` for type-driven
   visiting the nodes (this is double plus cool, if you understand how
-  `Visitor` works, you understand rust-analyzer).
+  `Visitor` works, you understand the design of syntax trees).
 
-Test for ra_syntax are mostly data-driven: `tests/data/parser` contains a bunch of `.rs`
+Tests for ra_syntax are mostly data-driven: `tests/data/parser` contains a bunch of `.rs`
 (test vectors) and `.txt` files with corresponding syntax trees. During testing, we check
 `.rs` against `.txt`. If the `.txt` file is missing, it is created (this is how you update
 tests). Additionally, running `cargo gen-tests` will walk the grammar module and collect
@@ -107,40 +107,45 @@ guessing a HIR for a particular source position.
 
 Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
-### `crates/ra_analysis`
+### `crates/ra_ide_api`
 
-A stateful library for analyzing many Rust files as they change.
-`AnalysisHost` is a mutable entity (clojure's atom) which holds the
-current state, incorporates changes and handles out `Analysis` --- an
-immutable and consistent snapshot of world state at a point in time, which
-actually powers analysis.
+A stateful library for analyzing many Rust files as they change. `AnalysisHost`
+is a mutable entity (clojure's atom) which holds the current state, incorporates
+changes and handles out `Analysis` --- an immutable and consistent snapshot of
+world state at a point in time, which actually powers analysis.
 
-One interesting aspect of analysis is its support for cancellation. When a change
-is applied to `AnalysisHost`, first all currently active snapshots are
+One interesting aspect of analysis is its support for cancellation. When a
+change is applied to `AnalysisHost`, first all currently active snapshots are
 cancelled. Only after all snapshots are dropped the change actually affects the
 database.
 
-### `crates/ra_lsp_server`
+APIs in this crate are IDE centric: they take text offsets as input and produce
+offsets and strings as output. This works on top of rich code model powered by
+`hir`.
 
-An LSP implementation which uses `ra_analysis` for managing state and
-`ra_editor` for actually doing useful stuff.
+### `crates/ra_ide_api_light`
 
-See [#79](https://github.com/rust-analyzer/rust-analyzer/pull/79/) as an
-example of PR which adds a new feature to `ra_editor` and exposes it
-to `ra_lsp_server`.
+All IDE features which can be implemented if you only have access to a single
+file. `ra_ide_api_light` could be used to enhance editing of Rust code without
+the need to fiddle with build-systems, file synchronization and such.
 
-### `crates/ra_editor`
-
-All IDE features which can be implemented if you only have access to a
-single file. `ra_editor` could be used to enhance editing of Rust code
-without the need to fiddle with build-systems, file
-synchronization and such.
-
-In a sense, `ra_editor` is just a bunch of pure functions which take a
+In a sense, `ra_ide_api_light` is just a bunch of pure functions which take a
 syntax tree as input.
 
-The tests for `ra_editor` are `#[cfg(test)] mod tests` unit-tests spread
+The tests for `ra_ide_api_light` are `#[cfg(test)] mod tests` unit-tests spread
 throughout its modules.
+
+
+### `crates/ra_lsp_server`
+
+An LSP implementation which wraps `ra_ide_api` into a langauge server protocol.
+
+### `crates/ra_vfs`
+
+Although `hir` and `ra_ide_api` don't do any io, we need to be able to read
+files from disk at the end of the day. This is what `ra_vfs` does. It also
+manages overlays: "dirty" files in the editor, whose "true" contents is
+different from data on disk.
 
 ### `crates/gen_lsp_server`
 

@@ -2,7 +2,7 @@ use std::{fs, io::Read, path::Path, time::Instant};
 
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
-use ra_editor::{extend_selection, file_structure, syntax_tree};
+use ra_ide_api_light::{extend_selection, file_structure, syntax_tree};
 use ra_syntax::{SourceFile, TextRange, TreePtr, AstNode};
 use tools::collect_tests;
 
