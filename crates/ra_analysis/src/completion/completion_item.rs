@@ -150,12 +150,10 @@ impl Builder {
     fn from_function(mut self, ctx: &CompletionContext, function: hir::Function) -> Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() {
-            if let Some(sig_info) = function.signature_info(ctx.db) {
-                if sig_info.params.is_empty() {
-                    self.snippet = Some(format!("{}()$0", self.label));
-                } else {
-                    self.snippet = Some(format!("{}($0)", self.label));
-                }
+            if function.signature(ctx.db).args().is_empty() {
+                self.snippet = Some(format!("{}()$0", self.label));
+            } else {
+                self.snippet = Some(format!("{}($0)", self.label));
             }
         }
         self.kind = Some(CompletionItemKind::Function);
