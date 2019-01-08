@@ -93,8 +93,8 @@ impl From<MacroCallId> for HirFileId {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroCallId(u32);
-ra_db::impl_numeric_id!(MacroCallId);
+pub struct MacroCallId(RawId);
+impl_arena_id!(MacroCallId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
@@ -125,8 +125,8 @@ impl MacroCallLoc {
 /// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
 /// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DefId(u32);
-ra_db::impl_numeric_id!(DefId);
+pub struct DefId(RawId);
+impl_arena_id!(DefId);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DefLoc {

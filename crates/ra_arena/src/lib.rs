@@ -61,6 +61,9 @@ pub trait ArenaId {
 }
 
 impl<ID: ArenaId, T> Arena<ID, T> {
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
     pub fn alloc(&mut self, value: T) -> ID {
         let id = RawId(self.data.len() as u32);
         self.data.push(value);

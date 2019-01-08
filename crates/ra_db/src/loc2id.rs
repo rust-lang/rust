@@ -1,8 +1,8 @@
-use parking_lot::Mutex;
-
 use std::hash::Hash;
 
+use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
+use ra_arena::{Arena, ArenaId};
 
 /// There are two principle ways to refer to things:
 ///   - by their locatinon (module in foo/bar/baz.rs at line 42)
@@ -17,33 +17,33 @@ use rustc_hash::FxHashMap;
 #[derive(Debug)]
 struct Loc2IdMap<LOC, ID>
 where
-    ID: NumericId,
+    ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
+    id2loc: Arena<ID, LOC>,
     loc2id: FxHashMap<LOC, ID>,
-    id2loc: FxHashMap<ID, LOC>,
 }
 
 impl<LOC, ID> Default for Loc2IdMap<LOC, ID>
 where
-    ID: NumericId,
+    ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
     fn default() -> Self {
         Loc2IdMap {
+            id2loc: Arena::default(),
             loc2id: FxHashMap::default(),
-            id2loc: FxHashMap::default(),
         }
     }
 }
 
 impl<LOC, ID> Loc2IdMap<LOC, ID>
 where
-    ID: NumericId,
+    ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
     pub fn len(&self) -> usize {
-        self.loc2id.len()
+        self.id2loc.len()
     }
 
     pub fn loc2id(&mut self, loc: &LOC) -> ID {
@@ -51,28 +51,20 @@ where
             Some(id) => return id.clone(),
             None => (),
         }
-        let id = self.loc2id.len();
-        assert!(id < u32::max_value() as usize);
-        let id = ID::from_u32(id as u32);
+        let id = self.id2loc.alloc(loc.clone());
         self.loc2id.insert(loc.clone(), id.clone());
-        self.id2loc.insert(id.clone(), loc.clone());
         id
     }
 
     pub fn id2loc(&self, id: ID) -> LOC {
-        self.id2loc[&id].clone()
+        self.id2loc[id].clone()
     }
-}
-
-pub trait NumericId: Clone + Eq + Hash {
-    fn from_u32(id: u32) -> Self;
-    fn to_u32(self) -> u32;
 }
 
 #[derive(Debug)]
 pub struct LocationIntener<LOC, ID>
 where
-    ID: NumericId,
+    ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
     map: Mutex<Loc2IdMap<LOC, ID>>,
@@ -80,7 +72,7 @@ where
 
 impl<LOC, ID> Default for LocationIntener<LOC, ID>
 where
-    ID: NumericId,
+    ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
     fn default() -> Self {
@@ -92,7 +84,7 @@ where
 
 impl<LOC, ID> LocationIntener<LOC, ID>
 where
-    ID: NumericId,
+    ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
     pub fn len(&self) -> usize {
