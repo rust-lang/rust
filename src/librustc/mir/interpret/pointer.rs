@@ -76,6 +76,8 @@ pub struct Pointer<Tag=(),Id=AllocId> {
     pub tag: Tag,
 }
 
+static_assert!(POINTER_SIZE: ::std::mem::size_of::<Pointer>() == 16);
+
 /// Produces a `Pointer` which points to the beginning of the Allocation
 impl From<AllocId> for Pointer {
     #[inline(always)]
