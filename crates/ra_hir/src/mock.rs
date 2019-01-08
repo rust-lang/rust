@@ -15,6 +15,7 @@ pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
     id_maps: Arc<IdMaps>,
+    file_counter: u32,
 }
 
 impl MockDatabase {
@@ -27,7 +28,7 @@ impl MockDatabase {
     pub(crate) fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
         let mut db = MockDatabase::default();
         let mut source_root = SourceRoot::default();
-        let file_id = db.add_file(&mut source_root, "/main.rs", text);
+        let file_id = db.add_file(WORKSPACE, &mut source_root, "/main.rs", text);
         db.query_mut(ra_db::SourceRootQuery)
             .set(WORKSPACE, Arc::new(source_root.clone()));
 
@@ -51,6 +52,16 @@ impl MockDatabase {
     fn from_fixture(fixture: &str) -> (MockDatabase, SourceRoot, Option<FilePosition>) {
         let mut db = MockDatabase::default();
 
+        let (source_root, pos) = db.add_fixture(WORKSPACE, fixture);
+
+        (db, source_root, pos)
+    }
+
+    pub fn add_fixture(
+        &mut self,
+        source_root_id: SourceRootId,
+        fixture: &str,
+    ) -> (SourceRoot, Option<FilePosition>) {
         let mut position = None;
         let mut source_root = SourceRoot::default();
         for entry in parse_fixture(fixture) {
@@ -59,39 +70,51 @@ impl MockDatabase {
                     position.is_none(),
                     "only one marker (<|>) per fixture is allowed"
                 );
-                position =
-                    Some(db.add_file_with_position(&mut source_root, &entry.meta, &entry.text));
+                position = Some(self.add_file_with_position(
+                    source_root_id,
+                    &mut source_root,
+                    &entry.meta,
+                    &entry.text,
+                ));
             } else {
-                db.add_file(&mut source_root, &entry.meta, &entry.text);
+                self.add_file(source_root_id, &mut source_root, &entry.meta, &entry.text);
             }
         }
-        db.query_mut(ra_db::SourceRootQuery)
-            .set(WORKSPACE, Arc::new(source_root.clone()));
-        (db, source_root, position)
+        self.query_mut(ra_db::SourceRootQuery)
+            .set(source_root_id, Arc::new(source_root.clone()));
+        (source_root, position)
     }
 
-    fn add_file(&mut self, source_root: &mut SourceRoot, path: &str, text: &str) -> FileId {
+    fn add_file(
+        &mut self,
+        source_root_id: SourceRootId,
+        source_root: &mut SourceRoot,
+        path: &str,
+        text: &str,
+    ) -> FileId {
         assert!(path.starts_with('/'));
         let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-        let file_id = FileId(source_root.files.len() as u32);
+        let file_id = FileId(self.file_counter);
+        self.file_counter += 1;
         let text = Arc::new(text.to_string());
         self.query_mut(ra_db::FileTextQuery).set(file_id, text);
         self.query_mut(ra_db::FileRelativePathQuery)
             .set(file_id, path.clone());
         self.query_mut(ra_db::FileSourceRootQuery)
-            .set(file_id, WORKSPACE);
+            .set(file_id, source_root_id);
         source_root.files.insert(path, file_id);
         file_id
     }
 
     fn add_file_with_position(
         &mut self,
+        source_root_id: SourceRootId,
         source_root: &mut SourceRoot,
         path: &str,
         text: &str,
     ) -> FilePosition {
         let (offset, text) = extract_offset(text);
-        let file_id = self.add_file(source_root, path, &text);
+        let file_id = self.add_file(source_root_id, source_root, path, &text);
         FilePosition { file_id, offset }
     }
 }
@@ -121,6 +144,7 @@ impl Default for MockDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
             id_maps: Default::default(),
+            file_counter: 0,
         };
         db.query_mut(ra_db::CrateGraphQuery)
             .set((), Default::default());
@@ -138,6 +162,7 @@ impl salsa::ParallelDatabase for MockDatabase {
             events: Default::default(),
             runtime: self.runtime.snapshot(self),
             id_maps: self.id_maps.clone(),
+            file_counter: self.file_counter,
         })
     }
 }

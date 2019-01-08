@@ -433,6 +433,7 @@ where
                 continue;
             }
             if self.resolve_import(module_id, import)? {
+                log::debug!("import {:?} resolved (or definite error)", import);
                 self.processed_imports.insert((module_id, i));
             }
         }
@@ -440,6 +441,7 @@ where
     }
 
     fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> Cancelable<bool> {
+        log::debug!("resolving import: {:?}", import);
         let ptr = match import.kind {
             ImportKind::Glob => return Ok(false),
             ImportKind::Named(ptr) => ptr,
@@ -450,8 +452,11 @@ where
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {
                     Some(it) => it,
-                    // TODO: error
-                    None => return Ok(true), // this can't suddenly resolve if we just resolve some other imports
+                    None => {
+                        // TODO: error
+                        log::debug!("super path in root module");
+                        return Ok(true); // this can't suddenly resolve if we just resolve some other imports
+                    }
                 }
             }
             PathKind::Crate => module_id.crate_root(&self.module_tree),
@@ -462,13 +467,20 @@ where
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
                 Some(res) if !res.def_id.is_none() => res.def_id,
-                _ => return Ok(false),
+                _ => {
+                    log::debug!("path segment {:?} not found", name);
+                    return Ok(false);
+                }
             };
 
             if !is_last {
                 let type_def_id = if let Some(d) = def_id.take(Namespace::Types) {
                     d
                 } else {
+                    log::debug!(
+                        "path segment {:?} resolved to value only, but is not last",
+                        name
+                    );
                     return Ok(false);
                 };
                 curr = match type_def_id.loc(self.db) {
@@ -486,27 +498,49 @@ where
                                 segments: import.path.segments[i + 1..].iter().cloned().collect(),
                                 kind: PathKind::Crate,
                             };
+                            log::debug!("resolving {:?} in other source root", path);
                             let def_id = module.resolve_path(self.db, &path)?;
                             if !def_id.is_none() {
+                                let name = path.segments.last().unwrap();
                                 self.update(module_id, |items| {
                                     let res = Resolution {
-                                        def_id: def_id,
+                                        def_id,
                                         import: Some(ptr),
                                     };
                                     items.items.insert(name.clone(), res);
                                 });
+                                log::debug!(
+                                    "resolved import {:?} ({:?}) cross-source root to {:?}",
+                                    name,
+                                    import,
+                                    def_id.map(|did| did.loc(self.db))
+                                );
                                 return Ok(true);
                             } else {
-                                return Ok(false);
+                                log::debug!("rest of path did not resolve in other source root");
+                                return Ok(true);
                             }
                         }
                     }
-                    _ => return Ok(true), // this resolved to a non-module, so the path won't ever resolve
+                    _ => {
+                        log::debug!(
+                            "path segment {:?} resolved to non-module {:?}, but is not last",
+                            name,
+                            type_def_id.loc(self.db)
+                        );
+                        return Ok(true); // this resolved to a non-module, so the path won't ever resolve
+                    }
                 }
             } else {
+                log::debug!(
+                    "resolved import {:?} ({:?}) within source root to {:?}",
+                    name,
+                    import,
+                    def_id.map(|did| did.loc(self.db))
+                );
                 self.update(module_id, |items| {
                     let res = Resolution {
-                        def_id: def_id,
+                        def_id,
                         import: Some(ptr),
                     };
                     items.items.insert(name.clone(), res);
