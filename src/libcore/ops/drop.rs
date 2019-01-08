@@ -1,26 +1,26 @@
-/// Used to run some code when a value goes out of scope.
-/// This is sometimes called a 'destructor'.
+/// Destructors for cleaning up resources
 ///
-/// When a value goes out of scope, it will have its `drop` method called if
-/// its type implements `Drop`. Then, any fields the value contains will also
-/// be dropped recursively.
+/// When a value is no longer needed, Rust will run a "destructor" on that value.
+/// The most common way that a value is no longer needed is when it goes out of
+/// scope. Destructors may still run in other circumstances, but we're going to
+/// focus on scope for the examples here. To learn about some of those other cases,
+/// please see [the reference] section on destructors.
 ///
-/// Because of this recursive dropping, you do not need to implement this trait
-/// unless your type needs its own destructor logic.
+/// [the reference]: https://doc.rust-lang.org/reference/destructors.html
 ///
-/// Refer to [the chapter on `Drop` in *The Rust Programming Language*][book]
-/// for some more elaboration.
-///
-/// [book]: ../../book/ch15-03-drop.html
-///
-/// # Examples
+/// The `Drop` trait provides a way to implement a custom destructor on a type.
+/// Why would you want such a thing? Well, many types aren't only data: they
+/// manage some sort of resource. That resource may be memory, it may be a file
+/// descriptor, it may be a network socket. But when the type is no longer going
+/// to be used, it should "clean up" that resource by freeing the memory or
+/// closing the file or socket. This is the job of a destructor, and therefore
+/// the job for `Drop::drop`.
 ///
 /// ## Implementing `Drop`
 ///
-/// The `drop` method is called when `_x` goes out of scope, and therefore
-/// `main` prints `Dropping!`.
+/// When a value goes out of scope, it will call `Drop::drop` on that value. For example,
 ///
-/// ```
+/// ```rust
 /// struct HasDrop;
 ///
 /// impl Drop for HasDrop {
@@ -34,52 +34,95 @@
 /// }
 /// ```
 ///
-/// ## Dropping is done recursively
+/// Here, `main` will print `Dropping!`. In other words, the compiler generates code that
+/// kind of looks like this:
 ///
-/// When `outer` goes out of scope, the `drop` method will be called first for
-/// `Outer`, then for `Inner`. Therefore, `main` prints `Dropping Outer!` and
-/// then `Dropping Inner!`.
+/// ```rust,compile_fail,E0040
+/// # struct HasDrop;
 ///
+/// # impl Drop for HasDrop {
+/// #     fn drop(&mut self) {
+/// #         println!("Dropping!");
+/// #     }
+/// # }
+/// fn main() {
+///     let _x = HasDrop;
+///
+///     let mut x = _x;
+///     Drop::drop(&mut x);
+/// }
 /// ```
-/// struct Inner;
-/// struct Outer(Inner);
 ///
-/// impl Drop for Inner {
+/// As you can see, our custom implementation of `Drop` will be called at the end of `main`.
+///
+/// ## You cannot call `Drop::drop` yourself
+///
+/// Because the compiler automatically calls `Drop::drop`, you cannot call it yourself. This
+/// would lead to "double drop", where `Drop::drop` is called twice on the same value. This
+/// can lead to things like "double frees".
+///
+/// In other words, if you tried to write the code in the previous example with the explicit
+/// call to `Drop::drop`, you'd get a compiler error.
+///
+/// If you'd like to call `drop` yourself, there is something you can do: call [`std::mem::drop`].
+/// This function will drop its argument. For more, see its documentation.
+///
+/// [`std::mem::drop`]: ../../std/mem/fn.drop.html
+///
+/// ## `Drop` is recursive
+///
+/// If your type is something like a `struct` or `enum` that is an aggregate of other types, then
+/// Rust will call `Drop::drop` on the type first, and then recursively on everything it contains.
+/// For example:
+///
+/// ```rust
+/// struct HasDrop;
+///
+/// impl Drop for HasDrop {
 ///     fn drop(&mut self) {
-///         println!("Dropping Inner!");
+///         println!("Dropping HasDrop!");
 ///     }
 /// }
 ///
-/// impl Drop for Outer {
+/// struct HasTwoDrops {
+///     one: HasDrop,
+///     two: HasDrop,
+/// }
+///
+/// impl Drop for HasTwoDrops {
 ///     fn drop(&mut self) {
-///         println!("Dropping Outer!");
+///         println!("Dropping HasTwoDrops!");
 ///     }
 /// }
 ///
 /// fn main() {
-///     let _x = Outer(Inner);
+///     let _x = HasTwoDrops { one: HasDrop, two: HasDrop };
 /// }
 /// ```
 ///
-/// ## Variables are dropped in reverse order of declaration
+/// This will print
 ///
-/// `_first` is declared first and `_second` is declared second, so `main` will
-/// print `Declared second!` and then `Declared first!`.
-///
+/// ```text
+/// Dropping HasTwoDrops!
+/// Dropping HasDrop!
+/// Dropping HasDrop!
 /// ```
-/// struct PrintOnDrop(&'static str);
 ///
-/// impl Drop for PrintOnDrop {
-///     fn drop(&mut self) {
-///         println!("{}", self.0);
-///     }
-/// }
+/// Similarly, a slice will drop each element in order.
 ///
-/// fn main() {
-///     let _first = PrintOnDrop("Declared first!");
-///     let _second = PrintOnDrop("Declared second!");
-/// }
-/// ```
+/// Which of our two `HasDrop` drops first, though? It's the same order that
+/// they're declared: first `one`, then `two`. If you'd like to try this
+/// yourself, you can modify `HasDrop` above to contain some data, like an
+/// integer, and then use it in the `println!` inside of `Drop`. This behavior
+/// is guaranteed by the language.
+///
+/// ## `Copy` and `Drop` are exclusive
+///
+/// You cannot implement both [`Copy`] and `Drop` on the same type. Types that
+/// are `Copy` don't manage resources, and can be freely copied. As such, they
+/// cannot have destructors.
+///
+/// [`Copy`]: ../../std/marker/trait.Copy.html
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
