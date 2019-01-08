@@ -22,7 +22,7 @@ use boxed::Box;
 /// * Catches all overflows in capacity computations (promotes them to "capacity overflow" panics)
 /// * Guards against 32-bit systems allocating more than isize::MAX bytes
 /// * Guards against overflowing your length
-/// * Aborts on OOM
+/// * Aborts on OOM or calls handle_alloc_error as applicable
 /// * Avoids freeing Unique::empty()
 /// * Contains a ptr::Unique and thus endows the user with all related benefits
 ///
