@@ -1,5 +1,6 @@
 //! Run-time feature detection on ARM Aarch32.
 
+/// Checks if `arm` feature is enabled.
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "27731")]
 #[allow_internal_unstable]

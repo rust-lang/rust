@@ -1,5 +1,6 @@
 //! Run-time feature detection on MIPS64.
 
+/// Checks if `mips64` feature is enabled.
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "27731")]
 #[allow_internal_unstable]

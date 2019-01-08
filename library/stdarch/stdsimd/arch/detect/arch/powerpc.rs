@@ -1,5 +1,6 @@
 //! Run-time feature detection on PowerPC.
 
+/// Checks if `powerpc` feature is enabled.
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "27731")]
 #[allow_internal_unstable]
