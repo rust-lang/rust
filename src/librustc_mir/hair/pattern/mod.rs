@@ -39,9 +39,9 @@ pub enum PatternError {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum BindingMode<'tcx> {
+pub enum BindingMode {
     ByValue,
-    ByRef(Region<'tcx>, BorrowKind),
+    ByRef(BorrowKind),
 }
 
 #[derive(Clone, Debug)]
@@ -117,7 +117,7 @@ pub enum PatternKind<'tcx> {
     Binding {
         mutability: Mutability,
         name: ast::Name,
-        mode: BindingMode<'tcx>,
+        mode: BindingMode,
         var: ast::NodeId,
         ty: Ty<'tcx>,
         subpattern: Option<Pattern<'tcx>>,
@@ -181,7 +181,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {
                     BindingMode::ByValue => mutability == Mutability::Mut,
-                    BindingMode::ByRef(_, bk) => {
+                    BindingMode::ByRef(bk) => {
                         write!(f, "ref ")?;
                         match bk { BorrowKind::Mut { .. } => true, _ => false }
                     }
@@ -512,12 +512,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_id_to_type(pat.hir_id);
-                let region = match var_ty.sty {
-                    ty::Ref(r, _, _) => Some(r),
-                    ty::Error => { // Avoid ICE
-                        return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
-                    }
-                    _ => None,
+                if let ty::Error = var_ty.sty {
+                    // Avoid ICE
+                    return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                 };
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
@@ -528,10 +525,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         (Mutability::Not, BindingMode::ByValue),
                     ty::BindByReference(hir::MutMutable) =>
                         (Mutability::Not, BindingMode::ByRef(
-                            region.unwrap(), BorrowKind::Mut { allow_two_phase_borrow: false })),
+                            BorrowKind::Mut { allow_two_phase_borrow: false })),
                     ty::BindByReference(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByRef(
-                            region.unwrap(), BorrowKind::Shared)),
+                            BorrowKind::Shared)),
                 };
 
                 // A ref x pattern is the same node used for x, and as such it has
@@ -1042,7 +1039,7 @@ macro_rules! CloneImpls {
 
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
-    Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
+    Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
 }

@@ -304,17 +304,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
                     let method = self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(method));
 
+                    let re_erased = self.hir.tcx().types.re_erased;
                     // take the argument by reference
-                    let region_scope = self.topmost_scope();
-                    let region = self.hir.tcx().mk_region(ty::ReScope(region_scope));
                     let tam = ty::TypeAndMut {
                         ty,
                         mutbl: Mutability::MutImmutable,
                     };
-                    let ref_ty = self.hir.tcx().mk_ref(region, tam);
+                    let ref_ty = self.hir.tcx().mk_ref(re_erased, tam);
 
                     // let lhs_ref_place = &lhs;
-                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, place);
+                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
                     let lhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
                     let val = Operand::Move(lhs_ref_place);
@@ -324,7 +323,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
 
                     // let rhs_ref_place = &rhs_place;
-                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, rhs_place);
+                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
                     let rhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
                     let expect = Operand::Move(rhs_ref_place);

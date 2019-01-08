@@ -124,7 +124,6 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                   }),
                 span,
                 kind: ExprKind::Borrow {
-                    region: deref.region,
                     borrow_kind: deref.mutbl.to_borrow_kind(),
                     arg: expr.to_ref(),
                 },
@@ -132,32 +131,24 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
             overloaded_place(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
         }
-        Adjust::Borrow(AutoBorrow::Ref(r, m)) => {
+        Adjust::Borrow(AutoBorrow::Ref(_, m)) => {
             ExprKind::Borrow {
-                region: r,
                 borrow_kind: m.to_borrow_kind(),
                 arg: expr.to_ref(),
             }
         }
         Adjust::Borrow(AutoBorrow::RawPtr(m)) => {
             // Convert this to a suitable `&foo` and
-            // then an unsafe coercion. Limit the region to be just this
-            // expression.
-            let region = ty::ReScope(region::Scope {
-                id: hir_expr.hir_id.local_id,
-                data: region::ScopeData::Node
-            });
-            let region = cx.tcx.mk_region(region);
+            // then an unsafe coercion.
             expr = Expr {
                 temp_lifetime,
-                ty: cx.tcx.mk_ref(region,
+                ty: cx.tcx.mk_ref(cx.tcx.types.re_erased,
                                   ty::TypeAndMut {
                                     ty: expr.ty,
                                     mutbl: m,
                                   }),
                 span,
                 kind: ExprKind::Borrow {
-                    region,
                     borrow_kind: m.to_borrow_kind(),
                     arg: expr.to_ref(),
                 },
@@ -323,12 +314,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprKind::AddrOf(mutbl, ref expr) => {
-            let region = match expr_ty.sty {
-                ty::Ref(r, _, _) => r,
-                _ => span_bug!(expr.span, "type of & not region"),
-            };
             ExprKind::Borrow {
-                region,
                 borrow_kind: mutbl.to_borrow_kind(),
                 arg: expr.to_ref(),
             }
@@ -1222,7 +1208,6 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty: freevar_ty,
                 span: closure_expr.span,
                 kind: ExprKind::Borrow {
-                    region: upvar_borrow.region,
                     borrow_kind,
                     arg: captured_var.to_ref(),
                 },
