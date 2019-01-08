@@ -3,7 +3,8 @@ use ra_syntax::{ast, SyntaxNode, AstNode, TreePtr};
 
 use crate::{
     Module, ModuleSource, Problem,
-    Crate, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def, ModuleId,
+    Crate, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def,
+    module_tree::ModuleId,
     nameres::ModuleScope,
     db::HirDatabase,
 };
