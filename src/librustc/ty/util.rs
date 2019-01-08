@@ -526,6 +526,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// True if `def_id` refers to a trait alias (i.e., `trait Foo = ...;`).
+    pub fn is_trait_alias(self, def_id: DefId) -> bool {
+        if let DefPathData::TraitAlias(_) = self.def_key(def_id).disambiguated_data.data {
+            true
+        } else {
+            false
+        }
+    }
+
     /// True if this def-id refers to the implicit constructor for
     /// a tuple struct like `struct Foo(u32)`.
     pub fn is_struct_constructor(self, def_id: DefId) -> bool {

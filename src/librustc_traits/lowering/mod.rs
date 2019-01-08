@@ -158,7 +158,8 @@ crate fn program_clauses_for<'a, 'tcx>(
     def_id: DefId,
 ) -> Clauses<'tcx> {
     match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::Trait(_) => program_clauses_for_trait(tcx, def_id),
+        DefPathData::Trait(_) |
+        DefPathData::TraitAlias(_) => program_clauses_for_trait(tcx, def_id),
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),
         DefPathData::AssocTypeInImpl(..) => program_clauses_for_associated_type_value(tcx, def_id),
         DefPathData::AssocTypeInTrait(..) => program_clauses_for_associated_type_def(tcx, def_id),

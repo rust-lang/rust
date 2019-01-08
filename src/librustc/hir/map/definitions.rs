@@ -373,7 +373,9 @@ pub enum DefPathData {
     /// GlobalMetaData identifies a piece of crate metadata that is global to
     /// a whole crate (as opposed to just one item). GlobalMetaData components
     /// are only supposed to show up right below the crate root.
-    GlobalMetaData(InternedString)
+    GlobalMetaData(InternedString),
+    /// A trait alias.
+    TraitAlias(InternedString),
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
@@ -615,6 +617,7 @@ impl DefPathData {
         match *self {
             TypeNs(name) |
             Trait(name) |
+            TraitAlias(name) |
             AssocTypeInTrait(name) |
             AssocTypeInImpl(name) |
             AssocExistentialInImpl(name) |
@@ -642,6 +645,7 @@ impl DefPathData {
         let s = match *self {
             TypeNs(name) |
             Trait(name) |
+            TraitAlias(name) |
             AssocTypeInTrait(name) |
             AssocTypeInImpl(name) |
             AssocExistentialInImpl(name) |

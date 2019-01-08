@@ -409,6 +409,7 @@ impl PrintContext {
                     DefPathData::AssocTypeInImpl(_) |
                     DefPathData::AssocExistentialInImpl(_) |
                     DefPathData::Trait(_) |
+                    DefPathData::TraitAlias(_) |
                     DefPathData::Impl |
                     DefPathData::TypeNs(_) => {
                         break;
