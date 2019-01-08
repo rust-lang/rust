@@ -1049,6 +1049,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 }
 
 pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
+    db.check_canceled()?;
     let function = Function::new(def_id); // TODO: consts also need inference
     let body = function.body(db)?;
     let scopes = db.fn_scopes(def_id)?;

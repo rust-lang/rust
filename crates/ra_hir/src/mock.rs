@@ -215,7 +215,6 @@ salsa::database_storage! {
         }
         impl ra_db::SyntaxDatabase {
             fn source_file() for ra_db::SourceFileQuery;
-            fn file_lines() for ra_db::FileLinesQuery;
         }
         impl db::HirDatabase {
             fn hir_source_file() for db::HirSourceFileQuery;
