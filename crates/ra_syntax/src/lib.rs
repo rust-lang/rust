@@ -31,7 +31,6 @@ mod parser_impl;
 mod reparsing;
 mod string_lexing;
 mod syntax_kinds;
-pub mod text_utils;
 /// Utilities for simple uses of the parser.
 pub mod utils;
 mod validation;
@@ -75,8 +74,7 @@ impl SourceFile {
             .map(|(green_node, errors)| SourceFile::new(green_node, errors))
     }
     fn full_reparse(&self, edit: &AtomTextEdit) -> TreePtr<SourceFile> {
-        let text =
-            text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
+        let text = edit.apply(self.syntax().text().to_string());
         SourceFile::parse(&text)
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
