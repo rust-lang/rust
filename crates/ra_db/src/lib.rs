@@ -18,22 +18,8 @@ pub use crate::{
         FileTextQuery, FileSourceRootQuery, SourceRootQuery, LocalRootsQuery, LibraryRootsQuery, CrateGraphQuery,
         FileRelativePathQuery
     },
-    loc2id::{LocationIntener, NumericId},
+    loc2id::LocationIntener,
 };
-
-#[macro_export]
-macro_rules! impl_numeric_id {
-    ($id:ident) => {
-        impl $crate::NumericId for $id {
-            fn from_u32(id: u32) -> Self {
-                $id(id)
-            }
-            fn to_u32(self) -> u32 {
-                self.0
-            }
-        }
-    };
-}
 
 pub trait BaseDatabase: salsa::Database {
     fn check_canceled(&self) -> Cancelable<()> {
