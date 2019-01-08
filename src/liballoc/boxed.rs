@@ -194,6 +194,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// ```
     /// #![feature(box_into_raw_non_null)]
+    /// #![allow(deprecated)]
     ///
     /// fn main() {
     ///     let x = Box::new(5);
