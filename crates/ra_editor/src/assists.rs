@@ -9,12 +9,15 @@ mod add_impl;
 mod introduce_variable;
 mod change_visibility;
 mod split_import;
+mod replace_if_let_with_match;
 
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
     Direction, SyntaxNode, TextUnit, TextRange, SourceFile, AstNode,
     algo::{find_leaf_at_offset, find_covering_node, LeafAtOffset},
+    ast::{self, AstToken},
 };
+use itertools::Itertools;
 
 use crate::find_node_at_offset;
 
@@ -25,6 +28,7 @@ pub use self::{
     introduce_variable::introduce_variable,
     change_visibility::change_visibility,
     split_import::split_import,
+    replace_if_let_with_match::replace_if_let_with_match,
 };
 
 /// Return all the assists applicable at the given position.
@@ -37,6 +41,7 @@ pub fn assists(file: &SourceFile, range: TextRange) -> Vec<LocalEdit> {
         introduce_variable,
         change_visibility,
         split_import,
+        replace_if_let_with_match,
     ]
     .iter()
     .filter_map(|&assist| ctx.clone().apply(assist))
@@ -160,6 +165,13 @@ impl AssistBuilder {
     fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
     }
+    fn replace_node_and_indent(&mut self, node: &SyntaxNode, replace_with: impl Into<String>) {
+        let mut replace_with = replace_with.into();
+        if let Some(indent) = calc_indent(node) {
+            replace_with = reindent(&replace_with, indent)
+        }
+        self.replace(node.range(), replace_with)
+    }
     #[allow(unused)]
     fn delete(&mut self, range: TextRange) {
         self.edit.delete(range)
@@ -170,6 +182,17 @@ impl AssistBuilder {
     fn set_cursor(&mut self, offset: TextUnit) {
         self.cursor_position = Some(offset)
     }
+}
+
+fn calc_indent(node: &SyntaxNode) -> Option<&str> {
+    let prev = node.prev_sibling()?;
+    let ws_text = ast::Whitespace::cast(prev)?.text();
+    ws_text.rfind('\n').map(|pos| &ws_text[pos + 1..])
+}
+
+fn reindent(text: &str, indent: &str) -> String {
+    let indent = format!("\n{}", indent);
+    text.lines().intersperse(&indent).collect()
 }
 
 #[cfg(test)]
