@@ -1,8 +1,14 @@
-//! ra_analyzer crate provides "ide-centric" APIs for the rust-analyzer. What
-//! powers this API are the `RootDatabase` struct, which defines a `salsa`
+//! ra_ide_api crate provides "ide-centric" APIs for the rust-analyzer. That is,
+//! it generally operates with files and text ranges, and returns results as
+//! Strings, suitable for displaying to the human.
+//!
+//! What powers this API are the `RootDatabase` struct, which defines a `salsa`
 //! database, and the `ra_hir` crate, where majority of the analysis happens.
 //! However, IDE specific bits of the analysis (most notably completion) happen
 //! in this crate.
+//!
+//! The sibling `ra_ide_api_light` handles thouse bits of IDE functionality
+//! which are restricted to a single file and need only syntax.
 macro_rules! ctry {
     ($expr:expr) => {
         match $expr {
