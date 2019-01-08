@@ -136,6 +136,9 @@ algorithm like so:
   - We can then compare the hash of the result and color Q as green if
     it did not change.
 
+## Resources
+The initial design document can be found at https://github.com/nikomatsakis/rustc-on-demand-incremental-design-doc/blob/master/0000-rustc-on-demand-and-incremental.md, which expands on the memoization details, provides more high-level overview and motivation for this system.
+
 # Footnotes
 
 [^salsa]: I have long wanted to rename it to the Salsa algorithm, but it never caught on. -@nikomatsakis
