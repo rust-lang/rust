@@ -253,13 +253,17 @@ impl SourceFileItems {
     }
 
     fn init(&mut self, source_file: &SourceFile) {
-        source_file.syntax().descendants().for_each(|it| {
+        // By walking the tree in bread-first order we make sure that parents
+        // get lower ids then children. That is, addding a new child does not
+        // change parent's id. This means that, say, adding a new function to a
+        // trait does not chage ids of top-level items, which helps caching.
+        bfs(source_file.syntax(), |it| {
             if let Some(module_item) = ast::ModuleItem::cast(it) {
                 self.alloc(module_item.syntax().to_owned());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
                 self.alloc(macro_call.syntax().to_owned());
             }
-        });
+        })
     }
 
     fn alloc(&mut self, item: TreePtr<SyntaxNode>) -> SourceFileItemId {
@@ -303,5 +307,18 @@ impl std::ops::Index<SourceFileItemId> for SourceFileItems {
     type Output = SyntaxNode;
     fn index(&self, idx: SourceFileItemId) -> &SyntaxNode {
         &self.arena[idx]
+    }
+}
+
+/// Walks the subtree in bfs order, calling `f` for each node.
+fn bfs(node: &SyntaxNode, mut f: impl FnMut(&SyntaxNode)) {
+    let mut curr_layer = vec![node];
+    let mut next_layer = vec![];
+    while !curr_layer.is_empty() {
+        curr_layer.drain(..).for_each(|node| {
+            next_layer.extend(node.children());
+            f(node);
+        });
+        std::mem::swap(&mut curr_layer, &mut next_layer);
     }
 }

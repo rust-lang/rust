@@ -322,9 +322,99 @@ fn reexport_across_crates() {
     );
 }
 
+fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
+    let (mut db, pos) = MockDatabase::with_position(initial);
+    let source_root = db.file_source_root(pos.file_id);
+    {
+        let events = db.log_executed(|| {
+            db.item_map(source_root).unwrap();
+        });
+        assert!(format!("{:?}", events).contains("item_map"))
+    }
+    db.query_mut(ra_db::FileTextQuery)
+        .set(pos.file_id, Arc::new(file_change.to_string()));
+
+    {
+        let events = db.log_executed(|| {
+            db.item_map(source_root).unwrap();
+        });
+        assert!(
+            !format!("{:?}", events).contains("item_map"),
+            "{:#?}",
+            events
+        )
+    }
+}
+
 #[test]
 fn typing_inside_a_function_should_not_invalidate_item_map() {
-    let (mut db, pos) = MockDatabase::with_position(
+    check_item_map_is_not_recomputed(
+        "
+        //- /lib.rs
+        mod foo;<|>
+
+        use crate::foo::bar::Baz;
+
+        fn foo() -> i32 {
+            1 + 1
+        }
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        ",
+        "
+        mod foo;
+
+        use crate::foo::bar::Baz;
+
+        fn foo() -> i32 { 92 }
+        ",
+    );
+}
+
+#[test]
+fn adding_inner_items_should_not_invalidate_item_map() {
+    check_item_map_is_not_recomputed(
+        "
+        //- /lib.rs
+        struct S { a: i32}
+        enum E { A }
+        trait T {
+            fn a() {}
+        }
+        mod foo;<|>
+        impl S {
+            fn a() {}
+        }
+        use crate::foo::bar::Baz;
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        ",
+        "
+        struct S { a: i32, b: () }
+        enum E { A, B }
+        trait T {
+            fn a() {}
+            fn b() {}
+        }
+        mod foo;<|>
+        impl S {
+            fn a() {}
+            fn b() {}
+        }
+        use crate::foo::bar::Baz;
+        ",
+    );
+}
+
+#[test]
+fn typing_inside_a_function_inside_a_macro_should_not_invalidate_item_map() {
+    check_item_map_is_not_recomputed(
         "
         //- /lib.rs
         mod foo;
@@ -342,86 +432,12 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
             }
         }
         ",
-    );
-    let source_root = db.file_source_root(pos.file_id);
-    {
-        let events = db.log_executed(|| {
-            db.item_map(source_root).unwrap();
-        });
-        assert!(format!("{:?}", events).contains("item_map"))
-    }
-
-    let new_text = "
+        "
         salsa::query_group! {
             trait Baz {
                 fn foo() -> i32 { 92 }
             }
         }
-    "
-    .to_string();
-
-    db.query_mut(ra_db::FileTextQuery)
-        .set(pos.file_id, Arc::new(new_text));
-
-    {
-        let events = db.log_executed(|| {
-            db.item_map(source_root).unwrap();
-        });
-        assert!(
-            !format!("{:?}", events).contains("item_map"),
-            "{:#?}",
-            events
-        )
-    }
-}
-
-#[test]
-fn typing_inside_a_function_inside_a_macro_should_not_invalidate_item_map() {
-    let (mut db, pos) = MockDatabase::with_position(
-        "
-        //- /lib.rs
-        mod foo;<|>
-
-        use crate::foo::bar::Baz;
-
-        fn foo() -> i32 {
-            1 + 1
-        }
-        //- /foo/mod.rs
-        pub mod bar;
-
-        //- /foo/bar.rs
-        pub struct Baz;
-    ",
+        ",
     );
-    let source_root = db.file_source_root(pos.file_id);
-    {
-        let events = db.log_executed(|| {
-            db.item_map(source_root).unwrap();
-        });
-        assert!(format!("{:?}", events).contains("item_map"))
-    }
-
-    let new_text = "
-        mod foo;
-
-        use crate::foo::bar::Baz;
-
-        fn foo() -> i32 { 92 }
-    "
-    .to_string();
-
-    db.query_mut(ra_db::FileTextQuery)
-        .set(pos.file_id, Arc::new(new_text));
-
-    {
-        let events = db.log_executed(|| {
-            db.item_map(source_root).unwrap();
-        });
-        assert!(
-            !format!("{:?}", events).contains("item_map"),
-            "{:#?}",
-            events
-        )
-    }
 }
