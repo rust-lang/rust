@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{ast, TreePtr, SyntaxNode};
 
-use crate::{Name, db::HirDatabase, DefId, Path, PerNs, nameres::ModuleScope};
+use crate::{Name, db::HirDatabase, DefId, Path, PerNs, nameres::ModuleScope, adt::VariantData};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -109,5 +111,23 @@ impl Module {
         db: &impl HirDatabase,
     ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
         self.problems_impl(db)
+    }
+}
+
+pub struct Struct {
+    pub(crate) def_id: DefId,
+}
+
+impl Struct {
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
+    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
+        Ok(self.struct_data(db)?.variant_data.clone())
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+        Ok(self.struct_data(db)?.name.clone())
     }
 }

@@ -4,41 +4,25 @@ use ra_db::Cancelable;
 use ra_syntax::ast::{self, NameOwner, StructFlavor};
 
 use crate::{
-    DefId, Name, AsName,
+    DefId, Name, AsName, Struct,
     db::HirDatabase,
     type_ref::TypeRef,
 };
-
-pub struct Struct {
-    def_id: DefId,
-}
 
 impl Struct {
     pub(crate) fn new(def_id: DefId) -> Self {
         Struct { def_id }
     }
 
-    pub fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
-    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.struct_data(self.def_id)?.variant_data.clone())
-    }
-
-    pub fn struct_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<StructData>> {
+    pub(crate) fn struct_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<StructData>> {
         Ok(db.struct_data(self.def_id)?)
-    }
-
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.struct_data(self.def_id)?.name.clone())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
-    name: Option<Name>,
-    variant_data: Arc<VariantData>,
+    pub(crate) name: Option<Name>,
+    pub(crate) variant_data: Arc<VariantData>,
 }
 
 impl StructData {
