@@ -7,10 +7,21 @@ use ra_syntax::{
 use ra_editor::find_node_at_offset;
 use hir::FnSignatureInfo;
 
-use crate::{FilePosition, db::RootDatabase};
+use crate::{FilePosition, CallInfo, db::RootDatabase};
+
+pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable<Option<CallInfo>> {
+    let (sig_info, active_parameter) = ctry!(call_info_(db, position)?);
+    let res = CallInfo {
+        label: sig_info.label,
+        doc: sig_info.doc,
+        parameters: sig_info.params,
+        active_parameter,
+    };
+    Ok(Some(res))
+}
 
 /// Computes parameter information for the given call expression.
-pub(crate) fn call_info(
+fn call_info_(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {

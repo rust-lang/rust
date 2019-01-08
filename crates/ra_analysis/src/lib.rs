@@ -273,6 +273,14 @@ impl<T> RangeInfo<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct CallInfo {
+    pub label: String,
+    pub doc: Option<String>,
+    pub parameters: Vec<String>,
+    pub active_parameter: Option<usize>,
+}
+
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug, Default)]
 pub struct AnalysisHost {
@@ -393,10 +401,7 @@ impl Analysis {
         hover::hover(&*self.db, position)
     }
     /// Computes parameter information for the given call expression.
-    pub fn call_info(
-        &self,
-        position: FilePosition,
-    ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
+    pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
         call_info::call_info(&*self.db, position)
     }
     /// Returns a `mod name;` declaration which created the current module.
