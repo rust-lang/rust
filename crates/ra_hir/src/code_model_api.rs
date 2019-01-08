@@ -124,12 +124,12 @@ impl Struct {
         self.def_id
     }
 
-    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.struct_data(self.def_id)?.variant_data.clone())
-    }
-
     pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
         Ok(db.struct_data(self.def_id)?.name.clone())
+    }
+
+    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
+        Ok(db.struct_data(self.def_id)?.variant_data.clone())
     }
 }
 
