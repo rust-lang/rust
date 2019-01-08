@@ -84,7 +84,7 @@ impl EnumData {
 }
 
 impl VariantData {
-    pub(crate) fn new(flavor: StructFlavor) -> Self {
+    fn new(flavor: StructFlavor) -> Self {
         match flavor {
             StructFlavor::Tuple(fl) => {
                 let fields = fl
