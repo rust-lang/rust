@@ -11,7 +11,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
     if ret.layout.is_aggregate() {
-        if let Some(unit) = ret.layout.homogeneous_aggregate(cx) {
+        if let Some(unit) = ret.layout.homogeneous_aggregate(cx).unit() {
             let size = ret.layout.size;
             if unit.size == size {
                 ret.cast_to(Uniform {
