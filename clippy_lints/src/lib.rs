@@ -23,6 +23,8 @@ extern crate rustc_data_structures;
 #[allow(unused_extern_crates)]
 extern crate rustc_errors;
 #[allow(unused_extern_crates)]
+extern crate rustc_mir;
+#[allow(unused_extern_crates)]
 extern crate rustc_plugin;
 #[allow(unused_extern_crates)]
 extern crate rustc_target;
@@ -144,6 +146,7 @@ pub mod methods;
 pub mod minmax;
 pub mod misc;
 pub mod misc_early;
+pub mod missing_const_for_fn;
 pub mod missing_doc;
 pub mod missing_inline;
 pub mod multiple_crate_versions;
@@ -486,6 +489,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box slow_vector_initialization::Pass);
     reg.register_late_lint_pass(box types::RefToMut);
     reg.register_late_lint_pass(box assertions_on_constants::AssertionsOnConstants);
+    reg.register_late_lint_pass(box missing_const_for_fn::MissingConstForFn);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -1027,6 +1031,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_lint_group("clippy::nursery", Some("clippy_nursery"), vec![
         attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         fallible_impl_from::FALLIBLE_IMPL_FROM,
+        missing_const_for_fn::MISSING_CONST_FOR_FN,
         mutex_atomic::MUTEX_INTEGER,
         needless_borrow::NEEDLESS_BORROW,
         redundant_clone::REDUNDANT_CLONE,
