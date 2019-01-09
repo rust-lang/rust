@@ -7,17 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::consts::{constant, Constant};
 use crate::rustc::hir::{Expr, ExprKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::LitKind;
-use crate::utils::{is_direct_expn_of, span_lint, span_lint_and_sugg};
-use rustc_errors::Applicability;
+use crate::utils::{is_direct_expn_of, span_help_and_lint};
 use if_chain::if_chain;
 
-/// **What it does:** Check explicit call assert!(true/false)
+/// **What it does:** Check to call assert!(true/false)
 ///
-/// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a panic!() or unreachable!()
+/// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a
+/// panic!() or unreachable!()
 ///
 /// **Known problems:** None
 ///
@@ -49,24 +50,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
         if_chain! {
             if is_direct_expn_of(e.span, "assert").is_some();
             if let ExprKind::Unary(_, ref lit) = e.node;
-            if let ExprKind::Lit(ref inner) = lit.node;
             then {
-                match inner.node {
-                    LitKind::Bool(true) => {
-                        span_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
-                            "assert!(true) will be optimized out by the compiler");
-                    },
-                    LitKind::Bool(false) => {
-                        span_lint_and_sugg(
-                            cx,
-                            ASSERTIONS_ON_CONSTANTS,
-                            e.span,
-                            "assert!(false) should probably be replaced",
-                            "try",
-                            "panic!()".to_string(),
-                            Applicability::MachineApplicable);
-                    },
-                    _ => (),
+                if let ExprKind::Lit(ref inner) = lit.node {
+                    match inner.node {
+                        LitKind::Bool(true) => {
+                            span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
+                                "assert!(true) will be optimized out by the compiler",
+                                "remove it");
+                        },
+                        LitKind::Bool(false) => {
+                            span_help_and_lint(
+                                cx, ASSERTIONS_ON_CONSTANTS, e.span,
+                                "assert!(false) should probably be replaced",
+                                "use panic!() or unreachable!()");
+                        },
+                        _ => (),
+                    }
+                } else if let Some(bool_const) = constant(cx, cx.tables, lit) {
+                    match bool_const.0 {
+                        Constant::Bool(true) => {
+                            span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
+                                "assert!(const: true) will be optimized out by the compiler",
+                                "remove it");
+                        },
+                        Constant::Bool(false) => {
+                            span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
+                                "assert!(const: false) should probably be replaced",
+                                "use panic!() or unreachable!()");
+                        },
+                        _ => (),
+                    }
                 }
             }
         }
