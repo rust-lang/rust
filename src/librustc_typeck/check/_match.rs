@@ -20,10 +20,23 @@ use std::cmp;
 use super::report_unexpected_variant_def;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    /// The `is_arg` argument indicates whether this pattern is the
-    /// *outermost* pattern in an argument (e.g., in `fn foo(&x:
-    /// &u32)`, it is true for the `&x` pattern but not `x`). This is
-    /// used to tailor error reporting.
+    /// `match_discrim_span` argument having a `Span` indicates that this pattern is part of
+    /// a match expression arm guard, and it points to the match discriminant to add context
+    /// in type errors. In the folloowing example, `match_discrim_span` corresponds to the
+    /// `a + b` expression:
+    ///
+    /// ```text
+    /// error[E0308]: mismatched types
+    ///  --> src/main.rs:5:9
+    ///   |
+    /// 4 |    let temp: usize = match a + b {
+    ///   |                            ----- this expression has type `usize`
+    /// 5 |         Ok(num) => num,
+    ///   |         ^^^^^^^ expected usize, found enum `std::result::Result`
+    ///   |
+    ///   = note: expected type `usize`
+    ///              found type `std::result::Result<_, _>`
+    /// ```
     pub fn check_pat_walk(
         &self,
         pat: &'gcx hir::Pat,
