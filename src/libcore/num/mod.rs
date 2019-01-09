@@ -10,9 +10,9 @@ use ops;
 use str::FromStr;
 
 macro_rules! impl_nonzero_fmt {
-    ( ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
+    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
-            #[stable(feature = "nonzero", since = "1.28.0")]
+            #[$stability]
             impl fmt::$Trait for $Ty {
                 #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -31,7 +31,7 @@ macro_rules! doc_comment {
 }
 
 macro_rules! nonzero_integers {
-    ( $( $Ty: ident($Int: ty); )+ ) => {
+    ( $( #[$stability: meta] $Ty: ident($Int: ty); )+ ) => {
         $(
             doc_comment! {
                 concat!("An integer that is known not to equal zero.
@@ -41,10 +41,10 @@ For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!(
 
 ```rust
 use std::mem::size_of;
-assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int),
+assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int),
 ">());
 ```"),
-                #[stable(feature = "nonzero", since = "1.28.0")]
+                #[$stability]
                 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
                 #[repr(transparent)]
                 #[rustc_layout_scalar_valid_range_start(1)]
@@ -57,14 +57,14 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 /// # Safety
                 ///
                 /// The value must not be zero.
-                #[stable(feature = "nonzero", since = "1.28.0")]
+                #[$stability]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     $Ty(n)
                 }
 
                 /// Create a non-zero if the given value is not zero.
-                #[stable(feature = "nonzero", since = "1.28.0")]
+                #[$stability]
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
@@ -75,7 +75,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 }
 
                 /// Returns the value as a primitive type.
-                #[stable(feature = "nonzero", since = "1.28.0")]
+                #[$stability]
                 #[inline]
                 pub const fn get(self) -> $Int {
                     self.0
@@ -91,19 +91,25 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
             }
 
             impl_nonzero_fmt! {
-                (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+                #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
             }
         )+
     }
 }
 
 nonzero_integers! {
-    NonZeroU8(u8);
-    NonZeroU16(u16);
-    NonZeroU32(u32);
-    NonZeroU64(u64);
-    NonZeroU128(u128);
-    NonZeroUsize(usize);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
 }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
