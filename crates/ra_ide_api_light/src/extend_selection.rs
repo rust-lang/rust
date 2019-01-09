@@ -6,6 +6,21 @@ use ra_syntax::{
 
 pub fn extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange> {
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
+    let list_kinds = [
+        FIELD_PAT_LIST,
+        MATCH_ARM_LIST,
+        NAMED_FIELD_LIST,
+        NAMED_FIELD_DEF_LIST,
+        POS_FIELD_LIST,
+        ENUM_VARIANT_LIST,
+        USE_TREE_LIST,
+        TYPE_PARAM_LIST,
+        TYPE_ARG_LIST,
+        PARAM_LIST,
+        ARG_LIST,
+        ARRAY_EXPR,
+    ];
+
     if range.is_empty() {
         let offset = range.start();
         let mut leaves = find_leaf_at_offset(root, offset);
@@ -26,9 +41,25 @@ pub fn extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         return Some(leaf_range);
     };
     let node = find_covering_node(root, range);
-    if string_kinds.contains(&node.kind()) && range == node.range() {
-        if let Some(range) = extend_comments(node) {
-            return Some(range);
+
+    // Using shallowest node with same range allows us to traverse siblings.
+    let node = node
+        .ancestors()
+        .take_while(|n| n.range() == node.range())
+        .last()
+        .unwrap();
+
+    if range == node.range() {
+        if string_kinds.contains(&node.kind()) {
+            if let Some(range) = extend_comments(node) {
+                return Some(range);
+            }
+        }
+
+        if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
+            if let Some(range) = extend_list_item(node) {
+                return Some(range);
+            }
         }
     }
 
@@ -99,6 +130,45 @@ fn pick_best<'a>(l: &'a SyntaxNode, r: &'a SyntaxNode) -> &'a SyntaxNode {
     }
 }
 
+/// Extend list item selection to include nearby comma and whitespace.
+fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
+    fn is_single_line_ws(node: &SyntaxNode) -> bool {
+        node.kind() == WHITESPACE && !node.leaf_text().unwrap().contains('\n')
+    }
+
+    fn nearby_comma(node: &SyntaxNode, dir: Direction) -> Option<&SyntaxNode> {
+        node.siblings(dir)
+            .skip(1)
+            .skip_while(|node| is_single_line_ws(node))
+            .next()
+            .filter(|node| node.kind() == COMMA)
+    }
+
+    if let Some(comma_node) = nearby_comma(node, Direction::Prev) {
+        return Some(TextRange::from_to(
+            comma_node.range().start(),
+            node.range().end(),
+        ));
+    }
+
+    if let Some(comma_node) = nearby_comma(node, Direction::Next) {
+        // Include any following whitespace when comma if after list item.
+        let final_node = comma_node
+            .siblings(Direction::Next)
+            .skip(1)
+            .next()
+            .filter(|node| is_single_line_ws(node))
+            .unwrap_or(comma_node);
+
+        return Some(TextRange::from_to(
+            node.range().start(),
+            final_node.range().end(),
+        ));
+    }
+
+    return None;
+}
+
 fn extend_comments(node: &SyntaxNode) -> Option<TextRange> {
     let prev = adj_comments(node, Direction::Prev);
     let next = adj_comments(node, Direction::Next);
@@ -145,7 +215,60 @@ mod tests {
     }
 
     #[test]
-    fn test_extend_selection_start_of_the_lind() {
+    fn test_extend_selection_list() {
+        do_check(r#"fn foo(<|>x: i32) {}"#, &["x", "x: i32"]);
+        do_check(
+            r#"fn foo(<|>x: i32, y: i32) {}"#,
+            &["x", "x: i32", "x: i32, "],
+        );
+        do_check(
+            r#"fn foo(<|>x: i32,y: i32) {}"#,
+            &["x", "x: i32", "x: i32,"],
+        );
+        do_check(
+            r#"fn foo(x: i32, <|>y: i32) {}"#,
+            &["y", "y: i32", ", y: i32"],
+        );
+        do_check(
+            r#"fn foo(x: i32, <|>y: i32, ) {}"#,
+            &["y", "y: i32", ", y: i32"],
+        );
+        do_check(
+            r#"fn foo(x: i32,<|>y: i32) {}"#,
+            &["y", "y: i32", ",y: i32"],
+        );
+
+        do_check(
+            r#"const FOO: [usize; 2] = [ 22<|> , 33];"#,
+            &["22", "22 , "],
+        );
+        do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|>];"#, &["33", ", 33"]);
+        do_check(
+            r#"const FOO: [usize; 2] = [ 22 , 33<|> ,];"#,
+            &["33", ", 33"],
+        );
+
+        do_check(
+            r#"
+const FOO: [usize; 2] = [
+    22,
+    <|>33,
+]"#,
+            &["33", "33,"],
+        );
+
+        do_check(
+            r#"
+const FOO: [usize; 2] = [
+    22
+    , 33<|>,
+]"#,
+            &["33", ", 33"],
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_start_of_the_line() {
         do_check(
             r#"
 impl S {
