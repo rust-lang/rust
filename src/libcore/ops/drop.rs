@@ -53,7 +53,7 @@
 /// }
 /// ```
 ///
-/// As you can see, our custom implementation of `Drop` will be called at the end of `main`.
+/// Our custom implementation of `Drop` will be called at the end of `main`.
 ///
 /// ## You cannot call `Drop::drop` yourself
 ///
@@ -108,13 +108,15 @@
 /// Dropping HasDrop!
 /// ```
 ///
-/// Similarly, a slice will drop each element in order.
+/// Which of our two `HasDrop` drops first, though? For structs, it's the same
+/// order that they're declared: first `one`, then `two`. If you'd like to try
+/// this yourself, you can modify `HasDrop` above to contain some data, like an
+/// integer, and then use it in the `println!` inside of `Drop`. This behavior is
+/// guaranteed by the language. In other situations, the rules may be different,
+/// but they are always well-defined. Please see [the reference] for the full
+/// rules.
 ///
-/// Which of our two `HasDrop` drops first, though? It's the same order that
-/// they're declared: first `one`, then `two`. If you'd like to try this
-/// yourself, you can modify `HasDrop` above to contain some data, like an
-/// integer, and then use it in the `println!` inside of `Drop`. This behavior
-/// is guaranteed by the language.
+/// [the reference]: https://doc.rust-lang.org/reference/destructors.html
 ///
 /// ## `Copy` and `Drop` are exclusive
 ///
