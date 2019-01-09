@@ -227,6 +227,12 @@ impl UnsafeCode {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
+    fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
+        if attr.check_name("allow_internal_unsafe") {
+            self.report_unsafe(cx, attr.span, "`allow_internal_unsafe` allows defining macros using unsafe without triggering the `unsafe_code` lint at their call site");
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprKind::Block(ref blk, _) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
