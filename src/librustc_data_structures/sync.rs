@@ -10,10 +10,6 @@
 //! It internally uses `parking_lot::RwLock` if cfg!(parallel_queries) is true,
 //! `RefCell` otherwise.
 //!
-//! `LockCell` is a thread safe version of `Cell`, with `set` and `get` operations.
-//! It can never deadlock. It uses `Cell` when
-//! cfg!(parallel_queries) is false, otherwise it is a `Lock`.
-//!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
 //!
 //! `MTRef` is a immutable reference if cfg!(parallel_queries), and an mutable reference otherwise.
@@ -23,11 +19,7 @@
 
 use std::collections::HashMap;
 use std::hash::{Hash, BuildHasher};
-use std::cmp::Ordering;
 use std::marker::PhantomData;
-use std::fmt::Debug;
-use std::fmt::Formatter;
-use std::fmt;
 use std::ops::{Deref, DerefMut};
 use owning_ref::{Erased, OwningRef};
 
@@ -54,6 +46,9 @@ pub fn serial_scope<F, R>(f: F) -> R
     f(&SerialScope)
 }
 
+pub use std::sync::atomic::Ordering::SeqCst;
+pub use std::sync::atomic::Ordering;
+
 cfg_if! {
     if #[cfg(not(parallel_queries))] {
         pub auto trait Send {}
@@ -68,6 +63,62 @@ cfg_if! {
                 $v.erase_owner()
             }
         }
+
+        use std::ops::Add;
+
+        #[derive(Debug)]
+        pub struct Atomic<T: Copy>(Cell<T>);
+
+        impl<T: Copy> Atomic<T> {
+            pub fn new(v: T) -> Self {
+                Atomic(Cell::new(v))
+            }
+        }
+
+        impl<T: Copy + PartialEq> Atomic<T> {
+            pub fn into_inner(self) -> T {
+                self.0.into_inner()
+            }
+
+            pub fn load(&self, _: Ordering) -> T {
+                self.0.get()
+            }
+
+            pub fn store(&self, val: T, _: Ordering) {
+                self.0.set(val)
+            }
+
+            pub fn swap(&self, val: T, _: Ordering) -> T {
+                self.0.replace(val)
+            }
+
+            pub fn compare_exchange(&self,
+                                    current: T,
+                                    new: T,
+                                    _: Ordering,
+                                    _: Ordering)
+                                    -> Result<T, T> {
+                let read = self.0.get();
+                if read == current {
+                    self.0.set(new);
+                    Ok(read)
+                } else {
+                    Err(read)
+                }
+            }
+        }
+
+        impl<T: Add<Output=T> + Copy> Atomic<T> {
+            pub fn fetch_add(&self, val: T, _: Ordering) -> T {
+                let old = self.0.get();
+                self.0.set(old + val);
+                old
+            }
+        }
+
+        pub type AtomicUsize = Atomic<usize>;
+        pub type AtomicBool = Atomic<bool>;
+        pub type AtomicU64 = Atomic<u64>;
 
         pub use self::serial_join as join;
         pub use self::serial_scope as scope;
@@ -160,47 +211,6 @@ cfg_if! {
                 MTLock(self.0.clone())
             }
         }
-
-        pub struct LockCell<T>(Cell<T>);
-
-        impl<T> LockCell<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                LockCell(Cell::new(inner))
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline(always)]
-            pub fn set(&self, new_inner: T) {
-                self.0.set(new_inner);
-            }
-
-            #[inline(always)]
-            pub fn get(&self) -> T where T: Copy {
-                self.0.get()
-            }
-
-            #[inline(always)]
-            pub fn set_mut(&mut self, new_inner: T) {
-                self.0.set(new_inner);
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> T where T: Copy {
-                self.0.get()
-            }
-        }
-
-        impl<T> LockCell<Option<T>> {
-            #[inline(always)]
-            pub fn take(&self) -> Option<T> {
-                unsafe { (*self.0.as_ptr()).take() }
-            }
-        }
     } else {
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
@@ -212,6 +222,8 @@ cfg_if! {
 
         pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
+
+        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU64};
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
@@ -277,47 +289,6 @@ cfg_if! {
                 ::rustc_data_structures::sync::assert_send_val(&v);
                 v.erase_send_sync_owner()
             }}
-        }
-
-        pub struct LockCell<T>(Lock<T>);
-
-        impl<T> LockCell<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                LockCell(Lock::new(inner))
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline(always)]
-            pub fn set(&self, new_inner: T) {
-                *self.0.lock() = new_inner;
-            }
-
-            #[inline(always)]
-            pub fn get(&self) -> T where T: Copy {
-                *self.0.lock()
-            }
-
-            #[inline(always)]
-            pub fn set_mut(&mut self, new_inner: T) {
-                *self.0.get_mut() = new_inner;
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> T where T: Copy {
-                *self.0.get_mut()
-            }
-        }
-
-        impl<T> LockCell<Option<T>> {
-            #[inline(always)]
-            pub fn take(&self) -> Option<T> {
-                self.0.lock().take()
-            }
         }
     }
 }
@@ -464,65 +435,6 @@ impl<T> Once<T> {
     #[inline(always)]
     pub fn borrow(&self) -> &T {
         self.get()
-    }
-}
-
-impl<T: Copy + Debug> Debug for LockCell<T> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("LockCell")
-            .field("value", &self.get())
-            .finish()
-    }
-}
-
-impl<T:Default> Default for LockCell<T> {
-    /// Creates a `LockCell<T>`, with the `Default` value for T.
-    #[inline]
-    fn default() -> LockCell<T> {
-        LockCell::new(Default::default())
-    }
-}
-
-impl<T:PartialEq + Copy> PartialEq for LockCell<T> {
-    #[inline]
-    fn eq(&self, other: &LockCell<T>) -> bool {
-        self.get() == other.get()
-    }
-}
-
-impl<T:Eq + Copy> Eq for LockCell<T> {}
-
-impl<T:PartialOrd + Copy> PartialOrd for LockCell<T> {
-    #[inline]
-    fn partial_cmp(&self, other: &LockCell<T>) -> Option<Ordering> {
-        self.get().partial_cmp(&other.get())
-    }
-
-    #[inline]
-    fn lt(&self, other: &LockCell<T>) -> bool {
-        self.get() < other.get()
-    }
-
-    #[inline]
-    fn le(&self, other: &LockCell<T>) -> bool {
-        self.get() <= other.get()
-    }
-
-    #[inline]
-    fn gt(&self, other: &LockCell<T>) -> bool {
-        self.get() > other.get()
-    }
-
-    #[inline]
-    fn ge(&self, other: &LockCell<T>) -> bool {
-        self.get() >= other.get()
-    }
-}
-
-impl<T:Ord + Copy> Ord for LockCell<T> {
-    #[inline]
-    fn cmp(&self, other: &LockCell<T>) -> Ordering {
-        self.get().cmp(&other.get())
     }
 }
 
