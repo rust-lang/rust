@@ -4,13 +4,17 @@ use ra_db::Cancelable;
 use ra_syntax::ast::{self, NameOwner, StructFlavor, AstNode};
 
 use crate::{
-    DefId, Name, AsName, Struct, Enum, VariantData, StructField, HirDatabase, DefKind,
+    DefId, Name, AsName, Struct, Enum, HirDatabase, DefKind,
     type_ref::TypeRef,
 };
 
 impl Struct {
     pub(crate) fn new(def_id: DefId) -> Self {
         Struct { def_id }
+    }
+
+    pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
+        Ok(db.struct_data(self.def_id)?.variant_data.clone())
     }
 }
 
@@ -83,6 +87,51 @@ impl EnumData {
     }
 }
 
+/// A single field of an enum variant or struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructField {
+    pub(crate) name: Name,
+    pub(crate) type_ref: TypeRef,
+}
+
+/// Fields of an enum variant or struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VariantData {
+    Struct(Vec<StructField>),
+    Tuple(Vec<StructField>),
+    Unit,
+}
+
+impl VariantData {
+    pub fn fields(&self) -> &[StructField] {
+        match self {
+            VariantData::Struct(fields) | VariantData::Tuple(fields) => fields,
+            _ => &[],
+        }
+    }
+
+    pub fn is_struct(&self) -> bool {
+        match self {
+            VariantData::Struct(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_tuple(&self) -> bool {
+        match self {
+            VariantData::Tuple(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_unit(&self) -> bool {
+        match self {
+            VariantData::Unit => true,
+            _ => false,
+        }
+    }
+}
+
 impl VariantData {
     fn new(flavor: StructFlavor) -> Self {
         match flavor {
@@ -114,7 +163,7 @@ impl VariantData {
     pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
         self.fields()
             .iter()
-            .find(|f| f.name() == field_name)
-            .map(|f| f.type_ref())
+            .find(|f| f.name == *field_name)
+            .map(|f| &f.type_ref)
     }
 }

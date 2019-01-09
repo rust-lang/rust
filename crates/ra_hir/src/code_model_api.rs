@@ -5,12 +5,13 @@ use ra_db::{CrateId, Cancelable, FileId};
 use ra_syntax::{ast, TreePtr, SyntaxNode};
 
 use crate::{
-    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping,
+    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty,
     type_ref::TypeRef,
     nameres::ModuleScope,
     db::HirDatabase,
     expr::BodySyntaxMapping,
     ty::InferenceResult,
+    adt::VariantData,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -137,58 +138,18 @@ impl Module {
     }
 }
 
-/// A single field of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructField {
-    pub(crate) name: Name,
-    pub(crate) type_ref: TypeRef,
+    struct_: Struct,
+    name: Name,
 }
 
 impl StructField {
     pub fn name(&self) -> &Name {
         &self.name
     }
-
-    pub fn type_ref(&self) -> &TypeRef {
-        &self.type_ref
-    }
-}
-
-/// Fields of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VariantData {
-    Struct(Vec<StructField>),
-    Tuple(Vec<StructField>),
-    Unit,
-}
-
-impl VariantData {
-    pub fn fields(&self) -> &[StructField] {
-        match self {
-            VariantData::Struct(fields) | VariantData::Tuple(fields) => fields,
-            _ => &[],
-        }
-    }
-
-    pub fn is_struct(&self) -> bool {
-        match self {
-            VariantData::Struct(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_tuple(&self) -> bool {
-        match self {
-            VariantData::Tuple(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_unit(&self) -> bool {
-        match self {
-            VariantData::Unit => true,
-            _ => false,
-        }
+    pub fn ty(&self, db: &impl HirDatabase) -> Cancelable<Option<Ty>> {
+        db.type_for_field(self.struct_.def_id, self.name.clone())
     }
 }
 
@@ -206,8 +167,18 @@ impl Struct {
         Ok(db.struct_data(self.def_id)?.name.clone())
     }
 
-    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.struct_data(self.def_id)?.variant_data.clone())
+    pub fn fields(&self, db: &impl HirDatabase) -> Cancelable<Vec<StructField>> {
+        let res = db
+            .struct_data(self.def_id)?
+            .variant_data
+            .fields()
+            .iter()
+            .map(|it| StructField {
+                struct_: self.clone(),
+                name: it.name.clone(),
+            })
+            .collect();
+        Ok(res)
     }
 }
 

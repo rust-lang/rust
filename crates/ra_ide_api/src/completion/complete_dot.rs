@@ -28,13 +28,13 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             Ty::Adt { def_id, .. } => {
                 match def_id.resolve(ctx.db)? {
                     Def::Struct(s) => {
-                        let variant_data = s.variant_data(ctx.db)?;
-                        for field in variant_data.fields() {
+                        for field in s.fields(ctx.db)? {
                             CompletionItem::new(
                                 CompletionKind::Reference,
                                 field.name().to_string(),
                             )
                             .kind(CompletionItemKind::Field)
+                            .set_detail(field.ty(ctx.db)?.map(|ty| ty.to_string()))
                             .add_to(acc);
                         }
                     }
@@ -72,7 +72,7 @@ mod tests {
                a.<|>
             }
             ",
-            r#"the_field"#,
+            r#"the_field "u32""#,
         );
     }
 
@@ -80,14 +80,14 @@ mod tests {
     fn test_struct_field_completion_self() {
         check_ref_completion(
             r"
-            struct A { the_field: u32 }
+            struct A { the_field: (u32,) }
             impl A {
                 fn foo(self) {
                     self.<|>
                 }
             }
             ",
-            r#"the_field"#,
+            r#"the_field "(u32,)""#,
         );
     }
 
@@ -95,14 +95,14 @@ mod tests {
     fn test_struct_field_completion_autoderef() {
         check_ref_completion(
             r"
-            struct A { the_field: u32 }
+            struct A { the_field: (u32, i32) }
             impl A {
                 fn foo(&self) {
                     self.<|>
                 }
             }
             ",
-            r#"the_field"#,
+            r#"the_field "(u32, i32)""#,
         );
     }
 

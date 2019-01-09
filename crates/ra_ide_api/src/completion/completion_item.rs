@@ -126,8 +126,12 @@ impl Builder {
         self.kind = Some(kind);
         self
     }
-    pub(crate) fn detail(mut self, detail: impl Into<String>) -> Builder {
-        self.detail = Some(detail.into());
+    #[allow(unused)]
+    pub(crate) fn detail(self, detail: impl Into<String>) -> Builder {
+        self.set_detail(Some(detail))
+    }
+    pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
+        self.detail = detail.map(Into::into);
         self
     }
     pub(super) fn from_resolution(
@@ -238,6 +242,9 @@ impl Completions {
                     res.push_str(&format!(" {:?}", c.label));
                 } else {
                     res.push_str(&c.label);
+                }
+                if let Some(detail) = &c.detail {
+                    res.push_str(&format!(" {:?}", detail));
                 }
                 if let Some(snippet) = &c.snippet {
                     res.push_str(&format!(" {:?}", snippet));
