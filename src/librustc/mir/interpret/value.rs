@@ -23,6 +23,11 @@ pub enum ConstValue<'tcx> {
     Scalar(Scalar),
 
     /// Used only for slices and strings (`&[T]`, `&str`, `*const [T]`, `*mut str`, `Box<str>`, ...)
+    ///
+    /// Empty slices don't necessarily have an address backed by an `AllocId`, thus we also need to
+    /// enable integer pointers. The `Scalar` type covers exactly those two cases. While we could
+    /// create dummy-`AllocId`s, the additional code effort for the conversions doesn't seem worth
+    /// it.
     Slice(Scalar, u64),
 
     /// An allocation + offset into the allocation.
