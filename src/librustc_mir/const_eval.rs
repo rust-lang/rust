@@ -37,6 +37,14 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
 /// Warning: do not use this function if you expect to start interpreting the given `Mir`.
 /// The `EvalContext` is only meant to be used to query values from constants and statics.
+///
+/// This function is used during const propagation. We cannot use `mk_eval_cx`, because copy
+/// propagation happens *during* the computation of the MIR of the current function. So if we
+/// tried to call the `optimized_mir` query, we'd get a cycle error because we are (transitively)
+/// inside the `optimized_mir` query of the `Instance` given.
+///
+/// Since we are looking at the MIR of the function in an abstract manner, we don't have a
+/// `ParamEnv` available to us. This function creates a `ParamEnv` for the given instance.
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
@@ -78,6 +86,11 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
 /// Warning: do not use this function if you expect to start interpreting the given `Mir`.
 /// The `EvalContext` is only meant to be used to do field and index projections into constants for
 /// `simd_shuffle` and const patterns in match arms.
+///
+/// The function containing the `match` that is currently being analyzed may have generic bounds
+/// that inform us about the generic bounds of the constant. E.g. using an associated constant
+/// of a function's generic parameter will require knowledge about the bounds on the generic
+/// parameter.
 fn mk_eval_cx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
