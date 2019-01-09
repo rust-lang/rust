@@ -598,7 +598,7 @@ pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
         TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             DelimSpan::from_pair(fld.new_span(span.open), fld.new_span(span.close)),
             delim,
-            fld.fold_tts(tts.stream()).into(),
+            fld.fold_tts(tts).into(),
         ),
     }
 }

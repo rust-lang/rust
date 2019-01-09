@@ -807,7 +807,7 @@ pub trait PrintState<'a> {
             TokenTree::Delimited(_, delim, tts) => {
                 self.writer().word(token_to_string(&token::OpenDelim(delim)))?;
                 self.writer().space()?;
-                self.print_tts(tts.stream())?;
+                self.print_tts(tts)?;
                 self.writer().space()?;
                 self.writer().word(token_to_string(&token::CloseDelim(delim)))
             },

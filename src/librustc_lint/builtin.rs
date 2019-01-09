@@ -1540,7 +1540,7 @@ impl KeywordIdents {
                     _ => {},
                 }
                 TokenTree::Delimited(_, _, tts) => {
-                    self.check_tokens(cx, tts.stream())
+                    self.check_tokens(cx, tts)
                 },
             }
         }

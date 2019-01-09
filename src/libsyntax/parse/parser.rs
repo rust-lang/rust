@@ -46,7 +46,7 @@ use print::pprust;
 use ptr::P;
 use parse::PResult;
 use ThinVec;
-use tokenstream::{self, DelimSpan, ThinTokenStream, TokenTree, TokenStream};
+use tokenstream::{self, DelimSpan, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 
 use std::borrow::Cow;
@@ -285,12 +285,12 @@ enum LastToken {
 }
 
 impl TokenCursorFrame {
-    fn new(sp: DelimSpan, delim: DelimToken, tts: &ThinTokenStream) -> Self {
+    fn new(sp: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
         TokenCursorFrame {
             delim: delim,
             span: sp,
             open_delim: delim == token::NoDelim,
-            tree_cursor: tts.stream().into_trees(),
+            tree_cursor: tts.clone().into_trees(),
             close_delim: delim == token::NoDelim,
             last_token: LastToken::Was(None),
         }
@@ -2325,7 +2325,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, ThinTokenStream)> {
+    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, TokenStream)> {
         let delim = match self.token {
             token::OpenDelim(delim) => delim,
             _ => {
@@ -2345,7 +2345,7 @@ impl<'a> Parser<'a> {
             token::Brace => MacDelimiter::Brace,
             token::NoDelim => self.bug("unexpected no delimiter"),
         };
-        Ok((delim, tts.stream().into()))
+        Ok((delim, tts.into()))
     }
 
     /// At the bottom (top?) of the precedence hierarchy,
@@ -4633,7 +4633,7 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident()?;
                 let tokens = if self.check(&token::OpenDelim(token::Brace)) {
                     match self.parse_token_tree() {
-                        TokenTree::Delimited(_, _, tts) => tts.stream(),
+                        TokenTree::Delimited(_, _, tts) => tts,
                         _ => unreachable!(),
                     }
                 } else if self.check(&token::OpenDelim(token::Paren)) {

@@ -41,7 +41,7 @@ pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
     /// A delimited sequence of token trees
-    Delimited(DelimSpan, DelimToken, ThinTokenStream),
+    Delimited(DelimSpan, DelimToken, TokenStream),
 }
 
 impl TokenTree {
@@ -62,8 +62,7 @@ impl TokenTree {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
             (&TokenTree::Delimited(_, delim, ref tts),
              &TokenTree::Delimited(_, delim2, ref tts2)) => {
-                delim == delim2 &&
-                tts.stream().eq_unspanned(&tts2.stream())
+                delim == delim2 && tts.eq_unspanned(&tts2)
             }
             (_, _) => false,
         }
@@ -81,8 +80,7 @@ impl TokenTree {
             }
             (&TokenTree::Delimited(_, delim, ref tts),
              &TokenTree::Delimited(_, delim2, ref tts2)) => {
-                delim == delim2 &&
-                tts.stream().probably_equal_for_proc_macro(&tts2.stream())
+                delim == delim2 && tts.probably_equal_for_proc_macro(&tts2)
             }
             (_, _) => false,
         }
@@ -492,41 +490,6 @@ impl Cursor {
     }
 }
 
-/// The `TokenStream` type is large enough to represent a single `TokenTree` without allocation.
-/// `ThinTokenStream` is smaller, but needs to allocate to represent a single `TokenTree`.
-/// We must use `ThinTokenStream` in `TokenTree::Delimited` to avoid infinite size due to recursion.
-#[derive(Debug, Clone)]
-pub struct ThinTokenStream(Option<Lrc<Vec<TreeAndJoint>>>);
-
-impl ThinTokenStream {
-    pub fn stream(&self) -> TokenStream {
-        self.clone().into()
-    }
-}
-
-impl From<TokenStream> for ThinTokenStream {
-    fn from(stream: TokenStream) -> ThinTokenStream {
-        ThinTokenStream(match stream {
-            TokenStream::Empty => None,
-            TokenStream::Stream(stream) => Some(stream),
-        })
-    }
-}
-
-impl From<ThinTokenStream> for TokenStream {
-    fn from(stream: ThinTokenStream) -> TokenStream {
-        stream.0.map(TokenStream::Stream).unwrap_or_else(TokenStream::empty)
-    }
-}
-
-impl Eq for ThinTokenStream {}
-
-impl PartialEq<ThinTokenStream> for ThinTokenStream {
-    fn eq(&self, other: &ThinTokenStream) -> bool {
-        TokenStream::from(self.clone()) == TokenStream::from(other.clone())
-    }
-}
-
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&pprust::tokens_to_string(self.clone()))
@@ -542,18 +505,6 @@ impl Encodable for TokenStream {
 impl Decodable for TokenStream {
     fn decode<D: Decoder>(decoder: &mut D) -> Result<TokenStream, D::Error> {
         Vec::<TokenTree>::decode(decoder).map(|vec| vec.into_iter().collect())
-    }
-}
-
-impl Encodable for ThinTokenStream {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
-        TokenStream::from(self.clone()).encode(encoder)
-    }
-}
-
-impl Decodable for ThinTokenStream {
-    fn decode<D: Decoder>(decoder: &mut D) -> Result<ThinTokenStream, D::Error> {
-        TokenStream::decode(decoder).map(Into::into)
     }
 }
 
