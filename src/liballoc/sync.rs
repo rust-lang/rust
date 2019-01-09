@@ -1574,7 +1574,7 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     }
 }
 
-#[unstable(feature = "arc_into_nonnull", reason = "newly added", issue = "0")]
+#[stable(feature = "arc_into_nonnull", since = "1.34.0")]
 impl<T: ?Sized> Into<NonNull<T>> for Arc<T> {
     #[inline]
     fn into(self) -> NonNull<T> {

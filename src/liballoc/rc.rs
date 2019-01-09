@@ -1179,7 +1179,7 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     }
 }
 
-#[unstable(feature = "rc_into_nonnull", reason = "newly added", issue = "0")]
+#[stable(feature = "rc_into_nonnull", since = "1.34.0")]
 impl<T: ?Sized> Into<NonNull<T>> for Rc<T> {
     #[inline]
     fn into(self) -> NonNull<T> {
