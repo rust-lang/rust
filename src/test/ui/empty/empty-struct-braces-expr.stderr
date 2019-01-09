@@ -4,8 +4,8 @@ error[E0423]: expected value, found struct `Empty1`
 LL |     let e1 = Empty1; //~ ERROR expected value, found struct `Empty1`
    |              ^^^^^^
    |              |
-   |              did you mean `XEmpty2`?
    |              did you mean `Empty1 { /* fields */ }`?
+   |              help: a unit struct with a similar name exists: `XEmpty2`
 
 error[E0423]: expected function, found struct `Empty1`
   --> $DIR/empty-struct-braces-expr.rs:16:14
@@ -13,8 +13,8 @@ error[E0423]: expected function, found struct `Empty1`
 LL |     let e1 = Empty1(); //~ ERROR expected function, found struct `Empty1`
    |              ^^^^^^
    |              |
-   |              did you mean `XEmpty2`?
    |              did you mean `Empty1 { /* fields */ }`?
+   |              help: a unit struct with a similar name exists: `XEmpty2`
 
 error[E0423]: expected value, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-expr.rs:17:14
@@ -34,8 +34,8 @@ error[E0423]: expected value, found struct `XEmpty1`
 LL |     let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
    |               ^^^^^^^
    |               |
-   |               did you mean `XEmpty2`?
    |               did you mean `XEmpty1 { /* fields */ }`?
+   |               help: a unit struct with a similar name exists: `XEmpty2`
 
 error[E0423]: expected function, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-expr.rs:21:15
@@ -43,8 +43,8 @@ error[E0423]: expected function, found struct `XEmpty1`
 LL |     let xe1 = XEmpty1(); //~ ERROR expected function, found struct `XEmpty1`
    |               ^^^^^^^
    |               |
-   |               did you mean `XEmpty2`?
    |               did you mean `XEmpty1 { /* fields */ }`?
+   |               help: a unit struct with a similar name exists: `XEmpty2`
 
 error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:22:19

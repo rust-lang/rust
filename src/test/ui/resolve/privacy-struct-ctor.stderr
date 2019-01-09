@@ -2,10 +2,11 @@ error[E0423]: expected value, found struct `Z`
   --> $DIR/privacy-struct-ctor.rs:20:9
    |
 LL |         Z;
+   |         ^ constructor is not visible here due to private fields
+help: a tuple struct with a similar name exists
+   |
+LL |         S;
    |         ^
-   |         |
-   |         did you mean `S`?
-   |         constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
 LL |     use m::n::Z;

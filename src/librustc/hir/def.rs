@@ -284,7 +284,7 @@ impl Def {
         }
     }
 
-    /// A human readable kind name
+    /// A human readable name for the def kind ("function", "module", etc.).
     pub fn kind_name(&self) -> &'static str {
         match *self {
             Def::Fn(..) => "function",
@@ -324,6 +324,7 @@ impl Def {
         }
     }
 
+    /// An English article for the def.
     pub fn article(&self) -> &'static str {
         match *self {
             Def::AssociatedTy(..) | Def::AssociatedConst(..) | Def::AssociatedExistential(..) |

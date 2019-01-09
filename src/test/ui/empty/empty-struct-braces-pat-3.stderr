@@ -10,7 +10,7 @@ error[E0532]: expected tuple struct/variant, found struct variant `XE::XEmpty3`
 LL |         XE::XEmpty3() => ()
    |         ^^^^-------
    |         |   |
-   |         |   did you mean `XEmpty5`?
+   |         |   help: a tuple variant with a similar name exists: `XEmpty5`
    |         did you mean `XE::XEmpty3 { /* fields */ }`?
 
 error[E0532]: expected tuple struct/variant, found struct variant `E::Empty3`
@@ -25,7 +25,7 @@ error[E0532]: expected tuple struct/variant, found struct variant `XE::XEmpty3`
 LL |         XE::XEmpty3(..) => ()
    |         ^^^^-------
    |         |   |
-   |         |   did you mean `XEmpty5`?
+   |         |   help: a tuple variant with a similar name exists: `XEmpty5`
    |         did you mean `XE::XEmpty3 { /* fields */ }`?
 
 error: aborting due to 4 previous errors
