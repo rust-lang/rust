@@ -32,6 +32,9 @@ pub fn install_rls(builder: &Builder, stage: u32, host: Interned<String>) {
 pub fn install_clippy(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "clippy", "clippy", stage, Some(host));
 }
+pub fn install_miri(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "miri", "miri", stage, Some(host));
+}
 
 pub fn install_rustfmt(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "rustfmt", "rustfmt", stage, Some(host));
@@ -215,6 +218,14 @@ install!((self, builder, _config),
             install_clippy(builder, self.stage, self.target);
         } else {
             builder.info(&format!("skipping Install clippy stage{} ({})", self.stage, self.target));
+        }
+    };
+    Miri, "miri", Self::should_build(_config), only_hosts: true, {
+        if builder.ensure(dist::Miri { stage: self.stage, target: self.target }).is_some() ||
+            Self::should_install(builder) {
+            install_miri(builder, self.stage, self.target);
+        } else {
+            builder.info(&format!("skipping Install miri stage{} ({})", self.stage, self.target));
         }
     };
     Rustfmt, "rustfmt", Self::should_build(_config), only_hosts: true, {
