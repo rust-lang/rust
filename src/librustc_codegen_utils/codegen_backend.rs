@@ -144,7 +144,6 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
             if let MonoItem::Fn(inst) = mono_item {
                 let def_id = inst.def_id();
                 if def_id.is_local() {
-                    let _ = inst.def.is_inline(tcx);
                     let _ = tcx.codegen_fn_attrs(def_id);
                 }
             }
