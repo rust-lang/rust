@@ -1,5 +1,5 @@
 error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now (see issue #13231)
-  --> $DIR/syntax-trait-polarity-feature-gate.rs:17:1
+  --> $DIR/syntax-trait-polarity-feature-gate.rs:7:1
    |
 LL | impl !Send for TestType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

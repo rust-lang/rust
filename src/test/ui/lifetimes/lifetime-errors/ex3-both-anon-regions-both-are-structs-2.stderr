@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:16:11
+  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:7:11
    |
 LL | fn foo(mut x: Ref, y: Ref) {
    |               ---     --- these two types are declared with different lifetimes...

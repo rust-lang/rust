@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use fmt_macros::{Parser, Piece, Position};
 
 use hir::def_id::DefId;
@@ -244,7 +234,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0, None);
+        let parser = Parser::new(&self.0, None, vec![], false);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -303,7 +293,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         }).collect::<FxHashMap<String, String>>();
         let empty_string = String::new();
 
-        let parser = Parser::new(&self.0, None);
+        let parser = Parser::new(&self.0, None, vec![], false);
         parser.map(|p|
             match p {
                 Piece::String(s) => s,

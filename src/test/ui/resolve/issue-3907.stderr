@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found type alias `Foo`
-  --> $DIR/issue-3907.rs:20:6
+  --> $DIR/issue-3907.rs:10:6
    |
 LL | impl Foo for S { //~ ERROR expected trait, found type alias `Foo`
    |      ^^^ type aliases cannot be used as traits

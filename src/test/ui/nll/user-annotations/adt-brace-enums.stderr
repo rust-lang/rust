@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-brace-enums.rs:37:48
+  --> $DIR/adt-brace-enums.rs:27:48
    |
 LL |     SomeEnum::SomeVariant::<&'static u32> { t: &c }; //~ ERROR
    |                                                ^^
@@ -10,7 +10,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-brace-enums.rs:42:43
+  --> $DIR/adt-brace-enums.rs:32:43
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
@@ -24,7 +24,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-brace-enums.rs:52:47
+  --> $DIR/adt-brace-enums.rs:42:47
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here

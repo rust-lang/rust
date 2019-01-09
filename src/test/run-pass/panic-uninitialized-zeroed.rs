@@ -1,18 +1,8 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-wasm32-bare always compiled as panic=abort right now and this requires unwinding
 // This test checks that instantiating an uninhabited type via `mem::{uninitialized,zeroed}` results
 // in a runtime panic.
 
-#![feature(never_type)]
+#![feature(never_type, maybe_uninit)]
 
 use std::{mem, panic};
 
@@ -30,7 +20,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<!>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type ! using mem::uninitialized"
+                s == "Attempted to instantiate uninhabited type !"
             })),
             Some(true)
         );
@@ -39,7 +29,16 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<!>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type ! using mem::zeroed"
+                s == "Attempted to instantiate uninhabited type !"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::MaybeUninit::<!>::uninitialized().into_inner()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type !"
             })),
             Some(true)
         );
@@ -48,7 +47,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo using mem::uninitialized"
+                s == "Attempted to instantiate uninhabited type Foo"
             })),
             Some(true)
         );
@@ -57,7 +56,16 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo using mem::zeroed"
+                s == "Attempted to instantiate uninhabited type Foo"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::MaybeUninit::<Foo>::uninitialized().into_inner()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Foo"
             })),
             Some(true)
         );
@@ -66,7 +74,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<Bar>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar using mem::uninitialized"
+                s == "Attempted to instantiate uninhabited type Bar"
             })),
             Some(true)
         );
@@ -75,7 +83,16 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<Bar>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar using mem::zeroed"
+                s == "Attempted to instantiate uninhabited type Bar"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::MaybeUninit::<Bar>::uninitialized().into_inner()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Bar"
             })),
             Some(true)
         );

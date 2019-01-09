@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # Categorization
 //!
 //! The job of the categorization module is to analyze an expression to
@@ -453,15 +443,16 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn type_moves_by_default(&self,
-                                 param_env: ty::ParamEnv<'tcx>,
-                                 ty: Ty<'tcx>,
-                                 span: Span)
-                                 -> bool {
-        self.infcx.map(|infcx| infcx.type_moves_by_default(param_env, ty, span))
+    pub fn type_is_copy_modulo_regions(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> bool {
+        self.infcx.map(|infcx| infcx.type_is_copy_modulo_regions(param_env, ty, span))
             .or_else(|| {
                 self.tcx.lift_to_global(&(param_env, ty)).map(|(param_env, ty)| {
-                    ty.moves_by_default(self.tcx.global_tcx(), param_env, span)
+                    ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span)
                 })
             })
             .unwrap_or(true)
@@ -697,7 +688,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             hir::ExprKind::Block(..) | hir::ExprKind::Loop(..) | hir::ExprKind::Match(..) |
             hir::ExprKind::Lit(..) | hir::ExprKind::Break(..) |
             hir::ExprKind::Continue(..) | hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
-            hir::ExprKind::InlineAsm(..) | hir::ExprKind::Box(..) => {
+            hir::ExprKind::InlineAsm(..) | hir::ExprKind::Box(..) | hir::ExprKind::Err => {
                 Ok(self.cat_rvalue_node(expr.hir_id, expr.span, expr_ty))
             }
         }

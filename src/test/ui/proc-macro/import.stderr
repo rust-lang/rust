@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `derive_a::derive_a`
-  --> $DIR/import.rs:18:5
+  --> $DIR/import.rs:8:5
    |
 LL | use derive_a::derive_a;
    |     ^^^^^^^^^^^^^^^^^^ no `derive_a` in the root

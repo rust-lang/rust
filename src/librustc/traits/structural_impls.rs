@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use chalk_engine;
 use smallvec::SmallVec;
 use traits;
@@ -405,6 +395,7 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
 
                 Ok(())
             }
+            Subtype(a, b) => write!(fmt, "{} <: {}", a, b),
             CannotProve => write!(fmt, "CannotProve"),
         }
     }
@@ -678,6 +669,7 @@ EnumLiftImpl! {
         (traits::GoalKind::Not)(goal),
         (traits::GoalKind::DomainGoal)(domain_goal),
         (traits::GoalKind::Quantified)(kind, goal),
+        (traits::GoalKind::Subtype)(a, b),
         (traits::GoalKind::CannotProve),
     }
 }
@@ -710,12 +702,36 @@ impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
 impl<'tcx, C> Lift<'tcx> for chalk_engine::ExClause<C>
 where
     C: chalk_engine::context::Context + Clone,
-    C: traits::ExClauseLift<'tcx>,
+    C: traits::ChalkContextLift<'tcx>,
 {
     type Lifted = C::LiftedExClause;
 
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        <C as traits::ExClauseLift>::lift_ex_clause_to_tcx(self, tcx)
+        <C as traits::ChalkContextLift>::lift_ex_clause_to_tcx(self, tcx)
+    }
+}
+
+impl<'tcx, C> Lift<'tcx> for chalk_engine::DelayedLiteral<C>
+where
+    C: chalk_engine::context::Context + Clone,
+    C: traits::ChalkContextLift<'tcx>,
+{
+    type Lifted = C::LiftedDelayedLiteral;
+
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        <C as traits::ChalkContextLift>::lift_delayed_literal_to_tcx(self, tcx)
+    }
+}
+
+impl<'tcx, C> Lift<'tcx> for chalk_engine::Literal<C>
+where
+    C: chalk_engine::context::Context + Clone,
+    C: traits::ChalkContextLift<'tcx>,
+{
+    type Lifted = C::LiftedLiteral;
+
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        <C as traits::ChalkContextLift>::lift_literal_to_tcx(self, tcx)
     }
 }
 
@@ -850,6 +866,7 @@ EnumTypeFoldableImpl! {
         (traits::GoalKind::Not)(goal),
         (traits::GoalKind::DomainGoal)(domain_goal),
         (traits::GoalKind::Quantified)(qkind, goal),
+        (traits::GoalKind::Subtype)(a, b),
         (traits::GoalKind::CannotProve),
     }
 }

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `y`
-  --> $DIR/liveness-move-in-loop.rs:21:25
+  --> $DIR/liveness-move-in-loop.rs:11:25
    |
 LL |                     x = y; //~ ERROR use of moved value
    |                         ^ value moved here in previous iteration of loop

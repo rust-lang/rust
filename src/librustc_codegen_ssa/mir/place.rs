@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
@@ -335,11 +325,20 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         llindex: V
     ) -> Self {
+        // Statically compute the offset if we can, otherwise just use the element size,
+        // as this will yield the lowest alignment.
+        let layout = self.layout.field(bx, 0);
+        let offset = if bx.is_const_integral(llindex) {
+            layout.size.checked_mul(bx.const_to_uint(llindex), bx).unwrap_or(layout.size)
+        } else {
+            layout.size
+        };
+
         PlaceRef {
             llval: bx.inbounds_gep(self.llval, &[bx.cx().const_usize(0), llindex]),
             llextra: None,
-            layout: self.layout.field(bx.cx(), 0),
-            align: self.align
+            layout,
+            align: self.align.restrict_for_offset(offset),
         }
     }
 

@@ -1,11 +1,11 @@
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-43105.rs:13:17
+  --> $DIR/issue-43105.rs:3:17
    |
 LL | const NUM: u8 = xyz();
    |                 ^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/issue-43105.rs:13:1
+  --> $DIR/issue-43105.rs:3:1
    |
 LL | const NUM: u8 = xyz();
    | ^^^^^^^^^^^^^^^^-----^
@@ -15,7 +15,7 @@ LL | const NUM: u8 = xyz();
    = note: #[deny(const_err)] on by default
 
 error: could not evaluate constant pattern
-  --> $DIR/issue-43105.rs:19:9
+  --> $DIR/issue-43105.rs:9:9
    |
 LL |         NUM => unimplemented!(),
    |         ^^^

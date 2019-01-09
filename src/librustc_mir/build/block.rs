@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use build::ForGuard::OutsideGuard;
 use build::matches::ArmHasGuard;
@@ -151,9 +141,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None, remainder_span, lint_level, slice::from_ref(&pattern),
                             ArmHasGuard(false), None);
 
+                        debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_bindings(
                             &pattern,
-                            &PatternTypeProjections::none(),
+                            UserTypeProjections::none(),
                             &mut |this, _, _, _, node, span, _, _| {
                                 this.storage_live_binding(block, node, span, OutsideGuard);
                                 this.schedule_drop_for_binding(node, span, OutsideGuard);

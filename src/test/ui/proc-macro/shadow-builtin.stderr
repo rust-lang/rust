@@ -1,5 +1,5 @@
 error: cannot override a built-in #[derive] mode
-  --> $DIR/shadow-builtin.rs:20:21
+  --> $DIR/shadow-builtin.rs:10:21
    |
 LL | #[proc_macro_derive(PartialEq)]
    |                     ^^^^^^^^^

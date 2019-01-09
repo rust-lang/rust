@@ -1,17 +1,6 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fmt;
 
-use crate::ty::{Ty, subst::Substs, layout::{HasDataLayout, Size}};
-use crate::hir::def_id::DefId;
+use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
@@ -28,12 +17,6 @@ pub struct RawConst<'tcx> {
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    /// Never returned from the `const_eval` query, but the HIR contains these frequently in order
-    /// to allow HIR creation to happen for everything before needing to be able to run constant
-    /// evaluation
-    /// FIXME: The query should then return a type that does not even have this variant.
-    Unevaluated(DefId, &'tcx Substs<'tcx>),
-
     /// Used only for types with layout::abi::Scalar ABI and ZSTs
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`
@@ -53,7 +36,6 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::Unevaluated(..) |
             ConstValue::ByRef(..) |
             ConstValue::ScalarPair(..) => None,
             ConstValue::Scalar(val) => Some(val),
@@ -97,7 +79,7 @@ pub enum Scalar<Tag=(), Id=AllocId> {
     /// The raw bytes of a simple value.
     Bits {
         /// The first `size` bytes are the value.
-        /// Do not try to read less or more bytes that that. The remaining bytes must be 0.
+        /// Do not try to read less or more bytes than that. The remaining bytes must be 0.
         size: u8,
         bits: u128,
     },

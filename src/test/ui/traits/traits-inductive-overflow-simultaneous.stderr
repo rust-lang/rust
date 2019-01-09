@@ -1,12 +1,12 @@
 error[E0275]: overflow evaluating the requirement `{integer}: Tweedledum`
-  --> $DIR/traits-inductive-overflow-simultaneous.rs:28:5
+  --> $DIR/traits-inductive-overflow-simultaneous.rs:18:5
    |
 LL |     is_ee(4);
    |     ^^^^^
    |
    = note: required because of the requirements on the impl of `Combo` for `{integer}`
 note: required by `is_ee`
-  --> $DIR/traits-inductive-overflow-simultaneous.rs:23:1
+  --> $DIR/traits-inductive-overflow-simultaneous.rs:13:1
    |
 LL | fn is_ee<T: Combo>(t: T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^

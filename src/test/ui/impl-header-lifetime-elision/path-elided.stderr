@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/path-elided.rs:16:18
+  --> $DIR/path-elided.rs:7:18
    |
 LL | impl MyTrait for Foo {
    |                  ^^^ expected lifetime parameter

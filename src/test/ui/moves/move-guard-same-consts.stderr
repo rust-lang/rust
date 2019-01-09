@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-same-consts.rs:30:24
+  --> $DIR/move-guard-same-consts.rs:20:24
    |
 LL |         (1, 2) if take(x) => (),
    |                        - value moved here

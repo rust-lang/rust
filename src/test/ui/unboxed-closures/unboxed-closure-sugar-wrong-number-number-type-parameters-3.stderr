@@ -1,11 +1,11 @@
 error[E0107]: wrong number of type arguments: expected 3, found 1
-  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:15:12
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:12
    |
 LL | fn foo(_: &Three())
    |            ^^^^^^^ expected 3 type arguments
 
 error[E0220]: associated type `Output` not found for `Three<(), [type error], [type error]>`
-  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:15:17
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:17
    |
 LL | fn foo(_: &Three())
    |                 ^^ associated type `Output` not found

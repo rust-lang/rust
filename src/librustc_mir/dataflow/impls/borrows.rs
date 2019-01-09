@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow_check::borrow_set::{BorrowSet, BorrowData};
 use borrow_check::place_ext::PlaceExt;
 
@@ -289,20 +279,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
                     });
 
                     sets.gen(*index);
-
-                    // Issue #46746: Two-phase borrows handles
-                    // stmts of form `Tmp = &mut Borrow` ...
-                    match lhs {
-                        Place::Promoted(_) |
-                        Place::Local(..) | Place::Static(..) => {} // okay
-                        Place::Projection(..) => {
-                            // ... can assign into projections,
-                            // e.g., `box (&mut _)`. Current
-                            // conservative solution: force
-                            // immediate activation here.
-                            sets.gen(*index);
-                        }
-                    }
                 }
             }
 

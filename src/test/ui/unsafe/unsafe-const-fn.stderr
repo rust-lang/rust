@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/unsafe-const-fn.rs:17:18
+  --> $DIR/unsafe-const-fn.rs:7:18
    |
 LL | const VAL: u32 = dummy(0xFFFF);
    |                  ^^^^^^^^^^^^^ call to unsafe function

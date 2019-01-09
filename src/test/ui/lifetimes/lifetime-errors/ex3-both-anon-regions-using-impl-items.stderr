@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-using-impl-items.rs:15:16
+  --> $DIR/ex3-both-anon-regions-using-impl-items.rs:6:16
    |
 LL |     fn foo(x: &mut Vec<&u8>, y: &u8) {
    |                        ---      --- these two types are declared with different lifetimes...

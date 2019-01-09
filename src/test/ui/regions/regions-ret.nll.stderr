@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/regions-ret.rs:14:12
+  --> $DIR/regions-ret.rs:4:12
    |
 LL |     return &id(3); //~ ERROR borrowed value does not live long enough
    |            ^-----

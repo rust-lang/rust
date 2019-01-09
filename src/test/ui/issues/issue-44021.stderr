@@ -1,5 +1,5 @@
 error: expected one of `:`, `@`, or `|`, found `}`
-  --> $DIR/issue-44021.rs:13:18
+  --> $DIR/issue-44021.rs:3:18
    |
 LL |     fn f() {|x, y} //~ ERROR expected one of `:`, `@`, or `|`, found `}`
    |                  ^ expected one of `:`, `@`, or `|` here

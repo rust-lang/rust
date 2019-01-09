@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `arc_v`
-  --> $DIR/no-reuse-move-arc.rs:22:18
+  --> $DIR/no-reuse-move-arc.rs:12:18
    |
 LL |     thread::spawn(move|| {
    |                   ------ value moved into closure here

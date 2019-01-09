@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_target::spec::abi::{self, Abi};
 use ast::{AngleBracketedArgs, ParenthesisedArgs, AttrStyle, BareFnTy};
 use ast::{GenericBound, TraitBoundModifier};
@@ -42,6 +32,7 @@ use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
+use ext::base::DummyResult;
 use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
@@ -807,6 +798,18 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(self.span,
                                            &format!("expected identifier, found {}",
                                                     self.this_token_descr()));
+        if let token::Ident(ident, false) = &self.token {
+            if ident.is_reserved() && !ident.is_path_segment_keyword() &&
+                ident.name != keywords::Underscore.name()
+            {
+                err.span_suggestion_with_applicability(
+                    self.span,
+                    "you can escape reserved keywords to use them as identifiers",
+                    format!("r#{}", ident),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
         if let Some(token_descr) = self.token_descr() {
             err.span_label(self.span, format!("expected identifier, found {}", token_descr));
         } else {
@@ -1875,7 +1878,8 @@ impl<'a> Parser<'a> {
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment("a method argument's type");
             let mut ty = self.parse_ty();
-            if ty.is_ok() && self.token == token::Colon {
+            if ty.is_ok() && self.token != token::Comma &&
+               self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,
                 // so we are going to rollback and re-parse for recovery.
                 ty = self.unexpected();
@@ -2880,6 +2884,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
                 err.span_label(self.span, "unknown macro variable");
                 err.emit();
+                self.bump();
                 return
             }
             token::Interpolated(ref nt) => {
@@ -4976,16 +4981,16 @@ impl<'a> Parser<'a> {
     /// Precondition: already parsed the '{'.
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
-        let mut recovered = false;
-
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    self.eat(&token::CloseDelim(token::Brace));
-                    recovered = true;
-                    break;
+                    Some(Stmt {
+                        id: ast::DUMMY_NODE_ID,
+                        node: StmtKind::Expr(DummyResult::raw_expr(self.span, true)),
+                        span: self.span,
+                    })
                 }
                 Ok(stmt) => stmt,
             };
@@ -5003,7 +5008,6 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: lo.to(self.prev_span),
-            recovered,
         }))
     }
 

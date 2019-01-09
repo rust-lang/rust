@@ -1,0 +1,16 @@
+error[E0199]: implementing the trait `MySafeTrait` is not unsafe
+  --> $DIR/coherence-default-trait-impl.rs:10:1
+   |
+LL | unsafe impl MySafeTrait for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0200]: the trait `MyUnsafeTrait` requires an `unsafe impl` declaration
+  --> $DIR/coherence-default-trait-impl.rs:16:1
+   |
+LL | impl MyUnsafeTrait for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0199, E0200.
+For more information about an error, try `rustc --explain E0199`.

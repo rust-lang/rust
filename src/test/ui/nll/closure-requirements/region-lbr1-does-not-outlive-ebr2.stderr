@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:9:5
    |
 LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
    |        --  -- lifetime `'b` defined here

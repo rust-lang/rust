@@ -1,5 +1,5 @@
 error[E0618]: expected function, found enum variant `X::Entry`
-  --> $DIR/E0618.rs:16:5
+  --> $DIR/E0618.rs:6:5
    |
 LL |     Entry,
    |     ----- `X::Entry` defined here
@@ -14,7 +14,7 @@ LL |     X::Entry;
    |     ^^^^^^^^
 
 error[E0618]: expected function, found `i32`
-  --> $DIR/E0618.rs:19:5
+  --> $DIR/E0618.rs:9:5
    |
 LL |     let x = 0i32;
    |         - `i32` defined here

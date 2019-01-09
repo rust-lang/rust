@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of rustbuild, the Rust build system.
 //!
 //! This module, and its descendants, are the implementation of the Rust build
@@ -263,6 +253,7 @@ pub struct Build {
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
     clippy_info: channel::GitInfo,
+    miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
@@ -384,6 +375,7 @@ impl Build {
         let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
         let clippy_info = channel::GitInfo::new(&config, &src.join("src/tools/clippy"));
+        let miri_info = channel::GitInfo::new(&config, &src.join("src/tools/miri"));
         let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
 
         let mut build = Build {
@@ -406,6 +398,7 @@ impl Build {
             cargo_info,
             rls_info,
             clippy_info,
+            miri_info,
             rustfmt_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
@@ -1024,6 +1017,11 @@ impl Build {
     /// Returns the value of `package_vers` above for clippy
     fn clippy_package_vers(&self) -> String {
         self.package_vers(&self.release_num("clippy"))
+    }
+
+    /// Returns the value of `package_vers` above for miri
+    fn miri_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("miri"))
     }
 
     /// Returns the value of `package_vers` above for rustfmt

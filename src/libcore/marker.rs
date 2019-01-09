@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Primitive traits and types representing basic properties of types.
 //!
 //! Rust types can be classified in various useful ways according to
@@ -95,7 +85,7 @@ impl<T: ?Sized> !Send for *mut T { }
     on(parent_trait="std::path::Path", label="borrow the `Path` instead"),
     message="the size for values of type `{Self}` cannot be known at compilation time",
     label="doesn't have a size known at compile-time",
-    note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
+    note="to learn more, visit <https://doc.rust-lang.org/book/\
           ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>",
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
@@ -621,7 +611,6 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
 /// ```rust
-/// #![feature(pin)]
 /// use std::mem::replace;
 /// use std::pin::Pin;
 ///
@@ -637,23 +626,23 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`replace`]: ../../std/mem/fn.replace.html
 /// [`Pin`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 pub auto trait Unpin {}
 
 /// A marker type which does not implement `Unpin`.
 ///
 /// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhantomPinned;
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl !Unpin for PhantomPinned {}
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 
 /// Implementations of `Copy` for primitive types.

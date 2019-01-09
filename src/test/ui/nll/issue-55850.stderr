@@ -1,13 +1,13 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/issue-55850.rs:38:16
+  --> $DIR/issue-55850.rs:28:16
    |
 LL |         yield &s[..] //~ ERROR `s` does not live long enough [E0597]
    |                ^ borrowed value does not live long enough
 LL |     })
    |     - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 35:8...
-  --> $DIR/issue-55850.rs:35:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 25:8...
+  --> $DIR/issue-55850.rs:25:8
    |
 LL | fn bug<'a>() -> impl Iterator<Item = &'a str> {
    |        ^^

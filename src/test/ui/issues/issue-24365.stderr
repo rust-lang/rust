@@ -1,17 +1,17 @@
 error[E0609]: no field `b` on type `Foo`
-  --> $DIR/issue-24365.rs:20:22
+  --> $DIR/issue-24365.rs:10:22
    |
 LL |     println!("{}", a.b); //~ no field `b` on type `Foo`
    |                      ^
 
 error[E0609]: no field `attr_name_idx` on type `&Attribute`
-  --> $DIR/issue-24365.rs:27:18
+  --> $DIR/issue-24365.rs:17:18
    |
 LL |     let z = (&x).attr_name_idx; //~ no field `attr_name_idx` on type `&Attribute`
    |                  ^^^^^^^^^^^^^
 
 error[E0609]: no field `attr_name_idx` on type `Attribute`
-  --> $DIR/issue-24365.rs:28:15
+  --> $DIR/issue-24365.rs:18:15
    |
 LL |     let y = x.attr_name_idx; //~ no field `attr_name_idx` on type `Attribute`
    |               ^^^^^^^^^^^^^

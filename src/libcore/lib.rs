@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # The Rust Core Library
 //!
 //! The Rust Core Library is the dependency-free[^free] foundation of [The
@@ -71,6 +61,7 @@
 
 #![no_core]
 #![deny(missing_docs)]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
 #![feature(allow_internal_unstable)]
@@ -118,6 +109,8 @@
 #![feature(mips_target_feature)]
 #![feature(aarch64_target_feature)]
 #![feature(wasm_target_feature)]
+#![feature(avx512_target_feature)]
+#![cfg_attr(not(stage0), feature(cmpxchg16b_target_feature))]
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
@@ -129,6 +122,8 @@
 #![feature(reverse_bits)]
 #![feature(non_exhaustive)]
 #![feature(structural_match)]
+#![feature(abi_unadjusted)]
+#![cfg_attr(not(stage0), feature(adx_target_feature))]
 
 #[prelude_import]
 #[allow(unused)]
@@ -224,7 +219,6 @@ pub mod alloc;
 
 // note: does not need to be public
 mod iter_private;
-mod nonzero;
 mod tuple;
 mod unit;
 

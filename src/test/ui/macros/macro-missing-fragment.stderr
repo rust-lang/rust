@@ -1,5 +1,5 @@
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:12:20
+  --> $DIR/macro-missing-fragment.rs:2:20
    |
 LL |     ( $( any_token $field_rust_type )* ) => {}; //~ ERROR missing fragment
    |                    ^^^^^^^^^^^^^^^^

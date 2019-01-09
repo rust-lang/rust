@@ -1,5 +1,5 @@
 error: unused extern crate
-  --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:22:1
+  --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:12:1
    |
 LL | / #[cfg(blandiloquence)] //~ HELP remove it
 LL | | extern crate edition_lint_paths;
@@ -8,7 +8,7 @@ LL | | extern crate edition_lint_paths;
    |                                  help: remove it
    |
 note: lint level defined here
-  --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:16:9
+  --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:6:9
    |
 LL | #![deny(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^

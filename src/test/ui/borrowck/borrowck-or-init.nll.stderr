@@ -1,5 +1,5 @@
 error[E0381]: borrow of possibly uninitialized variable: `i`
-  --> $DIR/borrowck-or-init.rs:15:20
+  --> $DIR/borrowck-or-init.rs:5:20
    |
 LL |     println!("{}", i); //~ ERROR use of possibly uninitialized variable: `i`
    |                    ^ use of possibly uninitialized `i`

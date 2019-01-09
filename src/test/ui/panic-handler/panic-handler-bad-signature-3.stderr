@@ -1,5 +1,5 @@
 error: function should have one argument
-  --> $DIR/panic-handler-bad-signature-3.rs:19:1
+  --> $DIR/panic-handler-bad-signature-3.rs:9:1
    |
 LL | fn panic() -> ! { //~ ERROR function should have one argument
    | ^^^^^^^^^^^^^^^

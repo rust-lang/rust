@@ -1,5 +1,5 @@
 error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
-  --> $DIR/not-panic-safe-6.rs:19:5
+  --> $DIR/not-panic-safe-6.rs:9:5
    |
 LL |     assert::<*mut RefCell<i32>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
@@ -8,13 +8,13 @@ LL |     assert::<*mut RefCell<i32>>();
    = note: required because it appears within the type `std::cell::RefCell<i32>`
    = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `*mut std::cell::RefCell<i32>`
 note: required by `assert`
-  --> $DIR/not-panic-safe-6.rs:16:1
+  --> $DIR/not-panic-safe-6.rs:6:1
    |
 LL | fn assert<T: UnwindSafe + ?Sized>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the type `std::cell::UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
-  --> $DIR/not-panic-safe-6.rs:19:5
+  --> $DIR/not-panic-safe-6.rs:9:5
    |
 LL |     assert::<*mut RefCell<i32>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
@@ -24,7 +24,7 @@ LL |     assert::<*mut RefCell<i32>>();
    = note: required because it appears within the type `std::cell::RefCell<i32>`
    = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `*mut std::cell::RefCell<i32>`
 note: required by `assert`
-  --> $DIR/not-panic-safe-6.rs:16:1
+  --> $DIR/not-panic-safe-6.rs:6:1
    |
 LL | fn assert<T: UnwindSafe + ?Sized>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

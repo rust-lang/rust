@@ -1,11 +1,11 @@
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:21:43
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:11:43
    |
 LL | struct TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
    |                                           ^^^^^     ^^^^^
    |
 note: lint level defined here
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:12:9
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:2:9
    |
 LL | #![deny(explicit_outlives_requirements)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | struct TeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
    |                                          --   --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:26:57
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:16:57
    |
 LL | struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: 'a + Debug + 'b {
    |                                                         ^^^^^     ^^^^^
@@ -25,7 +25,7 @@ LL | struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
    |                                                        --   --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:31:49
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:21:49
    |
 LL | struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: 'a + Debug + 'b> {
    |                                                 ^^^^^     ^^^^^
@@ -35,7 +35,7 @@ LL | struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
    |                                                --   --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:37:44
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:27:44
    |
 LL | struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T: 'a, U: 'b + Debug> {
    |                                            ^^^^     ^^^^^
@@ -45,7 +45,7 @@ LL | struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T, U: Debug> {
    |                                           --   --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:43:44
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:33:44
    |
 LL | struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T: 'a, U: Debug + 'b> {
    |                                            ^^^^          ^^^^^
@@ -55,7 +55,7 @@ LL | struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T, U: Debug> {
    |                                           --        --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:49:42
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:39:42
    |
 LL | struct TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U> where U: 'b {
    |                                          ^^^^    ^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL | struct TeeOutlivesAyYooWhereBee<'a, 'b, T, U> {
    |                                         --  --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:55:63
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:45:63
    |
 LL | struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b {
    |                                                               ^^^^^     ^^^^^
@@ -75,7 +75,7 @@ LL | struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug {
    |                                                              --   --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:61:49
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:51:49
    |
 LL | struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T: 'a, U> where U: 'b + Debug {
    |                                                 ^^^^              ^^^^^
@@ -85,7 +85,7 @@ LL | struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
    |                                                --            --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:67:49
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:57:49
    |
 LL | struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T: 'a, U> where U: Debug + 'b {
    |                                                 ^^^^                   ^^^^^
@@ -95,7 +95,7 @@ LL | struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
    |                                                --                 --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:73:65
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:63:65
    |
 LL | struct TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where T: 'a, U: 'b + Debug {
    |                                                                 ^^^^^^^   ^^^^^
@@ -105,7 +105,7 @@ LL | struct TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
    |                                                                -- --
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:79:65
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:69:65
    |
 LL | struct TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where T: 'a, U: Debug + 'b {
    |                                                                 ^^^^^^^        ^^^^^

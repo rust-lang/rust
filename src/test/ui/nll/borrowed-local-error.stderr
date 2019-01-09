@@ -1,5 +1,5 @@
 error[E0597]: `v` does not live long enough
-  --> $DIR/borrowed-local-error.rs:20:9
+  --> $DIR/borrowed-local-error.rs:10:9
    |
 LL |     let x = gimme({
    |             ----- borrow later used by call

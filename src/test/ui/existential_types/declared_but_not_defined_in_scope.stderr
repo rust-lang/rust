@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/declared_but_not_defined_in_scope.rs:18:5
+  --> $DIR/declared_but_not_defined_in_scope.rs:7:5
    |
 LL |     pub existential type Boo: ::std::fmt::Debug; //~ ERROR could not find defining uses
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

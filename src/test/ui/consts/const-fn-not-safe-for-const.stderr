@@ -1,23 +1,23 @@
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/const-fn-not-safe-for-const.rs:24:5
+  --> $DIR/const-fn-not-safe-for-const.rs:14:5
    |
 LL |     random() //~ ERROR E0015
    |     ^^^^^^^^
 
 error[E0013]: constant functions cannot refer to statics, use a constant instead
-  --> $DIR/const-fn-not-safe-for-const.rs:30:5
+  --> $DIR/const-fn-not-safe-for-const.rs:20:5
    |
 LL |     Y
    |     ^
 
 error[E0013]: constant functions cannot refer to statics, use a constant instead
-  --> $DIR/const-fn-not-safe-for-const.rs:35:5
+  --> $DIR/const-fn-not-safe-for-const.rs:25:5
    |
 LL |     &Y
    |     ^^
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:40:13
+  --> $DIR/const-fn-not-safe-for-const.rs:30:13
    |
 LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
    |             ^^
@@ -25,7 +25,7 @@ LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:40:13
+  --> $DIR/const-fn-not-safe-for-const.rs:30:13
    |
 LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
    |             ^^
@@ -33,7 +33,7 @@ LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:42:13
+  --> $DIR/const-fn-not-safe-for-const.rs:32:13
    |
 LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
    |             ^^
@@ -41,7 +41,7 @@ LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:42:13
+  --> $DIR/const-fn-not-safe-for-const.rs:32:13
    |
 LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
    |             ^^
@@ -49,7 +49,7 @@ LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:44:5
+  --> $DIR/const-fn-not-safe-for-const.rs:34:5
    |
 LL |     x + y
    |     ^
@@ -57,7 +57,7 @@ LL |     x + y
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:44:9
+  --> $DIR/const-fn-not-safe-for-const.rs:34:9
    |
 LL |     x + y
    |         ^

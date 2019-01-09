@@ -1,5 +1,5 @@
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:22:9
+  --> $DIR/hygienic-labels.rs:12:9
    |
 LL |         'x: loop { $e }
    |         ^^ lifetime 'x already in scope
@@ -11,7 +11,7 @@ LL |         loop_x!(break 'x);
    |         ------------------ in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:47:5
+  --> $DIR/hygienic-labels.rs:37:5
    |
 LL |     'x: for _ in 0..1 {
    |     -- first declared here
@@ -20,7 +20,7 @@ LL |     'x: loop {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:47:5
+  --> $DIR/hygienic-labels.rs:37:5
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -29,7 +29,7 @@ LL |     'x: loop {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:22:9
+  --> $DIR/hygienic-labels.rs:12:9
    |
 LL |         'x: loop { $e }
    |         ^^ lifetime 'x already in scope
@@ -41,7 +41,7 @@ LL |         loop_x!(break 'x);
    |         ------------------ in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:22:9
+  --> $DIR/hygienic-labels.rs:12:9
    |
 LL |         'x: loop { $e }
    |         ^^
@@ -53,7 +53,7 @@ LL |         loop_x!(break 'x);
    |         ------------------ in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:22:9
+  --> $DIR/hygienic-labels.rs:12:9
    |
 LL |         'x: loop { $e }
    |         ^^ lifetime 'x already in scope
@@ -65,7 +65,7 @@ LL |         loop_x!(break 'x);
    |         ------------------ in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:53:5
+  --> $DIR/hygienic-labels.rs:43:5
    |
 LL |     'x: for _ in 0..1 {
    |     -- first declared here
@@ -74,7 +74,7 @@ LL |     'x: while 1 + 1 == 2 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:53:5
+  --> $DIR/hygienic-labels.rs:43:5
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -83,7 +83,7 @@ LL |     'x: while 1 + 1 == 2 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:53:5
+  --> $DIR/hygienic-labels.rs:43:5
    |
 LL |     'x: loop {
    |     -- first declared here
@@ -92,7 +92,7 @@ LL |     'x: while 1 + 1 == 2 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:53:5
+  --> $DIR/hygienic-labels.rs:43:5
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -101,7 +101,7 @@ LL |     'x: while 1 + 1 == 2 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:36:9
+  --> $DIR/hygienic-labels.rs:26:9
    |
 LL |         'x: while 1 + 1 == 2 { $e }
    |         ^^ lifetime 'x already in scope
@@ -113,7 +113,7 @@ LL |         while_x!(break 'x);
    |         ------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:36:9
+  --> $DIR/hygienic-labels.rs:26:9
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -125,7 +125,7 @@ LL |         while_x!(break 'x);
    |         ------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:36:9
+  --> $DIR/hygienic-labels.rs:26:9
    |
 LL |         'x: while 1 + 1 == 2 { $e }
    |         ^^ lifetime 'x already in scope
@@ -137,7 +137,7 @@ LL |         while_x!(break 'x);
    |         ------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:36:9
+  --> $DIR/hygienic-labels.rs:26:9
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -149,7 +149,7 @@ LL |         while_x!(break 'x);
    |         ------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:36:9
+  --> $DIR/hygienic-labels.rs:26:9
    |
 LL |         'x: while 1 + 1 == 2 { $e }
    |         ^^ lifetime 'x already in scope
@@ -160,7 +160,7 @@ LL |         while_x!(break 'x);
    |         ------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:58:5
+  --> $DIR/hygienic-labels.rs:48:5
    |
 LL |     'x: for _ in 0..1 {
    |     -- first declared here
@@ -169,7 +169,7 @@ LL |     'x: for _ in 0..1 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:58:5
+  --> $DIR/hygienic-labels.rs:48:5
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -178,7 +178,7 @@ LL |     'x: for _ in 0..1 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:58:5
+  --> $DIR/hygienic-labels.rs:48:5
    |
 LL |     'x: loop {
    |     -- first declared here
@@ -187,7 +187,7 @@ LL |     'x: for _ in 0..1 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:58:5
+  --> $DIR/hygienic-labels.rs:48:5
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -196,7 +196,7 @@ LL |     'x: for _ in 0..1 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:58:5
+  --> $DIR/hygienic-labels.rs:48:5
    |
 LL |     'x: while 1 + 1 == 2 {
    |     -- first declared here
@@ -205,7 +205,7 @@ LL |     'x: for _ in 0..1 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:58:5
+  --> $DIR/hygienic-labels.rs:48:5
    |
 LL |         'x: while 1 + 1 == 2 { $e }
    |         -- first declared here
@@ -214,7 +214,7 @@ LL |     'x: for _ in 0..1 {
    |     ^^ lifetime 'x already in scope
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: for _ in 0..1 { $e }
    |         ^^ lifetime 'x already in scope
@@ -226,7 +226,7 @@ LL |         run_once!(continue 'x);
    |         ----------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -238,7 +238,7 @@ LL |         run_once!(continue 'x);
    |         ----------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: for _ in 0..1 { $e }
    |         ^^ lifetime 'x already in scope
@@ -250,7 +250,7 @@ LL |         run_once!(continue 'x);
    |         ----------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: loop { $e }
    |         -- first declared here
@@ -262,7 +262,7 @@ LL |         run_once!(continue 'x);
    |         ----------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: for _ in 0..1 { $e }
    |         ^^ lifetime 'x already in scope
@@ -274,7 +274,7 @@ LL |         run_once!(continue 'x);
    |         ----------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: for _ in 0..1 { $e }
    |         ^^ lifetime 'x already in scope
@@ -286,7 +286,7 @@ LL |         run_once!(continue 'x);
    |         ----------------------- in this macro invocation
 
 warning: label name `'x` shadows a label name that is already in scope
-  --> $DIR/hygienic-labels.rs:29:9
+  --> $DIR/hygienic-labels.rs:19:9
    |
 LL |         'x: for _ in 0..1 { $e }
    |         ^^ lifetime 'x already in scope

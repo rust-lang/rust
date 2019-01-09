@@ -1,10 +1,9 @@
 warning[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-migrate-to-nll.rs:35:17
+  --> $DIR/borrowck-migrate-to-nll.rs:25:17
    |
 LL |                 (|| { let bar = foo; bar.take() })();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 

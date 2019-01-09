@@ -1,11 +1,11 @@
 error: expected token: `,`
-  --> $DIR/missing-comma.rs:20:19
+  --> $DIR/missing-comma.rs:10:19
    |
 LL |     println!("{}" a);
    |                   ^
 
 error: no rules expected the token `b`
-  --> $DIR/missing-comma.rs:22:12
+  --> $DIR/missing-comma.rs:12:12
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -16,7 +16,7 @@ LL |     foo!(a b);
    |           help: missing comma here
 
 error: no rules expected the token `e`
-  --> $DIR/missing-comma.rs:24:21
+  --> $DIR/missing-comma.rs:14:21
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -27,7 +27,7 @@ LL |     foo!(a, b, c, d e);
    |                    help: missing comma here
 
 error: no rules expected the token `d`
-  --> $DIR/missing-comma.rs:26:18
+  --> $DIR/missing-comma.rs:16:18
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -38,7 +38,7 @@ LL |     foo!(a, b, c d, e);
    |                 help: missing comma here
 
 error: no rules expected the token `d`
-  --> $DIR/missing-comma.rs:28:18
+  --> $DIR/missing-comma.rs:18:18
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro

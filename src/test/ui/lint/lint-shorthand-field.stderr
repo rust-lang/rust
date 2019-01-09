@@ -1,5 +1,5 @@
 error: the `x:` in this pattern is redundant
-  --> $DIR/lint-shorthand-field.rs:22:13
+  --> $DIR/lint-shorthand-field.rs:12:13
    |
 LL |             x: x, //~ ERROR the `x:` in this pattern is redundant
    |             --^^
@@ -7,13 +7,13 @@ LL |             x: x, //~ ERROR the `x:` in this pattern is redundant
    |             help: remove this
    |
 note: lint level defined here
-  --> $DIR/lint-shorthand-field.rs:12:9
+  --> $DIR/lint-shorthand-field.rs:2:9
    |
 LL | #![deny(non_shorthand_field_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `y:` in this pattern is redundant
-  --> $DIR/lint-shorthand-field.rs:23:13
+  --> $DIR/lint-shorthand-field.rs:13:13
    |
 LL |             y: ref y, //~ ERROR the `y:` in this pattern is redundant
    |             --^^^^^^

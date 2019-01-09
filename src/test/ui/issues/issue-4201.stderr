@@ -1,15 +1,15 @@
 error[E0317]: if may be missing an else clause
-  --> $DIR/issue-4201.rs:14:12
+  --> $DIR/issue-4201.rs:4:12
    |
 LL |       } else if false {
    |  ____________^
 LL | | //~^ ERROR if may be missing an else clause
 LL | | //~| expected type `()`
 LL | | //~| found type `{integer}`
-LL | | //~| expected (), found integral variable
+LL | | //~| expected (), found integer
 LL | |         1
 LL | |     };
-   | |_____^ expected (), found integral variable
+   | |_____^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`

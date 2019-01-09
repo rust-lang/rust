@@ -1,5 +1,5 @@
 error[E0501]: cannot borrow `*a` as mutable because previous closure requires unique access
-  --> $DIR/E0501.rs:28:23
+  --> $DIR/E0501.rs:18:23
    |
 LL |     let bar = || {
    |               -- closure construction occurs here
@@ -13,7 +13,7 @@ LL |     drop(bar);
    |          --- first borrow later used here
 
 error[E0501]: cannot borrow `*a` as immutable because previous closure requires unique access
-  --> $DIR/E0501.rs:31:23
+  --> $DIR/E0501.rs:21:23
    |
 LL |     let bar = || {
    |               -- closure construction occurs here

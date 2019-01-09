@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/unknown_type_for_closure.rs:12:14
+  --> $DIR/unknown_type_for_closure.rs:2:14
    |
 LL |     let x = |_| {    }; //~ ERROR type annotations needed
    |              ^ consider giving this closure parameter a type

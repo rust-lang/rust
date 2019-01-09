@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/regions-nested-fns-2.rs:18:25
+  --> $DIR/regions-nested-fns-2.rs:8:25
    |
 LL |         |z| {
    |         --- value captured here

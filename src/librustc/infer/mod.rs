@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! See the Book for more information.
 
 pub use self::freshen::TypeFreshener;
@@ -35,14 +25,13 @@ use syntax_pos::{self, Span};
 use traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
-use ty::relate::{RelateResult, TraitObjectMode};
+use ty::relate::RelateResult;
 use ty::subst::{Kind, Substs};
 use ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
 use ty::{FloatVid, IntVid, TyVid};
 use util::nodemap::FxHashMap;
 
 use self::combine::CombineFields;
-use self::higher_ranked::HrMatchResult;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
@@ -182,9 +171,6 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // This flag is true while there is an active snapshot.
     in_snapshot: Cell<bool>,
 
-    // The TraitObjectMode used here,
-    trait_object_mode: TraitObjectMode,
-
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
     // outlive the lifetime 'a". These constraints derive from
@@ -236,7 +222,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See `error_reporting` module for more details
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
@@ -476,7 +462,6 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     arena: SyncDroplessArena,
     interners: Option<CtxtInterners<'tcx>>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
-    trait_object_mode: TraitObjectMode,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
@@ -486,7 +471,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             arena: SyncDroplessArena::default(),
             interners: None,
             fresh_tables: None,
-            trait_object_mode: TraitObjectMode::NoSquash,
         }
     }
 }
@@ -496,12 +480,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
         self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(Some(table_owner))));
-        self
-    }
-
-    pub fn with_trait_object_mode(mut self, mode: TraitObjectMode) -> Self {
-        debug!("with_trait_object_mode: setting mode to {:?}", mode);
-        self.trait_object_mode = mode;
         self
     }
 
@@ -531,7 +509,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
-            trait_object_mode,
             ref arena,
             ref mut interners,
             ref fresh_tables,
@@ -543,7 +520,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             f(InferCtxt {
                 tcx,
                 in_progress_tables,
-                trait_object_mode,
                 projection_cache: Default::default(),
                 type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
                 int_unification_table: RefCell::new(ut::UnificationTable::new()),
@@ -591,7 +567,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
     pub fn into_value_registering_obligations(
         self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        fulfill_cx: &mut impl TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> T {
         let InferOk { value, obligations } = self;
         for obligation in obligations {
@@ -623,10 +599,6 @@ pub struct CombinedSnapshot<'a, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
-    }
-
-    pub fn trait_object_mode(&self) -> TraitObjectMode {
-        self.trait_object_mode
     }
 
     pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
@@ -878,6 +850,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
+    /// Scan the constraints produced since `snapshot` began and returns:
+    ///
+    /// - None -- if none of them involve "region outlives" constraints
+    /// - Some(true) -- if there are `'a: 'b` constraints where `'a` or `'b` is a placehodler
+    /// - Some(false) -- if there are `'a: 'b` constraints but none involve placeholders
+    pub fn region_constraints_added_in_snapshot(
+        &self,
+        snapshot: &CombinedSnapshot<'a, 'tcx>,
+    ) -> Option<bool> {
+        self.borrow_region_constraints().region_constraints_added_in_snapshot(
+            &snapshot.region_constraints_snapshot,
+        )
+    }
+
     pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
         self.borrow_region_constraints().add_given(sub, sup);
     }
@@ -949,39 +935,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        Some(self.commit_if_ok(|snapshot| {
-            let (
-                ty::SubtypePredicate {
-                    a_is_expected,
-                    a,
-                    b,
-                },
-                placeholder_map,
-            ) = self.replace_bound_vars_with_placeholders(predicate);
+        let (
+            ty::SubtypePredicate {
+                a_is_expected,
+                a,
+                b,
+            },
+            _,
+        ) = self.replace_bound_vars_with_placeholders(predicate);
 
-            let cause_span = cause.span;
-            let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
-            self.leak_check(false, cause_span, &placeholder_map, snapshot)?;
-            self.pop_placeholders(placeholder_map, snapshot);
-            Ok(ok.unit())
-        }))
+        Some(
+            self.at(cause, param_env)
+                .sub_exp(a_is_expected, a, b)
+                .map(|ok| ok.unit()),
+        )
     }
 
     pub fn region_outlives_predicate(
         &self,
         cause: &traits::ObligationCause<'tcx>,
         predicate: &ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) -> UnitResult<'tcx> {
-        self.commit_if_ok(|snapshot| {
-            let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
-                self.replace_bound_vars_with_placeholders(predicate);
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, cause.span, &placeholder_map, snapshot)?;
-            Ok(self.pop_placeholders(placeholder_map, snapshot))
-        })
+    ) {
+        let (ty::OutlivesPredicate(r_a, r_b), _) =
+            self.replace_bound_vars_with_placeholders(predicate);
+        let origin =
+            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
+        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
     }
 
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
@@ -1390,46 +1369,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.replace_bound_vars(value, fld_r, fld_t)
     }
 
-    /// Given a higher-ranked projection predicate like:
-    ///
-    ///     for<'a> <T as Fn<&'a u32>>::Output = &'a u32
-    ///
-    /// and a target trait-ref like:
-    ///
-    ///     <T as Fn<&'x u32>>
-    ///
-    /// find a substitution `S` for the higher-ranked regions (here,
-    /// `['a => 'x]`) such that the predicate matches the trait-ref,
-    /// and then return the value (here, `&'a u32`) but with the
-    /// substitution applied (hence, `&'x u32`).
-    ///
-    /// See `higher_ranked_match` in `higher_ranked/mod.rs` for more
-    /// details.
-    pub fn match_poly_projection_predicate(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        match_a: ty::PolyProjectionPredicate<'tcx>,
-        match_b: ty::TraitRef<'tcx>,
-    ) -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>> {
-        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref(self.tcx), p.ty));
-        let trace = TypeTrace {
-            cause,
-            values: TraitRefs(ExpectedFound::new(
-                true,
-                match_pair.skip_binder().0,
-                match_b,
-            )),
-        };
-
-        let mut combine = self.combine_fields(trace, param_env);
-        let result = combine.higher_ranked_match(&match_pair, &match_b, true)?;
-        Ok(InferOk {
-            value: result,
-            obligations: combine.obligations,
-        })
-    }
-
     /// See `verify_generic_bound` method in `region_constraints`
     pub fn verify_generic_bound(
         &self,
@@ -1444,18 +1383,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn type_moves_by_default(
+    pub fn type_is_copy_modulo_regions(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
     ) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
+
         // Even if the type may have no inference variables, during
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
             if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
-                return ty.moves_by_default(self.tcx.global_tcx(), param_env, span);
+                return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
             }
         }
 
@@ -1465,7 +1405,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
-        !traits::type_known_to_meet_bound(self, param_env, ty, copy_def_id, span)
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
     }
 
     /// Obtains the latest type of the given closure; this may be a

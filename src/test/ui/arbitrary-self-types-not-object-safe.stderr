@@ -1,5 +1,5 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:32
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:31:32
    |
 LL |     let x = Rc::new(5usize) as Rc<Foo>;
    |                                ^^^^^^^ the trait `Foo` cannot be made into an object
@@ -7,7 +7,7 @@ LL |     let x = Rc::new(5usize) as Rc<Foo>;
    = note: method `foo`'s receiver cannot be dispatched on
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:13
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:31:13
    |
 LL |     let x = Rc::new(5usize) as Rc<Foo>;
    |             ^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object

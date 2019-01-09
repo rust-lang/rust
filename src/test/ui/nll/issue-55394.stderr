@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-55394.rs:21:9
+  --> $DIR/issue-55394.rs:11:9
    |
 LL |     fn new(bar: &mut Bar) -> Self {
    |                 -            ---- return type is Foo<'2>

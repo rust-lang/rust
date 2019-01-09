@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `MyStruct`:
-  --> $DIR/issue-28568.rs:17:1
+  --> $DIR/issue-28568.rs:7:1
    |
 LL | impl Drop for MyStruct {
    | ---------------------- first implementation here

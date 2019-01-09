@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `s`
-  --> $DIR/issue-42796.rs:28:20
+  --> $DIR/issue-42796.rs:18:20
    |
 LL |     let mut s_copy = s;
    |         ---------- value moved here

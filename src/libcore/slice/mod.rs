@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Slice management and manipulation.
 //!
 //! For more details see [`std::slice`].
@@ -877,6 +867,7 @@ impl<T> [T] {
     /// assert_eq!(iter.remainder(), &['l']);
     /// ```
     ///
+    /// [`chunks`]: #method.chunks
     /// [`rchunks`]: #method.rchunks
     /// [`chunks_exact`]: #method.chunks_exact
     #[stable(feature = "rchunks", since = "1.31.0")]
@@ -921,6 +912,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[0, 2, 2, 1, 1]);
     /// ```
     ///
+    /// [`chunks_mut`]: #method.chunks_mut
     /// [`rchunks_mut`]: #method.rchunks_mut
     /// [`chunks_exact_mut`]: #method.chunks_exact_mut
     #[stable(feature = "rchunks", since = "1.31.0")]

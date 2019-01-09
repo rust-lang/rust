@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *interprocedural* things -- for example, for a function
@@ -43,7 +33,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
 
 use syntax::ast;
-use syntax::ast::MetaItemKind;
+use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{InlineAttr, list_contains_name, mark_used};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
@@ -395,7 +385,7 @@ fn is_param<'a, 'tcx>(
 
 fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
     let it = tcx.hir().expect_item(item_id);
-    debug!("convert: item {} with id {}", it.name, it.id);
+    debug!("convert: item {} with id {}", it.ident, it.id);
     let def_id = tcx.hir().local_def_id(item_id);
     match it.node {
         // These don't define types.
@@ -543,7 +533,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
                     format!("overflowed on value after {}", prev_discr.unwrap()),
                 ).note(&format!(
                     "explicitly set `{} = {}` if that is desired outcome",
-                    variant.node.name, wrapped_discr
+                    variant.node.ident, wrapped_discr
                 ))
                 .emit();
                 None
@@ -566,7 +556,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
 fn convert_variant<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     did: DefId,
-    name: ast::Name,
+    ident: Ident,
     discr: ty::VariantDiscr,
     def: &hir::VariantData,
     adt_kind: ty::AdtKind,
@@ -603,12 +593,13 @@ fn convert_variant<'a, 'tcx>(
         .collect();
     ty::VariantDef::new(tcx,
         did,
-        name,
+        ident,
         discr,
         fields,
         adt_kind,
         CtorKind::from_hir(def),
-        attribute_def_id)
+        attribute_def_id
+    )
 }
 
 fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::AdtDef {
@@ -638,7 +629,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                         };
                         distance_from_explicit += 1;
 
-                        convert_variant(tcx, did, v.node.name, discr, &v.node.data, AdtKind::Enum,
+                        convert_variant(tcx, did, v.node.ident, discr, &v.node.data, AdtKind::Enum,
                                         did)
                     })
                     .collect(),
@@ -656,7 +647,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                 std::iter::once(convert_variant(
                     tcx,
                     ctor_id.unwrap_or(def_id),
-                    item.name,
+                    item.ident,
                     ty::VariantDiscr::Relative(0),
                     def,
                     AdtKind::Struct,
@@ -669,7 +660,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
             std::iter::once(convert_variant(
                 tcx,
                 def_id,
-                item.name,
+                item.ident,
                 ty::VariantDiscr::Relative(0),
                 def,
                 AdtKind::Union,
@@ -1627,6 +1618,7 @@ fn predicates_defined_on<'a, 'tcx>(
             .predicates
             .extend(inferred_outlives.iter().map(|&p| (p, span)));
     }
+    debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
 }
 
@@ -1654,6 +1646,7 @@ fn predicates_of<'a, 'tcx>(
             .predicates
             .push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
     }
+    debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
 }
 
@@ -1981,10 +1974,12 @@ fn explicit_predicates_of<'a, 'tcx>(
         );
     }
 
-    Lrc::new(ty::GenericPredicates {
+    let result = Lrc::new(ty::GenericPredicates {
         parent: generics.parent,
         predicates,
-    })
+    });
+    debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
+    result
 }
 
 pub enum SizedByDefault {
@@ -2220,7 +2215,6 @@ fn from_target_feature(
                     feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
                 );
-                return None;
             }
             Some(Symbol::intern(feature))
         }));

@@ -1,5 +1,5 @@
 error[E0597]: `factorial` does not live long enough
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:25:17
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:15:17
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- capture occurs here
@@ -12,7 +12,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0373]: closure may outlive the current function, but it borrows `factorial`, which is owned by the current function
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:36:13
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:26:13
    |
 LL |     let f = |x: u32| -> u32 {
    |             ^^^^^^^^^^^^^^^ may outlive borrowed value `factorial`

@@ -1,5 +1,5 @@
 error[E0597]: `i` does not live long enough
-  --> $DIR/regions-steal-closure.rs:24:28
+  --> $DIR/regions-steal-closure.rs:14:28
    |
 LL |     let mut cl_box = {
    |         ---------- borrow later stored here

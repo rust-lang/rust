@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This is the implementation of the pass which transforms generators into state machines.
 //!
 //! MIR generation for generators creates a function which has a self argument which
@@ -181,11 +171,11 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             span: source_info.span,
             ty: self.tcx.types.u32,
             user_ty: None,
-            literal: ty::Const::from_bits(
+            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
                 ty::ParamEnv::empty().and(self.tcx.types.u32)
-            ),
+            ))),
         });
         Statement {
             source_info,
@@ -336,36 +326,6 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
             StatementKind::StorageDead(l) => { self.0.remove(l); }
             _ => (),
         }
-    }
-}
-
-struct BorrowedLocals(liveness::LiveVarSet<Local>);
-
-fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
-    match *place {
-        Place::Local(l) => { locals.0.insert(l); },
-        Place::Promoted(_) |
-        Place::Static(..) => (),
-        Place::Projection(ref proj) => {
-            match proj.elem {
-                // For derefs we don't look any further.
-                // If it pointed to a Local, it would already be borrowed elsewhere
-                ProjectionElem::Deref => (),
-                _ => mark_as_borrowed(&proj.base, locals)
-            }
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for BorrowedLocals {
-    fn visit_rvalue(&mut self,
-                    rvalue: &Rvalue<'tcx>,
-                    location: Location) {
-        if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            mark_as_borrowed(place, self);
-        }
-
-        self.super_rvalue(rvalue, location)
     }
 }
 
@@ -727,7 +687,9 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             span: mir.span,
             ty: tcx.types.bool,
             user_ty: None,
-            literal: ty::Const::from_bool(tcx, false),
+            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_bool(tcx, false),
+            )),
         }),
         expected: true,
         msg: message,

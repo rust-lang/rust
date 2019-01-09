@@ -1,5 +1,5 @@
 error: attribute can only be applied to a trait
-  --> $DIR/marker-attribute-on-non-trait.rs:13:1
+  --> $DIR/marker-attribute-on-non-trait.rs:3:1
    |
 LL | #[marker] //~ ERROR attribute can only be applied to a trait
    | ^^^^^^^^^
@@ -7,7 +7,7 @@ LL | struct Struct {}
    | ---------------- not a trait
 
 error: attribute can only be applied to a trait
-  --> $DIR/marker-attribute-on-non-trait.rs:16:1
+  --> $DIR/marker-attribute-on-non-trait.rs:6:1
    |
 LL | #[marker] //~ ERROR attribute can only be applied to a trait
    | ^^^^^^^^^
@@ -15,7 +15,7 @@ LL | impl Struct {}
    | -------------- not a trait
 
 error: attribute can only be applied to a trait
-  --> $DIR/marker-attribute-on-non-trait.rs:19:1
+  --> $DIR/marker-attribute-on-non-trait.rs:9:1
    |
 LL |   #[marker] //~ ERROR attribute can only be applied to a trait
    |   ^^^^^^^^^
@@ -25,7 +25,7 @@ LL | | }
    | |_- not a trait
 
 error: attribute can only be applied to a trait
-  --> $DIR/marker-attribute-on-non-trait.rs:24:1
+  --> $DIR/marker-attribute-on-non-trait.rs:14:1
    |
 LL | #[marker] //~ ERROR attribute can only be applied to a trait
    | ^^^^^^^^^
@@ -33,7 +33,7 @@ LL | const CONST: usize = 10;
    | ------------------------ not a trait
 
 error: attribute can only be applied to a trait
-  --> $DIR/marker-attribute-on-non-trait.rs:27:1
+  --> $DIR/marker-attribute-on-non-trait.rs:17:1
    |
 LL | #[marker] //~ ERROR attribute can only be applied to a trait
    | ^^^^^^^^^
@@ -41,7 +41,7 @@ LL | fn function() {}
    | ---------------- not a trait
 
 error: attribute can only be applied to a trait
-  --> $DIR/marker-attribute-on-non-trait.rs:30:1
+  --> $DIR/marker-attribute-on-non-trait.rs:20:1
    |
 LL | #[marker] //~ ERROR attribute can only be applied to a trait
    | ^^^^^^^^^

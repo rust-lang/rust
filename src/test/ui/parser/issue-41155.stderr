@@ -1,5 +1,5 @@
 error: expected one of `(`, `async`, `const`, `default`, `existential`, `extern`, `fn`, `type`, or `unsafe`, found `}`
-  --> $DIR/issue-41155.rs:15:1
+  --> $DIR/issue-41155.rs:5:1
    |
 LL |     pub
    |        - expected one of 9 possible tokens here

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A contiguous growable array type with heap-allocated contents, written
 //! `Vec<T>`.
 //!
@@ -1241,8 +1231,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_resize_with)]
-    ///
     /// let mut vec = vec![1, 2, 3];
     /// vec.resize_with(5, Default::default);
     /// assert_eq!(vec, [1, 2, 3, 0, 0]);
@@ -1255,7 +1243,7 @@ impl<T> Vec<T> {
     ///
     /// [`resize`]: #method.resize
     /// [`Clone`]: ../../std/clone/trait.Clone.html
-    #[unstable(feature = "vec_resize_with", issue = "41758")]
+    #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
         where F: FnMut() -> T
     {

@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/typeck-default-trait-impl-send-param.rs:15:5
+  --> $DIR/typeck-default-trait-impl-send-param.rs:5:5
    |
 LL |     is_send::<T>() //~ ERROR E0277
    |     ^^^^^^^^^^^^ `T` cannot be sent between threads safely
@@ -7,7 +7,7 @@ LL |     is_send::<T>() //~ ERROR E0277
    = help: the trait `std::marker::Send` is not implemented for `T`
    = help: consider adding a `where T: std::marker::Send` bound
 note: required by `is_send`
-  --> $DIR/typeck-default-trait-impl-send-param.rs:18:1
+  --> $DIR/typeck-default-trait-impl-send-param.rs:8:1
    |
 LL | fn is_send<T:Send>() {
    | ^^^^^^^^^^^^^^^^^^^^

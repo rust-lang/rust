@@ -1,20 +1,9 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
@@ -28,7 +17,7 @@ use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{self, Lrc, Lock};
+use rustc_data_structures::sync::{self, Lock};
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -338,6 +327,10 @@ pub fn compile_input(
                     }
                 }
 
+                if tcx.sess.opts.debugging_opts.query_stats {
+                    tcx.queries.print_stats();
+                }
+
                 Ok((outputs.clone(), ongoing_codegen, tcx.dep_graph.clone()))
             },
         )??
@@ -409,14 +402,15 @@ pub struct CompileController<'a> {
 
     /// Allows overriding default rustc query providers,
     /// after `default_provide` has installed them.
-    pub provide: Box<dyn Fn(&mut ty::query::Providers) + 'a>,
+    pub provide: Box<dyn Fn(&mut ty::query::Providers) + 'a + sync::Send>,
     /// Same as `provide`, but only for non-local crates,
     /// applied after `default_provide_extern`.
-    pub provide_extern: Box<dyn Fn(&mut ty::query::Providers) + 'a>,
+    pub provide_extern: Box<dyn Fn(&mut ty::query::Providers) + 'a + sync::Send>,
 }
 
 impl<'a> CompileController<'a> {
     pub fn basic() -> CompileController<'a> {
+        sync::assert_send::<Self>();
         CompileController {
             after_parse: PhaseController::basic(),
             after_expand: PhaseController::basic(),
@@ -506,7 +500,7 @@ pub struct PhaseController<'a> {
     // If true then the compiler will try to run the callback even if the phase
     // ends with an error. Note that this is not always possible.
     pub run_callback_on_error: bool,
-    pub callback: Box<dyn Fn(&mut CompileState) + 'a>,
+    pub callback: Box<dyn Fn(&mut CompileState) + 'a + sync::Send>,
 }
 
 impl<'a> PhaseController<'a> {
@@ -791,8 +785,6 @@ where
             },
 
             analysis: ty::CrateAnalysis {
-                access_levels: Lrc::new(AccessLevels::default()),
-                name: crate_name.to_string(),
                 glob_map: if resolver.make_glob_map {
                     Some(resolver.glob_map)
                 } else {
@@ -997,7 +989,6 @@ where
         };
 
         let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
-        let err_count = ecx.parse_sess.span_diagnostic.err_count();
 
         // Expand macros now!
         let krate = time(sess, "expand crate", || {
@@ -1022,9 +1013,6 @@ where
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
             sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
-        }
-        if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
-            ecx.parse_sess.span_diagnostic.abort_if_errors();
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
@@ -1111,29 +1099,20 @@ where
         ast_validation::check_crate(sess, &krate)
     });
 
-    time(sess, "name resolution", || -> CompileResult {
+    time(sess, "name resolution", || {
         resolver.resolve_crate(&krate);
-        Ok(())
-    })?;
+    });
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(sess, "complete gated feature checking", || {
-        sess.track_errors(|| {
-            syntax::feature_gate::check_crate(
-                &krate,
-                &sess.parse_sess,
-                &sess.features_untracked(),
-                &attributes,
-                sess.opts.unstable_features,
-            );
-        })
-    })?;
-
-    // Unresolved macros might be due to mistyped `#[macro_use]`,
-    // so abort after checking for unknown attributes. (#49074)
-    if resolver.found_unresolved_macro {
-        sess.diagnostic().abort_if_errors();
-    }
+        syntax::feature_gate::check_crate(
+            &krate,
+            &sess.parse_sess,
+            &sess.features_untracked(),
+            &attributes,
+            sess.opts.unstable_features,
+        );
+    });
 
     // Lower ast -> hir.
     // First, we need to collect the dep_graph.
@@ -1209,7 +1188,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     sess: &'tcx Session,
     cstore: &'tcx CStore,
     hir_map: hir_map::Map<'tcx>,
-    mut analysis: ty::CrateAnalysis,
+    analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
     arenas: &'tcx mut AllArenas<'tcx>,
     name: &str,
@@ -1291,8 +1270,9 @@ where
                 rvalue_promotion::check_crate(tcx)
             });
 
-            analysis.access_levels =
-                time(sess, "privacy checking", || rustc_privacy::check_crate(tcx));
+            time(sess, "privacy checking", || {
+                rustc_privacy::check_crate(tcx)
+            });
 
             time(sess, "intrinsic checking", || {
                 middle::intrinsicck::check_crate(tcx)

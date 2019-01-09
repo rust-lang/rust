@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/foreign-fn-return-lifetime.rs:15:19
+  --> $DIR/foreign-fn-return-lifetime.rs:5:19
    |
 LL |     pub fn f() -> &u8; //~ ERROR missing lifetime specifier
    |                   ^ help: consider giving it a 'static lifetime: `&'static`

@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-6458-3.rs:14:5
+  --> $DIR/issue-6458-3.rs:4:5
    |
 LL |     mem::transmute(0);
    |     ^^^^^^^^^^^^^^ cannot infer type for `U`

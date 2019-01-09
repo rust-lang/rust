@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use self::collector::NodeCollector;
 pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
@@ -677,6 +667,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(_) |
                 Node::ForeignItem(_) |
                 Node::TraitItem(_) |
+                Node::Expr(Expr { node: ExprKind::Closure(..), ..}) |
                 Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -685,7 +676,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 Node::Expr(ref expr) => {
                     match expr.node {
-                        ExprKind::While(..) | ExprKind::Loop(..) => true,
+                        ExprKind::While(..) | ExprKind::Loop(..) | ExprKind::Ret(..) => true,
                         _ => false,
                     }
                 }
@@ -823,11 +814,11 @@ impl<'hir> Map<'hir> {
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            Node::Item(i) => i.name,
-            Node::ForeignItem(i) => i.name,
+            Node::Item(i) => i.ident.name,
+            Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
             Node::TraitItem(ti) => ti.ident.name,
-            Node::Variant(v) => v.node.name,
+            Node::Variant(v) => v.node.ident.name,
             Node::Field(f) => f.ident.name,
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
@@ -963,7 +954,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
             loop {
                 if let Node::Item(item) = map.find(id)? {
                     if item_is_mod(&item) {
-                        return Some((id, item.name))
+                        return Some((id, item.ident.name))
                     }
                 }
                 let parent = map.get_parent(id);
@@ -1019,9 +1010,9 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.name } }
-impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
-impl Named for VariantKind { fn name(&self) -> Name { self.name } }
+impl Named for Item { fn name(&self) -> Name { self.ident.name } }
+impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for VariantKind { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
@@ -1204,7 +1195,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         }
         Some(Node::Variant(ref variant)) => {
             format!("variant {} in {}{}",
-                    variant.node.name,
+                    variant.node.ident,
                     path_str(), id_str)
         }
         Some(Node::Field(ref field)) => {

@@ -1,13 +1,5 @@
-
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 
 // revisions: ast cmp
 //[cmp]compile-flags: -Z borrowck=compare
@@ -23,7 +15,7 @@ fn main() {
     println!("t[0]: {}", t[0]);
     a[2] = 0; //[ast]~ ERROR cannot assign to `a[..]` because it is borrowed
               //[cmp]~^ ERROR cannot assign to `a[..]` because it is borrowed (Ast)
-              //[cmp]~| ERROR cannot assign to `a[..]` because it is borrowed (Mir)
+              //[cmp]~| ERROR cannot assign to `a[_]` because it is borrowed (Mir)
     println!("t[0]: {}", t[0]);
     t[0];
 }

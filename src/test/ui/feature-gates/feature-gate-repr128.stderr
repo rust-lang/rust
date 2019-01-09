@@ -1,5 +1,5 @@
 error[E0658]: repr with 128-bit type is unstable (see issue #35118)
-  --> $DIR/feature-gate-repr128.rs:12:1
+  --> $DIR/feature-gate-repr128.rs:2:1
    |
 LL | / enum A { //~ ERROR repr with 128-bit type is unstable
 LL | |     A(u64)

@@ -1,5 +1,5 @@
 error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:31:1
+  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:21:1
    |
 LL | / impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
 LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
@@ -10,7 +10,7 @@ LL | | }
    | |_^
 
 error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:37:1
+  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:27:1
    |
 LL | / impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
 LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute

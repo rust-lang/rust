@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
@@ -30,7 +20,8 @@ use rustc::ty::layout::{
 
 use interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
 use const_eval::{
-    CompileTimeInterpreter, const_to_op, error_to_const_error, eval_promoted, mk_borrowck_eval_cx
+    CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_borrowck_eval_cx,
+    lazy_const_to_op,
 };
 use transform::{MirPass, MirSource};
 
@@ -265,7 +256,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match const_to_op(&self.ecx, c.literal) {
+        match lazy_const_to_op(&self.ecx, *c.literal, c.ty) {
             Ok(op) => {
                 Some((op, c.span))
             },
@@ -346,7 +337,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::Cast(kind, ref operand, _) => {
                 let (op, span) = self.eval_operand(operand, source_info)?;
                 self.use_ecx(source_info, |this| {
-                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack)?;
+                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack);
                     this.ecx.cast(op, kind, dest.into())?;
                     Ok((dest.into(), span))
                 })

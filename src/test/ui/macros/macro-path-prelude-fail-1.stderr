@@ -1,11 +1,11 @@
 error[E0433]: failed to resolve: not a module `Vec`
-  --> $DIR/macro-path-prelude-fail-1.rs:15:9
+  --> $DIR/macro-path-prelude-fail-1.rs:5:9
    |
 LL |         Vec::clone!(); //~ ERROR failed to resolve: not a module `Vec`
    |         ^^^ not a module `Vec`
 
 error[E0433]: failed to resolve: not a module `u8`
-  --> $DIR/macro-path-prelude-fail-1.rs:16:9
+  --> $DIR/macro-path-prelude-fail-1.rs:6:9
    |
 LL |         u8::clone!(); //~ ERROR failed to resolve: not a module `u8`
    |         ^^ not a module `u8`

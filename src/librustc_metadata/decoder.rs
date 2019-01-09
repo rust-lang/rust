@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Decoding metadata from a single crate's metadata
 
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
@@ -563,7 +553,7 @@ impl<'a, 'tcx> CrateMetadata {
         ty::VariantDef::new(
             tcx,
             def_id,
-            self.item_name(index).as_symbol(),
+            Ident::from_interned_str(self.item_name(index)),
             data.discr,
             item.children.decode(self).map(|index| {
                 let f = self.entry(index);

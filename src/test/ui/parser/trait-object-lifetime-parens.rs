@@ -1,18 +1,12 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// compile-flags: -Z continue-parse-after-error
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+trait Trait {}
 
-fn f<T: Copy + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported
+fn f<'a, T: Trait + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported
 
-fn main() {
-    let _: Box<Copy + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
-    let _: Box<('a) + Copy>; //~ ERROR expected type, found `'a`
+fn check<'a>() {
+    let _: Box<Trait + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
+    let _: Box<('a) + Trait>; //~ ERROR expected type, found `'a`
 }
+
+fn main() {}

@@ -3,6 +3,7 @@
 // For the time being `macro_rules` items are treated as *very* private...
 
 #![feature(decl_macro, uniform_paths)]
+#![allow(non_camel_case_types)]
 
 mod m1 {
     macro_rules! legacy_macro { () => () }

@@ -1,5 +1,5 @@
 error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, `PhantomData` fields, and nothing else
-  --> $DIR/invalid_dispatch_from_dyn_impls.rs:20:1
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:10:1
    |
 LL | / impl<T, U> DispatchFromDyn<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
 LL | | where
@@ -10,7 +10,7 @@ LL | | {} //~^^^ ERROR [E0378]
    = note: extra field `1` of type `i32` is not allowed
 
 error[E0378]: implementing the `DispatchFromDyn` trait requires multiple coercions
-  --> $DIR/invalid_dispatch_from_dyn_impls.rs:31:1
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:21:1
    |
 LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<MultiplePointers<U>> for MultiplePointers<T>
 LL | | where
@@ -22,13 +22,13 @@ LL | | {} //~^^^ ERROR [E0378]
    = note: currently, 2 fields need coercions: `ptr1` (`*const T` to `*const U`), `ptr2` (`*const T` to `*const U`)
 
 error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced, none found
-  --> $DIR/invalid_dispatch_from_dyn_impls.rs:41:1
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:31:1
    |
 LL | impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NothingToCoerce<T>> for NothingToCoerce<U> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0378]: structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
-  --> $DIR/invalid_dispatch_from_dyn_impls.rs:47:1
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:37:1
    |
 LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
 LL | | where

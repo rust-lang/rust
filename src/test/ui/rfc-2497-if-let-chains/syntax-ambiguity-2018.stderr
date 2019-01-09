@@ -1,5 +1,5 @@
 error: ambiguous use of `&&`
-  --> $DIR/syntax-ambiguity-2018.rs:21:47
+  --> $DIR/syntax-ambiguity-2018.rs:11:47
    |
 LL |     if let Range { start: _, end: _ } = true..true && false { }
    |                                               ^^^^^^^^^^^^^ help: consider adding parentheses: `(true && false)`
@@ -8,7 +8,7 @@ LL |     if let Range { start: _, end: _ } = true..true && false { }
    = note: see rust-lang/rust#53668 for more information
 
 error: ambiguous use of `||`
-  --> $DIR/syntax-ambiguity-2018.rs:24:47
+  --> $DIR/syntax-ambiguity-2018.rs:14:47
    |
 LL |     if let Range { start: _, end: _ } = true..true || false { }
    |                                               ^^^^^^^^^^^^^ help: consider adding parentheses: `(true || false)`
@@ -17,7 +17,7 @@ LL |     if let Range { start: _, end: _ } = true..true || false { }
    = note: see rust-lang/rust#53668 for more information
 
 error: ambiguous use of `&&`
-  --> $DIR/syntax-ambiguity-2018.rs:27:50
+  --> $DIR/syntax-ambiguity-2018.rs:17:50
    |
 LL |     while let Range { start: _, end: _ } = true..true && false { }
    |                                                  ^^^^^^^^^^^^^ help: consider adding parentheses: `(true && false)`
@@ -26,7 +26,7 @@ LL |     while let Range { start: _, end: _ } = true..true && false { }
    = note: see rust-lang/rust#53668 for more information
 
 error: ambiguous use of `||`
-  --> $DIR/syntax-ambiguity-2018.rs:30:50
+  --> $DIR/syntax-ambiguity-2018.rs:20:50
    |
 LL |     while let Range { start: _, end: _ } = true..true || false { }
    |                                                  ^^^^^^^^^^^^^ help: consider adding parentheses: `(true || false)`
@@ -35,7 +35,7 @@ LL |     while let Range { start: _, end: _ } = true..true || false { }
    = note: see rust-lang/rust#53668 for more information
 
 error: ambiguous use of `&&`
-  --> $DIR/syntax-ambiguity-2018.rs:33:19
+  --> $DIR/syntax-ambiguity-2018.rs:23:19
    |
 LL |     if let true = false && false { }
    |                   ^^^^^^^^^^^^^^ help: consider adding parentheses: `(false && false)`
@@ -44,7 +44,7 @@ LL |     if let true = false && false { }
    = note: see rust-lang/rust#53668 for more information
 
 error: ambiguous use of `&&`
-  --> $DIR/syntax-ambiguity-2018.rs:36:22
+  --> $DIR/syntax-ambiguity-2018.rs:26:22
    |
 LL |     while let true = (1 == 2) && false { }
    |                      ^^^^^^^^^^^^^^^^^ help: consider adding parentheses: `((1 == 2) && false)`

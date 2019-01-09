@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/borrowck-mut-addr-of-imm-var.rs:13:25
+  --> $DIR/borrowck-mut-addr-of-imm-var.rs:3:25
    |
 LL |     let x: isize = 3;
    |         - help: consider changing this to be mutable: `mut x`

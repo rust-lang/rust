@@ -1,5 +1,5 @@
 error[E0055]: reached the recursion limit while auto-dereferencing `I`
-  --> $DIR/recursion_limit_deref.rs:60:22
+  --> $DIR/recursion_limit_deref.rs:50:22
    |
 LL |     let x: &Bottom = &t; //~ ERROR mismatched types
    |                      ^^ deref recursion limit reached
@@ -7,7 +7,7 @@ LL |     let x: &Bottom = &t; //~ ERROR mismatched types
    = help: consider adding a `#![recursion_limit="20"]` attribute to your crate
 
 error[E0308]: mismatched types
-  --> $DIR/recursion_limit_deref.rs:60:22
+  --> $DIR/recursion_limit_deref.rs:50:22
    |
 LL |     let x: &Bottom = &t; //~ ERROR mismatched types
    |                      ^^ expected struct `Bottom`, found struct `Top`

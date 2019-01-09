@@ -1,0 +1,22 @@
+error: missing documentation for crate
+  --> $DIR/deny-missing-docs-crate.rs:11:1
+   |
+LL | / #![deny(missing_docs)] //~ ERROR
+LL | |
+LL | | pub struct Foo; //~ ERROR
+   | |_______________^
+   |
+note: lint level defined here
+  --> $DIR/deny-missing-docs-crate.rs:11:9
+   |
+LL | #![deny(missing_docs)] //~ ERROR
+   |         ^^^^^^^^^^^^
+
+error: missing documentation for a struct
+  --> $DIR/deny-missing-docs-crate.rs:13:1
+   |
+LL | pub struct Foo; //~ ERROR
+   | ^^^^^^^^^^^^^^^
+
+error: Compilation failed, aborting rustdoc
+

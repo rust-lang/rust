@@ -1,11 +1,11 @@
 error: compiler plugin used as an ordinary library
-  --> $DIR/plugin-as-extern-crate.rs:20:1
+  --> $DIR/plugin-as-extern-crate.rs:10:1
    |
 LL | extern crate macro_crate_test; //~ ERROR compiler plugin used as an ordinary library
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/plugin-as-extern-crate.rs:17:9
+  --> $DIR/plugin-as-extern-crate.rs:7:9
    |
 LL | #![deny(plugin_as_library)]
    |         ^^^^^^^^^^^^^^^^^

@@ -1,14 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use mir::interpret::ConstValue;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
@@ -183,7 +172,10 @@ impl FlagComputation {
 
             &ty::Array(tt, len) => {
                 self.add_ty(tt);
-                self.add_const(len);
+                if let ty::LazyConst::Unevaluated(_, substs) = len {
+                    self.add_flags(TypeFlags::HAS_PROJECTION);
+                    self.add_substs(substs);
+                }
             }
 
             &ty::Slice(tt) => {
@@ -237,14 +229,6 @@ impl FlagComputation {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_binder(debruijn);
-        }
-    }
-
-    fn add_const(&mut self, constant: &ty::Const<'_>) {
-        self.add_ty(constant.ty);
-        if let ConstValue::Unevaluated(_, substs) = constant.val {
-            self.add_flags(TypeFlags::HAS_PROJECTION);
-            self.add_substs(substs);
         }
     }
 

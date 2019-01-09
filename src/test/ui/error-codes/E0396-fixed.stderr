@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/E0396-fixed.rs:15:1
+  --> $DIR/E0396-fixed.rs:5:1
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^

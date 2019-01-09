@@ -1,11 +1,11 @@
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:19:5
+  --> $DIR/lint-qualification.rs:9:5
    |
 LL |     foo::bar(); //~ ERROR: unnecessary qualification
    |     ^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-qualification.rs:11:9
+  --> $DIR/lint-qualification.rs:1:9
    |
 LL | #![deny(unused_qualifications)]
    |         ^^^^^^^^^^^^^^^^^^^^^

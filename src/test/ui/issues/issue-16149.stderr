@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow statics
-  --> $DIR/issue-16149.rs:17:9
+  --> $DIR/issue-16149.rs:7:9
    |
 LL |     static externalValue: isize;
    |     ---------------------------- the static `externalValue` is defined here

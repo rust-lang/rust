@@ -1,11 +1,11 @@
 error: expected a macro, found tool attribute
-  --> $DIR/tool-attributes-misplaced-2.rs:11:10
+  --> $DIR/tool-attributes-misplaced-2.rs:1:10
    |
 LL | #[derive(rustfmt::skip)] //~ ERROR expected a macro, found tool attribute
    |          ^^^^^^^^^^^^^
 
 error: expected a macro, found tool attribute
-  --> $DIR/tool-attributes-misplaced-2.rs:15:5
+  --> $DIR/tool-attributes-misplaced-2.rs:5:5
    |
 LL |     rustfmt::skip!(); //~ ERROR expected a macro, found tool attribute
    |     ^^^^^^^^^^^^^

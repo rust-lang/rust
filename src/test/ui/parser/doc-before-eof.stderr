@@ -1,5 +1,5 @@
 error: expected item after doc comment
-  --> $DIR/doc-before-eof.rs:13:1
+  --> $DIR/doc-before-eof.rs:3:1
    |
 LL | /// hi //~ERROR expected item after doc comment
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `bar::S: std::clone::Clone` is not satisfied
-  --> $DIR/issue-1920-2.rs:20:5
+  --> $DIR/issue-1920-2.rs:10:5
    |
 LL |     assert_clone::<bar::S>();
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `bar::S`
    |
 note: required by `assert_clone`
-  --> $DIR/issue-1920-2.rs:17:1
+  --> $DIR/issue-1920-2.rs:7:1
    |
 LL | fn assert_clone<T>() where T : Clone { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

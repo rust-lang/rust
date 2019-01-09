@@ -1,5 +1,5 @@
 error: expected identifier, found `String`
-  --> $DIR/issue-37113.rs:14:16
+  --> $DIR/issue-37113.rs:4:16
    |
 LL |             $( $t, )* //~ ERROR expected identifier, found `String`
    |                ^^ expected identifier

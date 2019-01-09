@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/regions-struct-not-wf.rs:23:5
+  --> $DIR/regions-struct-not-wf.rs:13:5
    |
 LL | impl<'a, T> Trait<'a, T> for usize {
    |          - help: consider adding an explicit lifetime bound `T: 'a`...
@@ -7,13 +7,13 @@ LL |     type Out = &'a T; //~ ERROR `T` may not live long enough
    |     ^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'a T` does not outlive the data it points at
-  --> $DIR/regions-struct-not-wf.rs:23:5
+  --> $DIR/regions-struct-not-wf.rs:13:5
    |
 LL |     type Out = &'a T; //~ ERROR `T` may not live long enough
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/regions-struct-not-wf.rs:31:5
+  --> $DIR/regions-struct-not-wf.rs:21:5
    |
 LL | impl<'a, T> Trait<'a, T> for u32 {
    |          - help: consider adding an explicit lifetime bound `T: 'a`...
@@ -21,24 +21,24 @@ LL |     type Out = RefOk<'a, T>; //~ ERROR `T` may not live long enough
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/regions-struct-not-wf.rs:31:5
+  --> $DIR/regions-struct-not-wf.rs:21:5
    |
 LL |     type Out = RefOk<'a, T>; //~ ERROR `T` may not live long enough
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-struct-not-wf.rs:35:5
+  --> $DIR/regions-struct-not-wf.rs:25:5
    |
 LL |     type Out = &'a &'b T; //~ ERROR reference has a longer lifetime than the data
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime 'a as defined on the impl at 34:6
-  --> $DIR/regions-struct-not-wf.rs:34:6
+note: the pointer is valid for the lifetime 'a as defined on the impl at 24:6
+  --> $DIR/regions-struct-not-wf.rs:24:6
    |
 LL | impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
    |      ^^
-note: but the referenced data is only valid for the lifetime 'b as defined on the impl at 34:10
-  --> $DIR/regions-struct-not-wf.rs:34:10
+note: but the referenced data is only valid for the lifetime 'b as defined on the impl at 24:10
+  --> $DIR/regions-struct-not-wf.rs:24:10
    |
 LL | impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
    |          ^^

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! "Object safety" refers to the ability for a trait to be converted
 //! to an object. In general, traits may only be converted to an
 //! object if all of their methods meet certain criteria. In particular,
@@ -369,7 +359,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
                 match abi_of_ty(unit_receiver_ty) {
                     &Abi::Scalar(..) => (),
-                    abi => bug!("Receiver when Self = () should have a Scalar ABI, found {:?}", abi)
+                    abi => {
+                        self.sess.delay_span_bug(
+                            self.def_span(method.def_id),
+                            &format!(
+                                "Receiver when Self = () should have a Scalar ABI, found {:?}",
+                                abi
+                            ),
+                        );
+                    }
                 }
 
                 let trait_object_ty = self.object_ty_for_trait(
@@ -383,10 +381,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
                 match abi_of_ty(trait_object_receiver) {
                     &Abi::ScalarPair(..) => (),
-                    abi => bug!(
-                        "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
-                        trait_object_ty, abi
-                    )
+                    abi => {
+                        self.sess.delay_span_bug(
+                            self.def_span(method.def_id),
+                            &format!(
+                                "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
+                                trait_object_ty, abi
+                            ),
+                        );
+                    }
                 }
             }
         }
@@ -578,7 +581,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         self.infer_ctxt().enter(|ref infcx| {
             // the receiver is dispatchable iff the obligation holds
-            infcx.predicate_must_hold(&obligation)
+            infcx.predicate_must_hold_modulo_regions(&obligation)
         })
     }
 

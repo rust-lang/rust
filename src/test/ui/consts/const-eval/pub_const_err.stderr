@@ -1,5 +1,5 @@
 warning: any use of this value will cause an error
-  --> $DIR/pub_const_err.rs:16:1
+  --> $DIR/pub_const_err.rs:6:1
    |
 LL | pub const Z: u32 = 0 - 1;
    | ^^^^^^^^^^^^^^^^^^^-----^
@@ -7,7 +7,7 @@ LL | pub const Z: u32 = 0 - 1;
    |                    attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/pub_const_err.rs:12:9
+  --> $DIR/pub_const_err.rs:2:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0259]: the name `derive_a` is defined multiple times
-  --> $DIR/shadow.rs:16:1
+  --> $DIR/shadow.rs:6:1
    |
 LL | extern crate derive_a;
    | ---------------------- previous import of the extern crate `derive_a` here

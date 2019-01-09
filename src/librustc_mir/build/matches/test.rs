@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Testing candidates
 //
 // After candidates have been simplified, the only match pairs that
@@ -111,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<u128>,
-                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
+                                     indices: &mut FxHashMap<ty::Const<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
@@ -312,18 +302,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
+                    let method = self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(method));
 
+                    let re_erased = self.hir.tcx().types.re_erased;
                     // take the argument by reference
-                    let region_scope = self.topmost_scope();
-                    let region = self.hir.tcx().mk_region(ty::ReScope(region_scope));
                     let tam = ty::TypeAndMut {
                         ty,
                         mutbl: Mutability::MutImmutable,
                     };
-                    let ref_ty = self.hir.tcx().mk_ref(region, tam);
+                    let ref_ty = self.hir.tcx().mk_ref(re_erased, tam);
 
                     // let lhs_ref_place = &lhs;
-                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, place);
+                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
                     let lhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
                     let val = Operand::Move(lhs_ref_place);
@@ -333,7 +323,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
 
                     // let rhs_ref_place = &rhs_place;
-                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, rhs_place);
+                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
                     let rhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
                     let expect = Operand::Move(rhs_ref_place);
@@ -347,7 +337,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: test.span,
                             ty: mty,
 
-                            // FIXME(#47184): This constant comes from user
+                            // FIXME(#54571): This constant comes from user
                             // input (a constant in a pattern).  Are
                             // there forms where users can add type
                             // annotations here?  For example, an
@@ -667,7 +657,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (&TestKind::Range(range), &PatternKind::Constant { ref value }) => {
+            (&TestKind::Range(range), &PatternKind::Constant { value }) => {
                 if self.const_range_contains(range, value) == Some(false) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
@@ -796,7 +786,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn const_range_contains(
         &self,
         range: PatternRange<'tcx>,
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
@@ -816,9 +806,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatternRange<'tcx>,
-        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        indices: &FxHashMap<ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
-        for val in indices.keys() {
+        for &val in indices.keys() {
             if self.const_range_contains(range, val)? {
                 return Some(false);
             }

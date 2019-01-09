@@ -1,35 +1,35 @@
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:23:12
+  --> $DIR/elided-lifetimes.rs:13:12
    |
 LL | fn foo(x: &Foo) {
    |            ^^^- help: indicate the anonymous lifetime: `<'_>`
    |
 note: lint level defined here
-  --> $DIR/elided-lifetimes.rs:15:9
+  --> $DIR/elided-lifetimes.rs:5:9
    |
 LL | #![deny(elided_lifetimes_in_paths)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:42:29
+  --> $DIR/elided-lifetimes.rs:32:29
    |
 LL | fn wrap_gift(gift: &str) -> Wrapped {
    |                             ^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:48:38
+  --> $DIR/elided-lifetimes.rs:38:38
    |
 LL | fn wrap_gift_with_bow(gift: &str) -> WrappedWithBow {
    |                                      ^^^^^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:54:29
+  --> $DIR/elided-lifetimes.rs:44:29
    |
 LL | fn inspect_matched_set(set: MatchedSet) {
    |                             ^^^^^^^^^^- help: indicate the anonymous lifetimes: `<'_, '_>`
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:66:36
+  --> $DIR/elided-lifetimes.rs:56:36
    |
 LL |         fn $fn_name(gift: &str) -> $type_name {
    |                                    ^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
@@ -38,13 +38,13 @@ LL | autowrapper!(Autowrapped, autowrap_gift, 'a);
    | --------------------------------------------- in this macro invocation
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:88:18
+  --> $DIR/elided-lifetimes.rs:78:18
    |
 LL |     let loyalty: Ref<(u32, char)> = honesty.borrow();
    |                  ^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Ref<'_, (u32, char)>`
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:80:9
+  --> $DIR/elided-lifetimes.rs:70:9
    |
 LL |         Ref<($($types),*)>
    |         ^^^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Ref<'_, ($($types),*)>`

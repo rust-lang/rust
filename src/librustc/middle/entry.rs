@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::map as hir_map;
 use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
@@ -96,7 +86,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 EntryPointType::Start
             } else if attr::contains_name(&item.attrs, "main") {
                 EntryPointType::MainAttr
-            } else if item.name == "main" {
+            } else if item.ident.name == "main" {
                 if at_root {
                     // This is a top-level function so can be 'main'.
                     EntryPointType::MainNamed

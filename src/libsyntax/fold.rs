@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A Folder represents an AST->AST fold; it accepts an AST piece,
 //! and returns a piece of the same type. So, for instance, macro
 //! expansion is a Folder that walks over an AST and produces another
@@ -902,12 +892,11 @@ fn noop_fold_bounds<T: Folder>(bounds: GenericBounds, folder: &mut T)
 }
 
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
-    b.map(|Block {id, stmts, rules, span, recovered}| Block {
+    b.map(|Block {id, stmts, rules, span}| Block {
         id: folder.new_id(id),
         stmts: stmts.move_flat_map(|s| folder.fold_stmt(s).into_iter()),
         rules,
         span: folder.new_span(span),
-        recovered,
     })
 }
 
@@ -1377,6 +1366,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Yield(ex) => ExprKind::Yield(ex.map(|x| folder.fold_expr(x))),
             ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
             ExprKind::TryBlock(body) => ExprKind::TryBlock(folder.fold_block(body)),
+            ExprKind::Err => ExprKind::Err,
         },
         id: folder.new_id(id),
         span: folder.new_span(span),

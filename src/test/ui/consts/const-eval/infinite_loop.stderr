@@ -1,5 +1,5 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/infinite_loop.rs:19:9
+  --> $DIR/infinite_loop.rs:9:9
    |
 LL | /         while n != 0 { //~ ERROR constant contains unimplemented expression type
 LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
@@ -8,7 +8,7 @@ LL | |         }
    | |_________^
 
 warning: Constant evaluating a complex constant, this might take some time
-  --> $DIR/infinite_loop.rs:16:18
+  --> $DIR/infinite_loop.rs:6:18
    |
 LL |       let _ = [(); {
    |  __________________^
@@ -21,7 +21,7 @@ LL | |     }];
    | |_____^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/infinite_loop.rs:20:20
+  --> $DIR/infinite_loop.rs:10:20
    |
 LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
    |                    ^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate

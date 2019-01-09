@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Serialized configuration of a build.
 //!
 //! This module implements parsing `config.toml` configuration files to tweak
@@ -91,6 +81,8 @@ pub struct Config {
     pub lld_enabled: bool,
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
+
+    pub llvm_use_libcxx: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -262,6 +254,7 @@ struct Llvm {
     link_shared: Option<bool>,
     version_suffix: Option<String>,
     clang_cl: Option<String>,
+    use_libcxx: Option<bool>,
 }
 
 #[derive(Deserialize, Default, Clone)]
@@ -523,6 +516,7 @@ impl Config {
             config.llvm_link_jobs = llvm.link_jobs;
             config.llvm_version_suffix = llvm.version_suffix.clone();
             config.llvm_clang_cl = llvm.clang_cl.clone();
+            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
         }
 
         if let Some(ref rust) = toml.rust {

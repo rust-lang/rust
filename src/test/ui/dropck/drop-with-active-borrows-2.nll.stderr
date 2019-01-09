@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `raw_lines`
-  --> $DIR/drop-with-active-borrows-2.rs:13:5
+  --> $DIR/drop-with-active-borrows-2.rs:3:5
    |
 LL |     raw_lines.iter().map(|l| l.trim()).collect()
    |     ---------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

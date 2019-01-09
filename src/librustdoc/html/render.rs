@@ -1,13 +1,3 @@
-// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Rustdoc's HTML Rendering module
 //!
 //! This modules contains the bulk of the logic necessary for rendering a
@@ -65,7 +55,7 @@ use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
+use clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
 use config::RenderOptions;
 use doctree;
 use fold::DocFolder;
@@ -140,6 +130,12 @@ struct SharedContext {
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
     pub resource_suffix: String,
+    /// Optional path string to be used to load static files on output pages. If not set, uses
+    /// combinations of `../` to reach the documentation root.
+    pub static_root_path: Option<String>,
+    /// If false, the `select` element to have search filtering by crates on rendered docs
+    /// won't be generated.
+    pub generate_search_filter: bool,
 }
 
 impl SharedContext {
@@ -506,6 +502,8 @@ pub fn run(mut krate: clean::Crate,
         extension_css,
         extern_html_root_urls,
         resource_suffix,
+        static_root_path,
+        generate_search_filter,
         ..
     } = options;
 
@@ -533,6 +531,8 @@ pub fn run(mut krate: clean::Crate,
         sort_modules_alphabetically,
         themes,
         resource_suffix,
+        static_root_path,
+        generate_search_filter,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -964,7 +964,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                           .collect::<Vec<_>>()
                                           .join(",")));
         }
-        all_aliases.push(format!("ALIASES['{}'] = {{{}}};", krate.name, output));
+        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
         all_aliases.sort();
         try_err!(writeln!(&mut w, "var ALIASES = {{}};"), &dst);
         for aliases in &all_aliases {
@@ -1038,7 +1038,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
         let dst = cx.dst.join("source-files.js");
         let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
-        all_sources.push(format!("sourcesIndex['{}'] = {};",
+        all_sources.push(format!("sourcesIndex[\"{}\"] = {};",
                                  &krate.name,
                                  hierarchy.to_json_string()));
         all_sources.sort();
@@ -1080,9 +1080,12 @@ themePicker.onblur = handleThemeButtonsBlur;
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
+                static_root_path: cx.shared.static_root_path.deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
+                extra_scripts: &[],
+                static_extra_scripts: &[],
             };
             krates.push(krate.name.clone());
             krates.sort();
@@ -1101,7 +1104,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             try_err!(layout::render(&mut w, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes, &[]), &dst);
+                                    &cx.shared.themes,
+                                    cx.shared.generate_search_filter), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1232,10 +1236,8 @@ fn write_minify_replacer<W: Write>(dst: &mut W,
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-// FIXME (#9639): The closure should deal with &[u8] instead of &str
-// FIXME (#9639): This is too conservative, rejecting non-UTF-8 paths
 fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) where
-    F: FnMut(&str),
+    F: FnMut(&OsStr),
 {
     // make it relative, if possible
     let p = p.strip_prefix(src_root).unwrap_or(p);
@@ -1248,8 +1250,8 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
         }
 
         match c {
-            Component::ParentDir => f("up"),
-            Component::Normal(c) => f(c.to_str().unwrap()),
+            Component::ParentDir => f("up".as_ref()),
+            Component::Normal(c) => f(c),
             _ => continue,
         }
     }
@@ -1348,7 +1350,7 @@ impl<'a> SourceCollector<'a> {
             cur.push(component);
             fs::create_dir_all(&cur).unwrap();
             root_path.push_str("../");
-            href.push_str(component);
+            href.push_str(&component.to_string_lossy());
             href.push('/');
         });
         let mut fname = p.file_name()
@@ -1366,15 +1368,18 @@ impl<'a> SourceCollector<'a> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
+            static_root_path: self.scx.static_root_path.deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
+            extra_scripts: &["source-files"],
+            static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes, &["source-files",
-                                           &format!("source-script{}", page.resource_suffix)])?;
+                       &self.scx.themes,
+                       self.scx.generate_search_filter)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1956,9 +1961,12 @@ impl Context {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
+            static_root_path: self.shared.static_root_path.deref(),
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
         };
         let sidebar = if let Some(ref version) = cache().crate_version {
             format!("<p class='location'>Crate {}</p>\
@@ -1973,7 +1981,8 @@ impl Context {
         try_err!(layout::render(&mut w, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
-                                &self.shared.themes, &[]),
+                                &self.shared.themes,
+                                self.shared.generate_search_filter),
                  &final_file);
 
         // Generating settings page.
@@ -1993,7 +2002,8 @@ impl Context {
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
-                                &themes, &[]),
+                                &themes,
+                                self.shared.generate_search_filter),
                  &settings_file);
 
         Ok(())
@@ -2035,10 +2045,13 @@ impl Context {
         let page = layout::Page {
             css_class: tyname,
             root_path: &self.root_path(),
+            static_root_path: self.shared.static_root_path.deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
             resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
         };
 
         {
@@ -2051,7 +2064,8 @@ impl Context {
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
-                           &self.shared.themes, &[])?;
+                           &self.shared.themes,
+                           self.shared.generate_search_filter)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
@@ -2227,7 +2241,7 @@ impl<'a> Item<'a> {
             };
 
             clean_srcpath(&src_root, file, false, |component| {
-                path.push_str(component);
+                path.push_str(&component.to_string_lossy());
                 path.push('/');
             });
             let mut fname = file.file_name().expect("source has no filename")
@@ -2458,7 +2472,7 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
 
 fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
                       is_hidden: bool) -> fmt::Result {
-    let stabilities = short_stability(item, cx, true);
+    let stabilities = short_stability(item, cx);
     if !stabilities.is_empty() {
         write!(w, "<div class='stability{}'>", if is_hidden { " hidden" } else { "" })?;
         for stability in stabilities {
@@ -2651,18 +2665,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             _ => {
                 if myitem.name.is_none() { continue }
 
-                let stabilities = short_stability(myitem, cx, false);
-
-                let stab_docs = if !stabilities.is_empty() {
-                    stabilities.iter()
-                               .map(|s| format!("[{}]", s))
-                               .collect::<Vec<_>>()
-                               .as_slice()
-                               .join(" ")
-                } else {
-                    String::new()
-                };
-
                 let unsafety_flag = match myitem.inner {
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
                     if func.header.unsafety == hir::Unsafety::Unsafe => {
@@ -2683,11 +2685,11 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        <tr class='{stab}{add}module-item'>\
                            <td><a class=\"{class}\" href=\"{href}\" \
                                   title='{title}'>{name}</a>{unsafety_flag}</td>\
-                           <td class='docblock-short'>{stab_docs}{docs}\
+                           <td class='docblock-short'>{stab_tags}{docs}\
                            </td>\
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
-                       stab_docs = stab_docs,
+                       stab_tags = stability_tags(myitem),
                        docs = MarkdownSummaryLine(doc_value, &myitem.links()),
                        class = myitem.type_(),
                        add = add,
@@ -2714,101 +2716,123 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     Ok(())
 }
 
-fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
-    let mut stability = vec![];
-    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+/// Render the stability and deprecation tags that are displayed in the item's summary at the
+/// module level.
+fn stability_tags(item: &clean::Item) -> String {
+    let mut tags = String::new();
 
-    if let Some(stab) = item.stability.as_ref() {
-        let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
-            format!(": {}", stab.deprecated_reason)
-        } else {
-            String::new()
-        };
-        if !stab.deprecated_since.is_empty() {
-            let since = if show_reason {
-                format!(" since {}", Escape(&stab.deprecated_since))
-            } else {
-                String::new()
-            };
-            let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&deprecated_reason, RefCell::new(&mut ids), error_codes);
-            let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
-                format!("Deprecated{}{}", since, html)
-            } else {
-                format!("Deprecating in {}{}", Escape(&stab.deprecated_since), html)
-            };
-            stability.push(format!("<div class='stab deprecated'>{}</div>", text))
-        };
+    // The trailing space after each tag is to space it properly against the rest of the docs.
+    if item.deprecation().is_some() {
+        tags.push_str("[<div class='stab deprecated'>Deprecated</div>] ");
+    }
 
-        if stab.level == stability::Unstable {
-            if show_reason {
-                let unstable_extra = match (!stab.feature.is_empty(),
-                                            &cx.shared.issue_tracker_base_url,
-                                            stab.issue) {
-                    (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
-                        format!(" (<code>{} </code><a href=\"{}{}\">#{}</a>)",
-                                Escape(&stab.feature), tracker_url, issue_no, issue_no),
-                    (false, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
-                        format!(" (<a href=\"{}{}\">#{}</a>)", Escape(&tracker_url), issue_no,
-                                issue_no),
-                    (true, ..) =>
-                        format!(" (<code>{}</code>)", Escape(&stab.feature)),
-                    _ => String::new(),
-                };
-                if stab.unstable_reason.is_empty() {
-                    stability.push(format!("<div class='stab unstable'>\
-                                            <span class=microscope>🔬</span> \
-                                            This is a nightly-only experimental API. {}\
-                                            </div>",
-                                           unstable_extra));
-                } else {
-                    let mut ids = cx.id_map.borrow_mut();
-                    let text = format!("<summary><span class=microscope>🔬</span> \
-                                        This is a nightly-only experimental API. {}\
-                                        </summary>{}",
-                                       unstable_extra,
-                                       MarkdownHtml(
-                                           &stab.unstable_reason,
-                                           RefCell::new(&mut ids),
-                                           error_codes));
-                    stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
-                                   text));
-                }
-            } else {
-                stability.push("<div class='stab unstable'>Experimental</div>".to_string())
-            }
-        };
-    } else if let Some(depr) = item.deprecation.as_ref() {
-        let note = if show_reason && !depr.note.is_empty() {
-            format!(": {}", depr.note)
+    if let Some(stab) = item
+        .stability
+        .as_ref()
+        .filter(|s| s.level == stability::Unstable)
+    {
+        if stab.feature.as_ref().map(|s| &**s) == Some("rustc_private") {
+            tags.push_str("[<div class='stab internal'>Internal</div>] ");
         } else {
-            String::new()
-        };
-        let since = if show_reason && !depr.since.is_empty() {
-            format!(" since {}", Escape(&depr.since))
-        } else {
-            String::new()
-        };
-
-        let mut ids = cx.id_map.borrow_mut();
-        let text = if stability::deprecation_in_effect(&depr.since) {
-            format!("Deprecated{}{}",
-                    since,
-                    MarkdownHtml(&note, RefCell::new(&mut ids), error_codes))
-        } else {
-            format!("Deprecating in {}{}",
-                    Escape(&depr.since),
-                    MarkdownHtml(&note, RefCell::new(&mut ids), error_codes))
-        };
-        stability.push(format!("<div class='stab deprecated'>{}</div>", text))
+            tags.push_str("[<div class='stab unstable'>Experimental</div>] ");
+        }
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
-        stability.push(format!("<div class='stab portability'>{}</div>", if show_reason {
-            cfg.render_long_html()
-        } else {
+        tags.push_str(&format!(
+            "[<div class='stab portability'>{}</div>] ",
             cfg.render_short_html()
-        }));
+        ));
+    }
+
+    tags
+}
+
+/// Render the stability and/or deprecation warning that is displayed at the top of the item's
+/// documentation.
+fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
+    let mut stability = vec![];
+    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+
+    if let Some(Deprecation { since, note }) = &item.deprecation() {
+        let mut message = if let Some(since) = since {
+            if stability::deprecation_in_effect(since) {
+                format!("Deprecated since {}", Escape(since))
+            } else {
+                format!("Deprecating in {}", Escape(since))
+            }
+        } else {
+            String::from("Deprecated")
+        };
+
+        if let Some(note) = note {
+            let mut ids = cx.id_map.borrow_mut();
+            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes);
+            message.push_str(&format!(": {}", html));
+        }
+        stability.push(format!("<div class='stab deprecated'>{}</div>", message));
+    }
+
+    if let Some(stab) = item
+        .stability
+        .as_ref()
+        .filter(|stab| stab.level == stability::Unstable)
+    {
+        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+
+        let mut message = if is_rustc_private {
+            "<span class='emoji'>⚙️</span> This is an internal compiler API."
+        } else {
+            "<span class='emoji'>🔬</span> This is a nightly-only experimental API."
+        }
+        .to_owned();
+
+        if let Some(feature) = stab.feature.as_ref() {
+            let mut feature = format!("<code>{}</code>", Escape(&feature));
+            if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
+                feature.push_str(&format!(
+                    "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
+                    url = url,
+                    issue = issue
+                ));
+            }
+
+            message.push_str(&format!(" ({})", feature));
+        }
+
+        if let Some(unstable_reason) = &stab.unstable_reason {
+            // Provide a more informative message than the compiler help.
+            let unstable_reason = if is_rustc_private {
+                "This crate is being loaded from the sysroot, a permanently unstable location \
+                for private compiler dependencies. It is not intended for general use. Prefer \
+                using a public version of this crate from \
+                [crates.io](https://crates.io) via [`Cargo.toml`]\
+                (https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)."
+            } else {
+                unstable_reason
+            };
+
+            let mut ids = cx.id_map.borrow_mut();
+            message = format!(
+                "<details><summary>{}</summary>{}</details>",
+                message,
+                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes)
+            );
+        }
+
+        let class = if is_rustc_private {
+            "internal"
+        } else {
+            "unstable"
+        };
+        stability.push(format!("<div class='stab {}'>{}</div>", class, message));
+    }
+
+    if let Some(ref cfg) = item.attrs.cfg {
+        stability.push(format!(
+            "<div class='stab portability'>{}</div>",
+            cfg.render_long_html()
+        ));
     }
 
     stability

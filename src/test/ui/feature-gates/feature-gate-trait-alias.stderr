@@ -1,5 +1,5 @@
 error[E0658]: trait aliases are experimental (see issue #41517)
-  --> $DIR/feature-gate-trait-alias.rs:11:1
+  --> $DIR/feature-gate-trait-alias.rs:1:1
    |
 LL | trait Foo = Default;
    | ^^^^^^^^^^^^^^^^^^^^

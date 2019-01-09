@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! See docs in build/expr/mod.rs
 
 use build::expr::category::Category;
@@ -143,6 +133,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place = unpack!(block = this.as_place(block, source));
                 if let Some(user_ty) = user_ty {
+                    let annotation_index = this.canonical_user_type_annotations.push(
+                        (source_info.span, user_ty)
+                    );
                     this.cfg.push(
                         block,
                         Statement {
@@ -150,7 +143,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             kind: StatementKind::AscribeUserType(
                                 place.clone(),
                                 Variance::Invariant,
-                                box UserTypeProjection { base: user_ty, projs: vec![], },
+                                box UserTypeProjection { base: annotation_index, projs: vec![], },
                             ),
                         },
                     );
@@ -163,6 +156,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     block = this.as_temp(block, source.temp_lifetime, source, mutability)
                 );
                 if let Some(user_ty) = user_ty {
+                    let annotation_index = this.canonical_user_type_annotations.push(
+                        (source_info.span, user_ty)
+                    );
                     this.cfg.push(
                         block,
                         Statement {
@@ -170,7 +166,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             kind: StatementKind::AscribeUserType(
                                 Place::Local(temp.clone()),
                                 Variance::Invariant,
-                                box UserTypeProjection { base: user_ty, projs: vec![], },
+                                box UserTypeProjection { base: annotation_index, projs: vec![], },
                             ),
                         },
                     );

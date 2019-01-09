@@ -1,7 +1,7 @@
 error: rustc_outlives
-  --> $DIR/self-dyn.rs:19:1
+  --> $DIR/self-dyn.rs:9:1
    |
-LL | / struct Foo<'a, 'b, A> //~ ERROR 19:1: 22:2: rustc_outlives
+LL | / struct Foo<'a, 'b, A> //~ ERROR rustc_outlives
 LL | | {
 LL | |     foo: Box<dyn Trait<'a, 'b, A>>
 LL | | }

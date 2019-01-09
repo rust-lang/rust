@@ -1,5 +1,5 @@
 error[E0389]: cannot assign to data in a `&` reference
-  --> $DIR/E0389.rs:18:5
+  --> $DIR/E0389.rs:8:5
    |
 LL |     fancy_ref.num = 6; //~ ERROR E0389
    |     ^^^^^^^^^^^^^^^^^ assignment into an immutable reference

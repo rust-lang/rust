@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/specialization-default-types.rs:25:9
+  --> $DIR/specialization-default-types.rs:15:9
    |
 LL |     default fn generate(self) -> Self::Output {
    |                                  ------------ expected `<T as Example>::Output` because of return type
@@ -10,7 +10,7 @@ LL |         Box::new(self) //~ ERROR mismatched types
               found type `std::boxed::Box<T>`
 
 error[E0308]: mismatched types
-  --> $DIR/specialization-default-types.rs:35:5
+  --> $DIR/specialization-default-types.rs:25:5
    |
 LL | fn trouble<T>(t: T) -> Box<T> {
    |                        ------ expected `std::boxed::Box<T>` because of return type

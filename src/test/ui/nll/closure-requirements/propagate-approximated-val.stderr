@@ -1,5 +1,5 @@
 note: External requirements
-  --> $DIR/propagate-approximated-val.rs:46:45
+  --> $DIR/propagate-approximated-val.rs:36:45
    |
 LL |       establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
    |  _____________________________________________^
@@ -20,7 +20,7 @@ LL | |     });
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/propagate-approximated-val.rs:45:1
+  --> $DIR/propagate-approximated-val.rs:35:1
    |
 LL | / fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
@@ -34,7 +34,7 @@ LL | | }
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_val[317d]::test[0]) with substs []
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-val.rs:49:9
+  --> $DIR/propagate-approximated-val.rs:39:9
    |
 LL | fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |         --  -- lifetime `'b` defined here

@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Generalized type folding mechanism. The setup is a bit convoluted
 //! but allows for convenient usage. Let T be an instance of some
 //! "foldable type" (one which implements `TypeFoldable`) and F be an
@@ -39,7 +29,6 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
-use mir::interpret::ConstValue;
 use hir::def_id::DefId;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
@@ -120,7 +109,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
-    /// True if there any any un-erased free regions.
+    /// True if there are any un-erased free regions.
     fn has_erasable_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
@@ -174,7 +163,7 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
         c.super_fold_with(self)
     }
 }
@@ -192,7 +181,7 @@ pub trait TypeVisitor<'tcx> : Sized {
         r.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
         c.super_visit_with(self)
     }
 }
@@ -543,18 +532,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
               G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
               T: TypeFoldable<'tcx>
     {
-        let mut map = BTreeMap::new();
+        use rustc_data_structures::fx::FxHashMap;
+
+        let mut region_map = BTreeMap::new();
+        let mut type_map = FxHashMap::default();
 
         if !value.has_escaping_bound_vars() {
-            (value.clone(), map)
+            (value.clone(), region_map)
         } else {
             let mut real_fld_r = |br| {
-                *map.entry(br).or_insert_with(|| fld_r(br))
+                *region_map.entry(br).or_insert_with(|| fld_r(br))
             };
 
-            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut fld_t);
+            let mut real_fld_t = |bound_ty| {
+                *type_map.entry(bound_ty).or_insert_with(|| fld_t(bound_ty))
+            };
+
+            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut real_fld_t);
             let result = value.fold_with(&mut replacer);
-            (result, map)
+            (result, region_map)
         }
     }
 
@@ -867,8 +863,8 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         flags.intersects(self.flags)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-        if let ConstValue::Unevaluated(..) = c.val {
+    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
+        if let ty::LazyConst::Unevaluated(..) = c {
             let projection_flags = TypeFlags::HAS_NORMALIZABLE_PROJECTION |
                 TypeFlags::HAS_PROJECTION;
             if projection_flags.intersects(self.flags) {

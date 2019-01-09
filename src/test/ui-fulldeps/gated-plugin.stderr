@@ -1,5 +1,5 @@
 error[E0658]: compiler plugins are experimental and possibly buggy (see issue #29597)
-  --> $DIR/gated-plugin.rs:13:1
+  --> $DIR/gated-plugin.rs:3:1
    |
 LL | #![plugin(macro_crate_test)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

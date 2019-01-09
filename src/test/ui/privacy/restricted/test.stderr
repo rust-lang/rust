@@ -1,77 +1,77 @@
 error[E0433]: failed to resolve: maybe a missing `extern crate bad;`?
-  --> $DIR/test.rs:60:12
+  --> $DIR/test.rs:50:12
    |
 LL |     pub(in bad::path) mod m1 {} //~ ERROR failed to resolve: maybe a missing `extern crate bad;`?
    |            ^^^ maybe a missing `extern crate bad;`?
 
 error: visibilities can only be restricted to ancestor modules
-  --> $DIR/test.rs:61:12
+  --> $DIR/test.rs:51:12
    |
 LL |     pub(in foo) mod m2 {} //~ ERROR visibilities can only be restricted to ancestor modules
    |            ^^^
 
 error[E0364]: `f` is private, and cannot be re-exported
-  --> $DIR/test.rs:31:24
+  --> $DIR/test.rs:21:24
    |
 LL |         pub(super) use foo::bar::f as g; //~ ERROR cannot be re-exported
    |                        ^^^^^^^^^^^^^^^^
    |
 note: consider marking `f` as `pub` in the imported module
-  --> $DIR/test.rs:31:24
+  --> $DIR/test.rs:21:24
    |
 LL |         pub(super) use foo::bar::f as g; //~ ERROR cannot be re-exported
    |                        ^^^^^^^^^^^^^^^^
 
 error[E0603]: struct `Crate` is private
-  --> $DIR/test.rs:48:25
+  --> $DIR/test.rs:38:25
    |
 LL |     use pub_restricted::Crate; //~ ERROR private
    |                         ^^^^^
 
 error[E0603]: function `f` is private
-  --> $DIR/test.rs:40:19
+  --> $DIR/test.rs:30:19
    |
 LL |     use foo::bar::f; //~ ERROR private
    |                   ^
 
 error[E0616]: field `x` of struct `foo::bar::S` is private
-  --> $DIR/test.rs:41:5
+  --> $DIR/test.rs:31:5
    |
 LL |     S::default().x; //~ ERROR private
    |     ^^^^^^^^^^^^^^
 
 error[E0624]: method `f` is private
-  --> $DIR/test.rs:42:18
+  --> $DIR/test.rs:32:18
    |
 LL |     S::default().f(); //~ ERROR private
    |                  ^
 
 error[E0624]: method `g` is private
-  --> $DIR/test.rs:43:5
+  --> $DIR/test.rs:33:5
    |
 LL |     S::g(); //~ ERROR private
    |     ^^^^
 
 error[E0616]: field `y` of struct `pub_restricted::Universe` is private
-  --> $DIR/test.rs:52:13
+  --> $DIR/test.rs:42:13
    |
 LL |     let _ = u.y; //~ ERROR private
    |             ^^^
 
 error[E0616]: field `z` of struct `pub_restricted::Universe` is private
-  --> $DIR/test.rs:53:13
+  --> $DIR/test.rs:43:13
    |
 LL |     let _ = u.z; //~ ERROR private
    |             ^^^
 
 error[E0624]: method `g` is private
-  --> $DIR/test.rs:55:7
+  --> $DIR/test.rs:45:7
    |
 LL |     u.g(); //~ ERROR private
    |       ^
 
 error[E0624]: method `h` is private
-  --> $DIR/test.rs:56:7
+  --> $DIR/test.rs:46:7
    |
 LL |     u.h(); //~ ERROR private
    |       ^

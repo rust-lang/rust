@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/kindck-impl-type-params.rs:28:13
+  --> $DIR/kindck-impl-type-params.rs:18:13
    |
 LL |     let a = &t as &Gettable<T>;
    |             ^^ `T` cannot be sent between threads safely
@@ -10,7 +10,7 @@ LL |     let a = &t as &Gettable<T>;
    = note: required for the cast to the object type `dyn Gettable<T>`
 
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/kindck-impl-type-params.rs:28:13
+  --> $DIR/kindck-impl-type-params.rs:18:13
    |
 LL |     let a = &t as &Gettable<T>;
    |             ^^ the trait `std::marker::Copy` is not implemented for `T`
@@ -20,7 +20,7 @@ LL |     let a = &t as &Gettable<T>;
    = note: required for the cast to the object type `dyn Gettable<T>`
 
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/kindck-impl-type-params.rs:35:27
+  --> $DIR/kindck-impl-type-params.rs:25:27
    |
 LL |     let a: &Gettable<T> = &t;
    |                           ^^ `T` cannot be sent between threads safely
@@ -31,7 +31,7 @@ LL |     let a: &Gettable<T> = &t;
    = note: required for the cast to the object type `dyn Gettable<T>`
 
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/kindck-impl-type-params.rs:35:27
+  --> $DIR/kindck-impl-type-params.rs:25:27
    |
 LL |     let a: &Gettable<T> = &t;
    |                           ^^ the trait `std::marker::Copy` is not implemented for `T`
@@ -41,7 +41,7 @@ LL |     let a: &Gettable<T> = &t;
    = note: required for the cast to the object type `dyn Gettable<T>`
 
 error[E0477]: the type `&'a isize` does not fulfill the required lifetime
-  --> $DIR/kindck-impl-type-params.rs:42:13
+  --> $DIR/kindck-impl-type-params.rs:32:13
    |
 LL |     let a = &t as &Gettable<&'a isize>;
    |             ^^
@@ -49,7 +49,7 @@ LL |     let a = &t as &Gettable<&'a isize>;
    = note: type must satisfy the static lifetime
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/kindck-impl-type-params.rs:48:13
+  --> $DIR/kindck-impl-type-params.rs:38:13
    |
 LL |     let a = t as Box<Gettable<String>>;
    |             ^ the trait `std::marker::Copy` is not implemented for `std::string::String`
@@ -58,7 +58,7 @@ LL |     let a = t as Box<Gettable<String>>;
    = note: required for the cast to the object type `dyn Gettable<std::string::String>`
 
 error[E0277]: the trait bound `foo3::Foo: std::marker::Copy` is not satisfied
-  --> $DIR/kindck-impl-type-params.rs:56:33
+  --> $DIR/kindck-impl-type-params.rs:46:33
    |
 LL |     let a: Box<Gettable<Foo>> = t;
    |                                 ^ the trait `std::marker::Copy` is not implemented for `foo3::Foo`

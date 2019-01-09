@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 use borrow_check::nll::region_infer::RegionInferenceContext;
@@ -373,10 +363,14 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                     for err in &mut mbcx.errors_buffer {
                         if err.is_error() {
                             err.level = Level::Warning;
-                            err.warn("This error has been downgraded to a warning \
-                                      for backwards compatibility with previous releases.\n\
-                                      It represents potential unsoundness in your code.\n\
-                                      This warning will become a hard error in the future.");
+                            err.warn(
+                                "this error has been downgraded to a warning for backwards \
+                                 compatibility with previous releases",
+                            );
+                            err.warn(
+                                "this represents potential undefined behavior in your code and \
+                                 this warning will become a hard error in the future",
+                            );
                         }
                     }
                 }

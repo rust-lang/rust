@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-48238.rs:21:13
+  --> $DIR/issue-48238.rs:11:13
    |
 LL |     move || use_val(&orig); //~ ERROR
    |     ------- ^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`

@@ -1,5 +1,5 @@
 error[E0599]: no method named `owned` found for type `&dyn Foo` in the current scope
-  --> $DIR/object-pointer-types.rs:22:7
+  --> $DIR/object-pointer-types.rs:11:7
    |
 LL |     x.owned(); //~ ERROR no method named `owned` found
    |       ^^^^^
@@ -9,7 +9,7 @@ LL |     x.owned(); //~ ERROR no method named `owned` found
            candidate #1: `Foo`
 
 error[E0599]: no method named `owned` found for type `&mut dyn Foo` in the current scope
-  --> $DIR/object-pointer-types.rs:28:7
+  --> $DIR/object-pointer-types.rs:17:7
    |
 LL |     x.owned(); //~ ERROR no method named `owned` found
    |       ^^^^^
@@ -19,7 +19,7 @@ LL |     x.owned(); //~ ERROR no method named `owned` found
            candidate #1: `Foo`
 
 error[E0599]: no method named `managed` found for type `std::boxed::Box<(dyn Foo + 'static)>` in the current scope
-  --> $DIR/object-pointer-types.rs:34:7
+  --> $DIR/object-pointer-types.rs:23:7
    |
 LL |     x.managed();  //~ ERROR no method named `managed` found
    |       ^^^^^^^

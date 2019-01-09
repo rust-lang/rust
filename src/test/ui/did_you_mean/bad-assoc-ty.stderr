@@ -1,89 +1,89 @@
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:11:10
+  --> $DIR/bad-assoc-ty.rs:1:10
    |
 LL | type A = [u8; 4]::AssocTy;
    |          ^^^^^^^^^^^^^^^^ help: try: `<[u8; 4]>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:15:10
+  --> $DIR/bad-assoc-ty.rs:5:10
    |
 LL | type B = [u8]::AssocTy;
    |          ^^^^^^^^^^^^^ help: try: `<[u8]>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:19:10
+  --> $DIR/bad-assoc-ty.rs:9:10
    |
 LL | type C = (u8)::AssocTy;
    |          ^^^^^^^^^^^^^ help: try: `<(u8)>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:23:10
+  --> $DIR/bad-assoc-ty.rs:13:10
    |
 LL | type D = (u8, u8)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^ help: try: `<(u8, u8)>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:27:10
+  --> $DIR/bad-assoc-ty.rs:17:10
    |
 LL | type E = _::AssocTy;
    |          ^^^^^^^^^^ help: try: `<_>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:31:19
+  --> $DIR/bad-assoc-ty.rs:21:19
    |
 LL | type F = &'static (u8)::AssocTy;
    |                   ^^^^^^^^^^^^^ help: try: `<(u8)>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:37:10
+  --> $DIR/bad-assoc-ty.rs:27:10
    |
 LL | type G = 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<'static + Send>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:11:10
+  --> $DIR/bad-assoc-ty.rs:1:10
    |
 LL | type A = [u8; 4]::AssocTy;
    |          ^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<[u8; _] as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:15:10
+  --> $DIR/bad-assoc-ty.rs:5:10
    |
 LL | type B = [u8]::AssocTy;
    |          ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<[u8] as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:19:10
+  --> $DIR/bad-assoc-ty.rs:9:10
    |
 LL | type C = (u8)::AssocTy;
    |          ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:23:10
+  --> $DIR/bad-assoc-ty.rs:13:10
    |
 LL | type D = (u8, u8)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(u8, u8) as Trait>::AssocTy`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/bad-assoc-ty.rs:27:10
+  --> $DIR/bad-assoc-ty.rs:17:10
    |
 LL | type E = _::AssocTy;
    |          ^ not allowed in type signatures
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:31:19
+  --> $DIR/bad-assoc-ty.rs:21:19
    |
 LL | type F = &'static (u8)::AssocTy;
    |                   ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:37:10
+  --> $DIR/bad-assoc-ty.rs:27:10
    |
 LL | type G = 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::marker::Send + 'static) as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:43:10
+  --> $DIR/bad-assoc-ty.rs:33:10
    |
 LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::ops::Fn(u8) -> u8 + 'static) as Trait>::Output`

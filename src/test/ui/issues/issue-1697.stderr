@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `unresolved`
-  --> $DIR/issue-1697.rs:13:5
+  --> $DIR/issue-1697.rs:3:5
    |
 LL | use unresolved::*; //~ ERROR unresolved import `unresolved` [E0432]
    |     ^^^^^^^^^^ maybe a missing `extern crate unresolved;`?

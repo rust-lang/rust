@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct-3.rs:30:9
+  --> $DIR/token-error-correct-3.rs:20:9
    |
 LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
    |                                         - close delimiter possibly meant for this
@@ -10,13 +10,13 @@ LL |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^ incorrect close delimiter
 
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-3.rs:24:35
+  --> $DIR/token-error-correct-3.rs:14:35
    |
 LL |             callback(path.as_ref(); //~ ERROR expected one of
    |                                   ^ expected one of `)`, `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
-  --> $DIR/token-error-correct-3.rs:30:9
+  --> $DIR/token-error-correct-3.rs:20:9
    |
 LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
@@ -25,13 +25,13 @@ LL |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
-  --> $DIR/token-error-correct-3.rs:23:13
+  --> $DIR/token-error-correct-3.rs:13:13
    |
 LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
    |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/token-error-correct-3.rs:25:13
+  --> $DIR/token-error-correct-3.rs:15:13
    |
 LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`

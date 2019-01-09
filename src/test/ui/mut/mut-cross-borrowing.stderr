@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/mut-cross-borrowing.rs:17:7
+  --> $DIR/mut-cross-borrowing.rs:7:7
    |
 LL |     f(x)    //~ ERROR mismatched types
    |       ^

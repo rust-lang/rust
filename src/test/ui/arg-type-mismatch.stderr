@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/arg-type-mismatch.rs:16:30
+  --> $DIR/arg-type-mismatch.rs:5:30
    |
 LL | fn main() { let i: (); i = f(()); }
    |                              ^^ expected isize, found ()

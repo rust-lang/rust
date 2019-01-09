@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `&_`:
-  --> $DIR/issue-28981.rs:15:1
+  --> $DIR/issue-28981.rs:5:1
    |
 LL | impl<Foo> Deref for Foo { } //~ ERROR must be used
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | impl<Foo> Deref for Foo { } //~ ERROR must be used
              where T: ?Sized;
 
 error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g., `MyStruct<Foo>`)
-  --> $DIR/issue-28981.rs:15:1
+  --> $DIR/issue-28981.rs:5:1
    |
 LL | impl<Foo> Deref for Foo { } //~ ERROR must be used
    | ^^^^^^^^^^^^^^^^^^^^^^^ type parameter `Foo` must be used as the type parameter for some local type

@@ -1,11 +1,11 @@
 error[E0405]: cannot find trait `Nonexist` in this scope
-  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:11:8
+  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:1:8
    |
 LL | fn f<F:Nonexist(isize) -> isize>(x: F) {}
    |        ^^^^^^^^ not found in this scope
 
 error[E0404]: expected trait, found type alias `Typedef`
-  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:16:8
+  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:6:8
    |
 LL | fn g<F:Typedef(isize) -> isize>(x: F) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^ type aliases cannot be used as traits

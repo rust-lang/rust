@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/return-wrong-bound-region.rs:21:16
+  --> $DIR/return-wrong-bound-region.rs:11:16
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
    |                ^^^^^^^^
@@ -10,7 +10,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/return-wrong-bound-region.rs:21:23
+  --> $DIR/return-wrong-bound-region.rs:11:23
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
    |                 -  -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
@@ -19,7 +19,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    |                 has type `&'2 i32`
 
 note: No external requirements
-  --> $DIR/return-wrong-bound-region.rs:20:1
+  --> $DIR/return-wrong-bound-region.rs:10:1
    |
 LL | / fn test() {
 LL | |     expect_sig(|a, b| b); // ought to return `a`

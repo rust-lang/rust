@@ -1,5 +1,5 @@
 error: this function can only be invoked directly, not through a function pointer
-  --> $DIR/rustc-args-required-const2.rs:18:13
+  --> $DIR/rustc-args-required-const2.rs:8:13
    |
 LL |     let a = foo; //~ ERROR: this function can only be invoked directly
    |             ^^^

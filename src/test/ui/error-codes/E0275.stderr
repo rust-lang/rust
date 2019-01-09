@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: std::marker::Sized`
-  --> $DIR/E0275.rs:15:1
+  --> $DIR/E0275.rs:5:1
    |
 LL | impl<T> Foo for T where Bar<T>: Foo {} //~ ERROR E0275
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL | impl<T> Foo for T where Bar<T>: Foo {} //~ ERROR E0275
    = note: required because of the requirements on the impl of `Foo` for `Bar<Bar<T>>`
    = note: required because of the requirements on the impl of `Foo` for `Bar<T>`
 note: required by `Foo`
-  --> $DIR/E0275.rs:11:1
+  --> $DIR/E0275.rs:1:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^

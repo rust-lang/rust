@@ -1,5 +1,5 @@
 error[E0595]: closure cannot assign to immutable local variable `n`
-  --> $DIR/unboxed-closures-mutate-upvar.rs:24:27
+  --> $DIR/unboxed-closures-mutate-upvar.rs:14:27
    |
 LL |     let n = 0;
    |         - help: make this binding mutable: `mut n`
@@ -7,7 +7,7 @@ LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
    |                           ^^ cannot borrow mutably
 
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
-  --> $DIR/unboxed-closures-mutate-upvar.rs:42:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:32:9
    |
 LL |     let n = 0;
    |         - help: consider making `n` mutable: `mut n`
@@ -16,14 +16,14 @@ LL |         n += 1; //~ ERROR cannot assign
    |         ^^^^^^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
-  --> $DIR/unboxed-closures-mutate-upvar.rs:56:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:46:9
    |
 LL |         n += 1; //~ ERROR cannot assign
    |         ^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
 help: consider changing this closure to take self by mutable reference
-  --> $DIR/unboxed-closures-mutate-upvar.rs:55:23
+  --> $DIR/unboxed-closures-mutate-upvar.rs:45:23
    |
 LL |       let mut f = to_fn(move || {
    |  _______________________^
@@ -32,14 +32,14 @@ LL | |     });
    | |_____^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
-  --> $DIR/unboxed-closures-mutate-upvar.rs:63:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:53:9
    |
 LL |         n += 1; //~ ERROR cannot assign
    |         ^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
 help: consider changing this closure to take self by mutable reference
-  --> $DIR/unboxed-closures-mutate-upvar.rs:62:23
+  --> $DIR/unboxed-closures-mutate-upvar.rs:52:23
    |
 LL |       let mut f = to_fn(move || {
    |  _______________________^

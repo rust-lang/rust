@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
 use source_map::{SourceMap, FilePathMapping};
@@ -955,12 +945,36 @@ impl<'a> StringReader<'a> {
                                     self.scan_unicode_escape(delim) && !ascii_only
                                 } else {
                                     let span = self.mk_sp(start, self.pos);
-                                    self.sess.span_diagnostic
-                                        .struct_span_err(span, "incorrect unicode escape sequence")
-                                        .span_help(span,
-                                                   "format of unicode escape sequences is \
-                                                    `\\u{…}`")
-                                        .emit();
+                                    let mut suggestion = "\\u{".to_owned();
+                                    let mut err = self.sess.span_diagnostic.struct_span_err(
+                                        span,
+                                        "incorrect unicode escape sequence",
+                                    );
+                                    let mut i = 0;
+                                    while let (Some(ch), true) = (self.ch, i < 6) {
+                                        if ch.is_digit(16) {
+                                            suggestion.push(ch);
+                                            self.bump();
+                                            i += 1;
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                    if i != 0 {
+                                        suggestion.push('}');
+                                        err.span_suggestion_with_applicability(
+                                            self.mk_sp(start, self.pos),
+                                            "format of unicode escape sequences uses braces",
+                                            suggestion,
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    } else {
+                                        err.span_help(
+                                            span,
+                                            "format of unicode escape sequences is `\\u{...}`",
+                                        );
+                                    }
+                                    err.emit();
                                     false
                                 };
                                 if ascii_only {

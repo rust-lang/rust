@@ -1,17 +1,17 @@
 error: expected identifier, found keyword `Self`
-  --> $DIR/issue-36638.rs:13:12
+  --> $DIR/issue-36638.rs:3:12
    |
 LL | struct Foo<Self>(Self);
    |            ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/issue-36638.rs:17:11
+  --> $DIR/issue-36638.rs:7:11
    |
 LL | trait Bar<Self> {}
    |           ^^^^ expected identifier, found keyword
 
 error[E0392]: parameter `Self` is never used
-  --> $DIR/issue-36638.rs:13:12
+  --> $DIR/issue-36638.rs:3:12
    |
 LL | struct Foo<Self>(Self);
    |            ^^^^ unused type parameter

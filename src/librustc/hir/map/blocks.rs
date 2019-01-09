@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module provides a simplified abstraction for working with
 //! code blocks identified by their integer node-id.  In particular,
 //! it captures a common set of attributes that all "function-like
@@ -238,7 +228,7 @@ impl<'a> FnLikeNode<'a> {
                 ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
-                        name: i.name,
+                        name: i.ident.name,
                         decl: &decl,
                         body: block,
                         vis: &i.vis,

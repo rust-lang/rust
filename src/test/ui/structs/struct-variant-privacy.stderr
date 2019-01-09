@@ -1,11 +1,11 @@
 error[E0603]: enum `Bar` is private
-  --> $DIR/struct-variant-privacy.rs:16:14
+  --> $DIR/struct-variant-privacy.rs:7:14
    |
 LL | fn f(b: foo::Bar) { //~ ERROR enum `Bar` is private
    |              ^^^
 
 error[E0603]: enum `Bar` is private
-  --> $DIR/struct-variant-privacy.rs:18:14
+  --> $DIR/struct-variant-privacy.rs:9:14
    |
 LL |         foo::Bar::Baz { a: _a } => {} //~ ERROR enum `Bar` is private
    |              ^^^

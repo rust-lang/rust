@@ -1,12 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 #![stable(feature = "duration_core", since = "1.25.0")]
 
 //! Temporal quantification.
@@ -31,6 +22,22 @@ const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
 const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
+
+/// The duration of one second.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const SECOND: Duration = Duration::from_secs(1);
+
+/// The duration of one millisecond.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const MILLISECOND: Duration = Duration::from_millis(1);
+
+/// The duration of one microsecond.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const MICROSECOND: Duration = Duration::from_micros(1);
+
+/// The duration of one nanosecond.
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -274,13 +281,12 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(duration_as_u128)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_millis(), 5730);
     /// ```
-    #[unstable(feature = "duration_as_u128", issue = "50202")]
+    #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[inline]
     pub const fn as_millis(&self) -> u128 {
         self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
@@ -291,13 +297,12 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(duration_as_u128)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_micros(), 5730023);
     /// ```
-    #[unstable(feature = "duration_as_u128", issue = "50202")]
+    #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[inline]
     pub const fn as_micros(&self) -> u128 {
         self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
@@ -308,13 +313,12 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(duration_as_u128)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_nanos(), 5730023852);
     /// ```
-    #[unstable(feature = "duration_as_u128", issue = "50202")]
+    #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[inline]
     pub const fn as_nanos(&self) -> u128 {
         self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128

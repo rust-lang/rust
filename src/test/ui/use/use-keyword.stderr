@@ -1,17 +1,17 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-keyword.rs:16:13
+  --> $DIR/use-keyword.rs:6:13
    |
 LL |         use self as A;
    |             ^^^^^^^^^
 
 error[E0432]: unresolved import `super`
-  --> $DIR/use-keyword.rs:18:13
+  --> $DIR/use-keyword.rs:8:13
    |
 LL |         use super as B;
    |             ^^^^^^^^^^ no `super` in the root
 
 error[E0432]: unresolved import `super`
-  --> $DIR/use-keyword.rs:21:21
+  --> $DIR/use-keyword.rs:11:21
    |
 LL |         use super::{self as C};
    |                     ^^^^^^^^^ no `super` in the root

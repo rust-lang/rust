@@ -1,16 +1,5 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use mir::interpret::ConstValue;
 use middle::region;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
@@ -19,7 +8,7 @@ use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -31,17 +20,163 @@ use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use hir;
 
-thread_local! {
-    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
-    /// Contains region to highlight and counter for number to use when highlighting.
-    static HIGHLIGHT_REGION_FOR_REGIONVID: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+/// The "region highlights" are used to control region printing during
+/// specific error messages. When a "region highlight" is enabled, it
+/// gives an alternate way to print specific regions. For now, we
+/// always print those regions using a number, so something like `'0`.
+///
+/// Regions not selected by the region highlight mode are presently
+/// unaffected.
+#[derive(Copy, Clone, Default)]
+pub struct RegionHighlightMode {
+    /// If enabled, when we see the selected region, use `"'N"`
+    /// instead of the ordinary behavior.
+    highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
+
+    /// If enabled, when printing a "free region" that originated from
+    /// the given `ty::BoundRegion`, print it as `'1`. Free regions that would ordinarily
+    /// have names print as normal.
+    ///
+    /// This is used when you have a signature like `fn foo(x: &u32,
+    /// y: &'a u32)` and we want to give a name to the region of the
+    /// reference `x`.
+    highlight_bound_region: Option<(ty::BoundRegion, usize)>,
 }
 
 thread_local! {
-    /// Mechanism for highlighting of specific regions for display in NLL's 'borrow does not live
-    /// long enough' errors. Contains a region to highlight and a counter to use.
-    static HIGHLIGHT_REGION_FOR_BOUND_REGION: Cell<Option<(ty::BoundRegion, usize)>> =
-        Cell::new(None)
+    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
+    /// Contains region to highlight and counter for number to use when highlighting.
+    static REGION_HIGHLIGHT_MODE: Cell<RegionHighlightMode> =
+        Cell::new(RegionHighlightMode::default())
+}
+
+impl RegionHighlightMode {
+    /// Read and return current region highlight settings (accesses thread-local state).a
+    pub fn get() -> Self {
+        REGION_HIGHLIGHT_MODE.with(|c| c.get())
+    }
+
+    /// Internal helper to update current settings during the execution of `op`.
+    fn set<R>(
+        old_mode: Self,
+        new_mode: Self,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        REGION_HIGHLIGHT_MODE.with(|c| {
+            c.set(new_mode);
+            let result = op();
+            c.set(old_mode);
+            result
+        })
+    }
+
+    /// If `region` and `number` are both `Some`, invoke
+    /// `highlighting_region`. Otherwise, just invoke `op` directly.
+    pub fn maybe_highlighting_region<R>(
+        region: Option<ty::Region<'_>>,
+        number: Option<usize>,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        if let Some(k) = region {
+            if let Some(n) = number {
+                return Self::highlighting_region(k, n, op);
+            }
+        }
+
+        op()
+    }
+
+    /// During the execution of `op`, highlight the region inference
+    /// vairable `vid` as `'N`.  We can only highlight one region vid
+    /// at a time.
+    pub fn highlighting_region<R>(
+        region: ty::Region<'_>,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        let old_mode = Self::get();
+        let mut new_mode = old_mode;
+        let first_avail_slot = new_mode.highlight_regions.iter_mut()
+            .filter(|s| s.is_none())
+            .next()
+            .unwrap_or_else(|| {
+                panic!(
+                    "can only highlight {} placeholders at a time",
+                    old_mode.highlight_regions.len(),
+                )
+            });
+        *first_avail_slot = Some((*region, number));
+        Self::set(old_mode, new_mode, op)
+    }
+
+    /// Convenience wrapper for `highlighting_region`
+    pub fn highlighting_region_vid<R>(
+        vid: ty::RegionVid,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        Self::highlighting_region(&ty::ReVar(vid), number, op)
+    }
+
+    /// Returns true if any placeholders are highlighted.
+    fn any_region_vids_highlighted(&self) -> bool {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .any(|h| match h {
+                Some((ty::ReVar(_), _)) => true,
+                _ => false,
+            })
+    }
+
+    /// Returns `Some(n)` with the number to use for the given region,
+    /// if any.
+    fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .filter_map(|h| match h {
+                Some((r, n)) if r == region => Some(*n),
+                _ => None,
+            })
+            .next()
+    }
+
+    /// During the execution of `op`, highlight the given bound
+    /// region. We can only highlight one bound region at a time.  See
+    /// the field `highlight_bound_region` for more detailed notes.
+    pub fn highlighting_bound_region<R>(
+        br: ty::BoundRegion,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        let old_mode = Self::get();
+        assert!(old_mode.highlight_bound_region.is_none());
+        Self::set(
+            old_mode,
+            Self {
+                highlight_bound_region: Some((br, number)),
+                ..old_mode
+            },
+            op,
+        )
+    }
+
+    /// Returns true if any placeholders are highlighted.
+    pub fn any_placeholders_highlighted(&self) -> bool {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .any(|h| match h {
+                Some((ty::RePlaceholder(_), _)) => true,
+                _ => false,
+            })
+    }
+
+    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as `'N`.
+    pub fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
+        self.region_highlighted(&ty::RePlaceholder(p))
+    }
 }
 
 macro_rules! gen_display_debug_body {
@@ -563,42 +698,6 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
     PrintContext::new().parameterized(f, substs, did, projections)
 }
 
-fn get_highlight_region_for_regionvid() -> Option<(RegionVid, usize)> {
-    HIGHLIGHT_REGION_FOR_REGIONVID.with(|hr| hr.get())
-}
-
-pub fn with_highlight_region_for_regionvid<R>(
-    r: RegionVid,
-    counter: usize,
-    op: impl FnOnce() -> R
-) -> R {
-    HIGHLIGHT_REGION_FOR_REGIONVID.with(|hr| {
-        assert_eq!(hr.get(), None);
-        hr.set(Some((r, counter)));
-        let r = op();
-        hr.set(None);
-        r
-    })
-}
-
-fn get_highlight_region_for_bound_region() -> Option<(ty::BoundRegion, usize)> {
-    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| hr.get())
-}
-
-pub fn with_highlight_region_for_bound_region<R>(
-    r: ty::BoundRegion,
-    counter: usize,
-    op: impl Fn() -> R
-) -> R {
-    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| {
-        assert_eq!(hr.get(), None);
-        hr.set(Some((r, counter)));
-        let r = op();
-        hr.set(None);
-        r
-    })
-}
-
 impl<'a, T: Print> Print for &'a T {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
         (*self).print(f, cx)
@@ -612,21 +711,43 @@ define_print! {
             ty::tls::with(|tcx| {
                 // Use a type that can't appear in defaults of type parameters.
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+                let mut first = true;
 
-                let principal = tcx
-                    .lift(&self.principal())
-                    .expect("could not lift TraitRef for printing")
-                    .with_self_ty(tcx, dummy_self);
-                let projections = self.projection_bounds().map(|p| {
-                    tcx.lift(&p)
-                        .expect("could not lift projection for printing")
-                        .with_self_ty(tcx, dummy_self)
-                }).collect::<Vec<_>>();
-                cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                if let Some(principal) = self.principal() {
+                    let principal = tcx
+                        .lift(&principal)
+                        .expect("could not lift TraitRef for printing")
+                        .with_self_ty(tcx, dummy_self);
+                    let projections = self.projection_bounds().map(|p| {
+                        tcx.lift(&p)
+                            .expect("could not lift projection for printing")
+                            .with_self_ty(tcx, dummy_self)
+                    }).collect::<Vec<_>>();
+                    cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                    first = false;
+                }
 
                 // Builtin bounds.
-                for did in self.auto_traits() {
-                    write!(f, " + {}", tcx.item_path_str(did))?;
+                let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
+                    tcx.item_path_str(did)
+                }).collect();
+
+                // The auto traits come ordered by `DefPathHash`. While
+                // `DefPathHash` is *stable* in the sense that it depends on
+                // neither the host nor the phase of the moon, it depends
+                // "pseudorandomly" on the compiler version and the target.
+                //
+                // To avoid that causing instabilities in compiletest
+                // output, sort the auto-traits alphabetically.
+                auto_traits.sort();
+
+                for auto_trait in auto_traits {
+                    if !first {
+                        write!(f, " + ")?;
+                    }
+                    first = false;
+
+                    write!(f, "{}", auto_trait)?;
                 }
 
                 Ok(())
@@ -719,6 +840,9 @@ define_print! {
 
 define_print! {
     ('tcx) ty::ExistentialTraitRef<'tcx>, (self, f, cx) {
+        display {
+            cx.parameterized(f, self.substs, self.def_id, &[])
+        }
         debug {
             ty::tls::with(|tcx| {
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
@@ -747,7 +871,7 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
-            if let Some((region, counter)) = get_highlight_region_for_bound_region() {
+            if let Some((region, counter)) = RegionHighlightMode::get().highlight_bound_region {
                 if *self == region {
                     return match *self {
                         BrNamed(_, name) => write!(f, "{}", name),
@@ -776,10 +900,34 @@ define_print! {
 }
 
 define_print! {
+    () ty::PlaceholderRegion, (self, f, cx) {
+        display {
+            if cx.is_verbose {
+                return self.print_debug(f, cx);
+            }
+
+            let highlight = RegionHighlightMode::get();
+            if let Some(counter) = highlight.placeholder_highlight(*self) {
+                write!(f, "'{}", counter)
+            } else if highlight.any_placeholders_highlighted() {
+                write!(f, "'_")
+            } else {
+                write!(f, "{}", self.name)
+            }
+        }
+    }
+}
+
+define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
-            if cx.is_verbose || get_highlight_region_for_regionvid().is_some() {
+            if cx.is_verbose {
                 return self.print_debug(f, cx);
+            }
+
+            // Watch out for region highlights.
+            if let Some(n) = RegionHighlightMode::get().region_highlighted(self) {
+                return write!(f, "'{:?}", n);
             }
 
             // These printouts are concise.  They do not contain all the information
@@ -791,9 +939,11 @@ define_print! {
                     write!(f, "{}", data.name)
                 }
                 ty::ReLateBound(_, br) |
-                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
+                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) => {
                     write!(f, "{}", br)
+                }
+                ty::RePlaceholder(p) => {
+                    write!(f, "{}", p)
                 }
                 ty::ReScope(scope) if cx.identify_regions => {
                     match scope.data {
@@ -813,11 +963,16 @@ define_print! {
                         ),
                     }
                 }
-                ty::ReVar(region_vid) if cx.identify_regions => {
-                    write!(f, "'{}rv", region_vid.index())
+                ty::ReVar(region_vid) => {
+                    if RegionHighlightMode::get().any_region_vids_highlighted() {
+                        write!(f, "{:?}", region_vid)
+                    } else if cx.identify_regions {
+                        write!(f, "'{}rv", region_vid.index())
+                    } else {
+                        Ok(())
+                    }
                 }
                 ty::ReScope(_) |
-                ty::ReVar(_) |
                 ty::ReErased => Ok(()),
                 ty::ReStatic => write!(f, "'static"),
                 ty::ReEmpty => write!(f, "'<empty>"),
@@ -946,13 +1101,10 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some((region, counter)) = get_highlight_region_for_regionvid() {
-            debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
-            return if *self == region {
-                write!(f, "'{:?}", counter)
-            } else {
-                write!(f, "'_")
-            }
+        if let Some(counter) = RegionHighlightMode::get().region_highlighted(&ty::ReVar(*self)) {
+            return write!(f, "'{:?}", counter);
+        } else if RegionHighlightMode::get().any_region_vids_highlighted() {
+            return write!(f, "'_");
         }
 
         write!(f, "'_#{}r", self.index())
@@ -1194,6 +1346,8 @@ define_print! {
                         }
                         if !is_sized {
                             write!(f, "{}?Sized", if first { " " } else { "+" })?;
+                        } else if first {
+                            write!(f, " Sized")?;
                         }
                         Ok(())
                     })
@@ -1279,12 +1433,12 @@ define_print! {
                 }),
                 Array(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
-                    match sz.val {
-                        ConstValue::Unevaluated(_def_id, _substs) => {
+                    match sz {
+                        ty::LazyConst::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
                         }
-                        _ => ty::tls::with(|tcx| {
-                            write!(f, "{}", sz.unwrap_usize(tcx))
+                        ty::LazyConst::Evaluated(c) => ty::tls::with(|tcx| {
+                            write!(f, "{}", c.unwrap_usize(tcx))
                         })?,
                     }
                     write!(f, "]")

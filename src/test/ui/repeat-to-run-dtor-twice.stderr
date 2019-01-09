@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Foo: std::marker::Copy` is not satisfied
-  --> $DIR/repeat-to-run-dtor-twice.rs:27:13
+  --> $DIR/repeat-to-run-dtor-twice.rs:17:13
    |
 LL |     let _ = [ a; 5 ];
    |             ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `Foo`

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Private types and traits are not allowed in public interfaces.
 // This test also ensures that the checks are performed even inside private modules.
 
@@ -112,7 +102,7 @@ mod aliases_pub {
 
     // This should be OK, but associated type aliases are not substituted yet
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ ERROR private type `<aliases_pub::Priv as aliases_pub::PrivTr>::Assoc` in public interface
+    //~^ ERROR private trait `aliases_pub::PrivTr` in public interface
     //~| ERROR private type `aliases_pub::Priv` in public interface
 
     impl PrivUseAlias {
@@ -141,7 +131,7 @@ mod aliases_priv {
     pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `aliases_priv::Priv1` in public interface
     pub fn f2(arg: PrivAlias) {} //~ ERROR private type `aliases_priv::Priv2` in public interface
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ ERROR private type `<aliases_priv::Priv as aliases_priv::PrivTr>::Assoc` in public
+    //~^ ERROR private trait `aliases_priv::PrivTr` in public interface
     //~| ERROR private type `aliases_priv::Priv` in public interface
 }
 

@@ -1,12 +1,12 @@
 error[E0659]: `panic` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
-  --> $DIR/shadow_builtin_macros.rs:25:14
+  --> $DIR/shadow_builtin_macros.rs:15:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro imported here
-  --> $DIR/shadow_builtin_macros.rs:24:9
+  --> $DIR/shadow_builtin_macros.rs:14:9
    |
 LL |     use foo::*;
    |         ^^^^^^
@@ -14,28 +14,28 @@ LL |     use foo::*;
    = help: or use `self::panic` to refer to this macro unambiguously
 
 error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/shadow_builtin_macros.rs:30:14
+  --> $DIR/shadow_builtin_macros.rs:20:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro imported here
-  --> $DIR/shadow_builtin_macros.rs:29:26
+  --> $DIR/shadow_builtin_macros.rs:19:26
    |
 LL |     ::two_macros::m!(use foo::panic;);
    |                          ^^^^^^^^^^
    = help: use `self::panic` to refer to this macro unambiguously
 
 error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/shadow_builtin_macros.rs:43:5
+  --> $DIR/shadow_builtin_macros.rs:33:5
    |
 LL |     panic!(); //~ ERROR `panic` is ambiguous
    |     ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro defined here
-  --> $DIR/shadow_builtin_macros.rs:40:9
+  --> $DIR/shadow_builtin_macros.rs:30:9
    |
 LL |         macro_rules! panic { () => {} }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,20 +44,20 @@ LL |     m!();
    |     ----- in this macro invocation
 
 error[E0659]: `n` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
-  --> $DIR/shadow_builtin_macros.rs:59:5
+  --> $DIR/shadow_builtin_macros.rs:49:5
    |
 LL |     n!(); //~ ERROR ambiguous
    |     ^ ambiguous name
    |
 note: `n` could refer to the macro imported here
-  --> $DIR/shadow_builtin_macros.rs:58:9
+  --> $DIR/shadow_builtin_macros.rs:48:9
    |
 LL |     use bar::*;
    |         ^^^^^^
    = help: consider adding an explicit import of `n` to disambiguate
    = help: or use `self::n` to refer to this macro unambiguously
 note: `n` could also refer to the macro imported here
-  --> $DIR/shadow_builtin_macros.rs:46:13
+  --> $DIR/shadow_builtin_macros.rs:36:13
    |
 LL | #[macro_use(n)]
    |             ^

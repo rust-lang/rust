@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use self::Entry::*;
 use self::VacantEntryState::*;
 
@@ -319,6 +309,9 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 ///     }
 /// }
 ///
+/// // Look up the value for a key (will panic if the key is not found).
+/// println!("Review for Jane: {}", book_reviews["Pride and Prejudice"]);
+///
 /// // Iterate over everything.
 /// for (book, review) in &book_reviews {
 ///     println!("{}: \"{}\"", book, review);
@@ -354,7 +347,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// *stat += random_stat_buff();
 /// ```
 ///
-/// The easiest way to use `HashMap` with a custom type as key is to derive [`Eq`] and [`Hash`].
+/// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
 ///
 /// [`Eq`]: ../../std/cmp/trait.Eq.html

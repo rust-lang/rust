@@ -1,37 +1,37 @@
 error[E0308]: mismatched types
-  --> $DIR/variance-invariant-self-trait-match.rs:20:5
+  --> $DIR/variance-invariant-self-trait-match.rs:10:5
    |
 LL |     impls_get::<&'min G>(); //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Get`
               found type `Get`
-note: the lifetime 'min as defined on the function body at 17:21...
-  --> $DIR/variance-invariant-self-trait-match.rs:17:21
+note: the lifetime 'min as defined on the function body at 7:21...
+  --> $DIR/variance-invariant-self-trait-match.rs:7:21
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 17:27
-  --> $DIR/variance-invariant-self-trait-match.rs:17:27
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 7:27
+  --> $DIR/variance-invariant-self-trait-match.rs:7:27
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                           ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/variance-invariant-self-trait-match.rs:26:5
+  --> $DIR/variance-invariant-self-trait-match.rs:16:5
    |
 LL |     impls_get::<&'max G>(); //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Get`
               found type `Get`
-note: the lifetime 'min as defined on the function body at 23:21...
-  --> $DIR/variance-invariant-self-trait-match.rs:23:21
+note: the lifetime 'min as defined on the function body at 13:21...
+  --> $DIR/variance-invariant-self-trait-match.rs:13:21
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 23:27
-  --> $DIR/variance-invariant-self-trait-match.rs:23:27
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 13:27
+  --> $DIR/variance-invariant-self-trait-match.rs:13:27
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                           ^^^^

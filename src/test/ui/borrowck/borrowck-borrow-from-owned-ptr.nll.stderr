@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:29:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:18:17
    |
 LL |     let bar1 = &mut foo.bar1;
    |                ------------- first mutable borrow occurs here
@@ -9,7 +9,7 @@ LL |     *bar1;
    |     ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:36:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:25:17
    |
 LL |     let bar1 = &mut foo.bar1;
    |                ------------- mutable borrow occurs here
@@ -19,7 +19,7 @@ LL |     *bar1;
    |     ----- mutable borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:43:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:32:17
    |
 LL |     let bar1 = &foo.bar1;
    |                --------- immutable borrow occurs here
@@ -29,7 +29,7 @@ LL |     *bar1;
    |     ----- immutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:73:21
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:62:21
    |
 LL |     let bar1 = &mut foo.bar1;
    |                ------------- first mutable borrow occurs here
@@ -41,7 +41,7 @@ LL |     *bar1;
    |     ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:82:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:71:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                ------------------ mutable borrow occurs here
@@ -52,7 +52,7 @@ LL |     *bar1;
    |     ----- mutable borrow later used here
 
 error[E0502]: cannot borrow `*foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:83:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:72:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                ------------------ mutable borrow occurs here
@@ -63,7 +63,7 @@ LL |     *bar1;
    |     ----- mutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:90:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:79:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                ------------------ first mutable borrow occurs here
@@ -73,7 +73,7 @@ LL |     *bar1;
    |     ----- first borrow later used here
 
 error[E0499]: cannot borrow `*foo` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:97:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:86:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                ------------------ first mutable borrow occurs here
@@ -83,7 +83,7 @@ LL |     *bar1;
    |     ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:104:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:93:17
    |
 LL |     let bar1 = &foo.bar1.int1;
    |                -------------- immutable borrow occurs here
@@ -93,7 +93,7 @@ LL |     *bar1;
    |     ----- immutable borrow later used here
 
 error[E0502]: cannot borrow `*foo` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:111:17
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:100:17
    |
 LL |     let bar1 = &foo.bar1.int1;
    |                -------------- immutable borrow occurs here
@@ -103,7 +103,7 @@ LL |     *bar1;
    |     ----- immutable borrow later used here
 
 error[E0596]: cannot borrow `foo.bar1` as mutable, as `foo` is not declared as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:132:16
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:121:16
    |
 LL |     let foo = make_foo();
    |         --- help: consider changing this to be mutable: `mut foo`

@@ -1,11 +1,11 @@
 error[E0433]: failed to resolve: `crate` in paths can only be used in start position
-  --> $DIR/crate-path-non-absolute.rs:17:22
+  --> $DIR/crate-path-non-absolute.rs:7:22
    |
 LL |         let s = ::m::crate::S; //~ ERROR failed to resolve
    |                      ^^^^^ `crate` in paths can only be used in start position
 
 error[E0433]: failed to resolve: global paths cannot start with `crate`
-  --> $DIR/crate-path-non-absolute.rs:18:20
+  --> $DIR/crate-path-non-absolute.rs:8:20
    |
 LL |         let s1 = ::crate::S; //~ ERROR failed to resolve
    |                    ^^^^^ global paths cannot start with `crate`

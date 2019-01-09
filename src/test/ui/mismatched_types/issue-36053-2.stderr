@@ -1,15 +1,15 @@
-error[E0599]: no method named `count` found for type `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]>` in the current scope
-  --> $DIR/issue-36053-2.rs:17:55
+error[E0599]: no method named `count` found for type `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>` in the current scope
+  --> $DIR/issue-36053-2.rs:7:55
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                                       ^^^^^
    |
    = note: the method `count` exists but the following trait bounds were not satisfied:
-           `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
-           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
+           `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]> : std::iter::Iterator`
+           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]> : std::iter::Iterator`
 
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/issue-36053-2.rs:17:32
+  --> $DIR/issue-36053-2.rs:7:32
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                ^^^^^^ -------------- found signature of `for<'r> fn(&'r str) -> _`

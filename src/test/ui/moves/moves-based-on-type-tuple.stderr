@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x` (Ast)
-  --> $DIR/moves-based-on-type-tuple.rs:16:13
+  --> $DIR/moves-based-on-type-tuple.rs:6:13
    |
 LL |     box (x, x)
    |          -  ^ value used here after move
@@ -9,7 +9,7 @@ LL |     box (x, x)
    = note: move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x` (Mir)
-  --> $DIR/moves-based-on-type-tuple.rs:16:13
+  --> $DIR/moves-based-on-type-tuple.rs:6:13
    |
 LL |     box (x, x)
    |          -  ^ value used here after move

@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Computations on places -- field projections, going from mir::Place, and writing
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
@@ -911,7 +901,7 @@ where
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
                         let local_layout = self.layout_of_local(&self.stack[frame], local)?;
-                        let ptr = self.allocate(local_layout, MemoryKind::Stack)?;
+                        let ptr = self.allocate(local_layout, MemoryKind::Stack);
                         // We don't have to validate as we can assume the local
                         // was already valid for its type.
                         self.write_immediate_to_mplace_no_validate(value, ptr)?;
@@ -933,15 +923,15 @@ where
         &mut self,
         layout: TyLayout<'tcx>,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> MPlaceTy<'tcx, M::PointerTag> {
         if layout.is_unsized() {
             assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
             // FIXME: What should we do here? We should definitely also tag!
-            Ok(MPlaceTy::dangling(layout, self))
+            MPlaceTy::dangling(layout, self)
         } else {
-            let ptr = self.memory.allocate(layout.size, layout.align.abi, kind)?;
-            let ptr = M::tag_new_allocation(self, ptr, kind)?;
-            Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
+            let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
+            let ptr = M::tag_new_allocation(self, ptr, kind);
+            MPlaceTy::from_aligned_ptr(ptr, layout)
         }
     }
 

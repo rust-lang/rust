@@ -1,5 +1,5 @@
 error[E0517]: attribute should be applied to struct
-  --> $DIR/repr-transparent-other-items.rs:13:8
+  --> $DIR/repr-transparent-other-items.rs:3:8
    |
 LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
    |        ^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | enum Void {}         //~| ERROR should be applied to struct
    | ------------ not a struct
 
 error[E0517]: attribute should be applied to struct
-  --> $DIR/repr-transparent-other-items.rs:16:8
+  --> $DIR/repr-transparent-other-items.rs:6:8
    |
 LL |   #[repr(transparent)] //~ ERROR should be applied to struct
    |          ^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | | }
    | |_- not a struct
 
 error[E0517]: attribute should be applied to struct
-  --> $DIR/repr-transparent-other-items.rs:22:8
+  --> $DIR/repr-transparent-other-items.rs:12:8
    |
 LL |   #[repr(transparent)] //~ ERROR should be applied to struct
    |          ^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | | }
    | |_- not a struct
 
 error[E0517]: attribute should be applied to struct
-  --> $DIR/repr-transparent-other-items.rs:28:8
+  --> $DIR/repr-transparent-other-items.rs:18:8
    |
 LL |   #[repr(transparent)] //~ ERROR should be applied to struct
    |          ^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL | | }
    | |_- not a struct
 
 error[E0517]: attribute should be applied to struct
-  --> $DIR/repr-transparent-other-items.rs:34:8
+  --> $DIR/repr-transparent-other-items.rs:24:8
    |
 LL | #[repr(transparent)] //~ ERROR should be applied to struct
    |        ^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL | fn cant_repr_this() {}
    | ---------------------- not a struct
 
 error[E0517]: attribute should be applied to struct
-  --> $DIR/repr-transparent-other-items.rs:37:8
+  --> $DIR/repr-transparent-other-items.rs:27:8
    |
 LL | #[repr(transparent)] //~ ERROR should be applied to struct
    |        ^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL | static CANT_REPR_THIS: u32 = 0;
    | ------------------------------- not a struct
 
 error[E0084]: unsupported representation for zero-variant enum
-  --> $DIR/repr-transparent-other-items.rs:13:1
+  --> $DIR/repr-transparent-other-items.rs:3:1
    |
 LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
    | ^^^^^^^^^^^^^^^^^^^^

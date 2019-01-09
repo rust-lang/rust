@@ -1,5 +1,5 @@
 error[E0405]: cannot find trait `T` in this scope
-  --> $DIR/issue-21221-2.rs:28:6
+  --> $DIR/issue-21221-2.rs:18:6
    |
 LL | impl T for Foo { }
    |      ^ not found in this scope

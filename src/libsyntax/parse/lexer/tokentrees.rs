@@ -1,17 +1,7 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
-use tokenstream::{DelimSpan, TokenStream, TokenTree};
+use tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
@@ -186,8 +176,7 @@ impl<'a> StringReader<'a> {
                 let raw = self.span_src_raw;
                 self.real_token();
                 let is_joint = raw.hi() == self.span_src_raw.lo() && token::is_op(&self.token);
-
-                Ok(if is_joint { tt.joint() } else { tt.into() })
+                Ok(TokenStream::Tree(tt, if is_joint { Joint } else { NonJoint }))
             }
         }
     }

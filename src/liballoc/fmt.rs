@@ -1,13 +1,3 @@
-// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Utilities for formatting and printing `String`s.
 //!
 //! This module contains the runtime support for the [`format!`] syntax extension.
@@ -36,6 +26,9 @@
 //! variable passed in (in order to perform validity checking). The compiler
 //! will then parse the format string and determine if the list of arguments
 //! provided is suitable to pass to this format string.
+//!
+//! To convert a single value to a string, use the [`to_string`] method.  This
+//! will use the [`Display`] formatting trait.
 //!
 //! ## Positional parameters
 //!
@@ -497,6 +490,7 @@
 //! [`write!`]: ../../std/macro.write.html
 //! [`Debug`]: trait.Debug.html
 //! [`format!`]: ../../std/macro.format.html
+//! [`to_string`]: ../../std/string/trait.ToString.html
 //! [`writeln!`]: ../../std/macro.writeln.html
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::ty::{self, TyCtxt, GenericParamDefKind};
@@ -216,8 +206,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
-    let param_env = ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates),
-                                      Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&hybrid_preds.predicates),
+        Reveal::UserFacing,
+        None
+    );
     let param_env = traits::normalize_param_env_or_error(tcx,
                                                          impl_m.def_id,
                                                          param_env,

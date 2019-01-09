@@ -1,5 +1,5 @@
 error[E0252]: the name `A` is defined multiple times
-  --> $DIR/rename-use-with-tabs.rs:19:14
+  --> $DIR/rename-use-with-tabs.rs:9:14
    |
 LL | use foo::{A, bar::B    as    A};
    |           -  ^^^^^^^^^^^^^^^^^ `A` reimported here

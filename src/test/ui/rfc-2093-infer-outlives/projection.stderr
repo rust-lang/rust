@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/projection.rs:14:1
+  --> $DIR/projection.rs:4:1
    |
 LL | / struct Foo<'a, T: Iterator> { //~ ERROR rustc_outlives
 LL | |     bar: &'a T::Item

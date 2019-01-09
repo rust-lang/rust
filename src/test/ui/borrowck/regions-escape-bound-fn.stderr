@@ -1,5 +1,5 @@
 error: borrowed data cannot be stored outside of its closure
-  --> $DIR/regions-escape-bound-fn.rs:18:27
+  --> $DIR/regions-escape-bound-fn.rs:8:27
    |
 LL |     let mut x: Option<&isize> = None;
    |         ----- borrowed data cannot be stored into here...

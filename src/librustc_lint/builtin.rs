@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
@@ -307,6 +297,26 @@ pub struct MissingDoc {
     private_traits: FxHashSet<ast::NodeId>,
 }
 
+fn has_doc(attr: &ast::Attribute) -> bool {
+    if !attr.check_name("doc") {
+        return false;
+    }
+
+    if attr.is_value_str() {
+        return true;
+    }
+
+    if let Some(list) = attr.meta_item_list() {
+        for meta in list {
+            if meta.check_name("include") || meta.check_name("hidden") {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
@@ -345,26 +355,6 @@ impl MissingDoc {
             }
         }
 
-        fn has_doc(attr: &ast::Attribute) -> bool {
-            if !attr.check_name("doc") {
-                return false;
-            }
-
-            if attr.is_value_str() {
-                return true;
-            }
-
-            if let Some(list) = attr.meta_item_list() {
-                for meta in list {
-                    if meta.check_name("include") {
-                        return true;
-                    }
-                }
-            }
-
-            false
-        }
-
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
@@ -399,6 +389,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
         self.check_missing_docs_attrs(cx, None, &krate.attrs, krate.span, "crate");
+
+        for macro_def in &krate.exported_macros {
+            let has_doc = macro_def.attrs.iter().any(|a| has_doc(a));
+            if !has_doc {
+                cx.span_lint(MISSING_DOCS,
+                             cx.tcx.sess.source_map().def_span(macro_def.span),
+                             "missing documentation for macro");
+            }
+        }
     }
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
@@ -550,7 +549,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
             return;
         }
         let param_env = ty::ParamEnv::empty();
-        if !ty.moves_by_default(cx.tcx, param_env, item.span) {
+        if ty.is_copy_modulo_regions(cx.tcx, param_env, item.span) {
             return;
         }
         if param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
@@ -683,7 +682,7 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-/// Checks for incorrect use use of `repr` attributes.
+/// Checks for incorrect use of `repr` attributes.
 #[derive(Clone)]
 pub struct BadRepr;
 

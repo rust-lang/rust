@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![crate_name = "compiletest"]
 #![feature(test)]
 #![deny(warnings)]
@@ -28,6 +18,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate test;
 extern crate rustfix;
+extern crate walkdir;
 
 use common::CompareMode;
 use common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
@@ -43,6 +34,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use test::ColorConfig;
 use util::logv;
+use walkdir::WalkDir;
 
 use self::header::{EarlyProps, Ignore};
 
@@ -497,7 +489,7 @@ pub fn run_tests(config: &Config) {
     // Let tests know which target they're running as
     env::set_var("TARGET", &config.target);
 
-    let res = test::run_tests_console(&opts, tests.into_iter().collect());
+    let res = test::run_tests_console(&opts, tests);
     match res {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
@@ -556,22 +548,18 @@ fn collect_tests_from_dir(
     relative_dir_path: &Path,
     tests: &mut Vec<test::TestDescAndFn>,
 ) -> io::Result<()> {
-    // Ignore directories that contain a file
-    // `compiletest-ignore-dir`.
-    for file in fs::read_dir(dir)? {
-        let file = file?;
-        let name = file.file_name();
-        if name == *"compiletest-ignore-dir" {
-            return Ok(());
-        }
-        if name == *"Makefile" && config.mode == Mode::RunMake {
-            let paths = TestPaths {
-                file: dir.to_path_buf(),
-                relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
-            };
-            tests.extend(make_test(config, &paths));
-            return Ok(());
-        }
+    // Ignore directories that contain a file named `compiletest-ignore-dir`.
+    if dir.join("compiletest-ignore-dir").exists() {
+        return Ok(());
+    }
+
+    if config.mode == Mode::RunMake && dir.join("Makefile").exists() {
+        let paths = TestPaths {
+            file: dir.to_path_buf(),
+            relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
+        };
+        tests.extend(make_test(config, &paths));
+        return Ok(());
     }
 
     // If we find a test foo/bar.rs, we have to build the
@@ -585,8 +573,7 @@ fn collect_tests_from_dir(
 
     // Add each `.rs` file as a test, and recurse further on any
     // subdirectories we find, except for `aux` directories.
-    let dirs = fs::read_dir(dir)?;
-    for file in dirs {
+    for file in fs::read_dir(dir)? {
         let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
@@ -682,6 +669,15 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+/// Return an iterator over timestamps of files in the directory at `path`.
+fn collect_timestamps(path: &PathBuf) -> impl Iterator<Item=FileTime> {
+    WalkDir::new(path)
+        .into_iter()
+        .map(|entry| entry.unwrap())
+        .filter(|entry| entry.file_type().is_file())
+        .map(|entry| mtime(entry.path()))
+}
+
 fn up_to_date(
     config: &Config,
     testpaths: &TestPaths,
@@ -706,14 +702,12 @@ fn up_to_date(
         .expect("Could not find Rust source root");
     let stamp = mtime(&stamp_name);
     let mut inputs = vec![mtime(&testpaths.file), mtime(&config.rustc_path)];
-    for aux in props.aux.iter() {
-        inputs.push(mtime(&testpaths
-            .file
-            .parent()
-            .unwrap()
-            .join("auxiliary")
-            .join(aux)));
-    }
+    inputs.extend(
+        props
+            .aux
+            .iter()
+            .map(|aux| mtime(&testpaths.file.parent().unwrap().join("auxiliary").join(aux))),
+    );
     // Relevant pretty printer files
     let pretty_printer_files = [
         "src/etc/debugger_pretty_printers_common.py",
@@ -722,29 +716,23 @@ fn up_to_date(
         "src/etc/lldb_batchmode.py",
         "src/etc/lldb_rust_formatters.py",
     ];
-    for pretty_printer_file in &pretty_printer_files {
-        inputs.push(mtime(&rust_src_dir.join(pretty_printer_file)));
-    }
-    let mut entries = config.run_lib_path.read_dir().unwrap().collect::<Vec<_>>();
-    while let Some(entry) = entries.pop() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if entry.metadata().unwrap().is_file() {
-            inputs.push(mtime(&path));
-        } else {
-            entries.extend(path.read_dir().unwrap());
-        }
-    }
+    inputs.extend(pretty_printer_files.iter().map(|pretty_printer_file| {
+        mtime(&rust_src_dir.join(pretty_printer_file))
+    }));
+    inputs.extend(collect_timestamps(&config.run_lib_path));
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         inputs.push(mtime(&rustdoc_path));
         inputs.push(mtime(&rust_src_dir.join("src/etc/htmldocck.py")));
     }
 
     // UI test files.
-    for extension in UI_EXTENSIONS {
+    inputs.extend(UI_EXTENSIONS.iter().map(|extension| {
         let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
-        inputs.push(mtime(path));
-    }
+        mtime(path)
+    }));
+
+    // Compiletest itself.
+    inputs.extend(collect_timestamps(&rust_src_dir.join("src/tools/compiletest/")));
 
     inputs.iter().any(|input| *input > stamp)
 }

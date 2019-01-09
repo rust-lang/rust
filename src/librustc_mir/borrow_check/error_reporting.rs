@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow_check::nll::explain_borrow::BorrowExplanation;
 use borrow_check::nll::region_infer::{RegionName, RegionNameSource};
 use borrow_check::prefixes::IsPrefixOf;
@@ -22,7 +12,7 @@ use rustc::mir::{
     TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, DefIdTree};
-use rustc::util::ppaux::with_highlight_region_for_bound_region;
+use rustc::util::ppaux::RegionHighlightMode;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
@@ -133,7 +123,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Origin::Mir,
             );
 
-            self.add_closure_invoked_twice_with_moved_variable_suggestion(
+            self.add_moved_or_invoked_closure_note(
                 context.loc,
                 used_place,
                 &mut err,
@@ -191,38 +181,36 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            if let Some(ty) = self.retrieve_type_for_place(used_place) {
-                let needs_note = match ty.sty {
-                    ty::Closure(id, _) => {
-                        let tables = self.infcx.tcx.typeck_tables_of(id);
-                        let node_id = self.infcx.tcx.hir().as_local_node_id(id).unwrap();
-                        let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
+            let ty = used_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+            let needs_note = match ty.sty {
+                ty::Closure(id, _) => {
+                    let tables = self.infcx.tcx.typeck_tables_of(id);
+                    let node_id = self.infcx.tcx.hir().as_local_node_id(id).unwrap();
+                    let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
 
-                        tables.closure_kind_origins().get(hir_id).is_none()
-                    }
-                    _ => true,
+                    tables.closure_kind_origins().get(hir_id).is_none()
+                }
+                _ => true,
+            };
+
+            if needs_note {
+                let mpi = self.move_data.moves[move_out_indices[0]].path;
+                let place = &self.move_data.move_paths[mpi].place;
+
+                let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                let note_msg = match self.describe_place_with_options(
+                    place,
+                    IncludingDowncast(true),
+                ) {
+                    Some(name) => format!("`{}`", name),
+                    None => "value".to_owned(),
                 };
 
-                if needs_note {
-                    let mpi = self.move_data.moves[move_out_indices[0]].path;
-                    let place = &self.move_data.move_paths[mpi].place;
-
-                    if let Some(ty) = self.retrieve_type_for_place(place) {
-                        let note_msg = match self.describe_place_with_options(
-                            place,
-                            IncludingDowncast(true),
-                        ) {
-                            Some(name) => format!("`{}`", name),
-                            None => "value".to_owned(),
-                        };
-
-                        err.note(&format!(
-                            "move occurs because {} has type `{}`, \
-                             which does not implement the `Copy` trait",
-                            note_msg, ty
-                        ));
-                    }
-                }
+                err.note(&format!(
+                    "move occurs because {} has type `{}`, \
+                     which does not implement the `Copy` trait",
+                    note_msg, ty
+                ));
             }
 
             if let Some((_, mut old_err)) = self.move_error_reported
@@ -735,7 +723,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      functions can only return borrows to data passed as arguments",
                 );
                 err.note(
-                    "to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-\
+                    "to learn more, visit <https://doc.rust-lang.org/book/ch04-02-\
                      references-and-borrowing.html#dangling-references>",
                 );
             } else {
@@ -1341,7 +1329,8 @@ enum StorageDeadOrDrop<'tcx> {
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
-    /// Adds a suggestion when a closure is invoked twice with a moved variable.
+    /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
+    /// is moved after being invoked.
     ///
     /// ```text
     /// note: closure cannot be invoked more than once because it moves the variable `dict` out of
@@ -1351,30 +1340,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// LL |         for (key, value) in dict {
     ///    |                             ^^^^
     /// ```
-    pub(super) fn add_closure_invoked_twice_with_moved_variable_suggestion(
+    pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
         place: &Place<'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
+        debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local();
-        debug!(
-            "add_closure_invoked_twice_with_moved_variable_suggestion: location={:?} place={:?} \
-             target={:?}",
-             location, place, target,
-        );
         for stmt in &self.mir[location.block].statements[location.statement_index..] {
-            debug!(
-                "add_closure_invoked_twice_with_moved_variable_suggestion: stmt={:?} \
-                 target={:?}",
-                 stmt, target,
-            );
+            debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
-                debug!(
-                    "add_closure_invoked_twice_with_moved_variable_suggestion: into={:?} \
-                     from={:?}",
-                     into, from,
-                );
+                debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(ref place) |
                     Operand::Move(ref place) if target == place.local() =>
@@ -1384,21 +1361,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-
+        // Check if we are attempting to call a closure after it has been invoked.
         let terminator = self.mir[location.block].terminator();
-        debug!(
-            "add_closure_invoked_twice_with_moved_variable_suggestion: terminator={:?}",
-            terminator,
-        );
+        debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant {
-                literal: ty::Const { ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  }, ..  },
+                literal: ty::LazyConst::Evaluated(ty::Const {
+                    ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  },
+                    ..
+                }),
                 ..
             }),
             args,
             ..
         } = &terminator.kind {
-            debug!("add_closure_invoked_twice_with_moved_variable_suggestion: id={:?}", id);
+            debug!("add_moved_or_invoked_closure_note: id={:?}", id);
             if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                 let closure = match args.first() {
                     Some(Operand::Copy(ref place)) |
@@ -1406,30 +1383,48 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         place.local().unwrap(),
                     _ => return,
                 };
-                debug!(
-                    "add_closure_invoked_twice_with_moved_variable_suggestion: closure={:?}",
-                     closure,
-                );
 
-                if let ty::TyKind::Closure(did, _substs) = self.mir.local_decls[closure].ty.sty {
-                    let node_id = match self.infcx.tcx.hir().as_local_node_id(did) {
-                        Some(node_id) => node_id,
-                        _ => return,
-                    };
+                debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
+                if let ty::TyKind::Closure(did, _) = self.mir.local_decls[closure].ty.sty {
+                    let node_id = self.infcx.tcx.hir().as_local_node_id(did).unwrap();
                     let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
 
-                    if let Some((
-                        span, name
-                    )) = self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id) {
+                    if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
+                        .closure_kind_origins()
+                        .get(hir_id)
+                    {
                         diag.span_note(
                             *span,
                             &format!(
-                                "closure cannot be invoked more than once because it \
-                                 moves the variable `{}` out of its environment",
-                                 name,
+                                "closure cannot be invoked more than once because it moves the \
+                                 variable `{}` out of its environment",
+                                name,
                             ),
                         );
+                        return;
                     }
+                }
+            }
+        }
+
+        // Check if we are just moving a closure after it has been invoked.
+        if let Some(target) = target {
+            if let ty::TyKind::Closure(did, _) = self.mir.local_decls[target].ty.sty {
+                let node_id = self.infcx.tcx.hir().as_local_node_id(did).unwrap();
+                let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
+
+                if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
+                    .closure_kind_origins()
+                    .get(hir_id)
+                {
+                    diag.span_note(
+                        *span,
+                        &format!(
+                            "closure cannot be moved more than once as it is not `Copy` due to \
+                             moving the variable `{}` out of its environment",
+                             name
+                        ),
+                    );
                 }
             }
         }
@@ -1568,7 +1563,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         )?;
                         buf.push_str("[");
                         if self.append_local_to_string(index, buf).is_err() {
-                            buf.push_str("..");
+                            buf.push_str("_");
                         }
                         buf.push_str("]");
                     }
@@ -1670,22 +1665,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                 }
             }
-        }
-    }
-
-    /// Retrieve type of a place for the current MIR representation
-    fn retrieve_type_for_place(&self, place: &Place<'tcx>) -> Option<ty::Ty> {
-        match place {
-            Place::Local(local) => {
-                let local = &self.mir.local_decls[*local];
-                Some(local.ty)
-            }
-            Place::Promoted(ref prom) => Some(prom.1),
-            Place::Static(ref st) => Some(st.ty),
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Field(_, ty) => Some(ty),
-                _ => None,
-            },
         }
     }
 
@@ -2160,7 +2139,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
                     "argument and return type have the same lifetime due to lifetime elision rules",
                 );
                 diag.note(
-                    "to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-\
+                    "to learn more, visit <https://doc.rust-lang.org/book/ch10-03-\
                      lifetime-syntax.html#lifetime-elision>",
                 );
 
@@ -2205,7 +2184,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
                 ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
-            ) => with_highlight_region_for_bound_region(*br, counter, || ty.to_string()),
+            ) => RegionHighlightMode::highlighting_bound_region(*br, counter, || ty.to_string()),
             _ => ty.to_string(),
         }
     }
@@ -2217,7 +2196,11 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
             ty::TyKind::Ref(region, _, _) => match region {
                 ty::RegionKind::ReLateBound(_, br)
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
-                    with_highlight_region_for_bound_region(*br, counter, || region.to_string())
+                    RegionHighlightMode::highlighting_bound_region(
+                        *br,
+                        counter,
+                        || region.to_string(),
+                    )
                 }
                 _ => region.to_string(),
             },

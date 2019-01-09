@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/issue-5844.rs:16:5
+  --> $DIR/issue-5844.rs:6:5
    |
 LL |     issue_5844_aux::rand(); //~ ERROR: requires unsafe
    |     ^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function

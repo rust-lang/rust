@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `isize: HasState` is not satisfied
-  --> $DIR/issue-18611.rs:11:1
+  --> $DIR/issue-18611.rs:1:1
    |
 LL | / fn add_state(op: <isize as HasState>::State) {
 LL | | //~^ ERROR `isize: HasState` is not satisfied

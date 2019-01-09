@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/regions-escape-loop-via-variable.rs:21:14
+  --> $DIR/regions-escape-loop-via-variable.rs:11:14
    |
 LL |         p = &x;
    |              ^ borrowed value does not live long enough

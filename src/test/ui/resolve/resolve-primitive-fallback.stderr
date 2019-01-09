@@ -1,17 +1,17 @@
 error[E0423]: expected value, found builtin type `u16`
-  --> $DIR/resolve-primitive-fallback.rs:13:23
+  --> $DIR/resolve-primitive-fallback.rs:3:23
    |
 LL |     std::mem::size_of(u16);
    |                       ^^^ not a value
 
 error[E0412]: cannot find type `u8` in the crate root
-  --> $DIR/resolve-primitive-fallback.rs:18:14
+  --> $DIR/resolve-primitive-fallback.rs:8:14
    |
 LL |     let _: ::u8;
    |              ^^ not found in the crate root
 
 error[E0061]: this function takes 0 parameters but 1 parameter was supplied
-  --> $DIR/resolve-primitive-fallback.rs:13:5
+  --> $DIR/resolve-primitive-fallback.rs:3:5
    |
 LL |     std::mem::size_of(u16);
    |     ^^^^^^^^^^^^^^^^^^^^^^ expected 0 parameters

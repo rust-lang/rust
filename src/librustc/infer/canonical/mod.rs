@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! **Canonicalization** is the key to constructing a query in the
 //! middle of type inference. Ordinarily, it is not possible to store
 //! types from type inference in query keys, because they contain
@@ -430,8 +420,32 @@ BraceStructLiftImpl! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.var_values.len()
+    }
+
+    /// Make an identity substitution from this one: each bound var
+    /// is matched to the same bound var, preserving the original kinds.
+    /// For example, if we have:
+    /// `self.var_values == [Type(u32), Lifetime('a), Type(u64)]`
+    /// we'll return a substitution `subst` with:
+    /// `subst.var_values == [Type(^0), Lifetime(^1), Type(^2)]`.
+    pub fn make_identity<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+        use ty::subst::UnpackedKind;
+
+        CanonicalVarValues {
+            var_values: self.var_values.iter()
+                .zip(0..)
+                .map(|(kind, i)| match kind.unpack() {
+                    UnpackedKind::Type(..) => tcx.mk_ty(
+                        ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())
+                    ).into(),
+                    UnpackedKind::Lifetime(..) => tcx.mk_region(
+                        ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
+                    ).into(),
+                })
+                .collect()
+        }
     }
 }
 

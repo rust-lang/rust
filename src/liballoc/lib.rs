@@ -1,13 +1,3 @@
-// Copyright 2014-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # The Rust core allocation and collections library
 //!
 //! This library provides smart pointers and collections for managing
@@ -72,6 +62,8 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 #![needs_allocator]
+
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
 #![cfg_attr(not(test), feature(fn_traits))]
@@ -100,10 +92,10 @@
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
-#![feature(pin)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
+#![feature(receiver_trait)]
 #![feature(specialization)]
 #![feature(split_ascii_whitespace)]
 #![feature(staged_api)]

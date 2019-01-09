@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of compiling various phases of the compiler and standard
 //! library.
 //!
@@ -29,6 +19,7 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use serde_json;
 
+use crate::dist;
 use crate::util::{exe, libdir, is_dylib};
 use crate::{Compiler, Mode, GitRepo};
 use crate::native;
@@ -114,7 +105,6 @@ impl Step for Std {
                 &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &libstd_stamp(builder, compiler, target),
                   false);
 
@@ -375,7 +365,6 @@ impl Step for Test {
                 &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &libtest_stamp(builder, compiler, target),
                   false);
 
@@ -503,7 +492,6 @@ impl Step for Rustc {
                  compiler.stage, &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &librustc_stamp(builder, compiler, target),
                   false);
 
@@ -646,47 +634,18 @@ impl Step for CodegenBackend {
 
         let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
 
-        let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "rustc");
+        let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "build");
         cargo.arg("--manifest-path")
             .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
         let features = build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
 
-        let mut cargo_tails_args = vec![];
-
-        if builder.config.llvm_thin_lto {
-            cargo_tails_args.push("--".to_string());
-
-            let num_jobs = builder.jobs();
-
-            if !target.contains("msvc") {
-                // Here we assume that the linker is clang. If it's not, there'll
-                // be linker errors.
-                cargo_tails_args.push("-Clink-arg=-fuse-ld=lld".to_string());
-                cargo_tails_args.push("-Clink-arg=-flto=thin".to_string());
-
-                if builder.config.llvm_optimize {
-                    cargo_tails_args.push("-Clink-arg=-O2".to_string());
-                }
-
-                // Let's make LLD respect the `-j` option.
-                let num_jobs_arg = format!("-Clink-arg=-Wl,--thinlto-jobs={}", num_jobs);
-                cargo_tails_args.push(num_jobs_arg);
-            } else {
-                // Here we assume that the linker is lld-link.exe. lld-link.exe
-                // does not need the extra arguments except for num_jobs
-                let num_jobs_arg = format!("-Clink-arg=/opt:lldltojobs={}", num_jobs);
-                cargo_tails_args.push(num_jobs_arg);
-            }
-        }
-
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
                               cargo.arg("--features").arg(features),
-                              cargo_tails_args,
                               &tmp_stamp,
                               false);
         if builder.config.dry_run {
@@ -759,8 +718,13 @@ pub fn build_codegen_backend(builder: &Builder,
                                          "libstdc++.a");
                 cargo.env("LLVM_STATIC_STDCPP", file);
             }
-            if builder.config.llvm_link_shared {
+            if builder.config.llvm_link_shared ||
+                (builder.config.llvm_thin_lto && backend != "emscripten")
+            {
                 cargo.env("LLVM_LINK_SHARED", "1");
+            }
+            if builder.config.llvm_use_libcxx {
+                cargo.env("LLVM_USE_LIBCXX", "1");
             }
         }
         _ => panic!("unknown backend: {}", backend),
@@ -999,6 +963,8 @@ impl Step for Assemble {
             copy_lld_to_sysroot(builder, target_compiler, &lld_install);
         }
 
+        dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
+
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
         let rustc = out_dir.join(exe("rustc_binary", &*host));
@@ -1025,7 +991,6 @@ pub fn add_to_sysroot(builder: &Builder, sysroot_dst: &Path, stamp: &Path) {
 
 pub fn run_cargo(builder: &Builder,
                  cargo: &mut Command,
-                 tail_args: Vec<String>,
                  stamp: &Path,
                  is_check: bool)
     -> Vec<PathBuf>
@@ -1048,7 +1013,7 @@ pub fn run_cargo(builder: &Builder,
     // files we need to probe for later.
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
-    let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
+    let ok = stream_cargo(builder, cargo, &mut |msg| {
         let filenames = match msg {
             CargoMessage::CompilerArtifact { filenames, .. } => filenames,
             _ => return,
@@ -1173,7 +1138,6 @@ pub fn run_cargo(builder: &Builder,
 pub fn stream_cargo(
     builder: &Builder,
     cargo: &mut Command,
-    tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage),
 ) -> bool {
     if builder.config.dry_run {
@@ -1183,10 +1147,6 @@ pub fn stream_cargo(
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
-
-    for arg in tail_args {
-        cargo.arg(arg);
-    }
 
     builder.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {

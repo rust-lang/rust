@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/generator-upvar-mutability.rs:18:9
+  --> $DIR/generator-upvar-mutability.rs:8:9
    |
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`

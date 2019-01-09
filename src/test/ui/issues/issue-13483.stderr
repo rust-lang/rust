@@ -1,11 +1,11 @@
 error: missing condition for `if` statemement
-  --> $DIR/issue-13483.rs:13:14
+  --> $DIR/issue-13483.rs:3:14
    |
 LL |     } else if { //~ ERROR missing condition
    |              ^ expected if condition here
 
 error: missing condition for `if` statemement
-  --> $DIR/issue-13483.rs:20:14
+  --> $DIR/issue-13483.rs:10:14
    |
 LL |     } else if { //~ ERROR missing condition
    |              ^ expected if condition here

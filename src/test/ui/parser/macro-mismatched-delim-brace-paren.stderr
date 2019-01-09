@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `)`
-  --> $DIR/macro-mismatched-delim-brace-paren.rs:16:5
+  --> $DIR/macro-mismatched-delim-brace-paren.rs:6:5
    |
 LL |     foo! {
    |          - un-closed delimiter

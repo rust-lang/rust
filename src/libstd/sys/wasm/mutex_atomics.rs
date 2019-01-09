@@ -1,14 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use arch::wasm32::atomic;
+use arch::wasm32;
 use cell::UnsafeCell;
 use mem;
 use sync::atomic::{AtomicUsize, AtomicU32, Ordering::SeqCst};
@@ -36,7 +26,7 @@ impl Mutex {
 
     pub unsafe fn lock(&self) {
         while !self.try_lock() {
-            let val = atomic::wait_i32(
+            let val = wasm32::i32_atomic_wait(
                 self.ptr(),
                 1,  // we expect our mutex is locked
                 -1, // wait infinitely
@@ -50,7 +40,7 @@ impl Mutex {
     pub unsafe fn unlock(&self) {
         let prev = self.locked.swap(0, SeqCst);
         debug_assert_eq!(prev, 1);
-        atomic::wake(self.ptr(), 1); // wake up one waiter, if any
+        wasm32::atomic_notify(self.ptr(), 1); // wake up one waiter, if any
     }
 
     #[inline]
@@ -104,7 +94,7 @@ impl ReentrantMutex {
     pub unsafe fn lock(&self) {
         let me = thread::my_id();
         while let Err(owner) = self._try_lock(me) {
-            let val = atomic::wait_i32(self.ptr(), owner as i32, -1);
+            let val = wasm32::i32_atomic_wait(self.ptr(), owner as i32, -1);
             debug_assert!(val == 0 || val == 1);
         }
     }
@@ -143,7 +133,7 @@ impl ReentrantMutex {
         match *self.recursions.get() {
             0 => {
                 self.owner.swap(0, SeqCst);
-                atomic::wake(self.ptr() as *mut i32, 1); // wake up one waiter, if any
+                wasm32::atomic_notify(self.ptr() as *mut i32, 1); // wake up one waiter, if any
             }
             ref mut n => *n -= 1,
         }

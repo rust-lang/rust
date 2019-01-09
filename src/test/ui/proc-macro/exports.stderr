@@ -1,23 +1,23 @@
 error: `proc-macro` crate types cannot export any items other than functions tagged with `#[proc_macro_derive]` currently
-  --> $DIR/exports.rs:17:1
+  --> $DIR/exports.rs:7:1
    |
 LL | pub fn a() {} //~ ERROR: cannot export any items
    | ^^^^^^^^^^^^^
 
 error: `proc-macro` crate types cannot export any items other than functions tagged with `#[proc_macro_derive]` currently
-  --> $DIR/exports.rs:18:1
+  --> $DIR/exports.rs:8:1
    |
 LL | pub struct B; //~ ERROR: cannot export any items
    | ^^^^^^^^^^^^^
 
 error: `proc-macro` crate types cannot export any items other than functions tagged with `#[proc_macro_derive]` currently
-  --> $DIR/exports.rs:19:1
+  --> $DIR/exports.rs:9:1
    |
 LL | pub enum C {} //~ ERROR: cannot export any items
    | ^^^^^^^^^^^^^
 
 error: `proc-macro` crate types cannot export any items other than functions tagged with `#[proc_macro_derive]` currently
-  --> $DIR/exports.rs:20:1
+  --> $DIR/exports.rs:10:1
    |
 LL | pub mod d {} //~ ERROR: cannot export any items
    | ^^^^^^^^^^^^

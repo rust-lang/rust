@@ -1,5 +1,5 @@
 error[E0277]: `Foo` cannot be shared between threads safely
-  --> $DIR/issue-17718-static-sync.rs:19:1
+  --> $DIR/issue-17718-static-sync.rs:9:1
    |
 LL | static BAR: Foo = Foo;
    | ^^^^^^^^^^^^^^^^^^^^^^ `Foo` cannot be shared between threads safely

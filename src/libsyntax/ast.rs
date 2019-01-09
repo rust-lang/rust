@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // The Rust abstract syntax tree.
 
 pub use self::GenericArgs::*;
@@ -454,7 +444,6 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub recovered: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -1011,6 +1000,7 @@ impl Expr {
             ExprKind::Paren(..) => ExprPrecedence::Paren,
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Err => ExprPrecedence::Err,
         }
     }
 }
@@ -1170,6 +1160,9 @@ pub enum ExprKind {
 
     /// A `yield`, with an optional value to be yielded.
     Yield(Option<P<Expr>>),
+
+    /// Placeholder for an expression that wasn't syntactically well formed in some way.
+    Err,
 }
 
 /// The explicit `Self` type in a "qualified path". The actual

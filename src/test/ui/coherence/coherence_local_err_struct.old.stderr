@@ -1,0 +1,12 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence_local_err_struct.rs:17:1
+   |
+LL | impl lib::MyCopy for lib::MyStruct<MyType> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference any types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0117`.

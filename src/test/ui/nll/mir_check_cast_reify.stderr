@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/mir_check_cast_reify.rs:47:5
+  --> $DIR/mir_check_cast_reify.rs:37:5
    |
 LL | fn bar<'a>(x: &'a u32) -> &'static u32 {
    |        -- lifetime `'a` defined here

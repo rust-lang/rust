@@ -1,5 +1,5 @@
 error: conflicting implementations of trait `Trait1<std::boxed::Box<_>>` for type `A`: (E0119)
-  --> $DIR/issue-43355.rs:23:1
+  --> $DIR/issue-43355.rs:13:1
    |
 LL | impl<X, T> Trait1<X> for T where T: Trait2<X> {
    | --------------------------------------------- first implementation here

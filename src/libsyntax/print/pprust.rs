@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, GenericBound, TraitBoundModifier};
@@ -1103,7 +1093,9 @@ impl<'a> State<'a> {
                 self.s.word("_")?;
             }
             ast::TyKind::Err => {
-                self.s.word("?")?;
+                self.popen()?;
+                self.s.word("/*ERROR*/")?;
+                self.pclose()?;
             }
             ast::TyKind::ImplicitSelf => {
                 self.s.word("Self")?;
@@ -2400,6 +2392,11 @@ impl<'a> State<'a> {
                 self.head("try")?;
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?
+            }
+            ast::ExprKind::Err => {
+                self.popen()?;
+                self.s.word("/*ERROR*/")?;
+                self.pclose()?
             }
         }
         self.ann.post(self, AnnNode::Expr(expr))?;

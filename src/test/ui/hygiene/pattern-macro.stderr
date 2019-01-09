@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/pattern-macro.rs:15:5
+  --> $DIR/pattern-macro.rs:5:5
    |
 LL |     x + 1; //~ ERROR cannot find value `x` in this scope
    |     ^ not found in this scope

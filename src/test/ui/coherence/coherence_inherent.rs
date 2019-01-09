@@ -1,15 +1,9 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Tests that methods that implement a trait cannot be invoked
 // unless the trait is imported.
+
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 
 mod Lib {
     pub trait TheTrait {
@@ -38,7 +32,9 @@ mod NoImport {
     use Lib::TheStruct;
 
     fn call_the_fn(s: &TheStruct) {
-        s.the_fn(); //~ ERROR no method named `the_fn` found
+        s.the_fn();
+        //[old]~^ ERROR no method named `the_fn` found
+        //[re]~^^ ERROR E0599
     }
 }
 

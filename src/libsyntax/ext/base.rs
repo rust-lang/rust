@@ -1,18 +1,8 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use source_map::{self, SourceMap, Spanned, respan};
+use source_map::{SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -24,6 +14,7 @@ use parse::token;
 use ptr::P;
 use smallvec::SmallVec;
 use symbol::{keywords, Ident, Symbol};
+use visit::Visitor;
 use ThinVec;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -143,6 +134,17 @@ impl Annotatable {
                 _ => false,
             },
             _ => false,
+        }
+    }
+
+    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+        match self {
+            Annotatable::Item(item) => visitor.visit_item(item),
+            Annotatable::TraitItem(trait_item) => visitor.visit_trait_item(trait_item),
+            Annotatable::ImplItem(impl_item) => visitor.visit_impl_item(impl_item),
+            Annotatable::ForeignItem(foreign_item) => visitor.visit_foreign_item(foreign_item),
+            Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
+            Annotatable::Expr(expr) => visitor.visit_expr(expr),
         }
     }
 }
@@ -466,7 +468,8 @@ impl MacResult for MacEager {
 #[derive(Copy, Clone)]
 pub struct DummyResult {
     expr_only: bool,
-    span: Span
+    is_error: bool,
+    span: Span,
 }
 
 impl DummyResult {
@@ -474,8 +477,13 @@ impl DummyResult {
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
-    pub fn any(sp: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, span: sp })
+    pub fn any(span: Span) -> Box<dyn MacResult+'static> {
+        Box::new(DummyResult { expr_only: false, is_error: true, span })
+    }
+
+    /// Same as `any`, but must be a valid fragment, not error.
+    pub fn any_valid(span: Span) -> Box<dyn MacResult+'static> {
+        Box::new(DummyResult { expr_only: false, is_error: false, span })
     }
 
     /// Create a default MacResult that can only be an expression.
@@ -483,15 +491,15 @@ impl DummyResult {
     /// Use this for macros that must expand to an expression, so even
     /// if an error is encountered internally, the user will receive
     /// an error that they also used it in the wrong place.
-    pub fn expr(sp: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: true, span: sp })
+    pub fn expr(span: Span) -> Box<dyn MacResult+'static> {
+        Box::new(DummyResult { expr_only: true, is_error: true, span })
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span) -> P<ast::Expr> {
+    pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(source_map::respan(sp, ast::LitKind::Bool(false))),
+            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -506,10 +514,11 @@ impl DummyResult {
         }
     }
 
-    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
+    /// A plain dummy type.
+    pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: ast::TyKind::Infer,
+            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp
         })
     }
@@ -517,7 +526,7 @@ impl DummyResult {
 
 impl MacResult for DummyResult {
     fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
-        Some(DummyResult::raw_expr(self.span))
+        Some(DummyResult::raw_expr(self.span, self.is_error))
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
@@ -560,13 +569,13 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
+            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
         }])
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
-        Some(DummyResult::raw_ty(self.span))
+        Some(DummyResult::raw_ty(self.span, self.is_error))
     }
 }
 
@@ -733,6 +742,7 @@ pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
 
+    fn resolve_dollar_crates(&mut self, annotatable: &Annotatable);
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
@@ -766,6 +776,7 @@ impl Resolver for DummyResolver {
     fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
     fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
 
+    fn resolve_dollar_crates(&mut self, _annotatable: &Annotatable) {}
     fn visit_ast_fragment_with_placeholders(&mut self, _invoc: Mark, _fragment: &AstFragment,
                                             _derives: &[Mark]) {}
     fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
@@ -806,7 +817,6 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
-    pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
 }
@@ -821,7 +831,6 @@ impl<'a> ExtCtxt<'a> {
             ecfg,
             root_path: PathBuf::new(),
             resolver,
-            resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
@@ -986,7 +995,7 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt,
     expr: P<ast::Expr>,
     err_msg: &str,
-) -> Result<Spanned<(Symbol, ast::StrStyle)>, DiagnosticBuilder<'a>> {
+) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
         expr.span = expr.span.apply_mark(cx.current_expansion.mark);
@@ -998,16 +1007,17 @@ pub fn expr_to_spanned_string<'a>(
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
-            _ => cx.struct_span_err(l.span, err_msg)
+            _ => Some(cx.struct_span_err(l.span, err_msg))
         },
-        _ => cx.struct_span_err(expr.span, err_msg)
+        ast::ExprKind::Err => None,
+        _ => Some(cx.struct_span_err(expr.span, err_msg))
     })
 }
 
 pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
                       -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
-        .map_err(|mut err| err.emit())
+        .map_err(|err| err.map(|mut err| err.emit()))
         .ok()
         .map(|s| s.node)
 }

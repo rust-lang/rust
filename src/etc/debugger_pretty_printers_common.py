@@ -1,13 +1,3 @@
-# Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-
 """
 This module provides an abstraction layer over common Rust pretty printing
 functionality needed by both GDB and LLDB.
@@ -352,8 +342,7 @@ def extract_length_ptr_and_cap_from_std_vec(vec_val):
 
     vec_ptr_val = buf.get_child_at_index(0)
     capacity = buf.get_child_at_index(1).as_integer()
-    unique_ptr_val = vec_ptr_val.get_child_at_index(0)
-    data_ptr = unique_ptr_val.get_child_at_index(0)
+    data_ptr = vec_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (length, data_ptr, capacity)
 
@@ -370,8 +359,7 @@ def extract_tail_head_ptr_and_cap_from_std_vecdeque(vec_val):
 
     vec_ptr_val = buf.get_child_at_index(0)
     capacity = buf.get_child_at_index(1).as_integer()
-    unique_ptr_val = vec_ptr_val.get_child_at_index(0)
-    data_ptr = unique_ptr_val.get_child_at_index(0)
+    data_ptr = vec_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (tail, head, data_ptr, capacity)
 

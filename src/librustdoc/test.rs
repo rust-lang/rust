@@ -1,14 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use errors;
+use errors::{self, FatalError};
 use errors::emitter::ColorConfig;
 use rustc_data_structures::sync::Lrc;
 use rustc_lint;
@@ -94,9 +84,14 @@ pub fn run(mut options: Options) -> isize {
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
-        let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
-                                                        &sess,
-                                                        &input));
+        let krate =
+            match driver::phase_1_parse_input(&driver::CompileController::basic(), &sess, &input) {
+                Ok(krate) => krate,
+                Err(mut e) => {
+                    e.emit();
+                    FatalError.raise();
+                }
+            };
         let driver::ExpansionResult { defs, mut hir_forest, .. } = {
             phase_2_configure_and_expand(
                 &sess,
@@ -283,7 +278,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
-        let out = Some(outdir.lock().unwrap().path().to_path_buf());
+        let out = Some(outdir.lock().unwrap().path().join("rust_out"));
 
         if no_run {
             control.after_analysis.stop = Compilation::Stop;
@@ -296,8 +291,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                 &cstore,
                 &None,
                 &input,
-                &out,
                 &None,
+                &out,
                 None,
                 &control
             )
@@ -821,7 +816,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
         let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
             self.map.node_to_pretty_string(ty.id)
         } else {
-            item.name.to_string()
+            item.ident.to_string()
         };
 
         self.visit_testable(name, &item.attrs, |this| {
@@ -842,7 +837,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
-        self.visit_testable(item.name.to_string(), &item.attrs, |this| {
+        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
@@ -851,7 +846,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
                      item_id: ast::NodeId) {
-        self.visit_testable(v.node.name.to_string(), &v.node.attrs, |this| {
+        self.visit_testable(v.node.ident.to_string(), &v.node.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }

@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This code is kind of an alternate way of doing subtyping,
 //! supertyping, and type equating, distinct from the `combine.rs`
 //! code but very similar in its effect and design. Eventually the two
@@ -382,13 +372,6 @@ where
         self.infcx.tcx
     }
 
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        // squashing should only be done in coherence, not NLL
-        assert_eq!(self.infcx.trait_object_mode(),
-                   relate::TraitObjectMode::NoSquash);
-        relate::TraitObjectMode::NoSquash
-    }
-
     fn tag(&self) -> &'static str {
         "nll::subtype"
     }
@@ -701,13 +684,6 @@ where
 {
     fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
         self.infcx.tcx
-    }
-
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        // squashing should only be done in coherence, not NLL
-        assert_eq!(self.infcx.trait_object_mode(),
-                   relate::TraitObjectMode::NoSquash);
-        relate::TraitObjectMode::NoSquash
     }
 
     fn tag(&self) -> &'static str {

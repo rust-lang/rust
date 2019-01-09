@@ -1,11 +1,11 @@
 error: return type should be `!`
-  --> $DIR/panic-handler-bad-signature-1.rs:21:6
+  --> $DIR/panic-handler-bad-signature-1.rs:11:6
    |
 LL | ) -> () //~ ERROR return type should be `!`
    |      ^^
 
 error: argument should be `&PanicInfo`
-  --> $DIR/panic-handler-bad-signature-1.rs:20:11
+  --> $DIR/panic-handler-bad-signature-1.rs:10:11
    |
 LL |     info: PanicInfo, //~ ERROR argument should be `&PanicInfo`
    |           ^^^^^^^^^

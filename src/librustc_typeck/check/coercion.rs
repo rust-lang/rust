@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # Type Coercion
 //!
 //! Under certain circumstances we will coerce from one type to another,
@@ -1169,7 +1159,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             // `expression_ty` will be unit).
             //
             // Another example is `break` with no argument expression.
-            assert!(expression_ty.is_unit());
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
                .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())
@@ -1210,13 +1199,14 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
+                let reason_label = "expected because of this statement";
                 let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
                         db = struct_span_err!(
                             fcx.tcx.sess, cause.span, E0069,
                             "`return;` in a function whose return type is not `()`");
-                        db.span_label(cause.span, "return type is not ()");
+                        db.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
@@ -1234,9 +1224,19 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             cause.span,
                             blk_id,
                         );
+                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                            if !sp.overlaps(cause.span) {
+                                db.span_label(*sp, reason_label);
+                            }
+                        }
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
+                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                            if !sp.overlaps(cause.span) {
+                                db.span_label(*sp, reason_label);
+                            }
+                        }
                     }
                 }
 

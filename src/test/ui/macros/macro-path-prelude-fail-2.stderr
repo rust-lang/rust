@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: partially resolved path in a macro
-  --> $DIR/macro-path-prelude-fail-2.rs:13:9
+  --> $DIR/macro-path-prelude-fail-2.rs:3:9
    |
 LL |         Result::Ok!(); //~ ERROR failed to resolve: partially resolved path in a macro
    |         ^^^^^^^^^^ partially resolved path in a macro

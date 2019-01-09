@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
-  --> $DIR/borrowck-ref-mut-of-imm.rs:14:12
+  --> $DIR/borrowck-ref-mut-of-imm.rs:4:12
    |
 LL | fn destructure(x: Option<isize>) -> isize {
    |                - help: consider changing this to be mutable: `mut x`

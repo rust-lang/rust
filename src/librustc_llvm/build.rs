@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 extern crate cc;
 extern crate build_helper;
 
@@ -142,6 +132,10 @@ fn main() {
             continue;
         }
 
+        if flag.starts_with("-flto") {
+            continue;
+        }
+
         // -Wdate-time is not supported by the netbsd cross compiler
         if is_crossed && target.contains("netbsd") && flag.contains("date-time") {
             continue;
@@ -242,6 +236,7 @@ fn main() {
     }
 
     let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
+    let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
         // llvm-config on OpenBSD doesn't mention stdlib=libc++
@@ -251,6 +246,8 @@ fn main() {
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
         "stdc++_pic"
+    } else if llvm_use_libcxx.is_some() {
+        "c++"
     } else {
         "stdc++"
     };

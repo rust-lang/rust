@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains `HashStable` implementations for various MIR data
 //! types in no particular order.
 
@@ -47,7 +37,6 @@ impl_stable_hash_for!(enum mir::BorrowKind {
 impl_stable_hash_for!(enum mir::UnsafetyViolationKind {
     General,
     GeneralAndConstFn,
-    GatedConstFnCall,
     ExternStatic(lint_node_id),
     BorrowPacked(lint_node_id),
 });
@@ -504,23 +493,6 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::ClosureOutlivesSubj
 }
 
 impl_stable_hash_for!(struct mir::interpret::GlobalId<'tcx> { instance, promoted });
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::UserTypeAnnotation<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            mir::UserTypeAnnotation::Ty(ref ty) => {
-                ty.hash_stable(hcx, hasher);
-            }
-            mir::UserTypeAnnotation::TypeOf(ref def_id, ref substs) => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
 
 impl_stable_hash_for!(struct mir::UserTypeProjection<'tcx> { base, projs });
 impl_stable_hash_for!(struct mir::UserTypeProjections<'tcx> { contents });

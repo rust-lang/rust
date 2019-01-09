@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-7813.rs:12:13
+  --> $DIR/issue-7813.rs:2:13
    |
 LL |     let v = &[]; //~ ERROR type annotations needed
    |         -   ^^^ cannot infer type

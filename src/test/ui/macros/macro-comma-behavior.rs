@@ -1,22 +1,16 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Companion test to the similarly-named file in run-pass.
 
 // compile-flags: -C debug_assertions=yes
 // revisions: std core
 
+#![feature(lang_items)]
 #![cfg_attr(core, no_std)]
 
 #[cfg(std)] use std::fmt;
 #[cfg(core)] use core::fmt;
+#[cfg(core)] #[lang = "eh_personality"] fn eh_personality() {}
+#[cfg(core)] #[lang = "eh_unwind_resume"] fn eh_unwind_resume() {}
+#[cfg(core)] #[lang = "panic_impl"] fn panic_impl(panic: &core::panic::PanicInfo) -> ! { loop {} }
 
 // (see documentation of the similarly-named test in run-pass)
 fn to_format_or_not_to_format() {

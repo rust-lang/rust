@@ -1,35 +1,35 @@
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:14:1
+  --> $DIR/issue-43106-gating-of-derive.rs:4:1
    |
 LL | #![derive(Debug)]
    | ^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug)]`
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:17:1
+  --> $DIR/issue-43106-gating-of-derive.rs:7:1
    |
 LL | #[derive(Debug)]
    | ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:20:17
+  --> $DIR/issue-43106-gating-of-derive.rs:10:17
    |
 LL |     mod inner { #![derive(Debug)] }
    |                 ^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug)]`
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:23:5
+  --> $DIR/issue-43106-gating-of-derive.rs:13:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:36:5
+  --> $DIR/issue-43106-gating-of-derive.rs:26:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:40:5
+  --> $DIR/issue-43106-gating-of-derive.rs:30:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^

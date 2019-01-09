@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Constraint construction and representation
 //!
 //! The second pass over the AST determines the set of constraints.
@@ -311,11 +301,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(current, r, contra);
 
-                let poly_trait_ref = data
-                    .principal()
-                    .with_self_ty(self.tcx(), self.tcx().types.err);
-                self.add_constraints_from_trait_ref(
-                    current, *poly_trait_ref.skip_binder(), variance);
+                if let Some(poly_trait_ref) = data.principal() {
+                    let poly_trait_ref =
+                        poly_trait_ref.with_self_ty(self.tcx(), self.tcx().types.err);
+                    self.add_constraints_from_trait_ref(
+                        current, *poly_trait_ref.skip_binder(), variance);
+                }
 
                 for projection in data.projection_bounds() {
                     self.add_constraints_from_ty(

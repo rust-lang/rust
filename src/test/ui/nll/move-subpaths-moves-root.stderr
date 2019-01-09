@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-subpaths-moves-root.rs:16:10
+  --> $DIR/move-subpaths-moves-root.rs:6:10
    |
 LL |     drop(x.0);
    |          --- value moved here

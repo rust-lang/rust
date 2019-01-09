@@ -1,5 +1,5 @@
 error[E0599]: no method named `deref` found for type `std::result::Result<{integer}, _>` in the current scope
-  --> $DIR/result-deref.rs:14:27
+  --> $DIR/result-deref.rs:4:27
    |
 LL |     let _result = &Ok(42).deref();
    |                           ^^^^^

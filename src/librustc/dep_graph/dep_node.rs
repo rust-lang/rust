@@ -1,14 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //! This module defines the `DepNode` type which the compiler uses to represent
 //! nodes in the dependency graph. A `DepNode` consists of a `DepKind` (which
 //! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
@@ -434,17 +423,6 @@ impl DefId {
     }
 }
 
-impl DepKind {
-    #[inline]
-    pub fn fingerprint_needed_for_crate_hash(self) -> bool {
-        match self {
-            DepKind::HirBody |
-            DepKind::Krate => true,
-            _ => false,
-        }
-    }
-}
-
 define_dep_nodes!( <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
@@ -514,6 +492,7 @@ define_dep_nodes!( <'tcx>
     [] AdtDefOfItem(DefId),
     [] ImplTraitRef(DefId),
     [] ImplPolarity(DefId),
+    [] Issue33140SelfTy(DefId),
     [] FnSignature(DefId),
     [] CoerceUnsizedInfo(DefId),
 
@@ -659,6 +638,7 @@ define_dep_nodes!( <'tcx>
     [] ImpliedOutlivesBounds(CanonicalTyGoal<'tcx>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
+    [] EvaluateGoal(traits::ChalkCanonicalGoal<'tcx>),
     [] TypeOpAscribeUserType(CanonicalTypeOpAscribeUserTypeGoal<'tcx>),
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
     [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),

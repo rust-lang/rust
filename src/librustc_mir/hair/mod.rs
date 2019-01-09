@@ -1,24 +1,15 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The MIR is built from some high-level abstract IR
 //! (HAIR). This section defines the HAIR along with a trait for
 //! accessing it. The intention is to allow MIR construction to be
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::{BinOp, BorrowKind, UserTypeAnnotation, Field, UnOp};
+use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc::hir::def_id::DefId;
+use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const};
+use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserTypeAnnotation};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use syntax::ast;
@@ -30,7 +21,7 @@ mod constant;
 
 pub mod pattern;
 pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternRange, FieldPattern};
-pub(crate) use self::pattern::{PatternTypeProjection, PatternTypeProjections};
+pub(crate) use self::pattern::PatternTypeProjection;
 
 mod util;
 
@@ -244,7 +235,6 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: Region<'tcx>,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },
@@ -275,7 +265,7 @@ pub enum ExprKind<'tcx> {
 
         /// Optional user-given substs: for something like `let x =
         /// Bar::<T> { ... }`.
-        user_ty: Option<UserTypeAnnotation<'tcx>>,
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
 
         fields: Vec<FieldExprRef<'tcx>>,
         base: Option<FruInfo<'tcx>>
@@ -283,12 +273,12 @@ pub enum ExprKind<'tcx> {
     PlaceTypeAscription {
         source: ExprRef<'tcx>,
         /// Type that the user gave to this expression
-        user_ty: Option<UserTypeAnnotation<'tcx>>,
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
     },
     ValueTypeAscription {
         source: ExprRef<'tcx>,
         /// Type that the user gave to this expression
-        user_ty: Option<UserTypeAnnotation<'tcx>>,
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
     },
     Closure {
         closure_id: DefId,
@@ -297,8 +287,8 @@ pub enum ExprKind<'tcx> {
         movability: Option<hir::GeneratorMovability>,
     },
     Literal {
-        literal: &'tcx Const<'tcx>,
-        user_ty: Option<UserTypeAnnotation<'tcx>>,
+        literal: &'tcx LazyConst<'tcx>,
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsm,

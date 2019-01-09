@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:19:34
+  --> $DIR/region-borrow-params-issue-29793-small.rs:9:34
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------        ^ borrowed value does not live long enough
@@ -12,7 +12,7 @@ LL |     };
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:19:45
+  --> $DIR/region-borrow-params-issue-29793-small.rs:9:45
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------                   ^ borrowed value does not live long enough
@@ -25,7 +25,7 @@ LL |     };
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:34:34
+  --> $DIR/region-borrow-params-issue-29793-small.rs:24:34
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------        ^ borrowed value does not live long enough
@@ -38,7 +38,7 @@ LL |     };
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:34:45
+  --> $DIR/region-borrow-params-issue-29793-small.rs:24:45
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------                   ^ borrowed value does not live long enough
@@ -51,7 +51,7 @@ LL |     };
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:65:17
+  --> $DIR/region-borrow-params-issue-29793-small.rs:55:17
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^        - `x` is borrowed here
@@ -63,7 +63,7 @@ LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors f
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:65:17
+  --> $DIR/region-borrow-params-issue-29793-small.rs:55:17
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^                   - `y` is borrowed here
@@ -75,7 +75,7 @@ LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors f
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:76:17
+  --> $DIR/region-borrow-params-issue-29793-small.rs:66:17
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^        - `x` is borrowed here
@@ -87,7 +87,7 @@ LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors f
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:76:17
+  --> $DIR/region-borrow-params-issue-29793-small.rs:66:17
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^                   - `y` is borrowed here
@@ -99,7 +99,7 @@ LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors f
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:100:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:90:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^        - `x` is borrowed here
@@ -111,7 +111,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:100:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:90:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^                   - `y` is borrowed here
@@ -123,7 +123,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:114:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:104:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^        - `x` is borrowed here
@@ -135,7 +135,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:114:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:104:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^                   - `y` is borrowed here
@@ -147,7 +147,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:142:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:132:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^        - `x` is borrowed here
@@ -159,7 +159,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:142:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:132:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^                   - `y` is borrowed here
@@ -171,7 +171,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:157:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:147:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^        - `x` is borrowed here
@@ -183,7 +183,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:157:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:147:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^                   - `y` is borrowed here
@@ -195,7 +195,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:185:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:175:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^        - `x` is borrowed here
@@ -207,7 +207,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:185:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:175:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^                   - `y` is borrowed here
@@ -219,7 +219,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:199:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:189:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^        - `x` is borrowed here
@@ -231,7 +231,7 @@ LL |             let f = move |t: bool| if t { x } else { y }; // (separate erro
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-small.rs:199:21
+  --> $DIR/region-borrow-params-issue-29793-small.rs:189:21
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^                   - `y` is borrowed here

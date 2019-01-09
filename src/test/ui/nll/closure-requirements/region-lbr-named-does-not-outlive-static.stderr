@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/region-lbr-named-does-not-outlive-static.rs:19:5
+  --> $DIR/region-lbr-named-does-not-outlive-static.rs:9:5
    |
 LL | fn foo<'a>(x: &'a u32) -> &'static u32 {
    |        -- lifetime `'a` defined here

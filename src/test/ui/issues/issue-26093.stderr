@@ -1,5 +1,5 @@
 error[E0070]: invalid left-hand side expression
-  --> $DIR/issue-26093.rs:13:9
+  --> $DIR/issue-26093.rs:3:9
    |
 LL |         $thing = 42;
    |         ^^^^^^^^^^^ left-hand of expression not valid

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*v` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow-if.rs:39:16
+  --> $DIR/borrowck-lend-flow-if.rs:29:16
    |
 LL |         _w = &v;
    |              -- immutable borrow occurs here

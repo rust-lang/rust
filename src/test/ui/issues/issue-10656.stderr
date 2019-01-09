@@ -1,12 +1,12 @@
 error: missing documentation for crate
-  --> $DIR/issue-10656.rs:11:1
+  --> $DIR/issue-10656.rs:1:1
    |
 LL | / #![deny(missing_docs)]
 LL | | #![crate_type="lib"]
    | |____________________^
    |
 note: lint level defined here
-  --> $DIR/issue-10656.rs:11:9
+  --> $DIR/issue-10656.rs:1:9
    |
 LL | #![deny(missing_docs)]
    |         ^^^^^^^^^^^^

@@ -1,7 +1,5 @@
 // Parse `cfg_attr` with varying numbers of attributes and trailing commas
 
-#![feature(cfg_attr_multi)]
-
 // Completely empty `cfg_attr` input
 #[cfg_attr()] //~ error: expected identifier, found `)`
 struct NoConfigurationPredicate;

@@ -1,5 +1,5 @@
 error[E0428]: the name `a` is defined multiple times
-  --> $DIR/issue-3099-b.rs:13:1
+  --> $DIR/issue-3099-b.rs:3:1
    |
 LL | pub mod a {}
    | --------- previous definition of the module `a` here

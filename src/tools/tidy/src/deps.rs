@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Check license of third-party deps by inspecting vendor
 
 use std::collections::{BTreeSet, HashSet, HashMap};
@@ -116,7 +106,9 @@ const WHITELIST: &[Crate] = &[
     Crate("parking_lot_core"),
     Crate("pkg-config"),
     Crate("polonius-engine"),
+    Crate("proc-macro2"),
     Crate("quick-error"),
+    Crate("quote"),
     Crate("rand"),
     Crate("rand_chacha"),
     Crate("rand_core"),
@@ -139,8 +131,10 @@ const WHITELIST: &[Crate] = &[
     Crate("semver"),
     Crate("semver-parser"),
     Crate("serde"),
+    Crate("serde_derive"),
     Crate("smallvec"),
     Crate("stable_deref_trait"),
+    Crate("syn"),
     Crate("tempfile"),
     Crate("termcolor"),
     Crate("terminon"),
@@ -148,6 +142,7 @@ const WHITELIST: &[Crate] = &[
     Crate("thread_local"),
     Crate("ucd-util"),
     Crate("unicode-width"),
+    Crate("unicode-xid"),
     Crate("unreachable"),
     Crate("utf8-ranges"),
     Crate("vcpkg"),

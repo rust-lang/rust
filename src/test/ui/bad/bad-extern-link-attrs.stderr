@@ -1,17 +1,17 @@
 error[E0459]: #[link(...)] specified without `name = "foo"`
-  --> $DIR/bad-extern-link-attrs.rs:11:1
+  --> $DIR/bad-extern-link-attrs.rs:1:1
    |
 LL | #[link()] //~ ERROR: specified without `name =
    | ^^^^^^^^^ missing `name` argument
 
 error[E0454]: #[link(name = "")] given with empty name
-  --> $DIR/bad-extern-link-attrs.rs:12:1
+  --> $DIR/bad-extern-link-attrs.rs:2:1
    |
 LL | #[link(name = "")] //~ ERROR: with empty name
    | ^^^^^^^^^^^^^^^^^^ empty name given
 
 error[E0458]: unknown kind: `bar`
-  --> $DIR/bad-extern-link-attrs.rs:14:1
+  --> $DIR/bad-extern-link-attrs.rs:4:1
    |
 LL | #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
    | ^^^^^^^^^^^^^^^^^^^^^------------^^

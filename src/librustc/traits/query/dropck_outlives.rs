@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use infer::at::At;
 use infer::InferOk;
 use infer::canonical::OriginalQueryValues;
@@ -55,8 +45,8 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         let c_ty = self.infcx.canonicalize_query(&self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
-        match &gcx.dropck_outlives(c_ty) {
-            Ok(result) if result.is_proven() => {
+        if let Ok(result) = &gcx.dropck_outlives(c_ty) {
+            if result.is_proven() {
                 if let Ok(InferOk { value, obligations }) =
                     self.infcx.instantiate_query_response_and_region_obligations(
                     self.cause,
@@ -72,8 +62,6 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
                     };
                 }
             }
-
-            _ => { /* fallthrough to error-handling code below */ }
         }
 
         // Errors and ambiuity in dropck occur in two cases:
@@ -82,10 +70,11 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         // Either of these should have created an error before.
         tcx.sess
             .delay_span_bug(span, "dtorck encountered internal error");
-        return InferOk {
+
+        InferOk {
             value: vec![],
             obligations: vec![],
-        };
+        }
     }
 }
 
@@ -102,7 +91,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
         span: Span,
         ty: Ty<'tcx>,
     ) {
-        for overflow_ty in self.overflows.iter().take(1) {
+        if let Some(overflow_ty) = self.overflows.iter().next() {
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
@@ -228,7 +217,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *any* of those are trivial.
-        ty::Tuple(ref tys) => tys.iter().cloned().all(|t| trivial_dropck_outlives(tcx, t)),
+        ty::Tuple(ref tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
         ty::Closure(def_id, ref substs) => substs
             .upvar_tys(def_id, tcx)
             .all(|t| trivial_dropck_outlives(tcx, t)),

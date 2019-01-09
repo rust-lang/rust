@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/or-pattern-mismatch.rs:3:68
+   |
+LL | fn main() { match Blah::A(1, 1, 2) { Blah::A(_, x, y) | Blah::B(x, y) => { } } }
+   |                                                                    ^ expected usize, found isize
+   |
+   = note: expected type `usize`
+              found type `isize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

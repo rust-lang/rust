@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
 use ty::relate::{self, Relate, TypeRelation, RelateResult};
@@ -29,24 +19,17 @@ use ty::relate::{self, Relate, TypeRelation, RelateResult};
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
 pub struct Match<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    trait_object_mode: relate::TraitObjectMode
+    tcx: TyCtxt<'a, 'gcx, 'tcx>
 }
 
 impl<'a, 'gcx, 'tcx> Match<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               trait_object_mode: relate::TraitObjectMode)
-               -> Match<'a, 'gcx, 'tcx> {
-        Match { tcx, trait_object_mode }
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Match<'a, 'gcx, 'tcx> {
+        Match { tcx }
     }
 }
 
 impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Match<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Match" }
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        self.trait_object_mode
-    }
-
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.tcx }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 

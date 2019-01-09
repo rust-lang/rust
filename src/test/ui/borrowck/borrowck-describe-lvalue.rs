@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
@@ -270,7 +260,7 @@ fn main() {
         let x = &mut v;
         v[0].y;
         //[ast]~^ ERROR cannot use `v[..].y` because it was mutably borrowed
-        //[mir]~^^ ERROR cannot use `v[..].y` because it was mutably borrowed
+        //[mir]~^^ ERROR cannot use `v[_].y` because it was mutably borrowed
         //[mir]~| ERROR cannot use `*v` because it was mutably borrowed
         drop(x);
     }
@@ -299,7 +289,6 @@ fn main() {
     }
     // Field from upvar nested
     {
-        // FIXME(#49824) -- the free region error below should probably not be there
         let mut x = 0;
            || {
                || { //[mir]~ ERROR captured variable cannot escape `FnMut` closure body

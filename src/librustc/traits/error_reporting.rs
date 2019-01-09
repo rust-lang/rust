@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::{
     FulfillmentError,
     FulfillmentErrorCode,
@@ -428,9 +418,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     Some(format!("[{}]", self.tcx.type_of(def.did).to_string())),
                 ));
                 let tcx = self.tcx;
-                if let Some(len) = len.val.try_to_scalar().and_then(|scalar| {
-                    scalar.to_usize(&tcx).ok()
-                }) {
+                if let Some(len) = len.assert_usize(tcx) {
                     flags.push((
                         "_Self".to_owned(),
                         Some(format!("[{}; {}]", self.tcx.type_of(def.did).to_string(), len)),
@@ -459,7 +447,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let simp = fast_reject::simplify_type(self.tcx,
                                               trait_ref.skip_binder().self_ty(),
-                                              true,);
+                                              true);
         let all_impls = self.tcx.all_impls(trait_ref.def_id());
 
         match simp {
@@ -738,12 +726,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::RegionOutlives(ref predicate) => {
-                        let predicate = self.resolve_type_vars_if_possible(predicate);
-                        let err = self.region_outlives_predicate(&obligation.cause,
-                                                                 &predicate).err().unwrap();
-                        struct_span_err!(self.tcx.sess, span, E0279,
-                            "the requirement `{}` is not satisfied (`{}`)",
-                            predicate, err)
+                        // These errors should show up as region
+                        // inference failures.
+                        panic!("region outlives {:?} failed", predicate);
                     }
 
                     ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
@@ -806,12 +791,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::WellFormed(ty) => {
-                        // WF predicates cannot themselves make
-                        // errors. They can only block due to
-                        // ambiguity; otherwise, they always
-                        // degenerate into other obligations
-                        // (which may fail).
-                        span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                        if !self.tcx.sess.opts.debugging_opts.chalk {
+                            // WF predicates cannot themselves make
+                            // errors. They can only block due to
+                            // ambiguity; otherwise, they always
+                            // degenerate into other obligations
+                            // (which may fail).
+                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                        } else {
+                            // FIXME: we'll need a better message which takes into account
+                            // which bounds actually failed to hold.
+                            self.tcx.sess.struct_span_err(
+                                span,
+                                &format!("the type `{}` is not well-formed (chalk)", ty)
+                            )
+                        }
                     }
 
                     ty::Predicate::ConstEvaluatable(..) => {

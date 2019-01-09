@@ -25,7 +25,6 @@ members = [
   "src/tools/rustdoc-themes",
 ]
 exclude = [
-  "src/tools/rls/test_data",
   "build",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
@@ -71,4 +70,3 @@ rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
-rustc_tools_util = { path = "src/tools/clippy/rustc_tools_util" }

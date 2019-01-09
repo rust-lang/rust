@@ -1,53 +1,53 @@
 error: ABI spec with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:15:5
+  --> $DIR/bad-lit-suffixes.rs:5:5
    |
 LL |     "C"suffix //~ ERROR ABI spec with a suffix is invalid
    |     ^^^^^^^^^
 
 error: ABI spec with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:19:5
+  --> $DIR/bad-lit-suffixes.rs:9:5
    |
 LL |     "C"suffix //~ ERROR ABI spec with a suffix is invalid
    |     ^^^^^^^^^
 
 error: string literal with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:23:5
+  --> $DIR/bad-lit-suffixes.rs:13:5
    |
 LL |     ""suffix; //~ ERROR string literal with a suffix is invalid
    |     ^^^^^^^^
 
 error: byte string literal with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:24:5
+  --> $DIR/bad-lit-suffixes.rs:14:5
    |
 LL |     b""suffix; //~ ERROR byte string literal with a suffix is invalid
    |     ^^^^^^^^^
 
 error: string literal with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:25:5
+  --> $DIR/bad-lit-suffixes.rs:15:5
    |
 LL |     r#""#suffix; //~ ERROR string literal with a suffix is invalid
    |     ^^^^^^^^^^^
 
 error: byte string literal with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:26:5
+  --> $DIR/bad-lit-suffixes.rs:16:5
    |
 LL |     br#""#suffix; //~ ERROR byte string literal with a suffix is invalid
    |     ^^^^^^^^^^^^
 
 error: char literal with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:27:5
+  --> $DIR/bad-lit-suffixes.rs:17:5
    |
 LL |     'a'suffix; //~ ERROR char literal with a suffix is invalid
    |     ^^^^^^^^^
 
 error: byte literal with a suffix is invalid
-  --> $DIR/bad-lit-suffixes.rs:28:5
+  --> $DIR/bad-lit-suffixes.rs:18:5
    |
 LL |     b'a'suffix; //~ ERROR byte literal with a suffix is invalid
    |     ^^^^^^^^^^
 
 error: invalid width `1024` for integer literal
-  --> $DIR/bad-lit-suffixes.rs:30:5
+  --> $DIR/bad-lit-suffixes.rs:20:5
    |
 LL |     1234u1024; //~ ERROR invalid width `1024` for integer literal
    |     ^^^^^^^^^
@@ -55,7 +55,7 @@ LL |     1234u1024; //~ ERROR invalid width `1024` for integer literal
    = help: valid widths are 8, 16, 32, 64 and 128
 
 error: invalid width `1024` for integer literal
-  --> $DIR/bad-lit-suffixes.rs:31:5
+  --> $DIR/bad-lit-suffixes.rs:21:5
    |
 LL |     1234i1024; //~ ERROR invalid width `1024` for integer literal
    |     ^^^^^^^^^
@@ -63,7 +63,7 @@ LL |     1234i1024; //~ ERROR invalid width `1024` for integer literal
    = help: valid widths are 8, 16, 32, 64 and 128
 
 error: invalid width `1024` for float literal
-  --> $DIR/bad-lit-suffixes.rs:32:5
+  --> $DIR/bad-lit-suffixes.rs:22:5
    |
 LL |     1234f1024; //~ ERROR invalid width `1024` for float literal
    |     ^^^^^^^^^
@@ -71,7 +71,7 @@ LL |     1234f1024; //~ ERROR invalid width `1024` for float literal
    = help: valid widths are 32 and 64
 
 error: invalid width `1024` for float literal
-  --> $DIR/bad-lit-suffixes.rs:33:5
+  --> $DIR/bad-lit-suffixes.rs:23:5
    |
 LL |     1234.5f1024; //~ ERROR invalid width `1024` for float literal
    |     ^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |     1234.5f1024; //~ ERROR invalid width `1024` for float literal
    = help: valid widths are 32 and 64
 
 error: invalid suffix `suffix` for numeric literal
-  --> $DIR/bad-lit-suffixes.rs:35:5
+  --> $DIR/bad-lit-suffixes.rs:25:5
    |
 LL |     1234suffix; //~ ERROR invalid suffix `suffix` for numeric literal
    |     ^^^^^^^^^^
@@ -87,7 +87,7 @@ LL |     1234suffix; //~ ERROR invalid suffix `suffix` for numeric literal
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
 error: invalid suffix `suffix` for numeric literal
-  --> $DIR/bad-lit-suffixes.rs:36:5
+  --> $DIR/bad-lit-suffixes.rs:26:5
    |
 LL |     0b101suffix; //~ ERROR invalid suffix `suffix` for numeric literal
    |     ^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |     0b101suffix; //~ ERROR invalid suffix `suffix` for numeric literal
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
 error: invalid suffix `suffix` for float literal
-  --> $DIR/bad-lit-suffixes.rs:37:5
+  --> $DIR/bad-lit-suffixes.rs:27:5
    |
 LL |     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
    |     ^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
    = help: valid suffixes are `f32` and `f64`
 
 error: invalid suffix `suffix` for float literal
-  --> $DIR/bad-lit-suffixes.rs:38:5
+  --> $DIR/bad-lit-suffixes.rs:28:5
    |
 LL |     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
    |     ^^^^^^^^^^^^

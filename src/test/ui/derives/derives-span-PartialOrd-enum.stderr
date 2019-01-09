@@ -1,5 +1,5 @@
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-enum.rs:19:6
+  --> $DIR/derives-span-PartialOrd-enum.rs:9:6
    |
 LL |      Error //~ ERROR
    |      ^^^^^ no implementation for `Error < Error` and `Error > Error`

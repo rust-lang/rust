@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 struct X { x: (), }
 
 impl Drop for X {
@@ -16,13 +6,13 @@ impl Drop for X {
     }
 }
 
-enum double_option<T,U> { some2(T,U), none2 }
+enum DoubleOption<T,U> { Some2(T,U), None2 }
 
 fn main() {
-    let x = double_option::some2(X { x: () }, X { x: () });
+    let x = DoubleOption::Some2(X { x: () }, X { x: () });
     match x {
-        double_option::some2(ref _y, _z) => { },
+        DoubleOption::Some2(ref _y, _z) => { },
         //~^ ERROR cannot bind by-move and by-ref in the same pattern
-        double_option::none2 => panic!()
+        DoubleOption::None2 => panic!()
     }
 }

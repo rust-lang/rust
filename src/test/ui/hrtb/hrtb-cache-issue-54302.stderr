@@ -1,0 +1,11 @@
+error: implementation of `Deserialize` is not general enough
+  --> $DIR/hrtb-cache-issue-54302.rs:19:5
+   |
+LL |     assert_deserialize_owned::<&'static str>(); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `&'static str` must implement `Deserialize<'0>` for any lifetime `'0`
+   = note: but `&str` only implements `Deserialize<'1>` for some lifetime `'1`
+
+error: aborting due to previous error
+

@@ -1,17 +1,17 @@
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:45:13
+  --> $DIR/generate-mod.rs:35:13
    |
 LL |     genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside` in this scope
    |             ^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:45:26
+  --> $DIR/generate-mod.rs:35:26
    |
 LL |     genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside` in this scope
    |                          ^^^^^ not found in this scope
 
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:29:18
+  --> $DIR/generate-mod.rs:19:18
    |
 LL |         type A = FromOutside; //~ ERROR cannot find type `FromOutside` in this scope
    |                  ^^^^^^^^^^^ not found in this scope
@@ -20,7 +20,7 @@ LL |     genmod_transparent!();
    |     ---------------------- in this macro invocation
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:30:22
+  --> $DIR/generate-mod.rs:20:22
    |
 LL |         type Inner = Outer; //~ ERROR cannot find type `Outer` in this scope
    |                      ^^^^^ not found in this scope
@@ -29,7 +29,7 @@ LL |     genmod_transparent!();
    |     ---------------------- in this macro invocation
 
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:38:18
+  --> $DIR/generate-mod.rs:28:18
    |
 LL |         type A = FromOutside; //~ ERROR cannot find type `FromOutside` in this scope
    |                  ^^^^^^^^^^^ not found in this scope
@@ -38,7 +38,7 @@ LL |     genmod_legacy!();
    |     ----------------- in this macro invocation
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:39:22
+  --> $DIR/generate-mod.rs:29:22
    |
 LL |         type Inner = Outer; //~ ERROR cannot find type `Outer` in this scope
    |                      ^^^^^ not found in this scope

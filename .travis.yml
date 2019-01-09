@@ -1,6 +1,6 @@
 language: shell
 sudo: required
-dist: trusty
+dist: xenial
 services:
   - docker
 addons:
@@ -247,6 +247,15 @@ before_script:
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
           # Enable core dump on Linux.
           sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern';
+      fi
+  - >
+      if [ "$IMAGE" = mingw-check ]; then
+        # verify the publish_toolstate script works.
+        git clone --depth=1 https://github.com/rust-lang-nursery/rust-toolstate.git;
+        cd rust-toolstate;
+        python2.7 "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "" "";
+        cd ..;
+        rm -rf rust-toolstate;
       fi
 
 # Log time information from this machine and an external machine for insight into possible

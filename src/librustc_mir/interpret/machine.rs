@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains everything needed to instantiate an interpreter.
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
@@ -86,7 +76,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type MemoryExtra: Default;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra>;
+    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra> + 'static;
 
     /// Memory's allocation map
     type MemoryMap:
@@ -185,7 +175,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
+    ) -> Pointer<Self::PointerTag>;
 
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the chance to adjust the tag.  It should not change anything else!

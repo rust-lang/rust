@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub use self::Variance::*;
 pub use self::AssociatedItemContainer::*;
 pub use self::BorrowKind::*;
@@ -24,7 +14,6 @@ use ich::Fingerprint;
 use ich::StableHashingContext;
 use infer::canonical::Canonical;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use mir::interpret::{GlobalId, ErrorHandled};
@@ -69,7 +58,7 @@ pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TyKind, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const, LazyConst};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
@@ -83,6 +72,10 @@ pub use self::binding::BindingMode::*;
 
 pub use self::context::{TyCtxt, FreeRegionInfo, GlobalArenas, AllArenas, tls, keep_local};
 pub use self::context::{Lift, TypeckTables, CtxtInterners};
+pub use self::context::{
+    UserTypeAnnotationIndex, UserTypeAnnotation, CanonicalUserTypeAnnotation,
+    CanonicalUserTypeAnnotations,
+};
 
 pub use self::instance::{Instance, InstanceDef};
 
@@ -129,8 +122,6 @@ mod sty;
 /// *on-demand* infrastructure.
 #[derive(Clone)]
 pub struct CrateAnalysis {
-    pub access_levels: Lrc<AccessLevels>,
-    pub name: String,
     pub glob_map: Option<hir::GlobMap>,
 }
 
@@ -1627,6 +1618,11 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
+
+    /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
+    /// register that `def_id` (useful for transitioning to the chalk trait
+    /// solver).
+    pub def_id: Option<DefId>,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1636,7 +1632,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// type-checking.
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing)
+        Self::new(List::empty(), Reveal::UserFacing, None)
     }
 
     /// Construct a trait environment with no where clauses in scope
@@ -1648,15 +1644,17 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All)
+        Self::new(List::empty(), Reveal::All, None)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
-               reveal: Reveal)
-               -> Self {
-        ty::ParamEnv { caller_bounds, reveal }
+    pub fn new(
+        caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
+        reveal: Reveal,
+        def_id: Option<DefId>
+    ) -> Self {
+        ty::ParamEnv { caller_bounds, reveal, def_id }
     }
 
     /// Returns a new parameter environment with the same clauses, but
@@ -1783,7 +1781,7 @@ pub struct VariantDef {
     /// The variant's `DefId`. If this is a tuple-like struct,
     /// this is the `DefId` of the struct's ctor.
     pub did: DefId,
-    pub name: Name, // struct's name if this is a struct
+    pub ident: Ident, // struct's name if this is a struct
     pub discr: VariantDiscr,
     pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
@@ -1807,7 +1805,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     /// remove this hack and use the constructor DefId everywhere.
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                did: DefId,
-               name: Name,
+               ident: Ident,
                discr: VariantDiscr,
                fields: Vec<FieldDef>,
                adt_kind: AdtKind,
@@ -1815,7 +1813,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
                attribute_def_id: DefId)
                -> Self
     {
-        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, name, discr,
+        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, ident, discr,
                fields, adt_kind, ctor_kind, attribute_def_id);
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
         if adt_kind == AdtKind::Struct && tcx.has_attr(attribute_def_id, "non_exhaustive") {
@@ -1824,7 +1822,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         }
         VariantDef {
             did,
-            name,
+            ident,
             discr,
             fields,
             ctor_kind,
@@ -1840,7 +1838,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
 
 impl_stable_hash_for!(struct VariantDef {
     did,
-    name,
+    ident -> (ident.name),
     discr,
     fields,
     ctor_kind,
@@ -1981,8 +1979,6 @@ impl_stable_hash_for!(struct ReprFlags {
     bits
 });
 
-
-
 /// Represents the repr options provided by the user,
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
 pub struct ReprOptions {
@@ -2061,9 +2057,10 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
-    /// optimizations, such as with repr(C) or repr(packed(1)).
+    /// optimizations, such as with repr(C), repr(packed(1)), or repr(<int>).
     pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
-        !(self.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty() || (self.pack == 1)
+        self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.pack == 1 ||
+            self.int.is_some()
     }
 
     /// Returns true if this `#[repr()]` should inhibit union abi optimisations
@@ -2637,6 +2634,45 @@ impl<'gcx> ::std::ops::Deref for Attributes<'gcx> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum ImplOverlapKind {
+    /// These impls are always allowed to overlap.
+    Permitted,
+    /// These impls are allowed to overlap, but that raises
+    /// an issue #33140 future-compatibility warning.
+    ///
+    /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
+    /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
+    ///
+    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
+    /// that difference, making what reduces to the following set of impls:
+    ///
+    /// ```
+    /// trait Trait {}
+    /// impl Trait for dyn Send + Sync {}
+    /// impl Trait for dyn Sync + Send {}
+    /// ```
+    ///
+    /// Obviously, once we made these types be identical, that code causes a coherence
+    /// error and a fairly big headache for us. However, luckily for us, the trait
+    /// `Trait` used in this case is basically a marker trait, and therefore having
+    /// overlapping impls for it is sound.
+    ///
+    /// To handle this, we basically regard the trait as a marker trait, with an additional
+    /// future-compatibility warning. To avoid accidentally "stabilizing" this feature,
+    /// it has the following restrictions:
+    ///
+    /// 1. The trait must indeed be a marker-like trait (i.e., no items), and must be
+    /// positive impls.
+    /// 2. The trait-ref of both impls must be equal.
+    /// 3. The trait-ref of both impls must be a trait object type consisting only of
+    /// marker traits.
+    /// 4. Neither of the impls can have any where-clauses.
+    ///
+    /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
+    Issue33140
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'gcx TypeckTables<'gcx> {
         self.typeck_tables_of(self.hir().body_owner_def_id(body))
@@ -2788,8 +2824,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns `true` if the impls are the same polarity and the trait either
     /// has no items or is annotated #[marker] and prevents item overrides.
-    pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId) -> bool {
-        if self.features().overlapping_marker_traits {
+    pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId)
+                                        -> Option<ImplOverlapKind>
+    {
+        let is_legit = if self.features().overlapping_marker_traits {
             let trait1_is_empty = self.impl_trait_ref(def_id1)
                 .map_or(false, |trait_ref| {
                     self.associated_item_def_ids(trait_ref.def_id).is_empty()
@@ -2801,7 +2839,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
                 && trait1_is_empty
                 && trait2_is_empty
-        } else if self.features().marker_trait_attr {
+        } else {
             let is_marker_impl = |def_id: DefId| -> bool {
                 let trait_ref = self.impl_trait_ref(def_id);
                 trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
@@ -2809,8 +2847,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
                 && is_marker_impl(def_id1)
                 && is_marker_impl(def_id2)
+        };
+
+        if is_legit {
+            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted)",
+                  def_id1, def_id2);
+            Some(ImplOverlapKind::Permitted)
         } else {
-            false
+            if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
+                if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
+                    if self_ty1 == self_ty2 {
+                        debug!("impls_are_allowed_to_overlap({:?}, {:?}) - issue #33140 HACK",
+                               def_id1, def_id2);
+                        return Some(ImplOverlapKind::Issue33140);
+                    } else {
+                        debug!("impls_are_allowed_to_overlap({:?}, {:?}) - found {:?} != {:?}",
+                              def_id1, def_id2, self_ty1, self_ty2);
+                    }
+                }
+            }
+
+            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = None",
+                  def_id1, def_id2);
+            None
         }
     }
 
@@ -3157,8 +3216,11 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                             traits::Reveal::UserFacing);
+    let unnormalized_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        traits::Reveal::UserFacing,
+        if tcx.sess.opts.debugging_opts.chalk { Some(def_id) } else { None }
+    );
 
     let body_id = tcx.hir().as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.node_id)
@@ -3200,6 +3262,59 @@ fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+/// If `def_id` is an issue 33140 hack impl, return its self type. Otherwise
+/// return None.
+///
+/// See ImplOverlapKind::Issue33140 for more details.
+fn issue33140_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                def_id: DefId)
+                                -> Option<Ty<'tcx>>
+{
+    debug!("issue33140_self_ty({:?})", def_id);
+
+    let trait_ref = tcx.impl_trait_ref(def_id).unwrap_or_else(|| {
+        bug!("issue33140_self_ty called on inherent impl {:?}", def_id)
+    });
+
+    debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
+
+    let is_marker_like =
+        tcx.impl_polarity(def_id) == hir::ImplPolarity::Positive &&
+        tcx.associated_item_def_ids(trait_ref.def_id).is_empty();
+
+    // Check whether these impls would be ok for a marker trait.
+    if !is_marker_like {
+        debug!("issue33140_self_ty - not marker-like!");
+        return None;
+    }
+
+    // impl must be `impl Trait for dyn Marker1 + Marker2 + ...`
+    if trait_ref.substs.len() != 1 {
+        debug!("issue33140_self_ty - impl has substs!");
+        return None;
+    }
+
+    let predicates = tcx.predicates_of(def_id);
+    if predicates.parent.is_some() || !predicates.predicates.is_empty() {
+        debug!("issue33140_self_ty - impl has predicates {:?}!", predicates);
+        return None;
+    }
+
+    let self_ty = trait_ref.self_ty();
+    let self_ty_matches = match self_ty.sty {
+        ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
+        _ => false
+    };
+
+    if self_ty_matches {
+        debug!("issue33140_self_ty - MATCHES!");
+        Some(self_ty)
+    } else {
+        debug!("issue33140_self_ty - non-matching self type");
+        None
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -3218,6 +3333,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
         instance_def_size_estimate,
+        issue33140_self_ty,
         ..*providers
     };
 }

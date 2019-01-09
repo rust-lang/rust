@@ -1,5 +1,5 @@
 error: no rules expected the token `,`
-  --> $DIR/vec-macro-with-comma-only.rs:12:10
+  --> $DIR/vec-macro-with-comma-only.rs:2:10
    |
 LL |     vec![,]; //~ ERROR no rules expected the token `,`
    |          ^ no rules expected this token in macro call

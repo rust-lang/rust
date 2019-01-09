@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-sign.rs:12:29
+  --> $DIR/const-int-sign.rs:2:29
    |
 LL |     let x: &'static bool = &(5_i32.is_negative()); //~ ERROR does not live long enough
    |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -10,7 +10,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-sign.rs:13:29
+  --> $DIR/const-int-sign.rs:3:29
    |
 LL |     let y: &'static bool = &(5_i32.is_positive()); //~ ERROR does not live long enough
    |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use

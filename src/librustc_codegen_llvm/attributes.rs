@@ -1,12 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 //! Set and unset common attributes on LLVM values.
 
 use std::ffi::CString;
@@ -84,6 +75,18 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
             const_cstr!("no-frame-pointer-elim"), const_cstr!("true"));
+    }
+}
+
+/// Tell LLVM what instrument function to insert.
+#[inline]
+pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    if cx.sess().instrument_mcount() {
+        // Similar to `clang -pg` behavior. Handled by the
+        // `post-inline-ee-instrument` LLVM pass.
+        llvm::AddFunctionAttrStringValue(
+            llfn, llvm::AttributePlace::Function,
+            const_cstr!("instrument-function-entry-inlined"), const_cstr!("mcount"));
     }
 }
 
@@ -183,6 +186,7 @@ pub fn from_fn_attrs(
     }
 
     set_frame_pointer_elimination(cx, llfn);
+    set_instrument_function(cx, llfn);
     set_probestack(cx, llfn);
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {

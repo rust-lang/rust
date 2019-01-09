@@ -1,5 +1,5 @@
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-6936.rs:15:5
+  --> $DIR/issue-6936.rs:5:5
    |
 LL |     type Foo = ::T;
    |     --------------- previous definition of the type `Foo` here
@@ -9,7 +9,7 @@ LL |     mod Foo {} //~ ERROR the name `Foo` is defined multiple times
    = note: `Foo` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-6936.rs:20:5
+  --> $DIR/issue-6936.rs:10:5
    |
 LL |     type Foo = ::T;
    |     --------------- previous definition of the type `Foo` here
@@ -19,7 +19,7 @@ LL |     struct Foo; //~ ERROR the name `Foo` is defined multiple times
    = note: `Foo` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-6936.rs:25:5
+  --> $DIR/issue-6936.rs:15:5
    |
 LL |     type Foo = ::T;
    |     --------------- previous definition of the type `Foo` here
@@ -29,7 +29,7 @@ LL |     enum Foo {} //~ ERROR the name `Foo` is defined multiple times
    = note: `Foo` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Bar` is defined multiple times
-  --> $DIR/issue-6936.rs:35:5
+  --> $DIR/issue-6936.rs:25:5
    |
 LL |     type Bar<T> = T;
    |     ---------------- previous definition of the type `Bar` here

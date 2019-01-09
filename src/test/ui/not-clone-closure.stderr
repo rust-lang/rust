@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `S: std::clone::Clone` is not satisfied in `[closure@$DIR/not-clone-closure.rs:17:17: 19:6 a:S]`
-  --> $DIR/not-clone-closure.rs:21:23
+error[E0277]: the trait bound `S: std::clone::Clone` is not satisfied in `[closure@$DIR/not-clone-closure.rs:7:17: 9:6 a:S]`
+  --> $DIR/not-clone-closure.rs:11:23
    |
 LL |     let hello = hello.clone(); //~ ERROR the trait bound `S: std::clone::Clone` is not satisfied
-   |                       ^^^^^ within `[closure@$DIR/not-clone-closure.rs:17:17: 19:6 a:S]`, the trait `std::clone::Clone` is not implemented for `S`
+   |                       ^^^^^ within `[closure@$DIR/not-clone-closure.rs:7:17: 9:6 a:S]`, the trait `std::clone::Clone` is not implemented for `S`
    |
-   = note: required because it appears within the type `[closure@$DIR/not-clone-closure.rs:17:17: 19:6 a:S]`
+   = note: required because it appears within the type `[closure@$DIR/not-clone-closure.rs:7:17: 9:6 a:S]`
 
 error: aborting due to previous error
 

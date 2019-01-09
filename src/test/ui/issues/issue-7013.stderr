@@ -1,5 +1,5 @@
 error[E0277]: `std::rc::Rc<std::cell::RefCell<A>>` cannot be sent between threads safely
-  --> $DIR/issue-7013.rs:36:19
+  --> $DIR/issue-7013.rs:26:19
    |
 LL |     let a = A {v: box B{v: None} as Box<Foo+Send>};
    |                   ^^^^^^^^^^^^^^ `std::rc::Rc<std::cell::RefCell<A>>` cannot be sent between threads safely

@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `**t1` which is behind a `&` reference
-  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:5
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:9:5
    |
 LL |     let t1 = t0;
    |         -- help: consider changing this to be a mutable reference: `&mut &mut isize`
@@ -8,7 +8,7 @@ LL |     **t1 = 22; //~ ERROR cannot assign
    |     ^^^^^^^^^ `t1` is a `&` reference, so the data it refers to cannot be written
 
 error[E0502]: cannot borrow `**t0` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:24:21
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:14:21
    |
 LL |     let t1 = &mut *t0;
    |              -------- mutable borrow occurs here
@@ -18,7 +18,7 @@ LL |     **t1 = 22;
    |     --------- mutable borrow later used here
 
 error[E0596]: cannot borrow `**t0` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:29:26
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:26
    |
 LL | fn foo4(t0: & &mut isize) {
    |             ------------ help: consider changing this to be a mutable reference: `&mut &mut isize`

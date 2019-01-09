@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of lint checking.
 //!
 //! The lint checking is mostly consolidated into one pass which runs
@@ -42,11 +32,12 @@ use util::nodemap::FxHashMap;
 use std::default::Default as StdDefault;
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::LocalInternedString};
+use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
 use errors::DiagnosticBuilder;
 use hir;
 use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
+use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 
 /// Information about the registered lints.
@@ -139,8 +130,8 @@ struct LintGroup {
 
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
-    /// Lint doesn't exist
-    NoLint,
+    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
+    NoLint(Option<Symbol>),
     /// The lint is either renamed or removed. This is the warning
     /// message, and an optional new name (`None` if removed).
     Warning(String, Option<String>),
@@ -359,8 +350,14 @@ impl LintStore {
             CheckLintNameResult::Warning(ref msg, _) => {
                 Some(sess.struct_warn(msg))
             },
-            CheckLintNameResult::NoLint => {
-                Some(struct_err!(sess, E0602, "unknown lint: `{}`", lint_name))
+            CheckLintNameResult::NoLint(suggestion) => {
+                let mut err = struct_err!(sess, E0602, "unknown lint: `{}`", lint_name);
+
+                if let Some(suggestion) = suggestion {
+                    err.help(&format!("did you mean: `{}`", suggestion));
+                }
+
+                Some(err)
             }
             CheckLintNameResult::Tool(result) => match result {
                 Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
@@ -464,7 +461,16 @@ impl LintStore {
         match self.by_name.get(&complete_name) {
             None => match self.lint_groups.get(&*complete_name) {
                 // Now we are sure, that this lint exists nowhere
-                None => CheckLintNameResult::NoLint,
+                None => {
+                    let symbols = self.by_name.keys()
+                        .map(|name| Symbol::intern(&name))
+                        .collect::<Vec<_>>();
+
+                    let suggestion =
+                        find_best_match_for_name(symbols.iter(), &lint_name.to_lowercase(), None);
+
+                    CheckLintNameResult::NoLint(suggestion)
+                }
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Reaching this would be weird, but let's cover this case anyway
                     if let Some(LintAlias { name, silent }) = depr {
@@ -484,7 +490,7 @@ impl LintStore {
             Some(&Id(ref id)) => {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
-            _ => CheckLintNameResult::NoLint,
+            _ => CheckLintNameResult::NoLint(None),
         }
     }
 }

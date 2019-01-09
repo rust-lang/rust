@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of the test-related targets of the build system.
 //!
 //! This file implements the various regression test suites that we execute on
@@ -292,13 +282,6 @@ impl Step for Rls {
                                                  "src/tools/rls",
                                                  SourceType::Submodule,
                                                  &[]);
-
-        // Copy `src/tools/rls/test_data` to a writable drive.
-        let test_workspace_path = builder.out.join("rls-test-data");
-        let test_data_path = test_workspace_path.join("test_data");
-        builder.create_dir(&test_data_path);
-        builder.cp_r(&builder.src.join("src/tools/rls/test_data"), &test_data_path);
-        cargo.env("RLS_TEST_WORKSPACE_DIR", test_workspace_path);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
         cargo.arg("--")

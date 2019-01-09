@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fs;
 use std::env;
 use std::iter;
@@ -87,12 +77,13 @@ impl Step for ToolBuild {
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, &mut cargo, vec![], &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, &mut cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 | "rls"
                 | "cargo"
                 | "clippy-driver"
+                | "miri"
                 => {}
 
                 _ => return,
@@ -150,7 +141,7 @@ impl Step for ToolBuild {
         });
 
         if is_expected && !duplicates.is_empty() {
-            println!("duplicate artfacts found when compiling a tool, this \
+            println!("duplicate artifacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n");
@@ -228,6 +219,7 @@ pub fn prepare_tool_cargo(
         if path.ends_with("cargo") ||
             path.ends_with("rls") ||
             path.ends_with("clippy") ||
+            path.ends_with("miri") ||
             path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
@@ -602,6 +594,14 @@ tool_extended!((self, builder),
         });
     };
     Miri, miri, "src/tools/miri", "miri", {};
+    CargoMiri, miri, "src/tools/miri", "cargo-miri", {
+        // Miri depends on procedural macros (serde), which requires a full host
+        // compiler to be available, so we need to depend on that.
+        builder.ensure(compile::Rustc {
+            compiler: self.compiler,
+            target: builder.config.build,
+        });
+    };
     Rls, rls, "src/tools/rls", "rls", {
         let clippy = builder.ensure(Clippy {
             compiler: self.compiler,

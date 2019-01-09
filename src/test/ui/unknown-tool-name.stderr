@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type or module `foo`
-  --> $DIR/unknown-tool-name.rs:11:3
+  --> $DIR/unknown-tool-name.rs:1:3
    |
 LL | #[foo::bar] //~ ERROR failed to resolve: use of undeclared type or module `foo`
    |   ^^^ use of undeclared type or module `foo`

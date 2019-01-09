@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
@@ -123,6 +113,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let sole_field_ty = sole_field.ty(self.tcx, substs);
                         if self.can_coerce(expr_ty, sole_field_ty) {
                             let variant_path = self.tcx.item_path_str(variant.did);
+                            // FIXME #56861: DRYer prelude filtering
                             Some(variant_path.trim_start_matches("std::prelude::v1::").to_string())
                         } else {
                             None
@@ -344,7 +335,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // we may want to suggest adding a `*`, or removing
                 // a `&`.
                 //
-                // (But, also check check the `expn_info()` to see if this is
+                // (But, also check the `expn_info()` to see if this is
                 // a macro; if so, it's hard to extract the text and make a good
                 // suggestion, so don't bother.)
                 if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() &&
@@ -362,9 +353,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         // Maybe add `*`? Only if `T: Copy`.
                         _ => {
-                            if !self.infcx.type_moves_by_default(self.param_env,
-                                                                checked,
-                                                                sp) {
+                            if self.infcx.type_is_copy_modulo_regions(self.param_env,
+                                                                      checked,
+                                                                      sp) {
                                 // do not suggest if the span comes from a macro (#52783)
                                 if let (Ok(code),
                                         true) = (cm.span_to_snippet(sp), sp == expr.span) {

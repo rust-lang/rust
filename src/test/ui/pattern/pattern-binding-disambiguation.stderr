@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow tuple structs
-  --> $DIR/pattern-binding-disambiguation.rs:34:9
+  --> $DIR/pattern-binding-disambiguation.rs:24:9
    |
 LL | struct TupleStruct();
    | --------------------- the tuple struct `TupleStruct` is defined here
@@ -8,7 +8,7 @@ LL |         TupleStruct => {} //~ ERROR match bindings cannot shadow tuple stru
    |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
 
 error[E0530]: match bindings cannot shadow tuple variants
-  --> $DIR/pattern-binding-disambiguation.rs:43:9
+  --> $DIR/pattern-binding-disambiguation.rs:33:9
    |
 LL | use E::*;
    |     ---- the tuple variant `TupleVariant` is imported here
@@ -17,7 +17,7 @@ LL |         TupleVariant => {} //~ ERROR match bindings cannot shadow tuple var
    |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
 
 error[E0530]: match bindings cannot shadow struct variants
-  --> $DIR/pattern-binding-disambiguation.rs:46:9
+  --> $DIR/pattern-binding-disambiguation.rs:36:9
    |
 LL | use E::*;
    |     ---- the struct variant `BracedVariant` is imported here
@@ -26,7 +26,7 @@ LL |         BracedVariant => {} //~ ERROR match bindings cannot shadow struct v
    |         ^^^^^^^^^^^^^ cannot be named the same as a struct variant
 
 error[E0530]: match bindings cannot shadow statics
-  --> $DIR/pattern-binding-disambiguation.rs:52:9
+  --> $DIR/pattern-binding-disambiguation.rs:42:9
    |
 LL | static STATIC: () = ();
    | ----------------------- the static `STATIC` is defined here
@@ -35,7 +35,7 @@ LL |         STATIC => {} //~ ERROR match bindings cannot shadow statics
    |         ^^^^^^ cannot be named the same as a static
 
 error[E0530]: let bindings cannot shadow tuple structs
-  --> $DIR/pattern-binding-disambiguation.rs:59:9
+  --> $DIR/pattern-binding-disambiguation.rs:49:9
    |
 LL | struct TupleStruct();
    | --------------------- the tuple struct `TupleStruct` is defined here
@@ -44,7 +44,7 @@ LL |     let TupleStruct = doesnt_matter; //~ ERROR let bindings cannot shadow t
    |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
 
 error[E0530]: let bindings cannot shadow tuple variants
-  --> $DIR/pattern-binding-disambiguation.rs:62:9
+  --> $DIR/pattern-binding-disambiguation.rs:52:9
    |
 LL | use E::*;
    |     ---- the tuple variant `TupleVariant` is imported here
@@ -53,7 +53,7 @@ LL |     let TupleVariant = doesnt_matter; //~ ERROR let bindings cannot shadow 
    |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
 
 error[E0530]: let bindings cannot shadow struct variants
-  --> $DIR/pattern-binding-disambiguation.rs:63:9
+  --> $DIR/pattern-binding-disambiguation.rs:53:9
    |
 LL | use E::*;
    |     ---- the struct variant `BracedVariant` is imported here
@@ -62,7 +62,7 @@ LL |     let BracedVariant = doesnt_matter; //~ ERROR let bindings cannot shadow
    |         ^^^^^^^^^^^^^ cannot be named the same as a struct variant
 
 error[E0530]: let bindings cannot shadow statics
-  --> $DIR/pattern-binding-disambiguation.rs:65:9
+  --> $DIR/pattern-binding-disambiguation.rs:55:9
    |
 LL | static STATIC: () = ();
    | ----------------------- the static `STATIC` is defined here

@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/augmented-assignments.rs:26:5
+  --> $DIR/augmented-assignments.rs:16:5
    |
 LL |       x   //~ error: use of moved value: `x`
    |       -
@@ -15,7 +15,7 @@ LL | |     x;  //~ value moved here
    |       borrow later used here
 
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
-  --> $DIR/augmented-assignments.rs:31:5
+  --> $DIR/augmented-assignments.rs:21:5
    |
 LL |     let y = Int(2);
    |         - help: consider changing this to be mutable: `mut y`

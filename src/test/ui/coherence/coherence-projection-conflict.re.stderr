@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Foo<i32>` for type `i32`:
+  --> $DIR/coherence-projection-conflict.rs:15:1
+   |
+LL | impl Foo<i32> for i32 { }
+   | --------------------- first implementation here
+LL | 
+LL | impl<A:Bar> Foo<A::Output> for A { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

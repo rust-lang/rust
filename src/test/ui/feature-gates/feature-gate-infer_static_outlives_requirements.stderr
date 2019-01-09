@@ -1,15 +1,15 @@
 error[E0310]: the parameter type `U` may not live long enough
-  --> $DIR/feature-gate-infer_static_outlives_requirements.rs:15:5
+  --> $DIR/feature-gate-infer_static_outlives_requirements.rs:5:5
    |
 LL | struct Foo<U> {
    |            - help: consider adding an explicit lifetime bound `U: 'static`...
-LL |     bar: Bar<U> //~ ERROR 15:5: 15:16: the parameter type `U` may not live long enough [E0310]
+LL |     bar: Bar<U> //~ ERROR the parameter type `U` may not live long enough [E0310]
    |     ^^^^^^^^^^^
    |
 note: ...so that the type `U` will meet its required lifetime bounds
-  --> $DIR/feature-gate-infer_static_outlives_requirements.rs:15:5
+  --> $DIR/feature-gate-infer_static_outlives_requirements.rs:5:5
    |
-LL |     bar: Bar<U> //~ ERROR 15:5: 15:16: the parameter type `U` may not live long enough [E0310]
+LL |     bar: Bar<U> //~ ERROR the parameter type `U` may not live long enough [E0310]
    |     ^^^^^^^^^^^
 
 error: aborting due to previous error

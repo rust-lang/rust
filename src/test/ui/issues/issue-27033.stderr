@@ -1,11 +1,11 @@
 error[E0530]: match bindings cannot shadow unit variants
-  --> $DIR/issue-27033.rs:13:9
+  --> $DIR/issue-27033.rs:3:9
    |
 LL |         None @ _ => {} //~ ERROR match bindings cannot shadow unit variants
    |         ^^^^ cannot be named the same as a unit variant
 
 error[E0530]: match bindings cannot shadow constants
-  --> $DIR/issue-27033.rs:17:9
+  --> $DIR/issue-27033.rs:7:9
    |
 LL |     const C: u8 = 1;
    |     ---------------- the constant `C` is defined here

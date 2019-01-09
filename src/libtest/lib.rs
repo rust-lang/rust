@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Support code for rustc's built in unit-test and micro-benchmarking
 //! framework.
 //!
@@ -33,6 +23,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(asm)]
+#![feature(cfg_target_vendor)]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
 #![feature(nll)]
@@ -1025,7 +1016,7 @@ fn use_color(opts: &TestOpts) -> bool {
 #[cfg(any(target_os = "cloudabi",
           target_os = "redox",
           all(target_arch = "wasm32", not(target_os = "emscripten")),
-          target_env = "sgx"))]
+          all(target_vendor = "fortanix", target_env = "sgx")))]
 fn stdout_isatty() -> bool {
     // FIXME: Implement isatty on Redox and SGX
     false
@@ -1256,7 +1247,8 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), target_env = "sgx"))]
+    #[cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")),
+              all(target_vendor = "fortanix", target_env = "sgx")))]
     fn num_cpus() -> usize {
         1
     }

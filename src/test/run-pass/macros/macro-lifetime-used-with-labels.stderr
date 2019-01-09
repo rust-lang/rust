@@ -1,5 +1,5 @@
 warning: label name `'b` shadows a label name that is already in scope
-  --> $DIR/macro-lifetime-used-with-labels.rs:31:9
+  --> $DIR/macro-lifetime-used-with-labels.rs:21:9
    |
 LL |         'b: loop {
    |         ^^ lifetime 'b already in scope

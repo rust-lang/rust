@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// The version of the call operator that takes an immutable receiver.
 ///
 /// Instances of `Fn` can be called repeatedly without mutating state.
@@ -37,7 +27,7 @@
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [book]: ../../book/ch13-01-closures.html
 /// [`FnMut`]: trait.FnMut.html
 /// [`FnOnce`]: trait.FnOnce.html
 /// [function pointers]: ../../std/primitive.fn.html
@@ -105,7 +95,7 @@ pub trait Fn<Args> : FnMut<Args> {
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [book]: ../../book/ch13-01-closures.html
 /// [`Fn`]: trait.Fn.html
 /// [`FnOnce`]: trait.FnOnce.html
 /// [function pointers]: ../../std/primitive.fn.html
@@ -183,7 +173,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [book]: ../../book/ch13-01-closures.html
 /// [`Fn`]: trait.Fn.html
 /// [`FnMut`]: trait.FnMut.html
 /// [function pointers]: ../../std/primitive.fn.html

@@ -1,0 +1,9 @@
+error[E0109]: type arguments are not allowed on this entity
+  --> $DIR/mod-subitem-as-enum-variant.rs:8:11
+   |
+LL |     Mod::<i32>::FakeVariant(0);
+   |           ^^^ type argument not allowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0109`.

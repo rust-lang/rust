@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<GetNext<T> as Next>::Next`
-  --> $DIR/issue-23122-1.rs:17:15
+  --> $DIR/issue-23122-1.rs:7:15
    |
 LL | impl<T: Next> Next for GetNext<T> {
    |               ^^^^

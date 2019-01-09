@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! An interpreter for MIR used in CTFE and by miri
 
 #[macro_export]
@@ -39,7 +29,6 @@ use mir;
 use hir::def_id::DefId;
 use ty::{self, TyCtxt, Instance};
 use ty::layout::{self, Size};
-use middle::region;
 use std::io;
 use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::fx::FxHashMap;
@@ -49,27 +38,6 @@ use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 use ty::codec::TyDecoder;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::num::NonZeroU32;
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub enum Lock {
-    NoLock,
-    WriteLock(DynamicLifetime),
-    /// This should never be empty -- that would be a read lock held and nobody
-    /// there to release it...
-    ReadLock(Vec<DynamicLifetime>),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct DynamicLifetime {
-    pub frame: usize,
-    pub region: Option<region::Scope>, // "None" indicates "until the function ends"
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum AccessKind {
-    Read,
-    Write,
-}
 
 /// Uniquely identifies a specific constant or static.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]

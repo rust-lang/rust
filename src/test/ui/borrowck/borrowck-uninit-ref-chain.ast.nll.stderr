@@ -1,41 +1,41 @@
 error[E0381]: borrow of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-ref-chain.rs:21:14
+  --> $DIR/borrowck-uninit-ref-chain.rs:11:14
    |
 LL |     let _y = &**x; //[ast]~ ERROR use of possibly uninitialized variable: `**x` [E0381]
    |              ^^^^ use of possibly uninitialized `**x`
 
 error[E0381]: borrow of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-ref-chain.rs:25:14
+  --> $DIR/borrowck-uninit-ref-chain.rs:15:14
    |
 LL |     let _y = &**x; //[ast]~ ERROR use of possibly uninitialized variable: `**x` [E0381]
    |              ^^^^ use of possibly uninitialized `**x`
 
 error[E0381]: borrow of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-ref-chain.rs:29:14
+  --> $DIR/borrowck-uninit-ref-chain.rs:19:14
    |
 LL |     let _y = &**x; //[ast]~ ERROR use of possibly uninitialized variable: `**x` [E0381]
    |              ^^^^ use of possibly uninitialized `**x`
 
 error[E0381]: assign to part of possibly uninitialized variable: `a`
-  --> $DIR/borrowck-uninit-ref-chain.rs:34:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:24:5
    |
 LL |     a.x = 0;       //[mir]~ ERROR assign to part of possibly uninitialized variable: `a` [E0381]
    |     ^^^^^^^ use of possibly uninitialized `a`
 
 error[E0381]: assign to part of possibly uninitialized variable: `a`
-  --> $DIR/borrowck-uninit-ref-chain.rs:39:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:29:5
    |
 LL |     a.x = &&0;       //[mir]~ ERROR assign to part of possibly uninitialized variable: `a` [E0381]
    |     ^^^^^^^^^ use of possibly uninitialized `a`
 
 error[E0381]: assign to part of possibly uninitialized variable: `a`
-  --> $DIR/borrowck-uninit-ref-chain.rs:45:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:35:5
    |
 LL |     a.x = 0;       //[mir]~ ERROR assign to part of possibly uninitialized variable: `a` [E0381]
    |     ^^^^^^^ use of possibly uninitialized `a`
 
 error[E0381]: assign to part of possibly uninitialized variable: `a`
-  --> $DIR/borrowck-uninit-ref-chain.rs:50:5
+  --> $DIR/borrowck-uninit-ref-chain.rs:40:5
    |
 LL |     a.x = &&0;       //[mir]~ assign to part of possibly uninitialized variable: `a` [E0381]
    |     ^^^^^^^^^ use of possibly uninitialized `a`

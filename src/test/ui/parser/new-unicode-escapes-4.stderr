@@ -1,5 +1,5 @@
 error: invalid character in unicode escape: l
-  --> $DIR/new-unicode-escapes-4.rs:14:17
+  --> $DIR/new-unicode-escapes-4.rs:4:17
    |
 LL |     let s = "/u{lol}";
    |                 ^

@@ -1,11 +1,11 @@
 error[E0426]: use of undeclared label `'b`
-  --> $DIR/issue-28109.rs:16:9
+  --> $DIR/issue-28109.rs:6:9
    |
 LL |         'b //~ ERROR use of undeclared label
    |         ^^ undeclared label `'b`
 
 error[E0426]: use of undeclared label `'c`
-  --> $DIR/issue-28109.rs:19:9
+  --> $DIR/issue-28109.rs:9:9
    |
 LL |         'c //~ ERROR use of undeclared label
    |         ^^ undeclared label `'c`

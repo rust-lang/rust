@@ -1,5 +1,5 @@
 error[E0603]: struct `S` is private
-  --> $DIR/issue-10545.rs:17:14
+  --> $DIR/issue-10545.rs:6:14
    |
 LL | fn foo(_: a::S) { //~ ERROR: struct `S` is private
    |              ^

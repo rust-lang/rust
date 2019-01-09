@@ -1,5 +1,5 @@
 error: at least one trait must be specified
-  --> $DIR/no-trait.rs:11:11
+  --> $DIR/no-trait.rs:1:11
    |
 LL | fn f() -> impl 'static {} //~ ERROR at least one trait must be specified
    |           ^^^^^^^^^^^^

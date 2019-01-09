@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `self.how_hungry` which is behind a `&` reference
-  --> $DIR/mutable-class-fields-2.rs:19:5
+  --> $DIR/mutable-class-fields-2.rs:9:5
    |
 LL |   pub fn eat(&self) {
    |              ----- help: consider changing this to be a mutable reference: `&mut self`

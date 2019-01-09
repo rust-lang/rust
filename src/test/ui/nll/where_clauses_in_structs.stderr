@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/where_clauses_in_structs.rs:23:11
+  --> $DIR/where_clauses_in_structs.rs:13:11
    |
 LL | fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
    |        --  -- lifetime `'b` defined here

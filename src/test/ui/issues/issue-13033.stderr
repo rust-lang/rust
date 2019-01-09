@@ -1,5 +1,5 @@
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/issue-13033.rs:18:30
+  --> $DIR/issue-13033.rs:8:30
    |
 LL |     fn bar(&mut self, other: &mut Foo);
    |                              -------- type in trait

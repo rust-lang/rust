@@ -1,5 +1,5 @@
 error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics (see issue #29642)
-  --> $DIR/expand-to-unstable-2.rs:18:10
+  --> $DIR/expand-to-unstable-2.rs:8:10
    |
 LL | #[derive(Unstable)]
    |          ^^^^^^^^

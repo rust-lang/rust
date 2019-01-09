@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/issue-11681.rs:23:10
+  --> $DIR/issue-11681.rs:13:10
    |
 LL |   let testValue = &Test; //~ ERROR borrowed value does not live long enough
    |                    ---- temporary value created here

@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough (Ast)
-  --> $DIR/issue-46472.rs:14:10
+  --> $DIR/issue-46472.rs:4:10
    |
 LL |     &mut 4
    |          ^ temporary value does not live long enough
@@ -7,14 +7,14 @@ LL |     &mut 4
 LL | }
    | - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:8...
-  --> $DIR/issue-46472.rs:13:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 3:8...
+  --> $DIR/issue-46472.rs:3:8
    |
 LL | fn bar<'a>() -> &'a mut u32 {
    |        ^^
 
 error[E0515]: cannot return reference to temporary value (Mir)
-  --> $DIR/issue-46472.rs:14:5
+  --> $DIR/issue-46472.rs:4:5
    |
 LL |     &mut 4
    |     ^^^^^-

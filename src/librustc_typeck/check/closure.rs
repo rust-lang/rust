@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Code for type-checking closure expressions.
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
@@ -200,7 +190,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.deduce_sig_from_projection(None, &pb)
                     })
                     .next();
-                let kind = self.tcx.lang_items().fn_trait_kind(object_type.principal().def_id());
+                let kind = object_type.principal_def_id().and_then(|did| {
+                    self.tcx.lang_items().fn_trait_kind(did)
+                });
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
@@ -504,7 +496,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.infcx.commit_if_ok(|_| {
             let mut all_obligations = vec![];
 
-            // The liberated version of this signature should be be a subtype
+            // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
             for ((hir_ty, &supplied_ty), expected_ty) in decl.inputs.iter()
                .zip(*supplied_sig.inputs().skip_binder()) // binder moved to (*) below

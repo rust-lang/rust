@@ -1,5 +1,5 @@
 error[E0658]: associated type defaults are unstable (see issue #29661)
-  --> $DIR/feature-gate-assoc-type-defaults.rs:14:5
+  --> $DIR/feature-gate-assoc-type-defaults.rs:4:5
    |
 LL |     type Bar = u8; //~ ERROR associated type defaults are unstable
    |     ^^^^^^^^^^^^^^

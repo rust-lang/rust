@@ -1,5 +1,5 @@
 error[E0221]: ambiguous associated type `A` in bounds of `Self`
-  --> $DIR/E0221.rs:21:16
+  --> $DIR/E0221.rs:11:16
    |
 LL |     type A: T1;
    |     ----------- ambiguous `A` from `Foo`
@@ -11,7 +11,7 @@ LL |         let _: Self::A;
    |                ^^^^^^^ ambiguous associated type `A`
 
 error[E0221]: ambiguous associated type `Err` in bounds of `Self`
-  --> $DIR/E0221.rs:31:16
+  --> $DIR/E0221.rs:21:16
    |
 LL |     type Err: T3;
    |     ------------- ambiguous `Err` from `My`
@@ -20,7 +20,7 @@ LL |         let _: Self::Err;
    |                ^^^^^^^^^ ambiguous associated type `Err`
    |
 note: associated type `Self` could derive from `std::str::FromStr`
-  --> $DIR/E0221.rs:31:16
+  --> $DIR/E0221.rs:21:16
    |
 LL |         let _: Self::Err;
    |                ^^^^^^^^^

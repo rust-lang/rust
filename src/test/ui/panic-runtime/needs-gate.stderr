@@ -1,5 +1,5 @@
 error[E0658]: the `#[panic_runtime]` attribute is an experimental feature (see issue #32837)
-  --> $DIR/needs-gate.rs:14:1
+  --> $DIR/needs-gate.rs:4:1
    |
 LL | #![panic_runtime] //~ ERROR: is an experimental feature
    | ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #![panic_runtime] //~ ERROR: is an experimental feature
    = help: add #![feature(panic_runtime)] to the crate attributes to enable
 
 error[E0658]: the `#[needs_panic_runtime]` attribute is an experimental feature (see issue #32837)
-  --> $DIR/needs-gate.rs:15:1
+  --> $DIR/needs-gate.rs:5:1
    |
 LL | #![needs_panic_runtime] //~ ERROR: is an experimental feature
    | ^^^^^^^^^^^^^^^^^^^^^^^

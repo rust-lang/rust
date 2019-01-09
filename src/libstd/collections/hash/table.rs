@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
 use collections::CollectionAllocErr;
 use hash::{BuildHasher, Hash, Hasher};
@@ -740,6 +730,7 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    #[inline]
     fn new_internal(
         capacity: usize,
         fallibility: Fallibility,
@@ -755,12 +746,14 @@ impl<K, V> RawTable<K, V> {
 
     /// Tries to create a new raw table from a given capacity. If it cannot allocate,
     /// it returns with AllocErr.
+    #[inline]
     pub fn try_new(capacity: usize) -> Result<RawTable<K, V>, CollectionAllocErr> {
         Self::new_internal(capacity, Fallible)
     }
 
     /// Creates a new raw table from a given capacity. All buckets are
     /// initially empty.
+    #[inline]
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::new_internal(capacity, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),

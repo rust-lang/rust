@@ -1,11 +1,11 @@
 error: expected one of `>`, identifier, or lifetime, found `,`
-  --> $DIR/empty_generics.rs:15:14
+  --> $DIR/empty_generics.rs:5:14
    |
 LL |     type Bar<,>;
    |              ^ expected one of `>`, identifier, or lifetime here
 
 warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/empty_generics.rs:11:12
+  --> $DIR/empty_generics.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^

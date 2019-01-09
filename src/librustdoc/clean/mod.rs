@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
@@ -23,7 +13,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
-use rustc::mir::interpret::ConstValue;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::middle::stability;
@@ -478,7 +467,7 @@ impl Item {
                 classes.push("unstable");
             }
 
-            if !s.deprecated_since.is_empty() {
+            if s.deprecation.is_some() {
                 classes.push("deprecated");
             }
 
@@ -502,6 +491,15 @@ impl Item {
     /// Returns a documentation-level item type from the item.
     pub fn type_(&self) -> ItemType {
         ItemType::from(self)
+    }
+
+    /// Returns the info in the item's `#[deprecated]` or `#[rustc_deprecated]` attributes.
+    ///
+    /// If the item is not deprecated, returns `None`.
+    pub fn deprecation(&self) -> Option<&Deprecation> {
+        self.deprecation
+            .as_ref()
+            .or_else(|| self.stability.as_ref().and_then(|s| s.deprecation.as_ref()))
     }
 }
 
@@ -2421,10 +2419,10 @@ impl Clean<Type> for hir::Ty {
                     instance: ty::Instance::new(def_id, substs),
                     promoted: None
                 };
-                let length = cx.tcx.const_eval(param_env.and(cid)).unwrap_or_else(|_| {
-                    ty::Const::unevaluated(cx.tcx, def_id, substs, cx.tcx.types.usize)
-                });
-                let length = print_const(cx, length);
+                let length = match cx.tcx.const_eval(param_env.and(cid)) {
+                    Ok(length) => print_const(cx, ty::LazyConst::Evaluated(length)),
+                    Err(_) => "_".to_string(),
+                };
                 Array(box ty.clean(cx), length)
             },
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
@@ -2584,15 +2582,15 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Str => Primitive(PrimitiveType::Str),
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
-                let mut n = cx.tcx.lift(&n).expect("array lift failed");
-                if let ConstValue::Unevaluated(def_id, substs) = n.val {
+                let mut n = *cx.tcx.lift(&n).expect("array lift failed");
+                if let ty::LazyConst::Unevaluated(def_id, substs) = n {
                     let param_env = cx.tcx.param_env(def_id);
                     let cid = GlobalId {
                         instance: ty::Instance::new(def_id, substs),
                         promoted: None
                     };
                     if let Ok(new_n) = cx.tcx.const_eval(param_env.and(cid)) {
-                        n = new_n;
+                        n = ty::LazyConst::Evaluated(new_n);
                     }
                 };
                 let n = print_const(cx, n);
@@ -2644,13 +2642,24 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
             }
             ty::Dynamic(ref obj, ref reg) => {
-                let principal = obj.principal();
-                let did = principal.def_id();
+                // HACK: pick the first `did` as the `did` of the trait object. Someone
+                // might want to implement "native" support for marker-trait-only
+                // trait objects.
+                let mut dids = obj.principal_def_id().into_iter().chain(obj.auto_traits());
+                let did = dids.next().unwrap_or_else(|| {
+                    panic!("found trait object `{:?}` with no traits?", self)
+                });
+                let substs = match obj.principal() {
+                    Some(principal) => principal.skip_binder().substs,
+                    // marker traits have no substs.
+                    _ => cx.tcx.intern_substs(&[])
+                };
+
                 inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                 let mut typarams = vec![];
                 reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
-                for did in obj.auto_traits() {
+                for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                         Some(did), false, vec![], empty);
@@ -2676,7 +2685,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
 
                 let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
-                    false, bindings, principal.skip_binder().substs);
+                    false, bindings, substs);
                 ResolvedPath {
                     path,
                     typarams: Some(typarams),
@@ -2968,7 +2977,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
             }
         };
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.clean(cx)),
             attrs: inline::load_attrs(cx, self.did),
             source: cx.tcx.def_span(self.did).clean(cx),
             visibility: Some(Inherited),
@@ -3184,13 +3193,22 @@ fn qpath_to_string(p: &hir::QPath) -> String {
     s
 }
 
+impl Clean<String> for Ident {
+    #[inline]
+    fn clean(&self, cx: &DocContext) -> String {
+        self.name.clean(cx)
+    }
+}
+
 impl Clean<String> for ast::Name {
+    #[inline]
     fn clean(&self, _: &DocContext) -> String {
         self.to_string()
     }
 }
 
 impl Clean<String> for InternedString {
+    #[inline]
     fn clean(&self, _: &DocContext) -> String {
         self.to_string()
     }
@@ -3617,7 +3635,7 @@ impl Clean<Item> for hir::ForeignItem {
         };
 
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id),
@@ -3683,16 +3701,16 @@ fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-fn print_const(cx: &DocContext, n: &ty::Const) -> String {
-    match n.val {
-        ConstValue::Unevaluated(def_id, _) => {
+fn print_const(cx: &DocContext, n: ty::LazyConst) -> String {
+    match n {
+        ty::LazyConst::Unevaluated(def_id, _) => {
             if let Some(node_id) = cx.tcx.hir().as_local_node_id(def_id) {
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(node_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
             }
         },
-        _ => {
+        ty::LazyConst::Evaluated(n) => {
             let mut s = String::new();
             ::rustc::mir::fmt_const_val(&mut s, n).expect("fmt_const_val failed");
             // array lengths are obviously usize
@@ -3844,40 +3862,37 @@ impl Clean<Item> for doctree::ProcMacro {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Stability {
     pub level: stability::StabilityLevel,
-    pub feature: String,
+    pub feature: Option<String>,
     pub since: String,
-    pub deprecated_since: String,
-    pub deprecated_reason: String,
-    pub unstable_reason: String,
-    pub issue: Option<u32>
+    pub deprecation: Option<Deprecation>,
+    pub unstable_reason: Option<String>,
+    pub issue: Option<u32>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Deprecation {
-    pub since: String,
-    pub note: String,
+    pub since: Option<String>,
+    pub note: Option<String>,
 }
 
 impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
             level: stability::StabilityLevel::from_attr_level(&self.level),
-            feature: self.feature.to_string(),
+            feature: Some(self.feature.to_string()).filter(|f| !f.is_empty()),
             since: match self.level {
                 attr::Stable {ref since} => since.to_string(),
                 _ => String::new(),
             },
-            deprecated_since: match self.rustc_depr {
-                Some(attr::RustcDeprecation {ref since, ..}) => since.to_string(),
-                _=> String::new(),
-            },
-            deprecated_reason: match self.rustc_depr {
-                Some(ref depr) => depr.reason.to_string(),
-                _ => String::new(),
-            },
+            deprecation: self.rustc_depr.as_ref().map(|d| {
+                Deprecation {
+                    note: Some(d.reason.to_string()).filter(|r| !r.is_empty()),
+                    since: Some(d.since.to_string()).filter(|d| !d.is_empty()),
+                }
+            }),
             unstable_reason: match self.level {
-                attr::Unstable { reason: Some(ref reason), .. } => reason.to_string(),
-                _ => String::new(),
+                attr::Unstable { reason: Some(ref reason), .. } => Some(reason.to_string()),
+                _ => None,
             },
             issue: match self.level {
                 attr::Unstable {issue, ..} => Some(issue),
@@ -3896,8 +3911,8 @@ impl<'a> Clean<Stability> for &'a attr::Stability {
 impl Clean<Deprecation> for attr::Deprecation {
     fn clean(&self, _: &DocContext) -> Deprecation {
         Deprecation {
-            since: self.since.as_ref().map_or(String::new(), |s| s.to_string()),
-            note: self.note.as_ref().map_or(String::new(), |s| s.to_string()),
+            since: self.since.map(|s| s.to_string()).filter(|s| !s.is_empty()),
+            note: self.note.map(|n| n.to_string()).filter(|n| !n.is_empty()),
         }
     }
 }
@@ -3955,7 +3970,7 @@ pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
 
         for item_id in mem::replace(&mut items, HirVec::new()).iter() {
             let item = tcx.hir().expect_item(item_id.id);
-            if item.name == *segment {
+            if item.ident.name == *segment {
                 if path_it.peek().is_none() {
                     return Some(tcx.hir().local_def_id(item_id.id))
                 }

@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/issue-28075.rs:19:22
+  --> $DIR/issue-28075.rs:9:22
    |
 LL | use lint_stability::{unstable, deprecated};
    |                      ^^^^^^^^

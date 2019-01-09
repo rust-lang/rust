@@ -1,13 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
@@ -24,7 +15,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn get_vtable(
         &mut self,
         ty: Ty<'tcx>,
-        poly_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
     ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
@@ -34,10 +25,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok(Pointer::from(vtable).with_default_tag());
         }
 
-        let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
-        let trait_ref = self.tcx.erase_regions(&trait_ref);
+        let methods = if let Some(poly_trait_ref) = poly_trait_ref {
+            let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
+            let trait_ref = self.tcx.erase_regions(&trait_ref);
 
-        let methods = self.tcx.vtable_methods(trait_ref);
+            self.tcx.vtable_methods(trait_ref)
+        } else {
+            Lrc::new(Vec::new())
+        };
 
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
@@ -54,7 +49,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ptr_size * (3 + methods.len() as u64),
             ptr_align,
             MemoryKind::Vtable,
-        )?.with_default_tag();
+        ).with_default_tag();
         let tcx = &*self.tcx;
 
         let drop = ::monomorphize::resolve_drop_in_place(*tcx, ty);

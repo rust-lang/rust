@@ -1,5 +1,5 @@
 error[E0317]: if may be missing an else clause
-  --> $DIR/if-without-else-result.rs:12:13
+  --> $DIR/if-without-else-result.rs:2:13
    |
 LL |     let a = if true { true };
    |             ^^^^^^^^^^^^^^^^ expected (), found bool

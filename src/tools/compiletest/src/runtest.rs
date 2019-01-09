@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use common::CompareMode;
 use common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{output_base_dir, output_base_name, output_testname_unique};
@@ -27,7 +17,7 @@ use util::{logv, PathBufExt};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs::{self, create_dir_all, File};
 use std::hash::{Hash, Hasher};
@@ -763,13 +753,13 @@ impl<'test> TestCx<'test> {
             }
             drop(stdout);
 
-            let debugger_script = self.make_out_name("debugger.script");
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let debugger_opts = vec![
-                "-quiet".to_owned(),
-                "-batch".to_owned(),
-                "-nx".to_owned(),
-                format!("-command={}", debugger_script.to_str().unwrap()),
+            let mut debugger_script = OsString::from("-command=");
+            debugger_script.push(self.make_out_name("debugger.script"));
+            let debugger_opts: &[&OsStr] = &[
+                "-quiet".as_ref(),
+                "-batch".as_ref(),
+                "-nx".as_ref(),
+                &debugger_script,
             ];
 
             let gdb_path = self.config.gdb.as_ref().unwrap();
@@ -778,12 +768,12 @@ impl<'test> TestCx<'test> {
                 stdout,
                 stderr,
             } = Command::new(&gdb_path)
-                .args(&debugger_opts)
+                .args(debugger_opts)
                 .output()
                 .expect(&format!("failed to exec `{:?}`", gdb_path));
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
-                gdb.args(&debugger_opts);
+                gdb.args(debugger_opts);
                 let cmdline = self.make_cmdline(&gdb, "");
                 logv(self.config, format!("executing {}", cmdline));
                 cmdline
@@ -871,18 +861,18 @@ impl<'test> TestCx<'test> {
             debug!("script_str = {}", script_str);
             self.dump_output_file(&script_str, "debugger.script");
 
-            let debugger_script = self.make_out_name("debugger.script");
+            let mut debugger_script = OsString::from("-command=");
+            debugger_script.push(self.make_out_name("debugger.script"));
 
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let debugger_opts = vec![
-                "-quiet".to_owned(),
-                "-batch".to_owned(),
-                "-nx".to_owned(),
-                format!("-command={}", debugger_script.to_str().unwrap()),
+            let debugger_opts: &[&OsStr] = &[
+                "-quiet".as_ref(),
+                "-batch".as_ref(),
+                "-nx".as_ref(),
+                &debugger_script,
             ];
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
-            gdb.args(&debugger_opts)
+            gdb.args(debugger_opts)
                 .env("PYTHONPATH", rust_pp_module_abs_path);
 
             debugger_run_result = self.compose_and_run(
@@ -1082,7 +1072,7 @@ impl<'test> TestCx<'test> {
             match line {
                 Ok(line) => {
                     let line = if line.starts_with("//") {
-                        line[2..].trim_left()
+                        line[2..].trim_start()
                     } else {
                         line.as_str()
                     };
@@ -2146,8 +2136,8 @@ impl<'test> TestCx<'test> {
             .lines()
             .enumerate()
             .filter_map(|(line_nb, line)| {
-                if (line.trim_left().starts_with("pub mod ")
-                    || line.trim_left().starts_with("mod "))
+                if (line.trim_start().starts_with("pub mod ")
+                    || line.trim_start().starts_with("mod "))
                     && line.ends_with(';')
                 {
                     if let Some(ref mut other_files) = other_files {
@@ -2156,7 +2146,7 @@ impl<'test> TestCx<'test> {
                     None
                 } else {
                     let sline = line.split("///").last().unwrap_or("");
-                    let line = sline.trim_left();
+                    let line = sline.trim_start();
                     if line.starts_with("```") {
                         if ignore {
                             ignore = false;
@@ -2579,7 +2569,7 @@ impl<'test> TestCx<'test> {
             .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags)
 
             // We for sure don't want these tests to run in parallel, so make
-            // sure they don't have access to these vars if we we run via `make`
+            // sure they don't have access to these vars if we run via `make`
             // at the top level
             .env_remove("MAKEFLAGS")
             .env_remove("MFLAGS")
@@ -3287,7 +3277,7 @@ fn normalize_mir_line(line: &str) -> String {
 fn nocomment_mir_line(line: &str) -> &str {
     if let Some(idx) = line.find("//") {
         let (l, _) = line.split_at(idx);
-        l.trim_right()
+        l.trim_end()
     } else {
         line
     }

@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:24:1
+  --> $DIR/const-eval-overflow2.rs:14:1
    |
 LL | / const VALS_I8: (i8,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -9,13 +9,13 @@ LL | |      );
    | |_______^
    |
 note: lint level defined here
-  --> $DIR/const-eval-overflow2.rs:18:9
+  --> $DIR/const-eval-overflow2.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:29:1
+  --> $DIR/const-eval-overflow2.rs:19:1
    |
 LL | / const VALS_I16: (i16,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -25,7 +25,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:34:1
+  --> $DIR/const-eval-overflow2.rs:24:1
    |
 LL | / const VALS_I32: (i32,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -35,7 +35,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:39:1
+  --> $DIR/const-eval-overflow2.rs:29:1
    |
 LL | / const VALS_I64: (i64,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -45,7 +45,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:44:1
+  --> $DIR/const-eval-overflow2.rs:34:1
    |
 LL | / const VALS_U8: (u8,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -55,7 +55,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:49:1
+  --> $DIR/const-eval-overflow2.rs:39:1
    |
 LL | / const VALS_U16: (u16,) = ( //~ ERROR any use of this value will cause an error
 LL | |      u16::MIN - 1,
@@ -64,7 +64,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:53:1
+  --> $DIR/const-eval-overflow2.rs:43:1
    |
 LL | / const VALS_U32: (u32,) = ( //~ ERROR any use of this value will cause an error
 LL | |      u32::MIN - 1,
@@ -73,7 +73,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:57:1
+  --> $DIR/const-eval-overflow2.rs:47:1
    |
 LL | / const VALS_U64: (u64,) = //~ ERROR any use of this value will cause an error
 LL | |     (

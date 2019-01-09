@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
-  --> $DIR/autoderef-full-lval.rs:25:20
+  --> $DIR/autoderef-full-lval.rs:15:20
    |
 LL |     let z: isize = a.x + b.y;
    |                    ^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let z: isize = a.x + b.y;
    = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
 
 error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
-  --> $DIR/autoderef-full-lval.rs:31:25
+  --> $DIR/autoderef-full-lval.rs:21:25
    |
 LL |     let answer: isize = forty.a + two.a;
    |                         ^^^^^^^^^^^^^^^

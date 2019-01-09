@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Check testing of equality constraints in a higher-ranked context.
 
 pub trait TheTrait<T> {
@@ -87,23 +77,33 @@ fn tuple_four<T>()
     // not ok for tuple, two lifetimes, and lifetime matching is invariant
 }
 
-pub fn main() {
+pub fn call_foo() {
     foo::<IntStruct>();
     foo::<UintStruct>(); //~ ERROR type mismatch
+}
 
+pub fn call_bar() {
     bar::<IntStruct>(); //~ ERROR type mismatch
     bar::<UintStruct>();
-
-    tuple_one::<Tuple>();
-    //~^ ERROR E0277
-    //~| ERROR type mismatch
-
-    tuple_two::<Tuple>();
-    //~^ ERROR E0277
-    //~| ERROR type mismatch
-
-    tuple_three::<Tuple>();
-
-    tuple_four::<Tuple>();
-    //~^ ERROR E0277
 }
+
+pub fn call_tuple_one() {
+    tuple_one::<Tuple>();
+    //~^ ERROR not general enough
+}
+
+pub fn call_tuple_two() {
+    tuple_two::<Tuple>();
+    //~^ ERROR not general enough
+}
+
+pub fn call_tuple_three() {
+    tuple_three::<Tuple>();
+}
+
+pub fn call_tuple_four() {
+    tuple_four::<Tuple>();
+    //~^ ERROR not general enough
+}
+
+fn main() { }

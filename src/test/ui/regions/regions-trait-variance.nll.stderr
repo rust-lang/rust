@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local data `*b`
-  --> $DIR/regions-trait-variance.rs:48:5
+  --> $DIR/regions-trait-variance.rs:38:5
    |
 LL |     let bb: &B = &*b; //~ ERROR `*b` does not live long enough
    |                  --- `*b` is borrowed here

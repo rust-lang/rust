@@ -1,11 +1,11 @@
 error[E0389]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-issue-14498.rs:29:5
+  --> $DIR/borrowck-issue-14498.rs:19:5
    |
 LL |     ***p = 2; //[ast]~ ERROR cannot assign to data in a `&` reference
    |     ^^^^^^^^ assignment into an immutable reference
 
 error[E0506]: cannot assign to `**y` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:39:5
+  --> $DIR/borrowck-issue-14498.rs:29:5
    |
 LL |     let p = &y;
    |              - borrow of `**y` occurs here
@@ -14,7 +14,7 @@ LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
 
 error[E0506]: cannot assign to `**y` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:50:5
+  --> $DIR/borrowck-issue-14498.rs:40:5
    |
 LL |     let p = &y;
    |              - borrow of `**y` occurs here
@@ -23,7 +23,7 @@ LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
 
 error[E0506]: cannot assign to `**y` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:61:5
+  --> $DIR/borrowck-issue-14498.rs:51:5
    |
 LL |     let p = &y;
    |              - borrow of `**y` occurs here
@@ -32,7 +32,7 @@ LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
 
 error[E0506]: cannot assign to `**y` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:72:5
+  --> $DIR/borrowck-issue-14498.rs:62:5
    |
 LL |     let p = &y;
    |              - borrow of `**y` occurs here
@@ -41,7 +41,7 @@ LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
 
 error[E0506]: cannot assign to `**y.a` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:83:5
+  --> $DIR/borrowck-issue-14498.rs:73:5
    |
 LL |     let p = &y.a;
    |              --- borrow of `**y.a` occurs here
@@ -50,7 +50,7 @@ LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrow
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
 
 error[E0506]: cannot assign to `**y.a` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:94:5
+  --> $DIR/borrowck-issue-14498.rs:84:5
    |
 LL |     let p = &y.a;
    |              --- borrow of `**y.a` occurs here
@@ -59,7 +59,7 @@ LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrow
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
 
 error[E0506]: cannot assign to `**y.a` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:105:5
+  --> $DIR/borrowck-issue-14498.rs:95:5
    |
 LL |     let p = &y.a;
    |              --- borrow of `**y.a` occurs here
@@ -68,7 +68,7 @@ LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrow
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
 
 error[E0506]: cannot assign to `**y.a` because it is borrowed
-  --> $DIR/borrowck-issue-14498.rs:116:5
+  --> $DIR/borrowck-issue-14498.rs:106:5
    |
 LL |     let p = &y.a;
    |              --- borrow of `**y.a` occurs here

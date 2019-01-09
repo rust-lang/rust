@@ -1,5 +1,5 @@
 error[E0232]: `#[rustc_on_unimplemented]` requires a value
-  --> $DIR/E0232.rs:13:1
+  --> $DIR/E0232.rs:3:1
    |
 LL | #[rustc_on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ value required here

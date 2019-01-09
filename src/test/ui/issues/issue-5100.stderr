@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:18:9
+  --> $DIR/issue-5100.rs:8:9
    |
 LL |         A::B => (),
    |         ^^^^ expected tuple, found enum `A`
@@ -8,7 +8,7 @@ LL |         A::B => (),
               found type `A`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:27:9
+  --> $DIR/issue-5100.rs:17:9
    |
 LL |         (true, false, false) => ()
    |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
@@ -17,7 +17,7 @@ LL |         (true, false, false) => ()
               found type `(_, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:35:9
+  --> $DIR/issue-5100.rs:25:9
    |
 LL |         (true, false, false) => ()
    |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
@@ -26,7 +26,7 @@ LL |         (true, false, false) => ()
               found type `(_, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:43:9
+  --> $DIR/issue-5100.rs:33:9
    |
 LL |         box (true, false) => ()
    |         ^^^^^^^^^^^^^^^^^ expected tuple, found struct `std::boxed::Box`
@@ -35,7 +35,7 @@ LL |         box (true, false) => ()
               found type `std::boxed::Box<_>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:50:9
+  --> $DIR/issue-5100.rs:40:9
    |
 LL |         &(true, false) => ()
    |         ^^^^^^^^^^^^^^ expected tuple, found reference
@@ -44,7 +44,7 @@ LL |         &(true, false) => ()
               found type `&_`
 
 error[E0618]: expected function, found `(char, char)`
-  --> $DIR/issue-5100.rs:58:14
+  --> $DIR/issue-5100.rs:48:14
    |
 LL |       let v = [('a', 'b')   //~ ERROR expected function, found `(char, char)`
    |  ______________-^^^^^^^^^
@@ -52,7 +52,7 @@ LL | |              ('c', 'd'),
    | |_______________________- call expression requires function
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:65:19
+  --> $DIR/issue-5100.rs:55:19
    |
 LL |     let x: char = true; //~  ERROR mismatched types
    |                   ^^^^ expected char, found bool

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Various data structures used by the Rust compiler. The intention
 //! is that code in here should be not be *specific* to rustc, so that
 //! it can be easily unit tested and so forth.
@@ -28,10 +18,10 @@
 #![feature(optin_builtin_traits)]
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
-#![feature(vec_resize_with)]
 #![feature(hash_raw_entry)]
 #![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
+#![feature(integer_atomics)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -113,12 +103,14 @@ pub struct OnDrop<F: Fn()>(pub F);
 impl<F: Fn()> OnDrop<F> {
       /// Forgets the function which prevents it from running.
       /// Ensure that the function owns no memory, otherwise it will be leaked.
+      #[inline]
       pub fn disable(self) {
             std::mem::forget(self);
       }
 }
 
 impl<F: Fn()> Drop for OnDrop<F> {
+      #[inline]
       fn drop(&mut self) {
             (self.0)();
       }

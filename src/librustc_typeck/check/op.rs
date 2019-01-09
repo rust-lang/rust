@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Code related to processing overloaded binary and unary operators.
 
 use super::{FnCtxt, Needs};
@@ -272,9 +262,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
-                                    !self.infcx.type_moves_by_default(self.param_env,
-                                                                        rty,
-                                                                        lhs_expr.span) &&
+                                    self.infcx.type_is_copy_modulo_regions(self.param_env,
+                                                                           rty,
+                                                                           lhs_expr.span) &&
                                         self.lookup_op_method(rty,
                                                               &[rhs_ty],
                                                               Op::Binary(op, is_assign))
@@ -344,9 +334,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
-                                    !self.infcx.type_moves_by_default(self.param_env,
-                                                                      rty,
-                                                                      lhs_expr.span) &&
+                                    self.infcx.type_is_copy_modulo_regions(self.param_env,
+                                                                           rty,
+                                                                           lhs_expr.span) &&
                                         self.lookup_op_method(rty,
                                                               &[rhs_ty],
                                                               Op::Binary(op, is_assign))

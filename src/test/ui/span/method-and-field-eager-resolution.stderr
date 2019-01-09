@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/method-and-field-eager-resolution.rs:15:5
+  --> $DIR/method-and-field-eager-resolution.rs:5:5
    |
 LL |     let mut x = Default::default();
    |         ----- consider giving `x` a type
@@ -9,7 +9,7 @@ LL |     x.0;
    = note: type must be known at this point
 
 error[E0282]: type annotations needed
-  --> $DIR/method-and-field-eager-resolution.rs:22:5
+  --> $DIR/method-and-field-eager-resolution.rs:12:5
    |
 LL |     let mut x = Default::default();
    |         ----- consider giving `x` a type

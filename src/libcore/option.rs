@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Optional values.
 //!
 //! Type [`Option`] represents an optional value: every [`Option`]
@@ -273,7 +263,7 @@ impl<T> Option<T> {
 
     /// Converts from `Pin<&Option<T>>` to `Option<Pin<&T>>`
     #[inline]
-    #[unstable(feature = "pin", issue = "49150")]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
         unsafe {
             Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x))
@@ -282,10 +272,10 @@ impl<T> Option<T> {
 
     /// Converts from `Pin<&mut Option<T>>` to `Option<Pin<&mut T>>`
     #[inline]
-    #[unstable(feature = "pin", issue = "49150")]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
         unsafe {
-            Pin::get_mut_unchecked(self).as_mut().map(|x| Pin::new_unchecked(x))
+            Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
         }
     }
 
@@ -884,6 +874,48 @@ impl<T> Option<T> {
     }
 }
 
+impl<'a, T: Copy> Option<&'a T> {
+    /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copied)]
+    ///
+    /// let x = 12;
+    /// let opt_x = Some(&x);
+    /// assert_eq!(opt_x, Some(&12));
+    /// let copied = opt_x.copied();
+    /// assert_eq!(copied, Some(12));
+    /// ```
+    #[unstable(feature = "copied", issue = "57126")]
+    pub fn copied(self) -> Option<T> {
+        self.map(|&t| t)
+    }
+}
+
+impl<'a, T: Copy> Option<&'a mut T> {
+    /// Maps an `Option<&mut T>` to an `Option<T>` by copying the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copied)]
+    ///
+    /// let mut x = 12;
+    /// let opt_x = Some(&mut x);
+    /// assert_eq!(opt_x, Some(&mut 12));
+    /// let copied = opt_x.copied();
+    /// assert_eq!(copied, Some(12));
+    /// ```
+    #[unstable(feature = "copied", issue = "57126")]
+    pub fn copied(self) -> Option<T> {
+        self.map(|&mut t| t)
+    }
+}
+
 impl<'a, T: Clone> Option<&'a T> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
@@ -1253,19 +1285,41 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// returned. Should no [`None`][Option::None] occur, a container with the
     /// values of each [`Option`] is returned.
     ///
-    /// Here is an example which increments every integer in a vector,
-    /// checking for overflow:
+    /// # Examples
+    ///
+    /// Here is an example which increments every integer in a vector.
+    /// `We use the checked variant of `add` that returns `None` when the
+    /// calculation would result in an overflow.
     ///
     /// ```
-    /// use std::u16;
+    /// let items = vec![0_u16, 1, 2];
     ///
-    /// let v = vec![1, 2];
-    /// let res: Option<Vec<u16>> = v.iter().map(|&x: &u16|
-    ///     if x == u16::MAX { None }
-    ///     else { Some(x + 1) }
-    /// ).collect();
-    /// assert!(res == Some(vec![2, 3]));
+    /// let res: Option<Vec<u16>> = items
+    ///     .iter()
+    ///     .map(|x| x.checked_add(1))
+    ///     .collect();
+    ///
+    /// assert_eq!(res, Some(vec![1, 2, 3]));
     /// ```
+    ///
+    /// As you can see, this will return the expected, valid items.
+    ///
+    /// Here is another example that tries to subtract one from another list
+    /// of integers, this time checking for underflow:
+    ///
+    /// ```
+    /// let items = vec![2_u16, 1, 0];
+    ///
+    /// let res: Option<Vec<u16>> = items
+    ///     .iter()
+    ///     .map(|x| x.checked_sub(1))
+    ///     .collect();
+    ///
+    /// assert_eq!(res, None);
+    /// ```
+    ///
+    /// Since the last element is zero, it would underflow. Thus, the resulting
+    /// value is `None`.
     ///
     /// [`Iterator`]: ../iter/trait.Iterator.html
     #[inline]

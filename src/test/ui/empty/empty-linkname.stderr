@@ -1,5 +1,5 @@
 error[E0454]: #[link(name = "")] given with empty name
-  --> $DIR/empty-linkname.rs:11:1
+  --> $DIR/empty-linkname.rs:1:1
    |
 LL | #[link(name = "")] //~ ERROR: given with empty name
    | ^^^^^^^^^^^^^^^^^^ empty name given

@@ -1,11 +1,11 @@
 error: expected type, found `0`
-  --> $DIR/issue-39616.rs:11:12
+  --> $DIR/issue-39616.rs:1:12
    |
 LL | fn foo(a: [0; 1]) {} //~ ERROR expected type, found `0`
    |            ^
 
 error: expected one of `)`, `,`, `->`, `where`, or `{`, found `]`
-  --> $DIR/issue-39616.rs:11:16
+  --> $DIR/issue-39616.rs:1:16
    |
 LL | fn foo(a: [0; 1]) {} //~ ERROR expected type, found `0`
    |                ^ expected one of `)`, `,`, `->`, `where`, or `{` here

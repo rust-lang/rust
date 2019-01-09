@@ -1,13 +1,3 @@
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use llvm::{self, AttributePlace};
 use rustc_codegen_ssa::MemFlags;
 use builder::Builder;
@@ -456,6 +446,9 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         let linux_s390x = target.target_os == "linux"
                        && target.arch == "s390x"
                        && target.target_env == "gnu";
+        let linux_sparc64 = target.target_os == "linux"
+                       && target.arch == "sparc64"
+                       && target.target_env == "gnu";
         let rust_abi = match sig.abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
             _ => false
@@ -489,12 +482,6 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     attrs.pointee_size = pointee.size;
                     attrs.pointee_align = Some(pointee.align);
 
-                    // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
-                    // with align attributes, and those calls later block optimizations.
-                    if !is_return && !cx.tcx.sess.opts.debugging_opts.arg_align_attributes {
-                        attrs.pointee_align = None;
-                    }
-
                     // `Box` pointer parameters never alias because ownership is transferred
                     // `&mut` pointer parameters never alias other parameters,
                     // or mutable global data
@@ -526,8 +513,9 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
-                // The same is true for s390x-unknown-linux-gnu.
-                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x) {
+                // The same is true for s390x-unknown-linux-gnu
+                // and sparc64-unknown-linux-gnu.
+                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
                     arg.mode = PassMode::Ignore;
                 }
             }

@@ -1,5 +1,5 @@
 error[E0455]: native frameworks are only available on macOS targets
-  --> $DIR/osx-frameworks.rs:13:1
+  --> $DIR/osx-frameworks.rs:3:1
    |
 LL | #[link(name = "foo", kind = "framework")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

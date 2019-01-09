@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Write the output of rustc's analysis to an implementor of Dump.
 //!
 //! Dumping the analysis is implemented by walking the AST and getting a bunch of
@@ -24,7 +14,7 @@
 //! recording the output.
 
 use rustc::hir::def::Def as HirDef;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -66,14 +56,14 @@ macro_rules! access_from {
     ($save_ctxt:expr, $vis:expr, $id:expr) => {
         Access {
             public: $vis.node.is_pub(),
-            reachable: $save_ctxt.analysis.access_levels.is_reachable($id),
+            reachable: $save_ctxt.tcx.privacy_access_levels(LOCAL_CRATE).is_reachable($id),
         }
     };
 
     ($save_ctxt:expr, $item:expr) => {
         Access {
             public: $item.vis.node.is_pub(),
-            reachable: $save_ctxt.analysis.access_levels.is_reachable($item.id),
+            reachable: $save_ctxt.tcx.privacy_access_levels(LOCAL_CRATE).is_reachable($item.id),
         }
     };
 }

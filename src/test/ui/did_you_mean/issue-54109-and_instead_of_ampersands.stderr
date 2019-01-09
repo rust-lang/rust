@@ -1,5 +1,5 @@
 error: expected `{`, found `and`
-  --> $DIR/issue-54109-and_instead_of_ampersands.rs:14:10
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:4:10
    |
 LL |     if a and b {
    |     --   ^^^
@@ -9,7 +9,7 @@ LL |     if a and b {
    |     this `if` statement has a condition, but no block
 
 error: expected `{`, found `or`
-  --> $DIR/issue-54109-and_instead_of_ampersands.rs:23:10
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:13:10
    |
 LL |     if a or b {
    |     --   ^^
@@ -19,7 +19,7 @@ LL |     if a or b {
    |     this `if` statement has a condition, but no block
 
 error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `and`
-  --> $DIR/issue-54109-and_instead_of_ampersands.rs:32:11
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:22:11
    |
 LL |     if (a and b) {
    |           ^^^
@@ -28,7 +28,7 @@ LL |     if (a and b) {
    |           help: use `&&` instead of `and` for the boolean operator
 
 error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `or`
-  --> $DIR/issue-54109-and_instead_of_ampersands.rs:41:11
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:31:11
    |
 LL |     if (a or b) {
    |           ^^
@@ -37,7 +37,7 @@ LL |     if (a or b) {
    |           help: use `||` instead of `or` for the boolean operator
 
 error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `and`
-  --> $DIR/issue-54109-and_instead_of_ampersands.rs:50:13
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:40:13
    |
 LL |     while a and b {
    |             ^^^
@@ -46,7 +46,7 @@ LL |     while a and b {
    |             help: use `&&` instead of `and` for the boolean operator
 
 error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `or`
-  --> $DIR/issue-54109-and_instead_of_ampersands.rs:59:13
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:49:13
    |
 LL |     while a or b {
    |             ^^

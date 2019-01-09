@@ -1,5 +1,5 @@
 error[E0379]: trait fns cannot be declared const
-  --> $DIR/const-fn-mismatch.rs:23:5
+  --> $DIR/const-fn-mismatch.rs:13:5
    |
 LL |     const fn f() -> u32 { 22 }
    |     ^^^^^ trait fns cannot be const

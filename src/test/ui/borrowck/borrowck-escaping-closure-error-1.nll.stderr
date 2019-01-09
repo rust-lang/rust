@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `books`, which is owned by the current function
-  --> $DIR/borrowck-escaping-closure-error-1.rs:23:11
+  --> $DIR/borrowck-escaping-closure-error-1.rs:13:11
    |
 LL |     spawn(|| books.push(4));
    |           ^^ ----- `books` is borrowed here
@@ -7,7 +7,7 @@ LL |     spawn(|| books.push(4));
    |           may outlive borrowed value `books`
    |
 note: function requires argument type to outlive `'static`
-  --> $DIR/borrowck-escaping-closure-error-1.rs:23:5
+  --> $DIR/borrowck-escaping-closure-error-1.rs:13:5
    |
 LL |     spawn(|| books.push(4));
    |     ^^^^^^^^^^^^^^^^^^^^^^^

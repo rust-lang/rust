@@ -1,5 +1,5 @@
 error: expected `}`, found `,`
-  --> $DIR/issue-49257.rs:20:19
+  --> $DIR/issue-49257.rs:10:19
    |
 LL |     let Point { .., y, } = p; //~ ERROR expected `}`, found `,`
    |                 --^
@@ -12,7 +12,7 @@ LL |     let Point { y, .. } = p; //~ ERROR expected `}`, found `,`
    |                --  ^^^^
 
 error: expected `}`, found `,`
-  --> $DIR/issue-49257.rs:21:19
+  --> $DIR/issue-49257.rs:11:19
    |
 LL |     let Point { .., y } = p; //~ ERROR expected `}`, found `,`
    |                 --^
@@ -25,7 +25,7 @@ LL |     let Point { y , .. } = p; //~ ERROR expected `}`, found `,`
    |                -- ^^^^^^
 
 error: expected `}`, found `,`
-  --> $DIR/issue-49257.rs:22:19
+  --> $DIR/issue-49257.rs:12:19
    |
 LL |     let Point { .., } = p; //~ ERROR expected `}`, found `,`
    |                 --^

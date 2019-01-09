@@ -1,5 +1,5 @@
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/order-dependent-cast-inference.rs:15:17
+  --> $DIR/order-dependent-cast-inference.rs:5:17
    |
 LL |     let mut y = 0 as *const _;
    |                 ^^^^^--------

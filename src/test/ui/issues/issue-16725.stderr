@@ -1,5 +1,5 @@
 error[E0603]: function `bar` is private
-  --> $DIR/issue-16725.rs:16:19
+  --> $DIR/issue-16725.rs:6:19
    |
 LL |     unsafe { foo::bar(); }
    |                   ^^^

@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # Feature gating
 //!
 //! This module implements the gating necessary for preventing certain compiler
@@ -121,7 +111,7 @@ declare_features! (
     (active, concat_idents, "1.0.0", Some(29599), None),
     (active, link_args, "1.0.0", Some(29596), None),
     (active, log_syntax, "1.0.0", Some(29598), None),
-    (active, non_ascii_idents, "1.0.0", Some(28979), None),
+    (active, non_ascii_idents, "1.0.0", Some(55467), None),
     (active, plugin_registrar, "1.0.0", Some(29597), None),
     (active, thread_local, "1.0.0", Some(29594), None),
     (active, trace_macros, "1.0.0", Some(29598), None),
@@ -397,9 +387,6 @@ declare_features! (
     // Multiple patterns with `|` in `if let` and `while let`.
     (active, if_while_or_patterns, "1.26.0", Some(48215), None),
 
-    // Allows `#[repr(packed)]` attribute on structs.
-    (active, repr_packed, "1.26.0", Some(33158), None),
-
     // Allows macro invocations in `extern {}` blocks.
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
@@ -478,20 +465,20 @@ declare_features! (
     // Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
 
-    // `#[cfg_attr(predicate, multiple, attributes, here)]`
-    (active, cfg_attr_multi, "1.31.0", Some(54881), None),
-
     // Allows `const _: TYPE = VALUE`.
     (active, underscore_const_names, "1.31.0", Some(54912), None),
 
-    // `reason = ` in lint attributes and `expect` lint attribute
+    // Adds `reason` and `expect` lint attributes.
     (active, lint_reasons, "1.31.0", Some(54503), None),
 
     // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
     (active, extern_crate_self, "1.31.0", Some(56409), None),
 
-    // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
-    (active, min_const_unsafe_fn, "1.31.0", Some(55607), None),
+    // Allows paths to enum variants on type aliases.
+    (active, type_alias_enum_variants, "1.31.0", Some(49683), None),
+
+    // Re-Rebalance coherence
+    (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
 );
 
 declare_features! (
@@ -684,17 +671,23 @@ declare_features! (
     // `extern crate foo as bar;` puts `bar` into extern prelude.
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the `:literal` macro fragment specifier (RFC 1576).
-    (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
-    // Integer match exhaustiveness checking (RFC 2591)
-    (accepted, exhaustive_integer_patterns, "1.32.0", Some(50907), None),
+    (accepted, macro_literal_matcher, "1.32.0", Some(35625), None),
     // Use `?` as the Kleene "at most one" operator.
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
     // `Self` struct constructor (RFC 2302)
     (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
     // `Self` in type definitions (RFC 2300)
     (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
+    // Integer match exhaustiveness checking (RFC 2591)
+    (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907), None),
     // `use path as _;` and `extern crate c as _;`
     (accepted, underscore_imports, "1.33.0", Some(48216), None),
+    // Allows `#[repr(packed(N))]` attribute on structs.
+    (accepted, repr_packed, "1.33.0", Some(33158), None),
+    // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
+    (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
+    // `#[cfg_attr(predicate, multiple, attributes, here)]`
+    (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -1284,16 +1277,15 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if name.starts_with("rustc_") {
-            gate_feature!(self, rustc_attrs, attr.span,
-                          "unless otherwise specified, attributes \
-                           with the prefix `rustc_` \
-                           are reserved for internal compiler diagnostics");
-        } else if !attr::is_known(attr) {
-            // Only run the custom attribute lint during regular feature gate
-            // checking. Macro gating runs before the plugin attributes are
-            // registered, so we skip this in that case.
-            if !is_macro {
+        if !attr::is_known(attr) {
+            if name.starts_with("rustc_") {
+                let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
+                           are reserved for internal compiler diagnostics";
+                gate_feature!(self, rustc_attrs, attr.span, msg);
+            } else if !is_macro {
+                // Only run the custom attribute lint during regular feature gate
+                // checking. Macro gating runs before the plugin attributes are
+                // registered, so we skip this in that case.
                 let msg = format!("The attribute `{}` is currently unknown to the compiler and \
                                    may have meaning added to it in the future", attr.path);
                 gate_feature!(self, custom_attribute, attr.span, &msg);
@@ -1550,7 +1542,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
-            ast::ItemKind::Static(..) |
             ast::ItemKind::Const(_,_) => {
                 if i.ident.name == "_" {
                     gate_feature_post!(&self, underscore_const_names, i.span,
@@ -1587,13 +1578,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
-                        }
-                        if let Some((name, _)) = item.name_value_literal() {
-                            if name == "packed" {
-                                gate_feature_post!(&self, repr_packed, attr.span,
-                                                   "the `#[repr(packed(n))]` attribute \
-                                                    is experimental");
-                            }
                         }
                     }
                 }

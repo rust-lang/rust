@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `y` as mutable
-  --> $DIR/augmented-assignments.rs:31:5
+  --> $DIR/augmented-assignments.rs:21:5
    |
 LL |     let y = Int(2);
    |         - help: make this binding mutable: `mut y`
@@ -8,7 +8,7 @@ LL |     y   //~ error: cannot borrow immutable local variable `y` as mutable
    |     ^ cannot borrow mutably
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/augmented-assignments.rs:23:5
+  --> $DIR/augmented-assignments.rs:13:5
    |
 LL |     x   //~ error: use of moved value: `x`
    |     ^ value used here after move

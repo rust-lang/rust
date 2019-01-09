@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # Standalone Tests for the Inference Module
 
 use driver;
@@ -17,7 +7,6 @@ use errors::{DiagnosticBuilder, Level};
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::infer::outlives::env::OutlivesEnvironment;
-use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::infer::{self, InferOk, InferResult, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::session::config::{OutputFilenames, OutputTypes};
@@ -36,7 +25,6 @@ use syntax::ast;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::source_map::{FileName, FilePathMapping, SourceMap};
 use syntax::symbol::Symbol;
-use syntax_pos::DUMMY_SP;
 
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -271,7 +259,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             assert!(idx < names.len());
             for item in &m.item_ids {
                 let item = this.infcx.tcx.hir().expect_item(item.id);
-                if item.name.to_string() == names[idx] {
+                if item.ident.to_string() == names[idx] {
                     return search(this, item, idx + 1, names);
                 }
             }
@@ -441,17 +429,6 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             }
         }
     }
-
-    /// Checks that `t1 <: t2` is false (this may register additional
-    /// region checks).
-    pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub(t1, t2) {
-            Err(_) => {}
-            Ok(_) => {
-                panic!("unexpected success computing sub({:?},{:?})", t1, t2);
-            }
-        }
-    }
 }
 
 #[test]
@@ -481,25 +458,6 @@ fn contravariant_region_ptr_err() {
 }
 
 #[test]
-fn sub_free_bound_false() {
-    //! Test that:
-    //!
-    //!     fn(&'a isize) <: for<'b> fn(&'b isize)
-    //!
-    //! *does not* hold.
-
-    test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
-        env.create_simple_region_hierarchy();
-        let t_rptr_free1 = env.t_rptr_free(1);
-        let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        env.check_not_sub(
-            env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
-            env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
-        );
-    })
-}
-
-#[test]
 fn sub_bound_free_true() {
     //! Test that:
     //!
@@ -514,25 +472,6 @@ fn sub_bound_free_true() {
         env.check_sub(
             env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
             env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
-        );
-    })
-}
-
-#[test]
-fn sub_free_bound_false_infer() {
-    //! Test that:
-    //!
-    //!     fn(_#1) <: for<'b> fn(&'b isize)
-    //!
-    //! does NOT hold for any instantiation of `_#1`.
-
-    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_infer1 = env.infcx
-            .next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
-        let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        env.check_not_sub(
-            env.t_fn(&[t_infer1], env.tcx().types.isize),
-            env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
         );
     })
 }

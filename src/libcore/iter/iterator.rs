@@ -1,18 +1,8 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cmp::Ordering;
 use ops::Try;
 
 use super::LoopState;
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
 use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
@@ -162,7 +152,7 @@ pub trait Iterator {
     /// That said, the implementation should provide a correct estimation,
     /// because otherwise it would be a violation of the trait's protocol.
     ///
-    /// The default implementation returns `(0, None)` which is correct for any
+    /// The default implementation returns `(0, `[`None`]`)` which is correct for any
     /// iterator.
     ///
     /// [`usize`]: ../../std/primitive.usize.html
@@ -2233,6 +2223,35 @@ pub trait Iterator {
         });
 
         (ts, us)
+    }
+
+    /// Creates an iterator which copies all of its elements.
+    ///
+    /// This is useful when you have an iterator over `&T`, but you need an
+    /// iterator over `T`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_copied)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let v_cloned: Vec<_> = a.iter().copied().collect();
+    ///
+    /// // copied is the same as .map(|&x| x)
+    /// let v_map: Vec<_> = a.iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(v_cloned, vec![1, 2, 3]);
+    /// assert_eq!(v_map, vec![1, 2, 3]);
+    /// ```
+    #[unstable(feature = "iter_copied", issue = "57127")]
+    fn copied<'a, T: 'a>(self) -> Copied<Self>
+        where Self: Sized + Iterator<Item=&'a T>, T: Copy
+    {
+        Copied { it: self }
     }
 
     /// Creates an iterator which [`clone`]s all of its elements.

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -25,6 +15,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
+#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 
@@ -41,7 +32,7 @@ extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate serialize;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
@@ -337,6 +328,18 @@ fn opts() -> Vec<RustcOptGroup> {
              o.optflag("",
                        "enable-index-page",
                        "To enable generation of the index page")
+        }),
+        unstable("static-root-path", |o| {
+            o.optopt("",
+                     "static-root-path",
+                     "Path string to force loading static files from in output pages. \
+                      If not set, uses combinations of '../' to reach the documentation root.",
+                     "PATH")
+        }),
+        unstable("disable-per-crate-search", |o| {
+            o.optflag("",
+                      "disable-per-crate-search",
+                      "disables generating the crate selector on the search box")
         }),
     ]
 }

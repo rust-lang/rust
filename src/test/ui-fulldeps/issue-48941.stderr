@@ -1,11 +1,11 @@
 error: expected unsuffixed literal or identifier, found a
-  --> $DIR/issue-48941.rs:20:24
+  --> $DIR/issue-48941.rs:10:24
    |
 LL | #[noop_attribute("hi", rank = a)] //~ ERROR expected unsuffixed literal or identifier, found a
    |                        ^^^^
 
 error: expected unsuffixed literal or identifier, found =
-  --> $DIR/issue-48941.rs:23:27
+  --> $DIR/issue-48941.rs:13:27
    |
 LL | #[noop_attribute("/user", data= = "<user")] //~ ERROR literal or identifier
    |                           ^^^^

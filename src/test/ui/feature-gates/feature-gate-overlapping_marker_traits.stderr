@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `MyMarker`:
-  --> $DIR/feature-gate-overlapping_marker_traits.rs:16:1
+  --> $DIR/feature-gate-overlapping_marker_traits.rs:6:1
    |
 LL | impl<T: Display> MyMarker for T {}
    | ------------------------------- first implementation here

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow_check::nll::type_check;
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -36,7 +26,7 @@ pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;
-mod qualify_min_const_fn;
+pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod dump_mir;
 pub mod deaggregator;

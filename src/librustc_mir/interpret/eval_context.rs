@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fmt::Write;
 use std::mem;
 
@@ -52,7 +42,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
     /// A cache for deduplicating vtables
-    pub(super) vtables: FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), AllocId>,
+    pub(super) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), AllocId>,
 }
 
 /// A stack frame.
@@ -422,7 +412,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
-            debug!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
 
@@ -491,7 +481,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
 
         if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
-            debug!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
@@ -503,7 +493,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
-            debug!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
@@ -557,7 +547,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
 
         if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
-            debug!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
         Ok(())

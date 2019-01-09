@@ -1,7 +1,7 @@
 error: rustc_outlives
-  --> $DIR/nested-union.rs:16:1
+  --> $DIR/nested-union.rs:6:1
    |
-LL | / union Foo<'a, T> { //~ ERROR 16:1: 18:2: rustc_outlives
+LL | / union Foo<'a, T> { //~ ERROR rustc_outlives
 LL | |     field1: Bar<'a, T>
 LL | | }
    | |_^

@@ -1,5 +1,5 @@
 error[E0661]: output operand constraint lacks '=' or '+'
-  --> $DIR/E0661.rs:15:18
+  --> $DIR/E0661.rs:5:18
    |
 LL |     asm!("nop" : "r"(a));
    |                  ^^^

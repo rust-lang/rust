@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
+  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:9:5
    |
 LL | fn foo(x: &u32) -> &'static u32 {
    |           ---- help: add explicit lifetime `ReStatic` to the type of `x`: `&ReStatic u32`

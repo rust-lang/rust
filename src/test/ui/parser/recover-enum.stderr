@@ -1,5 +1,5 @@
 error: expected one of `(`, `,`, `=`, `{`, or `}`, found `Bad`
-  --> $DIR/recover-enum.rs:16:9
+  --> $DIR/recover-enum.rs:6:9
    |
 LL |         Very
    |             - expected one of `(`, `,`, `=`, `{`, or `}` here

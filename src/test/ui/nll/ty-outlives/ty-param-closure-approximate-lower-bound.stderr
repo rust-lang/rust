@@ -1,5 +1,5 @@
 note: External requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:24:24
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:32:1
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:22:1
    |
 LL | / fn generic<T>(value: T) {
 LL | |     let cell = Cell::new(&());
@@ -26,7 +26,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:39:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:24
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:38:1
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:28:1
    |
 LL | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
 LL | |     twice(cell, value, |a, b| invoke(a, b));
@@ -54,7 +54,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:39:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:24
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^

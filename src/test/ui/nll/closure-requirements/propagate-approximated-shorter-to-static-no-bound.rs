@@ -1,20 +1,7 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test a case where we are trying to prove `'x: 'y` and are forced to
 // approximate the shorter end-point (`'y`) to with `'static`. This is
 // because `'y` is higher-ranked but we know of no relations to other
 // regions. Note that `'static` shows up in the stderr output as `'0`.
-//
-// FIXME(#45827) Because of shortcomings in the MIR type checker,
-// these errors are not (yet) reported.
 
 // compile-flags:-Zborrowck=mir -Zverbose
 

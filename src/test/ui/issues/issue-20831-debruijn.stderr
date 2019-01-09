@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-20831-debruijn.rs:38:5
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
@@ -12,8 +12,8 @@ LL | |     }
    |
    = note: expected type `'a`
               found type ``
-note: the anonymous lifetime #2 defined on the method body at 38:5...
-  --> $DIR/issue-20831-debruijn.rs:38:5
+note: the anonymous lifetime #2 defined on the method body at 28:5...
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
@@ -23,14 +23,14 @@ LL | |         //~| ERROR mismatched types
 LL | |         self.sub = t;
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 36:6
-  --> $DIR/issue-20831-debruijn.rs:36:6
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 26:6
+  --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      ^^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-20831-debruijn.rs:38:5
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
@@ -43,13 +43,13 @@ LL | |     }
    |
    = note: expected type `'a`
               found type ``
-note: the lifetime 'a as defined on the impl at 36:6...
-  --> $DIR/issue-20831-debruijn.rs:36:6
+note: the lifetime 'a as defined on the impl at 26:6...
+  --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      ^^
-note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 38:5
-  --> $DIR/issue-20831-debruijn.rs:38:5
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 28:5
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
@@ -61,7 +61,7 @@ LL | |     }
    | |_____^
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/issue-20831-debruijn.rs:38:5
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
@@ -72,8 +72,8 @@ LL | |         self.sub = t;
 LL | |     }
    | |_____^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 38:5...
-  --> $DIR/issue-20831-debruijn.rs:38:5
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 28:5...
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
@@ -83,8 +83,8 @@ LL | |         //~| ERROR mismatched types
 LL | |         self.sub = t;
 LL | |     }
    | |_____^
-note: ...but the lifetime must also be valid for the lifetime 'a as defined on the impl at 36:6...
-  --> $DIR/issue-20831-debruijn.rs:36:6
+note: ...but the lifetime must also be valid for the lifetime 'a as defined on the impl at 26:6...
+  --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      ^^

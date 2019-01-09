@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fmt;
 use rustc::hir;
 use rustc::mir::*;
@@ -973,7 +963,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             span: self.source_info.span,
             ty: self.tcx().types.usize,
             user_ty: None,
-            literal: ty::Const::from_usize(self.tcx(), val.into()),
+            literal: self.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_usize(self.tcx(), val.into())
+            )),
         })
     }
 

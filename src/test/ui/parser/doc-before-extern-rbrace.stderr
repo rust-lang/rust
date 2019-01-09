@@ -1,5 +1,5 @@
 error: expected item after doc comment
-  --> $DIR/doc-before-extern-rbrace.rs:14:5
+  --> $DIR/doc-before-extern-rbrace.rs:2:5
    |
 LL |     /// hi
    |     ^^^^^^

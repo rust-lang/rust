@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `books`, which is owned by the current function
-  --> $DIR/borrowck-escaping-closure-error-2.rs:21:14
+  --> $DIR/borrowck-escaping-closure-error-2.rs:11:14
    |
 LL |     Box::new(|| books.push(4))
    |              ^^ ----- `books` is borrowed here

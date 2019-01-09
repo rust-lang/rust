@@ -1,23 +1,23 @@
 error: unreachable expression
-  --> $DIR/expr_assign.rs:19:5
+  --> $DIR/expr_assign.rs:10:5
    |
 LL |     x = return; //~ ERROR unreachable
    |     ^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/expr_assign.rs:14:9
+  --> $DIR/expr_assign.rs:5:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_assign.rs:29:14
+  --> $DIR/expr_assign.rs:20:14
    |
 LL |         *p = return; //~ ERROR unreachable
    |              ^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_assign.rs:35:15
+  --> $DIR/expr_assign.rs:26:15
    |
 LL |     *{return; &mut i} = 22; //~ ERROR unreachable
    |               ^^^^^^

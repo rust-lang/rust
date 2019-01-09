@@ -1,5 +1,5 @@
 error[E0603]: function `f` is private
-  --> $DIR/private-item-simple.rs:16:8
+  --> $DIR/private-item-simple.rs:6:8
    |
 LL |     a::f(); //~ ERROR function `f` is private
    |        ^

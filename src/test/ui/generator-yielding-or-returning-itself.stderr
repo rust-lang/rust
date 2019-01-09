@@ -1,5 +1,5 @@
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:25:34: 29:6 _] as std::ops::Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:25:34: 29:6 _]`
-  --> $DIR/generator-yielding-or-returning-itself.rs:25:5
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6 _] as std::ops::Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6 _]`
+  --> $DIR/generator-yielding-or-returning-itself.rs:15:5
    |
 LL |     want_cyclic_generator_return(|| {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
@@ -8,7 +8,7 @@ LL |     want_cyclic_generator_return(|| {
            this error may be the result of a recent compiler bug-fix,
            see https://github.com/rust-lang/rust/issues/46062 for more details
 note: required by `want_cyclic_generator_return`
-  --> $DIR/generator-yielding-or-returning-itself.rs:19:1
+  --> $DIR/generator-yielding-or-returning-itself.rs:9:1
    |
 LL | / pub fn want_cyclic_generator_return<T>(_: T)
 LL | |     where T: Generator<Yield = (), Return = T>
@@ -16,8 +16,8 @@ LL | | {
 LL | | }
    | |_^
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:38:33: 42:6 _] as std::ops::Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:38:33: 42:6 _]`
-  --> $DIR/generator-yielding-or-returning-itself.rs:38:5
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _] as std::ops::Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _]`
+  --> $DIR/generator-yielding-or-returning-itself.rs:28:5
    |
 LL |     want_cyclic_generator_yield(|| {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
@@ -26,7 +26,7 @@ LL |     want_cyclic_generator_yield(|| {
            this error may be the result of a recent compiler bug-fix,
            see https://github.com/rust-lang/rust/issues/46062 for more details
 note: required by `want_cyclic_generator_yield`
-  --> $DIR/generator-yielding-or-returning-itself.rs:32:1
+  --> $DIR/generator-yielding-or-returning-itself.rs:22:1
    |
 LL | / pub fn want_cyclic_generator_yield<T>(_: T)
 LL | |     where T: Generator<Yield = T, Return = ()>

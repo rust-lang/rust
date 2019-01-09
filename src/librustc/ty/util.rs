@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! misc. type-system utilities too small to deserve their own file
 
 use hir::def::Def;
@@ -17,7 +7,7 @@ use hir::{self, Node};
 use ich::NodeIdHashingMode;
 use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use ty::subst::{Substs, UnpackedKind};
+use ty::subst::{Subst, Substs, UnpackedKind};
 use ty::query::TyCtxtAt;
 use ty::TyKind::*;
 use ty::layout::{Integer, IntegerExt};
@@ -25,7 +15,7 @@ use util::common::ErrorReported;
 use middle::lang_items;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -213,7 +203,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                     let cause = ObligationCause { span, ..ObligationCause::dummy() };
                     let ctx = traits::FulfillmentContext::new();
                     match traits::fully_normalize(&infcx, ctx, cause, self, &ty) {
-                        Ok(ty) => if infcx.type_moves_by_default(self, ty, span) {
+                        Ok(ty) => if !infcx.type_is_copy_modulo_regions(self, ty, span) {
                             infringing.push(field);
                         }
                         Err(errors) => {
@@ -628,17 +618,100 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         }
     }
+
+    /// Expands the given impl trait type, stopping if the type is recursive.
+    pub fn try_expand_impl_trait_type(
+        self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    ) -> Result<Ty<'tcx>, Ty<'tcx>> {
+        use crate::ty::fold::TypeFolder;
+
+        struct OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            // Contains the DefIds of the opaque types that are currently being
+            // expanded. When we expand an opaque type we insert the DefId of
+            // that type, and when we finish expanding that type we remove the
+            // its DefId.
+            seen_opaque_tys: FxHashSet<DefId>,
+            primary_def_id: DefId,
+            found_recursion: bool,
+            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        }
+
+        impl<'a, 'gcx, 'tcx> OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            fn expand_opaque_ty(
+                &mut self,
+                def_id: DefId,
+                substs: &'tcx Substs<'tcx>,
+            ) -> Option<Ty<'tcx>> {
+                if self.found_recursion {
+                    None
+                } else if self.seen_opaque_tys.insert(def_id) {
+                    let generic_ty = self.tcx.type_of(def_id);
+                    let concrete_ty = generic_ty.subst(self.tcx, substs);
+                    let expanded_ty = self.fold_ty(concrete_ty);
+                    self.seen_opaque_tys.remove(&def_id);
+                    Some(expanded_ty)
+                } else {
+                    // If another opaque type that we contain is recursive, then it
+                    // will report the error, so we don't have to.
+                    self.found_recursion = def_id == self.primary_def_id;
+                    None
+                }
+            }
+        }
+
+        impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                if let ty::Opaque(def_id, substs) = t.sty {
+                    self.expand_opaque_ty(def_id, substs).unwrap_or(t)
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+        }
+
+        let mut visitor = OpaqueTypeExpander {
+            seen_opaque_tys: FxHashSet::default(),
+            primary_def_id: def_id,
+            found_recursion: false,
+            tcx: self,
+        };
+        let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
+        if visitor.found_recursion {
+            Err(expanded_type)
+        } else {
+            Ok(expanded_type)
+        }
+    }
 }
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
-    pub fn moves_by_default(&'tcx self,
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            param_env: ty::ParamEnv<'tcx>,
-                            span: Span)
-                            -> bool {
-        !tcx.at(span).is_copy_raw(param_env.and(self))
+    /// Checks whether values of this type `T` are *moved* or *copied*
+    /// when referenced -- this amounts to a check for whether `T:
+    /// Copy`, but note that we **don't** consider lifetimes when
+    /// doing this check. This means that we may generate MIR which
+    /// does copies even when the type actually doesn't satisfy the
+    /// full requirements for the `Copy` trait (cc #29149) -- this
+    /// winds up being reported as an error during NLL borrow check.
+    pub fn is_copy_modulo_regions(&'tcx self,
+                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  param_env: ty::ParamEnv<'tcx>,
+                                  span: Span)
+                                  -> bool {
+        tcx.at(span).is_copy_raw(param_env.and(self))
     }
 
+    /// Checks whether values of this type `T` have a size known at
+    /// compile time (i.e., whether `T: Sized`). Lifetimes are ignored
+    /// for the purposes of this check, so it can be an
+    /// over-approximation in generic contexts, where one can have
+    /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
+    /// actually carry lifetime requirements.
     pub fn is_sized(&'tcx self,
                     tcx_at: TyCtxtAt<'a, 'tcx, 'tcx>,
                     param_env: ty::ParamEnv<'tcx>)-> bool
@@ -646,6 +719,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx_at.is_sized_raw(param_env.and(self))
     }
 
+    /// Checks whether values of this type `T` implement the `Freeze`
+    /// trait -- frozen types are those that do not contain a
+    /// `UnsafeCell` anywhere.  This is a language concept used to
+    /// distinguish "true immutability", which is relevant to
+    /// optimization as well as the rules around static values. Note
+    /// that the `Freeze` trait is not exposed to end users and is
+    /// effectively an implementation detail.
     pub fn is_freeze(&'tcx self,
                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
                      param_env: ty::ParamEnv<'tcx>,
@@ -666,6 +746,19 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                       param_env: ty::ParamEnv<'tcx>)
                       -> bool {
         tcx.needs_drop_raw(param_env.and(self))
+    }
+
+    pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+        match (&a.sty, &b.sty) {
+            (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
+                if did_a != did_b {
+                    return false;
+                }
+
+                substs_a.types().zip(substs_b.types()).all(|(a, b)| Self::same_type(a, b))
+            }
+            _ => a == b,
+        }
     }
 
     /// Check whether a type is representable. This means it cannot contain unboxed
@@ -740,19 +833,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
 
-        fn same_type<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-            match (&a.sty, &b.sty) {
-                (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
-                    if did_a != did_b {
-                        return false;
-                    }
-
-                    substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type(a, b))
-                }
-                _ => a == b,
-            }
-        }
-
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
         fn is_type_structurally_recursive<'a, 'tcx>(
@@ -817,7 +897,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         // struct Foo { Option<Option<Foo>> }
 
                         for &seen_type in iter {
-                            if same_type(ty, seen_type) {
+                            if ty::TyS::same_type(ty, seen_type) {
                                 debug!("ContainsRecursive: {:?} contains {:?}",
                                        seen_type,
                                        ty);
@@ -861,11 +941,13 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -875,11 +957,13 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -889,11 +973,13 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -931,11 +1017,11 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // `ManuallyDrop` doesn't have a destructor regardless of field types.
         ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
 
-        // Issue #22536: We first query type_moves_by_default.  It sees a
+        // Issue #22536: We first query `is_copy_modulo_regions`.  It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
         // cleanup/drop/zeroing) ...
-        _ if !ty.moves_by_default(tcx, param_env, DUMMY_SP) => false,
+        _ if ty.is_copy_modulo_regions(tcx, param_env, DUMMY_SP) => false,
 
         // ... (issue #22536 continued) but as an optimization, still use
         // prior logic of asking for the structural "may drop".

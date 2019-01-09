@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/borrowck-auto-mut-ref-to-immut-var.rs:25:5
+  --> $DIR/borrowck-auto-mut-ref-to-immut-var.rs:15:5
    |
 LL |     let x = Foo { x: 3 };
    |         - help: consider changing this to be mutable: `mut x`

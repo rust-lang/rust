@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Type Names for Debug Info.
 
 use common::CodegenCx;
@@ -117,12 +107,16 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
         },
         ty::Dynamic(ref trait_data, ..) => {
-            let principal = cx.tcx.normalize_erasing_late_bound_regions(
-                ty::ParamEnv::reveal_all(),
-                &trait_data.principal(),
-            );
-            push_item_name(cx, principal.def_id, false, output);
-            push_type_params(cx, principal.substs, output);
+            if let Some(principal) = trait_data.principal() {
+                let principal = cx.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &principal,
+                );
+                push_item_name(cx, principal.def_id, false, output);
+                push_type_params(cx, principal.substs, output);
+            } else {
+                output.push_str("dyn '_");
+            }
         },
         ty::FnDef(..) | ty::FnPtr(_) => {
             let sig = t.fn_sig(cx.tcx);

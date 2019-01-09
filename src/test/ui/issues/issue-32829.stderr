@@ -1,5 +1,5 @@
 error[E0658]: panicking in statics is unstable (see issue #51999)
-  --> $DIR/issue-32829.rs:11:22
+  --> $DIR/issue-32829.rs:1:22
    |
 LL | static S : u64 = { { panic!("foo"); 0 } };
    |                      ^^^^^^^^^^^^^^

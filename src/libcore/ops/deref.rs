@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// Used for immutable dereferencing operations, like `*v`.
 ///
 /// In addition to being used for explicit dereferencing operations with the
@@ -37,7 +27,7 @@
 /// [book] as well as the reference sections on [the dereference operator]
 /// [ref-deref-op], [method resolution] and [type coercions].
 ///
-/// [book]: ../../book/second-edition/ch15-02-deref.html
+/// [book]: ../../book/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
@@ -127,7 +117,7 @@ impl<T: ?Sized> Deref for &mut T {
 /// [book] as well as the reference sections on [the dereference operator]
 /// [ref-deref-op], [method resolution] and [type coercions].
 ///
-/// [book]: ../../book/second-edition/ch15-02-deref.html
+/// [book]: ../../book/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
@@ -177,3 +167,19 @@ pub trait DerefMut: Deref {
 impl<T: ?Sized> DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
+
+/// Indicates that a struct can be used as a method receiver, without the
+/// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
+/// `Rc<T>`, `&T`, and `Pin<P>`.
+#[cfg_attr(not(stage0), lang = "receiver")]
+#[unstable(feature = "receiver_trait", issue = "0")]
+#[doc(hidden)]
+pub trait Receiver {
+    // Empty.
+}
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for &T {}
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for &mut T {}

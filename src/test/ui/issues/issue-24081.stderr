@@ -1,5 +1,5 @@
 error[E0255]: the name `Add` is defined multiple times
-  --> $DIR/issue-24081.rs:17:1
+  --> $DIR/issue-24081.rs:7:1
    |
 LL | use std::ops::Add;
    |     ------------- previous import of the trait `Add` here
@@ -14,7 +14,7 @@ LL | use std::ops::Add as OtherAdd;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Sub` is defined multiple times
-  --> $DIR/issue-24081.rs:19:1
+  --> $DIR/issue-24081.rs:9:1
    |
 LL | use std::ops::Sub;
    |     ------------- previous import of the trait `Sub` here
@@ -29,7 +29,7 @@ LL | use std::ops::Sub as OtherSub;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Mul` is defined multiple times
-  --> $DIR/issue-24081.rs:21:1
+  --> $DIR/issue-24081.rs:11:1
    |
 LL | use std::ops::Mul;
    |     ------------- previous import of the trait `Mul` here
@@ -44,7 +44,7 @@ LL | use std::ops::Mul as OtherMul;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Div` is defined multiple times
-  --> $DIR/issue-24081.rs:23:1
+  --> $DIR/issue-24081.rs:13:1
    |
 LL | use std::ops::Div;
    |     ------------- previous import of the trait `Div` here
@@ -59,7 +59,7 @@ LL | use std::ops::Div as OtherDiv;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Rem` is defined multiple times
-  --> $DIR/issue-24081.rs:25:1
+  --> $DIR/issue-24081.rs:15:1
    |
 LL | use std::ops::Rem;
    |     ------------- previous import of the trait `Rem` here

@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `!`
-  --> $DIR/issue-18532.rs:16:5
+  --> $DIR/issue-18532.rs:6:5
    |
 LL |     (return)((),()); //~ ERROR expected function, found `!`
    |     ^^^^^^^^-------

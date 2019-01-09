@@ -1,16 +1,10 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+use rustc::infer::canonical::Canonical;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{Location, Mir, UserTypeAnnotation};
+use rustc::ty::{
+    self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable, UserTypeAnnotation,
+    UserTypeAnnotationIndex,
+};
+use rustc::mir::{Location, Mir};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -65,7 +59,11 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_ty: ty={:?}", ty);
     }
 
-    fn visit_user_type_annotation(&mut self, _ty: &mut UserTypeAnnotation<'tcx>) {
+    fn visit_user_type_annotation(
+        &mut self,
+        _index: UserTypeAnnotationIndex,
+        _ty: &mut Canonical<'tcx, UserTypeAnnotation<'tcx>>,
+    ) {
         // User type annotations represent the types that the user
         // wrote in the progarm. We don't want to erase the regions
         // from these types: rather, we want to add them as
@@ -90,7 +88,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_region: region={:?}", region);
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
+    fn visit_const(&mut self, constant: &mut &'tcx ty::LazyConst<'tcx>, _location: Location) {
         *constant = self.renumber_regions(&*constant);
     }
 

@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A pointer type for heap allocation.
 //!
 //! `Box<T>`, casually referred to as a 'box', provides the simplest form of
@@ -77,7 +67,9 @@ use core::iter::{Iterator, FromIterator, FusedIterator};
 use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::pin::Pin;
-use core::ops::{CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Generator, GeneratorState};
+use core::ops::{
+    CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
+};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
@@ -109,9 +101,11 @@ impl<T> Box<T> {
         box x
     }
 
-    #[unstable(feature = "pin", issue = "49150")]
+    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
+    /// `x` will be pinned in memory and unable to be moved.
+    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn pinned(x: T) -> Pin<Box<T>> {
+    pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
     }
 }
@@ -262,6 +256,19 @@ impl<T: ?Sized> Box<T> {
         T: 'a // Technically not needed, but kept to be explicit.
     {
         unsafe { &mut *Box::into_raw(b) }
+    }
+
+    /// Converts a `Box<T>` into a `Pin<Box<T>>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
+    ///
+    /// This is also available via [`From`].
+    #[unstable(feature = "box_into_pin", issue = "0")]
+    pub fn into_pin(boxed: Box<T>) -> Pin<Box<T>> {
+        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
+        // when `T: !Unpin`,  so it's safe to pin it directly without any
+        // additional requirements.
+        unsafe { Pin::new_unchecked(boxed) }
     }
 }
 
@@ -439,23 +446,48 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
 
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Box<T> {
+    /// Converts a generic type `T` into a `Box<T>`
+    ///
+    /// The conversion allocates on the heap and moves `t`
+    /// from the stack into it.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let x = 5;
+    /// let boxed = Box::new(5);
+    ///
+    /// assert_eq!(Box::from(x), boxed);
+    /// ```
     fn from(t: T) -> Self {
         Box::new(t)
     }
 }
 
-#[unstable(feature = "pin", issue = "49150")]
-impl<T> From<Box<T>> for Pin<Box<T>> {
+#[stable(feature = "pin", since = "1.33.0")]
+impl<T: ?Sized> From<Box<T>> for Pin<Box<T>> {
+    /// Converts a `Box<T>` into a `Pin<Box<T>>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
     fn from(boxed: Box<T>) -> Self {
-        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
-        // when `T: !Unpin`,  so it's safe to pin it directly without any
-        // additional requirements.
-        unsafe { Pin::new_unchecked(boxed) }
+        Box::into_pin(boxed)
     }
 }
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
+    /// Converts a `&[T]` into a `Box<[T]>`
+    ///
+    /// This conversion allocates on the heap
+    /// and performs a copy of `slice`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// // create a &[u8] which will be used to create a Box<[u8]>
+    /// let slice: &[u8] = &[104, 101, 108, 108, 111];
+    /// let boxed_slice: Box<[u8]> = Box::from(slice);
+    ///
+    /// println!("{:?}", boxed_slice);
+    /// ```
     fn from(slice: &'a [T]) -> Box<[T]> {
         let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
         boxed.copy_from_slice(slice);
@@ -465,6 +497,16 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a> From<&'a str> for Box<str> {
+    /// Converts a `&str` into a `Box<str>`
+    ///
+    /// This conversion allocates on the heap
+    /// and performs a copy of `s`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let boxed: Box<str> = Box::from("hello");
+    /// println!("{}", boxed);
+    /// ```
     #[inline]
     fn from(s: &'a str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
@@ -473,6 +515,22 @@ impl<'a> From<&'a str> for Box<str> {
 
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
 impl From<Box<str>> for Box<[u8]> {
+    /// Converts a `Box<str>>` into a `Box<[u8]>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
+    ///
+    /// # Examples
+    /// ```rust
+    /// // create a Box<str> which will be used to create a Box<[u8]>
+    /// let boxed: Box<str> = Box::from("hello");
+    /// let boxed_str: Box<[u8]> = Box::from(boxed);
+    ///
+    /// // create a &[u8] which will be used to create a Box<[u8]>
+    /// let slice: &[u8] = &[104, 101, 108, 108, 111];
+    /// let boxed_slice = Box::from(slice);
+    ///
+    /// assert_eq!(boxed_slice, boxed_str);
+    /// ```
     #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
@@ -582,6 +640,9 @@ impl<T: ?Sized> DerefMut for Box<T> {
         &mut **self
     }
 }
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for Box<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for Box<I> {
@@ -808,7 +869,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
  *  implementation of `Unpin` (where `T: Unpin`) would be valid/safe, and
  *  could have a method to project a Pin<T> from it.
  */
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Box<T> { }
 
 #[unstable(feature = "generator_trait", issue = "43122")]

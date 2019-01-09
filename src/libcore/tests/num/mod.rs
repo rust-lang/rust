@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::convert::{TryFrom, TryInto};
 use core::cmp::PartialEq;
 use core::fmt::Debug;
@@ -694,23 +684,23 @@ macro_rules! test_float {
             assert!(($nan as $fty).max($nan).is_nan());
         }
         #[test]
-        fn mod_euc() {
+        fn rem_euclid() {
             let a: $fty = 42.0;
-            assert!($inf.mod_euc(a).is_nan());
-            assert_eq!(a.mod_euc($inf), a);
-            assert!(a.mod_euc($nan).is_nan());
-            assert!($inf.mod_euc($inf).is_nan());
-            assert!($inf.mod_euc($nan).is_nan());
-            assert!($nan.mod_euc($inf).is_nan());
+            assert!($inf.rem_euclid(a).is_nan());
+            assert_eq!(a.rem_euclid($inf), a);
+            assert!(a.rem_euclid($nan).is_nan());
+            assert!($inf.rem_euclid($inf).is_nan());
+            assert!($inf.rem_euclid($nan).is_nan());
+            assert!($nan.rem_euclid($inf).is_nan());
         }
         #[test]
-        fn div_euc() {
+        fn div_euclid() {
             let a: $fty = 42.0;
-            assert_eq!(a.div_euc($inf), 0.0);
-            assert!(a.div_euc($nan).is_nan());
-            assert!($inf.div_euc($inf).is_nan());
-            assert!($inf.div_euc($nan).is_nan());
-            assert!($nan.div_euc($inf).is_nan());
+            assert_eq!(a.div_euclid($inf), 0.0);
+            assert!(a.div_euclid($nan).is_nan());
+            assert!($inf.div_euclid($inf).is_nan());
+            assert!($inf.div_euclid($nan).is_nan());
+            assert!($nan.div_euclid($inf).is_nan());
         }
     } }
 }

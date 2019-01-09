@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::combine::CombineFields;
 use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
@@ -15,7 +5,7 @@ use super::Subtype;
 
 use traits::ObligationCause;
 use ty::{self, Ty, TyCtxt};
-use ty::relate::{self, Relate, RelateResult, TypeRelation};
+use ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
@@ -35,10 +25,6 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
     for Lub<'combine, 'infcx, 'gcx, 'tcx>
 {
     fn tag(&self) -> &'static str { "Lub" }
-
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        self.fields.infcx.trait_object_mode()
-    }
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 

@@ -1,13 +1,3 @@
-# Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-
 import gdb
 import re
 import sys
@@ -332,9 +322,7 @@ class RustStdVecDequePrinter(object):
 
 # Yield each key (and optionally value) from a BoxedNode.
 def children_of_node(boxed_node, height, want_values):
-    ptr = boxed_node['ptr']['pointer']
-    # This is written oddly because we don't want to rely on the field name being `__0`.
-    node_ptr = ptr[ptr.type.fields()[0]]
+    node_ptr = boxed_node['ptr']['pointer']
     if height > 0:
         type_name = str(node_ptr.type.target()).replace('LeafNode', 'InternalNode')
         node_type = gdb.lookup_type(type_name)

@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local data `*v`
-  --> $DIR/regions-close-object-into-object-3.rs:21:5
+  --> $DIR/regions-close-object-into-object-3.rs:11:5
    |
 LL |     box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
    |     ^^^^^^---^^^^^^^^^^^

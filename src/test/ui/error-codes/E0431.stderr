@@ -1,5 +1,5 @@
 error[E0431]: `self` import can only appear in an import list with a non-empty prefix
-  --> $DIR/E0431.rs:11:6
+  --> $DIR/E0431.rs:1:6
    |
 LL | use {self}; //~ ERROR E0431
    |      ^^^^ can only appear in an import list with a non-empty prefix

@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type or module `bar`
-  --> $DIR/export2.rs:12:18
+  --> $DIR/export2.rs:2:18
    |
 LL |     pub fn x() { bar::x(); } //~ ERROR failed to resolve: use of undeclared type or module `bar`
    |                  ^^^ use of undeclared type or module `bar`

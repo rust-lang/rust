@@ -1,5 +1,5 @@
 error: expected one of `>`, identifier, lifetime, or type, found `,`
-  --> $DIR/issue-20616-6.rs:37:26
+  --> $DIR/issue-20616-6.rs:27:26
    |
 LL | type Type_6 = Type_5_<'a,,>;
    |                          ^ expected one of `>`, identifier, lifetime, or type here

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains the code to instantiate a "query result", and
 //! in particular to extract out the resulting region obligations and
 //! encode them therein.
@@ -31,7 +21,7 @@ use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 use traits::query::{Fallible, NoSolution};
-use traits::{FulfillmentContext, TraitEngine};
+use traits::TraitEngine;
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
@@ -58,7 +48,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     pub fn enter_canonical_trait_query<K, R>(
         &'tcx mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut FulfillmentContext<'tcx>, K)
+        operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut dyn TraitEngine<'tcx>, K)
             -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, R>>
     where
@@ -69,9 +59,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
             DUMMY_SP,
             canonical_key,
             |ref infcx, key, canonical_inference_vars| {
-                let fulfill_cx = &mut FulfillmentContext::new();
-                let value = operation(infcx, fulfill_cx, key)?;
-                infcx.make_canonicalized_query_response(canonical_inference_vars, value, fulfill_cx)
+                let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+                let value = operation(infcx, &mut *fulfill_cx, key)?;
+                infcx.make_canonicalized_query_response(
+                    canonical_inference_vars,
+                    value,
+                    &mut *fulfill_cx
+                )
             },
         )
     }
@@ -101,7 +95,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut FulfillmentContext<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, T>>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
@@ -148,7 +142,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut FulfillmentContext<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<'tcx> + Lift<'gcx>,

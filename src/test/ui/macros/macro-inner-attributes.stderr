@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type or module `a`
-  --> $DIR/macro-inner-attributes.rs:27:5
+  --> $DIR/macro-inner-attributes.rs:17:5
    |
 LL |     a::bar();
    |     ^ use of undeclared type or module `a`

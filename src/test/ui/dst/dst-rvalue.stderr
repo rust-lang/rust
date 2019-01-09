@@ -1,23 +1,23 @@
 error[E0161]: cannot move a value of type str: the size of str cannot be statically determined
-  --> $DIR/dst-rvalue.rs:16:28
+  --> $DIR/dst-rvalue.rs:6:28
    |
 LL |     let _x: Box<str> = box *"hello world";
    |                            ^^^^^^^^^^^^^^
 
 error[E0161]: cannot move a value of type [isize]: the size of [isize] cannot be statically determined
-  --> $DIR/dst-rvalue.rs:21:32
+  --> $DIR/dst-rvalue.rs:11:32
    |
 LL |     let _x: Box<[isize]> = box *array;
    |                                ^^^^^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dst-rvalue.rs:16:28
+  --> $DIR/dst-rvalue.rs:6:28
    |
 LL |     let _x: Box<str> = box *"hello world";
    |                            ^^^^^^^^^^^^^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dst-rvalue.rs:21:32
+  --> $DIR/dst-rvalue.rs:11:32
    |
 LL |     let _x: Box<[isize]> = box *array;
    |                                ^^^^^^ cannot move out of borrowed content

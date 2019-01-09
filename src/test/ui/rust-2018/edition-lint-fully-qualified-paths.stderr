@@ -1,11 +1,11 @@
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-fully-qualified-paths.rs:30:25
+  --> $DIR/edition-lint-fully-qualified-paths.rs:20:25
    |
 LL |     let _: <foo::Baz as ::foo::Foo>::Bar = ();
    |                         ^^^^^^^^^^ help: use `crate`: `crate::foo::Foo`
    |
 note: lint level defined here
-  --> $DIR/edition-lint-fully-qualified-paths.rs:14:9
+  --> $DIR/edition-lint-fully-qualified-paths.rs:4:9
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(absolute_paths_not_starting_with_crate)]
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-fully-qualified-paths.rs:34:13
+  --> $DIR/edition-lint-fully-qualified-paths.rs:24:13
    |
 LL |     let _: <::foo::Baz as foo::Foo>::Bar = ();
    |             ^^^^^^^^^^ help: use `crate`: `crate::foo::Baz`

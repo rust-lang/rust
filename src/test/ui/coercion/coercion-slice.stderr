@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coercion-slice.rs:14:21
+  --> $DIR/coercion-slice.rs:4:21
    |
 LL |     let _: &[i32] = [0];
    |                     ^^^

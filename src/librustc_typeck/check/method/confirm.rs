@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::{probe, MethodCallee};
 
 use astconv::AstConv;
@@ -290,7 +280,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .include_raw_pointers()
             .filter_map(|(ty, _)|
                 match ty.sty {
-                    ty::Dynamic(ref data, ..) => Some(closure(self, ty, data.principal())),
+                    ty::Dynamic(ref data, ..) => {
+                        Some(closure(self, ty, data.principal().unwrap_or_else(|| {
+                            span_bug!(self.span, "calling trait method on empty object?")
+                        })))
+                    },
                     _ => None,
                 }
             )

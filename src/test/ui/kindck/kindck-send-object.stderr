@@ -1,5 +1,5 @@
 error[E0277]: `(dyn Dummy + 'static)` cannot be shared between threads safely
-  --> $DIR/kindck-send-object.rs:22:5
+  --> $DIR/kindck-send-object.rs:12:5
    |
 LL |     assert_send::<&'static (Dummy+'static)>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'static)` cannot be shared between threads safely
@@ -7,13 +7,13 @@ LL |     assert_send::<&'static (Dummy+'static)>();
    = help: the trait `std::marker::Sync` is not implemented for `(dyn Dummy + 'static)`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&'static (dyn Dummy + 'static)`
 note: required by `assert_send`
-  --> $DIR/kindck-send-object.rs:15:1
+  --> $DIR/kindck-send-object.rs:5:1
    |
 LL | fn assert_send<T:Send>() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `dyn Dummy` cannot be sent between threads safely
-  --> $DIR/kindck-send-object.rs:27:5
+  --> $DIR/kindck-send-object.rs:17:5
    |
 LL |     assert_send::<Box<Dummy>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Dummy` cannot be sent between threads safely
@@ -22,7 +22,7 @@ LL |     assert_send::<Box<Dummy>>();
    = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<dyn Dummy>`
    = note: required because it appears within the type `std::boxed::Box<dyn Dummy>`
 note: required by `assert_send`
-  --> $DIR/kindck-send-object.rs:15:1
+  --> $DIR/kindck-send-object.rs:5:1
    |
 LL | fn assert_send<T:Send>() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^

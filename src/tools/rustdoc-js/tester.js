@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 const fs = require('fs');
 
 const TEST_FOLDER = 'src/test/rustdoc-js/';
@@ -26,7 +16,10 @@ function getNextStep(content, pos, stop) {
     return pos;
 }
 
-// Stupid function extractor based on indent.
+// Stupid function extractor based on indent. Doesn't support block
+// comments. If someone puts a ' or an " in a block comment this
+// will blow up. Template strings are not tested and might also be
+// broken.
 function extractFunction(content, functionName) {
     var indent = 0;
     var splitter = "function " + functionName + "(";
@@ -51,7 +44,14 @@ function extractFunction(content, functionName) {
             continue;
         }
         while (pos < content.length) {
-            if (content[pos] === '"' || content[pos] === "'") {
+            // Eat single-line comments
+            if (content[pos] === '/' && pos > 0 && content[pos-1] === '/') {
+                do {
+                    pos += 1;
+                } while (pos < content.length && content[pos] !== '\n');
+
+            // Eat quoted strings
+            } else if (content[pos] === '"' || content[pos] === "'" || content[pos] === "`") {
                 var stop = content[pos];
                 var is_escaped = false;
                 do {
@@ -62,6 +62,8 @@ function extractFunction(content, functionName) {
                     }
                 } while (pos < content.length &&
                          (content[pos] !== stop || content[pos - 1] === '\\'));
+
+            // Otherwise, check for indent
             } else if (content[pos] === '{') {
                 indent += 1;
             } else if (content[pos] === '}') {
@@ -162,9 +164,12 @@ function loadContent(content) {
     var Module = module.constructor;
     var m = new Module();
     m._compile(content, "tmp.js");
-    m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1;
-    m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1;
-    m.exports.should_fail = content.indexOf("\n// should-fail\n") !== -1;
+    m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1 ||
+        content.startsWith("// ignore-order\n");
+    m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1 ||
+        content.startsWith("// exact-check\n");
+    m.exports.should_fail = content.indexOf("\n// should-fail\n") !== -1 ||
+        content.startsWith("// should-fail\n");
     return m.exports;
 }
 

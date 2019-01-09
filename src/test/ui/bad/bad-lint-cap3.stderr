@@ -1,11 +1,11 @@
 warning: unused import: `std::option`
-  --> $DIR/bad-lint-cap3.rs:17:5
+  --> $DIR/bad-lint-cap3.rs:7:5
    |
 LL | use std::option; //~ WARN
    |     ^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/bad-lint-cap3.rs:14:9
+  --> $DIR/bad-lint-cap3.rs:4:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^

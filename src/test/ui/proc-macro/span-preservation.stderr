@@ -38,7 +38,7 @@ error[E0308]: mismatched types
 LL | extern "C" fn baz() {
    |                     - possibly return type missing here?
 LL |     0 //~ ERROR mismatched types
-   |     ^ expected (), found integral variable
+   |     ^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`

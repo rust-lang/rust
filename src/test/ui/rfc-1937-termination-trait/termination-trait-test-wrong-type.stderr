@@ -1,5 +1,5 @@
 error[E0277]: `main` has invalid return type `std::result::Result<f32, std::num::ParseIntError>`
-  --> $DIR/termination-trait-test-wrong-type.rs:16:1
+  --> $DIR/termination-trait-test-wrong-type.rs:6:1
    |
 LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseIntError> { //~ ERROR
 LL | |     "0".parse()

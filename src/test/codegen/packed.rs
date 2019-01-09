@@ -1,19 +1,8 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // compile-flags: -C no-prepopulate-passes
 // min-llvm-version 7.0
 
 #![crate_type = "lib"]
-#![feature(repr_packed)]
 
 #[repr(packed)]
 pub struct Packed1 {
@@ -82,6 +71,42 @@ pub fn call_pkd2(f: fn() -> Array) -> BigPacked2 {
     // go through an alloca rather than calling the function with an
     // unaligned destination.
     BigPacked2 { dealign: 0, data: f() }
+}
+
+// CHECK-LABEL: @write_packed_array1
+// CHECK: store i32 0, i32* %{{.+}}, align 1
+// CHECK: store i32 1, i32* %{{.+}}, align 1
+// CHECK: store i32 2, i32* %{{.+}}, align 1
+#[no_mangle]
+pub fn write_packed_array1(p: &mut BigPacked1) {
+    p.data.0[0] = 0;
+    p.data.0[1] = 1;
+    p.data.0[2] = 2;
+}
+
+// CHECK-LABEL: @write_packed_array2
+// CHECK: store i32 0, i32* %{{.+}}, align 2
+// CHECK: store i32 1, i32* %{{.+}}, align 2
+// CHECK: store i32 2, i32* %{{.+}}, align 2
+#[no_mangle]
+pub fn write_packed_array2(p: &mut BigPacked2) {
+    p.data.0[0] = 0;
+    p.data.0[1] = 1;
+    p.data.0[2] = 2;
+}
+
+// CHECK-LABEL: @repeat_packed_array1
+// CHECK: store i32 42, i32* %{{.+}}, align 1
+#[no_mangle]
+pub fn repeat_packed_array1(p: &mut BigPacked1) {
+    p.data.0 = [42; 8];
+}
+
+// CHECK-LABEL: @repeat_packed_array2
+// CHECK: store i32 42, i32* %{{.+}}, align 2
+#[no_mangle]
+pub fn repeat_packed_array2(p: &mut BigPacked2) {
+    p.data.0 = [42; 8];
 }
 
 #[repr(packed)]

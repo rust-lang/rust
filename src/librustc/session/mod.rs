@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
@@ -26,7 +16,10 @@ use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
 use rustc_data_structures::base_n;
-use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
+use rustc_data_structures::sync::{
+    self, Lrc, Lock, OneThread, Once, RwLock, AtomicU64, AtomicUsize, Ordering,
+    Ordering::SeqCst,
+};
 
 use errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
@@ -51,12 +44,18 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::mpsc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod code_stats;
 pub mod config;
 pub mod filesearch;
 pub mod search_paths;
+
+pub struct OptimizationFuel {
+    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
+    remaining: u64,
+    /// We're rejecting all further optimizations.
+    out_of_fuel: bool,
+}
 
 /// Represents the data associated with a compilation
 /// session for a single crate.
@@ -147,16 +146,15 @@ pub struct Session {
 
     /// If -zfuel=crate=n is specified, Some(crate).
     optimization_fuel_crate: Option<String>,
-    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
-    optimization_fuel_limit: LockCell<u64>,
-    /// We're rejecting all further optimizations.
-    out_of_fuel: LockCell<bool>,
+
+    /// Tracks fuel info if If -zfuel=crate=n is specified
+    optimization_fuel: Lock<OptimizationFuel>,
 
     // The next two are public because the driver needs to read them.
     /// If -zprint-fuel=crate, Some(crate).
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: LockCell<u64>,
+    pub print_fuel: AtomicU64,
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
@@ -513,6 +511,9 @@ impl Session {
     pub fn profile_queries_and_keys(&self) -> bool {
         self.opts.debugging_opts.profile_queries_and_keys
     }
+    pub fn instrument_mcount(&self) -> bool {
+        self.opts.debugging_opts.instrument_mcount
+    }
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
     }
@@ -677,7 +678,11 @@ impl Session {
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
-        if let Some(x) = self.opts.cg.force_frame_pointers {
+        // "mcount" function relies on stack pointer.
+        // See https://sourceware.org/binutils/docs/gprof/Implementation.html
+        if self.instrument_mcount() {
+            true
+        } else if let Some(x) = self.opts.cg.force_frame_pointers {
             x
         } else {
             !self.target.target.options.eliminate_frame_pointer
@@ -874,20 +879,20 @@ impl Session {
         if let Some(ref c) = self.optimization_fuel_crate {
             if c == crate_name {
                 assert_eq!(self.query_threads(), 1);
-                let fuel = self.optimization_fuel_limit.get();
-                ret = fuel != 0;
-                if fuel == 0 && !self.out_of_fuel.get() {
+                let mut fuel = self.optimization_fuel.lock();
+                ret = fuel.remaining != 0;
+                if fuel.remaining == 0 && !fuel.out_of_fuel {
                     eprintln!("optimization-fuel-exhausted: {}", msg());
-                    self.out_of_fuel.set(true);
-                } else if fuel > 0 {
-                    self.optimization_fuel_limit.set(fuel - 1);
+                    fuel.out_of_fuel = true;
+                } else if fuel.remaining > 0 {
+                    fuel.remaining -= 1;
                 }
             }
         }
         if let Some(ref c) = self.print_fuel_crate {
             if c == crate_name {
                 assert_eq!(self.query_threads(), 1);
-                self.print_fuel.set(self.print_fuel.get() + 1);
+                self.print_fuel.fetch_add(1, SeqCst);
             }
         }
         ret
@@ -1137,10 +1142,12 @@ pub fn build_session_(
         local_crate_source_file.map(|path| file_path_mapping.map_prefix(path).0);
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
-    let optimization_fuel_limit =
-        LockCell::new(sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0));
+    let optimization_fuel = Lock::new(OptimizationFuel {
+        remaining: sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0),
+        out_of_fuel: false,
+    });
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
-    let print_fuel = LockCell::new(0);
+    let print_fuel = AtomicU64::new(0);
 
     let working_dir = env::current_dir().unwrap_or_else(|e|
         p_s.span_diagnostic
@@ -1202,10 +1209,9 @@ pub fn build_session_(
         },
         code_stats: Default::default(),
         optimization_fuel_crate,
-        optimization_fuel_limit,
+        optimization_fuel,
         print_fuel_crate,
         print_fuel,
-        out_of_fuel: LockCell::new(false),
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near
         // the beginning of the process though to ensure we don't get false

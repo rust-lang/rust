@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A pass that qualifies constness of temporaries in constants,
 //! static initializers and functions and also drives promotion.
 //!
@@ -21,7 +11,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::ConstValue;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
@@ -518,7 +507,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                    if context.is_mutating_use() {
+                    if self.mode == Mode::Static && context.is_mutating_use() {
                         // this is not strictly necessary as miri will also bail out
                         // For interior mutability we can't really catch this statically as that
                         // goes through raw pointers and intermediate temporaries, so miri has
@@ -635,12 +624,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
             Operand::Constant(ref constant) => {
-                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
+                if let ty::LazyConst::Unevaluated(def_id, _) = constant.literal {
                     // Don't peek inside trait associated constants.
-                    if self.tcx.trait_of_item(def_id).is_some() {
-                        self.add_type(constant.literal.ty);
+                    if self.tcx.trait_of_item(*def_id).is_some() {
+                        self.add_type(constant.ty);
                     } else {
-                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(*def_id);
 
                         let qualif = Qualif::from_bits(bits).expect("invalid mir_const_qualif");
                         self.add(qualif);
@@ -648,7 +637,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
                         // with type parameters, take it into account.
-                        self.qualif.restrict(constant.literal.ty, self.tcx, self.param_env);
+                        self.qualif.restrict(constant.ty, self.tcx, self.param_env);
                     }
                 }
             }

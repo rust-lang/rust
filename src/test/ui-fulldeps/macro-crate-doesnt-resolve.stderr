@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `foo` in module `macro_crate_test`
-  --> $DIR/macro-crate-doesnt-resolve.rs:17:23
+  --> $DIR/macro-crate-doesnt-resolve.rs:7:23
    |
 LL |     macro_crate_test::foo(); //~ ERROR cannot find function `foo` in module `macro_crate_test`
    |                       ^^^ not found in `macro_crate_test`

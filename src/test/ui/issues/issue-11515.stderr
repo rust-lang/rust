@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-11515.rs:19:33
+  --> $DIR/issue-11515.rs:9:33
    |
 LL |     let test = box Test { func: closure }; //~ ERROR mismatched types
    |                                 ^^^^^^^ expected trait `std::ops::FnMut`, found trait `std::ops::Fn`

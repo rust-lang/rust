@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // run-pass
 // This test deserializes an enum in-place by transmuting to a union that
 // should have the same layout, and manipulating the tag and payloads
@@ -20,11 +10,12 @@ use std::mem;
 #[repr(C, u8)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum MyEnum {
-    A(u32),                 // Single primitive value
-    B { x: u8, y: i16 },    // Composite, and the offset of `y` depends on tag being internal
-    C,                      // Empty
-    D(Option<u32>),         // Contains an enum
-    E(Duration),            // Contains a struct
+    A(u32),                     // Single primitive value
+    B { x: u8, y: i16, z: u8 }, // Composite, and the offsets of `y` and `z`
+                                // depend on tag being internal
+    C,                          // Empty
+    D(Option<u32>),             // Contains an enum
+    E(Duration),                // Contains a struct
 }
 
 #[repr(C)]
@@ -44,14 +35,14 @@ union MyEnumPayload {
 
 #[repr(u8)] #[derive(Copy, Clone)] enum MyEnumTag { A, B, C, D, E }
 #[repr(C)] #[derive(Copy, Clone)] struct MyEnumVariantA(u32);
-#[repr(C)] #[derive(Copy, Clone)] struct MyEnumVariantB {x: u8, y: i16 }
+#[repr(C)] #[derive(Copy, Clone)] struct MyEnumVariantB {x: u8, y: i16, z: u8 }
 #[repr(C)] #[derive(Copy, Clone)] struct MyEnumVariantD(Option<u32>);
 #[repr(C)] #[derive(Copy, Clone)] struct MyEnumVariantE(Duration);
 
 fn main() {
     let result: Vec<Result<MyEnum, ()>> = vec![
         Ok(MyEnum::A(17)),
-        Ok(MyEnum::B { x: 206, y: 1145 }),
+        Ok(MyEnum::B { x: 206, y: 1145, z: 78 }),
         Ok(MyEnum::C),
         Err(()),
         Ok(MyEnum::D(Some(407))),
@@ -63,7 +54,7 @@ fn main() {
     // Binary serialized version of the above (little-endian)
     let input: Vec<u8> = vec![
         0,  17, 0, 0, 0,
-        1,  206,  121, 4,
+        1,  206,  121, 4,  78,
         2,
         8,  /* invalid tag value */
         3,  0,  151, 1, 0, 0,
@@ -112,6 +103,7 @@ fn parse_my_enum<'a>(dest: &'a mut MyEnum, buf: &mut &[u8]) -> Result<(), ()> {
             MyEnumTag::B => {
                 dest.payload.B.x = read_u8(buf)?;
                 dest.payload.B.y = read_u16_le(buf)? as i16;
+                dest.payload.B.z = read_u8(buf)?;
             }
             MyEnumTag::C => {
                 /* do nothing */

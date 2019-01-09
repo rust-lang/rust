@@ -1,5 +1,5 @@
 error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
-  --> $DIR/lint-plugin-forbid-cmdline.rs:20:9
+  --> $DIR/lint-plugin-forbid-cmdline.rs:10:9
    |
 LL | #[allow(test_lint)] //~ ERROR allow(test_lint) overruled by outer forbid(test_lint)
    |         ^^^^^^^^^ overruled by previous forbid
@@ -7,7 +7,7 @@ LL | #[allow(test_lint)] //~ ERROR allow(test_lint) overruled by outer forbid(te
    = note: `forbid` lint level was set on command line
 
 error: item is named 'lintme'
-  --> $DIR/lint-plugin-forbid-cmdline.rs:18:1
+  --> $DIR/lint-plugin-forbid-cmdline.rs:8:1
    |
 LL | fn lintme() { } //~ ERROR item is named 'lintme'
    | ^^^^^^^^^^^^^^^

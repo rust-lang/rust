@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Private types and traits are not allowed in public interfaces.
 // This test also ensures that the checks are performed even inside private modules.
 
@@ -222,6 +212,15 @@ mod aliases_pub {
     }
     impl PrivUseAliasTr for <Priv as PrivTr>::AssocAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+    }
+    impl PrivUseAliasTr for Option<<Priv as PrivTr>::AssocAlias> {
+        type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+    }
+    impl PrivUseAliasTr for (<Priv as PrivTr>::AssocAlias, Priv) {
+        type Check = Priv; // OK
+    }
+    impl PrivUseAliasTr for Option<(<Priv as PrivTr>::AssocAlias, Priv)> {
+        type Check = Priv; // OK
     }
 }
 

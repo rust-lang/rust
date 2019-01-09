@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/issue-27433.rs:13:23
+  --> $DIR/issue-27433.rs:3:23
    |
 LL |     const FOO : u32 = foo;
    |                       ^^^

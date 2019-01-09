@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `cookie_monster`
-  --> $DIR/E0463.rs:12:11
+  --> $DIR/E0463.rs:2:11
    |
 LL | #![plugin(cookie_monster)]
    |           ^^^^^^^^^^^^^^ can't find crate

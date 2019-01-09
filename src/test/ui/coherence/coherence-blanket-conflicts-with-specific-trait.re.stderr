@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `MyType`:
+  --> $DIR/coherence-blanket-conflicts-with-specific-trait.rs:24:1
+   |
+LL | impl<T:OtherTrait> MyTrait for T {
+   | -------------------------------- first implementation here
+...
+LL | impl MyTrait for MyType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyType`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

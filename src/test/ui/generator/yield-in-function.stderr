@@ -1,5 +1,5 @@
 error[E0627]: yield statement outside of generator literal
-  --> $DIR/yield-in-function.rs:13:13
+  --> $DIR/yield-in-function.rs:3:13
    |
 LL | fn main() { yield; }
    |             ^^^^^

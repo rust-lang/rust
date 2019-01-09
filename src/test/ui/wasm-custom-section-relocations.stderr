@@ -1,11 +1,11 @@
 error: statics with a custom `#[link_section]` must be a simple list of bytes on the wasm target with no extra levels of indirection such as references
-  --> $DIR/wasm-custom-section-relocations.rs:14:1
+  --> $DIR/wasm-custom-section-relocations.rs:4:1
    |
 LL | pub static A: &[u8] = &[1]; //~ ERROR: no extra levels of indirection
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: statics with a custom `#[link_section]` must be a simple list of bytes on the wasm target with no extra levels of indirection such as references
-  --> $DIR/wasm-custom-section-relocations.rs:23:1
+  --> $DIR/wasm-custom-section-relocations.rs:13:1
    |
 LL | pub static D: &usize = &C; //~ ERROR: no extra levels of indirection
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

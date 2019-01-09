@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #[doc(primitive = "bool")]
 #[doc(alias = "true")]
 #[doc(alias = "false")]
@@ -312,7 +302,7 @@ mod prim_never { }
 /// ```text
 /// error: character literal may only contain one codepoint: 'é'
 /// let c = 'é';
-///         ^^^^
+///         ^^^
 /// ```
 ///
 /// Another implication of the 4-byte fixed size of a `char` is that
@@ -933,7 +923,7 @@ mod prim_usize { }
 /// For more information on how to use references, see [the book's section on "References and
 /// Borrowing"][book-refs].
 ///
-/// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
+/// [book-refs]: ../book/ch04-02-references-and-borrowing.html
 ///
 /// # Trait implementations
 ///

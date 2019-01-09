@@ -1,5 +1,5 @@
 error[E0585]: found a documentation comment that doesn't document anything
-  --> $DIR/issue-34222-1.rs:12:5
+  --> $DIR/issue-34222-1.rs:2:5
    |
 LL |     /// comment //~ ERROR found a documentation comment that doesn't document anything
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # Lints in the Rust compiler
 //!
 //! This currently only contains the definitions and implementations
@@ -29,6 +19,8 @@
 #![feature(nll)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+
+#![recursion_limit="256"]
 
 #[macro_use]
 extern crate syntax;
@@ -123,6 +115,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnusedDocComment,
                        BadRepr,
                        EllipsisInclusiveRangePatterns,
+                       NonCamelCaseTypes,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -138,7 +131,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         UnusedAttributes: UnusedAttributes,
         PathStatements: PathStatements,
         UnusedResults: UnusedResults,
-        NonCamelCaseTypes: NonCamelCaseTypes,
         NonSnakeCase: NonSnakeCase,
         NonUpperCaseGlobals: NonUpperCaseGlobals,
         NonShorthandFieldPatterns: NonShorthandFieldPatterns,

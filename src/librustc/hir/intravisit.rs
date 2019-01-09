@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! HIR walker for walking the contents of nodes.
 //!
 //! **For an overview of the visitor strategy, see the docs on the
@@ -464,7 +454,7 @@ pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef)
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_vis(&item.vis);
-    visitor.visit_name(item.span, item.name);
+    visitor.visit_ident(item.ident);
     match item.node {
         ItemKind::ExternCrate(orig_name) => {
             visitor.visit_id(item.id);
@@ -482,7 +472,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref declaration, header, ref generics, body_id) => {
-            visitor.visit_fn(FnKind::ItemFn(item.name,
+            visitor.visit_fn(FnKind::ItemFn(item.ident.name,
                                             generics,
                                             header,
                                             &item.vis,
@@ -538,7 +528,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_id(item.id);
-            visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
+            visitor.visit_variant_data(struct_definition, item.ident.name, generics, item.id,
+                                       item.span);
         }
         ItemKind::Trait(.., ref generics, ref bounds, ref trait_item_refs) => {
             visitor.visit_id(item.id);
@@ -579,9 +570,9 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         variant: &'v Variant,
                                         generics: &'v Generics,
                                         parent_item_id: NodeId) {
-    visitor.visit_name(variant.span, variant.node.name);
+    visitor.visit_ident(variant.node.ident);
     visitor.visit_variant_data(&variant.node.data,
-                               variant.node.name,
+                               variant.node.ident.name,
                                generics,
                                parent_item_id,
                                variant.span);
@@ -730,7 +721,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem) {
     visitor.visit_id(foreign_item.id);
     visitor.visit_vis(&foreign_item.vis);
-    visitor.visit_name(foreign_item.span, foreign_item.name);
+    visitor.visit_ident(foreign_item.ident);
 
     match foreign_item.node {
         ForeignItemKind::Fn(ref function_declaration, ref param_names, ref generics) => {
@@ -1109,6 +1100,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprKind::Yield(ref subexpression) => {
             visitor.visit_expr(subexpression);
         }
+        ExprKind::Err => {}
     }
 }
 

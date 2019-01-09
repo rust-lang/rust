@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
@@ -354,8 +344,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
                 if let Some(ext) = ext {
-                    let dummy = invoc.fragment_kind.dummy(invoc.span()).unwrap();
-                    let fragment = self.expand_invoc(invoc, &*ext).unwrap_or(dummy);
+                    let (invoc_fragment_kind, invoc_span) = (invoc.fragment_kind, invoc.span());
+                    let fragment = self.expand_invoc(invoc, &*ext).unwrap_or_else(|| {
+                        invoc_fragment_kind.dummy(invoc_span).unwrap()
+                    });
                     self.collect_invocations(fragment, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
                     if !item.derive_allowed() {
@@ -441,9 +433,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn resolve_imports(&mut self) {
         if self.monotonic {
-            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             self.cx.resolver.resolve_imports();
-            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
     }
 
@@ -467,11 +457,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         if self.monotonic {
-            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
-            let mark = self.cx.current_expansion.mark;
-            self.cx.resolver.visit_ast_fragment_with_placeholders(mark, &fragment_with_placeholders,
-                                                                  derives);
-            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
+            self.cx.resolver.visit_ast_fragment_with_placeholders(
+                self.cx.current_expansion.mark, &fragment_with_placeholders, derives
+            );
         }
 
         (fragment_with_placeholders, invocations)
@@ -586,6 +574,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             AttrProcMacro(ref mac, ..) => {
+                // Resolve `$crate`s in case we have to go though stringification.
+                self.cx.resolver.resolve_dollar_crates(&item);
                 self.gate_proc_macro_attr_item(attr.span, &item);
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
                     Annotatable::Item(item) => token::NtItem(item),
@@ -734,7 +724,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     emit_feature_err(this.cx.parse_sess, &*feature.as_str(), span,
                                      GateIssue::Library(Some(issue)), &explain);
                     this.cx.trace_macros_diag();
-                    return Err(kind.dummy(span));
                 }
             }
 
@@ -928,6 +917,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             ProcMacroDerive(ref ext, ..) => {
+                // Resolve `$crate`s in case we have to go though stringification.
+                self.cx.resolver.resolve_dollar_crates(&item);
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this

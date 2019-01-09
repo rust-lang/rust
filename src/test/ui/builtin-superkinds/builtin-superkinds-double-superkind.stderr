@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/builtin-superkinds-double-superkind.rs:16:24
+  --> $DIR/builtin-superkinds-double-superkind.rs:6:24
    |
 LL | impl <T: Sync+'static> Foo for (T,) { }
    |                        ^^^ `T` cannot be sent between threads safely
@@ -9,7 +9,7 @@ LL | impl <T: Sync+'static> Foo for (T,) { }
    = note: required because it appears within the type `(T,)`
 
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/builtin-superkinds-double-superkind.rs:19:16
+  --> $DIR/builtin-superkinds-double-superkind.rs:9:16
    |
 LL | impl <T: Send> Foo for (T,T) { }
    |                ^^^ `T` cannot be shared between threads safely

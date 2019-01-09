@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-unboxed-closures.rs:13:5
+  --> $DIR/borrowck-unboxed-closures.rs:3:5
    |
 LL |     let g = &mut f;
    |             ------ mutable borrow occurs here
@@ -9,7 +9,7 @@ LL |     use_mut(g);
    |             - mutable borrow later used here
 
 error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
-  --> $DIR/borrowck-unboxed-closures.rs:17:5
+  --> $DIR/borrowck-unboxed-closures.rs:7:5
    |
 LL | fn b<F:FnMut(isize, isize) -> isize>(f: F) {
    |                                      - help: consider changing this to be mutable: `mut f`
@@ -17,7 +17,7 @@ LL |     f(1, 2);    //~ ERROR cannot borrow immutable argument
    |     ^ cannot borrow as mutable
 
 error[E0382]: use of moved value: `f`
-  --> $DIR/borrowck-unboxed-closures.rs:22:5
+  --> $DIR/borrowck-unboxed-closures.rs:12:5
    |
 LL |     f(1, 2);
    |     - value moved here

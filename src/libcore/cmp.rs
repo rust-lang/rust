@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Functionality for ordering and comparison.
 //!
 //! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
@@ -482,9 +472,11 @@ impl<T: Ord> Ord for Reverse<T> {
 /// Then you must define an implementation for `cmp()`. You may find it useful to use
 /// `cmp()` on your type's fields.
 ///
-/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with each other. It's
-/// easy to accidentally make them disagree by deriving some of the traits and manually
-/// implementing others.
+/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must*
+/// agree with each other. That is, `a.cmp(b) == Ordering::Equal` if
+/// and only if `a == b` and `Some(a.cmp(b)) == a.partial_cmp(b)` for
+/// all `a` and `b`. It's easy to accidentally make them disagree by
+/// deriving some of the traits and manually implementing others.
 ///
 /// Here's an example where you want to sort people by height only, disregarding `id`
 /// and `name`:

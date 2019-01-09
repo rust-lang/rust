@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ffi::CStr;
 use io;
 use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
@@ -203,18 +193,21 @@ impl Socket {
         // Linux. This was added in 2.6.28, however, and because we support
         // 2.6.18 we must detect this support dynamically.
         if cfg!(target_os = "linux") {
-            weak! {
-                fn accept4(c_int, *mut sockaddr, *mut socklen_t, c_int) -> c_int
+            syscall! {
+                fn accept4(
+                    fd: c_int,
+                    addr: *mut sockaddr,
+                    addr_len: *mut socklen_t,
+                    flags: c_int
+                ) -> c_int
             }
-            if let Some(accept) = accept4.get() {
-                let res = cvt_r(|| unsafe {
-                    accept(self.0.raw(), storage, len, SOCK_CLOEXEC)
-                });
-                match res {
-                    Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
-                    Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
-                    Err(e) => return Err(e),
-                }
+            let res = cvt_r(|| unsafe {
+                accept4(self.0.raw(), storage, len, SOCK_CLOEXEC)
+            });
+            match res {
+                Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
+                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
+                Err(e) => return Err(e),
             }
         }
 

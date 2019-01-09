@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-7092.rs:16:9
+  --> $DIR/issue-7092.rs:6:9
    |
 LL |         Some(field) =>
    |         ^^^^^^^^^^^ expected enum `Whatever`, found enum `std::option::Option`

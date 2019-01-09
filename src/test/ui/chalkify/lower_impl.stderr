@@ -1,5 +1,5 @@
 error: program clause dump
-  --> $DIR/lower_impl.rs:15:1
+  --> $DIR/lower_impl.rs:5:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    = note: forall<T> { Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T: 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized). }
 
 error: program clause dump
-  --> $DIR/lower_impl.rs:23:5
+  --> $DIR/lower_impl.rs:13:5
    |
 LL |     #[rustc_dump_program_clauses] //~ ERROR program clause dump
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,11 +1,11 @@
 error[E0381]: assign to part of possibly uninitialized variable: `x`
-  --> $DIR/reassignment_immutable_fields.rs:17:5
+  --> $DIR/reassignment_immutable_fields.rs:7:5
    |
 LL |     x.0 = 1; //~ ERROR
    |     ^^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: assign to part of possibly uninitialized variable: `x`
-  --> $DIR/reassignment_immutable_fields.rs:25:5
+  --> $DIR/reassignment_immutable_fields.rs:15:5
    |
 LL |     x.0 = 1; //~ ERROR
    |     ^^^^^^^ use of possibly uninitialized `x`

@@ -1,5 +1,5 @@
 error[E0381]: use of possibly uninitialized variable: `a`
-  --> $DIR/move-into-dead-array-1.rs:24:5
+  --> $DIR/move-into-dead-array-1.rs:14:5
    |
 LL |     a[i] = d();        //~ ERROR use of possibly uninitialized variable: `a`
    |     ^^^^^^^^^^ use of possibly uninitialized `a`

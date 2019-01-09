@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-loan-blocks-mut-uniq.rs:20:12
+  --> $DIR/borrowck-loan-blocks-mut-uniq.rs:10:12
    |
 LL |     borrow(&*v,
    |     ------ --- immutable borrow occurs here

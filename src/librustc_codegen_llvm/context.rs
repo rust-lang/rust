@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use attributes;
 use llvm;
 use rustc::dep_graph::DepGraphSafe;
@@ -60,7 +50,8 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>,
+    pub vtables: RefCell<FxHashMap<
+            (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'ll Value>>,
 
@@ -321,7 +312,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
 impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
-                                ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>
+                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
     {
         &self.vtables
     }

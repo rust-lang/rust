@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_lint;
 use rustc_driver::{self, driver, target_features, abort_on_err};
 use rustc::session::{self, config};
@@ -33,7 +23,7 @@ use syntax::json::JsonEmitter;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::DUMMY_SP;
-use errors;
+use errors::{self, FatalError};
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
 
@@ -439,7 +429,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
         let control = &driver::CompileController::basic();
 
-        let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
+        let krate = match driver::phase_1_parse_input(control, &sess, &input) {
+            Ok(krate) => krate,
+            Err(mut e) => {
+                e.emit();
+                FatalError.raise();
+            }
+        };
 
         let name = match crate_name {
             Some(ref crate_name) => crate_name.clone(),
@@ -480,8 +476,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             }).collect(),
         };
         let analysis = ty::CrateAnalysis {
-            access_levels: Lrc::new(AccessLevels::default()),
-            name: name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
@@ -504,12 +498,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         &mut arenas,
                                                         &name,
                                                         &output_filenames,
-                                                        |tcx, analysis, _, result| {
+                                                        |tcx, _, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let ty::CrateAnalysis { access_levels, .. } = analysis;
+            let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
 
             // Convert from a NodeId set to a DefId set since we don't always have easy access
             // to the map from defid -> nodeid

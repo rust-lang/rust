@@ -1,5 +1,5 @@
 error[E0008]: cannot bind by-move into a pattern guard
-  --> $DIR/E0008.rs:13:14
+  --> $DIR/E0008.rs:3:14
    |
 LL |         Some(s) if s.len() == 0 => {},
    |              ^ moves value into pattern guard

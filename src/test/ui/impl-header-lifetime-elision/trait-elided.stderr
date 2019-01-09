@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/trait-elided.rs:14:6
+  --> $DIR/trait-elided.rs:5:6
    |
 LL | impl MyTrait for u32 {
    |      ^^^^^^^ expected lifetime parameter

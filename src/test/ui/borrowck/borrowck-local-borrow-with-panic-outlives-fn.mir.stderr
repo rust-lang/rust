@@ -1,5 +1,5 @@
 error[E0597]: `z.1` does not live long enough
-  --> $DIR/borrowck-local-borrow-with-panic-outlives-fn.rs:16:15
+  --> $DIR/borrowck-local-borrow-with-panic-outlives-fn.rs:6:15
    |
 LL |     *x = Some(&mut z.1);
    |     ----------^^^^^^^^-

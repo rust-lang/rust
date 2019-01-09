@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `G`
-  --> $DIR/issue-20714.rs:14:13
+  --> $DIR/issue-20714.rs:4:13
    |
 LL | struct G;
    | --------- `G` defined here

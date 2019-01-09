@@ -1,23 +1,23 @@
 error: numeric character escape is too short
-  --> $DIR/lex-bad-char-literals-1.rs:13:8
+  --> $DIR/lex-bad-char-literals-1.rs:3:8
    |
 LL |     '/x1' //~ ERROR: numeric character escape is too short
    |        ^
 
 error: numeric character escape is too short
-  --> $DIR/lex-bad-char-literals-1.rs:17:8
+  --> $DIR/lex-bad-char-literals-1.rs:7:8
    |
 LL |     "/x1" //~ ERROR: numeric character escape is too short
    |        ^
 
 error: unknown character escape: /u{25cf}
-  --> $DIR/lex-bad-char-literals-1.rs:21:7
+  --> $DIR/lex-bad-char-literals-1.rs:11:7
    |
 LL |     '/●' //~ ERROR: unknown character escape
    |       ^
 
 error: unknown character escape: /u{25cf}
-  --> $DIR/lex-bad-char-literals-1.rs:25:7
+  --> $DIR/lex-bad-char-literals-1.rs:15:7
    |
 LL |     "/●" //~ ERROR: unknown character escape
    |       ^

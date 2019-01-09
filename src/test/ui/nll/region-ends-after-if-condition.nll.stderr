@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/region-ends-after-if-condition.rs:29:9
+  --> $DIR/region-ends-after-if-condition.rs:19:9
    |
 LL |     let value = &my_struct.field;
    |                  --------------- immutable borrow occurs here
@@ -11,7 +11,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/region-ends-after-if-condition.rs:39:9
+  --> $DIR/region-ends-after-if-condition.rs:29:9
    |
 LL |     let value = &my_struct.field;
    |                  --------------- immutable borrow occurs here
@@ -23,7 +23,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Mir)
-  --> $DIR/region-ends-after-if-condition.rs:39:9
+  --> $DIR/region-ends-after-if-condition.rs:29:9
    |
 LL |     let value = &my_struct.field;
    |                 ---------------- immutable borrow occurs here

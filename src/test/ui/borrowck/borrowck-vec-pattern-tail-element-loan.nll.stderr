@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `vec`
-  --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:20:5
+  --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:10:5
    |
 LL |     let vec: &[isize] = &vec; //~ ERROR `vec` does not live long enough
    |                         ---- `vec` is borrowed here

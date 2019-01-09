@@ -1,5 +1,5 @@
 error[E0530]: function parameters cannot shadow statics
-  --> $DIR/issue-23716.rs:13:8
+  --> $DIR/issue-23716.rs:3:8
    |
 LL | static foo: i32 = 0;
    | -------------------- the static `foo` is defined here
@@ -8,7 +8,7 @@ LL | fn bar(foo: i32) {}
    |        ^^^ cannot be named the same as a static
 
 error[E0530]: function parameters cannot shadow statics
-  --> $DIR/issue-23716.rs:23:13
+  --> $DIR/issue-23716.rs:13:13
    |
 LL | use self::submod::answer;
    |     -------------------- the static `answer` is imported here

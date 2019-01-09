@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use attr::HasAttrs;
 use feature_gate::{
     feature_err,
@@ -15,7 +5,6 @@ use feature_gate::{
     Features,
     get_features,
     GateIssue,
-    emit_feature_err,
 };
 use {fold, attr};
 use ast;
@@ -104,13 +93,6 @@ impl<'a> StripUnconfigured<'a> {
             return vec![attr];
         }
 
-        let gate_cfg_attr_multi = if let Some(ref features) = self.features {
-            !features.cfg_attr_multi
-        } else {
-            false
-        };
-        let cfg_attr_span = attr.span;
-
         let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
             parser.expect(&token::OpenDelim(token::Paren))?;
 
@@ -140,21 +122,8 @@ impl<'a> StripUnconfigured<'a> {
         // Check feature gate and lint on zero attributes in source. Even if the feature is gated,
         // we still compute as if it wasn't, since the emitted error will stop compilation further
         // along the compilation.
-        match (expanded_attrs.len(), gate_cfg_attr_multi) {
-            (0, false) => {
-                // FIXME: Emit unused attribute lint here.
-            },
-            (1, _) => {},
-            (_, true) => {
-                emit_feature_err(
-                    self.sess,
-                    "cfg_attr_multi",
-                    cfg_attr_span,
-                    GateIssue::Language,
-                    "cfg_attr with zero or more than one attributes is experimental",
-                );
-            },
-            (_, false) => {}
+        if expanded_attrs.len() == 0 {
+            // FIXME: Emit unused attribute lint here.
         }
 
         if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {

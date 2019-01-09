@@ -1,5 +1,5 @@
 error[E0597]: `z` does not live long enough (Ast)
-  --> $DIR/issue-46471-1.rs:16:14
+  --> $DIR/issue-46471-1.rs:6:14
    |
 LL |         &mut z
    |              ^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    | - borrowed value needs to live until here
 
 error[E0597]: `z` does not live long enough (Mir)
-  --> $DIR/issue-46471-1.rs:16:9
+  --> $DIR/issue-46471-1.rs:6:9
    |
 LL |         &mut z
    |         ^^^^^^

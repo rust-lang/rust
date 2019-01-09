@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # The Rust Standard Library
 //!
 //! The Rust Standard Library is the foundation of portable Rust software, a
@@ -222,6 +212,7 @@
 #![no_std]
 
 #![deny(missing_docs)]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
 // Tell the compiler to link to either panic_abort or panic_unwind
@@ -250,13 +241,14 @@
 #![feature(cfg_target_vendor)]
 #![feature(char_error_internals)]
 #![feature(compiler_builtins_lib)]
+#![feature(concat_idents)]
 #![feature(const_int_ops)]
 #![feature(const_ip)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_cstr_unchecked)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(duration_as_u128)]
+#![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
 #![feature(external_doc)]
 #![feature(fixed_size_array)]
@@ -271,7 +263,6 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
-#![cfg_attr(not(stage0), feature(min_const_unsafe_fn))]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
@@ -280,7 +271,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
-#![feature(pin)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
@@ -313,8 +303,9 @@
 #![feature(non_exhaustive)]
 #![feature(alloc_layout_extra)]
 #![feature(maybe_uninit)]
-#![cfg_attr(target_env = "sgx", feature(global_asm, range_contains, slice_index_methods,
-                                        decl_macro, coerce_unsized))]
+#![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
+            feature(global_asm, range_contains, slice_index_methods,
+                    decl_macro, coerce_unsized, sgx_platform))]
 
 #![default_lib_allocator]
 
@@ -346,6 +337,9 @@ extern crate rustc_demangle;
 #[allow(unused_extern_crates)]
 extern crate unwind;
 
+#[cfg(feature = "backtrace")]
+extern crate backtrace_sys;
+
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
 // code. So any lang items std defines are conditionally excluded (or else they
@@ -354,7 +348,7 @@ extern crate unwind;
 // testing gives test-std access to real-std lang items and globals. See #2912
 #[cfg(test)] extern crate std as realstd;
 
-#[cfg(target_env = "sgx")]
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[macro_use]
 #[allow(unused_imports)] // FIXME: without `#[macro_use]`, get error: “cannot
                          // determine resolution for the macro `usercalls_asm`”
@@ -432,7 +426,7 @@ pub use alloc_crate::borrow;
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;

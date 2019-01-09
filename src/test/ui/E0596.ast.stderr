@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `x` as mutable
-  --> $DIR/E0596.rs:16:18
+  --> $DIR/E0596.rs:6:18
    |
 LL |     let x = 1;
    |         - help: make this binding mutable: `mut x`

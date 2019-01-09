@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable argument `arg` as mutable
-  --> $DIR/mut-suggestion.rs:22:5
+  --> $DIR/mut-suggestion.rs:12:5
    |
 LL | fn func(arg: S) {
    |         --- help: make this binding mutable: `mut arg`
@@ -8,7 +8,7 @@ LL |     arg.mutate();
    |     ^^^ cannot borrow mutably
 
 error[E0596]: cannot borrow immutable local variable `local` as mutable
-  --> $DIR/mut-suggestion.rs:31:5
+  --> $DIR/mut-suggestion.rs:21:5
    |
 LL |     let local = S;
    |         ----- help: make this binding mutable: `mut local`

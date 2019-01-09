@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // This module contains some shared code for encoding and decoding various
 // things from the `ty` module, and in particular implements support for
 // "shorthands" which allow to have pointers back into the already encoded
@@ -257,12 +247,12 @@ pub fn decode_canonical_var_infos<'a, 'tcx, D>(decoder: &mut D)
 }
 
 #[inline]
-pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
-                                 -> Result<&'tcx ty::Const<'tcx>, D::Error>
+pub fn decode_lazy_const<'a, 'tcx, D>(decoder: &mut D)
+                                 -> Result<&'tcx ty::LazyConst<'tcx>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
-    Ok(decoder.tcx().mk_const(Decodable::decode(decoder)?))
+    Ok(decoder.tcx().intern_lazy_const(Decodable::decode(decoder)?))
 }
 
 #[inline]
@@ -399,10 +389,10 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::ty::Const<'tcx>>
+            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::ty::LazyConst<'tcx>>
             for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-                    decode_const(self)
+                fn specialized_decode(&mut self) -> Result<&'tcx ty::LazyConst<'tcx>, Self::Error> {
+                    decode_lazy_const(self)
                 }
             }
 

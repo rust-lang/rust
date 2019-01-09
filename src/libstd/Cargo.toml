@@ -22,6 +22,7 @@ compiler_builtins = { version = "0.1.1" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 rustc-demangle = { version = "0.1.10", features = ['rustc-dep-of-std'] }
+backtrace-sys = { version = "0.1.24", features = ["rustc-dep-of-std"], optional = true }
 
 [dev-dependencies]
 rand = "0.6.1"
@@ -36,20 +37,19 @@ rustc_lsan = { path = "../librustc_lsan" }
 rustc_msan = { path = "../librustc_msan" }
 rustc_tsan = { path = "../librustc_tsan" }
 
-[target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), target_env = "sgx"))'.dependencies]
+[target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.3.1", features = ['rustc-dep-of-std'] }
+fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 
 [build-dependencies]
 cc = "1.0"
-build_helper = { path = "../build_helper" }
 
 [features]
 default = ["compiler_builtins_c"]
 
-backtrace = []
+backtrace = ["backtrace-sys"]
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
 compiler_builtins_c = ["compiler_builtins/c"]

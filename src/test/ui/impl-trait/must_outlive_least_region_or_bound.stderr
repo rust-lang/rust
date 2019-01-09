@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/must_outlive_least_region_or_bound.rs:13:23
+  --> $DIR/must_outlive_least_region_or_bound.rs:3:23
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
    |              ----     ^^^^^^^^^ lifetime `'static` required
@@ -7,43 +7,43 @@ LL | fn elided(x: &i32) -> impl Copy { x }
    |              help: add explicit lifetime `'static` to the type of `x`: `&'static i32`
 
 error: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:16:44
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                                ---------   ^ ...but this borrow...
    |                                |
    |                                this return type evaluates to the `'static` lifetime...
    |
-note: ...can't outlive the lifetime 'a as defined on the function body at 16:13
-  --> $DIR/must_outlive_least_region_or_bound.rs:16:13
+note: ...can't outlive the lifetime 'a as defined on the function body at 6:13
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:13
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             ^^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the function body at 16:13
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the function body at 6:13
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                ^^^^^^^^^^^^^^
 
 error: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                                  --------------------------------   ^ ...but this borrow...
    |                                  |
    |                                  this return type evaluates to the `'static` lifetime...
    |
-note: ...can't outlive the lifetime 'a as defined on the function body at 22:15
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:15
+note: ...can't outlive the lifetime 'a as defined on the function body at 12:15
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:15
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |               ^^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the function body at 22:15
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the function body at 12:15
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static + 'a { x }
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/must_outlive_least_region_or_bound.rs:27:61
+  --> $DIR/must_outlive_least_region_or_bound.rs:17:61
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
    |                                                 -------     ^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                                                 this parameter and the return type are declared with different lifetimes...
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:32:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 --                ^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 help: consider adding an explicit lifetime bound `T: 'static`...
    |
 note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:32:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                                   ^^^^^^^^^^^^^^^^^^^^

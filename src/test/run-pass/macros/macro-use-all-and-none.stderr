@@ -1,5 +1,5 @@
 warning: unused attribute
-  --> $DIR/macro-use-all-and-none.rs:15:1
+  --> $DIR/macro-use-all-and-none.rs:5:1
    |
 LL | #[macro_use()]
    | ^^^^^^^^^^^^^^

@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use {Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use {Float, FloatConvert, ParseError, Round, Status, StatusAnd};
 
@@ -2351,7 +2341,7 @@ mod sig {
             // Our exponent should not underflow.
             *exp = exp.checked_sub(bits as ExpInt).unwrap();
 
-            // Jump is the inter-limb jump; shift is is intra-limb shift.
+            // Jump is the inter-limb jump; shift is the intra-limb shift.
             let jump = bits / LIMB_BITS;
             let shift = bits % LIMB_BITS;
 
@@ -2385,7 +2375,7 @@ mod sig {
             // Our exponent should not overflow.
             *exp = exp.checked_add(bits as ExpInt).unwrap();
 
-            // Jump is the inter-limb jump; shift is is intra-limb shift.
+            // Jump is the inter-limb jump; shift is the intra-limb shift.
             let jump = bits / LIMB_BITS;
             let shift = bits % LIMB_BITS;
 

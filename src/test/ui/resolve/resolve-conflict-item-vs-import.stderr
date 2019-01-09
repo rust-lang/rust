@@ -1,5 +1,5 @@
 error[E0255]: the name `transmute` is defined multiple times
-  --> $DIR/resolve-conflict-item-vs-import.rs:13:1
+  --> $DIR/resolve-conflict-item-vs-import.rs:3:1
    |
 LL | use std::mem::transmute;
    |     ------------------- previous import of the value `transmute` here

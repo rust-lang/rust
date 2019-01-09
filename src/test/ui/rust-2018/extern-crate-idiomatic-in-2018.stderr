@@ -1,18 +1,18 @@
 error: unused extern crate
-  --> $DIR/extern-crate-idiomatic-in-2018.rs:22:1
+  --> $DIR/extern-crate-idiomatic-in-2018.rs:12:1
    |
 LL | extern crate edition_lint_paths;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
    |
 note: lint level defined here
-  --> $DIR/extern-crate-idiomatic-in-2018.rs:19:9
+  --> $DIR/extern-crate-idiomatic-in-2018.rs:9:9
    |
 LL | #![deny(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^
    = note: #[deny(unused_extern_crates)] implied by #[deny(rust_2018_idioms)]
 
 error: `extern crate` is not idiomatic in the new edition
-  --> $DIR/extern-crate-idiomatic-in-2018.rs:25:1
+  --> $DIR/extern-crate-idiomatic-in-2018.rs:15:1
    |
 LL | extern crate edition_lint_paths as bar;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `use`

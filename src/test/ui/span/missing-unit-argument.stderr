@@ -1,5 +1,5 @@
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/missing-unit-argument.rs:21:33
+  --> $DIR/missing-unit-argument.rs:11:33
    |
 LL |     let _: Result<(), String> = Ok(); //~ ERROR this function takes
    |                                 ^^^^
@@ -9,7 +9,7 @@ LL |     let _: Result<(), String> = Ok(()); //~ ERROR this function takes
    |                                    ^^
 
 error[E0061]: this function takes 2 parameters but 0 parameters were supplied
-  --> $DIR/missing-unit-argument.rs:22:5
+  --> $DIR/missing-unit-argument.rs:12:5
    |
 LL | fn foo(():(), ():()) {}
    | -------------------- defined here
@@ -18,7 +18,7 @@ LL |     foo(); //~ ERROR this function takes
    |     ^^^^^ expected 2 parameters
 
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
-  --> $DIR/missing-unit-argument.rs:23:5
+  --> $DIR/missing-unit-argument.rs:13:5
    |
 LL | fn foo(():(), ():()) {}
    | -------------------- defined here
@@ -27,7 +27,7 @@ LL |     foo(()); //~ ERROR this function takes
    |     ^^^^^^^ expected 2 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/missing-unit-argument.rs:24:5
+  --> $DIR/missing-unit-argument.rs:14:5
    |
 LL | fn bar(():()) {}
    | ------------- defined here
@@ -40,7 +40,7 @@ LL |     bar(()); //~ ERROR this function takes
    |         ^^
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/missing-unit-argument.rs:25:7
+  --> $DIR/missing-unit-argument.rs:15:7
    |
 LL |     fn baz(self, (): ()) { }
    |     -------------------- defined here
@@ -53,7 +53,7 @@ LL |     S.baz(()); //~ ERROR this function takes
    |           ^^
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/missing-unit-argument.rs:26:7
+  --> $DIR/missing-unit-argument.rs:16:7
    |
 LL |     fn generic<T>(self, _: T) { }
    |     ------------------------- defined here

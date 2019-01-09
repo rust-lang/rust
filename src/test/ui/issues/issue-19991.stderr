@@ -1,13 +1,13 @@
 error[E0317]: if may be missing an else clause
-  --> $DIR/issue-19991.rs:15:5
+  --> $DIR/issue-19991.rs:5:5
    |
 LL | /     if let Some(homura) = Some("madoka") { //~  ERROR missing an else clause
 LL | |                                            //~| expected type `()`
 LL | |                                            //~| found type `{integer}`
-LL | |                                            //~| expected (), found integral variable
+LL | |                                            //~| expected (), found integer
 LL | |         765
 LL | |     };
-   | |_____^ expected (), found integral variable
+   | |_____^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`

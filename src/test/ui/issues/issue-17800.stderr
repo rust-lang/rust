@@ -1,5 +1,5 @@
 error[E0026]: variant `MyOption::MySome` does not have a field named `x`
-  --> $DIR/issue-17800.rs:18:28
+  --> $DIR/issue-17800.rs:8:28
    |
 LL |         MyOption::MySome { x: 42 } => (),
    |                            ^^^^^

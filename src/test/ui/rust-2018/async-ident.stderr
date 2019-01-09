@@ -1,11 +1,11 @@
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:17:4
+  --> $DIR/async-ident.rs:7:4
    |
 LL | fn async() {} //~ ERROR async
    |    ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
    |
 note: lint level defined here
-  --> $DIR/async-ident.rs:12:9
+  --> $DIR/async-ident.rs:2:9
    |
 LL | #![deny(keyword_idents)]
    |         ^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(keyword_idents)]
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:22:7
+  --> $DIR/async-ident.rs:12:7
    |
 LL |     ($async:expr, async) => {};
    |       ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -22,7 +22,7 @@ LL |     ($async:expr, async) => {};
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:22:19
+  --> $DIR/async-ident.rs:12:19
    |
 LL |     ($async:expr, async) => {};
    |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -31,7 +31,7 @@ LL |     ($async:expr, async) => {};
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:29:6
+  --> $DIR/async-ident.rs:19:6
    |
 LL | foo!(async);
    |      ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -40,7 +40,7 @@ LL | foo!(async);
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:38:11
+  --> $DIR/async-ident.rs:28:11
    |
 LL |     trait async {}
    |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -49,7 +49,7 @@ LL |     trait async {}
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:42:10
+  --> $DIR/async-ident.rs:32:10
    |
 LL |     impl async for MyStruct {}
    |          ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -58,7 +58,7 @@ LL |     impl async for MyStruct {}
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:48:12
+  --> $DIR/async-ident.rs:38:12
    |
 LL |     static async: u32 = 0;
    |            ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -67,7 +67,7 @@ LL |     static async: u32 = 0;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:54:11
+  --> $DIR/async-ident.rs:44:11
    |
 LL |     const async: u32 = 0;
    |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -76,7 +76,7 @@ LL |     const async: u32 = 0;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:60:15
+  --> $DIR/async-ident.rs:50:15
    |
 LL | impl Foo { fn async() {} }
    |               ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -85,7 +85,7 @@ LL | impl Foo { fn async() {} }
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:65:12
+  --> $DIR/async-ident.rs:55:12
    |
 LL |     struct async {}
    |            ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -94,7 +94,7 @@ LL |     struct async {}
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:68:9
+  --> $DIR/async-ident.rs:58:9
    |
 LL |     let async: async = async {};
    |         ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -103,7 +103,7 @@ LL |     let async: async = async {};
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:68:16
+  --> $DIR/async-ident.rs:58:16
    |
 LL |     let async: async = async {};
    |                ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -112,7 +112,7 @@ LL |     let async: async = async {};
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:68:24
+  --> $DIR/async-ident.rs:58:24
    |
 LL |     let async: async = async {};
    |                        ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -121,7 +121,7 @@ LL |     let async: async = async {};
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:79:19
+  --> $DIR/async-ident.rs:69:19
    |
 LL |     () => (pub fn async() {})
    |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
@@ -130,7 +130,7 @@ LL |     () => (pub fn async() {})
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident.rs:86:6
+  --> $DIR/async-ident.rs:76:6
    |
 LL |     (async) => (1)
    |      ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`

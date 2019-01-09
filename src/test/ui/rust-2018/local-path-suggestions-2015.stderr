@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `foobar`
-  --> $DIR/local-path-suggestions-2015.rs:34:5
+  --> $DIR/local-path-suggestions-2015.rs:24:5
    |
 LL | use foobar::Baz; //~ ERROR unresolved import `foobar`
    |     ^^^^^^ did you mean `aux_baz::foobar`?

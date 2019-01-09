@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `tick`
-  --> $DIR/unboxed-closures-infer-fnonce-move-call-twice.rs:20:5
+  --> $DIR/unboxed-closures-infer-fnonce-move-call-twice.rs:10:5
    |
 LL |     tick();
    |     ---- value moved here
@@ -7,7 +7,7 @@ LL |     tick(); //~ ERROR use of moved value: `tick`
    |     ^^^^ value used here after move
    |
 note: closure cannot be invoked more than once because it moves the variable `counter` out of its environment
-  --> $DIR/unboxed-closures-infer-fnonce-move-call-twice.rs:18:34
+  --> $DIR/unboxed-closures-infer-fnonce-move-call-twice.rs:8:34
    |
 LL |     let tick = move || mem::drop(counter);
    |                                  ^^^^^^^

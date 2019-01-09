@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
@@ -159,8 +149,6 @@ fn encode_dep_graph(tcx: TyCtxt,
 
         let total_node_count = serialized_graph.nodes.len();
         let total_edge_count = serialized_graph.edge_list_data.len();
-        let (total_edge_reads, total_duplicate_edge_reads) =
-            tcx.dep_graph.edge_deduplication_data();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
 
@@ -198,8 +186,11 @@ fn encode_dep_graph(tcx: TyCtxt,
         println!("[incremental]");
         println!("[incremental] Total Node Count: {}", total_node_count);
         println!("[incremental] Total Edge Count: {}", total_edge_count);
-        println!("[incremental] Total Edge Reads: {}", total_edge_reads);
-        println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        if let Some((total_edge_reads,
+                     total_duplicate_edge_reads)) = tcx.dep_graph.edge_deduplication_data() {
+            println!("[incremental] Total Edge Reads: {}", total_edge_reads);
+            println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        }
         println!("[incremental]");
         println!("[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
                  "Node Kind",

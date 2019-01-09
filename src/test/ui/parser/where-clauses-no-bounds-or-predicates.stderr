@@ -1,5 +1,5 @@
 error: expected `:`, found `{`
-  --> $DIR/where-clauses-no-bounds-or-predicates.rs:23:23
+  --> $DIR/where-clauses-no-bounds-or-predicates.rs:13:23
    |
 LL | fn foo<'a>() where 'a {}
    |                       ^ expected `:`

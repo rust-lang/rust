@@ -1,11 +1,11 @@
 error[E0381]: assign to part of possibly uninitialized variable: `x`
-  --> $DIR/reassignment_immutable_fields_overlapping.rs:22:5
+  --> $DIR/reassignment_immutable_fields_overlapping.rs:12:5
    |
 LL |     x.a = 1;  //~ ERROR
    |     ^^^^^^^ use of possibly uninitialized `x`
 
 error[E0594]: cannot assign to `x.b`, as `x` is not declared as mutable
-  --> $DIR/reassignment_immutable_fields_overlapping.rs:23:5
+  --> $DIR/reassignment_immutable_fields_overlapping.rs:13:5
    |
 LL |     let x: Foo;
    |         - help: consider changing this to be mutable: `mut x`

@@ -1,19 +1,9 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{Expr, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax::ext::base::{Annotatable, DummyResult, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -79,7 +69,7 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
             span_err!(cx, trait_span, E0665,
                       "`Default` cannot be derived for enums, only structs");
             // let compilation continue
-            cx.expr_usize(trait_span, 0)
+            DummyResult::raw_expr(trait_span, true)
         }
         _ => cx.span_bug(trait_span, "Non-static method in `derive(Default)`"),
     };

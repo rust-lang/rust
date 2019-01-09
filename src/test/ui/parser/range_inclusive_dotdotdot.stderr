@@ -1,5 +1,5 @@
 error: unexpected token: `...`
-  --> $DIR/range_inclusive_dotdotdot.rs:18:12
+  --> $DIR/range_inclusive_dotdotdot.rs:8:12
    |
 LL |     return ...1; //~ERROR unexpected token: `...`
    |            ^^^
@@ -13,7 +13,7 @@ LL |     return ..=1; //~ERROR unexpected token: `...`
    |            ^^^
 
 error: unexpected token: `...`
-  --> $DIR/range_inclusive_dotdotdot.rs:24:13
+  --> $DIR/range_inclusive_dotdotdot.rs:14:13
    |
 LL |     let x = ...0;    //~ERROR unexpected token: `...`
    |             ^^^
@@ -27,7 +27,7 @@ LL |     let x = ..=0;    //~ERROR unexpected token: `...`
    |             ^^^
 
 error: unexpected token: `...`
-  --> $DIR/range_inclusive_dotdotdot.rs:28:14
+  --> $DIR/range_inclusive_dotdotdot.rs:18:14
    |
 LL |     let x = 5...5;   //~ERROR unexpected token: `...`
    |              ^^^
@@ -41,7 +41,7 @@ LL |     let x = 5..=5;   //~ERROR unexpected token: `...`
    |              ^^^
 
 error: unexpected token: `...`
-  --> $DIR/range_inclusive_dotdotdot.rs:32:15
+  --> $DIR/range_inclusive_dotdotdot.rs:22:15
    |
 LL |     for _ in 0...1 {} //~ERROR unexpected token: `...`
    |               ^^^

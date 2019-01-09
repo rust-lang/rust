@@ -1,5 +1,5 @@
 warning: lifetime name `'a` shadows a label name that is already in scope
-  --> $DIR/loops-reject-lifetime-shadowing-label.rs:31:51
+  --> $DIR/loops-reject-lifetime-shadowing-label.rs:21:51
    |
 LL |     'a: loop {
    |     -- first declared here

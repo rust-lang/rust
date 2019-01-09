@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Logic and data structures related to impl specialization, explained in
 //! greater detail below.
 //!
@@ -24,7 +14,7 @@ pub mod specialization_graph;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use lint;
-use traits::{self, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
@@ -42,6 +32,7 @@ pub struct OverlapError {
     pub trait_desc: String,
     pub self_desc: Option<String>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+    pub involves_placeholder: bool,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -378,6 +369,10 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
 
                 for cause in &overlap.intercrate_ambiguity_causes {
                     cause.add_intercrate_ambiguity_hint(&mut err);
+                }
+
+                if overlap.involves_placeholder {
+                    coherence::add_placeholder_note(&mut err);
                 }
 
                 err.emit();

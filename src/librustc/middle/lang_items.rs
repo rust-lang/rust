@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Detecting language items.
 //
 // Language items are items that represent concepts intrinsic to the language
@@ -301,6 +291,7 @@ language_item_table! {
 
     DerefTraitLangItem,          "deref",              deref_trait,             Target::Trait;
     DerefMutTraitLangItem,       "deref_mut",          deref_mut_trait,         Target::Trait;
+    ReceiverTraitLangItem,       "receiver",           receiver_trait,          Target::Trait;
 
     FnTraitLangItem,             "fn",                 fn_trait,                Target::Trait;
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;

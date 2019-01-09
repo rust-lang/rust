@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowck-ref-into-rvalue.rs:13:11
+  --> $DIR/borrowck-ref-into-rvalue.rs:3:11
    |
 LL |     match Some("Hello".to_string()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use

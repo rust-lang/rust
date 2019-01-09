@@ -1,5 +1,5 @@
 error[E0382]: use of partially moved value: `x`
-  --> $DIR/moves-based-on-type-match-bindings.rs:26:12
+  --> $DIR/moves-based-on-type-match-bindings.rs:16:12
    |
 LL |         Foo {f} => {}
    |              - value moved here

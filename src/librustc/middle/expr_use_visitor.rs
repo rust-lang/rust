@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A different sort of visitor for walking fn bodies.  Unlike the
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
@@ -489,7 +479,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprKind::Continue(..) |
-            hir::ExprKind::Lit(..) => {}
+            hir::ExprKind::Lit(..) |
+            hir::ExprKind::Err => {}
 
             hir::ExprKind::Loop(ref blk, _, _) => {
                 self.walk_block(&blk);
@@ -985,7 +976,7 @@ fn copy_or_move<'a, 'gcx, 'tcx>(mc: &mc::MemCategorizationContext<'a, 'gcx, 'tcx
                                 move_reason: MoveReason)
                                 -> ConsumeMode
 {
-    if mc.type_moves_by_default(param_env, cmt.ty, cmt.span) {
+    if !mc.type_is_copy_modulo_regions(param_env, cmt.ty, cmt.span) {
         Move(move_reason)
     } else {
         Copy

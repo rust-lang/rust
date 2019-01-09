@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The Rust compiler.
 //!
 //! # Note
@@ -26,6 +16,7 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
 #![feature(no_debug)]
+#![feature(integer_atomics)]
 
 #![recursion_limit="256"]
 
@@ -63,21 +54,13 @@ extern crate syntax;
 extern crate syntax_ext;
 extern crate syntax_pos;
 
-// Note that the linkage here should be all that we need, on Linux we're not
-// prefixing the symbols here so this should naturally override our default
-// allocator. On OSX it should override via the zone allocator. We shouldn't
-// enable this by default on other platforms, so other platforms aren't handled
-// here yet.
-#[cfg(feature = "jemalloc-sys")]
-extern crate jemalloc_sys;
-
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync::{self, Lrc, Ordering::SeqCst};
 use rustc_data_structures::OnDrop;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
@@ -218,14 +201,7 @@ pub fn run<F>(run_compiler: F) -> isize
 }
 
 fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
-    // Note that we're specifically using `open_global_now` here rather than
-    // `open`, namely we want the behavior on Unix of RTLD_GLOBAL and RTLD_NOW,
-    // where NOW means "bind everything right now" because we don't want
-    // surprises later on and RTLD_GLOBAL allows the symbols to be made
-    // available for future dynamic libraries opened. This is currently used by
-    // loading LLVM and then making its symbols available for other dynamic
-    // libraries.
-    let lib = DynamicLibrary::open_global_now(path).unwrap_or_else(|err| {
+    let lib = DynamicLibrary::open(Some(path)).unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
         early_error(ErrorOutputType::default(), &err);
     });
@@ -952,7 +928,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 let sess = state.session;
                 eprintln!("Fuel used by {}: {}",
                     sess.print_fuel_crate.as_ref().unwrap(),
-                    sess.print_fuel.get());
+                    sess.print_fuel.load(SeqCst));
             }
         }
         control

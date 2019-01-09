@@ -1,5 +1,5 @@
 error[E0161]: cannot move a value of type [i32]: the size of [i32] cannot be statically determined
-  --> $DIR/E0161.rs:32:5
+  --> $DIR/E0161.rs:22:5
    |
 LL |     box *x;
    |     ^^^^^^

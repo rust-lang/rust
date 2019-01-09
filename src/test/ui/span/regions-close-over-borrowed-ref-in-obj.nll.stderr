@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:27
+  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:12:27
    |
 LL |         let ss: &isize = &id(1);
    |                           ^^^^^ creates a temporary which is freed while still in use

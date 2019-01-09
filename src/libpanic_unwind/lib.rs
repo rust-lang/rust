@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of panics via stack unwinding
 //!
 //! This crate is an implementation of panics in Rust using "most native" stack
@@ -62,7 +52,7 @@ cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;
-    } else if #[cfg(any(target_arch = "wasm32", target_env = "sgx"))] {
+    } else if #[cfg(target_arch = "wasm32")] {
         #[path = "dummy.rs"]
         mod imp;
     } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {

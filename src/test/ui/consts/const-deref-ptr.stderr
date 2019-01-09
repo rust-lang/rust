@@ -1,5 +1,5 @@
 error[E0658]: dereferencing raw pointers in statics is unstable (see issue #51911)
-  --> $DIR/const-deref-ptr.rs:14:29
+  --> $DIR/const-deref-ptr.rs:4:29
    |
 LL |     static C: u64 = unsafe {*(0xdeadbeef as *const u64)};
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^

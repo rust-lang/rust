@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/unboxed-closure-illegal-move.rs:25:31
+  --> $DIR/unboxed-closure-illegal-move.rs:15:31
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
@@ -7,7 +7,7 @@ LL |         let f = to_fn(|| drop(x)); //~ ERROR cannot move
    |                               ^ cannot move out of captured variable in an `Fn` closure
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/unboxed-closure-illegal-move.rs:29:35
+  --> $DIR/unboxed-closure-illegal-move.rs:19:35
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
@@ -15,7 +15,7 @@ LL |         let f = to_fn_mut(|| drop(x)); //~ ERROR cannot move
    |                                   ^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/unboxed-closure-illegal-move.rs:38:36
+  --> $DIR/unboxed-closure-illegal-move.rs:28:36
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
@@ -23,7 +23,7 @@ LL |         let f = to_fn(move || drop(x)); //~ ERROR cannot move
    |                                    ^ cannot move out of captured variable in an `Fn` closure
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/unboxed-closure-illegal-move.rs:42:40
+  --> $DIR/unboxed-closure-illegal-move.rs:32:40
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable

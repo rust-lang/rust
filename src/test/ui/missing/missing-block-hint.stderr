@@ -1,5 +1,5 @@
 error: expected `{`, found `=>`
-  --> $DIR/missing-block-hint.rs:13:18
+  --> $DIR/missing-block-hint.rs:3:18
    |
 LL |         if (foo) => {} //~ ERROR expected `{`, found `=>`
    |         --       ^^ expected `{`
@@ -7,7 +7,7 @@ LL |         if (foo) => {} //~ ERROR expected `{`, found `=>`
    |         this `if` statement has a condition, but no block
 
 error: expected `{`, found `bar`
-  --> $DIR/missing-block-hint.rs:17:13
+  --> $DIR/missing-block-hint.rs:7:13
    |
 LL |         if (foo)
    |         -- this `if` statement has a condition, but no block

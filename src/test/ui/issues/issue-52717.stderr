@@ -1,5 +1,5 @@
 error[E0026]: variant `A::A` does not have a field named `fob`
-  --> $DIR/issue-52717.rs:19:12
+  --> $DIR/issue-52717.rs:10:12
    |
 LL |     A::A { fob } => { println!("{}", fob); }
    |            ^^^

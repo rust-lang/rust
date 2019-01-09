@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 
@@ -1237,6 +1227,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "verify incr. comp. hashes of green query instances"),
     incremental_ignore_spans: bool = (false, parse_bool, [UNTRACKED],
         "ignore spans during ICH computation -- used for testing"),
+    instrument_mcount: bool = (false, parse_bool, [TRACKED],
+        "insert function instrument code for mcount-based tracing"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -1271,8 +1263,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "set the MIR optimization level (0-3, default: 1)"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes on LLVM >= 6)"),
-    arg_align_attributes: bool = (false, parse_bool, [TRACKED],
-        "emit align metadata for reference arguments"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:
@@ -1291,6 +1281,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some performance-related statistics"),
+    query_stats: bool = (false, parse_bool, [UNTRACKED],
+        "print some statistics about the query system"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
@@ -1319,12 +1311,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "Disable the instrumentation pre-inliner, useful for profiling / PGO."),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
-    nll_subminimal_causes: bool = (false, parse_bool, [UNTRACKED],
-        "when tracking region error causes, accept subminimal results for faster execution."),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
                        "dump facts from NLL analysis into side files"),
-    disable_nll_user_type_assert: bool = (false, parse_bool, [UNTRACKED],
-        "disable user provided type assertion in NLL"),
     nll_dont_emit_read_for_match: bool = (false, parse_bool, [UNTRACKED],
         "in match codegen, do not include FakeRead statements (used by mir-borrowck)"),
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],

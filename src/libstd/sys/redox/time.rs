@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cmp::Ordering;
 use fmt;
 use sys::{cvt, syscall};
@@ -136,6 +126,14 @@ pub const UNIX_EPOCH: SystemTime = SystemTime {
 impl Instant {
     pub fn now() -> Instant {
         Instant { t: now(syscall::CLOCK_MONOTONIC) }
+    }
+
+    pub const fn zero() -> Instant {
+        Instant { t: Timespec { t: syscall::TimeSpec { tv_sec: 0, tv_nsec: 0 } } }
+    }
+
+    pub fn actually_monotonic() -> bool {
+        false
     }
 
     pub fn sub_instant(&self, other: &Instant) -> Duration {

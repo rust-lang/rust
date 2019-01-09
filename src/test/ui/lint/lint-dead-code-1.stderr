@@ -1,65 +1,65 @@
 error: struct is never constructed: `Bar`
-  --> $DIR/lint-dead-code-1.rs:22:5
+  --> $DIR/lint-dead-code-1.rs:12:5
    |
 LL |     pub struct Bar; //~ ERROR: struct is never constructed
    |     ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-dead-code-1.rs:15:9
+  --> $DIR/lint-dead-code-1.rs:5:9
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
 error: static item is never used: `priv_static`
-  --> $DIR/lint-dead-code-1.rs:30:1
+  --> $DIR/lint-dead-code-1.rs:20:1
    |
 LL | static priv_static: isize = 0; //~ ERROR: static item is never used
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant item is never used: `priv_const`
-  --> $DIR/lint-dead-code-1.rs:37:1
+  --> $DIR/lint-dead-code-1.rs:27:1
    |
 LL | const priv_const: isize = 0; //~ ERROR: constant item is never used
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct is never constructed: `PrivStruct`
-  --> $DIR/lint-dead-code-1.rs:45:1
+  --> $DIR/lint-dead-code-1.rs:35:1
    |
 LL | struct PrivStruct; //~ ERROR: struct is never constructed
    | ^^^^^^^^^^^^^^^^^^
 
 error: enum is never used: `priv_enum`
-  --> $DIR/lint-dead-code-1.rs:74:1
+  --> $DIR/lint-dead-code-1.rs:64:1
    |
 LL | enum priv_enum { foo2, bar2 } //~ ERROR: enum is never used
    | ^^^^^^^^^^^^^^
 
 error: variant is never constructed: `bar3`
-  --> $DIR/lint-dead-code-1.rs:77:5
+  --> $DIR/lint-dead-code-1.rs:67:5
    |
 LL |     bar3 //~ ERROR variant is never constructed
    |     ^^^^
 
 error: function is never used: `priv_fn`
-  --> $DIR/lint-dead-code-1.rs:98:1
+  --> $DIR/lint-dead-code-1.rs:88:1
    |
 LL | fn priv_fn() { //~ ERROR: function is never used
    | ^^^^^^^^^^^^
 
 error: function is never used: `foo`
-  --> $DIR/lint-dead-code-1.rs:103:1
+  --> $DIR/lint-dead-code-1.rs:93:1
    |
 LL | fn foo() { //~ ERROR: function is never used
    | ^^^^^^^^
 
 error: function is never used: `bar`
-  --> $DIR/lint-dead-code-1.rs:108:1
+  --> $DIR/lint-dead-code-1.rs:98:1
    |
 LL | fn bar() { //~ ERROR: function is never used
    | ^^^^^^^^
 
 error: function is never used: `baz`
-  --> $DIR/lint-dead-code-1.rs:112:1
+  --> $DIR/lint-dead-code-1.rs:102:1
    |
 LL | fn baz() -> impl Copy { //~ ERROR: function is never used
    | ^^^^^^^^^^^^^^^^^^^^^

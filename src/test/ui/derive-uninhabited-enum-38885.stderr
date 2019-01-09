@@ -1,5 +1,5 @@
 warning: enum is never used: `Void`
-  --> $DIR/derive-uninhabited-enum-38885.rs:18:1
+  --> $DIR/derive-uninhabited-enum-38885.rs:8:1
    |
 LL | enum Void {} //~ WARN never used
    | ^^^^^^^^^
@@ -7,7 +7,7 @@ LL | enum Void {} //~ WARN never used
    = note: `-W dead-code` implied by `-W unused`
 
 warning: enum is never used: `Foo`
-  --> $DIR/derive-uninhabited-enum-38885.rs:21:1
+  --> $DIR/derive-uninhabited-enum-38885.rs:11:1
    |
 LL | enum Foo { //~ WARN never used
    | ^^^^^^^^

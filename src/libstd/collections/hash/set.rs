@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow::Borrow;
 use fmt;
 use hash::{Hash, BuildHasher};
@@ -189,7 +179,7 @@ impl<T, S> HashSet<T, S>
         HashSet { map: HashMap::with_hasher(hasher) }
     }
 
-    /// Creates an empty `HashSet` with with the specified capacity, using
+    /// Creates an empty `HashSet` with the specified capacity, using
     /// `hasher` to hash the keys.
     ///
     /// The hash set will be able to hold at least `capacity` elements without

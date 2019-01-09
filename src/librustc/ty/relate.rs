@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Generalized type relating mechanism.
 //!
 //! A type relation `R` relates a pair of values `(A, B)`. `A and B` are usually
@@ -15,7 +5,6 @@
 //! subtyping, type equality, etc.
 
 use hir::def_id::DefId;
-use mir::interpret::ConstValue;
 use ty::subst::{Kind, UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
@@ -35,19 +24,8 @@ pub enum Cause {
     ExistentialRegionBound, // relating an existential region bound
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum TraitObjectMode {
-    NoSquash,
-    /// A temporary mode to treat `Send + Sync = Sync + Send`, should be
-    /// used only in coherence.
-    SquashAutoTraitsIssue33140
-}
-
 pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx>;
-
-    /// Return the trait object mode to be used.
-    fn trait_object_mode(&self) -> TraitObjectMode;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
@@ -490,14 +468,9 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            assert_eq!(sz_a.ty, tcx.types.usize);
-            assert_eq!(sz_b.ty, tcx.types.usize);
-            let to_u64 = |x: &'tcx ty::Const<'tcx>| -> Result<u64, ErrorReported> {
-                if let Some(s) = x.assert_usize(tcx) {
-                    return Ok(s);
-                }
-                match x.val {
-                    ConstValue::Unevaluated(def_id, substs) => {
+            let to_u64 = |x: ty::LazyConst<'tcx>| -> Result<u64, ErrorReported> {
+                match x {
+                    ty::LazyConst::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty();
                         if let Some(substs) = tcx.lift_to_global(&substs) {
@@ -523,14 +496,14 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                             "array length could not be evaluated");
                         Err(ErrorReported)
                     }
-                    _ => {
+                    ty::LazyConst::Evaluated(c) => c.assert_usize(tcx).ok_or_else(|| {
                         tcx.sess.delay_span_bug(DUMMY_SP,
-                            &format!("arrays should not have {:?} as length", x));
-                        Err(ErrorReported)
-                    }
+                            "array length could not be evaluated");
+                        ErrorReported
+                    })
                 }
             };
-            match (to_u64(sz_a), to_u64(sz_b)) {
+            match (to_u64(*sz_a), to_u64(*sz_b)) {
                 (Ok(sz_a_u64), Ok(sz_b_u64)) => {
                     if sz_a_u64 == sz_b_u64 {
                         Ok(tcx.mk_ty(ty::Array(t, sz_a)))
@@ -607,44 +580,14 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
                            a: &Self,
                            b: &Self)
         -> RelateResult<'tcx, Self>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a {
-        use ty::ExistentialPredicate::*;
+            where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a {
 
-        let tcx = relation.tcx();
-        let (a_buf, b_buf);
-        let (a_norm, b_norm): (&[_], &[_]) = match relation.trait_object_mode() {
-            TraitObjectMode::NoSquash => {
-                (a, b)
-            }
-            TraitObjectMode::SquashAutoTraitsIssue33140 => {
-                // Treat auto-trait "principal" components as equal
-                // to the non-principal components, to make
-                // `dyn Send+Sync = dyn Sync+Send`.
-                let normalize = |d: &[ty::ExistentialPredicate<'tcx>]| {
-                    let mut result: Vec<_> = d.iter().map(|pi| match pi {
-                        Trait(ref a) if tcx.trait_is_auto(a.def_id) => {
-                            AutoTrait(a.def_id)
-                        },
-                        other => *other
-                    }).collect();
-
-                    result.sort_by(|a, b| a.stable_cmp(tcx, b));
-                    result.dedup();
-                    result
-                };
-
-                a_buf = normalize(a);
-                b_buf = normalize(b);
-
-                (&a_buf, &b_buf)
-            }
-        };
-
-        if a_norm.len() != b_norm.len() {
+        if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_norm.iter().zip(b_norm.iter()).map(|(ep_a, ep_b)| {
+        let tcx = relation.tcx();
+        let v = a.iter().zip(b.iter()).map(|(ep_a, ep_b)| {
             use ty::ExistentialPredicate::*;
             match (*ep_a, *ep_b) {
                 (Trait(ref a), Trait(ref b)) => Ok(Trait(relation.relate(a, b)?)),

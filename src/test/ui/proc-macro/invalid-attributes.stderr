@@ -1,35 +1,35 @@
 error: `#[proc_macro]` attribute does not take any arguments
-  --> $DIR/invalid-attributes.rs:20:1
+  --> $DIR/invalid-attributes.rs:10:1
    |
 LL | #[proc_macro = "test"] //~ ERROR: does not take any arguments
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[proc_macro]` attribute does not take any arguments
-  --> $DIR/invalid-attributes.rs:23:1
+  --> $DIR/invalid-attributes.rs:13:1
    |
 LL | #[proc_macro()] //~ ERROR: does not take any arguments
    | ^^^^^^^^^^^^^^^
 
 error: `#[proc_macro]` attribute does not take any arguments
-  --> $DIR/invalid-attributes.rs:26:1
+  --> $DIR/invalid-attributes.rs:16:1
    |
 LL | #[proc_macro(x)] //~ ERROR: does not take any arguments
    | ^^^^^^^^^^^^^^^^
 
 error: `#[proc_macro_attribute]` attribute does not take any arguments
-  --> $DIR/invalid-attributes.rs:29:1
+  --> $DIR/invalid-attributes.rs:19:1
    |
 LL | #[proc_macro_attribute = "test"] //~ ERROR: does not take any arguments
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[proc_macro_attribute]` attribute does not take any arguments
-  --> $DIR/invalid-attributes.rs:32:1
+  --> $DIR/invalid-attributes.rs:22:1
    |
 LL | #[proc_macro_attribute()] //~ ERROR: does not take any arguments
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[proc_macro_attribute]` attribute does not take any arguments
-  --> $DIR/invalid-attributes.rs:35:1
+  --> $DIR/invalid-attributes.rs:25:1
    |
 LL | #[proc_macro_attribute(x)] //~ ERROR: does not take any arguments
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

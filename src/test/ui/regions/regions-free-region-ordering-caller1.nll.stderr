@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-free-region-ordering-caller1.rs:19:27
+  --> $DIR/regions-free-region-ordering-caller1.rs:9:27
    |
 LL | fn call1<'a>(x: &'a usize) {
    |          -- lifetime `'a` defined here

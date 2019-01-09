@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of compiling the compiler and standard library, in "check" mode.
 
 use crate::compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env,
@@ -48,7 +38,6 @@ impl Step for Std {
         builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &libstd_stamp(builder, compiler, target),
                   true);
 
@@ -95,7 +84,6 @@ impl Step for Rustc {
         builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &librustc_stamp(builder, compiler, target),
                   true);
 
@@ -146,7 +134,6 @@ impl Step for CodegenBackend {
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &codegen_backend_stamp(builder, compiler, target, backend),
                   true);
     }
@@ -184,7 +171,6 @@ impl Step for Test {
         builder.info(&format!("Checking test artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &libtest_stamp(builder, compiler, target),
                   true);
 
@@ -232,7 +218,6 @@ impl Step for Rustdoc {
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);
         run_cargo(builder,
                   &mut cargo,
-                  vec![],
                   &rustdoc_stamp(builder, compiler, target),
                   true);
 

@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:23:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:13:22
    |
 LL |     let _bar1 = &mut foo.bar1;
    |                      -------- first mutable borrow occurs here
@@ -10,7 +10,7 @@ LL | }
    | - first borrow ends here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:28:18
+  --> $DIR/borrowck-reborrow-from-mut.rs:18:18
    |
 LL |     let _bar1 = &mut foo.bar1;
    |                      -------- mutable borrow occurs here
@@ -21,7 +21,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:33:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:23:22
    |
 LL |     let _bar1 = &foo.bar1;
    |                  -------- immutable borrow occurs here
@@ -32,7 +32,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:55:21
+  --> $DIR/borrowck-reborrow-from-mut.rs:45:21
    |
 LL |     let _bar1 = &mut foo.bar1;
    |                      -------- first mutable borrow occurs here
@@ -44,7 +44,7 @@ LL | }
    | - first borrow ends here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because `foo.bar1.int1` is also borrowed as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:62:18
+  --> $DIR/borrowck-reborrow-from-mut.rs:52:18
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                      ------------- mutable borrow occurs here
@@ -55,7 +55,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `*foo` as immutable because `foo.bar1.int1` is also borrowed as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:63:18
+  --> $DIR/borrowck-reborrow-from-mut.rs:53:18
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                      ------------- mutable borrow occurs here
@@ -67,7 +67,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:68:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:58:22
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                      ------------- first mutable borrow occurs here
@@ -78,7 +78,7 @@ LL | }
    | - first borrow ends here
 
 error[E0499]: cannot borrow `*foo` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:73:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:63:22
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                      ------------- first mutable borrow occurs here
@@ -89,7 +89,7 @@ LL | }
    | - first borrow ends here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because `foo.bar1.int1` is also borrowed as immutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:78:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:68:22
    |
 LL |     let _bar1 = &foo.bar1.int1;
    |                  ------------- immutable borrow occurs here
@@ -100,7 +100,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*foo` as mutable because `foo.bar1.int1` is also borrowed as immutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:83:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:73:22
    |
 LL |     let _bar1 = &foo.bar1.int1;
    |                  ------------- immutable borrow occurs here
@@ -111,7 +111,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0596]: cannot borrow field `foo.bar1` of immutable binding as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:98:22
+  --> $DIR/borrowck-reborrow-from-mut.rs:88:22
    |
 LL | fn borrow_mut_from_imm(foo: &Foo) {
    |                             ---- use `&mut Foo` here to make mutable

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use check::{FnCtxt, Expectation, Diverges, Needs};
 use check::coercion::CoerceMany;
 use rustc::hir::{self, PatKind};
@@ -26,6 +16,8 @@ use util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
+
+use super::report_unexpected_variant_def;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// The `is_arg` argument indicates whether this pattern is the
@@ -283,7 +275,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Tuple(ref elements, ddpos) => {
                 let mut expected_len = elements.len();
                 if ddpos.is_some() {
-                    // Require known type only when `..` is present
+                    // Require known type only when `..` is present.
                     if let ty::Tuple(ref tys) =
                             self.structurally_resolved_type(pat.span, expected).sty {
                         expected_len = tys.len();
@@ -292,8 +284,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let max_len = cmp::max(expected_len, elements.len());
 
                 let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(
-                    // FIXME: MiscVariable for now, obtaining the span and name information
-                    //        from all tuple elements isn't trivial.
+                    // FIXME: `MiscVariable` for now -- obtaining the span and name information
+                    // from all tuple elements isn't trivial.
                     TypeVariableOrigin::TypeInference(pat.span)));
                 let element_tys = tcx.mk_type_list(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
@@ -746,12 +738,6 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                       expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
-        let report_unexpected_def = |def: Def| {
-            span_err!(tcx.sess, pat.span, E0533,
-                      "expected unit struct/variant or constant, found {} `{}`",
-                      def.kind_name(),
-                      hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
-        };
 
         // Resolve the path and check the definition for errors.
         let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
@@ -761,7 +747,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 return tcx.types.err;
             }
             Def::Method(..) => {
-                report_unexpected_def(def);
+                report_unexpected_variant_def(tcx, &def, pat.span, qpath);
+                return tcx.types.err;
+            }
+            Def::VariantCtor(_, CtorKind::Fictive) => {
+                report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
             Def::VariantCtor(_, CtorKind::Const) |
@@ -962,7 +952,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 if plural == "" {
                     let input = unmentioned_fields.iter().map(|field| &field.name);
                     let suggested_name =
-                        find_best_match_for_name(input, &ident.name.as_str(), None);
+                        find_best_match_for_name(input, &ident.as_str(), None);
                     if let Some(suggested_name) = suggested_name {
                         err.span_suggestion(*span, "did you mean", suggested_name.to_string());
                         // we don't want to throw `E0027` in case we have thrown `E0026` for them

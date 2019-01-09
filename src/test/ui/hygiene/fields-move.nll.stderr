@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `foo.x`
-  --> $DIR/fields-move.rs:28:9
+  --> $DIR/fields-move.rs:18:9
    |
 LL |         $foo.x //~ ERROR use of moved value: `foo.x`
    |         ^^^^^^ value used here after move
@@ -12,7 +12,7 @@ LL |     assert_two_copies(copy_legacy!(foo), foo.x); //~ ERROR use of moved val
    = note: move occurs because `foo.x` has type `NonCopy`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `foo.x`
-  --> $DIR/fields-move.rs:38:42
+  --> $DIR/fields-move.rs:28:42
    |
 LL |    $foo.x
    |    ------ value moved here
@@ -23,7 +23,7 @@ LL |     assert_two_copies(copy_modern!(foo), foo.x); //~ ERROR use of moved val
    = note: move occurs because `foo.x` has type `NonCopy`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `foo.x`
-  --> $DIR/fields-move.rs:39:42
+  --> $DIR/fields-move.rs:29:42
    |
 LL |         $foo.x //~ ERROR use of moved value: `foo.x`
    |         ------ value moved here

@@ -1,11 +1,11 @@
 error: `[v2]` cannot be resolved, ignoring it...
-  --> $DIR/deny-intra-link-resolution-failure.rs:13:6
+  --> $DIR/deny-intra-link-resolution-failure.rs:3:6
    |
 LL | /// [v2] //~ ERROR
    |      ^^ cannot be resolved, ignoring
    |
 note: lint level defined here
-  --> $DIR/deny-intra-link-resolution-failure.rs:11:9
+  --> $DIR/deny-intra-link-resolution-failure.rs:1:9
    |
 LL | #![deny(intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Windows-specific extensions for the primitives in the `std::fs` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -136,7 +126,7 @@ pub trait OpenOptionsExt {
     ///
     /// By default `share_mode` is set to
     /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`. This allows
-    /// other processes to to read, write, and delete/rename the same file
+    /// other processes to read, write, and delete/rename the same file
     /// while it is open. Removing any of the flags will prevent other
     /// processes from performing the corresponding operation until the file
     /// handle is closed.

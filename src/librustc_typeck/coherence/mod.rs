@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Coherence phase
 //
 // The job of the coherence phase of typechecking is to ensure that
@@ -181,25 +171,28 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
         // This is something like impl Trait1 for Trait2. Illegal
         // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 
-        if !tcx.is_object_safe(data.principal().def_id()) {
-            // This is an error, but it will be reported by wfcheck.  Ignore it here.
-            // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
-        } else {
-            let mut supertrait_def_ids =
-                traits::supertrait_def_ids(tcx, data.principal().def_id());
-            if supertrait_def_ids.any(|d| d == trait_def_id) {
-                let sp = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
-                struct_span_err!(tcx.sess,
-                                 sp,
-                                 E0371,
-                                 "the object type `{}` automatically implements the trait `{}`",
-                                 trait_ref.self_ty(),
-                                 tcx.item_path_str(trait_def_id))
-                    .span_label(sp, format!("`{}` automatically implements trait `{}`",
-                                            trait_ref.self_ty(),
-                                            tcx.item_path_str(trait_def_id)))
-                    .emit();
+        if let Some(principal_def_id) = data.principal_def_id() {
+            if !tcx.is_object_safe(principal_def_id) {
+                // This is an error, but it will be reported by wfcheck.  Ignore it here.
+                // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
+            } else {
+                let mut supertrait_def_ids =
+                    traits::supertrait_def_ids(tcx, principal_def_id);
+                if supertrait_def_ids.any(|d| d == trait_def_id) {
+                    let sp = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
+                    struct_span_err!(tcx.sess,
+                                     sp,
+                                     E0371,
+                                     "the object type `{}` automatically implements the trait `{}`",
+                                     trait_ref.self_ty(),
+                                     tcx.item_path_str(trait_def_id))
+                        .span_label(sp, format!("`{}` automatically implements trait `{}`",
+                                                trait_ref.self_ty(),
+                                                tcx.item_path_str(trait_def_id)))
+                        .emit();
+                }
             }
         }
+        // FIXME: also check auto-trait def-ids? (e.g. `impl Sync for Foo+Sync`)?
     }
 }

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of `std::os` functionality for unix systems
 
 #![allow(unused_imports)] // lots of cfg code here
@@ -67,7 +57,8 @@ pub fn errno() -> i32 {
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(any(target_os = "solaris", target_os = "fuchsia"))] // only needed for readdir so far
+#[cfg(all(not(target_os = "linux"),
+          not(target_os = "dragonfly")))] // needed for readdir and syscall!
 pub fn set_errno(e: i32) {
     unsafe {
         *errno_location() = e as c_int
@@ -82,6 +73,18 @@ pub fn errno() -> i32 {
     }
 
     unsafe { errno as i32 }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn set_errno(e: i32) {
+    extern {
+        #[thread_local]
+        static mut errno: c_int;
+    }
+
+    unsafe {
+        errno = e;
+    }
 }
 
 /// Gets a detailed string description for the given error number.

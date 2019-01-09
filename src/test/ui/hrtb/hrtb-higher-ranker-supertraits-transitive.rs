@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test HRTB supertraits with several levels of expansion required.
 
 trait Foo<'tcx>
@@ -54,7 +44,7 @@ fn want_qux<B>(b: &B)
     where B : Qux
 {
     want_foo_for_any_tcx(b);
-    want_bar_for_any_ccx(b); //~ ERROR E0277
+    want_bar_for_any_ccx(b); //~ ERROR
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, rustc_private, step_trait, min_const_unsafe_fn)]
+#![feature(rustc_attrs, rustc_private, step_trait)]
 
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_serialize;

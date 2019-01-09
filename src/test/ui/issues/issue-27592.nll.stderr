@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/issue-27592.rs:26:14
+  --> $DIR/issue-27592.rs:16:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
    |              ^^^^^^^^^^^^^^^^^^^---------------------------^
@@ -8,7 +8,7 @@ LL |     write(|| format_args!("{}", String::from("Hello world")));
    |              returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/issue-27592.rs:26:14
+  --> $DIR/issue-27592.rs:16:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
    |              ^^^^^^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

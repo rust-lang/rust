@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `std::bar`
-  --> $DIR/non-existing-module-import.rs:11:10
+  --> $DIR/non-existing-module-import.rs:1:10
    |
 LL | use std::bar::{foo1, foo2}; //~ ERROR unresolved import
    |          ^^^ could not find `bar` in `std`

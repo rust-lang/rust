@@ -1,13 +1,3 @@
-/* Copyright 2018 The Rust Project Developers. See the COPYRIGHT     */
-/* file at the top-level directory of this distribution and at       */
-/* http://rust-lang.org/COPYRIGHT.                                   */
-/*                                                                   */
-/* Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or */
-/* http://www.apache.org/licenses/LICENSE-2.0> or the MIT license    */
-/* <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your      */
-/* option. This file may not be copied, modified, or distributed     */
-/* except according to those terms.                                  */
-
 /*  This symbol is used at runtime to figure out the virtual address that the */
 /*  enclave is loaded at. */
 .section absolute
@@ -56,6 +46,14 @@ IMAGE_BASE:
     globvar CFGDATA_BASE 8
     /*  Non-zero if debugging is enabled, zero otherwise */
     globvar DEBUG 1
+    /*  The base address (relative to enclave start) of the enclave text section */
+    globvar TEXT_BASE 8
+    /*  The size in bytes of enclacve text section */
+    globvar TEXT_SIZE 8
+    /*  The base address (relative to enclave start) of the enclave EH_FRM_HDR section */
+    globvar EH_FRM_HDR_BASE 8
+    /*  The size in bytes of enclacve EH_FRM_HDR section */
+    globvar EH_FRM_HDR_SIZE 8
 
 .Lreentry_panic_msg:
     .asciz "Re-entered panicked enclave!"

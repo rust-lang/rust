@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/E0133.rs:14:5
+  --> $DIR/E0133.rs:4:5
    |
 LL |     f();
    |     ^^^ call to unsafe function

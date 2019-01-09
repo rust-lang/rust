@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![feature(lang_items, start, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
@@ -16,6 +6,20 @@ pub trait Sized {}
 
 #[lang="copy"]
 pub trait Copy {}
+
+#[lang="deref"]
+pub trait Deref {
+    type Target;
+}
+
+#[lang="receiver"]
+pub trait Receiver: Deref {}
+
+impl<'a, T> Deref for &'a T {
+    type Target = T;
+}
+
+impl<'a, T> Receiver for &'a T {}
 
 mod bar {
     // shouldn't bring in too much

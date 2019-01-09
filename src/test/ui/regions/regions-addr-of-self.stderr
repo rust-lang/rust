@@ -1,11 +1,11 @@
 error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
-  --> $DIR/regions-addr-of-self.rs:17:37
+  --> $DIR/regions-addr-of-self.rs:7:37
    |
 LL |         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
    |                                     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 16:5...
-  --> $DIR/regions-addr-of-self.rs:16:5
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 6:5...
+  --> $DIR/regions-addr-of-self.rs:6:5
    |
 LL | /     pub fn chase_cat(&mut self) {
 LL | |         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
@@ -13,13 +13,13 @@ LL | |         *p += 1;
 LL | |     }
    | |_____^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-addr-of-self.rs:17:37
+  --> $DIR/regions-addr-of-self.rs:7:37
    |
 LL |         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
    |                                     ^^^^^^^^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-addr-of-self.rs:17:37
+  --> $DIR/regions-addr-of-self.rs:7:37
    |
 LL |         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
    |                                     ^^^^^^^^^^^^^^^^^^^^^

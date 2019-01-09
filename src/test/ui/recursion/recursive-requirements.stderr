@@ -1,5 +1,5 @@
 error[E0277]: `*const Bar` cannot be shared between threads safely
-  --> $DIR/recursive-requirements.rs:26:12
+  --> $DIR/recursive-requirements.rs:16:12
    |
 LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Bar` cannot be shared between threads safely
@@ -7,13 +7,13 @@ LL |     let _: AssertSync<Foo> = unimplemented!();
    = help: within `Foo`, the trait `std::marker::Sync` is not implemented for `*const Bar`
    = note: required because it appears within the type `Foo`
 note: required by `AssertSync`
-  --> $DIR/recursive-requirements.rs:13:1
+  --> $DIR/recursive-requirements.rs:3:1
    |
 LL | struct AssertSync<T: Sync>(PhantomData<T>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `*const Foo` cannot be shared between threads safely
-  --> $DIR/recursive-requirements.rs:26:12
+  --> $DIR/recursive-requirements.rs:16:12
    |
 LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Foo` cannot be shared between threads safely
@@ -23,7 +23,7 @@ LL |     let _: AssertSync<Foo> = unimplemented!();
    = note: required because it appears within the type `std::marker::PhantomData<Bar>`
    = note: required because it appears within the type `Foo`
 note: required by `AssertSync`
-  --> $DIR/recursive-requirements.rs:13:1
+  --> $DIR/recursive-requirements.rs:3:1
    |
 LL | struct AssertSync<T: Sync>(PhantomData<T>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

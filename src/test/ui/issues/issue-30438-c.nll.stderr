@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to local variable `x`
-  --> $DIR/issue-30438-c.rs:19:5
+  --> $DIR/issue-30438-c.rs:9:5
    |
 LL |     &x
    |     ^^ returns a reference to data owned by the current function

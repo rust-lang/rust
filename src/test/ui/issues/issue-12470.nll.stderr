@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local data `*b`
-  --> $DIR/issue-12470.rs:39:5
+  --> $DIR/issue-12470.rs:29:5
    |
 LL |     let bb: &B = &*b;    //~ ERROR does not live long enough
    |                  --- `*b` is borrowed here

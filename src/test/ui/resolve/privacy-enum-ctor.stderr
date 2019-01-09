@@ -1,5 +1,5 @@
 error[E0423]: expected value, found enum `n::Z`
-  --> $DIR/privacy-enum-ctor.rs:33:9
+  --> $DIR/privacy-enum-ctor.rs:23:9
    |
 LL |         n::Z;
    |         ^^^^
@@ -10,7 +10,7 @@ LL |         n::Z;
            - `m::Z::Unit`
 
 error[E0423]: expected value, found enum `Z`
-  --> $DIR/privacy-enum-ctor.rs:35:9
+  --> $DIR/privacy-enum-ctor.rs:25:9
    |
 LL |         Z;
    |         ^ did you mean `f`?
@@ -21,13 +21,13 @@ LL |         Z;
            - `m::Z::Unit`
 
 error[E0423]: expected value, found struct variant `Z::Struct`
-  --> $DIR/privacy-enum-ctor.rs:39:20
+  --> $DIR/privacy-enum-ctor.rs:29:20
    |
 LL |         let _: Z = Z::Struct;
    |                    ^^^^^^^^^ did you mean `Z::Struct { /* fields */ }`?
 
 error[E0423]: expected value, found enum `m::E`
-  --> $DIR/privacy-enum-ctor.rs:51:16
+  --> $DIR/privacy-enum-ctor.rs:41:16
    |
 LL |     let _: E = m::E;
    |                ^^^-
@@ -46,13 +46,13 @@ LL | use std::f64::consts::E;
    |
 
 error[E0423]: expected value, found struct variant `m::E::Struct`
-  --> $DIR/privacy-enum-ctor.rs:55:16
+  --> $DIR/privacy-enum-ctor.rs:45:16
    |
 LL |     let _: E = m::E::Struct;
    |                ^^^^^^^^^^^^ did you mean `m::E::Struct { /* fields */ }`?
 
 error[E0423]: expected value, found enum `E`
-  --> $DIR/privacy-enum-ctor.rs:59:16
+  --> $DIR/privacy-enum-ctor.rs:49:16
    |
 LL |     let _: E = E;
    |                ^
@@ -69,13 +69,13 @@ LL | use std::f64::consts::E;
    |
 
 error[E0423]: expected value, found struct variant `E::Struct`
-  --> $DIR/privacy-enum-ctor.rs:63:16
+  --> $DIR/privacy-enum-ctor.rs:53:16
    |
 LL |     let _: E = E::Struct;
    |                ^^^^^^^^^ did you mean `E::Struct { /* fields */ }`?
 
 error[E0412]: cannot find type `Z` in this scope
-  --> $DIR/privacy-enum-ctor.rs:67:12
+  --> $DIR/privacy-enum-ctor.rs:57:12
    |
 LL |     let _: Z = m::n::Z;
    |            ^ did you mean `E`?
@@ -85,7 +85,7 @@ LL | use m::n::Z;
    |
 
 error[E0423]: expected value, found enum `m::n::Z`
-  --> $DIR/privacy-enum-ctor.rs:67:16
+  --> $DIR/privacy-enum-ctor.rs:57:16
    |
 LL |     let _: Z = m::n::Z;
    |                ^^^^^^^
@@ -96,7 +96,7 @@ LL |     let _: Z = m::n::Z;
            - `m::Z::Unit`
 
 error[E0412]: cannot find type `Z` in this scope
-  --> $DIR/privacy-enum-ctor.rs:71:12
+  --> $DIR/privacy-enum-ctor.rs:61:12
    |
 LL |     let _: Z = m::n::Z::Fn;
    |            ^ did you mean `E`?
@@ -106,7 +106,7 @@ LL | use m::n::Z;
    |
 
 error[E0412]: cannot find type `Z` in this scope
-  --> $DIR/privacy-enum-ctor.rs:74:12
+  --> $DIR/privacy-enum-ctor.rs:64:12
    |
 LL |     let _: Z = m::n::Z::Struct;
    |            ^ did you mean `E`?
@@ -116,13 +116,13 @@ LL | use m::n::Z;
    |
 
 error[E0423]: expected value, found struct variant `m::n::Z::Struct`
-  --> $DIR/privacy-enum-ctor.rs:74:16
+  --> $DIR/privacy-enum-ctor.rs:64:16
    |
 LL |     let _: Z = m::n::Z::Struct;
    |                ^^^^^^^^^^^^^^^ did you mean `m::n::Z::Struct { /* fields */ }`?
 
 error[E0412]: cannot find type `Z` in this scope
-  --> $DIR/privacy-enum-ctor.rs:78:12
+  --> $DIR/privacy-enum-ctor.rs:68:12
    |
 LL |     let _: Z = m::n::Z::Unit {};
    |            ^ did you mean `E`?
@@ -132,31 +132,31 @@ LL | use m::n::Z;
    |
 
 error[E0603]: enum `Z` is private
-  --> $DIR/privacy-enum-ctor.rs:67:22
+  --> $DIR/privacy-enum-ctor.rs:57:22
    |
 LL |     let _: Z = m::n::Z;
    |                      ^
 
 error[E0603]: enum `Z` is private
-  --> $DIR/privacy-enum-ctor.rs:71:22
+  --> $DIR/privacy-enum-ctor.rs:61:22
    |
 LL |     let _: Z = m::n::Z::Fn;
    |                      ^
 
 error[E0603]: enum `Z` is private
-  --> $DIR/privacy-enum-ctor.rs:74:22
+  --> $DIR/privacy-enum-ctor.rs:64:22
    |
 LL |     let _: Z = m::n::Z::Struct;
    |                      ^
 
 error[E0603]: enum `Z` is private
-  --> $DIR/privacy-enum-ctor.rs:78:22
+  --> $DIR/privacy-enum-ctor.rs:68:22
    |
 LL |     let _: Z = m::n::Z::Unit {};
    |                      ^
 
 error[E0308]: mismatched types
-  --> $DIR/privacy-enum-ctor.rs:37:20
+  --> $DIR/privacy-enum-ctor.rs:27:20
    |
 LL |         let _: Z = Z::Fn;
    |                    ^^^^^ expected enum `m::n::Z`, found fn item
@@ -165,7 +165,7 @@ LL |         let _: Z = Z::Fn;
               found type `fn(u8) -> m::n::Z {m::n::Z::Fn}`
 
 error[E0618]: expected function, found enum variant `Z::Unit`
-  --> $DIR/privacy-enum-ctor.rs:41:17
+  --> $DIR/privacy-enum-ctor.rs:31:17
    |
 LL |             Unit,
    |             ---- `Z::Unit` defined here
@@ -180,7 +180,7 @@ LL |         let _ = Z::Unit;
    |                 ^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/privacy-enum-ctor.rs:53:16
+  --> $DIR/privacy-enum-ctor.rs:43:16
    |
 LL |     let _: E = m::E::Fn;
    |                ^^^^^^^^ expected enum `m::E`, found fn item
@@ -189,7 +189,7 @@ LL |     let _: E = m::E::Fn;
               found type `fn(u8) -> m::E {m::E::Fn}`
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
-  --> $DIR/privacy-enum-ctor.rs:57:16
+  --> $DIR/privacy-enum-ctor.rs:47:16
    |
 LL |         Unit,
    |         ---- `m::E::Unit` defined here
@@ -204,7 +204,7 @@ LL |     let _: E = m::E::Unit;
    |                ^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/privacy-enum-ctor.rs:61:16
+  --> $DIR/privacy-enum-ctor.rs:51:16
    |
 LL |     let _: E = E::Fn;
    |                ^^^^^ expected enum `m::E`, found fn item
@@ -213,7 +213,7 @@ LL |     let _: E = E::Fn;
               found type `fn(u8) -> m::E {m::E::Fn}`
 
 error[E0618]: expected function, found enum variant `E::Unit`
-  --> $DIR/privacy-enum-ctor.rs:65:16
+  --> $DIR/privacy-enum-ctor.rs:55:16
    |
 LL |         Unit,
    |         ---- `E::Unit` defined here

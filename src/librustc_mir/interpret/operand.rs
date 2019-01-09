@@ -1,23 +1,13 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
 use std::convert::TryInto;
 
-use rustc::mir;
+use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
 
 use rustc::mir::interpret::{
-    GlobalId, AllocId,
+    GlobalId, AllocId, InboundsCheck,
     ConstValue, Pointer, Scalar,
     EvalResult, EvalErrorKind,
 };
@@ -382,7 +372,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             _ => {
                 trace!("Forcing allocation for local of type {:?}", layout.ty);
                 Operand::Indirect(
-                    *self.allocate(layout, MemoryKind::Stack)?
+                    *self.allocate(layout, MemoryKind::Stack)
                 )
             }
         })
@@ -527,7 +517,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
                     self.layout_of(ty)
                 })?;
-                let op = self.const_value_to_op(constant.literal.val)?;
+                let op = self.const_value_to_op(*constant.literal)?;
                 OpTy { op, layout }
             }
         };
@@ -550,17 +540,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     // `eval_operand`, ideally).
     pub(crate) fn const_value_to_op(
         &self,
-        val: ConstValue<'tcx>,
+        val: ty::LazyConst<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
         trace!("const_value_to_op: {:?}", val);
-        match val {
-            ConstValue::Unevaluated(def_id, substs) => {
+        let val = match val {
+            ty::LazyConst::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                Ok(*OpTy::from(self.const_eval_raw(GlobalId {
+                return Ok(*OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
-                })?))
-            }
+                })?));
+            },
+            ty::LazyConst::Evaluated(c) => c,
+        };
+        match val.val {
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
@@ -647,7 +640,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
-                            self.memory.check_bounds_ptr_maybe_dead(ptr).is_ok();
+                            self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok();
                         if !ptr_valid {
                             return err!(InvalidDiscriminant(raw_discr.erase_tag()));
                         }

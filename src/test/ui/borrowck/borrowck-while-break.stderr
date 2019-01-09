@@ -1,5 +1,5 @@
 error[E0381]: use of possibly uninitialized variable: `v`
-  --> $DIR/borrowck-while-break.rs:17:20
+  --> $DIR/borrowck-while-break.rs:7:20
    |
 LL |     println!("{}", v); //~ ERROR use of possibly uninitialized variable: `v`
    |                    ^ use of possibly uninitialized `v`

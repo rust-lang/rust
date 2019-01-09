@@ -1,5 +1,5 @@
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
-  --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:14:13
+  --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:3:13
    |
 LL | fn bar1(x: &Fn<(), Output=()>) {
    |             ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | fn bar1(x: &Fn<(), Output=()>) {
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
-  --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:18:28
+  --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:7:28
    |
 LL | fn bar2<T>(x: &T) where T: Fn<()> {
    |                            ^^^^^^

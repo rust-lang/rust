@@ -1,18 +1,8 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 const X: usize = 42 && 39;
 //~^ ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
 //~| expected usize, found bool
 const ARR: [i32; X] = [99; 34];
@@ -20,9 +10,9 @@ const ARR: [i32; X] = [99; 34];
 
 const X1: usize = 42 || 39;
 //~^ ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
 //~| expected usize, found bool
 const ARR1: [i32; X1] = [99; 47];
@@ -30,9 +20,9 @@ const ARR1: [i32; X1] = [99; 47];
 
 const X2: usize = -42 || -39;
 //~^ ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
 //~| expected usize, found bool
 const ARR2: [i32; X2] = [99; 18446744073709551607];
@@ -40,9 +30,9 @@ const ARR2: [i32; X2] = [99; 18446744073709551607];
 
 const X3: usize = -42 && -39;
 //~^ ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
-//~| expected bool, found integral variable
+//~| expected bool, found integer
 //~| ERROR mismatched types
 //~| expected usize, found bool
 const ARR3: [i32; X3] = [99; 6];

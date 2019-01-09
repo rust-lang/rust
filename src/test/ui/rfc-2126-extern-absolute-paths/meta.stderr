@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `meta`
-  --> $DIR/meta.rs:15:5
+  --> $DIR/meta.rs:5:5
    |
 LL | use meta; //~ ERROR can't find crate for `meta`
    |     ^^^^ can't find crate

@@ -1,4 +1,16 @@
 error: OK
+  --> $DIR/dep-graph-trait-impl.rs:27:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-trait-impl.rs:32:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
   --> $DIR/dep-graph-trait-impl.rs:37:5
    |
 LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
@@ -10,20 +22,8 @@ error: OK
 LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: OK
-  --> $DIR/dep-graph-trait-impl.rs:47:5
-   |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: OK
-  --> $DIR/dep-graph-trait-impl.rs:52:5
-   |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: no path from `x::<impl Foo for char>` to `TypeckTables`
-  --> $DIR/dep-graph-trait-impl.rs:65:5
+  --> $DIR/dep-graph-trait-impl.rs:55:5
    |
 LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

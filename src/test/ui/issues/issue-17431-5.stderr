@@ -1,5 +1,5 @@
 error[E0072]: recursive type `Bar` has infinite size
-  --> $DIR/issue-17431-5.rs:15:1
+  --> $DIR/issue-17431-5.rs:5:1
    |
 LL | struct Bar<T> { x: Bar<Foo> , marker: marker::PhantomData<T> }
    | ^^^^^^^^^^^^^   ----------- recursive without indirection

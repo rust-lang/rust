@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // run-pass
 
 #![allow(warnings)]
@@ -41,7 +31,6 @@ impl<'a> SingleRegionTrait<'a> for &'a u32 {}
 struct SingleRegionStruct<'a>(&'a u32);
 
 fn simple_type_hrtb<'b>() -> impl for<'a> SingleRegionTrait<'a> { 5 }
-// FIXME(cramertj) add test after #45992 lands to ensure lint is triggered
 fn elision_single_region_trait(x: &u32) -> impl SingleRegionTrait { x }
 fn elision_single_region_struct(x: SingleRegionStruct) -> impl Into<SingleRegionStruct> { x }
 

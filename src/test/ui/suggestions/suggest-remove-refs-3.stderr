@@ -1,5 +1,5 @@
 error[E0277]: `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
-  --> $DIR/suggest-remove-refs-3.rs:14:19
+  --> $DIR/suggest-remove-refs-3.rs:4:19
    |
 LL |        for (i, n) in & & &
    |   ___________________^

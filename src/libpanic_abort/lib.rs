@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of Rust panics via process aborts
 //!
 //! When compared to the implementation via unwinding, this crate is *much*
@@ -22,6 +12,7 @@
 #![panic_runtime]
 #![allow(unused_features)]
 
+#![feature(cfg_target_vendor)]
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(nll)]
@@ -67,7 +58,7 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
         core::intrinsics::abort();
     }
 
-    #[cfg(target_env="sgx")]
+    #[cfg(all(target_vendor="fortanix", target_env="sgx"))]
     unsafe fn abort() -> ! {
         extern "C" { pub fn panic_exit() -> !; }
         panic_exit();

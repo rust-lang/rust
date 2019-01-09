@@ -1,5 +1,5 @@
 error: expected identifier, found `.`
-  --> $DIR/pub-restricted-non-path.rs:13:6
+  --> $DIR/pub-restricted-non-path.rs:3:6
    |
 LL | pub (.) fn afn() {} //~ ERROR expected identifier
    |      ^ expected identifier

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This pass erases all early-bound regions from the types occurring in the MIR.
 //! We want to do this once just before codegen, so codegen does not have to take
 //! care erasing regions all over the place.
@@ -42,7 +32,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
         *region = self.tcx.types.re_erased;
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
+    fn visit_const(&mut self, constant: &mut &'tcx ty::LazyConst<'tcx>, _: Location) {
         *constant = self.tcx.erase_regions(constant);
     }
 

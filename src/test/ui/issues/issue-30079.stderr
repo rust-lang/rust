@@ -1,5 +1,5 @@
 warning: private type `m1::Priv` in public interface (error E0446)
-  --> $DIR/issue-30079.rs:16:9
+  --> $DIR/issue-30079.rs:6:9
    |
 LL |         pub fn f(_: Priv) {} //~ WARN private type `m1::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |         pub fn f(_: Priv) {} //~ WARN private type `m1::Priv` in public int
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error[E0446]: private type `m2::Priv` in public interface
-  --> $DIR/issue-30079.rs:28:9
+  --> $DIR/issue-30079.rs:18:9
    |
 LL |     struct Priv;
    |     - `m2::Priv` declared as private
@@ -18,7 +18,7 @@ LL |         type Target = Priv; //~ ERROR private type `m2::Priv` in public int
    |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `m3::Priv` in public interface
-  --> $DIR/issue-30079.rs:45:9
+  --> $DIR/issue-30079.rs:35:9
    |
 LL |     struct Priv;
    |     - `m3::Priv` declared as private

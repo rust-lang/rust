@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:16:1
+  --> $DIR/token-error-correct.rs:6:1
    |
 LL | fn main() {
    |           - close delimiter possibly meant for this
@@ -10,7 +10,7 @@ LL | }
    | ^ incorrect close delimiter
 
 error: expected expression, found `;`
-  --> $DIR/token-error-correct.rs:14:13
+  --> $DIR/token-error-correct.rs:4:13
    |
 LL |     foo(bar(;
    |             ^ expected expression

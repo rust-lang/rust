@@ -1,15 +1,3 @@
-/**
- * Copyright 2015 The Rust Project Developers. See the COPYRIGHT
- * file at the top-level directory of this distribution and at
- * http://rust-lang.org/COPYRIGHT.
- *
- * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
- * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
- * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
- * option. This file may not be copied, modified, or distributed
- * except according to those terms.
- */
-
 /* General structure and fonts */
 
 body {
@@ -174,6 +162,10 @@ a {
 	color: #3873AD;
 }
 
+.stab.internal a {
+	color: #304FFE;
+}
+
 a.test-arrow {
 	color: #f5f5f5;
 }
@@ -191,7 +183,7 @@ a.test-arrow {
 
 .search-input {
 	color: #555;
-	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 	background-color: white;
 }
 
@@ -199,7 +191,12 @@ a.test-arrow {
 	border-color: #66afe9;
 }
 
+#crate-search + .search-input {
+	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+}
+
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+.stab.internal { background: #FFB9B3; border-color: #B71C1C; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
 

@@ -1,5 +1,5 @@
 error: item is named 'lintme'
-  --> $DIR/lint-plugin-deny-cmdline.rs:18:1
+  --> $DIR/lint-plugin-deny-cmdline.rs:8:1
    |
 LL | fn lintme() { } //~ ERROR item is named 'lintme'
    | ^^^^^^^^^^^^^^^

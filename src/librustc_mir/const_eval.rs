@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Not in interpret to make sure we do not use private implementation details
 
 use std::fmt;
@@ -105,7 +95,7 @@ pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
     may_normalize: bool,
-) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
+) -> EvalResult<'tcx, ty::Const<'tcx>> {
     // We do not normalize just any data.  Only scalar layout and fat pointers.
     let normalize = may_normalize
         && match op.layout.abi {
@@ -144,14 +134,16 @@ pub fn op_to_const<'tcx>(
         Ok(Immediate::ScalarPair(a, b)) =>
             ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
-    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
+    Ok(ty::Const { val, ty: op.layout.ty })
 }
-pub fn const_to_op<'tcx>(
+
+pub fn lazy_const_to_op<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    cnst: &ty::Const<'tcx>,
+    cnst: ty::LazyConst<'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EvalResult<'tcx, OpTy<'tcx>> {
-    let op = ecx.const_value_to_op(cnst.val)?;
-    Ok(OpTy { op, layout: ecx.layout_of(cnst.ty)? })
+    let op = ecx.const_value_to_op(cnst)?;
+    Ok(OpTy { op, layout: ecx.layout_of(ty)? })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -187,7 +179,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     }
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
-    let ret = ecx.allocate(layout, MemoryKind::Stack)?;
+    let ret = ecx.allocate(layout, MemoryKind::Stack);
 
     let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
@@ -490,8 +482,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         _kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
-        Ok(ptr)
+    ) -> Pointer {
+        ptr
     }
 
     #[inline(always)]
@@ -518,13 +510,13 @@ pub fn const_field<'a, 'tcx>(
     instance: ty::Instance<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
-    value: &'tcx ty::Const<'tcx>,
+    value: ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     trace!("const_field: {:?}, {:?}, {:?}", instance, field, value);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         // get the operand again
-        let op = const_to_op(&ecx, value)?;
+        let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
         // downcast
         let down = match variant {
             None => op,
@@ -547,11 +539,11 @@ pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
+    val: ty::Const<'tcx>,
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = const_to_op(&ecx, val)?;
+    let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
@@ -692,12 +684,16 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
         if tcx.is_static(def_id).is_some() {
-            let err = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
-            // check that a static never produces `TooGeneric`
+            let reported_err = err.report_as_error(ecx.tcx,
+                                                   "could not evaluate static initializer");
+            // Ensure that if the above error was either `TooGeneric` or `Reported`
+            // an error must be reported.
             if tcx.sess.err_count() == 0 {
-                span_bug!(ecx.tcx.span, "static eval failure didn't emit an error: {:#?}", err);
+                tcx.sess.delay_span_bug(err.span,
+                                        &format!("static eval failure did not emit an error: {:#?}",
+                                                 reported_err));
             }
-            err
+            reported_err
         } else if def_id.is_local() {
             // constant defined in this crate, we can figure out a lint level!
             match tcx.describe_def(def_id) {

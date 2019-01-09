@@ -1,22 +1,22 @@
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
-  --> $DIR/issue-5883.rs:17:15
+  --> $DIR/issue-5883.rs:7:15
    |
 LL | fn new_struct(r: A+'static)
    |               ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
-  --> $DIR/issue-5883.rs:18:8
+  --> $DIR/issue-5883.rs:8:8
    |
 LL |     -> Struct { //~^ ERROR the size for values of type
    |        ^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Struct`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Struct`
    = note: the return type of a function must have a statically known size
 

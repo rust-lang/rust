@@ -1,7 +1,7 @@
 error: rustc_outlives
-  --> $DIR/cross-crate.rs:14:1
+  --> $DIR/cross-crate.rs:4:1
    |
-LL | / struct Foo<'a, T> { //~ ERROR 14:1: 16:2: rustc_outlives
+LL | / struct Foo<'a, T> { //~ ERROR rustc_outlives
 LL | |     bar: std::slice::IterMut<'a, T>
 LL | | }
    | |_^

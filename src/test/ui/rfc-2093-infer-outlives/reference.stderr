@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/reference.rs:14:1
+  --> $DIR/reference.rs:4:1
    |
 LL | / struct Foo<'a, T> { //~ ERROR rustc_outlives
 LL | |     bar: &'a T,

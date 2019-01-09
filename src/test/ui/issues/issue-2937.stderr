@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `m::f`
-  --> $DIR/issue-2937.rs:11:5
+  --> $DIR/issue-2937.rs:1:5
    |
 LL | use m::f as x; //~ ERROR unresolved import `m::f` [E0432]
    |     ^^^^^^^^^ no `f` in `m`

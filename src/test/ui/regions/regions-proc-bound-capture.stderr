@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/regions-proc-bound-capture.rs:19:5
+  --> $DIR/regions-proc-bound-capture.rs:9:5
    |
 LL | fn static_proc(x: &isize) -> Box<FnMut()->(isize) + 'static> {
    |                   ------ help: add explicit lifetime `'static` to the type of `x`: `&'static isize`
