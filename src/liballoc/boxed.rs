@@ -483,7 +483,7 @@ impl From<Box<str>> for Box<[u8]> {
 }
 
 #[allow(incoherent_fundamental_impls)]
-#[stable(feature = "box_into_non_null", since = "1.32.0")]
+#[stable(feature = "box_into_non_null", since = "1.34.0")]
 impl<T: ?Sized> Into<NonNull<T>> for Box<T> {
     #[inline]
     fn into(self) -> NonNull<T> {
