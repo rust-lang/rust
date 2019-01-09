@@ -11,18 +11,18 @@ LL |     pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and can
    |             ^^^^^^^^^^^^^^^^^
 
 error[E0659]: `legacy_macro` is ambiguous (name vs any other name during import resolution)
-  --> $DIR/macro-rules.rs:30:13
+  --> $DIR/macro-rules.rs:31:13
    |
 LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
    |             ^^^^^^^^^^^^ ambiguous name
    |
 note: `legacy_macro` could refer to the macro defined here
-  --> $DIR/macro-rules.rs:27:9
+  --> $DIR/macro-rules.rs:28:9
    |
 LL |         macro_rules! legacy_macro { () => () }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `legacy_macro` could also refer to the macro defined here
-  --> $DIR/macro-rules.rs:24:5
+  --> $DIR/macro-rules.rs:25:5
    |
 LL |     macro legacy_macro() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^

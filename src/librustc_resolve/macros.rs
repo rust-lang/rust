@@ -962,7 +962,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 if ns == TypeNS && use_prelude && self.extern_prelude_get(ident, true).is_some() {
                     break 'ok;
                 }
-                let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
+                let root_ident = Ident::new(keywords::CrateRoot.name(), orig_ident.span);
                 let root_module = self.resolve_crate_root(root_ident);
                 if self.resolve_ident_in_module_ext(ModuleOrUniformRoot::Module(root_module),
                                                     orig_ident, ns, None, false, path_span)
