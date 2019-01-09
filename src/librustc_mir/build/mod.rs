@@ -647,42 +647,46 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let fn_def_id = tcx_hir.local_def_id(fn_id);
 
     // Gather the upvars of a closure, if any.
-    let upvar_decls: Vec<_> = match hir_tables.upvar_list.get(&fn_def_id) {
-        Some(upvars) => upvars
-            .iter()
-            .map(|upvar_id| {
-                let var_hir_id = upvar_id.var_path.hir_id;
-                let var_node_id = tcx_hir.hir_to_node_id(var_hir_id);
-                let capture = hir_tables.upvar_capture(*upvar_id);
-                let by_ref = match capture {
-                    ty::UpvarCapture::ByValue => false,
-                    ty::UpvarCapture::ByRef(..) => true,
-                };
-                let mut decl = UpvarDecl {
-                    debug_name: keywords::Invalid.name(),
-                    var_hir_id: ClearCrossCrate::Set(var_hir_id),
-                    by_ref,
-                    mutability: Mutability::Not,
-                };
-                if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
-                    if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
-                        decl.debug_name = ident.name;
-                        if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                            if bm == ty::BindByValue(hir::MutMutable) {
-                                decl.mutability = Mutability::Mut;
-                            } else {
-                                decl.mutability = Mutability::Not;
-                            }
+    // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
+    // closure and we stored in a map called upvar_list in TypeckTables indexed
+    // with the closure's DefId. Here, we run through that vec of UpvarIds for
+    // the given closure and use the necessary information to create UpvarDecl.
+    let upvar_decls: Vec<_> = hir_tables
+        .upvar_list
+        .get(&fn_def_id)
+        .into_iter()
+        .flatten()
+        .map(|upvar_id| {
+            let var_hir_id = upvar_id.var_path.hir_id;
+            let var_node_id = tcx_hir.hir_to_node_id(var_hir_id);
+            let capture = hir_tables.upvar_capture(*upvar_id);
+            let by_ref = match capture {
+                ty::UpvarCapture::ByValue => false,
+                ty::UpvarCapture::ByRef(..) => true,
+            };
+            let mut decl = UpvarDecl {
+                debug_name: keywords::Invalid.name(),
+                var_hir_id: ClearCrossCrate::Set(var_hir_id),
+                by_ref,
+                mutability: Mutability::Not,
+            };
+            if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
+                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                    decl.debug_name = ident.name;
+                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
+                        if bm == ty::BindByValue(hir::MutMutable) {
+                            decl.mutability = Mutability::Mut;
                         } else {
-                            tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+                            decl.mutability = Mutability::Not;
                         }
+                    } else {
+                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                     }
                 }
-                decl
-            })
-            .collect(),
-        _ => vec![],
-    };
+            }
+            decl
+        })
+        .collect();
 
     let mut builder = Builder::new(hir,
         span,

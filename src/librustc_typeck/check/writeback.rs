@@ -20,16 +20,16 @@ use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
-/// During type inference, partially inferred types are
-/// represented using Type variables (ty::Infer). These don't appear in
-/// the final TypeckTables since all of the types should have been
-/// inferred once typeck_tables_of is done.
-/// When type inference is running however, having to update the typeck
-/// tables every time a new type is inferred would be unreasonably slow,
-/// so instead all of the replacement happens at the end in
-/// resolve_type_vars_in_body, which creates a new TypeTables which
-/// doesn't contain any inference types.
 
+// During type inference, partially inferred types are
+// represented using Type variables (ty::Infer). These don't appear in
+// the final TypeckTables since all of the types should have been
+// inferred once typeck_tables_of is done.
+// When type inference is running however, having to update the typeck
+// tables every time a new type is inferred would be unreasonably slow,
+// so instead all of the replacement happens at the end in
+// resolve_type_vars_in_body, which creates a new TypeTables which
+// doesn't contain any inference types.
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) -> &'gcx ty::TypeckTables<'gcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
