@@ -404,9 +404,14 @@ impl SymbolPath {
 // symbol names should have their own printing machinery.
 
 impl Printer for SymbolPath {
-    type Path = Result<PrettyPath, fmt::Error>;
+    type Error = fmt::Error;
 
-    fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
+    type Path = PrettyPath;
+
+    fn path_crate(
+        self: &mut PrintCx<'_, '_, '_, Self>,
+        cnum: CrateNum,
+    ) -> Result<Self::Path, Self::Error> {
         self.printer.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
         Ok(PrettyPath { empty: false })
     }
@@ -416,7 +421,7 @@ impl Printer for SymbolPath {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
-    ) -> Self::Path {
+    ) -> Result<Self::Path, Self::Error> {
         // HACK(eddyb) avoid `keep_within_component` for the cases
         // that print without `<...>` around `self_ty`.
         match self_ty.sty {
@@ -432,14 +437,17 @@ impl Printer for SymbolPath {
 
         // HACK(eddyb) make sure to finalize the last component of the
         // `impl` prefix, to avoid it fusing with the following text.
-        let impl_prefix = impl_prefix.map(|prefix| {
-            let mut prefix = self.path_append(prefix, "")?;
+        let impl_prefix = match impl_prefix {
+            Some(prefix) => {
+                let mut prefix = self.path_append(prefix, "")?;
 
-            // HACK(eddyb) also avoid an unnecessary `::`.
-            prefix.empty = true;
+                // HACK(eddyb) also avoid an unnecessary `::`.
+                prefix.empty = true;
 
-            Ok(prefix)
-        });
+                Some(prefix)
+            }
+            None => None,
+        };
 
         let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
         let r = self.pretty_path_qualified(impl_prefix, self_ty, trait_ref, ns);
@@ -448,11 +456,9 @@ impl Printer for SymbolPath {
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
-        path: Self::Path,
+        mut path: Self::Path,
         text: &str,
-    ) -> Self::Path {
-        let mut path = path?;
-
+    ) -> Result<Self::Path, Self::Error> {
         if self.keep_within_component {
             // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
             if !path.empty {
@@ -475,7 +481,7 @@ impl Printer for SymbolPath {
         substs: SubstsRef<'tcx>,
         ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
-    ) -> Self::Path {
+    )  -> Result<Self::Path, Self::Error> {
         let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
         let r = self.pretty_path_generic_args(path, params, substs, ns, projections);
         self.printer.keep_within_component = kept_within_component;

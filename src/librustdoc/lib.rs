@@ -18,6 +18,7 @@
 #![feature(const_fn)]
 #![feature(drain_filter)]
 #![feature(inner_deref)]
+#![feature(never_type)]
 
 #![recursion_limit="256"]
 

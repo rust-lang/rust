@@ -193,7 +193,8 @@ macro_rules! gen_display_debug {
 macro_rules! gen_print_impl {
     ( ($($x:tt)+) $target:ty, ($self:ident, $cx:ident) $disp:block $dbg:block ) => {
         impl<$($x)+, P: PrettyPrinter> Print<'tcx, P> for $target {
-            type Output = fmt::Result;
+            type Output = ();
+            type Error = fmt::Error;
             fn print(&$self, $cx: &mut PrintCx<'_, '_, 'tcx, P>) -> fmt::Result {
                 define_scoped_cx!($cx);
                 if $cx.is_debug $dbg
@@ -203,7 +204,8 @@ macro_rules! gen_print_impl {
     };
     ( () $target:ty, ($self:ident, $cx:ident) $disp:block $dbg:block ) => {
         impl<P: PrettyPrinter> Print<'tcx, P> for $target {
-            type Output = fmt::Result;
+            type Output = ();
+            type Error = fmt::Error;
             fn print(&$self, $cx: &mut PrintCx<'_, '_, 'tcx, P>) -> fmt::Result {
                 define_scoped_cx!($cx);
                 if $cx.is_debug $dbg
@@ -298,8 +300,8 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         Ok(())
     }
 
-    fn in_binder<T>(&mut self, value: &ty::Binder<T>) -> fmt::Result
-        where T: Print<'tcx, P, Output = fmt::Result> + TypeFoldable<'tcx>
+    fn in_binder<T>(&mut self, value: &ty::Binder<T>) -> Result<T::Output, fmt::Error>
+        where T: Print<'tcx, P, Error = fmt::Error> + TypeFoldable<'tcx>
     {
         fn name_by_region_index(index: usize) -> InternedString {
             match index {

@@ -454,9 +454,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         struct NonTrivialPath;
 
         impl Printer for AbsolutePathPrinter {
-            type Path = Result<Vec<String>, NonTrivialPath>;
+            type Error = NonTrivialPath;
 
-            fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
+            type Path = Vec<String>;
+
+            fn path_crate(
+                self: &mut PrintCx<'_, '_, '_, Self>,
+                cnum: CrateNum,
+            ) -> Result<Self::Path, Self::Error> {
                 Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
             }
             fn path_qualified<'tcx>(
@@ -465,15 +470,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
                 _ns: Namespace,
-            ) -> Self::Path {
+            ) -> Result<Self::Path, Self::Error> {
                 Err(NonTrivialPath)
             }
             fn path_append(
                 self: &mut PrintCx<'_, '_, '_, Self>,
-                path: Self::Path,
+                mut path: Self::Path,
                 text: &str,
-            ) -> Self::Path {
-                let mut path = path?;
+            ) -> Result<Self::Path, Self::Error> {
                 path.push(text.to_string());
                 Ok(path)
             }
@@ -484,8 +488,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 _substs: SubstsRef<'tcx>,
                 _ns: Namespace,
                 _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
-            ) -> Self::Path {
-                path
+            ) -> Result<Self::Path, Self::Error> {
+                Ok(path)
             }
         }
 
