@@ -393,7 +393,16 @@ impl From<c::DWORD> for ExitStatus {
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "exit code: {}", self.0)
+        // Windows exit codes with the high bit set typically mean some form of
+        // unhandled exception or warning. In this scenario printing the exit
+        // code in decimal doesn't always make sense because it's a very large
+        // and somewhat gibberish number. The hex code is a bit more
+        // recognizable and easier to search for, so print that.
+        if self.0 & 0x80000000 != 0 {
+            write!(f, "exit code: {:#x}", self.0)
+        } else {
+            write!(f, "exit code: {}", self.0)
+        }
     }
 }
 
