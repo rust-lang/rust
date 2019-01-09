@@ -242,6 +242,34 @@ mod macros {
     }
 }
 
+mod nesting {
+    struct Foo {}
+    impl Foo {
+        fn foo() {
+            use self::Foo; // Can't use Self here
+            struct Bar {
+                foo: Foo, // Foo != Self
+            }
+
+            impl Bar {
+                fn bar() -> Bar {
+                    Bar { foo: Foo {} }
+                }
+            }
+        }
+    }
+
+    enum Enum {
+        A,
+    }
+    impl Enum {
+        fn method() {
+            use self::Enum::*; // Issue 3425
+            static STATIC: Enum = Enum::A; // Can't use Self as type
+        }
+    }
+}
+
 mod issue3410 {
 
     struct A;
@@ -253,16 +281,5 @@ mod issue3410 {
 
     impl Trait<Vec<A>> for Vec<B> {
         fn a(_: Vec<A>) {}
-    }
-}
-
-mod issue3425 {
-    enum Enum {
-        A,
-    }
-    impl Enum {
-        fn a() {
-            use self::Enum::*;
-        }
     }
 }

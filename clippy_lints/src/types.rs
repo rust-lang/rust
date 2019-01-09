@@ -2240,3 +2240,64 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
         NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }
+
+/// **What it does:** Checks for casts of `&T` to `&mut T` anywhere in the code.
+///
+/// **Why is this bad?** It’s basically guaranteed to be undefined behaviour.
+/// `UnsafeCell` is the only way to obtain aliasable data that is considered
+/// mutable.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn x(r: &i32) {
+///     unsafe {
+///         *(r as *const _ as *mut _) += 1;
+///     }
+/// }
+/// ```
+///
+/// Instead consider using interior mutability types.
+///
+/// ```rust
+/// fn x(r: &UnsafeCell<i32>) {
+///     unsafe {
+///         *r.get() += 1;
+///     }
+/// }
+/// ```
+declare_clippy_lint! {
+    pub CAST_REF_TO_MUT,
+    correctness,
+    "a cast of reference to a mutable pointer"
+}
+
+pub struct RefToMut;
+
+impl LintPass for RefToMut {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(CAST_REF_TO_MUT)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if_chain! {
+            if let ExprKind::Unary(UnOp::UnDeref, e) = &expr.node;
+            if let ExprKind::Cast(e, t) = &e.node;
+            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutMutable, .. }) = t.node;
+            if let ExprKind::Cast(e, t) = &e.node;
+            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.node;
+            if let ty::Ref(..) = cx.tables.node_id_to_type(e.hir_id).sty;
+            then {
+                span_lint(
+                    cx,
+                    CAST_REF_TO_MUT,
+                    expr.span,
+                    "casting &T to &mut T may cause undefined behaviour, consider instead using an UnsafeCell",
+                );
+            }
+        }
+    }
+}

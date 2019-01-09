@@ -10,13 +10,12 @@
 use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc::hir::def::{CtorKind, Def};
-use rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
+use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast::NodeId;
 use syntax_pos::symbol::keywords::SelfUpper;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
@@ -29,7 +28,6 @@ use syntax_pos::symbol::keywords::SelfUpper;
 /// **Known problems:**
 /// - False positive when using associated types (#2843)
 /// - False positives in some situations when using generics (#3410)
-/// - False positive when type from outer function can't be used (#3463)
 ///
 /// **Example:**
 /// ```rust
@@ -242,8 +240,18 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn visit_use(&mut self, _path: &'tcx Path, _id: NodeId, _hir_id: HirId) {
-        // Don't check use statements
+    fn visit_item(&mut self, item: &'tcx Item) {
+        match item.node {
+            ItemKind::Use(..)
+            | ItemKind::Static(..)
+            | ItemKind::Enum(..)
+            | ItemKind::Struct(..)
+            | ItemKind::Union(..)
+            | ItemKind::Impl(..) => {
+                // Don't check statements that shadow `Self` or where `Self` can't be used
+            },
+            _ => walk_item(self, item),
+        }
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
