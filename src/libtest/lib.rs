@@ -23,7 +23,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(asm)]
-#![feature(cfg_target_vendor)]
+#![cfg_attr(stage0, feature(cfg_target_vendor))]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
 #![feature(nll)]
