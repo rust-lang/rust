@@ -33,8 +33,7 @@ pub struct Body {
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
 /// expression containing it; but for type inference etc., we want to operate on
 /// a structure that is agnostic to the actual positions of expressions in the
-/// file, so that we don't recompute the type inference whenever some whitespace
-/// is typed.
+/// file, so that we don't recompute types whenever some whitespace is typed.
 #[derive(Debug, Eq, PartialEq)]
 pub struct BodySyntaxMapping {
     body: Arc<Body>,
@@ -74,20 +73,25 @@ impl BodySyntaxMapping {
     pub fn expr_syntax(&self, expr: ExprId) -> Option<LocalSyntaxPtr> {
         self.expr_syntax_mapping_back.get(expr).cloned()
     }
+
     pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
     }
+
     pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_syntax_mapping
             .get(&LocalSyntaxPtr::new(node.syntax()))
             .cloned()
     }
+
     pub fn pat_syntax(&self, pat: PatId) -> Option<LocalSyntaxPtr> {
         self.pat_syntax_mapping_back.get(pat).cloned()
     }
+
     pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
     }
+
     pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_syntax_mapping
             .get(&LocalSyntaxPtr::new(node.syntax()))

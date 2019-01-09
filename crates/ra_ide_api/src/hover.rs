@@ -16,7 +16,7 @@ pub(crate) fn hover(
 
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        let navs = crate::goto_defenition::reference_defenition(db, position.file_id, name_ref)?;
+        let navs = crate::goto_definition::reference_definition(db, position.file_id, name_ref)?;
         for nav in navs {
             res.extend(doc_text_for(db, nav)?)
         }

@@ -128,13 +128,13 @@ impl ImplItem {
 pub struct ImplId(pub RawId);
 impl_arena_id!(ImplId);
 
-/// Collection of impl blocks is a two-step process: First we collect the blocks
-/// per-module; then we build an index of all impl blocks in the crate. This
-/// way, we avoid having to do this process for the whole crate whenever someone
-/// types in any file; as long as the impl blocks in the file don't change, we
-/// don't need to do the second step again.
+/// The collection of impl blocks is a two-step process: first we collect the
+/// blocks per-module; then we build an index of all impl blocks in the crate.
+/// This way, we avoid having to do this process for the whole crate whenever
+/// a file is changed; as long as the impl blocks in the file don't change,
+/// we don't need to do the second step again.
 ///
-/// (The second step does not yet exist currently.)
+/// (The second step does not yet exist.)
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleImplBlocks {
     impls: Arena<ImplId, ImplData>,
@@ -150,7 +150,7 @@ impl ModuleImplBlocks {
     }
 
     fn collect(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
-        let (file_id, module_source) = module.defenition_source(db)?;
+        let (file_id, module_source) = module.definition_source(db)?;
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
             ModuleSource::Module(node) => node.syntax(),

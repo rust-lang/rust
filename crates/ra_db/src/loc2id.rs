@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, ArenaId};
 
 /// There are two principle ways to refer to things:
-///   - by their locatinon (module in foo/bar/baz.rs at line 42)
+///   - by their location (module in foo/bar/baz.rs at line 42)
 ///   - by their numeric id (module `ModuleId(42)`)
 ///
 /// The first one is more powerful (you can actually find the thing in question
@@ -13,7 +13,7 @@ use ra_arena::{Arena, ArenaId};
 ///
 /// `Loc2IdMap` allows us to have a cake an eat it as well: by maintaining a
 /// bidirectional mapping between positional and numeric ids, we can use compact
-/// representation wich still allows us to get the actual item
+/// representation which still allows us to get the actual item.
 #[derive(Debug)]
 struct Loc2IdMap<LOC, ID>
 where

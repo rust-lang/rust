@@ -326,7 +326,7 @@ fn on_notification(
             if pending_requests.remove(&id) {
                 let response = RawResponse::err(
                     id,
-                    ErrorCode::RequestCancelled as i32,
+                    ErrorCode::RequestCanceled as i32,
                     "canceled by client".to_string(),
                 );
                 msg_sender.send(RawMessage::Response(response)).unwrap()

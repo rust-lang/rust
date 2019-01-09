@@ -3,7 +3,7 @@ use std::fmt;
 use ra_syntax::{ast, SmolStr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
-/// and declarations. In theory, names should also carry hygene info, but we are
+/// and declarations. In theory, names should also carry hygiene info, but we are
 /// not there yet!
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {

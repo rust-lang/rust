@@ -4,9 +4,9 @@
 /// that is produced after expansion. See `HirFileId` and `MacroCallId` for how
 /// do we do that.
 ///
-/// When file-management question is resolved, all that is left is a token tree
-/// to token tree transformation plus hygent. We don't have either of thouse
-/// yet, so all macros are string based at the moment!
+/// When the file-management question is resolved, all that is left is a
+/// token-tree-to-token-tree transformation plus hygiene. We don't have either of
+/// those yet, so all macros are string based at the moment!
 use std::sync::Arc;
 
 use ra_db::LocalSyntaxPtr;

@@ -20,7 +20,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
     }
 
     let module_scope = module.scope(ctx.db)?;
-    let (file_id, _) = module.defenition_source(ctx.db)?;
+    let (file_id, _) = module.definition_source(ctx.db)?;
     module_scope
         .entries()
         .filter(|(_name, res)| {

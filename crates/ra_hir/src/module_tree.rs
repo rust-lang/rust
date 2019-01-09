@@ -85,9 +85,9 @@ impl_arena_id!(LinkId);
 
 /// Physically, rust source is organized as a set of files, but logically it is
 /// organized as a tree of modules. Usually, a single file corresponds to a
-/// single module, but it is not nessary the case.
+/// single module, but it is not neccessarily always the case.
 ///
-/// Module encapsulate the logic of transitioning from the fuzzy world of files
+/// `ModuleTree` encapsulates the logic of transitioning from the fuzzy world of files
 /// (which can have multiple parents) to the precise world of modules (which
 /// always have one parent).
 #[derive(Default, Debug, PartialEq, Eq)]

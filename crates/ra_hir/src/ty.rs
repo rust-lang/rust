@@ -144,7 +144,7 @@ pub enum Ty {
     Bool,
 
     /// The primitive character type; holds a Unicode scalar value
-    /// (a non-surrogate code point).  Written as `char`.
+    /// (a non-surrogate code point). Written as `char`.
     Char,
 
     /// A primitive signed integer type. For example, `i32`.
@@ -204,7 +204,7 @@ pub enum Ty {
     // `|a| yield a`.
     // Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
 
-    // A type representin the types stored inside a generator.
+    // A type representing the types stored inside a generator.
     // This should only appear in GeneratorInteriors.
     // GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
     /// The never type `!`.

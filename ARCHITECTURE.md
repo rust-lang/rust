@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes high-level architecture of rust-analyzer.
+This document describes the high-level architecture of rust-analyzer.
 If you want to familiarize yourself with the code base, you are just
 in the right place!
 
@@ -12,10 +12,10 @@ On the highest level, rust-analyzer is a thing which accepts input source code
 from the client and produces a structured semantic model of the code.
 
 More specifically, input data consists of a set of test files (`(PathBuf,
-String)` pairs) and an information about project structure, the so called
-`CrateGraph`. Crate graph specifies which files are crate roots, which cfg flags
-are specified for each crate (TODO: actually implement this) and what are
-dependencies between the crates. The analyzer keeps all these input data in
+String)` pairs) and information about project structure, captured in the so called
+`CrateGraph`. The crate graph specifies which files are crate roots, which cfg
+flags are specified for each crate (TODO: actually implement this) and what
+dependencies exist between the crates. The analyzer keeps all this input data in
 memory and never does any IO. Because the input data is source code, which
 typically measures in tens of megabytes at most, keeping all input data in
 memory is OK.
@@ -28,8 +28,8 @@ declarations, etc.
 The client can submit a small delta of input data (typically, a change to a
 single file) and get a fresh code model which accounts for changes.
 
-Underlying engine makes sure that model is computed lazily (on-demand) and can
-be quickly updated for small modifications.
+The underlying engine makes sure that model is computed lazily (on-demand) and
+can be quickly updated for small modifications.
 
 
 ## Code generation
@@ -37,7 +37,7 @@ be quickly updated for small modifications.
 Some of the components of this repository are generated through automatic
 processes. These are outlined below:
 
-- `gen-syntax`: The kinds of tokens are reused in several places, so a generator
+- `gen-syntax`: The kinds of tokens that are reused in several places, so a generator
   is used. We use tera templates to generate the files listed below, based on
   the grammar described in [grammar.ron]:
   - [ast/generated.rs][ast generated] in `ra_syntax` based on
@@ -58,17 +58,16 @@ processes. These are outlined below:
 ### `crates/ra_syntax`
 
 Rust syntax tree structure and parser. See
-[RFC](https://github.com/rust-lang/rfcs/pull/2256) for some design
-notes.
+[RFC](https://github.com/rust-lang/rfcs/pull/2256) for some design notes.
 
 - [rowan](https://github.com/rust-analyzer/rowan) library is used for constructing syntax trees.
-- `grammar` module is the actual parser. It is a hand-written recursive descent parsers, which
-  produces a sequence of events like "start node X", "finish not Y". It works similarly to  [kotlin parser](https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java),
-  which is a good source for inspiration for dealing with syntax errors and incomplete input. Original [libsyntax parser](https://github.com/rust-lang/rust/blob/6b99adeb11313197f409b4f7c4083c2ceca8a4fe/src/libsyntax/parse/parser.rs)
+- `grammar` module is the actual parser. It is a hand-written recursive descent parser, which
+  produces a sequence of events like "start node X", "finish not Y". It works similarly to [kotlin's parser](https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java),
+  which is a good source of inspiration for dealing with syntax errors and incomplete input. Original [libsyntax parser](https://github.com/rust-lang/rust/blob/6b99adeb11313197f409b4f7c4083c2ceca8a4fe/src/libsyntax/parse/parser.rs)
   is what we use for the definition of the Rust language.
 - `parser_api/parser_impl` bridges the tree-agnostic parser from `grammar` with `rowan` trees.
   This is the thing that turns a flat list of events into a tree (see `EventProcessor`)
-- `ast` a type safe API on top of the raw `rowan` tree.
+- `ast` provides a type safe API on top of the raw `rowan` tree.
 - `grammar.ron` RON description of the grammar, which is used to
   generate `syntax_kinds` and `ast` modules, using `cargo gen-syntax` command.
 - `algo`: generic tree algorithms, including `walk` for O(1) stack
@@ -90,7 +89,7 @@ fixes a bug in the grammar.
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and
 on-demand computation. Roughly, you can think of salsa as a key-value store, but
 it also can compute derived values using specified functions. The `ra_db` crate
-provides a basic infrastructure for interacting with salsa. Crucially, it
+provides basic infrastructure for interacting with salsa. Crucially, it
 defines most of the "input" queries: facts supplied by the client of the
 analyzer. Reading the docs of the `ra_db::input` module should be useful:
 everything else is strictly derived from those inputs.
@@ -102,7 +101,7 @@ HIR provides high-level "object oriented" access to Rust code.
 The principal difference between HIR and syntax trees is that HIR is bound to a
 particular crate instance. That is, it has cfg flags and features applied (in
 theory, in practice this is to be implemented). So, the relation between
-syntax and HIR is many-to-one. The `source_binder` modules is responsible for
+syntax and HIR is many-to-one. The `source_binder` module is responsible for
 guessing a HIR for a particular source position.
 
 Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
@@ -111,12 +110,12 @@ Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
 A stateful library for analyzing many Rust files as they change. `AnalysisHost`
 is a mutable entity (clojure's atom) which holds the current state, incorporates
-changes and handles out `Analysis` --- an immutable and consistent snapshot of
-world state at a point in time, which actually powers analysis.
+changes and hands out `Analysis` --- an immutable and consistent snapshot of
+the world state at a point in time, which actually powers analysis.
 
 One interesting aspect of analysis is its support for cancellation. When a
 change is applied to `AnalysisHost`, first all currently active snapshots are
-cancelled. Only after all snapshots are dropped the change actually affects the
+canceled. Only after all snapshots are dropped the change actually affects the
 database.
 
 APIs in this crate are IDE centric: they take text offsets as input and produce
@@ -142,7 +141,7 @@ An LSP implementation which wraps `ra_ide_api` into a langauge server protocol.
 
 ### `crates/ra_vfs`
 
-Although `hir` and `ra_ide_api` don't do any io, we need to be able to read
+Although `hir` and `ra_ide_api` don't do any IO, we need to be able to read
 files from disk at the end of the day. This is what `ra_vfs` does. It also
 manages overlays: "dirty" files in the editor, whose "true" contents is
 different from data on disk.
@@ -175,16 +174,16 @@ VS Code plugin
 ## Common workflows
 
 To try out VS Code extensions, run `cargo install-code`.  This installs both the
-`ra_lsp_server` binary and VS Code extension. To install only the binary, use
+`ra_lsp_server` binary and the VS Code extension. To install only the binary, use
 `cargo install --path crates/ra_lsp_server --force`
 
 To see logs from the language server, set `RUST_LOG=info` env variable. To see
 all communication between the server and the client, use
-`RUST_LOG=gen_lsp_server=debug` (will print quite a bit of stuff).
+`RUST_LOG=gen_lsp_server=debug` (this will print quite a bit of stuff).
 
 To run tests, just `cargo test`.
 
-To work on VS Code extension, launch code inside `editors/code` and use `F5` to
+To work on the VS Code extension, launch code inside `editors/code` and use `F5` to
 launch/debug. To automatically apply formatter and linter suggestions, use `npm
 run fix`.
 

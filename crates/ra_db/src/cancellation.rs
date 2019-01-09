@@ -8,11 +8,11 @@
 //!   * user types next character, while syntax highlighting *is still in
 //!     progress*.
 //!
-//! In this situation, we want to react to modification as quckly as possible.
+//! In this situation, we want to react to modification as quickly as possible.
 //! At the same time, in-progress results are not very interesting, because they
 //! are invalidated by the edit anyway. So, we first cancel all in-flight
-//! requests, and then apply modification knowing that it won't intrfere with
-//! any background processing (this bit is handled by salsa, see
+//! requests, and then apply modification knowing that it won't interfere with
+//! any background processing (this bit is handled by salsa, see the
 //! `BaseDatabase::check_canceled` method).
 
 /// An "error" signifing that the operation was canceled.

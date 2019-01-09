@@ -1,4 +1,4 @@
-//! In certain situations, rust automatically inserts derefs as necessary: For
+//! In certain situations, rust automatically inserts derefs as necessary: for
 //! example, field accesses `foo.bar` still work when `foo` is actually a
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in librustc_typeck/check/autoderef.rs).

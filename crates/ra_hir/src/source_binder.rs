@@ -1,4 +1,4 @@
-/// Lookup hir elements using position in the source code. This is a lossy
+/// Lookup hir elements using positions in the source code. This is a lossy
 /// transformation: in general, a single source might correspond to several
 /// modules, functions, etc, due to macros, cfgs and `#[path=]` attributes on
 /// modules.

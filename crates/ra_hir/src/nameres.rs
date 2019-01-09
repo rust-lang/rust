@@ -1,18 +1,18 @@
-//! Name resolution algorithm. The end result of the algorithm is `ItemMap`: a
-//! map with maps each module to it's scope: the set of items, visible in the
+//! Name resolution algorithm. The end result of the algorithm is an `ItemMap`:
+//! a map which maps each module to its scope: the set of items visible in the
 //! module. That is, we only resolve imports here, name resolution of item
 //! bodies will be done in a separate step.
 //!
-//! Like Rustc, we use an interative per-crate algorithm: we start with scopes
+//! Like Rustc, we use an interactive per-crate algorithm: we start with scopes
 //! containing only directly defined items, and then iteratively resolve
 //! imports.
 //!
-//! To make this work nicely in the IDE scenarios, we place `InputModuleItems`
+//! To make this work nicely in the IDE scenario, we place `InputModuleItems`
 //! in between raw syntax and name resolution. `InputModuleItems` are computed
 //! using only the module's syntax, and it is all directly defined items plus
-//! imports. The plain is to make `InputModuleItems` independent of local
-//! modifications (that is, typing inside a function shold not change IMIs),
-//! such that the results of name resolution can be preserved unless the module
+//! imports. The plan is to make `InputModuleItems` independent of local
+//! modifications (that is, typing inside a function should not change IMIs),
+//! so that the results of name resolution can be preserved unless the module
 //! structure itself is modified.
 use std::sync::Arc;
 
@@ -34,7 +34,7 @@ use crate::{
     module_tree::{ModuleId, ModuleTree},
 };
 
-/// Item map is the result of the name resolution. Item map contains, for each
+/// `ItemMap` is the result of name resolution. It contains, for each
 /// module, the set of visible items.
 // FIXME: currenty we compute item map per source-root. We should do it per crate instead.
 #[derive(Default, Debug, PartialEq, Eq)]
@@ -59,9 +59,9 @@ impl ModuleScope {
 /// A set of items and imports declared inside a module, without relation to
 /// other modules.
 ///
-/// This stands in-between raw syntax and name resolution and alow us to avoid
-/// recomputing name res: if `InputModuleItems` are the same, we can avoid
-/// running name resolution.
+/// This sits in-between raw syntax and name resolution and allows us to avoid
+/// recomputing name res: if two instance of `InputModuleItems` are the same, we
+/// can avoid redoing name resolution.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct InputModuleItems {
     pub(crate) items: Vec<ModuleItem>,
@@ -114,7 +114,7 @@ enum ImportKind {
     Named(NamedImport),
 }
 
-/// Resolution is basically `DefId` atm, but it should account for stuff like
+/// `Resolution` is basically `DefId` atm, but it should account for stuff like
 /// multiple namespaces, ambiguity and errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolution {
