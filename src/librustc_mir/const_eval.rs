@@ -90,7 +90,7 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
 /// The function containing the `match` that is currently being analyzed may have generic bounds
 /// that inform us about the generic bounds of the constant. E.g. using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
-/// parameter.
+/// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 fn mk_eval_cx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
