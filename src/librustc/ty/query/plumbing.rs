@@ -393,7 +393,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // expensive for some DepKinds.
         if !self.dep_graph.is_fully_enabled() {
             let null_dep_node = DepNode::new_no_params(::dep_graph::DepKind::Null);
-            return self.force_query_with_job::<Q>(key, job, null_dep_node).map(|(v, _)| v);
+            return Ok(self.force_query_with_job::<Q>(key, job, null_dep_node).0);
         }
 
         let dep_node = Q::to_dep_node(self, &key);
@@ -424,20 +424,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if !dep_node.kind.is_input() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
-                return self.load_from_disk_and_cache_in_memory::<Q>(key,
-                                                                    job,
-                                                                    dep_node_index,
-                                                                    &dep_node)
+                return Ok(self.load_from_disk_and_cache_in_memory::<Q>(
+                    key,
+                    job,
+                    dep_node_index,
+                    &dep_node
+                ))
             }
         }
 
-        match self.force_query_with_job::<Q>(key, job, dep_node) {
-            Ok((result, dep_node_index)) => {
-                self.dep_graph.read_index(dep_node_index);
-                Ok(result)
-            }
-            Err(e) => Err(e)
-        }
+        let (result, dep_node_index) = self.force_query_with_job::<Q>(key, job, dep_node);
+        self.dep_graph.read_index(dep_node_index);
+        Ok(result)
     }
 
     fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'gcx>>(
@@ -446,7 +444,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         job: JobOwner<'a, 'gcx, Q>,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
-    ) -> Result<Q::Value, Box<CycleError<'gcx>>>
+    ) -> Q::Value
     {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly
@@ -511,7 +509,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         job.complete(&result, dep_node_index);
 
-        Ok(result)
+        result
     }
 
     #[inline(never)]
@@ -551,7 +549,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         key: Q::Key,
         job: JobOwner<'_, 'gcx, Q>,
         dep_node: DepNode)
-    -> Result<(Q::Value, DepNodeIndex), Box<CycleError<'gcx>>> {
+    -> (Q::Value, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in DepGraph::try_mark_green()
@@ -596,7 +594,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         job.complete(&result, dep_node_index);
 
-        Ok((result, dep_node_index))
+        (result, dep_node_index)
     }
 
     /// Ensure that either this query has all green inputs or been executed.
@@ -643,11 +641,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Ensure that only one of them runs the query
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::JobCompleted(_) => return,
+            TryGetJob::JobCompleted(result) => {
+                if let Err(e) = result {
+                    self.report_cycle(e).emit();
+                }
+                return
+            }
         };
-        if let Err(e) = self.force_query_with_job::<Q>(key, job, dep_node) {
-            self.report_cycle(e).emit();
-        }
+        self.force_query_with_job::<Q>(key, job, dep_node);
     }
 
     pub(super) fn try_get_query<Q: QueryDescription<'gcx>>(
