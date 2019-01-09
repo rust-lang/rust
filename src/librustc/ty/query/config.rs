@@ -12,7 +12,7 @@ use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::query::queries;
 use ty::query::Query;
-use ty::query::QueryCache;
+use ty::query::{QueryCache, QueryCaches};
 use util::profiling::ProfileCategory;
 
 use std::borrow::Cow;
@@ -37,7 +37,7 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryCache<'tcx, Self>>;
+    fn query_cache<'a, I>(caches: &'a QueryCaches<'tcx, I>) -> &'a Lock<QueryCache<'tcx, Self, I>>;
 
     fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
 

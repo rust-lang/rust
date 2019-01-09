@@ -45,7 +45,6 @@ use util::profiling::ProfileCategory::*;
 use session::Session;
 
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::sync::Lrc;
@@ -65,7 +64,7 @@ use syntax::symbol::Symbol;
 #[macro_use]
 mod plumbing;
 use self::plumbing::*;
-pub use self::plumbing::{force_from_dep_node, CycleError};
+pub use self::plumbing::{Queries, force_from_dep_node, CycleError};
 
 mod job;
 pub use self::job::{QueryJob, QueryInfo};

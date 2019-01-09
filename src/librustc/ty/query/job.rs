@@ -81,11 +81,11 @@ impl<'tcx> QueryJob<'tcx> {
     #[cfg(not(parallel_queries))]
     #[inline(never)]
     #[cold]
-    pub(super) fn cycle_error<'lcx, 'a, D: QueryDescription<'tcx>>(
+    pub(super) fn cycle_error<'lcx, 'a, D: QueryDescription<'tcx>, I>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
-    ) -> TryGetJob<'a, 'tcx, D> {
+    ) -> TryGetJob<'a, 'tcx, D, I> {
         TryGetJob::JobCompleted(Err(Box::new(self.find_cycle_in_stack(tcx, span))))
     }
 
@@ -527,7 +527,7 @@ fn deadlock(tcx: TyCtxt<'_, '_, '_>, registry: &rayon_core::Registry) {
     });
 
     let mut wakelist = Vec::new();
-    let mut jobs: Vec<_> = tcx.queries.collect_active_jobs();
+    let mut jobs: Vec<_> = tcx.queries.collect_active_jobs(&tcx.dep_graph);
 
     let mut found_cycle = false;
 

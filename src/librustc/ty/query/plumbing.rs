@@ -2,44 +2,48 @@
 //! that generate the actual methods on tcx which find and execute the
 //! provider, manage the caches, and so forth.
 
-use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor};
+use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor, DepGraph};
 use errors::DiagnosticBuilder;
 use errors::Level;
 use errors::Diagnostic;
 use errors::FatalError;
+use session::Session;
+use hir::def_id::CrateNum;
 use ty::tls;
 use ty::{TyCtxt};
-use ty::query::Query;
+use ty::query::{QueryCaches, Query, Providers};
 use ty::query::config::{QueryConfig, QueryDescription};
 use ty::query::job::{QueryJob, QueryResult, QueryInfo};
+use ty::query::on_disk_cache::OnDiskCache;
 use ty::item_path;
 
 use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::indexed_vec::IndexVec;
 use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 use syntax::source_map::DUMMY_SP;
 
-pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
-    pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
+pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized, I> {
+    pub(super) results: FxHashMap<D::Key, QueryValue<D::Value, I>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
     #[cfg(debug_assertions)]
     pub(super) cache_hits: usize,
 }
 
-pub(super) struct QueryValue<T> {
+pub(super) struct QueryValue<T, I> {
     pub(super) value: T,
-    pub(super) index: DepNodeIndex,
+    pub(super) index: I,
 }
 
-impl<T> QueryValue<T> {
+impl<T, I> QueryValue<T, I> {
     pub(super) fn new(value: T,
-                      dep_node_index: DepNodeIndex)
-                      -> QueryValue<T> {
+                      dep_node_index: I)
+                      -> Self {
         QueryValue {
             value,
             index: dep_node_index,
@@ -47,8 +51,8 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
-    fn default() -> QueryCache<'tcx, M> {
+impl<'tcx, M: QueryConfig<'tcx>, I> Default for QueryCache<'tcx, M, I> {
+    fn default() -> Self {
         QueryCache {
             results: FxHashMap::default(),
             active: FxHashMap::default(),
@@ -87,13 +91,13 @@ macro_rules! profq_query_msg {
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
-    cache: &'a Lock<QueryCache<'tcx, Q>>,
+pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a, I> {
+    cache: &'a Lock<QueryCache<'tcx, Q, I>>,
     key: Q::Key,
     job: Lrc<QueryJob<'tcx>>,
 }
 
-impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
+impl<'a, 'tcx, Q: QueryDescription<'tcx>, I: Copy> JobOwner<'a, 'tcx, Q, I> {
     /// Either gets a JobOwner corresponding the query, allowing us to
     /// start executing the query, or it returns with the result of the query.
     /// If the query is executing elsewhere, this will wait for it.
@@ -104,10 +108,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     #[inline(always)]
     pub(super) fn try_get(
         tcx: TyCtxt<'a, 'tcx, '_>,
+        caches: &'a QueryCaches<'tcx, I>,
         span: Span,
         key: &Q::Key,
-    ) -> TryGetJob<'a, 'tcx, Q> {
-        let cache = Q::query_cache(tcx);
+    ) -> TryGetJob<'a, 'tcx, Q, I> {
+        let cache = Q::query_cache(caches);
         loop {
             let mut lock = cache.borrow_mut();
             if let Some(value) = lock.results.get(key) {
@@ -169,7 +174,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
-    pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
+    pub(super) fn complete(self, result: &Q::Value, dep_node_index: I) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let job = unsafe { ptr::read(&self.job) };
@@ -225,7 +230,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     }
 }
 
-impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
+impl<'a, 'tcx, Q: QueryDescription<'tcx>, I> Drop for JobOwner<'a, 'tcx, Q, I> {
     #[inline(never)]
     #[cold]
     fn drop(&mut self) {
@@ -245,14 +250,14 @@ pub struct CycleError<'tcx> {
 }
 
 /// The result of `try_get_lock`
-pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
+pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a, I> {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'a, 'tcx, D>),
+    NotYetStarted(JobOwner<'a, 'tcx, D, I>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep node index
     /// if it succeeded or a cycle error if it failed
-    JobCompleted(Result<(D::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
+    JobCompleted(Result<(D::Value, I), Box<CycleError<'tcx>>>),
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -379,7 +384,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             )
         );
 
-        let job = match JobOwner::try_get(self, span, &key) {
+        // Fast path for when incr. comp. is off. `to_dep_node` is
+        // expensive for some DepKinds.
+        if !self.dep_graph.is_fully_enabled() {
+            let job = match JobOwner::try_get(self, &self.queries.unit_caches, span, &key) {
+                TryGetJob::NotYetStarted(job) => job,
+                TryGetJob::JobCompleted(result) => {
+                    return result.map(|(v, _)| v)
+                }
+            };
+            return Ok(self.force_query_with_job_no_incr::<Q>(key, job));
+        }
+
+        let job = match JobOwner::try_get(self, &self.queries.dep_node_index_caches, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(result) => {
                 return result.map(|(v, index)| {
@@ -388,13 +405,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 })
             }
         };
-
-        // Fast path for when incr. comp. is off. `to_dep_node` is
-        // expensive for some DepKinds.
-        if !self.dep_graph.is_fully_enabled() {
-            let null_dep_node = DepNode::new_no_params(::dep_graph::DepKind::Null);
-            return self.force_query_with_job::<Q>(key, job, null_dep_node).map(|(v, _)| v);
-        }
 
         let dep_node = Q::to_dep_node(self, &key);
 
@@ -424,29 +434,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if !dep_node.kind.is_input() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
-                return self.load_from_disk_and_cache_in_memory::<Q>(key,
-                                                                    job,
-                                                                    dep_node_index,
-                                                                    &dep_node)
+                return Ok(self.load_from_disk_and_cache_in_memory::<Q>(
+                    key,
+                    job,
+                    dep_node_index,
+                    &dep_node
+                ))
             }
         }
 
-        match self.force_query_with_job::<Q>(key, job, dep_node) {
-            Ok((result, dep_node_index)) => {
-                self.dep_graph.read_index(dep_node_index);
-                Ok(result)
-            }
-            Err(e) => Err(e)
-        }
+        let (result, dep_node_index) = self.force_query_with_job::<Q>(key, job, dep_node);
+        self.dep_graph.read_index(dep_node_index);
+        Ok(result)
     }
 
     fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
-        job: JobOwner<'a, 'gcx, Q>,
+        job: JobOwner<'a, 'gcx, Q, DepNodeIndex>,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
-    ) -> Result<Q::Value, Box<CycleError<'gcx>>>
+    ) -> Q::Value
     {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly
@@ -511,7 +519,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         job.complete(&result, dep_node_index);
 
-        Ok(result)
+        result
     }
 
     #[inline(never)]
@@ -549,9 +557,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn force_query_with_job<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
-        job: JobOwner<'_, 'gcx, Q>,
+        job: JobOwner<'_, 'gcx, Q, DepNodeIndex>,
         dep_node: DepNode)
-    -> Result<(Q::Value, DepNodeIndex), Box<CycleError<'gcx>>> {
+    -> (Q::Value, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in DepGraph::try_mark_green()
@@ -589,14 +597,31 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
-        if dep_node.kind != ::dep_graph::DepKind::Null {
-            self.queries.on_disk_cache
-                .store_diagnostics(dep_node_index, diagnostics);
-        }
+        self.queries.on_disk_cache
+            .store_diagnostics(dep_node_index, diagnostics);
 
         job.complete(&result, dep_node_index);
 
-        Ok((result, dep_node_index))
+        (result, dep_node_index)
+    }
+
+    #[inline(always)]
+    fn force_query_with_job_no_incr<Q: QueryDescription<'gcx>>(
+        self,
+        key: Q::Key,
+        job: JobOwner<'_, 'gcx, Q, ()>)
+    -> Q::Value {
+        profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
+        self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
+
+        let (result, _) = job.start(self, |tcx| Q::compute(tcx, key));
+
+        self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
+        profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
+
+        job.complete(&result, ());
+
+        result
     }
 
     /// Ensure that either this query has all green inputs or been executed.
@@ -641,13 +666,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // We may be concurrently trying both execute and force a query
         // Ensure that only one of them runs the query
-        let job = match JobOwner::try_get(self, span, &key) {
+        let job = match JobOwner::try_get(self, &self.queries.dep_node_index_caches, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::JobCompleted(_) => return,
+            TryGetJob::JobCompleted(result) => {
+                if let Err(e) = result {
+                    self.report_cycle(e).emit();
+                }
+                return
+            }
         };
-        if let Err(e) = self.force_query_with_job::<Q>(key, job, dep_node) {
-            self.report_cycle(e).emit();
-        }
+        self.force_query_with_job::<Q>(key, job, dep_node);
     }
 
     pub(super) fn try_get_query<Q: QueryDescription<'gcx>>(
@@ -724,21 +752,13 @@ macro_rules! define_queries_inner {
         };
         use util::profiling::ProfileCategory;
 
-        define_queries_struct! {
-            tcx: $tcx,
-            input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
+        pub struct QueryCaches<$tcx, I> {
+            $($(#[$attr])*  $name: Lock<QueryCache<$tcx, queries::$name<$tcx>, I>>,)*
         }
 
-        impl<$tcx> Queries<$tcx> {
-            pub fn new(
-                providers: IndexVec<CrateNum, Providers<$tcx>>,
-                fallback_extern_providers: Providers<$tcx>,
-                on_disk_cache: OnDiskCache<'tcx>,
-            ) -> Self {
-                Queries {
-                    providers,
-                    fallback_extern_providers: Box::new(fallback_extern_providers),
-                    on_disk_cache,
+        impl<$tcx, I> QueryCaches<$tcx, I> {
+            pub fn new() -> Self {
+                QueryCaches {
                     $($name: Default::default()),*
                 }
             }
@@ -789,9 +809,9 @@ macro_rules! define_queries_inner {
                     entry_count: usize,
                 }
 
-                fn stats<'tcx, Q: QueryConfig<'tcx>>(
+                fn stats<'tcx, Q: QueryConfig<'tcx>, I>(
                     name: &'static str,
-                    map: &QueryCache<'tcx, Q>
+                    map: &QueryCache<'tcx, Q, I>
                 ) -> QueryStats {
                     QueryStats {
                         name,
@@ -808,7 +828,7 @@ macro_rules! define_queries_inner {
                 }
 
                 $(
-                    queries.push(stats::<queries::$name<'_>>(
+                    queries.push(stats::<queries::$name<'_>, I>(
                         stringify!($name),
                         &*self.$name.lock()
                     ));
@@ -958,8 +978,10 @@ macro_rules! define_queries_inner {
             }
 
             #[inline(always)]
-            fn query_cache<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
-                &tcx.queries.$name
+            fn query_cache<'a, I>(
+                caches: &'a QueryCaches<$tcx, I>
+            ) -> &'a Lock<QueryCache<$tcx, Self, I>> {
+                &caches.$name
             }
 
             #[allow(unused)]
@@ -1054,21 +1076,58 @@ macro_rules! define_queries_inner {
     }
 }
 
-macro_rules! define_queries_struct {
-    (tcx: $tcx:tt,
-     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
-        pub struct Queries<$tcx> {
-            /// This provides access to the incr. comp. on-disk cache for query results.
-            /// Do not access this directly. It is only meant to be used by
-            /// `DepGraph::try_mark_green()` and the query infrastructure.
-            pub(crate) on_disk_cache: OnDiskCache<'tcx>,
+pub struct Queries<'tcx> {
+    /// This provides access to the incr. comp. on-disk cache for query results.
+    /// Do not access this directly. It is only meant to be used by
+    /// `DepGraph::try_mark_green()` and the query infrastructure.
+    pub(crate) on_disk_cache: OnDiskCache<'tcx>,
 
-            providers: IndexVec<CrateNum, Providers<$tcx>>,
-            fallback_extern_providers: Box<Providers<$tcx>>,
+    pub(super) providers: IndexVec<CrateNum, Providers<'tcx>>,
+    pub(super) fallback_extern_providers: Box<Providers<'tcx>>,
 
-            $($(#[$attr])*  $name: Lock<QueryCache<$tcx, queries::$name<$tcx>>>,)*
+    pub(super) dep_node_index_caches: QueryCaches<'tcx, DepNodeIndex>,
+    unit_caches: QueryCaches<'tcx, ()>,
+}
+
+impl Queries<'tcx> {
+    pub fn new(
+        providers: IndexVec<CrateNum, Providers<'tcx>>,
+        fallback_extern_providers: Providers<'tcx>,
+        on_disk_cache: OnDiskCache<'tcx>,
+    ) -> Self {
+        Queries {
+            providers,
+            fallback_extern_providers: Box::new(fallback_extern_providers),
+            on_disk_cache,
+            dep_node_index_caches: QueryCaches::new(),
+            unit_caches: QueryCaches::new(),
         }
-    };
+    }
+
+    #[cfg(parallel_queries)]
+    pub fn collect_active_jobs(&self, dep_graph: &DepGraph) -> Vec<Lrc<QueryJob<'tcx>>> {
+        if dep_graph.is_fully_enabled() {
+            self.dep_node_index_caches.collect_active_jobs()
+        } else {
+            self.unit_caches.collect_active_jobs()
+        }
+    }
+
+    pub fn record_computed_queries(&self, dep_graph: &DepGraph, sess: &Session) {
+        if dep_graph.is_fully_enabled() {
+            self.dep_node_index_caches.record_computed_queries(sess)
+        } else {
+            self.unit_caches.record_computed_queries(sess)
+        }
+    }
+
+    pub fn print_stats(&self, dep_graph: &DepGraph) {
+        if dep_graph.is_fully_enabled() {
+            self.dep_node_index_caches.print_stats()
+        } else {
+            self.unit_caches.print_stats()
+        }
+    }
 }
 
 macro_rules! define_provider_struct {
