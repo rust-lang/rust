@@ -470,6 +470,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             }
                         }
 
+                        ProjectionElem::ConstantIndex {..} |
+                        ProjectionElem::Subslice {..} |
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
@@ -499,8 +501,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
-                        ProjectionElem::ConstantIndex {..} |
-                        ProjectionElem::Subslice {..} |
                         ProjectionElem::Downcast(..) => {
                             this.not_const()
                         }

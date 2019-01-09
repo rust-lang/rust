@@ -264,12 +264,9 @@ fn check_place(
         Place::Static(_) => Err((span, "cannot access `static` items in const fn".into())),
         Place::Projection(proj) => {
             match proj.elem {
+                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
                 | ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
                     check_place(tcx, mir, &proj.base, span)
-                }
-                // slice patterns are unstable
-                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
-                    return Err((span, "slice patterns in const fn are unstable".into()))
                 }
                 | ProjectionElem::Downcast(..) => {
                     Err((span, "`match` or `if let` in `const fn` is unstable".into()))
