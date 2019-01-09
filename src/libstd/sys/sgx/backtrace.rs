@@ -3,6 +3,7 @@ use error::Error;
 use libc;
 use sys_common::backtrace::Frame;
 use unwind as uw;
+use sys::sgx::abi::mem::image_base;
 
 pub struct BacktraceContext;
 
@@ -75,11 +76,6 @@ extern "C" fn trace_fn(
     uw::_URC_NO_REASON
 }
 
-extern {
-   static IMAGE_BASE: u8;
-}
-
-
 // To reduce TCB size in Sgx enclave, we do not want to implement resolve_symname functionality.
 // Rather, we print the offset of the address here, which could be later mapped to correct function.
 pub fn resolve_symname<F>(frame: Frame,
@@ -88,7 +84,7 @@ pub fn resolve_symname<F>(frame: Frame,
     where F: FnOnce(Option<&str>) -> io::Result<()>
 {
     callback(Some(&format!("0x{:x}",
-            (unsafe {frame.symbol_addr.wrapping_offset_from(&IMAGE_BASE)}))))
+            (frame.symbol_addr.wrapping_offset_from(image_base() as _)))))
 }
 
 pub fn foreach_symbol_fileline<F>(_: Frame,
