@@ -599,7 +599,11 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_disjoint(&self, other: &HashSet<T, S>) -> bool {
-        self.iter().all(|v| !other.contains(v))
+        if self.len() <= other.len() {
+            self.iter().all(|v| !other.contains(v))
+        } else {
+            other.iter().all(|v| !self.contains(v))
+        }
     }
 
     /// Returns `true` if the set is a subset of another,
@@ -1510,7 +1514,6 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
         assert!(a.intersection(&b).next().is_none());
-        assert!(b.intersection(&a).next().is_none());
 
         assert!(a.insert(11));
         assert!(a.insert(1));
