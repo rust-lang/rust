@@ -252,8 +252,11 @@ macro_rules! print_inner {
     };
 }
 macro_rules! print {
-    ( $cx:expr $(, $kind:ident $data:tt)+ ) => {
-        Ok(())$(.and_then(|_| print_inner!($cx, $kind $data)))+
+    ( $cx:expr, $($kind:ident $data:tt),+ ) => {
+        (|| -> fmt::Result {
+            $(print_inner!($cx, $kind $data)?;)+
+            Ok(())
+        })()
     };
 }
 
