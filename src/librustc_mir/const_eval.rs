@@ -118,7 +118,7 @@ pub fn op_to_const<'tcx>(
     op: OpTy<'tcx>,
     may_normalize: bool,
 ) -> EvalResult<'tcx, ty::Const<'tcx>> {
-    // We do not normalize just any data.  Only scalar layout and fat pointers.
+    // We do not normalize just any data.  Only scalar layout and slices.
     let normalize = may_normalize
         && match op.layout.abi {
             layout::Abi::Scalar(..) => true,
