@@ -25,6 +25,7 @@ use std::{fmt, mem};
 use log;
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
 use ra_arena::map::ArenaMap;
+use join_to_string::join;
 
 use ra_db::Cancelable;
 
@@ -396,18 +397,21 @@ impl fmt::Display for Ty {
             Ty::Ref(t, m) => write!(f, "&{}{}", m.as_keyword_for_ref(), t),
             Ty::Never => write!(f, "!"),
             Ty::Tuple(ts) => {
-                write!(f, "(")?;
-                for t in ts.iter() {
-                    write!(f, "{},", t)?;
+                if ts.len() == 1 {
+                    write!(f, "({},)", ts[0])
+                } else {
+                    join(ts.iter())
+                        .surround_with("(", ")")
+                        .separator(", ")
+                        .to_fmt(f)
                 }
-                write!(f, ")")
             }
             Ty::FnPtr(sig) => {
-                write!(f, "fn(")?;
-                for t in &sig.input {
-                    write!(f, "{},", t)?;
-                }
-                write!(f, ") -> {}", sig.output)
+                join(sig.input.iter())
+                    .surround_with("fn(", ")")
+                    .separator(", ")
+                    .to_fmt(f)?;
+                write!(f, " -> {}", sig.output)
             }
             Ty::Adt { name, .. } => write!(f, "{}", name),
             Ty::Unknown => write!(f, "[unknown]"),
