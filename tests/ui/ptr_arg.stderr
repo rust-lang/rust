@@ -1,5 +1,5 @@
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
-  --> $DIR/ptr_arg.rs:15:14
+  --> $DIR/ptr_arg.rs:6:14
    |
 LL | fn do_vec(x: &Vec<i64>) {
    |              ^^^^^^^^^ help: change this to: `&[i64]`
@@ -7,19 +7,19 @@ LL | fn do_vec(x: &Vec<i64>) {
    = note: `-D clippy::ptr-arg` implied by `-D warnings`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do.
-  --> $DIR/ptr_arg.rs:24:14
+  --> $DIR/ptr_arg.rs:15:14
    |
 LL | fn do_str(x: &String) {
    |              ^^^^^^^ help: change this to: `&str`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
-  --> $DIR/ptr_arg.rs:37:18
+  --> $DIR/ptr_arg.rs:28:18
    |
 LL |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^ help: change this to: `&[i64]`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
-  --> $DIR/ptr_arg.rs:50:14
+  --> $DIR/ptr_arg.rs:41:14
    |
 LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
    |              ^^^^^^^^
@@ -37,7 +37,7 @@ LL |     x.to_owned()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do.
-  --> $DIR/ptr_arg.rs:59:18
+  --> $DIR/ptr_arg.rs:50:18
    |
 LL | fn str_cloned(x: &String) -> String {
    |                  ^^^^^^^
@@ -59,7 +59,7 @@ LL |     x.to_string()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do.
-  --> $DIR/ptr_arg.rs:67:44
+  --> $DIR/ptr_arg.rs:58:44
    |
 LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
    |                                            ^^^^^^^
@@ -77,7 +77,7 @@ LL |     let c = y;
    |             ^
 
 error: using a reference to `Cow` is not recommended.
-  --> $DIR/ptr_arg.rs:81:25
+  --> $DIR/ptr_arg.rs:72:25
    |
 LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
    |                         ^^^^^^^^^^^ help: change this to: `&[i32]`

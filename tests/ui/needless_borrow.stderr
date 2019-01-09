@@ -1,5 +1,5 @@
 error: this expression borrows a reference that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:22:15
+  --> $DIR/needless_borrow.rs:13:15
    |
 LL |     let c = x(&&a);
    |               ^^^ help: change this to: `&a`
@@ -7,19 +7,19 @@ LL |     let c = x(&&a);
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
 error: this pattern creates a reference to a reference
-  --> $DIR/needless_borrow.rs:29:17
+  --> $DIR/needless_borrow.rs:20:17
    |
 LL |     if let Some(ref cake) = Some(&5) {}
    |                 ^^^^^^^^ help: change this to: `cake`
 
 error: this expression borrows a reference that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:36:15
+  --> $DIR/needless_borrow.rs:27:15
    |
 LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
 error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrow.rs:58:34
+  --> $DIR/needless_borrow.rs:49:34
    |
 LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
    |                                  ^^^^^^ help: try removing the `&ref` part and just keep: `a`
@@ -27,13 +27,13 @@ LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
    = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
 
 error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrow.rs:59:30
+  --> $DIR/needless_borrow.rs:50:30
    |
 LL |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                              ^^^^^^ help: try removing the `&ref` part and just keep: `a`
 
 error: this pattern creates a reference to a reference
-  --> $DIR/needless_borrow.rs:59:31
+  --> $DIR/needless_borrow.rs:50:31
    |
 LL |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                               ^^^^^ help: change this to: `a`

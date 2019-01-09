@@ -1,5 +1,5 @@
 error: lint `str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
-  --> $DIR/deprecated.rs:10:8
+  --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(str_to_string)]
    |        ^^^^^^^^^^^^^
@@ -7,25 +7,25 @@ LL | #[warn(str_to_string)]
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
 error: lint `string_to_string` has been removed: `using `string::to_string` is common even today and specialization will likely happen soon`
-  --> $DIR/deprecated.rs:11:8
+  --> $DIR/deprecated.rs:2:8
    |
 LL | #[warn(string_to_string)]
    |        ^^^^^^^^^^^^^^^^
 
 error: lint `unstable_as_slice` has been removed: ``Vec::as_slice` has been stabilized in 1.7`
-  --> $DIR/deprecated.rs:12:8
+  --> $DIR/deprecated.rs:3:8
    |
 LL | #[warn(unstable_as_slice)]
    |        ^^^^^^^^^^^^^^^^^
 
 error: lint `unstable_as_mut_slice` has been removed: ``Vec::as_mut_slice` has been stabilized in 1.7`
-  --> $DIR/deprecated.rs:13:8
+  --> $DIR/deprecated.rs:4:8
    |
 LL | #[warn(unstable_as_mut_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `misaligned_transmute` has been removed: `this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr`
-  --> $DIR/deprecated.rs:14:8
+  --> $DIR/deprecated.rs:5:8
    |
 LL | #[warn(misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^

@@ -1,29 +1,29 @@
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:15:19
+  --> $DIR/borrow_box.rs:6:19
    |
 LL | pub fn test1(foo: &mut Box<bool>) {
    |                   ^^^^^^^^^^^^^^ help: try: `&mut bool`
    |
 note: lint level defined here
-  --> $DIR/borrow_box.rs:10:9
+  --> $DIR/borrow_box.rs:1:9
    |
 LL | #![deny(clippy::borrowed_box)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:20:14
+  --> $DIR/borrow_box.rs:11:14
    |
 LL |     let foo: &Box<bool>;
    |              ^^^^^^^^^^ help: try: `&bool`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:24:10
+  --> $DIR/borrow_box.rs:15:10
    |
 LL |     foo: &'a Box<bool>,
    |          ^^^^^^^^^^^^^ help: try: `&'a bool`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:28:17
+  --> $DIR/borrow_box.rs:19:17
    |
 LL |     fn test4(a: &Box<bool>);
    |                 ^^^^^^^^^^ help: try: `&bool`

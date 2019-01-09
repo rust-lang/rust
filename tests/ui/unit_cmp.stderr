@@ -1,5 +1,5 @@
 error: ==-comparison of unit values detected. This will always be true
-  --> $DIR/unit_cmp.rs:21:8
+  --> $DIR/unit_cmp.rs:12:8
    |
 LL |       if {
    |  ________^
@@ -12,7 +12,7 @@ LL | |     } {}
    = note: `-D clippy::unit-cmp` implied by `-D warnings`
 
 error: >-comparison of unit values detected. This will always be false
-  --> $DIR/unit_cmp.rs:27:8
+  --> $DIR/unit_cmp.rs:18:8
    |
 LL |       if {
    |  ________^

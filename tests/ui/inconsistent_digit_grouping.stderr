@@ -1,5 +1,5 @@
 error: digits grouped inconsistently by underscores
-  --> $DIR/inconsistent_digit_grouping.rs:22:16
+  --> $DIR/inconsistent_digit_grouping.rs:13:16
    |
 LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
    |                ^^^^^^^^ help: consider: `123_456`
@@ -7,25 +7,25 @@ LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/inconsistent_digit_grouping.rs:22:26
+  --> $DIR/inconsistent_digit_grouping.rs:13:26
    |
 LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
    |                          ^^^^^^^^^^ help: consider: `12_345_678`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/inconsistent_digit_grouping.rs:22:38
+  --> $DIR/inconsistent_digit_grouping.rs:13:38
    |
 LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
    |                                      ^^^^^^^^ help: consider: `1_234_567`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/inconsistent_digit_grouping.rs:22:48
+  --> $DIR/inconsistent_digit_grouping.rs:13:48
    |
 LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
    |                                                ^^^^^^^^^^^^^^ help: consider: `1_234.567_8_f32`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/inconsistent_digit_grouping.rs:22:64
+  --> $DIR/inconsistent_digit_grouping.rs:13:64
    |
 LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
    |                                                                ^^^^^^^^^^^^^^ help: consider: `1.234_567_8_f32`
