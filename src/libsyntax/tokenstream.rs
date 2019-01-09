@@ -113,7 +113,7 @@ impl TokenTree {
     }
 
     pub fn joint(self) -> TokenStream {
-        TokenStream::Tree(self, Joint)
+        TokenStream::new(vec![(self, Joint)])
     }
 
     /// Returns the opening delimiter as a token tree.
@@ -146,7 +146,6 @@ impl TokenTree {
 #[derive(Clone, Debug)]
 pub enum TokenStream {
     Empty,
-    Tree(TokenTree, IsJoint),
     Stream(Lrc<Vec<TreeAndJoint>>),
 }
 
@@ -154,7 +153,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 32);
+static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 8);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IsJoint {
@@ -201,7 +200,7 @@ impl TokenStream {
 
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
-        TokenStream::Tree(tree, NonJoint)
+        TokenStream::new(vec![(tree, NonJoint)])
     }
 }
 
@@ -260,7 +259,6 @@ impl TokenStream {
                 for stream in streams {
                     match stream {
                         TokenStream::Empty => {},
-                        TokenStream::Tree(tree, is_joint) => vec.push((tree, is_joint)),
                         TokenStream::Stream(stream2) => vec.extend(stream2.iter().cloned()),
                     }
                 }
@@ -269,13 +267,9 @@ impl TokenStream {
         }
     }
 
-    pub fn new(mut streams: Vec<TreeAndJoint>) -> TokenStream {
+    pub fn new(streams: Vec<TreeAndJoint>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::empty(),
-            1 => {
-                let (tree, is_joint) = streams.pop().unwrap();
-                TokenStream::Tree(tree, is_joint)
-            }
             _ => TokenStream::Stream(Lrc::new(streams)),
         }
     }
@@ -283,7 +277,6 @@ impl TokenStream {
     pub fn append_to_tree_and_joint_vec(self, vec: &mut Vec<TreeAndJoint>) {
         match self {
             TokenStream::Empty => {}
-            TokenStream::Tree(tree, is_joint) => vec.push((tree, is_joint)),
             TokenStream::Stream(stream) => vec.extend(stream.iter().cloned()),
         }
     }
@@ -351,7 +344,6 @@ impl TokenStream {
     pub fn map_enumerated<F: FnMut(usize, TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
         match self {
             TokenStream::Empty => TokenStream::Empty,
-            TokenStream::Tree(tree, is_joint) => TokenStream::Tree(f(0, tree), is_joint),
             TokenStream::Stream(stream) => TokenStream::Stream(Lrc::new(
                 stream
                     .iter()
@@ -365,7 +357,6 @@ impl TokenStream {
     pub fn map<F: FnMut(TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
         match self {
             TokenStream::Empty => TokenStream::Empty,
-            TokenStream::Tree(tree, is_joint) => TokenStream::Tree(f(tree), is_joint),
             TokenStream::Stream(stream) => TokenStream::Stream(Lrc::new(
                 stream
                     .iter()
@@ -378,7 +369,6 @@ impl TokenStream {
     fn first_tree_and_joint(&self) -> Option<(TokenTree, IsJoint)> {
         match self {
             TokenStream::Empty => None,
-            TokenStream::Tree(ref tree, is_joint) => Some((tree.clone(), *is_joint)),
             TokenStream::Stream(ref stream) => Some(stream.first().unwrap().clone())
         }
     }
@@ -386,13 +376,6 @@ impl TokenStream {
     fn last_tree_if_joint(&self) -> Option<TokenTree> {
         match self {
             TokenStream::Empty => None,
-            TokenStream::Tree(ref tree, is_joint) => {
-                if *is_joint == Joint {
-                    Some(tree.clone())
-                } else {
-                    None
-                }
-            }
             TokenStream::Stream(ref stream) => {
                 if let (tree, Joint) = stream.last().unwrap() {
                     Some(tree.clone())
@@ -422,7 +405,7 @@ impl TokenStreamBuilder {
                     self.push_all_but_last_tree(&last_stream);
                     let glued_span = last_span.to(span);
                     let glued_tt = TokenTree::Token(glued_span, glued_tok);
-                    let glued_tokenstream = TokenStream::Tree(glued_tt, is_joint);
+                    let glued_tokenstream = TokenStream::new(vec![(glued_tt, is_joint)]);
                     self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);
                     return
@@ -441,7 +424,6 @@ impl TokenStreamBuilder {
             let len = streams.len();
             match len {
                 1 => {}
-                2 => self.0.push(TokenStream::Tree(streams[0].0.clone(), streams[0].1)),
                 _ => self.0.push(TokenStream::Stream(Lrc::new(streams[0 .. len - 1].to_vec()))),
             }
         }
@@ -452,7 +434,6 @@ impl TokenStreamBuilder {
             let len = streams.len();
             match len {
                 1 => {}
-                2 => self.0.push(TokenStream::Tree(streams[1].0.clone(), streams[1].1)),
                 _ => self.0.push(TokenStream::Stream(Lrc::new(streams[1 .. len].to_vec()))),
             }
         }
@@ -481,14 +462,6 @@ impl Cursor {
     pub fn next_with_joint(&mut self) -> Option<TreeAndJoint> {
         match self.stream {
             TokenStream::Empty => None,
-            TokenStream::Tree(ref tree, ref is_joint) => {
-                if self.index == 0 {
-                    self.index = 1;
-                    Some((tree.clone(), *is_joint))
-                } else {
-                    None
-                }
-            }
             TokenStream::Stream(ref stream) => {
                 if self.index < stream.len() {
                     self.index += 1;
@@ -513,13 +486,6 @@ impl Cursor {
     pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
         match self.stream {
             TokenStream::Empty => None,
-            TokenStream::Tree(ref tree, _) => {
-                if n == 0 && self.index == 0 {
-                    Some(tree.clone())
-                } else {
-                    None
-                }
-            }
             TokenStream::Stream(ref stream) =>
                 stream[self.index ..].get(n).map(|(tree, _)| tree.clone()),
         }
@@ -542,7 +508,6 @@ impl From<TokenStream> for ThinTokenStream {
     fn from(stream: TokenStream) -> ThinTokenStream {
         ThinTokenStream(match stream {
             TokenStream::Empty => None,
-            TokenStream::Tree(tree, is_joint) => Some(Lrc::new(vec![(tree, is_joint)])),
             TokenStream::Stream(stream) => Some(stream),
         })
     }
