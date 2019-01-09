@@ -11,50 +11,40 @@ use crate::rustc::hir::{Expr, ExprKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::LitKind;
-use crate::utils::{is_direct_expn_of, span_lint};
+use crate::utils::{is_direct_expn_of, span_lint, span_lint_and_sugg};
+use rustc_errors::Applicability;
 use if_chain::if_chain;
 
-/// **What it does:** Check explicit call assert!(true)
+/// **What it does:** Check explicit call assert!(true/false)
 ///
-/// **Why is this bad?** Will be optimized out by the compiler
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// assert!(true)
-/// ```
-declare_clippy_lint! {
-    pub EXPLICIT_TRUE,
-    correctness,
-    "assert!(true) will be optimized out by the compiler"
-}
-
-/// **What it does:** Check explicit call assert!(false)
-///
-/// **Why is this bad?** Should probably be replaced by a panic!() or unreachable!()
+/// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a panic!() or unreachable!()
 ///
 /// **Known problems:** None
 ///
 /// **Example:**
 /// ```rust
 /// assert!(false)
+/// // or
+/// assert!(true)
+/// // or
+/// const B: bool = false;
+/// assert!(B)
 /// ```
 declare_clippy_lint! {
-    pub EXPLICIT_FALSE,
-    correctness,
-    "assert!(false) should probably be replaced by a panic!() or unreachable!()"
+    pub ASSERTIONS_ON_CONSTANTS,
+    style,
+    "assert!(true/false) will be optimized out by the compiler/should probably be replaced by a panic!() or unreachable!()"
 }
 
-pub struct AssertChecks;
+pub struct AssertionsOnConstants;
 
-impl LintPass for AssertChecks {
+impl LintPass for AssertionsOnConstants {
     fn get_lints(&self) -> LintArray {
-        lint_array![EXPLICIT_TRUE, EXPLICIT_FALSE]
+        lint_array![ASSERTIONS_ON_CONSTANTS]
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertChecks {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if_chain! {
             if is_direct_expn_of(e.span, "assert").is_some();
@@ -63,12 +53,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertChecks {
             then {
                 match inner.node {
                     LitKind::Bool(true) => {
-                        span_lint(cx, EXPLICIT_TRUE, e.span,
+                        span_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
                             "assert!(true) will be optimized out by the compiler");
                     },
                     LitKind::Bool(false) => {
-                        span_lint(cx, EXPLICIT_FALSE, e.span,
-                            "assert!(false) should probably be replaced by a panic!() or unreachable!()");
+                        span_lint_and_sugg(
+                            cx,
+                            ASSERTIONS_ON_CONSTANTS,
+                            e.span,
+                            "assert!(false) should probably be replaced",
+                            "try",
+                            "panic!()".to_string(),
+                            Applicability::MachineApplicable);
                     },
                     _ => (),
                 }

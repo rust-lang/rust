@@ -8,7 +8,7 @@
 // except according to those terms.
 
 #![warn(clippy::empty_line_after_outer_attr)]
-#![allow(clippy::assert_checks::explicit_true)]
+#![allow(clippy::assertions_on_constants::assertions_on_constants)]
 // This should produce a warning
 #[crate_type = "lib"]
 

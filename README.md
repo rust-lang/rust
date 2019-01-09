@@ -8,11 +8,11 @@
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
 <<<<<<< HEAD
-[There are 290 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are 291 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 ||||||| merged common ancestors
 [There are 291 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 =======
-[There are 293 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are 291 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 >>>>>>> run ./util/dev update_lints
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
