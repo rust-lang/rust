@@ -35,6 +35,8 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
+/// Warning: do not use this function if you expect to start interpreting the given `Mir`.
+/// The `EvalContext` is only meant to be used to query values from constants and statics.
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
@@ -46,6 +48,8 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     mk_eval_cx_inner(tcx, instance, mir, span, param_env)
 }
 
+/// This is just a helper function to reduce code duplication between `mk_borrowck_eval_cx` and
+/// `mk_eval_cx`. Do not call this function directly.
 fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
@@ -54,8 +58,9 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    // insert a stack frame so any queries have the correct substs
-    // cannot use `push_stack_frame`; if we do `const_prop` explodes
+    // Insert a stack frame so any queries have the correct substs.
+    // We also avoid all the extra work performed by push_stack_frame,
+    // like initializing local variables
     ecx.stack.push(interpret::Frame {
         block: mir::START_BLOCK,
         locals: IndexVec::new(),
@@ -70,6 +75,9 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
     Ok(ecx)
 }
 
+/// Warning: do not use this function if you expect to start interpreting the given `Mir`.
+/// The `EvalContext` is only meant to be used to do field and index projections into constants for
+/// `simd_shuffle` and const patterns in match arms.
 fn mk_eval_cx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
