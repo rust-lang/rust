@@ -1,0 +1,10 @@
+error: unterminated raw string
+  --> $DIR/raw_string.rs:2:13
+   |
+LL |     let x = r##"lol"#;
+   |             ^ unterminated raw string
+   |
+   = note: this raw string should be terminated with `"##`
+
+error: aborting due to previous error
+

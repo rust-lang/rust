@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `elf` in this scope
-  --> $DIR/E0425.rs:13:9
+  --> $DIR/E0425.rs:3:9
    |
 LL |         elf; //~ ERROR E0425
    |         ^^^ not found in this scope

@@ -1,0 +1,11 @@
+error: expected `{`, found `}`
+  --> $DIR/if-without-block.rs:7:1
+   |
+LL |     if 5 == {
+   |     -- this `if` statement has a condition, but no block
+...
+LL | }
+   | ^ expected `{`
+
+error: aborting due to previous error
+

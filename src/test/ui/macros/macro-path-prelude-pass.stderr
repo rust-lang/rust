@@ -1,0 +1,8 @@
+warning: the feature `extern_prelude` has been stable since 1.30.0 and no longer requires an attribute to enable
+  --> $DIR/macro-path-prelude-pass.rs:3:12
+   |
+LL | #![feature(extern_prelude)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: #[warn(stable_features)] on by default
+

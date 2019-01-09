@@ -1,0 +1,12 @@
+error[E0580]: main function has wrong type
+  --> $DIR/main-wrong-type.rs:6:1
+   |
+LL | fn main(foo: S) {
+   | ^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected type `fn()`
+              found type `fn(S)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0580`.

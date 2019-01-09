@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::result::Result::{Ok, Err};
 
 #[test]
@@ -221,121 +211,343 @@ fn test_chunks_mut_zip() {
 }
 
 #[test]
-fn test_exact_chunks_count() {
+fn test_chunks_exact_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks(3);
+    let c = v.chunks_exact(3);
     assert_eq!(c.count(), 2);
 
     let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks(2);
+    let c2 = v2.chunks_exact(2);
     assert_eq!(c2.count(), 2);
 
     let v3: &[i32] = &[];
-    let c3 = v3.exact_chunks(2);
+    let c3 = v3.chunks_exact(2);
     assert_eq!(c3.count(), 0);
 }
 
 #[test]
-fn test_exact_chunks_nth() {
+fn test_chunks_exact_nth() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let mut c = v.exact_chunks(2);
+    let mut c = v.chunks_exact(2);
     assert_eq!(c.nth(1).unwrap(), &[2, 3]);
     assert_eq!(c.next().unwrap(), &[4, 5]);
 
     let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
-    let mut c2 = v2.exact_chunks(3);
+    let mut c2 = v2.chunks_exact(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
 }
 
 #[test]
-fn test_exact_chunks_last() {
+fn test_chunks_exact_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks(2);
+    let c = v.chunks_exact(2);
     assert_eq!(c.last().unwrap(), &[4, 5]);
 
     let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks(2);
+    let c2 = v2.chunks_exact(2);
     assert_eq!(c2.last().unwrap(), &[2, 3]);
 }
 
 #[test]
-fn test_exact_chunks_remainder() {
+fn test_chunks_exact_remainder() {
     let v: &[i32] = &[0, 1, 2, 3, 4];
-    let c = v.exact_chunks(2);
+    let c = v.chunks_exact(2);
     assert_eq!(c.remainder(), &[4]);
 }
 
 #[test]
-fn test_exact_chunks_zip() {
+fn test_chunks_exact_zip() {
     let v1: &[i32] = &[0, 1, 2, 3, 4];
     let v2: &[i32] = &[6, 7, 8, 9, 10];
 
-    let res = v1.exact_chunks(2)
-        .zip(v2.exact_chunks(2))
+    let res = v1.chunks_exact(2)
+        .zip(v2.chunks_exact(2))
         .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
         .collect::<Vec<_>>();
     assert_eq!(res, vec![14, 22]);
 }
 
 #[test]
-fn test_exact_chunks_mut_count() {
+fn test_chunks_exact_mut_count() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks_mut(3);
+    let c = v.chunks_exact_mut(3);
     assert_eq!(c.count(), 2);
 
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks_mut(2);
+    let c2 = v2.chunks_exact_mut(2);
     assert_eq!(c2.count(), 2);
 
     let v3: &mut [i32] = &mut [];
-    let c3 = v3.exact_chunks_mut(2);
+    let c3 = v3.chunks_exact_mut(2);
     assert_eq!(c3.count(), 0);
 }
 
 #[test]
-fn test_exact_chunks_mut_nth() {
+fn test_chunks_exact_mut_nth() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let mut c = v.exact_chunks_mut(2);
+    let mut c = v.chunks_exact_mut(2);
     assert_eq!(c.nth(1).unwrap(), &[2, 3]);
     assert_eq!(c.next().unwrap(), &[4, 5]);
 
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
-    let mut c2 = v2.exact_chunks_mut(3);
+    let mut c2 = v2.chunks_exact_mut(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
 }
 
 #[test]
-fn test_exact_chunks_mut_last() {
+fn test_chunks_exact_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks_mut(2);
+    let c = v.chunks_exact_mut(2);
     assert_eq!(c.last().unwrap(), &[4, 5]);
 
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks_mut(2);
+    let c2 = v2.chunks_exact_mut(2);
     assert_eq!(c2.last().unwrap(), &[2, 3]);
 }
 
 #[test]
-fn test_exact_chunks_mut_remainder() {
+fn test_chunks_exact_mut_remainder() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c = v.exact_chunks_mut(2);
+    let c = v.chunks_exact_mut(2);
     assert_eq!(c.into_remainder(), &[4]);
 }
 
 #[test]
-fn test_exact_chunks_mut_zip() {
+fn test_chunks_exact_mut_zip() {
     let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
     let v2: &[i32] = &[6, 7, 8, 9, 10];
 
-    for (a, b) in v1.exact_chunks_mut(2).zip(v2.exact_chunks(2)) {
+    for (a, b) in v1.chunks_exact_mut(2).zip(v2.chunks_exact(2)) {
         let sum = b.iter().sum::<i32>();
         for v in a {
             *v += sum;
         }
     }
     assert_eq!(v1, [13, 14, 19, 20, 4]);
+}
+
+#[test]
+fn test_rchunks_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.rchunks(3);
+    assert_eq!(c.count(), 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.rchunks(2);
+    assert_eq!(c2.count(), 3);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.rchunks(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_rchunks_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks(2);
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.rchunks(3);
+    assert_eq!(c2.nth(1).unwrap(), &[0, 1]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_rchunks_last() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.rchunks(2);
+    assert_eq!(c.last().unwrap()[1], 1);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.rchunks(2);
+    assert_eq!(c2.last().unwrap()[0], 0);
+}
+
+#[test]
+fn test_rchunks_zip() {
+    let v1: &[i32] = &[0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let res = v1.rchunks(2)
+        .zip(v2.rchunks(2))
+        .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
+        .collect::<Vec<_>>();
+    assert_eq!(res, vec![26, 18, 6]);
+}
+
+#[test]
+fn test_rchunks_mut_count() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.rchunks_mut(3);
+    assert_eq!(c.count(), 2);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.rchunks_mut(2);
+    assert_eq!(c2.count(), 3);
+
+    let v3: &mut [i32] = &mut [];
+    let c3 = v3.rchunks_mut(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_rchunks_mut_nth() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_mut(2);
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.rchunks_mut(3);
+    assert_eq!(c2.nth(1).unwrap(), &[0, 1]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_rchunks_mut_last() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.rchunks_mut(2);
+    assert_eq!(c.last().unwrap(), &[0, 1]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.rchunks_mut(2);
+    assert_eq!(c2.last().unwrap(), &[0]);
+}
+
+#[test]
+fn test_rchunks_mut_zip() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    for (a, b) in v1.rchunks_mut(2).zip(v2.rchunks(2)) {
+        let sum = b.iter().sum::<i32>();
+        for v in a {
+            *v += sum;
+        }
+    }
+    assert_eq!(v1, [6, 16, 17, 22, 23]);
+}
+
+#[test]
+fn test_rchunks_exact_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.rchunks_exact(3);
+    assert_eq!(c.count(), 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.rchunks_exact(2);
+    assert_eq!(c2.count(), 2);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.rchunks_exact(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_rchunks_exact_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_exact(2);
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.rchunks_exact(3);
+    assert_eq!(c2.nth(1).unwrap(), &[1, 2, 3]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_rchunks_exact_last() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.rchunks_exact(2);
+    assert_eq!(c.last().unwrap(), &[0, 1]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.rchunks_exact(2);
+    assert_eq!(c2.last().unwrap(), &[1, 2]);
+}
+
+#[test]
+fn test_rchunks_exact_remainder() {
+    let v: &[i32] = &[0, 1, 2, 3, 4];
+    let c = v.rchunks_exact(2);
+    assert_eq!(c.remainder(), &[0]);
+}
+
+#[test]
+fn test_rchunks_exact_zip() {
+    let v1: &[i32] = &[0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let res = v1.rchunks_exact(2)
+        .zip(v2.rchunks_exact(2))
+        .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
+        .collect::<Vec<_>>();
+    assert_eq!(res, vec![26, 18]);
+}
+
+#[test]
+fn test_rchunks_exact_mut_count() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.rchunks_exact_mut(3);
+    assert_eq!(c.count(), 2);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.rchunks_exact_mut(2);
+    assert_eq!(c2.count(), 2);
+
+    let v3: &mut [i32] = &mut [];
+    let c3 = v3.rchunks_exact_mut(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_rchunks_exact_mut_nth() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_exact_mut(2);
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.rchunks_exact_mut(3);
+    assert_eq!(c2.nth(1).unwrap(), &[1, 2, 3]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_rchunks_exact_mut_last() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.rchunks_exact_mut(2);
+    assert_eq!(c.last().unwrap(), &[0, 1]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.rchunks_exact_mut(2);
+    assert_eq!(c2.last().unwrap(), &[1, 2]);
+}
+
+#[test]
+fn test_rchunks_exact_mut_remainder() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c = v.rchunks_exact_mut(2);
+    assert_eq!(c.into_remainder(), &[0]);
+}
+
+#[test]
+fn test_rchunks_exact_mut_zip() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    for (a, b) in v1.rchunks_exact_mut(2).zip(v2.rchunks_exact(2)) {
+        let sum = b.iter().sum::<i32>();
+        for v in a {
+            *v += sum;
+        }
+    }
+    assert_eq!(v1, [0, 16, 17, 22, 23]);
 }
 
 #[test]
@@ -388,6 +600,132 @@ fn test_windows_zip() {
         .collect::<Vec<_>>();
 
     assert_eq!(res, [14, 18, 22, 26]);
+}
+
+#[test]
+#[allow(const_err)]
+fn test_iter_ref_consistency() {
+    use std::fmt::Debug;
+
+    fn test<T : Copy + Debug + PartialEq>(x : T) {
+        let v : &[T] = &[x, x, x];
+        let v_ptrs : [*const T; 3] = match v {
+            [ref v1, ref v2, ref v3] => [v1 as *const _, v2 as *const _, v3 as *const _],
+            _ => unreachable!()
+        };
+        let len = v.len();
+
+        // nth(i)
+        for i in 0..len {
+            assert_eq!(&v[i] as *const _, v_ptrs[i]); // check the v_ptrs array, just to be sure
+            let nth = v.iter().nth(i).unwrap();
+            assert_eq!(nth as *const _, v_ptrs[i]);
+        }
+        assert_eq!(v.iter().nth(len), None, "nth(len) should return None");
+
+        // stepping through with nth(0)
+        {
+            let mut it = v.iter();
+            for i in 0..len {
+                let next = it.nth(0).unwrap();
+                assert_eq!(next as *const _, v_ptrs[i]);
+            }
+            assert_eq!(it.nth(0), None);
+        }
+
+        // next()
+        {
+            let mut it = v.iter();
+            for i in 0..len {
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let next = it.next().unwrap();
+                assert_eq!(next as *const _, v_ptrs[i]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next(), None, "The final call to next() should return None");
+        }
+
+        // next_back()
+        {
+            let mut it = v.iter();
+            for i in 0..len {
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let prev = it.next_back().unwrap();
+                assert_eq!(prev as *const _, v_ptrs[remaining-1]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next_back(), None, "The final call to next_back() should return None");
+        }
+    }
+
+    fn test_mut<T : Copy + Debug + PartialEq>(x : T) {
+        let v : &mut [T] = &mut [x, x, x];
+        let v_ptrs : [*mut T; 3] = match v {
+            [ref v1, ref v2, ref v3] =>
+              [v1 as *const _ as *mut _, v2 as *const _ as *mut _, v3 as *const _ as *mut _],
+            _ => unreachable!()
+        };
+        let len = v.len();
+
+        // nth(i)
+        for i in 0..len {
+            assert_eq!(&mut v[i] as *mut _, v_ptrs[i]); // check the v_ptrs array, just to be sure
+            let nth = v.iter_mut().nth(i).unwrap();
+            assert_eq!(nth as *mut _, v_ptrs[i]);
+        }
+        assert_eq!(v.iter().nth(len), None, "nth(len) should return None");
+
+        // stepping through with nth(0)
+        {
+            let mut it = v.iter();
+            for i in 0..len {
+                let next = it.nth(0).unwrap();
+                assert_eq!(next as *const _, v_ptrs[i]);
+            }
+            assert_eq!(it.nth(0), None);
+        }
+
+        // next()
+        {
+            let mut it = v.iter_mut();
+            for i in 0..len {
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let next = it.next().unwrap();
+                assert_eq!(next as *mut _, v_ptrs[i]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next(), None, "The final call to next() should return None");
+        }
+
+        // next_back()
+        {
+            let mut it = v.iter_mut();
+            for i in 0..len {
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let prev = it.next_back().unwrap();
+                assert_eq!(prev as *mut _, v_ptrs[remaining-1]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next_back(), None, "The final call to next_back() should return None");
+        }
+    }
+
+    // Make sure iterators and slice patterns yield consistent addresses for various types,
+    // including ZSTs.
+    test(0u32);
+    test(());
+    test([0u32; 0]); // ZST with alignment > 0
+    test_mut(0u32);
+    test_mut(());
+    test_mut([0u32; 0]); // ZST with alignment > 0
 }
 
 // The current implementation of SliceIndex fails to handle methods
@@ -676,11 +1014,11 @@ fn test_rotate_right() {
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{Rng, XorShiftRng};
+    use rand::{FromEntropy, Rng, rngs::SmallRng, seq::SliceRandom};
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = XorShiftRng::new_unseeded();
+    let mut rng = SmallRng::from_entropy();
 
     for len in (2..25).chain(500..510) {
         let v = &mut v[0..len];
@@ -725,7 +1063,7 @@ fn sort_unstable() {
     for i in 0..v.len() {
         v[i] = i as i32;
     }
-    v.sort_unstable_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
+    v.sort_unstable_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
     v.sort_unstable();
     for i in 0..v.len() {
         assert_eq!(v[i], i as i32);
@@ -859,4 +1197,123 @@ fn test_align_to_non_trivial() {
     let (prefix, aligned, suffix) = unsafe { data.align_to::<U64U64U32>() };
     assert_eq!(aligned.len(), 4);
     assert_eq!(prefix.len() + suffix.len(), 2);
+}
+
+#[test]
+fn test_align_to_empty_mid() {
+    use core::mem;
+
+    // Make sure that we do not create empty unaligned slices for the mid part, even when the
+    // overall slice is too short to contain an aligned address.
+    let bytes = [1, 2, 3, 4, 5, 6, 7];
+    type Chunk = u32;
+    for offset in 0..4 {
+        let (_, mid, _) = unsafe { bytes[offset..offset+1].align_to::<Chunk>() };
+        assert_eq!(mid.as_ptr() as usize % mem::align_of::<Chunk>(), 0);
+    }
+}
+
+#[test]
+fn test_slice_partition_dedup_by() {
+    let mut slice: [i32; 9] = [1, -1, 2, 3, 1, -5, 5, -2, 2];
+
+    let (dedup, duplicates) = slice.partition_dedup_by(|a, b| a.abs() == b.abs());
+
+    assert_eq!(dedup, [1, 2, 3, 1, -5, -2]);
+    assert_eq!(duplicates, [5, -1, 2]);
+}
+
+#[test]
+fn test_slice_partition_dedup_empty() {
+    let mut slice: [i32; 0] = [];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, []);
+    assert_eq!(duplicates, []);
+}
+
+#[test]
+fn test_slice_partition_dedup_one() {
+    let mut slice = [12];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [12]);
+    assert_eq!(duplicates, []);
+}
+
+#[test]
+fn test_slice_partition_dedup_multiple_ident() {
+    let mut slice = [12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [12, 11]);
+    assert_eq!(duplicates, [12, 12, 12, 12, 11, 11, 11, 11, 11]);
+}
+
+#[test]
+fn test_slice_partition_dedup_partialeq() {
+    #[derive(Debug)]
+    struct Foo(i32, i32);
+
+    impl PartialEq for Foo {
+        fn eq(&self, other: &Foo) -> bool {
+            self.0 == other.0
+        }
+    }
+
+    let mut slice = [Foo(0, 1), Foo(0, 5), Foo(1, 7), Foo(1, 9)];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [Foo(0, 1), Foo(1, 7)]);
+    assert_eq!(duplicates, [Foo(0, 5), Foo(1, 9)]);
+}
+
+#[test]
+fn test_copy_within() {
+    // Start to end, with a RangeTo.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(..3, 10);
+    assert_eq!(&bytes, b"Hello, WorHel");
+
+    // End to start, with a RangeFrom.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(10.., 0);
+    assert_eq!(&bytes, b"ld!lo, World!");
+
+    // Overlapping, with a RangeInclusive.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(0..=11, 1);
+    assert_eq!(&bytes, b"HHello, World");
+
+    // Whole slice, with a RangeFull.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(.., 0);
+    assert_eq!(&bytes, b"Hello, World!");
+}
+
+#[test]
+#[should_panic(expected = "src is out of bounds")]
+fn test_copy_within_panics_src_too_long() {
+    let mut bytes = *b"Hello, World!";
+    // The length is only 13, so 14 is out of bounds.
+    bytes.copy_within(10..14, 0);
+}
+
+#[test]
+#[should_panic(expected = "dest is out of bounds")]
+fn test_copy_within_panics_dest_too_long() {
+    let mut bytes = *b"Hello, World!";
+    // The length is only 13, so a slice of length 4 starting at index 10 is out of bounds.
+    bytes.copy_within(0..4, 10);
+}
+#[test]
+#[should_panic(expected = "src end is before src start")]
+fn test_copy_within_panics_src_inverted() {
+    let mut bytes = *b"Hello, World!";
+    // 2 is greater than 1, so this range is invalid.
+    bytes.copy_within(2..1, 0);
 }

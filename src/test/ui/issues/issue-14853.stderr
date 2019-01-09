@@ -1,0 +1,12 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-14853.rs:12:5
+   |
+LL |     fn yay<T: Debug>(_: Option<Self>, thing: &[T]);
+   |     ----------------------------------------------- definition of `yay` from trait
+...
+LL |     fn yay<T: Str>(_:Option<X>, thing: &[T]) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0276`.

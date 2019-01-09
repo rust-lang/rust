@@ -1,0 +1,8 @@
+error: unexpected `self` argument in function
+  --> $DIR/bare-fn.rs:1:21
+   |
+LL | fn b(foo: u32, &mut self) { }
+   |                     ^^^^ `self` is only valid as the first argument of an associated function
+
+error: aborting due to previous error
+

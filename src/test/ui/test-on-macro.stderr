@@ -1,0 +1,6 @@
+warning: #[test] attribute should not be used on macros. Use #[cfg(test)] instead.
+  --> $DIR/test-on-macro.rs:11:1
+   |
+LL | foo!();
+   | ^^^^^^^
+

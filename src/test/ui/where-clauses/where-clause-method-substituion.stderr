@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `X: Foo<X>` is not satisfied
+  --> $DIR/where-clause-method-substituion.rs:20:7
+   |
+LL |     1.method::<X>();
+   |       ^^^^^^ the trait `Foo<X>` is not implemented for `X`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

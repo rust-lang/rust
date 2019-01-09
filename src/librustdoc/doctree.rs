@@ -1,23 +1,13 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module is used to store stuff from Rust's AST in a more convenient
 //! manner (and with prettier names) before cleaning.
 pub use self::StructType::*;
-pub use self::TypeBound::*;
 
 use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
+use syntax::ext::base::MacroKind;
 use syntax::ptr::P;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax_pos::{self, Span};
 
 use rustc::hir;
@@ -47,6 +37,7 @@ pub struct Module {
     pub impls: Vec<Impl>,
     pub foreigns: Vec<hir::ForeignMod>,
     pub macros: Vec<Macro>,
+    pub proc_macros: Vec<ProcMacro>,
     pub is_crate: bool,
 }
 
@@ -76,6 +67,7 @@ impl Module {
             impls      : Vec::new(),
             foreigns   : Vec::new(),
             macros     : Vec::new(),
+            proc_macros: Vec::new(),
             is_crate   : false,
         }
     }
@@ -89,11 +81,6 @@ pub enum StructType {
     Tuple,
     /// A unit struct
     Unit,
-}
-
-pub enum TypeBound {
-    RegionBound,
-    TraitBound(hir::TraitRef)
 }
 
 pub struct Struct {
@@ -268,6 +255,17 @@ pub struct Import {
     pub path: hir::Path,
     pub glob: bool,
     pub whence: Span,
+}
+
+pub struct ProcMacro {
+    pub name: Name,
+    pub id: NodeId,
+    pub kind: MacroKind,
+    pub helpers: Vec<Name>,
+    pub attrs: hir::HirVec<ast::Attribute>,
+    pub whence: Span,
+    pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
 }
 
 pub fn struct_type_from_def(vdata: &hir::VariantData) -> StructType {

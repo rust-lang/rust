@@ -1,0 +1,34 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/unsized-struct.rs:6:36
+   |
+LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
+   |                                    ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where T: std::marker::Sized` bound
+note: required by `Foo`
+  --> $DIR/unsized-struct.rs:4:1
+   |
+LL | struct Foo<T> { data: T }
+   | ^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/unsized-struct.rs:13:24
+   |
+LL | fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
+   |                        ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Bar<T>`, the trait `std::marker::Sized` is not implemented for `T`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where T: std::marker::Sized` bound
+   = note: required because it appears within the type `Bar<T>`
+note: required by `is_sized`
+  --> $DIR/unsized-struct.rs:1:1
+   |
+LL | fn is_sized<T:Sized>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

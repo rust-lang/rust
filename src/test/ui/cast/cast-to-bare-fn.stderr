@@ -1,0 +1,19 @@
+error[E0605]: non-primitive cast: `fn(isize) {foo}` as `extern "C" fn() -> isize`
+  --> $DIR/cast-to-bare-fn.rs:5:13
+   |
+LL |     let x = foo as extern "C" fn() -> isize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error[E0605]: non-primitive cast: `u64` as `fn(isize) -> (isize, isize)`
+  --> $DIR/cast-to-bare-fn.rs:7:13
+   |
+LL |     let y = v as extern "Rust" fn(isize) -> (isize, isize);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

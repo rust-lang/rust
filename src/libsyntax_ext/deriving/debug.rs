@@ -1,16 +1,8 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
+
+use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast::{self, Ident};
 use syntax::ast::{Expr, MetaItem};
@@ -139,7 +131,7 @@ fn stmt_let_undescore(cx: &mut ExtCtxt, sp: Span, expr: P<ast::Expr>) -> ast::St
         init: Some(expr),
         id: ast::DUMMY_NODE_ID,
         span: sp,
-        attrs: ast::ThinVec::new(),
+        attrs: ThinVec::new(),
     });
     ast::Stmt {
         id: ast::DUMMY_NODE_ID,

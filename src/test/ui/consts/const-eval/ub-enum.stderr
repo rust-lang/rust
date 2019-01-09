@@ -1,0 +1,59 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:14:1
+   |
+LL | const BAD_ENUM: Enum = unsafe { TransmuteEnum { in1: &1 }.out1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected a valid enum discriminant
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:34:1
+   |
+LL | const BAD_ENUM2: Enum2 = unsafe { TransmuteEnum2 { in1: 0 }.out1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected a valid enum discriminant
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:36:1
+   |
+LL | const BAD_ENUM3: Enum2 = unsafe { TransmuteEnum2 { in2: &0 }.out1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected a valid enum discriminant
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:38:1
+   |
+LL | const BAD_ENUM4: Wrap<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out2 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected something that cannot possibly fail to be in the range 2..=2
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:42:1
+   |
+LL | const BAD_ENUM_UNDEF : Enum2 = unsafe { TransmuteEnum2 { in3: () }.out1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a valid enum discriminant
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:46:1
+   |
+LL | const BAD_ENUM_PTR: Option<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out3 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected a valid enum discriminant
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:56:1
+   |
+LL | const BAD_ENUM_CHAR: Option<(char, char)> = Some(('x', unsafe { TransmuteChar { a: !0 }.b }));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 4294967295 at .<downcast-variant(Some)>.0.1, but expected something less or equal to 1114111
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

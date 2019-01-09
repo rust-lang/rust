@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 use rustc::ty::TyCtxt;
@@ -17,9 +7,9 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     let mut collector = Collector {
         args: Vec::new(),
     };
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
+    tcx.hir().krate().visit_all_item_likes(&mut collector);
 
-    for attr in tcx.hir.krate().attrs.iter() {
+    for attr in tcx.hir().krate().attrs.iter() {
         if attr.path == "link_args" {
             if let Some(linkarg) = attr.value_str() {
                 collector.add_link_args(&linkarg.as_str());

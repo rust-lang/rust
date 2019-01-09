@@ -1,0 +1,13 @@
+error: expected expression, found reserved identifier `_`
+  --> $DIR/underscore.rs:8:9
+   |
+LL |         _
+   |         ^ expected expression
+   | 
+  ::: $DIR/main.rs:5:5
+   |
+LL |     underscore!();
+   |     -------------- in this macro invocation
+
+error: aborting due to previous error
+

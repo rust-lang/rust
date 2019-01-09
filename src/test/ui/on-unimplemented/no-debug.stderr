@@ -1,5 +1,5 @@
 error[E0277]: `Foo` doesn't implement `std::fmt::Debug`
-  --> $DIR/no-debug.rs:20:27
+  --> $DIR/no-debug.rs:10:27
    |
 LL |     println!("{:?} {:?}", Foo, Bar);
    |                           ^^^ `Foo` cannot be formatted using `{:?}`
@@ -9,7 +9,7 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    = note: required by `std::fmt::Debug::fmt`
 
 error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Debug`
-  --> $DIR/no-debug.rs:20:32
+  --> $DIR/no-debug.rs:10:32
    |
 LL |     println!("{:?} {:?}", Foo, Bar);
    |                                ^^^ `no_debug::Bar` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
@@ -18,7 +18,7 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    = note: required by `std::fmt::Debug::fmt`
 
 error[E0277]: `Foo` doesn't implement `std::fmt::Display`
-  --> $DIR/no-debug.rs:21:23
+  --> $DIR/no-debug.rs:11:23
    |
 LL |     println!("{} {}", Foo, Bar);
    |                       ^^^ `Foo` cannot be formatted with the default formatter
@@ -28,7 +28,7 @@ LL |     println!("{} {}", Foo, Bar);
    = note: required by `std::fmt::Display::fmt`
 
 error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Display`
-  --> $DIR/no-debug.rs:21:28
+  --> $DIR/no-debug.rs:11:28
    |
 LL |     println!("{} {}", Foo, Bar);
    |                            ^^^ `no_debug::Bar` cannot be formatted with the default formatter

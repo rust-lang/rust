@@ -1,0 +1,17 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/builtin-superkinds-self-type.rs:10:16
+   |
+LL | impl <T: Sync> Foo for T { }
+   |       --       ^^^
+   |       |
+   |       help: consider adding an explicit lifetime bound `T: 'static`...
+   |
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/builtin-superkinds-self-type.rs:10:16
+   |
+LL | impl <T: Sync> Foo for T { }
+   |                ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0310`.

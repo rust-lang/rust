@@ -1,0 +1,21 @@
+error: type parameters with a default must be trailing
+  --> $DIR/generic-non-trailing-defaults.rs:3:12
+   |
+LL | struct Vec<A = Heap, T>(A, T);
+   |            ^
+
+error: type parameters with a default must be trailing
+  --> $DIR/generic-non-trailing-defaults.rs:6:15
+   |
+LL | struct Foo<A, B = Vec<C>, C>(A, B, C);
+   |               ^
+
+error[E0128]: type parameters with a default cannot use forward declared identifiers
+  --> $DIR/generic-non-trailing-defaults.rs:6:23
+   |
+LL | struct Foo<A, B = Vec<C>, C>(A, B, C);
+   |                       ^ defaulted type parameters cannot be forward declared
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0128`.

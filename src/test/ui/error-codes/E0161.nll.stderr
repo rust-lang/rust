@@ -1,0 +1,9 @@
+error[E0161]: cannot move a value of type [i32]: the size of [i32] cannot be statically determined
+  --> $DIR/E0161.rs:22:9
+   |
+LL |     box *x;
+   |         ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0161`.

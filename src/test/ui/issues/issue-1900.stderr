@@ -1,0 +1,9 @@
+error[E0131]: `main` function is not allowed to have generic parameters
+  --> $DIR/issue-1900.rs:1:8
+   |
+LL | fn main<T>() { }
+   |        ^^^ `main` cannot have generic parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0131`.

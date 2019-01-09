@@ -1,0 +1,15 @@
+error[E0053]: method `len` has an incompatible type for trait
+  --> $DIR/unsafe-trait-impl.rs:8:5
+   |
+LL |     unsafe fn len(&self) -> u32;
+   |     ---------------------------- type in trait
+...
+LL |     fn len(&self) -> u32 { *self }
+   |     ^^^^^^^^^^^^^^^^^^^^ expected unsafe fn, found normal fn
+   |
+   = note: expected type `unsafe fn(&u32) -> u32`
+              found type `fn(&u32) -> u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

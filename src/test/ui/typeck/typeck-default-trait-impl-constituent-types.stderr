@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `MyS2: MyTrait` is not satisfied
+  --> $DIR/typeck-default-trait-impl-constituent-types.rs:20:5
+   |
+LL |     is_mytrait::<MyS2>();
+   |     ^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `MyS2`
+   |
+   = help: the following implementations were found:
+             <MyS2 as MyTrait>
+note: required by `is_mytrait`
+  --> $DIR/typeck-default-trait-impl-constituent-types.rs:15:1
+   |
+LL | fn is_mytrait<T: MyTrait>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

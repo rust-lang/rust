@@ -1,19 +1,9 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cell::UnsafeCell;
 use mem;
 use sync::atomic::{AtomicU32, Ordering};
 use sys::cloudabi::abi;
 use sys::mutex::{self, Mutex};
-use sys::time::dur2intervals;
+use sys::time::checked_dur2intervals;
 use time::Duration;
 
 extern "C" {
@@ -28,11 +18,13 @@ pub struct Condvar {
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
+const NEW: Condvar = Condvar {
+    condvar: UnsafeCell::new(AtomicU32::new(abi::CONDVAR_HAS_NO_WAITERS.0)),
+};
+
 impl Condvar {
     pub const fn new() -> Condvar {
-        Condvar {
-            condvar: UnsafeCell::new(AtomicU32::new(abi::CONDVAR_HAS_NO_WAITERS.0)),
-        }
+        NEW
     }
 
     pub unsafe fn init(&mut self) {}
@@ -112,6 +104,8 @@ impl Condvar {
 
         // Call into the kernel to wait on the condition variable.
         let condvar = self.condvar.get();
+        let timeout = checked_dur2intervals(&dur)
+            .expect("overflow converting duration to nanoseconds");
         let subscriptions = [
             abi::subscription {
                 type_: abi::eventtype::CONDVAR,
@@ -130,7 +124,7 @@ impl Condvar {
                 union: abi::subscription_union {
                     clock: abi::subscription_clock {
                         clock_id: abi::clockid::MONOTONIC,
-                        timeout: dur2intervals(&dur),
+                        timeout,
                         ..mem::zeroed()
                     },
                 },

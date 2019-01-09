@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The AST pointer
 //!
 //! Provides `P<T>`, a frozen owned smart pointer, as a replacement for `@T` in
@@ -16,11 +6,11 @@
 //! # Motivations and benefits
 //!
 //! * **Identity**: sharing AST nodes is problematic for the various analysis
-//!   passes (e.g. one may be able to bypass the borrow checker with a shared
+//!   passes (e.g., one may be able to bypass the borrow checker with a shared
 //!   `ExprKind::AddrOf` node taking a mutable borrow). The only reason `@T` in the
 //!   AST hasn't caused issues is because of inefficient folding passes which
 //!   would always deduplicate any such shared nodes. Even if the AST were to
-//!   switch to an arena, this would still hold, i.e. it couldn't use `&'a T`,
+//!   switch to an arena, this would still hold, i.e., it couldn't use `&'a T`,
 //!   but rather a wrapper like `P<'a, T>`.
 //!
 //! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>`
@@ -34,11 +24,11 @@
 //! * **Maintainability**: `P<T>` provides a fixed interface - `Deref`,
 //!   `and_then` and `map` - which can remain fully functional even if the
 //!   implementation changes (using a special thread-local heap, for example).
-//!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
+//!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Display, Debug};
 use std::iter::FromIterator;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::{mem, ptr, slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -72,7 +62,7 @@ impl<T: 'static> P<T> {
         *self.ptr
     }
 
-    /// Transform the inner value, consuming `self` and producing a new `P<T>`.
+    /// Produce a new `P<T>` from `self` without reallocating.
     pub fn map<F>(mut self, f: F) -> P<T> where
         F: FnOnce(T) -> T,
     {
@@ -88,8 +78,30 @@ impl<T: 'static> P<T> {
             ptr::write(p, f(ptr::read(p)));
 
             // Recreate self from the raw pointer.
-            P {
-                ptr: Box::from_raw(p)
+            P { ptr: Box::from_raw(p) }
+        }
+    }
+
+    /// Optionally produce a new `P<T>` from `self` without reallocating.
+    pub fn filter_map<F>(mut self, f: F) -> Option<P<T>> where
+        F: FnOnce(T) -> Option<T>,
+    {
+        let p: *mut T = &mut *self.ptr;
+
+        // Leak self in case of panic.
+        // FIXME(eddyb) Use some sort of "free guard" that
+        // only deallocates, without dropping the pointee,
+        // in case the call the `f` below ends in a panic.
+        mem::forget(self);
+
+        unsafe {
+            if let Some(v) = f(ptr::read(p)) {
+                ptr::write(p, v);
+
+                // Recreate self from the raw pointer.
+                Some(P { ptr: Box::from_raw(p) })
+            } else {
+                None
             }
         }
     }
@@ -100,6 +112,12 @@ impl<T: ?Sized> Deref for P<T> {
 
     fn deref(&self) -> &T {
         &self.ptr
+    }
+}
+
+impl<T: ?Sized> DerefMut for P<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.ptr
     }
 }
 

@@ -171,7 +171,7 @@ compiles, while only showing the parts that are relevant to that part of your
 explanation.
 
 The `#`-hiding of lines can be prevented by using two consecutive hashes
-`##`. This only needs to be done with with the first `#` which would've
+`##`. This only needs to be done with the first `#` which would've
 otherwise caused hiding. If we have a string literal like the following,
 which has a line that starts with a `#`:
 
@@ -322,6 +322,22 @@ environment that has no network access.
 compiles, then the test will fail. However please note that code failing
 with the current Rust release may work in a future release, as new features
 are added.
+
+```text
+/// Only runs on the 2018 edition.
+///
+/// ```edition2018
+/// let result: Result<i32, ParseIntError> = try {
+///     "1".parse::<i32>()?
+///         + "2".parse::<i32>()?
+///         + "3".parse::<i32>()?
+/// };
+/// ```
+```
+
+`edition2018` tells `rustdoc` that the code sample should be compiled the 2018
+edition of Rust. Similarly, you can specify `edition2015` to compile the code
+with the 2015 edition.
 
 ## Syntax reference
 

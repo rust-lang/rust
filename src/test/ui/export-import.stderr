@@ -1,0 +1,9 @@
+error[E0603]: function `unexported` is private
+  --> $DIR/export-import.rs:1:8
+   |
+LL | use m::unexported;
+   |        ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

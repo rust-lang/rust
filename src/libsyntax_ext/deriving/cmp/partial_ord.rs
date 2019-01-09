@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub use self::OrderingOp::*;
 
 use deriving::{path_local, pathvec_std, path_std};
@@ -178,7 +168,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<
 
                 cx.expr_match(span, new, vec![eq_arm, neq_arm])
             },
-            equals_expr.clone(),
+            equals_expr,
             Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
         if self_args.len() != 2 {
             cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
@@ -227,7 +217,7 @@ fn cs_op(less: bool,
     let fold = cs_fold1(false, // need foldr
         |cx, span, subexpr, self_f, other_fs| {
             // build up a series of `partial_cmp`s from the inside
-            // out (hence foldr) to get lexical ordering, i.e. for op ==
+            // out (hence foldr) to get lexical ordering, i.e., for op ==
             // `ast::lt`
             //
             // ```

@@ -1,0 +1,4 @@
+error: monomorphising SIMD type `Simd2<X>` with a non-machine element type `X`
+
+error: aborting due to previous error
+

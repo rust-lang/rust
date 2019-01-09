@@ -1,0 +1,11 @@
+error: unexpected end of macro invocation
+  --> $DIR/issue-7970a.rs:6:5
+   |
+LL | macro_rules! one_arg_macro {
+   | -------------------------- when calling this macro
+...
+LL |     one_arg_macro!();
+   |     ^^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+
+error: aborting due to previous error
+

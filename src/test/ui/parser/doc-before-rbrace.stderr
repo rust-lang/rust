@@ -1,0 +1,11 @@
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-before-rbrace.rs:2:21
+   |
+LL |     println!("Hi"); /// hi
+   |                     ^^^^^^
+   |
+   = help: doc comments must come before what they document, maybe a comment was intended with `//`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0585`.

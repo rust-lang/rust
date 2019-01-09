@@ -1,0 +1,17 @@
+error[E0609]: no field `00` on type `Verdict`
+  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:8:30
+   |
+LL |     let _condemned = justice.00;
+   |                              ^^ help: a field with a similar name exists: `0`
+
+error[E0609]: no field `001` on type `Verdict`
+  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:10:31
+   |
+LL |     let _punishment = justice.001;
+   |                               ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

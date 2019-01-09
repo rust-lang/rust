@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
 
 set -e
 
@@ -28,10 +19,12 @@ travis_time_start
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ "$CI" != "" ]; then
-      cksum=$(find $docker_dir/$image $docker_dir/scripts -type f | \
+      hash_key=/tmp/.docker-hash-key.txt
+      find $docker_dir/$image $docker_dir/scripts -type f | \
         sort | \
-        xargs cat | \
-        sha512sum | \
+        xargs cat >> $hash_key
+      docker --version >> $hash_key
+      cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
       url="https://s3-us-west-1.amazonaws.com/$SCCACHE_BUCKET/docker/$cksum"
@@ -118,10 +111,6 @@ fi
 # we'll need `--privileged` for at least the `x86_64-gnu` builder, so this just
 # goes ahead and sets it for all builders.
 args="$args --privileged"
-
-if [ "$CI" != "" ]; then
-    args="$args --dns 8.8.8.8 --dns 8.8.4.4 --dns 1.1.1.1 --dns 1.0.0.1"
-fi
 
 exec docker \
   run \

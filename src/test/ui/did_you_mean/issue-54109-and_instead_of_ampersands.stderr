@@ -1,0 +1,58 @@
+error: expected `{`, found `and`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:4:10
+   |
+LL |     if a and b {
+   |     --   ^^^
+   |     |    |
+   |     |    expected `{`
+   |     |    help: use `&&` instead of `and` for the boolean operator
+   |     this `if` statement has a condition, but no block
+
+error: expected `{`, found `or`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:13:10
+   |
+LL |     if a or b {
+   |     --   ^^
+   |     |    |
+   |     |    expected `{`
+   |     |    help: use `||` instead of `or` for the boolean operator
+   |     this `if` statement has a condition, but no block
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `and`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:22:11
+   |
+LL |     if (a and b) {
+   |           ^^^
+   |           |
+   |           expected one of 8 possible tokens here
+   |           help: use `&&` instead of `and` for the boolean operator
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `or`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:31:11
+   |
+LL |     if (a or b) {
+   |           ^^
+   |           |
+   |           expected one of 8 possible tokens here
+   |           help: use `||` instead of `or` for the boolean operator
+
+error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `and`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:40:13
+   |
+LL |     while a and b {
+   |             ^^^
+   |             |
+   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |             help: use `&&` instead of `and` for the boolean operator
+
+error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `or`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:49:13
+   |
+LL |     while a or b {
+   |             ^^
+   |             |
+   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |             help: use `||` instead of `or` for the boolean operator
+
+error: aborting due to 6 previous errors
+

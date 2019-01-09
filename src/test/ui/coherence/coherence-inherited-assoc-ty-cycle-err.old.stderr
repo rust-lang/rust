@@ -1,0 +1,16 @@
+error[E0391]: cycle detected when processing `Trait`
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:12:1
+   |
+LL | trait Trait<T> { type Assoc; }
+   | ^^^^^^^^^^^^^^
+   |
+   = note: ...which again requires processing `Trait`, completing the cycle
+note: cycle used when coherence checking all impls of trait `Trait`
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:12:1
+   |
+LL | trait Trait<T> { type Assoc; }
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

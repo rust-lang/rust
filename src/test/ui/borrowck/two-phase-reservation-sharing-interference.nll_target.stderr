@@ -1,0 +1,15 @@
+error[E0502]: cannot borrow `vec` as mutable because it is also borrowed as immutable
+  --> $DIR/two-phase-reservation-sharing-interference.rs:36:17
+   |
+LL |         let shared = &vec;
+   |                      ---- immutable borrow occurs here
+...
+LL |         delay = &mut vec;
+   |                 ^^^^^^^^ mutable borrow occurs here
+...
+LL |         shared[0];
+   |         ------ immutable borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.

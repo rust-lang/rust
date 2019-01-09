@@ -1,0 +1,21 @@
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions.
+  --> $DIR/feature-gate-default_type_parameter_fallback.rs:3:8
+   |
+LL | fn avg<T=i32>(_: T) {}
+   |        ^
+   |
+   = note: #[deny(invalid_type_param_default)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions.
+  --> $DIR/feature-gate-default_type_parameter_fallback.rs:8:6
+   |
+LL | impl<T=i32> S<T> {}
+   |      ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+
+error: aborting due to 2 previous errors
+

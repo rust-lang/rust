@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Rather convoluted setup where we infer a relationship between two
 // free regions in the closure signature (`'a` and `'b`) on the basis
 // of a relationship between two bound regions (`'x` and `'y`).
@@ -51,10 +41,10 @@ fn demand_y<'x, 'y>(_cell_x: &Cell<&'x u32>, _cell_y: &Cell<&'y u32>, _y: &'y u3
 #[rustc_regions]
 fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-        //~^ ERROR lifetime mismatch
 
         // Only works if 'x: 'y:
-        demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
+        demand_y(x, y, x.get())
+        //~^ ERROR unsatisfied lifetime constraints
     });
 }
 

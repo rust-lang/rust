@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Terminfo database interface.
 
 use std::collections::HashMap;
@@ -60,8 +50,8 @@ impl error::Error for Error {
 
     fn cause(&self) -> Option<&dyn error::Error> {
         use self::Error::*;
-        match self {
-            &IoError(ref e) => Some(e),
+        match *self {
+            IoError(ref e) => Some(e),
             _ => None,
         }
     }
@@ -70,10 +60,10 @@ impl error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Error::*;
-        match self {
-            &TermUnset => Ok(()),
-            &MalformedTerminfo(ref e) => e.fmt(f),
-            &IoError(ref e) => e.fmt(f),
+        match *self {
+            TermUnset => Ok(()),
+            MalformedTerminfo(ref e) => e.fmt(f),
+            IoError(ref e) => e.fmt(f),
         }
     }
 }
@@ -109,9 +99,9 @@ impl TermInfo {
     }
     // Keep the metadata small
     fn _from_path(path: &Path) -> Result<TermInfo, Error> {
-        let file = File::open(path).map_err(|e| Error::IoError(e))?;
+        let file = File::open(path).map_err(Error::IoError)?;
         let mut reader = BufReader::new(file);
-        parse(&mut reader, false).map_err(|e| Error::MalformedTerminfo(e))
+        parse(&mut reader, false).map_err(Error::MalformedTerminfo)
     }
 }
 

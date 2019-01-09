@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use mem;
 use sys::cloudabi::abi;
 use time::Duration;
@@ -19,11 +9,10 @@ pub struct Instant {
     t: abi::timestamp,
 }
 
-pub fn dur2intervals(dur: &Duration) -> abi::timestamp {
+pub fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
     dur.as_secs()
-        .checked_mul(NSEC_PER_SEC)
-        .and_then(|nanos| nanos.checked_add(dur.subsec_nanos() as abi::timestamp))
-        .expect("overflow converting duration to nanoseconds")
+        .checked_mul(NSEC_PER_SEC)?
+        .checked_add(dur.subsec_nanos() as abi::timestamp)
 }
 
 impl Instant {
@@ -32,8 +21,16 @@ impl Instant {
             let mut t = mem::uninitialized();
             let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, &mut t);
             assert_eq!(ret, abi::errno::SUCCESS);
-            Instant { t: t }
+            Instant { t }
         }
+    }
+
+    pub fn actually_monotonic() -> bool {
+        true
+    }
+
+    pub const fn zero() -> Instant {
+        Instant { t: 0 }
     }
 
     pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -43,20 +40,16 @@ impl Instant {
         Duration::new(diff / NSEC_PER_SEC, (diff % NSEC_PER_SEC) as u32)
     }
 
-    pub fn add_duration(&self, other: &Duration) -> Instant {
-        Instant {
-            t: self.t
-                .checked_add(dur2intervals(other))
-                .expect("overflow when adding duration to instant"),
-        }
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+        Some(Instant {
+            t: self.t.checked_add(checked_dur2intervals(other)?)?,
+        })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> Instant {
-        Instant {
-            t: self.t
-                .checked_sub(dur2intervals(other))
-                .expect("overflow when subtracting duration from instant"),
-        }
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+        Some(Instant {
+            t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+        })
     }
 }
 
@@ -71,7 +64,7 @@ impl SystemTime {
             let mut t = mem::uninitialized();
             let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, &mut t);
             assert_eq!(ret, abi::errno::SUCCESS);
-            SystemTime { t: t }
+            SystemTime { t }
         }
     }
 
@@ -91,20 +84,16 @@ impl SystemTime {
         }
     }
 
-    pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime {
-            t: self.t
-                .checked_add(dur2intervals(other))
-                .expect("overflow when adding duration to instant"),
-        }
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+        Some(SystemTime {
+            t: self.t.checked_add(checked_dur2intervals(other)?)?,
+        })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime {
-            t: self.t
-                .checked_sub(dur2intervals(other))
-                .expect("overflow when subtracting duration from instant"),
-        }
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+        Some(SystemTime {
+            t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+        })
     }
 }
 

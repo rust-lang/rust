@@ -1,0 +1,81 @@
+error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:8:5
+   |
+LL |     test::<Cell<i32>>();
+   |     ^^^^^^^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::Cell<i32>`
+note: required by `test`
+  --> $DIR/not-sync.rs:5:1
+   |
+LL | fn test<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::cell::RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:10:5
+   |
+LL |     test::<RefCell<i32>>();
+   |     ^^^^^^^^^^^^^^^^^^^^ `std::cell::RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::RefCell<i32>`
+note: required by `test`
+  --> $DIR/not-sync.rs:5:1
+   |
+LL | fn test<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::rc::Rc<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:13:5
+   |
+LL |     test::<Rc<i32>>();
+   |     ^^^^^^^^^^^^^^^ `std::rc::Rc<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::rc::Rc<i32>`
+note: required by `test`
+  --> $DIR/not-sync.rs:5:1
+   |
+LL | fn test<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::rc::Weak<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:15:5
+   |
+LL |     test::<Weak<i32>>();
+   |     ^^^^^^^^^^^^^^^^^ `std::rc::Weak<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::rc::Weak<i32>`
+note: required by `test`
+  --> $DIR/not-sync.rs:5:1
+   |
+LL | fn test<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::sync::mpsc::Receiver<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:18:5
+   |
+LL |     test::<Receiver<i32>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Receiver<i32>`
+note: required by `test`
+  --> $DIR/not-sync.rs:5:1
+   |
+LL | fn test<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::sync::mpsc::Sender<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:20:5
+   |
+LL |     test::<Sender<i32>>();
+   |     ^^^^^^^^^^^^^^^^^^^ `std::sync::mpsc::Sender<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Sender<i32>`
+note: required by `test`
+  --> $DIR/not-sync.rs:5:1
+   |
+LL | fn test<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Miscellaneous builder routines that are not specific to building any particular
 //! kind of thing.
 
@@ -22,7 +12,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Add a new temporary value of type `ty` storing the result of
     /// evaluating `expr`.
     ///
-    /// NB: **No cleanup is scheduled for this temporary.** You should
+    /// N.B., **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
@@ -32,15 +22,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         place
     }
 
+    /// Convenience function for creating a literal operand, one
+    /// without any user type annotation.
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
-                           literal: &'tcx ty::Const<'tcx>)
+                           literal: ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,
             ty,
-            literal,
+            user_ty: None,
+            literal: self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(literal)),
         };
         Operand::Constant(constant)
     }
@@ -69,6 +62,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Constant {
                 span: source_info.span,
                 ty: self.hir.usize_ty(),
+                user_ty: None,
                 literal: self.hir.usize_literal(value),
             });
         temp
@@ -77,7 +71,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.hir.tcx();
         let ty = place.ty(&self.local_decls, tcx).to_ty(tcx);
-        if self.hir.type_moves_by_default(ty, DUMMY_SP) {
+        if !self.hir.type_is_copy_modulo_regions(ty, DUMMY_SP) {
             Operand::Move(place)
         } else {
             Operand::Copy(place)

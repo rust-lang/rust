@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `MyStruct`:
+  --> $DIR/issue-28568.rs:7:1
+   |
+LL | impl Drop for MyStruct {
+   | ---------------------- first implementation here
+...
+LL | impl Drop for MyStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyStruct`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

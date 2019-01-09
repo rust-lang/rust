@@ -1,14 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use traits::query::Fallible;
 use ty::{ParamEnvAnd, Ty, TyCtxt};
 
@@ -25,12 +15,12 @@ impl<'tcx> Eq<'tcx> {
 }
 
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
-    type QueryResult = ();
+    type QueryResponse = ();
 
     fn try_fast_path(
         _tcx: TyCtxt<'_, 'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Eq<'tcx>>,
-    ) -> Option<Self::QueryResult> {
+    ) -> Option<Self::QueryResponse> {
         if key.value.a == key.value.b {
             Some(())
         } else {
@@ -41,13 +31,13 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, ()>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, ()>> {
         tcx.type_op_eq(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, ()>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, ()>> {
+        v: &'a CanonicalizedQueryResponse<'gcx, ()>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, ()>> {
         v
     }
 }

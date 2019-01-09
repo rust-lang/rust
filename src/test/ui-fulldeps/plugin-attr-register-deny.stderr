@@ -1,0 +1,26 @@
+error: unused attribute
+  --> $DIR/plugin-attr-register-deny.rs:14:5
+   |
+LL |     #[bar]
+   |     ^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/plugin-attr-register-deny.rs:6:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+  --> $DIR/plugin-attr-register-deny.rs:14:5
+   |
+LL |     #[bar]
+   |     ^^^^^^
+
+error: unused attribute
+  --> $DIR/plugin-attr-register-deny.rs:11:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: aborting due to 3 previous errors
+

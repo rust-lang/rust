@@ -1,5 +1,5 @@
 error[E0165]: irrefutable while-let pattern
-  --> $DIR/E0165.rs:15:15
+  --> $DIR/E0165.rs:5:15
    |
 LL |     while let Irrefutable(x) = irr { //~ ERROR E0165
    |               ^^^^^^^^^^^^^^ irrefutable pattern

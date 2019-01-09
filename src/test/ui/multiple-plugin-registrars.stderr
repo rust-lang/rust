@@ -1,0 +1,15 @@
+error: multiple plugin registration functions found
+   |
+note: one is here
+  --> $DIR/multiple-plugin-registrars.rs:7:1
+   |
+LL | pub fn one() {}
+   | ^^^^^^^^^^^^^^^
+note: one is here
+  --> $DIR/multiple-plugin-registrars.rs:10:1
+   |
+LL | pub fn two() {}
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

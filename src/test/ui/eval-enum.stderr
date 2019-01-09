@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/eval-enum.rs:2:15
+   |
+LL |     DivZero = 1/0,
+   |               ^^^ attempt to divide by zero
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/eval-enum.rs:5:15
+   |
+LL |     RemZero = 1%0,
+   |               ^^^ attempt to calculate the remainder with a divisor of zero
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

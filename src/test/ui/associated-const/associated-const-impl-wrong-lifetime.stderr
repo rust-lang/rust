@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/associated-const-impl-wrong-lifetime.rs:7:5
+   |
+LL |     const NAME: &'a str = "unit";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&'static str`
+              found type `&'a str`
+note: the lifetime 'a as defined on the impl at 6:6...
+  --> $DIR/associated-const-impl-wrong-lifetime.rs:6:6
+   |
+LL | impl<'a> Foo for &'a () {
+   |      ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,9 @@
+error[E0451]: field `secret_uid` of struct `foo::S` is private
+  --> $DIR/functional-struct-update-respects-privacy.rs:28:49
+   |
+LL |     let s_2 = foo::S { b: format!("ess two"), ..s_1 }; // FRU ...
+   |                                                 ^^^ field `secret_uid` is private
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0451`.

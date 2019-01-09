@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/region-unrelated.rs:19:5
+  --> $DIR/region-unrelated.rs:9:5
    |
 LL |     fn foo() where T: 'a;
    |     --------------------- definition of `foo` from trait

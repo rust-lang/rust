@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'ptr_internals': use NonNull instead and consider PhantomData<T> (if you also use #[may_dangle]), Send, and/or Sync
-  --> $DIR/issue-49983-see-issue-0.rs:14:30
+  --> $DIR/issue-49983-see-issue-0.rs:4:30
    |
 LL | #[allow(unused_imports)] use core::ptr::Unique; //~ ERROR use of unstable library feature
    |                              ^^^^^^^^^^^^^^^^^

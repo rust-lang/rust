@@ -1,0 +1,14 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-50940-with-feature.rs:5:5
+   |
+LL |     A as fn(str) -> A<str>;
+   |     ^ doesn't have a size known at compile-time
+   |
+   = help: within `main::A<str>`, the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `main::A<str>`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

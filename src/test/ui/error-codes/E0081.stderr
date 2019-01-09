@@ -1,5 +1,5 @@
 error[E0081]: discriminant value `3` already exists
-  --> $DIR/E0081.rs:13:9
+  --> $DIR/E0081.rs:3:9
    |
 LL |     P = 3,
    |         - first use of `3`

@@ -1,0 +1,63 @@
+error[E0277]: the size for values of type `A` cannot be known at compilation time
+  --> $DIR/extern-types-unsized.rs:22:5
+   |
+LL |     assert_sized::<A>();
+   |     ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `A`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+note: required by `assert_sized`
+  --> $DIR/extern-types-unsized.rs:19:1
+   |
+LL | fn assert_sized<T>() { }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `A` cannot be known at compilation time
+  --> $DIR/extern-types-unsized.rs:25:5
+   |
+LL |     assert_sized::<Foo>();
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Foo`, the trait `std::marker::Sized` is not implemented for `A`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `Foo`
+note: required by `assert_sized`
+  --> $DIR/extern-types-unsized.rs:19:1
+   |
+LL | fn assert_sized<T>() { }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `A` cannot be known at compilation time
+  --> $DIR/extern-types-unsized.rs:28:5
+   |
+LL |     assert_sized::<Bar<A>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Bar<A>`, the trait `std::marker::Sized` is not implemented for `A`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `Bar<A>`
+note: required by `assert_sized`
+  --> $DIR/extern-types-unsized.rs:19:1
+   |
+LL | fn assert_sized<T>() { }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `A` cannot be known at compilation time
+  --> $DIR/extern-types-unsized.rs:31:5
+   |
+LL |     assert_sized::<Bar<Bar<A>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Bar<Bar<A>>`, the trait `std::marker::Sized` is not implemented for `A`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `Bar<A>`
+   = note: required because it appears within the type `Bar<Bar<A>>`
+note: required by `assert_sized`
+  --> $DIR/extern-types-unsized.rs:19:1
+   |
+LL | fn assert_sized<T>() { }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,14 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //
 // Unused import checking
 //
@@ -65,7 +54,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
                 // Check later.
                 return;
             }
-            self.unused_imports.entry(item_id).or_insert_with(NodeMap).insert(id, span);
+            self.unused_imports.entry(item_id).or_default().insert(id, span);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
@@ -109,10 +98,10 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
                 self.item_span
             };
 
-            if items.len() == 0 {
+            if items.is_empty() {
                 self.unused_imports
                     .entry(self.base_id)
-                    .or_insert_with(NodeMap)
+                    .or_default()
                     .insert(id, span);
             }
         } else {
@@ -131,8 +120,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                  directive.vis.get() == ty::Visibility::Public ||
                  directive.span.is_dummy() => {
                 if let ImportDirectiveSubclass::MacroUse = directive.subclass {
-                    if resolver.session.features_untracked().use_extern_macros &&
-                        !directive.span.is_dummy() {
+                    if !directive.span.is_dummy() {
                         resolver.session.buffer_lint(
                             lint::builtin::MACRO_USE_EXTERN_CRATE,
                             directive.id,
@@ -145,7 +133,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                     }
                 }
             }
-            ImportDirectiveSubclass::ExternCrate(_) => {
+            ImportDirectiveSubclass::ExternCrate { .. } => {
                 resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
             ImportDirectiveSubclass::MacroUse => {
@@ -163,7 +151,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
 
     let mut visitor = UnusedImportCheckVisitor {
         resolver,
-        unused_imports: NodeMap(),
+        unused_imports: Default::default(),
         base_id: ast::DUMMY_NODE_ID,
         item_span: DUMMY_SP,
     };
@@ -171,12 +159,12 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
 
     for (id, spans) in &visitor.unused_imports {
         let len = spans.len();
-        let mut spans = spans.values().map(|s| *s).collect::<Vec<Span>>();
+        let mut spans = spans.values().cloned().collect::<Vec<Span>>();
         spans.sort();
         let ms = MultiSpan::from_spans(spans.clone());
         let mut span_snippets = spans.iter()
             .filter_map(|s| {
-                match visitor.session.codemap().span_to_snippet(*s) {
+                match visitor.session.source_map().span_to_snippet(*s) {
                     Ok(s) => Some(format!("`{}`", s)),
                     _ => None,
                 }
@@ -184,7 +172,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         span_snippets.sort();
         let msg = format!("unused import{}{}",
                           if len > 1 { "s" } else { "" },
-                          if span_snippets.len() > 0 {
+                          if !span_snippets.is_empty() {
                               format!(": {}", span_snippets.join(", "))
                           } else {
                               String::new()

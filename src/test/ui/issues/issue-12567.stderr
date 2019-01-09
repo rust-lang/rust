@@ -1,0 +1,39 @@
+error[E0508]: cannot move out of type `[T]`, a non-copy slice
+  --> $DIR/issue-12567.rs:6:16
+   |
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                ^--^^^^^
+   |                ||
+   |                |hint: to prevent move, use `ref hd` or `ref mut hd`
+   |                cannot move out of here
+
+error[E0508]: cannot move out of type `[T]`, a non-copy slice
+  --> $DIR/issue-12567.rs:6:30
+   |
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                              ^--^^^^^
+   |                              ||
+   |                              |hint: to prevent move, use `ref hd` or `ref mut hd`
+   |                              cannot move out of here
+
+error[E0508]: cannot move out of type `[T]`, a non-copy slice
+  --> $DIR/issue-12567.rs:10:11
+   |
+LL |         (&[hd1, ..], &[hd2, ..])
+   |           ^---^^^^^
+   |           ||
+   |           |hint: to prevent move, use `ref hd1` or `ref mut hd1`
+   |           cannot move out of here
+
+error[E0508]: cannot move out of type `[T]`, a non-copy slice
+  --> $DIR/issue-12567.rs:10:23
+   |
+LL |         (&[hd1, ..], &[hd2, ..])
+   |                       ^---^^^^^
+   |                       ||
+   |                       |hint: to prevent move, use `ref hd2` or `ref mut hd2`
+   |                       cannot move out of here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0508`.

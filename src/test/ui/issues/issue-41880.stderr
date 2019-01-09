@@ -1,0 +1,12 @@
+error[E0599]: no method named `iter` found for type `Iterate<{integer}, [closure@$DIR/issue-41880.rs:26:24: 26:31]>` in the current scope
+  --> $DIR/issue-41880.rs:27:24
+   |
+LL | pub struct Iterate<T, F> {
+   | ------------------------ method `iter` not found for this
+...
+LL |     println!("{:?}", a.iter().take(10).collect::<Vec<usize>>());
+   |                        ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

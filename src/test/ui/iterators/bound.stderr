@@ -1,0 +1,17 @@
+error[E0277]: `u8` is not an iterator
+  --> $DIR/bound.rs:2:10
+   |
+LL | struct T(S<u8>);
+   |          ^^^^^ `u8` is not an iterator
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `u8`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
+note: required by `S`
+  --> $DIR/bound.rs:1:1
+   |
+LL | struct S<I: Iterator>(I);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

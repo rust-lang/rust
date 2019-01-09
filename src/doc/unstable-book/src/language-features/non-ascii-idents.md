@@ -1,8 +1,8 @@
 # `non_ascii_idents`
 
-The tracking issue for this feature is: [#28979]
+The tracking issue for this feature is: [#55467]
 
-[#28979]: https://github.com/rust-lang/rust/issues/28979
+[#55467]: https://github.com/rust-lang/rust/issues/55467
 
 ------------------------
 

@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Foo: std::marker::Copy` is not satisfied
+  --> $DIR/repeat-to-run-dtor-twice.rs:17:13
+   |
+LL |     let _ = [ a; 5 ];
+   |             ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `Foo`
+   |
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

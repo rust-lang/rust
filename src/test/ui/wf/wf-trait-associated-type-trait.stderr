@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `<Self as SomeTrait>::Type1: std::marker::Copy` is not satisfied
+  --> $DIR/wf-trait-associated-type-trait.rs:11:5
+   |
+LL |     type Type2 = IsCopy<Self::Type1>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `<Self as SomeTrait>::Type1`
+   |
+   = help: consider adding a `where <Self as SomeTrait>::Type1: std::marker::Copy` bound
+note: required by `IsCopy`
+  --> $DIR/wf-trait-associated-type-trait.rs:7:1
+   |
+LL | struct IsCopy<T:Copy> { x: T }
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

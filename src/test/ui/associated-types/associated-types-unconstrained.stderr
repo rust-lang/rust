@@ -1,0 +1,9 @@
+error[E0284]: type annotations required: cannot resolve `<_ as Foo>::A == _`
+  --> $DIR/associated-types-unconstrained.rs:14:20
+   |
+LL |     let x: isize = Foo::bar();
+   |                    ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0284`.

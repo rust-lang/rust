@@ -1,0 +1,41 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-27942.rs:5:5
+   |
+LL |     fn select(&self) -> BufferViewHandle<R>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `Resources<'_>`
+              found type `Resources<'a>`
+note: the anonymous lifetime #1 defined on the method body at 5:5...
+  --> $DIR/issue-27942.rs:5:5
+   |
+LL |     fn select(&self) -> BufferViewHandle<R>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...does not necessarily outlive the lifetime 'a as defined on the trait at 3:18
+  --> $DIR/issue-27942.rs:3:18
+   |
+LL | pub trait Buffer<'a, R: Resources<'a>> {
+   |                  ^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-27942.rs:5:5
+   |
+LL |     fn select(&self) -> BufferViewHandle<R>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `Resources<'_>`
+              found type `Resources<'a>`
+note: the lifetime 'a as defined on the trait at 3:18...
+  --> $DIR/issue-27942.rs:3:18
+   |
+LL | pub trait Buffer<'a, R: Resources<'a>> {
+   |                  ^^
+note: ...does not necessarily outlive the anonymous lifetime #1 defined on the method body at 5:5
+  --> $DIR/issue-27942.rs:5:5
+   |
+LL |     fn select(&self) -> BufferViewHandle<R>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

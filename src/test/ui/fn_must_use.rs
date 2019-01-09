@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // compile-pass
 
 #![warn(unused_must_use)]
@@ -21,6 +11,11 @@ impl MyStruct {
     #[must_use]
     fn need_to_use_this_method_value(&self) -> usize {
         self.n
+    }
+
+    #[must_use]
+    fn need_to_use_this_associated_function_value() -> isize {
+        -1
     }
 }
 
@@ -64,6 +59,9 @@ fn main() {
 
     m.need_to_use_this_method_value(); //~ WARN unused return value
     m.is_even(); // trait method!
+    //~^ WARN unused return value
+
+    MyStruct::need_to_use_this_associated_function_value();
     //~^ WARN unused return value
 
     m.replace(3); // won't warn (annotation needs to be in trait definition)

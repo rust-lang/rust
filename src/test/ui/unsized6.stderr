@@ -1,0 +1,156 @@
+error[E0277]: the size for values of type `Y` cannot be known at compilation time
+  --> $DIR/unsized6.rs:9:9
+   |
+LL |     let y: Y;
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `Y`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where Y: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:7:12
+   |
+LL |     let _: (isize, (X, isize));
+   |            ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0277]: the size for values of type `Z` cannot be known at compilation time
+  --> $DIR/unsized6.rs:11:12
+   |
+LL |     let y: (isize, (Z, usize));
+   |            ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `Z`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where Z: std::marker::Sized` bound
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:15:9
+   |
+LL |     let y: X;
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `Y` cannot be known at compilation time
+  --> $DIR/unsized6.rs:17:12
+   |
+LL |     let y: (isize, (Y, isize));
+   |            ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `Y`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where Y: std::marker::Sized` bound
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:22:9
+   |
+LL |     let y: X = *x1;
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:24:9
+   |
+LL |     let y = *x2;
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:26:10
+   |
+LL |     let (y, z) = (*x3, 4);
+   |          ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:30:9
+   |
+LL |     let y: X = *x1;
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:32:9
+   |
+LL |     let y = *x2;
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:34:10
+   |
+LL |     let (y, z) = (*x3, 4);
+   |          ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:38:18
+   |
+LL | fn g1<X: ?Sized>(x: X) {}
+   |                  ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized6.rs:40:22
+   |
+LL | fn g2<X: ?Sized + T>(x: X) {}
+   |                      ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

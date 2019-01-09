@@ -1,0 +1,69 @@
+error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
+  --> $DIR/associated-types-eq-hr.rs:82:5
+   |
+LL |     foo::<UintStruct>(); //~ ERROR type mismatch
+   |     ^^^^^^^^^^^^^^^^^ expected usize, found isize
+   |
+   = note: expected type `&usize`
+              found type `&isize`
+note: required by `foo`
+  --> $DIR/associated-types-eq-hr.rs:44:1
+   |
+LL | / fn foo<T>()
+LL | |     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
+LL | | {
+LL | |     // ok for IntStruct, but not UintStruct
+LL | | }
+   | |_^
+
+error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
+  --> $DIR/associated-types-eq-hr.rs:86:5
+   |
+LL |     bar::<IntStruct>(); //~ ERROR type mismatch
+   |     ^^^^^^^^^^^^^^^^ expected isize, found usize
+   |
+   = note: expected type `&isize`
+              found type `&usize`
+note: required by `bar`
+  --> $DIR/associated-types-eq-hr.rs:50:1
+   |
+LL | / fn bar<T>()
+LL | |     where T : for<'x> TheTrait<&'x isize, A = &'x usize>
+LL | | {
+LL | |     // ok for UintStruct, but not IntStruct
+LL | | }
+   | |_^
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:91:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: Due to a where-clause on `tuple_one`,
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: Due to a where-clause on `tuple_two`,
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:105:5
+   |
+LL |     tuple_four::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Due to a where-clause on `tuple_four`,
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

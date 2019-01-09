@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -16,12 +6,15 @@
 #![allow(unused_attributes)]
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
+#![feature(nll)]
 #![feature(optin_builtin_traits)]
 
 extern crate atty;
 extern crate termcolor;
 #[cfg(unix)]
 extern crate libc;
+#[macro_use]
+extern crate log;
 extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
@@ -54,7 +47,14 @@ pub mod registry;
 mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
+use syntax_pos::{BytePos,
+                 Loc,
+                 FileLinesResult,
+                 SourceFile,
+                 FileName,
+                 MultiSpan,
+                 Span,
+                 NO_EXPANSION};
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Applicability {
@@ -110,22 +110,22 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
-pub type CodeMapperDyn = dyn CodeMapper + sync::Send + sync::Sync;
+pub type SourceMapperDyn = dyn SourceMapper + sync::Send + sync::Sync;
 
-pub trait CodeMapper {
+pub trait SourceMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
-    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool;
-    fn doctest_offset_line(&self, line: usize) -> usize;
+    fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool;
+    fn doctest_offset_line(&self, file: &FileName, line: usize) -> usize;
 }
 
 impl CodeSuggestion {
     /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &CodeMapperDyn)
+    pub fn splice_lines(&self, cm: &SourceMapperDyn)
                         -> Vec<(String, Vec<SubstitutionPart>)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
@@ -295,9 +295,20 @@ thread_local!(pub static TRACK_DIAGNOSTICS: Cell<fn(&Diagnostic)> =
 
 #[derive(Default)]
 pub struct HandlerFlags {
+    /// If false, warning-level lints are suppressed.
+    /// (rustc: see `--allow warnings` and `--cap-lints`)
     pub can_emit_warnings: bool,
+    /// If true, error-level diagnostics are upgraded to bug-level.
+    /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: bool,
+    /// If true, immediately emit diagnostics that would otherwise be buffered.
+    /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
+    pub dont_buffer_diagnostics: bool,
+    /// If true, immediately print bugs registered with `delay_span_bug`.
+    /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
+    /// show macro backtraces even for non-local macros.
+    /// (rustc: see `-Z external-macro-backtrace`)
     pub external_macro_backtrace: bool,
 }
 
@@ -320,7 +331,7 @@ impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Option<Lrc<CodeMapperDyn>>)
+                            cm: Option<Lrc<SourceMapperDyn>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
             color_config,
@@ -333,7 +344,7 @@ impl Handler {
     }
 
     pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
-                                      cm: Option<Lrc<CodeMapperDyn>>,
+                                      cm: Option<Lrc<SourceMapperDyn>>,
                                       flags: HandlerFlags)
                                       -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));
@@ -361,9 +372,9 @@ impl Handler {
             emitter: Lock::new(e),
             continue_after_error: LockCell::new(true),
             delayed_span_bugs: Lock::new(Vec::new()),
-            taught_diagnostics: Lock::new(FxHashSet()),
-            emitted_diagnostic_codes: Lock::new(FxHashSet()),
-            emitted_diagnostics: Lock::new(FxHashSet()),
+            taught_diagnostics: Default::default(),
+            emitted_diagnostic_codes: Default::default(),
+            emitted_diagnostics: Default::default(),
         }
     }
 
@@ -377,7 +388,8 @@ impl Handler {
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
-        *self.emitted_diagnostics.borrow_mut() = FxHashSet();
+        // actually frees the underlying memory (which `clear` would not do)
+        *self.emitted_diagnostics.borrow_mut() = Default::default();
         self.err_count.store(0, SeqCst);
     }
 

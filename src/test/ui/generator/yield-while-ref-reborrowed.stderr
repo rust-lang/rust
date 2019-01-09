@@ -1,5 +1,5 @@
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/yield-while-ref-reborrowed.rs:45:20
+  --> $DIR/yield-while-ref-reborrowed.rs:35:20
    |
 LL |     let mut b = || {
    |                 -- closure construction occurs here

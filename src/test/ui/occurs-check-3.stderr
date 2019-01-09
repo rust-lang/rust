@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/occurs-check-3.rs:4:24
+   |
+LL | fn main() { let c; c = Clam::A(c); match c { Clam::A::<isize>(_) => { } } }
+   |                        ^^^^^^^^^^ cyclic type of infinite size
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

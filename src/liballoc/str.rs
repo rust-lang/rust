@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Unicode string slices.
 //!
 //! *[See also the `str` primitive type](../../std/primitive.str.html).*
@@ -203,6 +193,7 @@ impl Borrow<str> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for str {
     type Owned = String;
+    #[inline]
     fn to_owned(&self) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
@@ -513,7 +504,11 @@ impl str {
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
-    /// Create a [`String`] by repeating a string `n` times.
+    /// Creates a new [`String`] by repeating a string `n` times.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the capacity would overflow.
     ///
     /// [`String`]: string/struct.String.html
     ///
@@ -523,6 +518,15 @@ impl str {
     ///
     /// ```
     /// assert_eq!("abc".repeat(4), String::from("abcabcabcabc"));
+    /// ```
+    ///
+    /// A panic upon overflow:
+    ///
+    /// ```should_panic
+    /// fn main() {
+    ///     // this will panic at runtime
+    ///     "0123456789abcdef".repeat(usize::max_value());
+    /// }
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {

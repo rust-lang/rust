@@ -1,0 +1,17 @@
+error[E0013]: constants cannot refer to statics, use a constant instead
+  --> $DIR/issue-52060.rs:4:26
+   |
+LL | static B: [u32; 1] = [0; A.len()];
+   |                          ^
+
+error: `core::slice::<impl [T]>::len` is not yet stable as a const fn
+  --> $DIR/issue-52060.rs:4:26
+   |
+LL | static B: [u32; 1] = [0; A.len()];
+   |                          ^^^^^^^
+   |
+   = help: add `#![feature(const_slice_len)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0013`.

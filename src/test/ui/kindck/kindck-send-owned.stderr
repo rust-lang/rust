@@ -1,0 +1,18 @@
+error[E0277]: `*mut u8` cannot be sent between threads safely
+  --> $DIR/kindck-send-owned.rs:12:5
+   |
+LL |     assert_send::<Box<*mut u8>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*mut u8` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `*mut u8`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<*mut u8>`
+   = note: required because it appears within the type `std::boxed::Box<*mut u8>`
+note: required by `assert_send`
+  --> $DIR/kindck-send-owned.rs:3:1
+   |
+LL | fn assert_send<T:Send>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

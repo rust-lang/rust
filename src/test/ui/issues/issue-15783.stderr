@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-15783.rs:8:19
+   |
+LL |     let msg = foo(x);
+   |                   ^ expected slice, found array of 1 elements
+   |
+   = note: expected type `std::option::Option<&[&str]>`
+              found type `std::option::Option<&[&str; 1]>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

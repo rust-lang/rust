@@ -1,0 +1,12 @@
+error: missing `fn` for function definition
+  --> $DIR/pub-ident-fn-2.rs:1:4
+   |
+LL | pub foo(s: usize) { bar() }
+   |    ^
+help: add `fn` here to parse `foo` as a public function
+   |
+LL | pub fn foo(s: usize) { bar() }
+   |     ^^
+
+error: aborting due to previous error
+

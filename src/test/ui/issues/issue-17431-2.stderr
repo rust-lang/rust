@@ -1,0 +1,23 @@
+error[E0072]: recursive type `Baz` has infinite size
+  --> $DIR/issue-17431-2.rs:1:1
+   |
+LL | struct Baz { q: Option<Foo> }
+   | ^^^^^^^^^^   -------------- recursive without indirection
+   | |
+   | recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Baz` representable
+
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/issue-17431-2.rs:4:1
+   |
+LL | struct Foo { q: Option<Baz> }
+   | ^^^^^^^^^^   -------------- recursive without indirection
+   | |
+   | recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0072`.

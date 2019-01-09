@@ -1,0 +1,21 @@
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/issue-40288-2.rs:9:5
+   |
+LL | fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
+   |                                                         -- help: add explicit lifetime `'a` to the type of `y`: `&'a T`
+...
+LL |     out[0]
+   |     ^^^^^^ lifetime `'a` required
+
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/issue-40288-2.rs:24:5
+   |
+LL | fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
+   |                                                          -- help: add explicit lifetime `'a` to the type of `y`: `&'a T`
+...
+LL |     out.head
+   |     ^^^^^^^^ lifetime `'a` required
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

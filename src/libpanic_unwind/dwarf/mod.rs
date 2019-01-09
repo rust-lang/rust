@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Utilities for parsing DWARF-encoded data streams.
 //! See http://www.dwarfstd.org,
 //! DWARF-4 standard, Section 7 - "Data Representation"
@@ -29,16 +19,16 @@ struct Unaligned<T>(T);
 
 impl DwarfReader {
     pub fn new(ptr: *const u8) -> DwarfReader {
-        DwarfReader { ptr: ptr }
+        DwarfReader { ptr }
     }
 
-    // DWARF streams are packed, so e.g. a u32 would not necessarily be aligned
+    // DWARF streams are packed, so e.g., a u32 would not necessarily be aligned
     // on a 4-byte boundary. This may cause problems on platforms with strict
     // alignment requirements. By wrapping data in a "packed" struct, we are
     // telling the backend to generate "misalignment-safe" code.
     pub unsafe fn read<T: Copy>(&mut self) -> T {
         let Unaligned(result) = *(self.ptr as *const Unaligned<T>);
-        self.ptr = self.ptr.offset(mem::size_of::<T>() as isize);
+        self.ptr = self.ptr.add(mem::size_of::<T>());
         result
     }
 

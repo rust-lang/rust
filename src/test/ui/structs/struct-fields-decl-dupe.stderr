@@ -1,0 +1,11 @@
+error[E0124]: field `foo` is already declared
+  --> $DIR/struct-fields-decl-dupe.rs:3:5
+   |
+LL |     foo: isize,
+   |     ---------- `foo` first declared here
+LL |     foo: isize,
+   |     ^^^^^^^^^^ field already declared
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0124`.

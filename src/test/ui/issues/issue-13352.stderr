@@ -1,0 +1,11 @@
+error[E0277]: cannot add `()` to `usize`
+  --> $DIR/issue-13352.rs:9:13
+   |
+LL |     2_usize + (loop {});
+   |             ^ no implementation for `usize + ()`
+   |
+   = help: the trait `std::ops::Add<()>` is not implemented for `usize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

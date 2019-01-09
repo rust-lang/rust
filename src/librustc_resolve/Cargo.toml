@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+bitflags = "1.0"
 log = "0.4"
 syntax = { path = "../libsyntax" }
 rustc = { path = "../librustc" }
@@ -17,3 +18,4 @@ arena = { path = "../libarena" }
 rustc_errors = { path = "../librustc_errors" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_metadata = { path = "../librustc_metadata" }

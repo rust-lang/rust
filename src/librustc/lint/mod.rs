@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Lints, aka compiler warnings.
 //!
 //! A 'lint' check is a kind of miscellaneous constraint that a user _might_
@@ -42,7 +32,7 @@ use lint::builtin::parser::QUESTION_MARK_MACRO_SEP;
 use session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
-use syntax::codemap::{MultiSpan, ExpnFormat};
+use syntax::source_map::{MultiSpan, ExpnFormat};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -53,7 +43,7 @@ use ty::query::Providers;
 use util::nodemap::NodeMap;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
-                        check_crate, check_ast_crate,
+                        check_crate, check_ast_crate, CheckLintNameResult,
                         FutureIncompatibleInfo, BufferedEarlyLint};
 
 /// Specification of a single lint.
@@ -67,7 +57,7 @@ pub struct Lint {
     /// `declare_lint!()` invocations to follow the convention of upper-case
     /// statics without repeating the name.
     ///
-    /// The name is written with underscores, e.g. "unused_imports".
+    /// The name is written with underscores, e.g., "unused_imports".
     /// On the command line, underscores become dashes.
     pub name: &'static str,
 
@@ -76,7 +66,7 @@ pub struct Lint {
 
     /// Description of the lint or the issue it detects.
     ///
-    /// e.g. "imports that are never used"
+    /// e.g., "imports that are never used"
     pub desc: &'static str,
 
     /// Starting at the given edition, default to the given lint level. If this is `None`, then use
@@ -139,6 +129,26 @@ macro_rules! declare_lint {
     );
 }
 
+#[macro_export]
+macro_rules! declare_tool_lint {
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr) => (
+        declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, false}
+    );
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr,
+     report_in_external_macro: $rep: expr) => (
+         declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, $rep}
+    );
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: &concat!(stringify!($tool), "::", stringify!($NAME)),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            edition_lint_opts: None,
+            report_in_external_macro: $external,
+        };
+    );
+}
+
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
@@ -153,7 +163,7 @@ pub type LintArray = Vec<&'static Lint>;
 pub trait LintPass {
     /// Get descriptions of the lints this `LintPass` object can emit.
     ///
-    /// NB: there is no enforcement that the object only emits lints it registered.
+    /// N.B., there is no enforcement that the object only emits lints it registered.
     /// And some `rustc` internal `LintPass`es register lints to be emitted by other
     /// parts of the compiler. If you want enforced access restrictions for your
     /// `Lint`, make it a private `static` item in its own module.
@@ -222,7 +232,7 @@ macro_rules! late_lint_methods {
             fn check_variant(a: &$hir hir::Variant, b: &$hir hir::Generics);
             fn check_variant_post(a: &$hir hir::Variant, b: &$hir hir::Generics);
             fn check_lifetime(a: &$hir hir::Lifetime);
-            fn check_path(a: &$hir hir::Path, b: ast::NodeId);
+            fn check_path(a: &$hir hir::Path, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
 
             /// Called when entering a syntax node that can have lint attributes such
@@ -246,7 +256,7 @@ macro_rules! late_lint_methods {
 
 macro_rules! expand_lint_pass_methods {
     ($context:ty, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(#[inline(always)] fn $name(&mut self, $context, $(_: $arg),*) {})*
+        $(#[inline(always)] fn $name(&mut self, _: $context, $(_: $arg),*) {})*
     )
 }
 
@@ -307,56 +317,56 @@ macro_rules! declare_combined_late_lint_pass {
 }
 
 pub trait EarlyLintPass: LintPass {
-    fn check_ident(&mut self, _: &EarlyContext, _: ast::Ident) { }
-    fn check_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
-    fn check_crate_post(&mut self, _: &EarlyContext, _: &ast::Crate) { }
-    fn check_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
-    fn check_mod_post(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
-    fn check_foreign_item(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
-    fn check_foreign_item_post(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
-    fn check_item(&mut self, _: &EarlyContext, _: &ast::Item) { }
-    fn check_item_post(&mut self, _: &EarlyContext, _: &ast::Item) { }
-    fn check_local(&mut self, _: &EarlyContext, _: &ast::Local) { }
-    fn check_block(&mut self, _: &EarlyContext, _: &ast::Block) { }
-    fn check_block_post(&mut self, _: &EarlyContext, _: &ast::Block) { }
-    fn check_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
-    fn check_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
-    fn check_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
-    fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
-    fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
-    fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
-    fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
-    fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
-    fn check_where_predicate(&mut self, _: &EarlyContext, _: &ast::WherePredicate) { }
-    fn check_poly_trait_ref(&mut self, _: &EarlyContext, _: &ast::PolyTraitRef,
+    fn check_ident(&mut self, _: &EarlyContext<'_>, _: ast::Ident) { }
+    fn check_crate(&mut self, _: &EarlyContext<'_>, _: &ast::Crate) { }
+    fn check_crate_post(&mut self, _: &EarlyContext<'_>, _: &ast::Crate) { }
+    fn check_mod(&mut self, _: &EarlyContext<'_>, _: &ast::Mod, _: Span, _: ast::NodeId) { }
+    fn check_mod_post(&mut self, _: &EarlyContext<'_>, _: &ast::Mod, _: Span, _: ast::NodeId) { }
+    fn check_foreign_item(&mut self, _: &EarlyContext<'_>, _: &ast::ForeignItem) { }
+    fn check_foreign_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::ForeignItem) { }
+    fn check_item(&mut self, _: &EarlyContext<'_>, _: &ast::Item) { }
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::Item) { }
+    fn check_local(&mut self, _: &EarlyContext<'_>, _: &ast::Local) { }
+    fn check_block(&mut self, _: &EarlyContext<'_>, _: &ast::Block) { }
+    fn check_block_post(&mut self, _: &EarlyContext<'_>, _: &ast::Block) { }
+    fn check_stmt(&mut self, _: &EarlyContext<'_>, _: &ast::Stmt) { }
+    fn check_arm(&mut self, _: &EarlyContext<'_>, _: &ast::Arm) { }
+    fn check_pat(&mut self, _: &EarlyContext<'_>, _: &ast::Pat, _: &mut bool) { }
+    fn check_expr(&mut self, _: &EarlyContext<'_>, _: &ast::Expr) { }
+    fn check_expr_post(&mut self, _: &EarlyContext<'_>, _: &ast::Expr) { }
+    fn check_ty(&mut self, _: &EarlyContext<'_>, _: &ast::Ty) { }
+    fn check_generic_param(&mut self, _: &EarlyContext<'_>, _: &ast::GenericParam) { }
+    fn check_generics(&mut self, _: &EarlyContext<'_>, _: &ast::Generics) { }
+    fn check_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) { }
+    fn check_poly_trait_ref(&mut self, _: &EarlyContext<'_>, _: &ast::PolyTraitRef,
                             _: &ast::TraitBoundModifier) { }
-    fn check_fn(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
-    fn check_fn_post(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
-    fn check_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
-    fn check_trait_item_post(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
-    fn check_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
-    fn check_impl_item_post(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
-    fn check_struct_def(&mut self, _: &EarlyContext,
+    fn check_fn(&mut self, _: &EarlyContext<'_>,
+        _: ast_visit::FnKind<'_>, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
+    fn check_fn_post(&mut self, _: &EarlyContext<'_>,
+        _: ast_visit::FnKind<'_>, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
+    fn check_trait_item(&mut self, _: &EarlyContext<'_>, _: &ast::TraitItem) { }
+    fn check_trait_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::TraitItem) { }
+    fn check_impl_item(&mut self, _: &EarlyContext<'_>, _: &ast::ImplItem) { }
+    fn check_impl_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::ImplItem) { }
+    fn check_struct_def(&mut self, _: &EarlyContext<'_>,
         _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
-    fn check_struct_def_post(&mut self, _: &EarlyContext,
+    fn check_struct_def_post(&mut self, _: &EarlyContext<'_>,
         _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
-    fn check_struct_field(&mut self, _: &EarlyContext, _: &ast::StructField) { }
-    fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
-    fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
-    fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
-    fn check_mac_def(&mut self, _: &EarlyContext, _: &ast::MacroDef, _id: ast::NodeId) { }
-    fn check_mac(&mut self, _: &EarlyContext, _: &ast::Mac) { }
+    fn check_struct_field(&mut self, _: &EarlyContext<'_>, _: &ast::StructField) { }
+    fn check_variant(&mut self, _: &EarlyContext<'_>, _: &ast::Variant, _: &ast::Generics) { }
+    fn check_variant_post(&mut self, _: &EarlyContext<'_>, _: &ast::Variant, _: &ast::Generics) { }
+    fn check_lifetime(&mut self, _: &EarlyContext<'_>, _: &ast::Lifetime) { }
+    fn check_path(&mut self, _: &EarlyContext<'_>, _: &ast::Path, _: ast::NodeId) { }
+    fn check_attribute(&mut self, _: &EarlyContext<'_>, _: &ast::Attribute) { }
+    fn check_mac_def(&mut self, _: &EarlyContext<'_>, _: &ast::MacroDef, _id: ast::NodeId) { }
+    fn check_mac(&mut self, _: &EarlyContext<'_>, _: &ast::Mac) { }
 
     /// Called when entering a syntax node that can have lint attributes such
     /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-    fn enter_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
+    fn enter_lint_attrs(&mut self, _: &EarlyContext<'_>, _: &[ast::Attribute]) { }
 
     /// Counterpart to `enter_lint_attrs`.
-    fn exit_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
+    fn exit_lint_attrs(&mut self, _: &EarlyContext<'_>, _: &[ast::Attribute]) { }
 }
 
 /// A lint pass boxed up as a trait object.
@@ -450,7 +460,7 @@ pub enum LintSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(ast::Name, Span),
+    Node(ast::Name, Span, Option<Symbol> /* RFC 2383 reason */),
 
     /// Lint level was set by a command-line flag.
     CommandLine(Symbol),
@@ -458,7 +468,7 @@ pub enum LintSource {
 
 impl_stable_hash_for!(enum self::LintSource {
     Default,
-    Node(name, span),
+    Node(name, span, reason),
     CommandLine(text)
 });
 
@@ -470,15 +480,12 @@ mod levels;
 
 pub use self::levels::{LintLevelSets, LintLevelMap};
 
+#[derive(Default)]
 pub struct LintBuffer {
     map: NodeMap<Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {
-    pub fn new() -> LintBuffer {
-        LintBuffer { map: NodeMap() }
-    }
-
     pub fn add_lint(&mut self,
                     lint: &'static Lint,
                     id: ast::NodeId,
@@ -492,14 +499,14 @@ impl LintBuffer {
             msg: msg.to_string(),
             diagnostic
         };
-        let arr = self.map.entry(id).or_insert(Vec::new());
+        let arr = self.map.entry(id).or_default();
         if !arr.contains(&early_lint) {
             arr.push(early_lint);
         }
     }
 
     pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or(Vec::new())
+        self.map.remove(&id).unwrap_or_default()
     }
 
     pub fn get_any(&self) -> Option<&[BufferedEarlyLint]> {
@@ -558,7 +565,10 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                              hyphen_case_flag_val));
             }
         }
-        LintSource::Node(lint_attr_name, src) => {
+        LintSource::Node(lint_attr_name, src, reason) => {
+            if let Some(rationale) = reason {
+                err.note(&rationale.as_str());
+            }
             sess.diag_span_note_once(&mut err, DiagnosticMessageId::from(lint),
                                      src, "lint level defined here");
             if lint_attr_name.as_str() != name {
@@ -575,7 +585,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
     let lint_id = LintId::of(lint);
-    if let Some(future_incompatible) = lints.future_incompatible(lint_id) {
+    let future_incompatible = lints.future_incompatible(lint_id);
+    if let Some(future_incompatible) = future_incompatible {
         const STANDARD_MESSAGE: &str =
             "this was previously accepted by the compiler but is being phased out; \
              it will become a hard error";
@@ -593,20 +604,21 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
+    }
 
-    // If this lint is *not* a future incompatibility warning then we want to be
-    // sure to not be too noisy in some situations. If this code originates in a
-    // foreign macro, aka something that this crate did not itself author, then
-    // it's likely that there's nothing this crate can do about it. We probably
-    // want to skip the lint entirely.
-    //
-    // For some lints though (like unreachable code) there's clear actionable
-    // items to take care of (delete the macro invocation). As a result we have
-    // a few lints we whitelist here for allowing a lint even though it's in a
-    // foreign macro invocation.
-    } else if !lint.report_in_external_macro {
-        if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
-            err.cancel();
+    // If this code originates in a foreign macro, aka something that this crate
+    // did not itself author, then it's likely that there's nothing this crate
+    // can do about it. We probably want to skip the lint entirely.
+    if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
+        // Any suggestions made here are likely to be incorrect, so anything we
+        // emit shouldn't be automatically fixed by rustfix.
+        err.allow_suggestions(false);
+
+        // If this is a future incompatible lint it'll become a hard error, so
+        // we have to emit *something*. Also allow lints to whitelist themselves
+        // on a case-by-case basis for emission in a foreign macro.
+        if future_incompatible.is_none() && !lint.report_in_external_macro {
+            err.cancel()
         }
     }
 
@@ -621,7 +633,7 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
         levels: LintLevelSets::builder(tcx.sess),
         tcx: tcx,
     };
-    let krate = tcx.hir.krate();
+    let krate = tcx.hir().krate();
 
     builder.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |builder| {
         intravisit::walk_crate(builder, krate);
@@ -643,7 +655,7 @@ impl<'a, 'tcx> LintLevelMapBuilder<'a, 'tcx> {
         where F: FnOnce(&mut Self)
     {
         let push = self.levels.push(attrs);
-        self.levels.register_id(self.tcx.hir.definitions().node_to_hir_id(id));
+        self.levels.register_id(self.tcx.hir().definitions().node_to_hir_id(id));
         f(self);
         self.levels.pop(push);
     }
@@ -651,7 +663,7 @@ impl<'a, 'tcx> LintLevelMapBuilder<'a, 'tcx> {
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir)
+        intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {
@@ -706,7 +718,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     providers.lint_levels = lint_levels;
 }
 
@@ -732,7 +744,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         None => return true,
     };
 
-    match sess.codemap().span_to_snippet(def_site) {
+    match sess.source_map().span_to_snippet(def_site) {
         Ok(code) => !code.starts_with("macro_rules"),
         // no snippet = external macro or compiler-builtin expansion
         Err(_) => true,

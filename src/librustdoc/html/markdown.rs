@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Markdown formatting for rustdoc
 //!
 //! This module implements markdown formatting through the pulldown-cmark
@@ -18,27 +8,27 @@
 //! ```
 //! #![feature(rustc_private)]
 //!
-//! use rustdoc::html::markdown::Markdown;
+//! use rustdoc::html::markdown::{IdMap, Markdown, ErrorCodes};
+//! use std::cell::RefCell;
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s, &[]));
+//! let mut id_map = IdMap::new();
+//! let html = format!("{}", Markdown(s, &[], RefCell::new(&mut id_map), ErrorCodes::Yes));
 //! // ... something using html
 //! ```
 
 #![allow(non_camel_case_types)]
 
-use rustc::session;
+use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::{self, Write};
 use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
-use syntax::feature_gate::UnstableFeatures;
-use syntax::codemap::Span;
+use syntax::edition::Edition;
 
-use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
 use test;
@@ -50,14 +40,37 @@ use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 /// The second parameter is a list of link replacements
-pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)]);
+pub struct Markdown<'a>(
+    pub &'a str, pub &'a [(String, String)], pub RefCell<&'a mut IdMap>, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
-pub struct MarkdownWithToc<'a>(pub &'a str);
+pub struct MarkdownWithToc<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
-pub struct MarkdownHtml<'a>(pub &'a str);
+pub struct MarkdownHtml<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum ErrorCodes {
+    Yes,
+    No,
+}
+
+impl ErrorCodes {
+    pub fn from(b: bool) -> Self {
+        match b {
+            true => ErrorCodes::Yes,
+            false => ErrorCodes::No,
+        }
+    }
+
+    pub fn as_bool(self) -> bool {
+        match self {
+            ErrorCodes::Yes => true,
+            ErrorCodes::No => false,
+        }
+    }
+}
 
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
@@ -129,12 +142,14 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
 /// Adds syntax highlighting and playground Run buttons to rust code blocks.
 struct CodeBlocks<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
+    check_error_codes: ErrorCodes,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'a, I> {
-    fn new(iter: I) -> Self {
+    fn new(iter: I, error_codes: ErrorCodes) -> Self {
         CodeBlocks {
             inner: iter,
+            check_error_codes: error_codes,
         }
     }
 }
@@ -146,13 +161,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
         let event = self.inner.next();
         let compile_fail;
         let ignore;
+        let edition;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
-            let parse_result = LangString::parse(&lang);
+            let parse_result = LangString::parse(&lang, self.check_error_codes);
             if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(lang)));
             }
             compile_fail = parse_result.compile_fail;
             ignore = parse_result.ignore;
+            edition = parse_result.edition;
         } else {
             return event;
         }
@@ -188,6 +205,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 } else {
                     ""
                 };
+
+                let edition_string = if let Some(e @ Edition::Edition2018) = edition {
+                    format!("&amp;edition={}{}", e,
+                            if channel == "&amp;version=nightly" { "" }
+                            else { "&amp;version=nightly" })
+                } else if let Some(e) = edition {
+                    format!("&amp;edition={}", e)
+                } else {
+                    "".to_owned()
+                };
+
                 // These characters don't need to be escaped in a URI.
                 // FIXME: use a library function for percent encoding.
                 fn dont_escape(c: u8) -> bool {
@@ -207,27 +235,44 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     }
                 }
                 Some(format!(
-                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
-                    url, test_escaped, channel
+                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
+                    url, test_escaped, channel, edition_string
                 ))
             });
+
             let tooltip = if ignore {
-                Some(("This example is not tested", "ignore"))
+                Some(("This example is not tested".to_owned(), "ignore"))
             } else if compile_fail {
-                Some(("This example deliberately fails to compile", "compile_fail"))
+                Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+            } else if let Some(e) = edition {
+                Some((format!("This code runs with edition {}", e), "edition"))
             } else {
                 None
             };
-            s.push_str(&highlight::render_with_highlighting(
-                        &text,
-                        Some(&format!("rust-example-rendered{}",
-                                      if ignore { " ignore" }
-                                      else if compile_fail { " compile_fail" }
-                                      else { "" })),
-                        None,
-                        playground_button.as_ref().map(String::as_str),
-                        tooltip));
-            Some(Event::Html(s.into()))
+
+            if let Some((s1, s2)) = tooltip {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    Some((s1.as_str(), s2))));
+                Some(Event::Html(s.into()))
+            } else {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    None));
+                Some(Event::Html(s.into()))
+            }
         })
     }
 }
@@ -266,23 +311,25 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
 }
 
 /// Make headings links with anchor ids and build up TOC.
-struct HeadingLinks<'a, 'b, I: Iterator<Item = Event<'a>>> {
+struct HeadingLinks<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> {
     inner: I,
     toc: Option<&'b mut TocBuilder>,
     buf: VecDeque<Event<'a>>,
+    id_map: &'ids mut IdMap,
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, I> {
-    fn new(iter: I, toc: Option<&'b mut TocBuilder>) -> Self {
+impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, 'ids, I> {
+    fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
         HeadingLinks {
             inner: iter,
             toc,
             buf: VecDeque::new(),
+            id_map: ids,
         }
     }
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, I> {
+impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, 'ids, I> {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -301,7 +348,7 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, I>
                 }
                 self.buf.push_back(event);
             }
-            let id = derive_id(id);
+            let id = self.id_map.derive(id);
 
             if let Some(ref mut builder) = self.toc {
                 let mut html_header = String::new();
@@ -342,7 +389,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
 fn check_if_allowed_tag(t: &Tag) -> bool {
     match *t {
         Tag::Paragraph
-        | Tag::CodeBlock(_)
         | Tag::Item
         | Tag::Emphasis
         | Tag::Strong
@@ -363,29 +409,36 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
         if !self.started {
             self.started = true;
         }
-        let event = self.inner.next();
-        let mut is_start = true;
-        let is_allowed_tag = match event {
-            Some(Event::Start(ref c)) => {
-                self.depth += 1;
-                check_if_allowed_tag(c)
-            }
-            Some(Event::End(ref c)) => {
-                self.depth -= 1;
-                is_start = false;
-                check_if_allowed_tag(c)
-            }
-            _ => true,
-        };
-        if is_allowed_tag == false {
-            if is_start {
-                Some(Event::Start(Tag::Paragraph))
+        while let Some(event) = self.inner.next() {
+            let mut is_start = true;
+            let is_allowed_tag = match event {
+                Event::Start(Tag::CodeBlock(_)) | Event::End(Tag::CodeBlock(_)) => {
+                    return None;
+                }
+                Event::Start(ref c) => {
+                    self.depth += 1;
+                    check_if_allowed_tag(c)
+                }
+                Event::End(ref c) => {
+                    self.depth -= 1;
+                    is_start = false;
+                    check_if_allowed_tag(c)
+                }
+                _ => {
+                    true
+                }
+            };
+            return if is_allowed_tag == false {
+                if is_start {
+                    Some(Event::Start(Tag::Paragraph))
+                } else {
+                    Some(Event::End(Tag::Paragraph))
+                }
             } else {
-                Some(Event::End(Tag::Paragraph))
-            }
-        } else {
-            event
+                Some(event)
+            };
         }
+        None
     }
 }
 
@@ -393,14 +446,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 /// references.
 struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    footnotes: HashMap<String, (Vec<Event<'a>>, u16)>,
+    footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
         Footnotes {
             inner: iter,
-            footnotes: HashMap::new(),
+            footnotes: FxHashMap::default(),
         }
     }
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
@@ -467,10 +520,19 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span,
-                          sess: Option<&session::Session>) {
-    tests.set_position(position);
+pub struct TestableCodeError(());
 
+impl fmt::Display for TestableCodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid start of a new code block")
+    }
+}
+
+pub fn find_testable_code<T: test::Tester>(
+    doc: &str,
+    tests: &mut T,
+    error_codes: ErrorCodes,
+) -> Result<(), TestableCodeError> {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -481,7 +543,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*s)
+                    LangString::parse(&*s, error_codes)
                 };
                 if !block_info.rust {
                     continue
@@ -510,18 +572,10 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                     let text = lines.collect::<Vec<Cow<str>>>().join("\n");
                     nb_lines += doc[prev_offset..offset].lines().count();
                     let line = tests.get_line() + (nb_lines - 1);
-                    let filename = tests.get_filename();
-                    tests.add_test(text.to_owned(),
-                                   block_info.should_panic, block_info.no_run,
-                                   block_info.ignore, block_info.test_harness,
-                                   block_info.compile_fail, block_info.error_codes,
-                                   line, filename, block_info.allow_fail);
+                    tests.add_test(text, block_info, line);
                     prev_offset = offset;
                 } else {
-                    if let Some(ref sess) = sess {
-                        sess.span_warn(position, "invalid start of a new code block");
-                    }
-                    break;
+                    return Err(TestableCodeError(()));
                 }
             }
             Event::Start(Tag::Header(level)) => {
@@ -539,19 +593,21 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
             _ => {}
         }
     }
+    Ok(())
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-struct LangString {
+pub struct LangString {
     original: String,
-    should_panic: bool,
-    no_run: bool,
-    ignore: bool,
-    rust: bool,
-    test_harness: bool,
-    compile_fail: bool,
-    error_codes: Vec<String>,
-    allow_fail: bool,
+    pub should_panic: bool,
+    pub no_run: bool,
+    pub ignore: bool,
+    pub rust: bool,
+    pub test_harness: bool,
+    pub compile_fail: bool,
+    pub error_codes: Vec<String>,
+    pub allow_fail: bool,
+    pub edition: Option<Edition>
 }
 
 impl LangString {
@@ -566,17 +622,15 @@ impl LangString {
             compile_fail: false,
             error_codes: Vec::new(),
             allow_fail: false,
+            edition: None,
         }
     }
 
-    fn parse(string: &str) -> LangString {
+    fn parse(string: &str, allow_error_code_check: ErrorCodes) -> LangString {
+        let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
-        let mut allow_error_code_check = false;
-        if UnstableFeatures::from_environment().is_nightly_build() {
-            allow_error_code_check = true;
-        }
 
         data.original = string.to_owned();
         let tokens = string.split(|c: char|
@@ -603,8 +657,13 @@ impl LangString {
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
+                x if allow_error_code_check && x.starts_with("edition") => {
+                    // allow_error_code_check is true if we're on nightly, which
+                    // is needed for edition support
+                    data.edition = x[7..].parse::<Edition>().ok();
+                }
                 x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
-                    if let Ok(_) = x[1..].parse::<u32>() {
+                    if x[1..].parse::<u32>().is_ok() {
                         data.error_codes.push(x.to_owned());
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     } else {
@@ -623,7 +682,8 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md, links) = *self;
+        let Markdown(md, links, ref ids, codes) = *self;
+        let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -643,12 +703,11 @@ impl<'a> fmt::Display for Markdown<'a> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        html::push_html(&mut s,
-                        Footnotes::new(
-                            CodeBlocks::new(
-                                LinkReplacer::new(
-                                    HeadingLinks::new(p, None),
-                                    links))));
+        let p = HeadingLinks::new(p, None, &mut ids);
+        let p = LinkReplacer::new(p, links);
+        let p = CodeBlocks::new(p, codes);
+        let p = Footnotes::new(p);
+        html::push_html(&mut s, p);
 
         fmt.write_str(&s)
     }
@@ -656,7 +715,8 @@ impl<'a> fmt::Display for Markdown<'a> {
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownWithToc(md) = *self;
+        let MarkdownWithToc(md, ref ids, codes) = *self;
+        let mut ids = ids.borrow_mut();
 
         let mut opts = Options::empty();
         opts.insert(OPTION_ENABLE_TABLES);
@@ -668,8 +728,12 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
         let mut toc = TocBuilder::new();
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, Some(&mut toc)))));
+        {
+            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
+            let p = CodeBlocks::new(p, codes);
+            let p = Footnotes::new(p);
+            html::push_html(&mut s, p);
+        }
 
         write!(fmt, "<nav id=\"TOC\">{}</nav>", toc.into_toc())?;
 
@@ -679,7 +743,8 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
 impl<'a> fmt::Display for MarkdownHtml<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownHtml(md) = *self;
+        let MarkdownHtml(md, ref ids, codes) = *self;
+        let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -697,8 +762,10 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
+        let p = HeadingLinks::new(p, None, &mut ids);
+        let p = CodeBlocks::new(p, codes);
+        let p = Footnotes::new(p);
+        html::push_html(&mut s, p);
 
         fmt.write_str(&s)
     }
@@ -729,6 +796,10 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
 }
 
 pub fn plain_summary_line(md: &str) -> String {
+    plain_summary_line_full(md, false)
+}
+
+pub fn plain_summary_line_full(md: &str, limit_length: bool) -> String {
     struct ParserWrapper<'a> {
         inner: Parser<'a>,
         is_in: isize,
@@ -775,7 +846,21 @@ pub fn plain_summary_line(md: &str) -> String {
             s.push_str(&t);
         }
     }
-    s
+    if limit_length && s.chars().count() > 60 {
+        let mut len = 0;
+        let mut ret = s.split_whitespace()
+                       .take_while(|p| {
+                           // + 1 for the added character after the word.
+                           len += p.chars().count() + 1;
+                           len < 60
+                       })
+                       .collect::<Vec<_>>()
+                       .join(" ");
+        ret.push('…');
+        ret
+    } else {
+        s
+    }
 }
 
 pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
@@ -812,7 +897,10 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         let p = Parser::new_with_broken_link_callback(md, opts,
             Some(&push));
 
-        let iter = Footnotes::new(HeadingLinks::new(p, None));
+        // There's no need to thread an IdMap through to here because
+        // the IDs generated aren't going to be emitted anywhere.
+        let mut ids = IdMap::new();
+        let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
 
         for ev in iter {
             if let Event::Start(Tag::Link(dest, _)) = ev {
@@ -831,18 +919,76 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     links
 }
 
+#[derive(Clone, Default, Debug)]
+pub struct IdMap {
+    map: FxHashMap<String, usize>,
+}
+
+impl IdMap {
+    pub fn new() -> Self {
+        IdMap::default()
+    }
+
+    pub fn populate<I: IntoIterator<Item=String>>(&mut self, ids: I) {
+        for id in ids {
+            let _ = self.derive(id);
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.map = FxHashMap::default();
+    }
+
+    pub fn derive(&mut self, candidate: String) -> String {
+        let id = match self.map.get_mut(&candidate) {
+            None => candidate,
+            Some(a) => {
+                let id = format!("{}-{}", candidate, *a);
+                *a += 1;
+                id
+            }
+        };
+
+        self.map.insert(id.clone(), 1);
+        id
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_unique_id() {
+    let input = ["foo", "examples", "examples", "method.into_iter","examples",
+                 "method.into_iter", "foo", "main", "search", "methods",
+                 "examples", "method.into_iter", "assoc_type.Item", "assoc_type.Item"];
+    let expected = ["foo", "examples", "examples-1", "method.into_iter", "examples-2",
+                    "method.into_iter-1", "foo-1", "main", "search", "methods",
+                    "examples-3", "method.into_iter-2", "assoc_type.Item", "assoc_type.Item-1"];
+
+    let map = RefCell::new(IdMap::new());
+    let test = || {
+        let mut map = map.borrow_mut();
+        let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+        assert_eq!(&actual[..], expected);
+    };
+    test();
+    map.borrow_mut().reset();
+    test();
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{LangString, Markdown, MarkdownHtml};
+    use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
     use super::plain_summary_line;
-    use html::render::reset_ids;
+    use std::cell::RefCell;
+    use syntax::edition::Edition;
 
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
-            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
-            assert_eq!(LangString::parse(s), LangString {
+            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>,
+             edition: Option<Edition>) {
+            assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
                 should_panic,
                 no_run,
                 ignore,
@@ -852,6 +998,7 @@ mod tests {
                 error_codes,
                 original: s.to_owned(),
                 allow_fail,
+                edition,
             })
         }
 
@@ -859,38 +1006,34 @@ mod tests {
             Vec::new()
         }
 
-        // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
-        //                       | allow_fail | error_codes
-        t("",                      false,        false,  false,  true,  false, false, false, v());
-        t("rust",                  false,        false,  false,  true,  false, false, false, v());
-        t("sh",                    false,        false,  false,  false, false, false, false, v());
-        t("ignore",                false,        false,  true,   true,  false, false, false, v());
-        t("should_panic",          true,         false,  false,  true,  false, false, false, v());
-        t("no_run",                false,        true,   false,  true,  false, false, false, v());
-        t("test_harness",          false,        false,  false,  true,  true,  false, false, v());
-        t("compile_fail",          false,        true,   false,  true,  false, true,  false, v());
-        t("allow_fail",            false,        false,  false,  true,  false, false, true,  v());
-        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, v());
-        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, v());
-        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, v());
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, v());
-        t("text, no_run",          false,        true,   false,  false, false, false, false, v());
-        t("text,no_run",           false,        true,   false,  false, false, false, false, v());
-    }
-
-    #[test]
-    fn issue_17736() {
-        let markdown = "# title";
-        Markdown(markdown, &[]).to_string();
-        reset_ids(true);
+        // ignore-tidy-linelength
+        // marker                | should_panic | no_run | ignore | rust | test_harness
+        //                       | compile_fail | allow_fail | error_codes | edition
+        t("",                      false,         false,   false,   true,  false, false, false, v(), None);
+        t("rust",                  false,         false,   false,   true,  false, false, false, v(), None);
+        t("sh",                    false,         false,   false,   false, false, false, false, v(), None);
+        t("ignore",                false,         false,   true,    true,  false, false, false, v(), None);
+        t("should_panic",          true,          false,   false,   true,  false, false, false, v(), None);
+        t("no_run",                false,         true,    false,   true,  false, false, false, v(), None);
+        t("test_harness",          false,         false,   false,   true,  true,  false, false, v(), None);
+        t("compile_fail",          false,         true,    false,   true,  false, true,  false, v(), None);
+        t("allow_fail",            false,         false,   false,   true,  false, false, true,  v(), None);
+        t("{.no_run .example}",    false,         true,    false,   true,  false, false, false, v(), None);
+        t("{.sh .should_panic}",   true,          false,   false,   false, false, false, false, v(), None);
+        t("{.example .rust}",      false,         false,   false,   true,  false, false, false, v(), None);
+        t("{.test_harness .rust}", false,         false,   false,   true,  true,  false, false, v(), None);
+        t("text, no_run",          false,         true,    false,   false, false, false, false, v(), None);
+        t("text,no_run",           false,         true,    false,   false, false, false, false, v(), None);
+        t("edition2015",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2015));
+        t("edition2018",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2018));
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = Markdown(input, &[]).to_string();
+            let mut map = IdMap::new();
+            let output = Markdown(input, &[], RefCell::new(&mut map), ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
-            reset_ids(true);
         }
 
         t("# Foo bar", "<h1 id=\"foo-bar\" class=\"section-header\">\
@@ -909,28 +1052,24 @@ mod tests {
 
     #[test]
     fn test_header_ids_multiple_blocks() {
-        fn t(input: &str, expect: &str) {
-            let output = Markdown(input, &[]).to_string();
+        let mut map = IdMap::new();
+        fn t(map: &mut IdMap, input: &str, expect: &str) {
+            let output = Markdown(input, &[], RefCell::new(map), ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
-        let test = || {
-            t("# Example", "<h1 id=\"example\" class=\"section-header\">\
-              <a href=\"#example\">Example</a></h1>");
-            t("# Panics", "<h1 id=\"panics\" class=\"section-header\">\
-              <a href=\"#panics\">Panics</a></h1>");
-            t("# Example", "<h1 id=\"example-1\" class=\"section-header\">\
-              <a href=\"#example-1\">Example</a></h1>");
-            t("# Main", "<h1 id=\"main-1\" class=\"section-header\">\
-              <a href=\"#main-1\">Main</a></h1>");
-            t("# Example", "<h1 id=\"example-2\" class=\"section-header\">\
-              <a href=\"#example-2\">Example</a></h1>");
-            t("# Panics", "<h1 id=\"panics-1\" class=\"section-header\">\
-              <a href=\"#panics-1\">Panics</a></h1>");
-        };
-        test();
-        reset_ids(true);
-        test();
+        t(&mut map, "# Example", "<h1 id=\"example\" class=\"section-header\">\
+            <a href=\"#example\">Example</a></h1>");
+        t(&mut map, "# Panics", "<h1 id=\"panics\" class=\"section-header\">\
+            <a href=\"#panics\">Panics</a></h1>");
+        t(&mut map, "# Example", "<h1 id=\"example-1\" class=\"section-header\">\
+            <a href=\"#example-1\">Example</a></h1>");
+        t(&mut map, "# Main", "<h1 id=\"main\" class=\"section-header\">\
+            <a href=\"#main\">Main</a></h1>");
+        t(&mut map, "# Example", "<h1 id=\"example-2\" class=\"section-header\">\
+            <a href=\"#example-2\">Example</a></h1>");
+        t(&mut map, "# Panics", "<h1 id=\"panics-1\" class=\"section-header\">\
+            <a href=\"#panics-1\">Panics</a></h1>");
     }
 
     #[test]
@@ -951,7 +1090,8 @@ mod tests {
     #[test]
     fn test_markdown_html_escape() {
         fn t(input: &str, expect: &str) {
-            let output = MarkdownHtml(input).to_string();
+            let mut idmap = IdMap::new();
+            let output = MarkdownHtml(input, RefCell::new(&mut idmap), ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 

@@ -1,0 +1,8 @@
+error: local variables in const fn are unstable
+  --> $DIR/issue-37550.rs:2:9
+   |
+LL |     let t = true; //~ ERROR local variables in const fn
+   |         ^
+
+error: aborting due to previous error
+

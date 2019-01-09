@@ -1,0 +1,40 @@
+error: couldn't read $DIR/not-a-file.md: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/external-doc-error.rs:5:17
+   |
+LL | #[doc(include = "not-a-file.md")]
+   |                 ^^^^^^^^^^^^^^^ couldn't read file
+   |
+   = help: external doc paths are relative to the crate root
+
+error: $DIR/auxiliary/invalid-utf8.txt wasn't a utf-8 file
+  --> $DIR/external-doc-error.rs:9:17
+   |
+LL | #[doc(include = "auxiliary/invalid-utf8.txt")]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ contains invalid utf-8
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:12:7
+   |
+LL | #[doc(include)]
+   |       ^^^^^^^ help: provide a file path with `=`: `include = "<path>"`
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:17:7
+   |
+LL | #[doc(include("../README.md"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^ help: provide a file path with `=`: `include = "../README.md"`
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:22:7
+   |
+LL | #[doc(include = 123)]
+   |       ^^^^^^^^^^^^^ help: provide a file path with `=`: `include = "<path>"`
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:27:7
+   |
+LL | #[doc(include(123))]
+   |       ^^^^^^^^^^^^ help: provide a file path with `=`: `include = "<path>"`
+
+error: aborting due to 6 previous errors
+

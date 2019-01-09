@@ -1,0 +1,8 @@
+error: expected expression, found `+`
+  --> $DIR/issue-36499.rs:4:9
+   |
+LL |     2 + +2;
+   |         ^ expected expression
+
+error: aborting due to previous error
+

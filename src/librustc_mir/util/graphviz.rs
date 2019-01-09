@@ -1,21 +1,9 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use dot;
 use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::TyCtxt;
 use std::fmt::Debug;
 use std::io::{self, Write};
-
-use rustc_data_structures::indexed_vec::Idx;
 
 use super::pretty::dump_mir_def_ids;
 
@@ -40,7 +28,7 @@ pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
                                       w: &mut W) -> io::Result<()>
     where W: Write
 {
-    writeln!(w, "digraph Mir_{} {{", tcx.hir.as_local_node_id(def_id).unwrap())?;
+    writeln!(w, "digraph Mir_{} {{", tcx.hir().as_local_node_id(def_id).unwrap())?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;

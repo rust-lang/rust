@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `[std::string::String]` cannot be known at compilation time
+  --> $DIR/issue-22874.rs:2:5
+   |
+LL |     rows: [[String]],
+   |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[std::string::String]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: slice and array elements must have `Sized` type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

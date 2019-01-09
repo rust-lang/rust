@@ -1,14 +1,4 @@
 #!/usr/bin/env python
-#
-# Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
 
 """
 This script creates a pile of compile-fail tests check that all the
@@ -18,23 +8,14 @@ derives have spans that point to the fields, rather than the
 sample usage: src/etc/generate-deriving-span-tests.py
 """
 
-import sys, os, datetime, stat, re
+import os, datetime, stat, re
 
 TEST_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../test/compile-fail'))
+    os.path.join(os.path.dirname(__file__), '../test/ui/derives/'))
 
 YEAR = datetime.datetime.now().year
 
-TEMPLATE = """// Copyright {year} The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+TEMPLATE = """
 // This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
 
 {error_deriving}

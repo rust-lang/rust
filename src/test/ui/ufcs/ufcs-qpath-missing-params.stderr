@@ -1,0 +1,9 @@
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/ufcs-qpath-missing-params.rs:14:5
+   |
+LL |     <String as IntoCow>::into_cow("foo".to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 type argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,11 @@
+error[E0560]: struct `BuildData` has no field named `bar`
+  --> $DIR/struct-fields-too-many.rs:8:9
+   |
+LL |         bar: 0
+   |         ^^^ `BuildData` does not have this field
+   |
+   = note: available fields are: `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0560`.

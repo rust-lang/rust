@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Constraint solving
 //!
 //! The final phase iterates over the constraints, refining the variance
@@ -93,7 +83,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
         let solutions = &self.solutions;
         self.terms_cx.inferred_starts.iter().map(|(&id, &InferredIndex(start))| {
-            let def_id = tcx.hir.local_def_id(id);
+            let def_id = tcx.hir().local_def_id(id);
             let generics = tcx.generics_of(def_id);
 
             let mut variances = solutions[start..start+generics.count()].to_vec();
@@ -101,7 +91,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             debug!("id={} variances={:?}", id, variances);
 
             // Functions can have unused type parameters: make those invariant.
-            if let ty::TyFnDef(..) = tcx.type_of(def_id).sty {
+            if let ty::FnDef(..) = tcx.type_of(def_id).sty {
                 for variance in &mut variances {
                     if *variance == ty::Bivariant {
                         *variance = ty::Invariant;

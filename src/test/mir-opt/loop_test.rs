@@ -1,14 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// compile-flags: -Z identify_regions -Z emit-end-regions
+// compile-flags: -Z identify_regions
 
 // Tests to make sure we correctly generate falseUnwind edges in loops
 
@@ -42,6 +32,7 @@ fn main() {
 //    bb5: { // The loop body (body_block)
 //        StorageLive(_5);
 //        _5 = const 1i32;
+//        FakeRead(ForLet, _5);
 //        StorageDead(_5);
 //        goto -> bb4;
 //    }

@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::mir::{Local, Location};
 use rustc::mir::Mir;
 use rustc::mir::visit::PlaceContext;
@@ -43,24 +33,8 @@ impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
             return;
         }
 
-        if is_place_assignment(&place_context) {
+        if place_context.is_place_assignment() {
             self.locations.push(location);
         }
-    }
-}
-
-/// Returns true if this place context represents an assignment statement
-crate fn is_place_assignment(place_context: &PlaceContext) -> bool {
-    match *place_context {
-        PlaceContext::Store | PlaceContext::Call | PlaceContext::AsmOutput => true,
-        PlaceContext::Drop
-        | PlaceContext::Inspect
-        | PlaceContext::Borrow { .. }
-        | PlaceContext::Projection(..)
-        | PlaceContext::Copy
-        | PlaceContext::Move
-        | PlaceContext::StorageLive
-        | PlaceContext::StorageDead
-        | PlaceContext::Validate => false,
     }
 }

@@ -1,0 +1,9 @@
+error[E0532]: expected unit struct/variant or constant, found module `crate`
+  --> $DIR/keyword-crate-as-identifier.rs:4:9
+   |
+LL |     let crate = 0;
+   |         ^^^^^ not a unit struct/variant or constant
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

@@ -1,17 +1,7 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow_check::nll::type_check;
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Mir, Promoted};
+use rustc::mir::{Mir, MirPhase, Promoted};
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -23,7 +13,7 @@ use std::borrow::Cow;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub mod add_validation;
+pub mod add_retag;
 pub mod add_moves_for_packed_drops;
 pub mod cleanup_post_borrowck;
 pub mod check_unsafety;
@@ -36,6 +26,7 @@ pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;
+pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod dump_mir;
 pub mod deaggregator;
@@ -71,7 +62,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                       -> Lrc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
 
-    let mut set = DefIdSet();
+    let mut set = DefIdSet::default();
 
     // All body-owners have MIR associated with them.
     set.extend(tcx.body_owners());
@@ -90,7 +81,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                               _: ast::NodeId,
                               _: Span) {
             if let hir::VariantData::Tuple(_, node_id) = *v {
-                self.set.insert(self.tcx.hir.local_def_id(node_id));
+                self.set.insert(self.tcx.hir().local_def_id(node_id));
             }
             intravisit::walk_struct_def(self, v)
         }
@@ -98,7 +89,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
             NestedVisitorMap::None
         }
     }
-    tcx.hir.krate().visit_all_item_likes(&mut GatherCtors {
+    tcx.hir().krate().visit_all_item_likes(&mut GatherCtors {
         tcx,
         set: &mut set,
     }.as_deep_visitor());
@@ -154,70 +145,83 @@ pub trait MirPass {
                           mir: &mut Mir<'tcx>);
 }
 
-pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $($pass:expr,)*) {{
-    let suite_index: usize = $suite_index;
-    let run_passes = |mir: &mut _, promoted| {
+pub fn run_passes(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &mut Mir<'tcx>,
+    def_id: DefId,
+    mir_phase: MirPhase,
+    passes: &[&dyn MirPass],
+) {
+    let phase_index = mir_phase.phase_index();
+
+    let run_passes = |mir: &mut Mir<'tcx>, promoted| {
+        if mir.phase >= mir_phase {
+            return;
+        }
+
         let source = MirSource {
-            def_id: $def_id,
-            promoted
+            def_id,
+            promoted,
         };
         let mut index = 0;
         let mut run_pass = |pass: &dyn MirPass| {
             let run_hooks = |mir: &_, index, is_after| {
-                dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
+                dump_mir::on_mir_pass(tcx, &format_args!("{:03}-{:03}", phase_index, index),
                                       &pass.name(), source, mir, is_after);
             };
             run_hooks(mir, index, false);
-            pass.run_pass($tcx, source, mir);
+            pass.run_pass(tcx, source, mir);
             run_hooks(mir, index, true);
 
             index += 1;
         };
-        $(run_pass(&$pass);)*
+
+        for pass in passes {
+            run_pass(*pass);
+        }
+
+        mir.phase = mir_phase;
     };
 
-    run_passes(&mut $mir, None);
+    run_passes(mir, None);
 
-    for (index, promoted_mir) in $mir.promoted.iter_enumerated_mut() {
+    for (index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
         run_passes(promoted_mir, Some(index));
 
-        // Let's make sure we don't miss any nested instances
-        assert!(promoted_mir.promoted.is_empty());
+        //Let's make sure we don't miss any nested instances
+        assert!(promoted_mir.promoted.is_empty())
     }
-}}
+}
 
 fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut mir = tcx.mir_built(def_id).steal();
-    run_passes![tcx, mir, def_id, 0;
-        // Remove all `EndRegion` statements that are not involved in borrows.
-        cleanup_post_borrowck::CleanEndRegions,
-
+    run_passes(tcx, &mut mir, def_id, MirPhase::Const, &[
         // What we need to do constant evaluation.
-        simplify::SimplifyCfg::new("initial"),
-        type_check::TypeckMir,
-        rustc_peek::SanityCheck,
-        uniform_array_move_out::UniformArrayMoveOut,
-    ];
+        &simplify::SimplifyCfg::new("initial"),
+        &type_check::TypeckMir,
+        &rustc_peek::SanityCheck,
+        &uniform_array_move_out::UniformArrayMoveOut,
+    ]);
     tcx.alloc_steal_mir(mir)
 }
 
 fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(node_id) {
+    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+    if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(node_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
         // this point, before we steal the mir-const result.
         let _ = tcx.mir_const_qualif(def_id);
     }
 
     let mut mir = tcx.mir_const(def_id).steal();
-    run_passes![tcx, mir, def_id, 1;
+    run_passes(tcx, &mut mir, def_id, MirPhase::Validated, &[
         // What we need to run borrowck etc.
-        qualify_consts::QualifyAndPromoteConstants,
-        simplify::SimplifyCfg::new("qualify-consts"),
-    ];
+        &qualify_consts::QualifyAndPromoteConstants,
+        &simplify::SimplifyCfg::new("qualify-consts"),
+    ]);
     tcx.alloc_steal_mir(mir)
 }
 
@@ -231,56 +235,61 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_validated(def_id).steal();
-    run_passes![tcx, mir, def_id, 2;
+    run_passes(tcx, &mut mir, def_id, MirPhase::Optimized, &[
         // Remove all things not needed by analysis
-        no_landing_pads::NoLandingPads,
-        simplify_branches::SimplifyBranches::new("initial"),
-        remove_noop_landing_pads::RemoveNoopLandingPads,
-        simplify::SimplifyCfg::new("early-opt"),
-        // Remove all `UserAssertTy` statements.
-        cleanup_post_borrowck::CleanUserAssertTy,
+        &no_landing_pads::NoLandingPads,
+        &simplify_branches::SimplifyBranches::new("initial"),
+        &remove_noop_landing_pads::RemoveNoopLandingPads,
+        // Remove all `AscribeUserType` statements.
+        &cleanup_post_borrowck::CleanAscribeUserType,
+        // Remove all `FakeRead` statements and the borrows that are only
+        // used for checking matches
+        &cleanup_post_borrowck::CleanFakeReadsAndBorrows,
+
+        &simplify::SimplifyCfg::new("early-opt"),
 
         // These next passes must be executed together
-        add_call_guards::CriticalCallEdges,
-        elaborate_drops::ElaborateDrops,
-        no_landing_pads::NoLandingPads,
-        // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
-        // an AllCallEdges pass right before it.
-        add_call_guards::AllCallEdges,
-        add_validation::AddValidation,
+        &add_call_guards::CriticalCallEdges,
+        &elaborate_drops::ElaborateDrops,
+        &no_landing_pads::NoLandingPads,
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
-        add_moves_for_packed_drops::AddMovesForPackedDrops,
+        &add_moves_for_packed_drops::AddMovesForPackedDrops,
+        // AddRetag needs to run after ElaborateDrops, and it needs
+        // an AllCallEdges pass right before it.  Otherwise it should
+        // run fairly late, but before optimizations begin.
+        &add_call_guards::AllCallEdges,
+        &add_retag::AddRetag,
 
-        simplify::SimplifyCfg::new("elaborate-drops"),
+        &simplify::SimplifyCfg::new("elaborate-drops"),
 
         // No lifetime analysis based on borrowing can be done from here on out.
 
         // From here on out, regions are gone.
-        erase_regions::EraseRegions,
+        &erase_regions::EraseRegions,
 
-        lower_128bit::Lower128Bit,
+        &lower_128bit::Lower128Bit,
 
 
         // Optimizations begin.
-        uniform_array_move_out::RestoreSubsliceArrayMoveOut,
-        inline::Inline,
+        &uniform_array_move_out::RestoreSubsliceArrayMoveOut,
+        &inline::Inline,
 
         // Lowering generator control-flow and variables
         // has to happen before we do anything else to them.
-        generator::StateTransform,
+        &generator::StateTransform,
 
-        instcombine::InstCombine,
-        const_prop::ConstProp,
-        simplify_branches::SimplifyBranches::new("after-const-prop"),
-        deaggregator::Deaggregator,
-        copy_prop::CopyPropagation,
-        remove_noop_landing_pads::RemoveNoopLandingPads,
-        simplify::SimplifyCfg::new("final"),
-        simplify::SimplifyLocals,
+        &instcombine::InstCombine,
+        &const_prop::ConstProp,
+        &simplify_branches::SimplifyBranches::new("after-const-prop"),
+        &deaggregator::Deaggregator,
+        &copy_prop::CopyPropagation,
+        &remove_noop_landing_pads::RemoveNoopLandingPads,
+        &simplify::SimplifyCfg::new("final"),
+        &simplify::SimplifyLocals,
 
-        add_call_guards::CriticalCallEdges,
-        dump_mir::Marker("PreCodegen"),
-    ];
+        &add_call_guards::CriticalCallEdges,
+        &dump_mir::Marker("PreCodegen"),
+    ]);
     tcx.alloc_mir(mir)
 }

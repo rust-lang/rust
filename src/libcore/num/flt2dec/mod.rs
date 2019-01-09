@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /*!
 
 Floating-point number to decimal conversion routines.
@@ -23,7 +13,7 @@ representation `V = 0.d[0..n-1] * 10^k` such that:
 - `d[0]` is non-zero.
 
 - It's correctly rounded when parsed back: `v - minus < V < v + plus`.
-  Furthermore it is shortest such one, i.e. there is no representation
+  Furthermore it is shortest such one, i.e., there is no representation
   with less than `n` digits that is correctly rounded.
 
 - It's closest to the original value: `abs(V - v) <= 10^(k-n) / 2`. Note that
@@ -398,7 +388,7 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 /// given number of fractional digits. The result is stored to the supplied parts
 /// array while utilizing given byte buffer as a scratch. `upper` is currently
 /// unused but left for the future decision to change the case of non-finite values,
-/// i.e. `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
+/// i.e., `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
 /// (which can be an empty string if no sign is rendered).
 ///
 /// `format_shortest` should be the underlying digit-generation function.
@@ -424,20 +414,20 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 { // [0.][0000]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(frac_digits);
-                Formatted { sign: sign, parts: &parts[..2] }
+                Formatted { sign, parts: &parts[..2] }
             } else {
                 parts[0] = Part::Copy(b"0");
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted { sign, parts: &parts[..1] }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -480,11 +470,11 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             parts[0] = if dec_bounds.0 <= 0 && 0 < dec_bounds.1 {
@@ -492,7 +482,7 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
             } else {
                 Part::Copy(if upper { b"0E0" } else { b"0e0" })
             };
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Finite(ref decoded) => {
             let (len, exp) = format_shortest(decoded, buf);
@@ -502,7 +492,7 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
             } else {
                 digits_to_exp_str(&buf[..len], exp, 0, upper, parts)
             };
-            Formatted { sign: sign, parts: parts }
+            Formatted { sign, parts }
         }
     }
 }
@@ -558,21 +548,21 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             if ndigits > 1 { // [0.][0000][e0]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(ndigits - 1);
                 parts[2] = Part::Copy(if upper { b"E0" } else { b"e0" });
-                Formatted { sign: sign, parts: &parts[..3] }
+                Formatted { sign, parts: &parts[..3] }
             } else {
                 parts[0] = Part::Copy(if upper { b"0E0" } else { b"0e0" });
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted { sign, parts: &parts[..1] }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -591,7 +581,7 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 /// given number of fractional digits. The result is stored to the supplied parts
 /// array while utilizing given byte buffer as a scratch. `upper` is currently
 /// unused but left for the future decision to change the case of non-finite values,
-/// i.e. `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
+/// i.e., `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
 /// (which can be an empty string if no sign is rendered).
 ///
 /// `format_exact` should be the underlying digit-generation function.
@@ -613,20 +603,20 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 { // [0.][0000]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(frac_digits);
-                Formatted { sign: sign, parts: &parts[..2] }
+                Formatted { sign, parts: &parts[..2] }
             } else {
                 parts[0] = Part::Copy(b"0");
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted { sign, parts: &parts[..1] }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -646,10 +636,10 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                 if frac_digits > 0 { // [0.][0000]
                     parts[0] = Part::Copy(b"0.");
                     parts[1] = Part::Zero(frac_digits);
-                    Formatted { sign: sign, parts: &parts[..2] }
+                    Formatted { sign, parts: &parts[..2] }
                 } else {
                     parts[0] = Part::Copy(b"0");
-                    Formatted { sign: sign, parts: &parts[..1] }
+                    Formatted { sign, parts: &parts[..1] }
                 }
             } else {
                 Formatted { sign,
@@ -658,4 +648,3 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
         }
     }
 }
-

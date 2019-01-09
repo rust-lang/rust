@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
+  --> $DIR/wf-trait-fn-where-clause.rs:10:5
+   |
+LL |     fn bar(&self) where Self: Sized, Bar<Self>: Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `Self`
+   |
+   = help: consider adding a `where Self: std::cmp::Eq` bound
+note: required by `Bar`
+  --> $DIR/wf-trait-fn-where-clause.rs:7:1
+   |
+LL | struct Bar<T:Eq+?Sized> { value: Box<T> }
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

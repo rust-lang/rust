@@ -1,0 +1,75 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:14:16
+   |
+LL |     take_range(0..1);
+   |                ^^^^
+   |                |
+   |                expected reference, found struct `std::ops::Range`
+   |                help: consider borrowing here: `&(0..1)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::Range<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:19:16
+   |
+LL |     take_range(1..);
+   |                ^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeFrom`
+   |                help: consider borrowing here: `&(1..)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeFrom<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:24:16
+   |
+LL |     take_range(..);
+   |                ^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeFull`
+   |                help: consider borrowing here: `&(..)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeFull`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:29:16
+   |
+LL |     take_range(0..=1);
+   |                ^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeInclusive`
+   |                help: consider borrowing here: `&(0..=1)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeInclusive<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:34:16
+   |
+LL |     take_range(..5);
+   |                ^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeTo`
+   |                help: consider borrowing here: `&(..5)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeTo<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:39:16
+   |
+LL |     take_range(..=42);
+   |                ^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeToInclusive`
+   |                help: consider borrowing here: `&(..=42)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeToInclusive<{integer}>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

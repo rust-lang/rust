@@ -1,0 +1,44 @@
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:6:1
+   |
+LL | extern crate libc;
+   | ^^^^^^^^^^^^^^^^^^ help: remove it
+   |
+note: lint level defined here
+  --> $DIR/unnecessary-extern-crate.rs:3:9
+   |
+LL | #![deny(unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:9:1
+   |
+LL | extern crate libc as x;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:31:5
+   |
+LL |     extern crate libc;
+   |     ^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:35:5
+   |
+LL |     extern crate libc as x;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:44:9
+   |
+LL |         extern crate libc;
+   |         ^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:48:9
+   |
+LL |         extern crate libc as x;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: aborting due to 6 previous errors
+

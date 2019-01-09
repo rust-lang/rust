@@ -1,0 +1,17 @@
+error[E0277]: expected a `std::ops::Fn<()>` closure, found `extern "C" fn() {f}`
+  --> $DIR/extern-wrong-value-type.rs:9:5
+   |
+LL |     is_fn(f);
+   |     ^^^^^ expected an `Fn<()>` closure, found `extern "C" fn() {f}`
+   |
+   = help: the trait `std::ops::Fn<()>` is not implemented for `extern "C" fn() {f}`
+   = note: wrap the `extern "C" fn() {f}` in a closure with no arguments: `|| { /* code */ }
+note: required by `is_fn`
+  --> $DIR/extern-wrong-value-type.rs:4:1
+   |
+LL | fn is_fn<F>(_: F) where F: Fn() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

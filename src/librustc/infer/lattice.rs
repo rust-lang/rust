@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # Lattice Variables
 //!
 //! This file contains generic code for operating on inference variables
@@ -88,12 +78,12 @@ pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
         // is (e.g.) `Box<i32>`. A more obvious solution might be to
         // iterate on the subtype obligations that are returned, but I
         // think this suffices. -nmatsakis
-        (&ty::TyInfer(TyVar(..)), _) => {
+        (&ty::Infer(TyVar(..)), _) => {
             let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
             this.relate_bound(v, b, a)?;
             Ok(v)
         }
-        (_, &ty::TyInfer(TyVar(..))) => {
+        (_, &ty::Infer(TyVar(..))) => {
             let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
             this.relate_bound(v, a, b)?;
             Ok(v)

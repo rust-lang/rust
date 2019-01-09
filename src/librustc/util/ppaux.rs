@@ -1,46 +1,187 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use mir::interpret::ConstValue;
-use middle::region::{self, BlockRemainder};
+use middle::region;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use ty::{TyBool, TyChar, TyAdt};
-use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
-use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
-use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use ty::{Bool, Char, Adt};
+use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
+use ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
+use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
+use ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
+use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
 use std::fmt;
 use std::usize;
 
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use hir;
 
+/// The "region highlights" are used to control region printing during
+/// specific error messages. When a "region highlight" is enabled, it
+/// gives an alternate way to print specific regions. For now, we
+/// always print those regions using a number, so something like `'0`.
+///
+/// Regions not selected by the region highlight mode are presently
+/// unaffected.
+#[derive(Copy, Clone, Default)]
+pub struct RegionHighlightMode {
+    /// If enabled, when we see the selected region, use `"'N"`
+    /// instead of the ordinary behavior.
+    highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
+
+    /// If enabled, when printing a "free region" that originated from
+    /// the given `ty::BoundRegion`, print it as `'1`. Free regions that would ordinarily
+    /// have names print as normal.
+    ///
+    /// This is used when you have a signature like `fn foo(x: &u32,
+    /// y: &'a u32)` and we want to give a name to the region of the
+    /// reference `x`.
+    highlight_bound_region: Option<(ty::BoundRegion, usize)>,
+}
+
 thread_local! {
     /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
     /// Contains region to highlight and counter for number to use when highlighting.
-    static HIGHLIGHT_REGION: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+    static REGION_HIGHLIGHT_MODE: Cell<RegionHighlightMode> =
+        Cell::new(RegionHighlightMode::default())
+}
+
+impl RegionHighlightMode {
+    /// Read and return current region highlight settings (accesses thread-local state).a
+    pub fn get() -> Self {
+        REGION_HIGHLIGHT_MODE.with(|c| c.get())
+    }
+
+    /// Internal helper to update current settings during the execution of `op`.
+    fn set<R>(
+        old_mode: Self,
+        new_mode: Self,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        REGION_HIGHLIGHT_MODE.with(|c| {
+            c.set(new_mode);
+            let result = op();
+            c.set(old_mode);
+            result
+        })
+    }
+
+    /// If `region` and `number` are both `Some`, invoke
+    /// `highlighting_region`. Otherwise, just invoke `op` directly.
+    pub fn maybe_highlighting_region<R>(
+        region: Option<ty::Region<'_>>,
+        number: Option<usize>,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        if let Some(k) = region {
+            if let Some(n) = number {
+                return Self::highlighting_region(k, n, op);
+            }
+        }
+
+        op()
+    }
+
+    /// During the execution of `op`, highlight the region inference
+    /// vairable `vid` as `'N`.  We can only highlight one region vid
+    /// at a time.
+    pub fn highlighting_region<R>(
+        region: ty::Region<'_>,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        let old_mode = Self::get();
+        let mut new_mode = old_mode;
+        let first_avail_slot = new_mode.highlight_regions.iter_mut()
+            .filter(|s| s.is_none())
+            .next()
+            .unwrap_or_else(|| {
+                panic!(
+                    "can only highlight {} placeholders at a time",
+                    old_mode.highlight_regions.len(),
+                )
+            });
+        *first_avail_slot = Some((*region, number));
+        Self::set(old_mode, new_mode, op)
+    }
+
+    /// Convenience wrapper for `highlighting_region`
+    pub fn highlighting_region_vid<R>(
+        vid: ty::RegionVid,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        Self::highlighting_region(&ty::ReVar(vid), number, op)
+    }
+
+    /// Returns true if any placeholders are highlighted.
+    fn any_region_vids_highlighted(&self) -> bool {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .any(|h| match h {
+                Some((ty::ReVar(_), _)) => true,
+                _ => false,
+            })
+    }
+
+    /// Returns `Some(n)` with the number to use for the given region,
+    /// if any.
+    fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .filter_map(|h| match h {
+                Some((r, n)) if r == region => Some(*n),
+                _ => None,
+            })
+            .next()
+    }
+
+    /// During the execution of `op`, highlight the given bound
+    /// region. We can only highlight one bound region at a time.  See
+    /// the field `highlight_bound_region` for more detailed notes.
+    pub fn highlighting_bound_region<R>(
+        br: ty::BoundRegion,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        let old_mode = Self::get();
+        assert!(old_mode.highlight_bound_region.is_none());
+        Self::set(
+            old_mode,
+            Self {
+                highlight_bound_region: Some((br, number)),
+                ..old_mode
+            },
+            op,
+        )
+    }
+
+    /// Returns true if any placeholders are highlighted.
+    pub fn any_placeholders_highlighted(&self) -> bool {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .any(|h| match h {
+                Some((ty::RePlaceholder(_), _)) => true,
+                _ => false,
+            })
+    }
+
+    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as `'N`.
+    pub fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
+        self.region_highlighted(&ty::RePlaceholder(p))
+    }
 }
 
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut cx = PrintContext::new();
             $with(self, f, &mut cx)
         }
@@ -176,7 +317,7 @@ impl PrintContext {
     fn prepare_late_bound_region_info<'tcx, T>(&mut self, value: &ty::Binder<T>)
     where T: TypeFoldable<'tcx>
     {
-        let mut collector = LateBoundRegionNameCollector(FxHashSet());
+        let mut collector = LateBoundRegionNameCollector(Default::default());
         value.visit_with(&mut collector);
         self.used_region_names = Some(collector.0);
         self.region_index = 0;
@@ -219,9 +360,9 @@ pub trait Print {
 impl PrintContext {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
-                             inputs: &[Ty],
+                             inputs: &[Ty<'_>],
                              variadic: bool,
-                             output: Ty)
+                             output: Ty<'_>)
                              -> fmt::Result {
         write!(f, "(")?;
         let mut inputs = inputs.iter();
@@ -235,7 +376,7 @@ impl PrintContext {
             }
         }
         write!(f, ")")?;
-        if !output.is_nil() {
+        if !output.is_unit() {
             print!(f, self, write(" -> "), print_display(output))?;
         }
 
@@ -244,29 +385,18 @@ impl PrintContext {
 
     fn parameterized<F: fmt::Write>(&mut self,
                                     f: &mut F,
-                                    substs: &subst::Substs,
-                                    mut did: DefId,
-                                    projections: &[ty::ProjectionPredicate])
+                                    substs: &subst::Substs<'_>,
+                                    did: DefId,
+                                    projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
         let key = ty::tls::with(|tcx| tcx.def_key(did));
-        let mut item_name = if let Some(name) = key.disambiguated_data.data.get_opt_name() {
-            Some(name)
-        } else {
-            did.index = key.parent.unwrap_or_else(
-                || bug!("finding type for {:?}, encountered def-id {:?} with no parent",
-                        did, did));
-            self.parameterized(f, substs, did, projections)?;
-            return write!(f, "::{}", key.disambiguated_data.data.as_interned_str());
-        };
 
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
-        let mut own_counts = GenericParamCount {
-            lifetimes: 0,
-            types: 0,
-        };
+        let mut own_counts: GenericParamCount = Default::default();
         let mut is_value_path = false;
+        let mut item_name = Some(key.disambiguated_data.data.as_interned_str());
         let fn_trait_kind = ty::tls::with(|tcx| {
             // Unfortunately, some kinds of items (e.g., closures) don't have
             // generics. So walk back up the find the closest parent that DOES
@@ -279,6 +409,7 @@ impl PrintContext {
                     DefPathData::AssocTypeInImpl(_) |
                     DefPathData::AssocExistentialInImpl(_) |
                     DefPathData::Trait(_) |
+                    DefPathData::Impl |
                     DefPathData::TypeNs(_) => {
                         break;
                     }
@@ -289,7 +420,6 @@ impl PrintContext {
                     }
                     DefPathData::CrateRoot |
                     DefPathData::Misc |
-                    DefPathData::Impl |
                     DefPathData::Module(_) |
                     DefPathData::MacroDef(_) |
                     DefPathData::ClosureExpr |
@@ -374,7 +504,7 @@ impl PrintContext {
 
         if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
             let projection_ty = projections[0].ty;
-            if let TyTuple(ref args) = substs.type_at(1).sty {
+            if let Tuple(ref args) = substs.type_at(1).sty {
                 return self.fn_sig(f, args, false, projection_ty);
             }
         }
@@ -392,12 +522,12 @@ impl PrintContext {
         let print_regions = |f: &mut F, start: &str, skip, count| {
             // Don't print any regions if they're all erased.
             let regions = || substs.regions().skip(skip).take(count);
-            if regions().all(|r: ty::Region| *r == ty::ReErased) {
+            if regions().all(|r: ty::Region<'_>| *r == ty::ReErased) {
                 return Ok(());
             }
 
             for region in regions() {
-                let region: ty::Region = region;
+                let region: ty::Region<'_> = region;
                 start_or_continue(f, start, ", ")?;
                 if verbose {
                     write!(f, "{:?}", region)?;
@@ -528,7 +658,7 @@ impl PrintContext {
                         }
                     };
                     let _ = write!(f, "{}", name);
-                    ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
+                    ty::BrNamed(tcx.hir().local_def_id(CRATE_NODE_ID), name)
                 }
             };
             tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
@@ -561,25 +691,11 @@ pub fn identify_regions() -> bool {
 }
 
 pub fn parameterized<F: fmt::Write>(f: &mut F,
-                                    substs: &subst::Substs,
+                                    substs: &subst::Substs<'_>,
                                     did: DefId,
-                                    projections: &[ty::ProjectionPredicate])
+                                    projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
     PrintContext::new().parameterized(f, substs, did, projections)
-}
-
-fn get_highlight_region() -> Option<(RegionVid, usize)> {
-    HIGHLIGHT_REGION.with(|hr| hr.get())
-}
-
-pub fn with_highlight_region<R>(r: RegionVid, counter: usize, op: impl FnOnce() -> R) -> R {
-    HIGHLIGHT_REGION.with(|hr| {
-        assert_eq!(hr.get(), None);
-        hr.set(Some((r, counter)));
-        let r = op();
-        hr.set(None);
-        r
-    })
 }
 
 impl<'a, T: Print> Print for &'a T {
@@ -589,15 +705,18 @@ impl<'a, T: Print> Print for &'a T {
 }
 
 define_print! {
-    ('tcx) &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, (self, f, cx) {
+    ('tcx) &'tcx ty::List<ty::ExistentialPredicate<'tcx>>, (self, f, cx) {
         display {
             // Generate the main trait ref, including associated types.
             ty::tls::with(|tcx| {
                 // Use a type that can't appear in defaults of type parameters.
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+                let mut first = true;
 
-                if let Some(p) = self.principal() {
-                    let principal = tcx.lift(&p).expect("could not lift TraitRef for printing")
+                if let Some(principal) = self.principal() {
+                    let principal = tcx
+                        .lift(&principal)
+                        .expect("could not lift TraitRef for printing")
                         .with_self_ty(tcx, dummy_self);
                     let projections = self.projection_bounds().map(|p| {
                         tcx.lift(&p)
@@ -605,11 +724,30 @@ define_print! {
                             .with_self_ty(tcx, dummy_self)
                     }).collect::<Vec<_>>();
                     cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                    first = false;
                 }
 
                 // Builtin bounds.
-                for did in self.auto_traits() {
-                    write!(f, " + {}", tcx.item_path_str(did))?;
+                let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
+                    tcx.item_path_str(did)
+                }).collect();
+
+                // The auto traits come ordered by `DefPathHash`. While
+                // `DefPathHash` is *stable* in the sense that it depends on
+                // neither the host nor the phase of the moon, it depends
+                // "pseudorandomly" on the compiler version and the target.
+                //
+                // To avoid that causing instabilities in compiletest
+                // output, sort the auto-traits alphabetically.
+                auto_traits.sort();
+
+                for auto_trait in auto_traits {
+                    if !first {
+                        write!(f, " + ")?;
+                    }
+                    first = false;
+
+                    write!(f, "{}", auto_trait)?;
                 }
 
                 Ok(())
@@ -621,7 +759,7 @@ define_print! {
 }
 
 impl fmt::Debug for ty::GenericParamDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let type_name = match self.kind {
             ty::GenericParamDefKind::Lifetime => "Lifetime",
             ty::GenericParamDefKind::Type {..} => "Type",
@@ -635,7 +773,7 @@ impl fmt::Debug for ty::GenericParamDef {
 }
 
 impl fmt::Debug for ty::TraitDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             write!(f, "{}", tcx.item_path_str(self.def_id))
         })
@@ -643,7 +781,7 @@ impl fmt::Debug for ty::TraitDef {
 }
 
 impl fmt::Debug for ty::AdtDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             write!(f, "{}", tcx.item_path_str(self.did))
         })
@@ -651,7 +789,7 @@ impl fmt::Debug for ty::AdtDef {
 }
 
 impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ClosureUpvar({:?},{:?})",
                self.def,
                self.ty)
@@ -659,23 +797,23 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 }
 
 impl fmt::Debug for ty::UpvarId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarId({:?};`{}`;{:?})",
-               self.var_id,
-               ty::tls::with(|tcx| tcx.hir.name(tcx.hir.hir_to_node_id(self.var_id))),
+               self.var_path.hir_id,
+               ty::tls::with(|tcx| tcx.hir().name(tcx.hir().hir_to_node_id(self.var_path.hir_id))),
                self.closure_expr_id)
     }
 }
 
 impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarBorrow({:?}, {:?})",
                self.kind, self.region)
     }
 }
 
 define_print! {
-    ('tcx) &'tcx ty::Slice<Ty<'tcx>>, (self, f, cx) {
+    ('tcx) &'tcx ty::List<Ty<'tcx>>, (self, f, cx) {
         display {
             write!(f, "{{")?;
             let mut tys = self.iter();
@@ -702,6 +840,9 @@ define_print! {
 
 define_print! {
     ('tcx) ty::ExistentialTraitRef<'tcx>, (self, f, cx) {
+        display {
+            cx.parameterized(f, self.substs, self.def_id, &[])
+        }
         debug {
             ty::tls::with(|tcx| {
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
@@ -730,6 +871,15 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
+            if let Some((region, counter)) = RegionHighlightMode::get().highlight_bound_region {
+                if *self == region {
+                    return match *self {
+                        BrNamed(_, name) => write!(f, "{}", name),
+                        BrAnon(_) | BrFresh(_) | BrEnv => write!(f, "'{}", counter)
+                    };
+                }
+            }
+
             match *self {
                 BrNamed(_, name) => write!(f, "{}", name),
                 BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
@@ -750,10 +900,34 @@ define_print! {
 }
 
 define_print! {
+    () ty::PlaceholderRegion, (self, f, cx) {
+        display {
+            if cx.is_verbose {
+                return self.print_debug(f, cx);
+            }
+
+            let highlight = RegionHighlightMode::get();
+            if let Some(counter) = highlight.placeholder_highlight(*self) {
+                write!(f, "'{}", counter)
+            } else if highlight.any_placeholders_highlighted() {
+                write!(f, "'_")
+            } else {
+                write!(f, "{}", self.name)
+            }
+        }
+    }
+}
+
+define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
-            if cx.is_verbose || get_highlight_region().is_some() {
+            if cx.is_verbose {
                 return self.print_debug(f, cx);
+            }
+
+            // Watch out for region highlights.
+            if let Some(n) = RegionHighlightMode::get().region_highlighted(self) {
+                return write!(f, "'{:?}", n);
             }
 
             // These printouts are concise.  They do not contain all the information
@@ -764,34 +938,41 @@ define_print! {
                 ty::ReEarlyBound(ref data) => {
                     write!(f, "{}", data.name)
                 }
-                ty::ReCanonical(_) => {
-                    write!(f, "'_")
-                }
                 ty::ReLateBound(_, br) |
-                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::ReSkolemized(_, br) => {
+                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) => {
                     write!(f, "{}", br)
                 }
+                ty::RePlaceholder(p) => {
+                    write!(f, "{}", p)
+                }
                 ty::ReScope(scope) if cx.identify_regions => {
-                    match scope.data() {
-                        region::ScopeData::Node(id) =>
-                            write!(f, "'{}s", id.as_usize()),
-                        region::ScopeData::CallSite(id) =>
-                            write!(f, "'{}cs", id.as_usize()),
-                        region::ScopeData::Arguments(id) =>
-                            write!(f, "'{}as", id.as_usize()),
-                        region::ScopeData::Destruction(id) =>
-                            write!(f, "'{}ds", id.as_usize()),
-                        region::ScopeData::Remainder(BlockRemainder
-                                                     { block, first_statement_index }) =>
-                            write!(f, "'{}_{}rs", block.as_usize(), first_statement_index.index()),
+                    match scope.data {
+                        region::ScopeData::Node =>
+                            write!(f, "'{}s", scope.item_local_id().as_usize()),
+                        region::ScopeData::CallSite =>
+                            write!(f, "'{}cs", scope.item_local_id().as_usize()),
+                        region::ScopeData::Arguments =>
+                            write!(f, "'{}as", scope.item_local_id().as_usize()),
+                        region::ScopeData::Destruction =>
+                            write!(f, "'{}ds", scope.item_local_id().as_usize()),
+                        region::ScopeData::Remainder(first_statement_index) => write!(
+                            f,
+                            "'{}_{}rs",
+                            scope.item_local_id().as_usize(),
+                            first_statement_index.index()
+                        ),
                     }
                 }
-                ty::ReVar(region_vid) if cx.identify_regions => {
-                    write!(f, "'{}rv", region_vid.index())
+                ty::ReVar(region_vid) => {
+                    if RegionHighlightMode::get().any_region_vids_highlighted() {
+                        write!(f, "{:?}", region_vid)
+                    } else if cx.identify_regions {
+                        write!(f, "'{}rv", region_vid.index())
+                    } else {
+                        Ok(())
+                    }
                 }
                 ty::ReScope(_) |
-                ty::ReVar(_) |
                 ty::ReErased => Ok(()),
                 ty::ReStatic => write!(f, "'static"),
                 ty::ReEmpty => write!(f, "'<empty>"),
@@ -831,12 +1012,8 @@ define_print! {
                     write!(f, "{:?}", vid)
                 }
 
-                ty::ReCanonical(c) => {
-                    write!(f, "'?{}", c.index())
-                }
-
-                ty::ReSkolemized(universe, ref bound_region) => {
-                    write!(f, "ReSkolemized({:?}, {:?})", universe, bound_region)
+                ty::RePlaceholder(placeholder) => {
+                    write!(f, "RePlaceholder({:?})", placeholder)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
@@ -905,32 +1082,29 @@ define_print! {
 }
 
 impl fmt::Debug for ty::TyVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}t", self.index)
     }
 }
 
 impl fmt::Debug for ty::IntVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}i", self.index)
     }
 }
 
 impl fmt::Debug for ty::FloatVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}f", self.index)
     }
 }
 
 impl fmt::Debug for ty::RegionVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some((region, counter)) = get_highlight_region() {
-            debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
-            return if *self == region {
-                write!(f, "'{:?}", counter)
-            } else {
-                write!(f, "'_")
-            }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(counter) = RegionHighlightMode::get().region_highlighted(&ty::ReVar(*self)) {
+            return write!(f, "'{:?}", counter);
+        } else if RegionHighlightMode::get().any_region_vids_highlighted() {
+            return write!(f, "'_");
         }
 
         write!(f, "'_#{}r", self.index())
@@ -947,7 +1121,6 @@ define_print! {
                     ty::TyVar(_) => write!(f, "_"),
                     ty::IntVar(_) => write!(f, "{}", "{integer}"),
                     ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                    ty::CanonicalTy(_) => write!(f, "_"),
                     ty::FreshTy(v) => write!(f, "FreshTy({})", v),
                     ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
                     ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
@@ -959,7 +1132,6 @@ define_print! {
                 ty::TyVar(ref v) => write!(f, "{:?}", v),
                 ty::IntVar(ref v) => write!(f, "{:?}", v),
                 ty::FloatVar(ref v) => write!(f, "{:?}", v),
-                ty::CanonicalTy(v) => write!(f, "?{:?}", v.index()),
                 ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
                 ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
                 ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
@@ -969,7 +1141,7 @@ define_print! {
 }
 
 impl fmt::Debug for ty::IntVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::IntType(ref v) => v.fmt(f),
             ty::UintType(ref v) => v.fmt(f),
@@ -978,7 +1150,7 @@ impl fmt::Debug for ty::IntVarValue {
 }
 
 impl fmt::Debug for ty::FloatVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -989,14 +1161,14 @@ impl fmt::Debug for ty::FloatVarValue {
     where T: fmt::Display + for<'a> ty::Lift<'a>,
           for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }*/
 
 define_print_multi! {
     [
-    ('tcx) ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
+    ('tcx) ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
     ('tcx) ty::Binder<ty::TraitRef<'tcx>>,
     ('tcx) ty::Binder<ty::FnSig<'tcx>>,
     ('tcx) ty::Binder<ty::TraitPredicate<'tcx>>,
@@ -1032,22 +1204,22 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::TypeVariants<'tcx>, (self, f, cx) {
+    ('tcx) ty::TyKind<'tcx>, (self, f, cx) {
         display {
             match *self {
-                TyBool => write!(f, "bool"),
-                TyChar => write!(f, "char"),
-                TyInt(t) => write!(f, "{}", t.ty_to_string()),
-                TyUint(t) => write!(f, "{}", t.ty_to_string()),
-                TyFloat(t) => write!(f, "{}", t.ty_to_string()),
-                TyRawPtr(ref tm) => {
+                Bool => write!(f, "bool"),
+                Char => write!(f, "char"),
+                Int(t) => write!(f, "{}", t.ty_to_string()),
+                Uint(t) => write!(f, "{}", t.ty_to_string()),
+                Float(t) => write!(f, "{}", t.ty_to_string()),
+                RawPtr(ref tm) => {
                     write!(f, "*{} ", match tm.mutbl {
                         hir::MutMutable => "mut",
                         hir::MutImmutable => "const",
                     })?;
                     tm.ty.print(f, cx)
                 }
-                TyRef(r, ty, mutbl) => {
+                Ref(r, ty, mutbl) => {
                     write!(f, "&")?;
                     let s = r.print_to_string(cx);
                     if s != "'_" {
@@ -1058,8 +1230,8 @@ define_print! {
                     }
                     ty::TypeAndMut { ty, mutbl }.print(f, cx)
                 }
-                TyNever => write!(f, "!"),
-                TyTuple(ref tys) => {
+                Never => write!(f, "!"),
+                Tuple(ref tys) => {
                     write!(f, "(")?;
                     let mut tys = tys.iter();
                     if let Some(&ty) = tys.next() {
@@ -1073,7 +1245,7 @@ define_print! {
                     }
                     write!(f, ")")
                 }
-                TyFnDef(def_id, substs) => {
+                FnDef(def_id, substs) => {
                     ty::tls::with(|tcx| {
                         let mut sig = tcx.fn_sig(def_id);
                         if let Some(substs) = tcx.lift(&substs) {
@@ -1084,14 +1256,27 @@ define_print! {
                     cx.parameterized(f, substs, def_id, &[])?;
                     write!(f, "}}")
                 }
-                TyFnPtr(ref bare_fn) => {
+                FnPtr(ref bare_fn) => {
                     bare_fn.print(f, cx)
                 }
-                TyInfer(infer_ty) => write!(f, "{}", infer_ty),
-                TyError => write!(f, "[type error]"),
-                TyParam(ref param_ty) => write!(f, "{}", param_ty),
-                TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
-                TyDynamic(data, r) => {
+                Infer(infer_ty) => write!(f, "{}", infer_ty),
+                Error => write!(f, "[type error]"),
+                Param(ref param_ty) => write!(f, "{}", param_ty),
+                Bound(debruijn, bound_ty) => {
+                    match bound_ty.kind {
+                        ty::BoundTyKind::Anon => {
+                            if debruijn == ty::INNERMOST {
+                                write!(f, "^{}", bound_ty.var.index())
+                            } else {
+                                write!(f, "^{}_{}", debruijn.index(), bound_ty.var.index())
+                            }
+                        }
+
+                        ty::BoundTyKind::Param(p) => write!(f, "{}", p),
+                    }
+                }
+                Adt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
+                Dynamic(data, r) => {
                     let r = r.print_to_string(cx);
                     if !r.is_empty() {
                         write!(f, "(")?;
@@ -1104,11 +1289,19 @@ define_print! {
                         Ok(())
                     }
                 }
-                TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
-                TyProjection(ref data) => data.print(f, cx),
-                TyAnon(def_id, substs) => {
+                Foreign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
+                Projection(ref data) => data.print(f, cx),
+                UnnormalizedProjection(ref data) => {
+                    write!(f, "Unnormalized(")?;
+                    data.print(f, cx)?;
+                    write!(f, ")")
+                }
+                Placeholder(placeholder) => {
+                    write!(f, "Placeholder({:?})", placeholder)
+                }
+                Opaque(def_id, substs) => {
                     if cx.is_verbose {
-                        return write!(f, "TyAnon({:?}, {:?})", def_id, substs);
+                        return write!(f, "Opaque({:?}, {:?})", def_id, substs);
                     }
 
                     ty::tls::with(|tcx| {
@@ -1153,12 +1346,14 @@ define_print! {
                         }
                         if !is_sized {
                             write!(f, "{}?Sized", if first { " " } else { "+" })?;
+                        } else if first {
+                            write!(f, " Sized")?;
                         }
                         Ok(())
                     })
                 }
-                TyStr => write!(f, "str"),
-                TyGenerator(did, substs, movability) => ty::tls::with(|tcx| {
+                Str => write!(f, "str"),
+                Generator(did, substs, movability) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     let witness = substs.witness(did, tcx);
                     if movability == hir::GeneratorMovability::Movable {
@@ -1167,15 +1362,15 @@ define_print! {
                         write!(f, "[static generator")?;
                     }
 
-                    if let Some(node_id) = tcx.hir.as_local_node_id(did) {
-                        write!(f, "@{:?}", tcx.hir.span(node_id))?;
+                    if let Some(node_id) = tcx.hir().as_local_node_id(did) {
+                        write!(f, "@{:?}", tcx.hir().span(node_id))?;
                         let mut sep = " ";
                         tcx.with_freevars(node_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",
                                              sep,
-                                             tcx.hir.name(freevar.var_id())),
+                                             tcx.hir().name(freevar.var_id())),
                                        print(upvar_ty))?;
                                 sep = ", ";
                             }
@@ -1196,18 +1391,18 @@ define_print! {
 
                     print!(f, cx, write(" "), print(witness), write("]"))
                 }),
-                TyGeneratorWitness(types) => {
+                GeneratorWitness(types) => {
                     ty::tls::with(|tcx| cx.in_binder(f, tcx, &types, tcx.lift(&types)))
                 }
-                TyClosure(did, substs) => ty::tls::with(|tcx| {
+                Closure(did, substs) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     write!(f, "[closure")?;
 
-                    if let Some(node_id) = tcx.hir.as_local_node_id(did) {
+                    if let Some(node_id) = tcx.hir().as_local_node_id(did) {
                         if tcx.sess.opts.debugging_opts.span_free_formats {
                             write!(f, "@{:?}", node_id)?;
                         } else {
-                            write!(f, "@{:?}", tcx.hir.span(node_id))?;
+                            write!(f, "@{:?}", tcx.hir().span(node_id))?;
                         }
                         let mut sep = " ";
                         tcx.with_freevars(node_id, |freevars| {
@@ -1215,7 +1410,7 @@ define_print! {
                                 print!(f, cx,
                                        write("{}{}:",
                                              sep,
-                                             tcx.hir.name(freevar.var_id())),
+                                             tcx.hir().name(freevar.var_id())),
                                        print(upvar_ty))?;
                                 sep = ", ";
                             }
@@ -1236,19 +1431,19 @@ define_print! {
 
                     write!(f, "]")
                 }),
-                TyArray(ty, sz) => {
+                Array(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
-                    match sz.val {
-                        ConstValue::Unevaluated(_def_id, _substs) => {
+                    match sz {
+                        ty::LazyConst::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
                         }
-                        _ => ty::tls::with(|tcx| {
-                            write!(f, "{}", sz.unwrap_usize(tcx))
+                        ty::LazyConst::Evaluated(c) => ty::tls::with(|tcx| {
+                            write!(f, "{}", c.unwrap_usize(tcx))
                         })?,
                     }
                     write!(f, "]")
                 }
-                TySlice(ty) => {
+                Slice(ty) => {
                     print!(f, cx, write("["), print(ty), write("]"))
                 }
             }

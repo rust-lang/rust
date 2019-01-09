@@ -1,0 +1,8 @@
+error: expected one of `(`, `fn`, `static`, or `type`, found `pub`
+  --> $DIR/duplicate-visibility.rs:3:9
+   |
+LL |     pub pub fn foo();
+   |         ^^^ expected one of `(`, `fn`, `static`, or `type` here
+
+error: aborting due to previous error
+

@@ -1,0 +1,11 @@
+error: unknown macro variable `nonexistent`
+  --> $DIR/issue-6596-2.rs:5:16
+   |
+LL |         { $inp $nonexistent }
+   |                ^^^^^^^^^^^^ unknown macro variable
+...
+LL |     g!(foo);
+   |     -------- in this macro invocation
+
+error: aborting due to previous error
+

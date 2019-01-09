@@ -1,0 +1,34 @@
+error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+  --> $DIR/not-panic-safe-3.rs:10:5
+   |
+LL |     assert::<Arc<RefCell<i32>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |
+   = help: within `std::cell::RefCell<i32>`, the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<i32>`
+   = note: required because it appears within the type `std::cell::RefCell<i32>`
+   = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `std::sync::Arc<std::cell::RefCell<i32>>`
+note: required by `assert`
+  --> $DIR/not-panic-safe-3.rs:7:1
+   |
+LL | fn assert<T: UnwindSafe + ?Sized>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the type `std::cell::UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+  --> $DIR/not-panic-safe-3.rs:10:5
+   |
+LL |     assert::<Arc<RefCell<i32>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |
+   = help: within `std::cell::RefCell<i32>`, the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<isize>`
+   = note: required because it appears within the type `std::cell::Cell<isize>`
+   = note: required because it appears within the type `std::cell::RefCell<i32>`
+   = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `std::sync::Arc<std::cell::RefCell<i32>>`
+note: required by `assert`
+  --> $DIR/not-panic-safe-3.rs:7:1
+   |
+LL | fn assert<T: UnwindSafe + ?Sized>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

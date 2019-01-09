@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::*;
 
 pub(crate) struct TerseFormatter<T> {
@@ -18,6 +8,7 @@ pub(crate) struct TerseFormatter<T> {
     max_name_len: usize,
 
     test_count: usize,
+    total_test_count: usize,
 }
 
 impl<T: Write> TerseFormatter<T> {
@@ -33,6 +24,7 @@ impl<T: Write> TerseFormatter<T> {
             max_name_len,
             is_multithreaded,
             test_count: 0,
+            total_test_count: 0, // initialized later, when write_run_start is called
         }
     }
 
@@ -64,9 +56,10 @@ impl<T: Write> TerseFormatter<T> {
         self.write_pretty(result, color)?;
         if self.test_count % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
             // we insert a new line every 100 dots in order to flush the
-            // screen when dealing with line-buffered output (e.g. piping to
+            // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
-            self.write_plain("\n")?;
+            let out = format!(" {}/{}\n", self.test_count+1, self.total_test_count);
+            self.write_plain(&out)?;
         }
 
         self.test_count += 1;
@@ -160,6 +153,7 @@ impl<T: Write> TerseFormatter<T> {
 
 impl<T: Write> OutputFormatter for TerseFormatter<T> {
     fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
+        self.total_test_count = test_count;
         let noun = if test_count != 1 { "tests" } else { "test" };
         self.write_plain(&format!("\nrunning {} {}\n", test_count, noun))
     }

@@ -1,5 +1,5 @@
 error[E0093]: unrecognized intrinsic function: `foo`
-  --> $DIR/E0093.rs:13:5
+  --> $DIR/E0093.rs:3:5
    |
 LL |     fn foo();
    |     ^^^^^^^^^ unrecognized intrinsic

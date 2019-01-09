@@ -1,0 +1,15 @@
+error[E0283]: type annotations required: cannot resolve `_: base::HasNew<base::Foo>`
+  --> $DIR/trait-static-method-generic-inference.rs:24:25
+   |
+LL |     let _f: base::Foo = base::HasNew::new();
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+note: required by `base::HasNew::new`
+  --> $DIR/trait-static-method-generic-inference.rs:8:9
+   |
+LL |         fn new() -> T;
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

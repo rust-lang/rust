@@ -1,0 +1,21 @@
+error[E0119]: conflicting implementations of trait `std::marker::Send` for type `TestType<_>`:
+  --> $DIR/coherence-conflicting-negative-trait-impl.rs:13:1
+   |
+LL | unsafe impl<T: MyTrait+'static> Send for TestType<T> {}
+   | ---------------------------------------------------- first implementation here
+LL | 
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
+
+error[E0119]: conflicting implementations of trait `std::marker::Send` for type `TestType<i32>`:
+  --> $DIR/coherence-conflicting-negative-trait-impl.rs:19:1
+   |
+LL | unsafe impl<T:'static> Send for TestType<T> {}
+   | ------------------------------------------- first implementation here
+LL | 
+LL | impl !Send for TestType<i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<i32>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

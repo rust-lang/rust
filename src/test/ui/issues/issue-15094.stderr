@@ -1,0 +1,12 @@
+error[E0053]: method `call_once` has an incompatible type for trait
+  --> $DIR/issue-15094.rs:11:5
+   |
+LL |     fn call_once(self, _args: ()) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "rust-call" fn, found "Rust" fn
+   |
+   = note: expected type `extern "rust-call" fn(Debuger<T>, ())`
+              found type `fn(Debuger<T>, ())`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

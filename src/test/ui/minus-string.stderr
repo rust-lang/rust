@@ -1,0 +1,11 @@
+error[E0600]: cannot apply unary operator `-` to type `std::string::String`
+  --> $DIR/minus-string.rs:3:13
+   |
+LL | fn main() { -"foo".to_string(); }
+   |             ^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
+   |
+   = note: an implementation of `std::ops::Neg` might be missing for `std::string::String`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0600`.

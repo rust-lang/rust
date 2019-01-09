@@ -1,0 +1,30 @@
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/issue-56199.rs:6:17
+   |
+LL |         let _ = Self;
+   |                 ^^^^
+   |
+   = help: did you mean to use one of the enum's variants?
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/issue-56199.rs:8:17
+   |
+LL |         let _ = Self();
+   |                 ^^^^
+   |
+   = help: did you mean to use one of the enum's variants?
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/issue-56199.rs:15:17
+   |
+LL |         let _ = Self;
+   |                 ^^^^ help: use curly brackets: `Self { /* fields */ }`
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/issue-56199.rs:17:17
+   |
+LL |         let _ = Self();
+   |                 ^^^^ help: use curly brackets: `Self { /* fields */ }`
+
+error: aborting due to 4 previous errors
+

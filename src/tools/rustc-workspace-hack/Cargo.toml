@@ -1,0 +1,65 @@
+[package]
+name = "rustc-workspace-hack"
+version = "1.0.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+license = 'MIT/Apache-2.0'
+description = """
+Hack for the compiler's own build system
+"""
+
+[lib]
+path = "lib.rs"
+
+# For documentation about what this is and why in the world these dependencies
+# are appearing, see `README.md`.
+
+[build-dependencies]
+# Currently Cargo/RLS depend on `failure` which depends on `synstructure` which
+# enables this feature. Clippy, however, does not depend on anything that
+# enables this feature. Enable it unconditionally.
+syn = { version = "0.15", features = ['extra-traits'] }
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = [
+  "basetsd",
+  "consoleapi",
+  "errhandlingapi",
+  "jobapi",
+  "jobapi2",
+  "lmcons",
+  "memoryapi",
+  "minschannel",
+  "minwinbase",
+  "ntsecapi",
+  "ntstatus",
+  "profileapi",
+  "processenv",
+  "psapi",
+  "schannel",
+  "securitybaseapi",
+  "shellapi",
+  "sspi",
+  "synchapi",
+  "sysinfoapi",
+  "timezoneapi",
+  "userenv",
+  "winbase",
+  "wincon",
+  "wincrypt",
+]
+
+[dependencies]
+curl-sys = { version = "0.4.13", optional = true }
+parking_lot = { version = "0.6", features = ['nightly'] }
+rand = { version = "0.5.5", features = ["i128_support"] }
+serde = { version = "1.0.82", features = ['derive'] }
+serde_json = { version = "1.0.31", features = ["raw_value"] }
+smallvec = { version = "0.6", features = ['union'] }
+
+[target.'cfg(not(windows))'.dependencies]
+openssl = { version = "0.10.12", optional = true }
+
+
+[features]
+all-static = ['openssl/vendored', 'curl-sys/static-curl', 'curl-sys/force-system-lib-on-osx']

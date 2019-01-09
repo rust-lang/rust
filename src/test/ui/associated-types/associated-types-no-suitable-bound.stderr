@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `T: Get` is not satisfied
+  --> $DIR/associated-types-no-suitable-bound.rs:11:5
+   |
+LL |     fn uhoh<T>(foo: <T as Get>::Value) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `T`
+   |
+   = help: consider adding a `where T: Get` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

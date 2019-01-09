@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -23,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::cmp::{PartialOrd, Ord, Ordering};
 
-use builder::Step;
+use crate::builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
 
@@ -169,19 +159,21 @@ impl Ord for Interned<String> {
     }
 }
 
-struct TyIntern<T> {
+struct TyIntern<T: Hash + Clone + Eq> {
     items: Vec<T>,
     set: HashMap<T, Interned<T>>,
 }
 
-impl<T: Hash + Clone + Eq> TyIntern<T> {
-    fn new() -> TyIntern<T> {
+impl<T: Hash + Clone + Eq> Default for TyIntern<T> {
+    fn default() -> Self {
         TyIntern {
             items: Vec::new(),
-            set: HashMap::new(),
+            set: Default::default(),
         }
     }
+}
 
+impl<T: Hash + Clone + Eq> TyIntern<T> {
     fn intern_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
         B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
@@ -212,19 +204,13 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
     }
 }
 
+#[derive(Default)]
 pub struct Interner {
     strs: Mutex<TyIntern<String>>,
     paths: Mutex<TyIntern<PathBuf>>,
 }
 
 impl Interner {
-    fn new() -> Interner {
-        Interner {
-            strs: Mutex::new(TyIntern::new()),
-            paths: Mutex::new(TyIntern::new()),
-        }
-    }
-
     pub fn intern_str(&self, s: &str) -> Interned<String> {
         self.strs.lock().unwrap().intern_borrow(s)
     }
@@ -238,7 +224,7 @@ impl Interner {
 }
 
 lazy_static! {
-    pub static ref INTERNER: Interner = Interner::new();
+    pub static ref INTERNER: Interner = Interner::default();
 }
 
 /// This is essentially a HashMap which allows storing any type in its input and
@@ -289,5 +275,10 @@ impl Cache {
             .unwrap_or_default();
         v.sort_by_key(|&(a, _)| a);
         v
+    }
+
+    #[cfg(test)]
+    pub fn contains<S: Step>(&self) -> bool {
+        self.0.borrow().contains_key(&TypeId::of::<S>())
     }
 }

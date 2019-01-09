@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-6458-3.rs:4:5
+   |
+LL |     mem::transmute(0);
+   |     ^^^^^^^^^^^^^^ cannot infer type for `U`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

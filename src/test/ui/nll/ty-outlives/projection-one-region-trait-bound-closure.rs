@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test cases where we constrain `<T as Anything<'b>>::AssocType` to
 // outlive `'a` and there is a unique bound in the trait definition of
 // `Anything` -- i.e., we know that `AssocType` outlives `'b`. In this
@@ -45,8 +35,7 @@ where
     T: Anything<'b>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR
+    //~^ ERROR
 }
 
 #[rustc_regions]
@@ -56,8 +45,7 @@ where
     'a: 'a,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR
+    //~^ ERROR
 }
 
 #[rustc_regions]
@@ -66,19 +54,10 @@ where
     T: Anything<'b>,
     T::AssocType: 'a,
 {
-    // This error is unfortunate. This code ought to type-check: we
-    // are projecting `<T as Anything<'b>>::AssocType`, and we know
-    // that this outlives `'a` because of the where-clause. However,
-    // the way the region checker works, we don't register this
-    // outlives obligation, and hence we get an error: this is because
-    // what we see is a projection like `<T as
-    // Anything<'?0>>::AssocType`, and we don't yet know if `?0` will
-    // equal `'b` or not, so we ignore the where-clause. Obviously we
-    // can do better here with a more involved verification step.
+    // We are projecting `<T as Anything<'b>>::AssocType`, and we know
+    // that this outlives `'a` because of the where-clause.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR
 }
 
 #[rustc_regions]

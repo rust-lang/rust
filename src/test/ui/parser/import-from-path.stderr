@@ -1,0 +1,8 @@
+error: expected `;`, found `::`
+  --> $DIR/import-from-path.rs:2:15
+   |
+LL | use foo::{bar}::baz
+   |               ^^ expected `;`
+
+error: aborting due to previous error
+

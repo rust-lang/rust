@@ -1,0 +1,13 @@
+error: expected `{`, found `foo`
+  --> $DIR/issue-39848.rs:8:19
+   |
+LL |         if $tgt.has_$field() {}
+   |         --                 - help: try placing this code inside a block: `{ foo(); }`
+   |         |
+   |         this `if` statement has a condition, but no block
+...
+LL |     get_opt!(bar, foo);
+   |                   ^^^ expected `{`
+
+error: aborting due to previous error
+

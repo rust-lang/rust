@@ -1,0 +1,16 @@
+error[E0503]: cannot use `self.width` because it was mutably borrowed
+  --> $DIR/issue-25793.rs:4:9
+   |
+LL |         $this.width.unwrap()
+   |         ^^^^^^^^^^^ use of borrowed `*self`
+...
+LL |         let r = &mut *self;
+   |                 ---------- borrow of `*self` occurs here
+LL |         r.get_size(width!(self))
+   |           -------- ------------ in this macro invocation
+   |           |
+   |           borrow later used by call
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0503`.

@@ -1,0 +1,9 @@
+error[E0107]: wrong number of type arguments: expected at least 1, found 0
+  --> $DIR/generic-type-less-params-with-defaults.rs:9:12
+   |
+LL |     let _: Vec;
+   |            ^^^ expected at least 1 type argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

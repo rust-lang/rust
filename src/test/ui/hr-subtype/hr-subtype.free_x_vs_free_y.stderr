@@ -1,0 +1,34 @@
+error[E0308]: mismatched types
+  --> $DIR/hr-subtype.rs:39:26
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |                            ^^^^^^^^^^^ lifetime mismatch
+...
+LL | / check! { free_x_vs_free_y: (fn(&'x u32),
+LL | |                             fn(&'y u32)) }
+   | |__________________________________________- in this macro invocation
+   |
+   = note: expected type `std::option::Option<fn(&'x u32)>`
+              found type `std::option::Option<fn(&'y u32)>`
+note: the lifetime 'x as defined on the function body at 38:22...
+  --> $DIR/hr-subtype.rs:38:22
+   |
+LL |           fn supertype<'x,'y:'x,'z:'y>() {
+   |                        ^^
+...
+LL | / check! { free_x_vs_free_y: (fn(&'x u32),
+LL | |                             fn(&'y u32)) }
+   | |__________________________________________- in this macro invocation
+note: ...does not necessarily outlive the lifetime 'y as defined on the function body at 38:25
+  --> $DIR/hr-subtype.rs:38:25
+   |
+LL |           fn supertype<'x,'y:'x,'z:'y>() {
+   |                           ^^
+...
+LL | / check! { free_x_vs_free_y: (fn(&'x u32),
+LL | |                             fn(&'y u32)) }
+   | |__________________________________________- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

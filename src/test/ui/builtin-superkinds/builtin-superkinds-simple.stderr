@@ -1,0 +1,11 @@
+error[E0277]: `std::rc::Rc<i8>` cannot be sent between threads safely
+  --> $DIR/builtin-superkinds-simple.rs:6:6
+   |
+LL | impl Foo for std::rc::Rc<i8> { }
+   |      ^^^ `std::rc::Rc<i8>` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `std::rc::Rc<i8>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

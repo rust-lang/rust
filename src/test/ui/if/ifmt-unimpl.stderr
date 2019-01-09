@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `str: std::fmt::UpperHex` is not satisfied
+  --> $DIR/ifmt-unimpl.rs:2:21
+   |
+LL |     format!("{:X}", "3");
+   |                     ^^^ the trait `std::fmt::UpperHex` is not implemented for `str`
+   |
+   = note: required because of the requirements on the impl of `std::fmt::UpperHex` for `&str`
+   = note: required by `std::fmt::UpperHex::fmt`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

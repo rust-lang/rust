@@ -1,0 +1,8 @@
+error: cannot define more than one #[global_allocator]
+  --> $DIR/two-allocators.rs:6:1
+   |
+LL | static B: System = System;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

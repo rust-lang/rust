@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use rustc_data_structures::sync::Lrc;
@@ -18,17 +8,6 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-
-macro_rules! span_err_if_not_stage0 {
-    ($cx:expr, $sp:expr, $code:ident, $text:tt) => {
-        #[cfg(not(stage0))] {
-            span_err!($cx, $sp, $code, $text)
-        }
-        #[cfg(stage0)] {
-            $cx.span_err($sp, $text)
-        }
-    }
-}
 
 macro path_local($x:ident) {
     generic::ty::Path::new_local(stringify!($x))
@@ -174,6 +153,5 @@ fn call_intrinsic(cx: &ExtCtxt,
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
-        recovered: false,
     }))
 }

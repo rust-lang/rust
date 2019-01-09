@@ -1,0 +1,10 @@
+error: invalid fragment specifier `foo`
+  --> $DIR/macro-invalid-fragment-spec.rs:2:6
+   |
+LL |     ($x:foo) => ()
+   |      ^^^^^^
+   |
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+
+error: aborting due to previous error
+

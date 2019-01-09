@@ -1,0 +1,11 @@
+error: incorrect close delimiter: `)`
+  --> $DIR/issue-10636-1.rs:4:1
+   |
+LL | struct Obj {
+   |            - un-closed delimiter
+...
+LL | )
+   | ^ incorrect close delimiter
+
+error: aborting due to previous error
+

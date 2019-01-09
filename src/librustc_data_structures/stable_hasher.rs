@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
@@ -183,13 +173,16 @@ pub trait ToStableHashKey<HCX> {
 
 // Implement HashStable by just calling `Hash::hash()`. This works fine for
 // self-contained values that don't depend on the hashing context `CTX`.
+#[macro_export]
 macro_rules! impl_stable_hash_via_hash {
     ($t:ty) => (
-        impl<CTX> HashStable<CTX> for $t {
+        impl<CTX> $crate::stable_hasher::HashStable<CTX> for $t {
             #[inline]
-            fn hash_stable<W: StableHasherResult>(&self,
-                                                  _: &mut CTX,
-                                                  hasher: &mut StableHasher<W>) {
+            fn hash_stable<W: $crate::stable_hasher::StableHasherResult>(
+                &self,
+                _: &mut CTX,
+                hasher: &mut $crate::stable_hasher::StableHasher<W>
+            ) {
                 ::std::hash::Hash::hash(self, hasher);
             }
         }
@@ -213,6 +206,14 @@ impl_stable_hash_via_hash!(i128);
 
 impl_stable_hash_via_hash!(char);
 impl_stable_hash_via_hash!(());
+
+impl<CTX> HashStable<CTX> for ::std::num::NonZeroU32 {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.get().hash_stable(ctx, hasher)
+    }
+}
 
 impl<CTX> HashStable<CTX> for f32 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -275,6 +276,23 @@ impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
         _0.hash_stable(ctx, hasher);
         _1.hash_stable(ctx, hasher);
         _2.hash_stable(ctx, hasher);
+    }
+}
+
+impl<T1, T2, T3, T4, CTX> HashStable<CTX> for (T1, T2, T3, T4)
+     where T1: HashStable<CTX>,
+           T2: HashStable<CTX>,
+           T3: HashStable<CTX>,
+           T4: HashStable<CTX>,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let (ref _0, ref _1, ref _2, ref _3) = *self;
+        _0.hash_stable(ctx, hasher);
+        _1.hash_stable(ctx, hasher);
+        _2.hash_stable(ctx, hasher);
+        _3.hash_stable(ctx, hasher);
     }
 }
 
@@ -429,7 +447,7 @@ impl<I: ::indexed_vec::Idx, T, CTX> HashStable<CTX> for ::indexed_vec::IndexVec<
 }
 
 
-impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::indexed_set::IdxSetBuf<I>
+impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::bit_set::BitSet<I>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,

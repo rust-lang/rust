@@ -1,0 +1,15 @@
+error: unused import: `std::thread`
+  --> $DIR/issue-30730.rs:3:5
+   |
+LL | use std::thread;
+   |     ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-30730.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: #[deny(unused_imports)] implied by #[deny(warnings)]
+
+error: aborting due to previous error
+

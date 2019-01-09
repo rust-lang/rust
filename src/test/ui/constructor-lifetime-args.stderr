@@ -1,0 +1,27 @@
+error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+  --> $DIR/constructor-lifetime-args.rs:17:5
+   |
+LL |     S::<'static>(&0, &0);
+   |     ^^^^^^^^^^^^ expected 2 lifetime arguments
+
+error[E0107]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:19:27
+   |
+LL |     S::<'static, 'static, 'static>(&0, &0);
+   |                           ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+  --> $DIR/constructor-lifetime-args.rs:22:5
+   |
+LL |     E::V::<'static>(&0);
+   |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+
+error[E0107]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:24:30
+   |
+LL |     E::V::<'static, 'static, 'static>(&0);
+   |                              ^^^^^^^ unexpected lifetime argument
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

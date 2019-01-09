@@ -1,0 +1,18 @@
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized-inherent-impl-self-type.rs:7:17
+   |
+LL | impl<X: ?Sized> S5<X> {
+   |                 ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+note: required by `S5`
+  --> $DIR/unsized-inherent-impl-self-type.rs:5:1
+   |
+LL | struct S5<Y>(Y);
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

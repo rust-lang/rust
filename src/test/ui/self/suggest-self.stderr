@@ -1,0 +1,30 @@
+error[E0425]: cannot find value `this` in this scope
+  --> $DIR/suggest-self.rs:21:9
+   |
+LL |         this.x
+   |         ^^^^
+   |         |
+   |         not found in this scope
+   |         help: did you mean: `self`
+
+error[E0425]: cannot find value `this` in this scope
+  --> $DIR/suggest-self.rs:26:9
+   |
+LL |         this.foo()
+   |         ^^^^
+   |         |
+   |         not found in this scope
+   |         help: did you mean: `self`
+
+error[E0425]: cannot find value `my` in this scope
+  --> $DIR/suggest-self.rs:31:9
+   |
+LL |         my.bar()
+   |         ^^
+   |         |
+   |         not found in this scope
+   |         help: did you mean: `self`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A graph module for use in dataflow, region resolution, and elsewhere.
 //!
 //! # Interface details
@@ -30,7 +20,7 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use bitvec::BitVector;
+use bit_set::BitSet;
 use std::fmt::Debug;
 use std::usize;
 use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
@@ -90,7 +80,7 @@ pub const INCOMING: Direction = Direction { repr: 1 };
 
 impl NodeIndex {
     /// Returns unique id (unique with respect to the graph holding associated node).
-    pub fn node_id(&self) -> usize {
+    pub fn node_id(self) -> usize {
         self.0
     }
 }
@@ -187,7 +177,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.nodes[source.0].first_edge[OUTGOING.repr] = idx;
         self.nodes[target.0].first_edge[INCOMING.repr] = idx;
 
-        return idx;
+        idx
     }
 
     pub fn edge(&self, idx: EdgeIndex) -> &Edge<E> {
@@ -261,12 +251,12 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
 
-    pub fn nodes_in_postorder<'a>(
-        &'a self,
+    pub fn nodes_in_postorder(
+        &self,
         direction: Direction,
         entry_node: NodeIndex,
     ) -> Vec<NodeIndex> {
-        let mut visited = BitVector::new(self.len_nodes());
+        let mut visited = BitSet::new_empty(self.len_nodes());
         let mut stack = vec![];
         let mut result = Vec::with_capacity(self.len_nodes());
         let mut push_node = |stack: &mut Vec<_>, node: NodeIndex| {
@@ -348,7 +338,7 @@ where
 {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
-    visited: BitVector<usize>,
+    visited: BitSet<usize>,
     direction: Direction,
 }
 
@@ -358,7 +348,7 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
         start_node: NodeIndex,
         direction: Direction,
     ) -> Self {
-        let mut visited = BitVector::new(graph.len_nodes());
+        let mut visited = BitSet::new_empty(graph.len_nodes());
         visited.insert(start_node.node_id());
         DepthFirstTraversal {
             graph,

@@ -1,0 +1,8 @@
+error: expected one of `.`, `;`, `?`, or an operator, found `..`
+  --> $DIR/range-4.rs:4:16
+   |
+LL |     let r = ..1..2;
+   |                ^^ expected one of `.`, `;`, `?`, or an operator here
+
+error: aborting due to previous error
+

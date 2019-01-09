@@ -1,0 +1,12 @@
+error[E0308]: start function has wrong type
+  --> $DIR/issue-9575.rs:4:1
+   |
+LL | fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected type `fn(isize, *const *const u8) -> isize`
+              found type `fn(isize, *const *const u8, *const u8) -> isize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

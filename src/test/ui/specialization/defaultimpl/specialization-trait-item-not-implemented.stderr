@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `foo_two`
+  --> $DIR/specialization-trait-item-not-implemented.rs:18:1
+   |
+LL |     fn foo_two(&self) -> &'static str;
+   |     ---------------------------------- `foo_two` from trait
+...
+LL | impl Foo for MyStruct {}
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `foo_two` in implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0046`.

@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use namespace::Namespace;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
@@ -20,7 +10,7 @@ use lint;
 pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                     crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
-    let krate = tcx.hir.krate();
+    let krate = tcx.hir().krate();
     krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
 }
 
@@ -46,7 +36,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
             for &item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
-                    let node_id = self.tcx.hir.as_local_node_id(impl1);
+                    let node_id = self.tcx.hir().as_local_node_id(impl1);
                     let mut err = if used_to_be_allowed && node_id.is_some() {
                         self.tcx.struct_span_lint_node(
                             lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
@@ -69,6 +59,10 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
                     for cause in &overlap.intercrate_ambiguity_causes {
                         cause.add_intercrate_ambiguity_hint(&mut err);
+                    }
+
+                    if overlap.involves_placeholder {
+                        traits::add_placeholder_note(&mut err);
                     }
 
                     err.emit();
@@ -126,7 +120,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) |
             hir::ItemKind::Union(..) => {
-                let type_def_id = self.tcx.hir.local_def_id(item.id);
+                let type_def_id = self.tcx.hir().local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }
             _ => {}

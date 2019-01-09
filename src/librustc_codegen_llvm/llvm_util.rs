@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use syntax_pos::symbol::Symbol;
 use back::write::create_target_machine;
 use llvm;
@@ -17,6 +7,8 @@ use libc::c_int;
 use std::ffi::CString;
 use syntax::feature_gate::UnstableFeatures;
 
+use std::str;
+use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
@@ -50,8 +42,11 @@ fn require_inited() {
 }
 
 unsafe fn configure_llvm(sess: &Session) {
-    let mut llvm_c_strs = Vec::new();
-    let mut llvm_args = Vec::new();
+    let n_args = sess.opts.cg.llvm_args.len();
+    let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
+    let mut llvm_args = Vec::with_capacity(n_args + 1);
+
+    llvm::LLVMRustInstallFatalErrorHandler();
 
     {
         let mut add = |arg: &str| {
@@ -65,6 +60,13 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.opts.debugging_opts.disable_instrumentation_preinliner {
             add("-disable-preinline");
         }
+        if llvm::LLVMRustIsRustLLVM() {
+            add("-mergefunc-use-aliases");
+        }
+
+        // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
+        // during inlining. Unfortunately these may block other optimizations.
+        add("-preserve-alignment-assumptions-during-inlining=false");
 
         for arg in &sess.opts.cg.llvm_args {
             add(&(*arg));
@@ -73,7 +75,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    llvm::initialize_available_targets();
+    ::rustc_llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                  llvm_args.as_ptr());
@@ -84,10 +86,14 @@ unsafe fn configure_llvm(sess: &Session) {
 // array, leading to crashes.
 
 const ARM_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("aclass", Some("arm_target_feature")),
     ("mclass", Some("arm_target_feature")),
     ("rclass", Some("arm_target_feature")),
     ("dsp", Some("arm_target_feature")),
     ("neon", Some("arm_target_feature")),
+    ("v5te", Some("arm_target_feature")),
+    ("v6k", Some("arm_target_feature")),
+    ("v6t2", Some("arm_target_feature")),
     ("v7", Some("arm_target_feature")),
     ("vfp2", Some("arm_target_feature")),
     ("vfp3", Some("arm_target_feature")),
@@ -112,6 +118,7 @@ const AARCH64_WHITELIST: &[(&str, Option<&str>)] = &[
 ];
 
 const X86_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("adx", Some("adx_target_feature")),
     ("aes", None),
     ("avx", None),
     ("avx2", None),
@@ -127,6 +134,7 @@ const X86_WHITELIST: &[(&str, Option<&str>)] = &[
     ("avx512vpopcntdq", Some("avx512_target_feature")),
     ("bmi1", None),
     ("bmi2", None),
+    ("cmpxchg16b", Some("cmpxchg16b_target_feature")),
     ("fma", None),
     ("fxsr", None),
     ("lzcnt", None),
@@ -169,8 +177,13 @@ const MIPS_WHITELIST: &[(&str, Option<&str>)] = &[
     ("msa", Some("mips_target_feature")),
 ];
 
+const WASM_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("simd128", Some("wasm_target_feature")),
+    ("atomics", Some("wasm_target_feature")),
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
-/// primtives may be documented.
+/// primitives may be documented.
 ///
 /// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
 /// iterator!
@@ -181,6 +194,7 @@ pub fn all_known_features() -> impl Iterator<Item=(&'static str, Option<&'static
         .chain(HEXAGON_WHITELIST.iter().cloned())
         .chain(POWERPC_WHITELIST.iter().cloned())
         .chain(MIPS_WHITELIST.iter().cloned())
+        .chain(WASM_WHITELIST.iter().cloned())
 }
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
@@ -193,6 +207,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("x86", "pclmulqdq") => "pclmul",
         ("x86", "rdrand") => "rdrnd",
         ("x86", "bmi1") => "bmi",
+        ("x86", "cmpxchg16b") => "cx16",
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
         (_, s) => s,
@@ -228,6 +243,8 @@ pub fn target_feature_whitelist(sess: &Session)
         "hexagon" => HEXAGON_WHITELIST,
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
+        // wasm32 on emscripten does not support these target features
+        "wasm32" if !sess.target.target.options.is_like_emscripten => WASM_WHITELIST,
         _ => &[],
     }
 }
@@ -238,6 +255,10 @@ pub fn print_version() {
         println!("LLVM version: {}.{}",
                  llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
     }
+}
+
+pub fn get_major_version() -> u32 {
+    unsafe { llvm::LLVMRustVersionMajor() }
 }
 
 pub fn print_passes() {
@@ -254,5 +275,21 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
             PrintRequest::TargetFeatures => llvm::LLVMRustPrintTargetFeatures(tm),
             _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
         }
+    }
+}
+
+pub fn target_cpu(sess: &Session) -> &str {
+    let name = match sess.opts.cg.target_cpu {
+        Some(ref s) => &**s,
+        None => &*sess.target.target.options.cpu
+    };
+    if name != "native" {
+        return name
+    }
+
+    unsafe {
+        let mut len = 0;
+        let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
+        str::from_utf8(slice::from_raw_parts(ptr as *const u8, len)).unwrap()
     }
 }

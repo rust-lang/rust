@@ -1,0 +1,16 @@
+error[E0277]: `std::rc::Rc<{integer}>` cannot be sent between threads safely
+  --> $DIR/no_send-rc.rs:7:5
+   |
+LL |     bar(x);
+   |     ^^^ `std::rc::Rc<{integer}>` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `std::rc::Rc<{integer}>`
+note: required by `bar`
+  --> $DIR/no_send-rc.rs:3:1
+   |
+LL | fn bar<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

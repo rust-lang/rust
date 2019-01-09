@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `std::boxed::Box<{integer}>: std::marker::Copy` is not satisfied
+  --> $DIR/kindck-impl-type-params-2.rs:13:5
+   |
+LL |     take_param(&x);
+   |     ^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<{integer}>`
+   |
+   = note: required because of the requirements on the impl of `Foo` for `std::boxed::Box<{integer}>`
+note: required by `take_param`
+  --> $DIR/kindck-impl-type-params-2.rs:9:1
+   |
+LL | fn take_param<T:Foo>(foo: &T) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

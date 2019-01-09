@@ -1,0 +1,6 @@
+warning[E0705]: the feature `test_2018_feature` is included in the Rust 2018 edition
+  --> $DIR/E0705.rs:6:12
+   |
+LL | #![feature(test_2018_feature)]
+   |            ^^^^^^^^^^^^^^^^^
+

@@ -1,17 +1,15 @@
 environment:
-  SCCACHE_BUCKET: rust-lang-ci-sccache2
-  SCCACHE_REGION: us-west-1
-  AWS_ACCESS_KEY_ID: AKIAJAMV3QAMMA6AXHFQ
-  AWS_SECRET_ACCESS_KEY:
-    secure: 7Y+JiquYedOAgnUU26uL0DPzrxmTtR+qIwG6rNKSuWDffqU3vVZxbGXim9QpTO80
-  SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
-  TOOLSTATE_REPO_ACCESS_TOKEN:
-    secure: gKGlVktr7iuqCoYSxHxDE9ltLOKU0nYDEuQxvWbNxUIW7ri5ppn8L06jQzN0GGzN
 
   # By default schannel checks revocation of certificates unlike some other SSL
   # backends, but we've historically had problems on CI where a revocation
   # server goes down presumably. See #43333 for more info
   CARGO_HTTP_CHECK_REVOKE: false
+
+  # Recommended by AppVeyor this moves our builds to GCE which incurs a 3-4
+  # minute startup overhead, but that's paltry compared to our overall build
+  # times so we're will to eat the cost. This is intended to give us better
+  # performance I believe!
+  appveyor_build_worker_cloud: gce
 
   matrix:
   # 32/64 bit MSVC tests
@@ -82,17 +80,21 @@ environment:
   # 32/64 bit MSVC and GNU deployment
   - RUST_CONFIGURE_ARGS: >
       --build=x86_64-pc-windows-msvc
+      --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
       --enable-full-tools
       --enable-profiler
     SCRIPT: python x.py dist
+    DIST_REQUIRE_ALL_TOOLS: 1
     DEPLOY: 1
     CI_JOB_NAME: dist-x86_64-msvc
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
       --enable-full-tools
       --enable-profiler
     SCRIPT: python x.py dist
+    DIST_REQUIRE_ALL_TOOLS: 1
     DEPLOY: 1
     CI_JOB_NAME: dist-i686-msvc
   - MSYS_BITS: 32
@@ -101,6 +103,7 @@ environment:
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
+    DIST_REQUIRE_ALL_TOOLS: 1
     DEPLOY: 1
     CI_JOB_NAME: dist-i686-mingw
   - MSYS_BITS: 64
@@ -109,6 +112,7 @@ environment:
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
+    DIST_REQUIRE_ALL_TOOLS: 1
     DEPLOY: 1
     CI_JOB_NAME: dist-x86_64-mingw
 
@@ -147,9 +151,9 @@ install:
   # Note that the LLVM installer is an NSIS installer
   #
   # Original downloaded here came from
-  # http://releases.llvm.org/6.0.0/LLVM-6.0.0-win64.exe
-  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-6.0.0-win64.exe
-  - if NOT defined MINGW_URL .\LLVM-6.0.0-win64.exe /S /NCRC /D=C:\clang-rust
+  # http://releases.llvm.org/7.0.0/LLVM-7.0.0-win64.exe
+  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-7.0.0-win64.exe
+  - if NOT defined MINGW_URL .\LLVM-7.0.0-win64.exe /S /NCRC /D=C:\clang-rust
   - if NOT defined MINGW_URL set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=C:\clang-rust\bin\clang-cl.exe
 
   # Here we do a pretty heinous thing which is to mangle the MinGW installation
@@ -231,10 +235,8 @@ before_deploy:
 
 deploy:
   - provider: S3
-    skip_cleanup: true
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
+    access_key_id: $(AWS_ACCESS_KEY_ID)
+    secret_access_key: $(AWS_SECRET_ACCESS_KEY)
     bucket: rust-lang-ci2
     set_public: true
     region: us-west-1
@@ -248,10 +250,8 @@ deploy:
   # This provider is the same as the one above except that it has a slightly
   # different upload directory and a slightly different trigger
   - provider: S3
-    skip_cleanup: true
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
+    access_key_id: $(AWS_ACCESS_KEY_ID)
+    secret_access_key: $(AWS_SECRET_ACCESS_KEY)
     bucket: rust-lang-ci2
     set_public: true
     region: us-west-1

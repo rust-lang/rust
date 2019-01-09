@@ -1,0 +1,9 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/issue-28324.rs:7:23
+   |
+LL | pub static BAZ: u32 = *&error_message_count;
+   |                       ^^^^^^^^^^^^^^^^^^^^^ tried to read from foreign (extern) static
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

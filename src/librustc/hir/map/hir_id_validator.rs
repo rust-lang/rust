@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::{self, intravisit, HirId, ItemLocalId};
 use syntax::ast::NodeId;
@@ -51,7 +41,7 @@ impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
         HirIdValidator {
             hir_map,
             owner_def_index: None,
-            hir_ids_seen: FxHashMap(),
+            hir_ids_seen: Default::default(),
             errors: Vec::new(),
         }
     }
@@ -88,7 +78,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
         walk(self);
 
         if owner_def_index == CRATE_DEF_INDEX {
-            return
+            return;
         }
 
         // There's always at least one entry for the owning item itself
@@ -100,8 +90,8 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
 
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
-            let missing: Vec<_> = (0 .. max + 1)
-              .filter(|&i| !self.hir_ids_seen.contains_key(&ItemLocalId(i as u32)))
+            let missing: Vec<_> = (0 ..= max as u32)
+              .filter(|&i| !self.hir_ids_seen.contains_key(&ItemLocalId::from_u32(i)))
               .collect();
 
             // Try to map those to something more useful
@@ -110,7 +100,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
             for local_id in missing {
                 let hir_id = HirId {
                     owner: owner_def_index,
-                    local_id: ItemLocalId(local_id as u32),
+                    local_id: ItemLocalId::from_u32(local_id),
                 };
 
                 trace!("missing hir id {:#?}", hir_id);
@@ -124,18 +114,21 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                        .enumerate()
                                        .find(|&(_, &entry)| hir_id == entry)
                                        .expect("no node_to_hir_id entry");
-                let node_id = NodeId::new(node_id);
+                let node_id = NodeId::from_usize(node_id);
                 missing_items.push(format!("[local_id: {}, node:{}]",
                                            local_id,
                                            self.hir_map.node_to_string(node_id)));
             }
-
             self.errors.push(format!(
                 "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:?}",
+                Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
                 self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
                 max,
-                missing_items));
+                missing_items,
+                self.hir_ids_seen
+                    .values()
+                    .map(|n| format!("({:?} {})", n, self.hir_map.node_to_string(*n)))
+                    .collect::<Vec<_>>()));
         }
     }
 }
@@ -155,6 +148,7 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             self.errors.push(format!("HirIdValidator: No HirId assigned for NodeId {}: {:?}",
                                      node_id,
                                      self.hir_map.node_to_string(node_id)));
+            return;
         }
 
         if owner != stable_id.owner {

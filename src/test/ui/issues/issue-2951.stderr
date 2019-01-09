@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-2951.rs:3:10
+   |
+LL |     xx = y;
+   |          ^ expected type parameter, found a different type parameter
+   |
+   = note: expected type `T`
+              found type `U`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

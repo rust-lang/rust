@@ -1,17 +1,5 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
-use rustc::middle::cstore::{self, LinkMeta};
-use rustc::hir::svh::Svh;
 use std::path::{Path, PathBuf};
 use syntax::{ast, attr};
 use syntax_pos::Span;
@@ -49,19 +37,11 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn build_link_meta(crate_hash: Svh) -> LinkMeta {
-    let r = LinkMeta {
-        crate_hash,
-    };
-    info!("{:?}", r);
-    return r;
-}
-
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        cstore::validate_crate_name(sess, &s, span);
+        ::rustc_metadata::validate_crate_name(sess, &s, span);
         s
     };
 
@@ -106,6 +86,19 @@ pub fn find_crate_name(sess: Option<&Session>,
     "rust_out".to_string()
 }
 
+pub fn filename_for_metadata(sess: &Session,
+                             crate_name: &str,
+                             outputs: &OutputFilenames) -> PathBuf {
+    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+
+    let out_filename = outputs.single_output_file.clone()
+        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{}.rmeta", libname)));
+
+    check_file_is_writeable(&out_filename, sess);
+
+    out_filename
+}
+
 pub fn filename_for_input(sess: &Session,
                           crate_type: config::CrateType,
                           crate_name: &str,
@@ -113,28 +106,28 @@ pub fn filename_for_input(sess: &Session,
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        config::CrateTypeRlib => {
+        config::CrateType::Rlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
-        config::CrateTypeCdylib |
-        config::CrateTypeProcMacro |
-        config::CrateTypeDylib => {
+        config::CrateType::Cdylib |
+        config::CrateType::ProcMacro |
+        config::CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
                                     &sess.target.target.options.dll_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname,
                                                 suffix))
         }
-        config::CrateTypeStaticlib => {
+        config::CrateType::Staticlib => {
             let (prefix, suffix) = (&sess.target.target.options.staticlib_prefix,
                                     &sess.target.target.options.staticlib_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname,
                                                 suffix))
         }
-        config::CrateTypeExecutable => {
+        config::CrateType::Executable => {
             let suffix = &sess.target.target.options.exe_suffix;
             let out_filename = outputs.path(OutputType::Exe);
             if suffix.is_empty() {
-                out_filename.to_path_buf()
+                out_filename
             } else {
                 out_filename.with_extension(&suffix[1..])
             }
@@ -147,15 +140,15 @@ pub fn filename_for_input(sess: &Session,
 /// Default crate type is used when crate type isn't provided neither
 /// through cmd line arguments nor through crate attributes
 ///
-/// It is CrateTypeExecutable for all platforms but iOS as there is no
+/// It is CrateType::Executable for all platforms but iOS as there is no
 /// way to run iOS binaries anyway without jailbreaking and
 /// interaction with Rust code through static library is the only
 /// option for now
 pub fn default_output_for_target(sess: &Session) -> config::CrateType {
     if !sess.target.target.options.executables {
-        config::CrateTypeStaticlib
+        config::CrateType::Staticlib
     } else {
-        config::CrateTypeExecutable
+        config::CrateType::Executable
     }
 }
 
@@ -163,9 +156,9 @@ pub fn default_output_for_target(sess: &Session) -> config::CrateType {
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
     match crate_type {
-        config::CrateTypeCdylib |
-        config::CrateTypeDylib |
-        config::CrateTypeProcMacro => {
+        config::CrateType::Cdylib |
+        config::CrateType::Dylib |
+        config::CrateType::ProcMacro => {
             if !sess.target.target.options.dynamic_linking {
                 return true
             }
@@ -177,12 +170,12 @@ pub fn invalid_output_for_target(sess: &Session,
     }
     if sess.target.target.options.only_cdylib {
         match crate_type {
-            config::CrateTypeProcMacro | config::CrateTypeDylib => return true,
+            config::CrateType::ProcMacro | config::CrateType::Dylib => return true,
             _ => {}
         }
     }
     if !sess.target.target.options.executables {
-        if crate_type == config::CrateTypeExecutable {
+        if crate_type == config::CrateType::Executable {
             return true
         }
     }

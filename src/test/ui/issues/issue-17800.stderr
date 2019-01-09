@@ -1,0 +1,12 @@
+error[E0026]: variant `MyOption::MySome` does not have a field named `x`
+  --> $DIR/issue-17800.rs:8:28
+   |
+LL |         MyOption::MySome { x: 42 } => (),
+   |                            ^^^^^
+   |                            |
+   |                            variant `MyOption::MySome` does not have this field
+   |                            help: did you mean: `0`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0026`.

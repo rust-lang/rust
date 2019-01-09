@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub type in_addr_t = u32;
 pub type in_port_t = u16;
 
@@ -24,10 +14,10 @@ pub struct in_addr {
 }
 
 #[derive(Copy, Clone)]
+#[repr(align(4))]
 #[repr(C)]
 pub struct in6_addr {
     pub s6_addr: [u8; 16],
-    __align: [u32; 0],
 }
 
 #[derive(Copy, Clone)]

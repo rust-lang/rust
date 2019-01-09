@@ -1,0 +1,14 @@
+error: use of deprecated attribute `dropck_parametricity`: unsafe_destructor_blind_to_params has been replaced by may_dangle and will be removed in the future. See https://github.com/rust-lang/rust/issues/34761
+  --> $DIR/feature-gate-dropck-ugeh-2.rs:7:5
+   |
+LL |     #[unsafe_destructor_blind_to_params]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this attribute with `#[may_dangle]`
+   |
+note: lint level defined here
+  --> $DIR/feature-gate-dropck-ugeh-2.rs:1:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: aborting due to previous error
+

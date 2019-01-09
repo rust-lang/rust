@@ -1,16 +1,10 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+// ignore-tidy-linelength
 
 // compile-flags:-g
-// min-lldb-version: 310
+
+// Some versions of the non-rust-enabled LLDB print the wrong generic
+// parameter type names in this test.
+// rust-lldb
 
 // === GDB TESTS ===================================================================================
 
@@ -73,47 +67,62 @@
 
 // STACK BY REF
 // lldb-command:print *self
-// lldb-check:[...]$0 = Struct<(u32, i32)> { x: (8888, -8888) }
+// lldbg-check:[...]$0 = Struct<(u32, i32)> { x: (8888, -8888) }
+// lldbr-check:(generic_method_on_generic_struct::Struct<(u32, i32)>) *self = { x = { = 8888 = -8888 } }
 // lldb-command:print arg1
-// lldb-check:[...]$1 = -1
+// lldbg-check:[...]$1 = -1
+// lldbr-check:(isize) arg1 = -1
 // lldb-command:print arg2
-// lldb-check:[...]$2 = 2
+// lldbg-check:[...]$2 = 2
+// lldbr-check:(u16) arg2 = 2
 // lldb-command:continue
 
 // STACK BY VAL
 // lldb-command:print self
-// lldb-check:[...]$3 = Struct<(u32, i32)> { x: (8888, -8888) }
+// lldbg-check:[...]$3 = Struct<(u32, i32)> { x: (8888, -8888) }
+// lldbr-check:(generic_method_on_generic_struct::Struct<(u32, i32)>) self = { x = { = 8888 = -8888 } }
 // lldb-command:print arg1
-// lldb-check:[...]$4 = -3
+// lldbg-check:[...]$4 = -3
+// lldbr-check:(isize) arg1 = -3
 // lldb-command:print arg2
-// lldb-check:[...]$5 = -4
+// lldbg-check:[...]$5 = -4
+// lldbr-check:(i16) arg2 = -4
 // lldb-command:continue
 
 // OWNED BY REF
 // lldb-command:print *self
-// lldb-check:[...]$6 = Struct<f64> { x: 1234.5 }
+// lldbg-check:[...]$6 = Struct<f64> { x: 1234.5 }
+// lldbr-check:(generic_method_on_generic_struct::Struct<f64>) *self = Struct<f64> { x: 1234.5 }
 // lldb-command:print arg1
-// lldb-check:[...]$7 = -5
+// lldbg-check:[...]$7 = -5
+// lldbr-check:(isize) arg1 = -5
 // lldb-command:print arg2
-// lldb-check:[...]$8 = -6
+// lldbg-check:[...]$8 = -6
+// lldbr-check:(i32) arg2 = -6
 // lldb-command:continue
 
 // OWNED BY VAL
 // lldb-command:print self
-// lldb-check:[...]$9 = Struct<f64> { x: 1234.5 }
+// lldbg-check:[...]$9 = Struct<f64> { x: 1234.5 }
+// lldbr-check:(generic_method_on_generic_struct::Struct<f64>) self = Struct<f64> { x: 1234.5 }
 // lldb-command:print arg1
-// lldb-check:[...]$10 = -7
+// lldbg-check:[...]$10 = -7
+// lldbr-check:(isize) arg1 = -7
 // lldb-command:print arg2
-// lldb-check:[...]$11 = -8
+// lldbg-check:[...]$11 = -8
+// lldbr-check:(i64) arg2 = -8
 // lldb-command:continue
 
 // OWNED MOVED
 // lldb-command:print *self
-// lldb-check:[...]$12 = Struct<f64> { x: 1234.5 }
+// lldbg-check:[...]$12 = Struct<f64> { x: 1234.5 }
+// lldbr-check:(generic_method_on_generic_struct::Struct<f64>) *self = Struct<f64> { x: 1234.5 }
 // lldb-command:print arg1
-// lldb-check:[...]$13 = -9
+// lldbg-check:[...]$13 = -9
+// lldbr-check:(isize) arg1 = -9
 // lldb-command:print arg2
-// lldb-check:[...]$14 = -10.5
+// lldbg-check:[...]$14 = -10.5
+// lldbr-check:(f32) arg2 = -10.5
 // lldb-command:continue
 
 #![feature(box_syntax)]

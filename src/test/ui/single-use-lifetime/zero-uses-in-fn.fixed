@@ -1,0 +1,24 @@
+// run-rustfix
+
+// Test that we DO warn when lifetime name is not used at all.
+
+#![deny(unused_lifetimes)]
+#![allow(dead_code, unused_variables)]
+
+fn september() {}
+//~^ ERROR lifetime parameter `'a` never used
+//~| HELP elide the unused lifetime
+
+fn october<'b, T>(s: &'b T) -> &'b T {
+    //~^ ERROR lifetime parameter `'a` never used
+    //~| HELP elide the unused lifetime
+    s
+}
+
+fn november<'a>(s: &'a str) -> (&'a str) {
+    //~^ ERROR lifetime parameter `'b` never used
+    //~| HELP elide the unused lifetime
+    s
+}
+
+fn main() {}

@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Global initialization and retrieval of command line arguments.
 //!
 //! On some platforms these are stored during runtime startup,
@@ -66,7 +56,8 @@ impl DoubleEndedIterator for Args {
           target_os = "emscripten",
           target_os = "haiku",
           target_os = "l4re",
-          target_os = "fuchsia"))]
+          target_os = "fuchsia",
+          target_os = "hermit"))]
 mod imp {
     use os::unix::prelude::*;
     use ptr;
@@ -79,6 +70,8 @@ mod imp {
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
+    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
+    // acquire this mutex reentrantly!
     static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {

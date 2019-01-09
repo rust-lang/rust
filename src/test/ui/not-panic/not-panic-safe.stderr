@@ -1,0 +1,16 @@
+error[E0277]: the type `&mut i32` may not be safely transferred across an unwind boundary
+  --> $DIR/not-panic-safe.rs:9:5
+   |
+LL |     assert::<&mut i32>();
+   |     ^^^^^^^^^^^^^^^^^^ `&mut i32` may not be safely transferred across an unwind boundary
+   |
+   = help: the trait `std::panic::UnwindSafe` is not implemented for `&mut i32`
+note: required by `assert`
+  --> $DIR/not-panic-safe.rs:6:1
+   |
+LL | fn assert<T: UnwindSafe + ?Sized>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

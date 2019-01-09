@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-same-crate-name.rs:16:20
+   |
+LL |         a::try_foo(foo2);
+   |                    ^^^^ expected struct `main::a::Foo`, found a different struct `main::a::Foo`
+   |
+   = note: expected type `main::a::Foo` (struct `main::a::Foo`)
+              found type `main::a::Foo` (struct `main::a::Foo`)
+note: Perhaps two different versions of crate `crate_a1` are being used?
+  --> $DIR/type-mismatch-same-crate-name.rs:16:20
+   |
+LL |         a::try_foo(foo2);
+   |                    ^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-same-crate-name.rs:22:20
+   |
+LL |         a::try_bar(bar2);
+   |                    ^^^^ expected trait `main::a::Bar`, found a different trait `main::a::Bar`
+   |
+   = note: expected type `std::boxed::Box<(dyn main::a::Bar + 'static)>`
+              found type `std::boxed::Box<dyn main::a::Bar>`
+note: Perhaps two different versions of crate `crate_a1` are being used?
+  --> $DIR/type-mismatch-same-crate-name.rs:22:20
+   |
+LL |         a::try_bar(bar2);
+   |                    ^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

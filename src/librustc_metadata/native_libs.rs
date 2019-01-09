@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 use rustc::middle::cstore::{self, NativeLibrary};
@@ -16,7 +6,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
 
@@ -25,7 +15,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
         tcx,
         libs: Vec::new(),
     };
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
+    tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
     return collector.libs
 }
@@ -65,7 +55,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                 name: None,
                 kind: cstore::NativeUnknown,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir.local_def_id(it.id)),
+                foreign_module: Some(self.tcx.hir().local_def_id(it.id)),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;
@@ -183,7 +173,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
     // Process libs passed on the command line
     fn process_command_line(&mut self) {
         // First, check for errors
-        let mut renames = FxHashSet();
+        let mut renames = FxHashSet::default();
         for &(ref name, ref new_name, _) in &self.tcx.sess.opts.libs {
             if let &Some(ref new_name) = new_name {
                 let any_duplicate = self.libs
@@ -207,7 +197,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             }
         }
 
-        // Update kind and, optionally, the name of all native libaries
+        // Update kind and, optionally, the name of all native libraries
         // (there may be more than one) with the specified name.
         for &(ref name, ref new_name, kind) in &self.tcx.sess.opts.libs {
             let mut found = false;

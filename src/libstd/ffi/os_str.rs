@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow::{Borrow, Cow};
 use fmt;
 use ops;
@@ -34,11 +24,20 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
-/// to be converted into an "OS" string with no cost if possible.
+/// to be converted into an "OS" string with no cost if possible.  A consequence
+/// of this is that `OsString` instances are *not* `NUL` terminated; in order
+/// to pass to e.g., Unix system call, you should create a [`CStr`].
 ///
 /// `OsString` is to [`&OsStr`] as [`String`] is to [`&str`]: the former
 /// in each pair are owned strings; the latter are borrowed
 /// references.
+///
+/// Note, `OsString` and `OsStr` internally do not necessarily hold strings in
+/// the form native to the platform; While on Unix, strings are stored as a
+/// sequence of 8-bit values, on Windows, where strings are 16-bit value based
+/// as just discussed, strings are also actually stored as a sequence of 8-bit
+/// values, encoded in a less-strict variant of UTF-8. This is useful to
+/// understand when handling capacity and length values.
 ///
 /// # Creating an `OsString`
 ///
@@ -65,6 +64,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// [`OsStr`]: struct.OsStr.html
 /// [`&OsStr`]: struct.OsStr.html
+/// [`CStr`]: struct.CStr.html
 /// [`From`]: ../convert/trait.From.html
 /// [`String`]: ../string/struct.String.html
 /// [`&str`]: ../primitive.str.html
@@ -321,7 +321,7 @@ impl OsString {
     /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
@@ -348,6 +348,9 @@ impl OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for OsString {
+    /// Converts a [`String`] into a [`OsString`].
+    ///
+    /// The conversion copies the data, and includes an allocation on the heap.
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
     }
@@ -417,14 +420,14 @@ impl PartialEq<OsString> for str {
     }
 }
 
-#[stable(feature = "os_str_str_ref_eq", since = "1.28.0")]
+#[stable(feature = "os_str_str_ref_eq", since = "1.29.0")]
 impl<'a> PartialEq<&'a str> for OsString {
     fn eq(&self, other: &&'a str) -> bool {
         **self == **other
     }
 }
 
-#[stable(feature = "os_str_str_ref_eq", since = "1.28.0")]
+#[stable(feature = "os_str_str_ref_eq", since = "1.29.0")]
 impl<'a> PartialEq<OsString> for &'a str {
     fn eq(&self, other: &OsString) -> bool {
         **other == **self
@@ -514,24 +517,51 @@ impl OsStr {
 
     /// Converts an `OsStr` to a [`Cow`]`<`[`str`]`>`.
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [`Cow`]: ../../std/borrow/enum.Cow.html
     /// [`str`]: ../../std/primitive.str.html
+    /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
-    /// Calling `to_string_lossy` on an `OsStr` with valid unicode:
+    /// Calling `to_string_lossy` on an `OsStr` with invalid unicode:
     ///
     /// ```
-    /// use std::ffi::OsStr;
+    /// // Note, due to differences in how Unix and Windows represent strings,
+    /// // we are forced to complicate this example, setting up example `OsStr`s
+    /// // with different source data and via different platform extensions.
+    /// // Understand that in reality you could end up with such example invalid
+    /// // sequences simply through collecting user command line arguments, for
+    /// // example.
     ///
-    /// let os_str = OsStr::new("foo");
-    /// assert_eq!(os_str.to_string_lossy(), "foo");
+    /// #[cfg(any(unix, target_os = "redox"))] {
+    ///     use std::ffi::OsStr;
+    ///     use std::os::unix::ffi::OsStrExt;
+    ///
+    ///     // Here, the values 0x66 and 0x6f correspond to 'f' and 'o'
+    ///     // respectively. The value 0x80 is a lone continuation byte, invalid
+    ///     // in a UTF-8 sequence.
+    ///     let source = [0x66, 0x6f, 0x80, 0x6f];
+    ///     let os_str = OsStr::from_bytes(&source[..]);
+    ///
+    ///     assert_eq!(os_str.to_string_lossy(), "fo�o");
+    /// }
+    /// #[cfg(windows)] {
+    ///     use std::ffi::OsString;
+    ///     use std::os::windows::prelude::*;
+    ///
+    ///     // Here the values 0x0066 and 0x006f correspond to 'f' and 'o'
+    ///     // respectively. The value 0xD800 is a lone surrogate half, invalid
+    ///     // in a UTF-16 sequence.
+    ///     let source = [0x0066, 0x006f, 0xD800, 0x006f];
+    ///     let os_string = OsString::from_wide(&source[..]);
+    ///     let os_str = os_string.as_os_str();
+    ///
+    ///     assert_eq!(os_str.to_string_lossy(), "fo�o");
+    /// }
     /// ```
-    ///
-    /// Had `os_str` contained invalid unicode, the `to_string_lossy` call might
-    /// have returned `"fo�"`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
@@ -575,14 +605,19 @@ impl OsStr {
 
     /// Returns the length of this `OsStr`.
     ///
-    /// Note that this does **not** return the number of bytes in this string
-    /// as, for example, OS strings on Windows are encoded as a list of [`u16`]
-    /// rather than a list of bytes. This number is simply useful for passing to
-    /// other methods like [`OsString::with_capacity`] to avoid reallocations.
+    /// Note that this does **not** return the number of bytes in the string in
+    /// OS string form.
     ///
-    /// See `OsStr` introduction for more information about encoding.
+    /// The length returned is that of the underlying storage used by `OsStr`;
+    /// As discussed in the [`OsString`] introduction, [`OsString`] and `OsStr`
+    /// store strings in a form best suited for cheap inter-conversion between
+    /// native-platform and Rust string forms, which may differ significantly
+    /// from both of them, including in storage size and encoding.
     ///
-    /// [`u16`]: ../primitive.u16.html
+    /// This number is simply useful for passing to other methods, like
+    /// [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// [`OsString`]: struct.OsString.html
     /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
     ///
     /// # Examples
@@ -630,6 +665,10 @@ impl<'a> From<&'a OsStr> for Box<OsStr> {
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
+    /// Converts a `Box<OsStr>` into a `OsString` without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }
@@ -637,6 +676,10 @@ impl From<Box<OsStr>> for OsString {
 
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
+    /// Converts a [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     fn from(s: OsString) -> Box<OsStr> {
         s.into_boxed_os_str()
     }
@@ -652,6 +695,10 @@ impl Clone for Box<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
+    /// Converts a [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Arc`]: ../sync/struct.Arc.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -670,6 +717,10 @@ impl<'a> From<&'a OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
+    /// Converts a [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Rc`]: ../rc/struct.Rc.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();

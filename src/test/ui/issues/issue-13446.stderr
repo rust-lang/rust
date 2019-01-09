@@ -1,0 +1,13 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-13446.rs:3:26
+   |
+LL | static VEC: [u32; 256] = vec![];
+   |                          ^^^^^^ expected array of 256 elements, found struct `std::vec::Vec`
+   |
+   = note: expected type `[u32; 256]`
+              found type `std::vec::Vec<_>`
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

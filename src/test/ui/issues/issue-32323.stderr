@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-32323.rs:5:30
+   |
+LL | pub fn f<'a, T: Tr<'a>>() -> <T as Tr<'a>>::Out {}
+   |        -                     ^^^^^^^^^^^^^^^^^^ expected associated type, found ()
+   |        |
+   |        this function's body doesn't return
+   |
+   = note: expected type `<T as Tr<'a>>::Out`
+              found type `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

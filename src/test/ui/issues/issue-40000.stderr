@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-40000.rs:6:9
+   |
+LL |     foo(bar); //~ ERROR E0308
+   |         ^^^ one type is more general than the other
+   |
+   = note: expected type `dyn for<'r> std::ops::Fn(&'r i32)`
+              found type `dyn std::ops::Fn(&i32)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,39 @@
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/issue-15167.rs:3:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/issue-15167.rs:3:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/issue-15167.rs:3:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/issue-15167.rs:3:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

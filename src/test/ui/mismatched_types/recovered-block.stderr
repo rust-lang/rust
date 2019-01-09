@@ -1,5 +1,5 @@
 error: missing `struct` for struct definition
-  --> $DIR/recovered-block.rs:23:8
+  --> $DIR/recovered-block.rs:13:8
    |
 LL |     pub Foo { text }
    |        ^
@@ -9,7 +9,7 @@ LL |     pub struct Foo { text }
    |         ^^^^^^
 
 error: expected one of `(` or `<`, found `{`
-  --> $DIR/recovered-block.rs:29:9
+  --> $DIR/recovered-block.rs:19:9
    |
 LL |     Foo { text: "".to_string() }
    |         ^ expected one of `(` or `<` here

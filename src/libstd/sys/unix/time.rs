@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cmp::Ordering;
 use libc;
 use time::Duration;
@@ -24,6 +14,12 @@ struct Timespec {
 }
 
 impl Timespec {
+    const fn zero() -> Timespec {
+        Timespec {
+            t: libc::timespec { tv_sec: 0, tv_nsec: 0 },
+        }
+    }
+
     fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         if self >= other {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
@@ -42,51 +38,47 @@ impl Timespec {
         }
     }
 
-    fn add_duration(&self, other: &Duration) -> Timespec {
+    fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
             .try_into() // <- target type would be `libc::time_t`
             .ok()
-            .and_then(|secs| self.t.tv_sec.checked_add(secs))
-            .expect("overflow when adding duration to time");
+            .and_then(|secs| self.t.tv_sec.checked_add(secs))?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
         let mut nsec = other.subsec_nanos() + self.t.tv_nsec as u32;
         if nsec >= NSEC_PER_SEC as u32 {
             nsec -= NSEC_PER_SEC as u32;
-            secs = secs.checked_add(1).expect("overflow when adding \
-                                               duration to time");
+            secs = secs.checked_add(1)?;
         }
-        Timespec {
+        Some(Timespec {
             t: libc::timespec {
                 tv_sec: secs,
                 tv_nsec: nsec as _,
             },
-        }
+        })
     }
 
-    fn sub_duration(&self, other: &Duration) -> Timespec {
+    fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
             .try_into() // <- target type would be `libc::time_t`
             .ok()
-            .and_then(|secs| self.t.tv_sec.checked_sub(secs))
-            .expect("overflow when subtracting duration from time");
+            .and_then(|secs| self.t.tv_sec.checked_sub(secs))?;
 
         // Similar to above, nanos can't overflow.
         let mut nsec = self.t.tv_nsec as i32 - other.subsec_nanos() as i32;
         if nsec < 0 {
             nsec += NSEC_PER_SEC as i32;
-            secs = secs.checked_sub(1).expect("overflow when subtracting \
-                                               duration from time");
+            secs = secs.checked_sub(1)?;
         }
-        Timespec {
+        Some(Timespec {
             t: libc::timespec {
                 tv_sec: secs,
                 tv_nsec: nsec as _,
             },
-        }
+        })
     }
 }
 
@@ -142,17 +134,20 @@ mod inner {
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime {
-        t: Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-        },
+        t: Timespec::zero(),
     };
 
     impl Instant {
         pub fn now() -> Instant {
             Instant { t: unsafe { libc::mach_absolute_time() } }
+        }
+
+        pub const fn zero() -> Instant {
+            Instant { t: 0 }
+        }
+
+        pub fn actually_monotonic() -> bool {
+            true
         }
 
         pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -163,18 +158,16 @@ mod inner {
             Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32)
         }
 
-        pub fn add_duration(&self, other: &Duration) -> Instant {
-            Instant {
-                t: self.t.checked_add(dur2intervals(other))
-                       .expect("overflow when adding duration to instant"),
-            }
+        pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+            Some(Instant {
+                t: self.t.checked_add(checked_dur2intervals(other)?)?,
+            })
         }
 
-        pub fn sub_duration(&self, other: &Duration) -> Instant {
-            Instant {
-                t: self.t.checked_sub(dur2intervals(other))
-                       .expect("overflow when subtracting duration from instant"),
-            }
+        pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+            Some(Instant {
+                t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+            })
         }
     }
 
@@ -197,12 +190,12 @@ mod inner {
             self.t.sub_timespec(&other.t)
         }
 
-        pub fn add_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.add_duration(other) }
+        pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+            Some(SystemTime { t: self.t.checked_add_duration(other)? })
         }
 
-        pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.sub_duration(other) }
+        pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+            Some(SystemTime { t: self.t.checked_sub_duration(other)? })
         }
     }
 
@@ -217,7 +210,7 @@ mod inner {
 
     impl From<libc::timespec> for SystemTime {
         fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec { t: t } }
+            SystemTime { t: Timespec { t } }
         }
     }
 
@@ -230,12 +223,12 @@ mod inner {
         }
     }
 
-    fn dur2intervals(dur: &Duration) -> u64 {
+    fn checked_dur2intervals(dur: &Duration) -> Option<u64> {
+        let nanos = dur.as_secs()
+            .checked_mul(NSEC_PER_SEC)?
+            .checked_add(dur.subsec_nanos() as u64)?;
         let info = info();
-        let nanos = dur.as_secs().checked_mul(NSEC_PER_SEC).and_then(|nanos| {
-            nanos.checked_add(dur.subsec_nanos() as u64)
-        }).expect("overflow converting duration to nanoseconds");
-        mul_div_u64(nanos, info.denom as u64, info.numer as u64)
+        Some(mul_div_u64(nanos, info.denom as u64, info.numer as u64))
     }
 
     fn info() -> &'static libc::mach_timebase_info {
@@ -274,17 +267,24 @@ mod inner {
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime {
-        t: Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-        },
+        t: Timespec::zero(),
     };
 
     impl Instant {
         pub fn now() -> Instant {
             Instant { t: now(libc::CLOCK_MONOTONIC) }
+        }
+
+        pub const fn zero() -> Instant {
+            Instant {
+                t: Timespec::zero(),
+            }
+        }
+
+        pub fn actually_monotonic() -> bool {
+            (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64")) ||
+            (cfg!(target_os = "linux") && cfg!(target_arch = "x86")) ||
+            false // last clause, used so `||` is always trailing above
         }
 
         pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -293,12 +293,12 @@ mod inner {
             })
         }
 
-        pub fn add_duration(&self, other: &Duration) -> Instant {
-            Instant { t: self.t.add_duration(other) }
+        pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+            Some(Instant { t: self.t.checked_add_duration(other)? })
         }
 
-        pub fn sub_duration(&self, other: &Duration) -> Instant {
-            Instant { t: self.t.sub_duration(other) }
+        pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+            Some(Instant { t: self.t.checked_sub_duration(other)? })
         }
     }
 
@@ -321,18 +321,18 @@ mod inner {
             self.t.sub_timespec(&other.t)
         }
 
-        pub fn add_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.add_duration(other) }
+        pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+            Some(SystemTime { t: self.t.checked_add_duration(other)? })
         }
 
-        pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.sub_duration(other) }
+        pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+            Some(SystemTime { t: self.t.checked_sub_duration(other)? })
         }
     }
 
     impl From<libc::timespec> for SystemTime {
         fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec { t: t } }
+            SystemTime { t: Timespec { t } }
         }
     }
 
@@ -345,9 +345,9 @@ mod inner {
         }
     }
 
-    #[cfg(not(target_os = "dragonfly"))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "hermit")))]
     pub type clock_t = libc::c_int;
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "dragonfly", target_os = "hermit"))]
     pub type clock_t = libc::c_ulong;
 
     fn now(clock: clock_t) -> Timespec {

@@ -1,23 +1,27 @@
 error[E0618]: expected function, found enum variant `X::Entry`
-  --> $DIR/E0618.rs:16:5
+  --> $DIR/E0618.rs:6:5
    |
 LL |     Entry,
    |     ----- `X::Entry` defined here
 ...
 LL |     X::Entry();
-   |     ^^^^^^^^^^ not a function
+   |     ^^^^^^^^--
+   |     |
+   |     call expression requires function
 help: `X::Entry` is a unit variant, you need to write it without the parenthesis
    |
 LL |     X::Entry;
    |     ^^^^^^^^
 
 error[E0618]: expected function, found `i32`
-  --> $DIR/E0618.rs:19:5
+  --> $DIR/E0618.rs:9:5
    |
 LL |     let x = 0i32;
    |         - `i32` defined here
 LL |     x();
-   |     ^^^ not a function
+   |     ^--
+   |     |
+   |     call expression requires function
 
 error: aborting due to 2 previous errors
 

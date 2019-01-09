@@ -1,16 +1,7 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::util::nodemap::FxHashSet;
+use syntax::source_map::Span;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Parameter(pub u32);
@@ -36,7 +27,7 @@ pub fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
 }
 
 /// If `include_projections` is false, returns the list of parameters that are
-/// constrained by `t` - i.e. the value of each parameter in the list is
+/// constrained by `t` - i.e., the value of each parameter in the list is
 /// uniquely determined by `t` (see RFC 447). If it is true, return the list
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
@@ -62,11 +53,11 @@ struct ParameterCollector {
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         match t.sty {
-            ty::TyProjection(..) | ty::TyAnon(..) if !self.include_nonconstraining => {
+            ty::Projection(..) | ty::Opaque(..) if !self.include_nonconstraining => {
                 // projections are not injective
                 return false;
             }
-            ty::TyParam(data) => {
+            ty::Param(data) => {
                 self.parameters.push(Parameter::from(data));
             }
             _ => {}
@@ -76,22 +67,19 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        match *r {
-            ty::ReEarlyBound(data) => {
-                self.parameters.push(Parameter::from(data));
-            }
-            _ => {}
+        if let ty::ReEarlyBound(data) = *r {
+            self.parameters.push(Parameter::from(data));
         }
         false
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt,
-                                              predicates: &[ty::Predicate<'tcx>],
+pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                                              predicates: &ty::GenericPredicates<'tcx>,
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut FxHashSet<Parameter>)
 {
-    let mut predicates = predicates.to_owned();
+    let mut predicates = predicates.predicates.clone();
     setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
 }
 
@@ -137,7 +125,7 @@ pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt,
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
 pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
-                                           predicates: &mut [ty::Predicate<'tcx>],
+                                           predicates: &mut [(ty::Predicate<'tcx>, Span)],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                            input_parameters: &mut FxHashSet<Parameter>)
 {
@@ -169,7 +157,7 @@ pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
         changed = false;
 
         for j in i..predicates.len() {
-            if let ty::Predicate::Projection(ref poly_projection) = predicates[j] {
+            if let ty::Predicate::Projection(ref poly_projection) = predicates[j].0 {
                 // Note that we can skip binder here because the impl
                 // trait ref never contains any late-bound regions.
                 let projection = poly_projection.skip_binder();
@@ -203,6 +191,6 @@ pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
         }
         debug!("setup_constraining_predicates: predicates={:?} \
                 i={} impl_trait_ref={:?} input_parameters={:?}",
-           predicates, i, impl_trait_ref, input_parameters);
+               predicates, i, impl_trait_ref, input_parameters);
     }
 }

@@ -1,12 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// ignore-tidy-linelength
 
 // min-lldb-version: 310
 
@@ -46,22 +38,28 @@
 // lldb-command:run
 
 // lldb-command:print no_padding16
-// lldb-check:[...]$0 = NoPadding16(10000, -10001)
+// lldbg-check:[...]$0 = NoPadding16(10000, -10001)
+// lldbr-check:(tuple_struct::NoPadding16) no_padding16 = { = 10000 = -10001 }
 
 // lldb-command:print no_padding32
-// lldb-check:[...]$1 = NoPadding32(-10002, -10003.5, 10004)
+// lldbg-check:[...]$1 = NoPadding32(-10002, -10003.5, 10004)
+// lldbr-check:(tuple_struct::NoPadding32) no_padding32 = { = -10002 = -10003.5 = 10004 }
 
 // lldb-command:print no_padding64
-// lldb-check:[...]$2 = NoPadding64(-10005.5, 10006, 10007)
+// lldbg-check:[...]$2 = NoPadding64(-10005.5, 10006, 10007)
+// lldbr-check:(tuple_struct::NoPadding64) no_padding64 = { = -10005.5 = 10006 = 10007 }
 
 // lldb-command:print no_padding163264
-// lldb-check:[...]$3 = NoPadding163264(-10008, 10009, 10010, 10011)
+// lldbg-check:[...]$3 = NoPadding163264(-10008, 10009, 10010, 10011)
+// lldbr-check:(tuple_struct::NoPadding163264) no_padding163264 = { = -10008 = 10009 = 10010 = 10011 }
 
 // lldb-command:print internal_padding
-// lldb-check:[...]$4 = InternalPadding(10012, -10013)
+// lldbg-check:[...]$4 = InternalPadding(10012, -10013)
+// lldbr-check:(tuple_struct::InternalPadding) internal_padding = { = 10012 = -10013 }
 
 // lldb-command:print padding_at_end
-// lldb-check:[...]$5 = PaddingAtEnd(-10014, 10015)
+// lldbg-check:[...]$5 = PaddingAtEnd(-10014, 10015)
+// lldbr-check:(tuple_struct::PaddingAtEnd) padding_at_end = { = -10014 = 10015 }
 
 // This test case mainly makes sure that no field names are generated for tuple structs (as opposed
 // to all fields having the name "<unnamed_field>"). Otherwise they are handled the same a normal

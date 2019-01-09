@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use sys::mutex as imp;
 
 /// An OS-based mutual exclusion lock.
@@ -24,11 +14,17 @@ impl Mutex {
     ///
     /// Behavior is undefined if the mutex is moved after it is
     /// first used with any of the functions below.
+    /// Also, until `init` is called, behavior is undefined if this
+    /// mutex is ever used reentrantly, i.e., `raw_lock` or `try_lock`
+    /// are called by the thread currently holding the lock.
     pub const fn new() -> Mutex { Mutex(imp::Mutex::new()) }
 
     /// Prepare the mutex for use.
     ///
     /// This should be called once the mutex is at a stable memory address.
+    /// If called, this must be the very first thing that happens to the mutex.
+    /// Calling it in parallel with or after any operation (including another
+    /// `init()`) is undefined behavior.
     #[inline]
     pub unsafe fn init(&mut self) { self.0.init() }
 

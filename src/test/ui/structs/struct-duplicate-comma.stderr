@@ -1,0 +1,13 @@
+error: expected identifier, found `,`
+  --> $DIR/struct-duplicate-comma.rs:10:14
+   |
+LL |     let bar = Foo {
+   |               --- while parsing this struct
+LL |         a: 0,,
+   |              ^
+   |              |
+   |              expected identifier
+   |              help: remove this comma
+
+error: aborting due to previous error
+

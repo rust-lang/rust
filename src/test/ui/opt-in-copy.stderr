@@ -1,0 +1,21 @@
+error[E0204]: the trait `Copy` may not be implemented for this type
+  --> $DIR/opt-in-copy.rs:7:6
+   |
+LL |     but_i_cant: CantCopyThis,
+   |     ------------------------ this field does not implement `Copy`
+...
+LL | impl Copy for IWantToCopyThis {}
+   |      ^^^^
+
+error[E0204]: the trait `Copy` may not be implemented for this type
+  --> $DIR/opt-in-copy.rs:19:6
+   |
+LL |     ButICant(CantCopyThisEither),
+   |              ------------------ this field does not implement `Copy`
+...
+LL | impl Copy for IWantToCopyThisToo {}
+   |      ^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

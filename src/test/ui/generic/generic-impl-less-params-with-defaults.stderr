@@ -1,0 +1,9 @@
+error[E0107]: wrong number of type arguments: expected at least 2, found 1
+  --> $DIR/generic-impl-less-params-with-defaults.rs:11:5
+   |
+LL |     Foo::<isize>::new();
+   |     ^^^^^^^^^^^^^^^^^ expected at least 2 type arguments
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/array-not-vector.rs:2:19
+   |
+LL |     let _x: i32 = [1, 2, 3];
+   |                   ^^^^^^^^^ expected i32, found array of 3 elements
+   |
+   = note: expected type `i32`
+              found type `[{integer}; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/array-not-vector.rs:9:20
+   |
+LL |     let _y: &i32 = x;
+   |                    ^ expected i32, found slice
+   |
+   = note: expected type `&i32`
+              found type `&[i32]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

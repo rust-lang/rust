@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc-main"
 version = "0.0.0"
+edition = '2018'
 
 [[bin]]
 name = "rustc_binary"
@@ -11,5 +12,14 @@ path = "rustc.rs"
 rustc_target = { path = "../librustc_target" }
 rustc_driver = { path = "../librustc_driver" }
 
+# Make sure rustc_codegen_ssa ends up in the sysroot, because this
+# crate is intended to be used by codegen backends, which may not be in-tree.
+rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
+
+[dependencies.jemalloc-sys]
+version = '0.1.8'
+optional = true
+features = ['unprefixed_malloc_on_supported_platforms']
+
 [features]
-jemalloc = ["rustc_target/jemalloc"]
+jemalloc = ['jemalloc-sys']

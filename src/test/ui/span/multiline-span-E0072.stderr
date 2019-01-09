@@ -1,5 +1,5 @@
 error[E0072]: recursive type `ListNode` has infinite size
-  --> $DIR/multiline-span-E0072.rs:12:1
+  --> $DIR/multiline-span-E0072.rs:2:1
    |
 LL | / struct //~ ERROR has infinite size
 LL | | ListNode

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::option::*;
 use core::mem;
 use core::clone::Clone;
@@ -248,6 +238,27 @@ fn test_collect() {
     assert!(v == None);
 }
 
+#[test]
+fn test_copied() {
+    let val = 1;
+    let val_ref = &val;
+    let opt_none: Option<&'static u32> = None;
+    let opt_ref = Some(&val);
+    let opt_ref_ref = Some(&val_ref);
+
+    // None works
+    assert_eq!(opt_none.clone(), None);
+    assert_eq!(opt_none.copied(), None);
+
+    // Immutable ref works
+    assert_eq!(opt_ref.clone(), Some(&val));
+    assert_eq!(opt_ref.copied(), Some(1));
+
+    // Double Immutable ref works
+    assert_eq!(opt_ref_ref.clone(), Some(&val_ref));
+    assert_eq!(opt_ref_ref.clone().copied(), Some(&val));
+    assert_eq!(opt_ref_ref.copied().copied(), Some(1));
+}
 
 #[test]
 fn test_cloned() {
@@ -296,6 +307,23 @@ fn test_try() {
         Ok(val)
     }
     assert_eq!(try_option_err(), Err(NoneError));
+}
+
+#[test]
+fn test_option_deref() {
+    // Some: &Option<T: Deref>::Some(T) -> Option<&T::Deref::Target>::Some(&*T)
+    let ref_option = &Some(&42);
+    assert_eq!(ref_option.deref(), Some(&42));
+
+    let ref_option = &Some(String::from("a result"));
+    assert_eq!(ref_option.deref(), Some("a result"));
+
+    let ref_option = &Some(vec![1, 2, 3, 4, 5]);
+    assert_eq!(ref_option.deref(), Some(&[1, 2, 3, 4, 5][..]));
+
+    // None: &Option<T: Deref>>::None -> None
+    let ref_option: &Option<&i32> = &None;
+    assert_eq!(ref_option.deref(), None);
 }
 
 #[test]

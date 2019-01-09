@@ -1,8 +1,0 @@
-error: expected `,`, or `}`, found `bar`
-  --> $DIR/struct-missing-comma.rs:16:13
-   |
-LL |     foo: u32 //~ expected `,`, or `}`, found `bar`
-   |             ^ help: try adding a comma: `,`
-
-error: aborting due to previous error
-

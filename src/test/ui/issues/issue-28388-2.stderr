@@ -1,0 +1,9 @@
+error[E0603]: module `n` is private
+  --> $DIR/issue-28388-2.rs:7:8
+   |
+LL | use m::n::{};
+   |        ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

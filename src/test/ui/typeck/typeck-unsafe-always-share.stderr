@@ -1,0 +1,56 @@
+error[E0277]: `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
+  --> $DIR/typeck-unsafe-always-share.rs:19:5
+   |
+LL |     test(us);
+   |     ^^^^ `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<MySync<{integer}>>`
+note: required by `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:1
+   |
+LL | fn test<T: Sync>(s: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
+  --> $DIR/typeck-unsafe-always-share.rs:23:5
+   |
+LL |     test(uns);
+   |     ^^^^ `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<NoSync>`
+note: required by `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:1
+   |
+LL | fn test<T: Sync>(s: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
+  --> $DIR/typeck-unsafe-always-share.rs:27:5
+   |
+LL |     test(ms);
+   |     ^^^^ `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
+   |
+   = help: within `MySync<NoSync>`, the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<NoSync>`
+   = note: required because it appears within the type `MySync<NoSync>`
+note: required by `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:1
+   |
+LL | fn test<T: Sync>(s: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `NoSync` cannot be shared between threads safely
+  --> $DIR/typeck-unsafe-always-share.rs:30:5
+   |
+LL |     test(NoSync);
+   |     ^^^^ `NoSync` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `NoSync`
+note: required by `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:1
+   |
+LL | fn test<T: Sync>(s: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

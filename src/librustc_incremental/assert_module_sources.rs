@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This pass is only used for UNIT TESTS related to incremental
 //! compilation. It tests whether a particular `.o` file will be re-used
 //! from a previous compilation or whether it must be regenerated.
@@ -26,19 +16,23 @@
 //! The reason that we use `cfg=...` and not `#[cfg_attr]` is so that
 //! the HIR doesn't change as a result of the annotations, which might
 //! perturb the reuse results.
+//!
+//! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
+//! allows for doing a more fine-grained check to see if pre- or post-lto data
+//! was re-used.
 
-use rustc::dep_graph::{DepNode, DepConstructor};
-use rustc::mir::mono::CodegenUnit;
+use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::dep_graph::cgu_reuse_tracker::*;
+use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
+use std::collections::BTreeSet;
 use syntax::ast;
-use syntax_pos::symbol::Symbol;
-use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED};
+use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
+                 ATTR_EXPECTED_CGU_REUSE};
 
-const MODULE: &'static str = "module";
-const CFG: &'static str = "cfg";
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum Disposition { Reused, Codegened }
+const MODULE: &str = "module";
+const CFG: &str = "cfg";
+const KIND: &str = "kind";
 
 pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
@@ -46,61 +40,110 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             return;
         }
 
-        let ams = AssertModuleSource { tcx };
-        for attr in &tcx.hir.krate().attrs {
+        let available_cgus = tcx
+            .collect_and_partition_mono_items(LOCAL_CRATE)
+            .1
+            .iter()
+            .map(|cgu| format!("{}", cgu.name()))
+            .collect::<BTreeSet<String>>();
+
+        let ams = AssertModuleSource {
+            tcx,
+            available_cgus
+        };
+
+        for attr in &tcx.hir().krate().attrs {
             ams.check_attr(attr);
         }
     })
 }
 
 struct AssertModuleSource<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    available_cgus: BTreeSet<String>,
 }
 
 impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
-        let disposition = if attr.check_name(ATTR_PARTITION_REUSED) {
-            Disposition::Reused
+        let (expected_reuse, comp_kind) = if attr.check_name(ATTR_PARTITION_REUSED) {
+            (CguReuse::PreLto, ComparisonKind::AtLeast)
         } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
-            Disposition::Codegened
+            (CguReuse::No, ComparisonKind::Exact)
+        } else if attr.check_name(ATTR_EXPECTED_CGU_REUSE) {
+            match &self.field(attr, KIND).as_str()[..] {
+                "no" => (CguReuse::No, ComparisonKind::Exact),
+                "pre-lto" => (CguReuse::PreLto, ComparisonKind::Exact),
+                "post-lto" => (CguReuse::PostLto, ComparisonKind::Exact),
+                "any" => (CguReuse::PreLto, ComparisonKind::AtLeast),
+                other => {
+                    self.tcx.sess.span_fatal(
+                        attr.span,
+                        &format!("unknown cgu-reuse-kind `{}` specified", other));
+                }
+            }
         } else {
             return;
         };
+
+        if !self.tcx.sess.opts.debugging_opts.query_dep_graph {
+            self.tcx.sess.span_fatal(
+                attr.span,
+                &format!("found CGU-reuse attribute but `-Zquery-dep-graph` \
+                          was not specified"));
+        }
 
         if !self.check_config(attr) {
             debug!("check_attr: config does not match, ignoring attr");
             return;
         }
 
-        let mname = self.field(attr, MODULE);
-        let mangled_cgu_name = CodegenUnit::mangle_name(&mname.as_str());
-        let mangled_cgu_name = Symbol::intern(&mangled_cgu_name).as_interned_str();
+        let user_path = self.field(attr, MODULE).as_str().to_string();
+        let crate_name = self.tcx.crate_name(LOCAL_CRATE).as_str().to_string();
 
-        let dep_node = DepNode::new(self.tcx,
-                                    DepConstructor::CompileCodegenUnit(mangled_cgu_name));
-
-        if let Some(loaded_from_cache) = self.tcx.dep_graph.was_loaded_from_cache(&dep_node) {
-            match (disposition, loaded_from_cache) {
-                (Disposition::Reused, false) => {
-                    self.tcx.sess.span_err(
-                        attr.span,
-                        &format!("expected module named `{}` to be Reused but is Codegened",
-                                 mname));
-                }
-                (Disposition::Codegened, true) => {
-                    self.tcx.sess.span_err(
-                        attr.span,
-                        &format!("expected module named `{}` to be Codegened but is Reused",
-                                 mname));
-                }
-                (Disposition::Reused, true) |
-                (Disposition::Codegened, false) => {
-                    // These are what we would expect.
-                }
-            }
-        } else {
-            self.tcx.sess.span_err(attr.span, &format!("no module named `{}`", mname));
+        if !user_path.starts_with(&crate_name) {
+            let msg = format!("Found malformed codegen unit name `{}`. \
+                Codegen units names must always start with the name of the \
+                crate (`{}` in this case).", user_path, crate_name);
+            self.tcx.sess.span_fatal(attr.span, &msg);
         }
+
+        // Split of the "special suffix" if there is one.
+        let (user_path, cgu_special_suffix) = if let Some(index) = user_path.rfind(".") {
+            (&user_path[..index], Some(&user_path[index + 1 ..]))
+        } else {
+            (&user_path[..], None)
+        };
+
+        let mut cgu_path_components = user_path.split('-').collect::<Vec<_>>();
+
+        // Remove the crate name
+        assert_eq!(cgu_path_components.remove(0), crate_name);
+
+        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(self.tcx);
+        let cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
+                                                       cgu_path_components,
+                                                       cgu_special_suffix);
+
+        debug!("mapping '{}' to cgu name '{}'", self.field(attr, MODULE), cgu_name);
+
+        if !self.available_cgus.contains(&cgu_name.as_str()[..]) {
+            self.tcx.sess.span_err(attr.span,
+                &format!("no module named `{}` (mangled: {}). \
+                          Available modules: {}",
+                    user_path,
+                    cgu_name,
+                    self.available_cgus
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")));
+        }
+
+        self.tcx.sess.cgu_reuse_tracker.set_expectation(&cgu_name.as_str(),
+                                                        &user_path,
+                                                        attr.span,
+                                                        expected_reuse,
+                                                        comp_kind);
     }
 
     fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
@@ -134,5 +177,4 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
         debug!("check_config: no match found");
         return false;
     }
-
 }

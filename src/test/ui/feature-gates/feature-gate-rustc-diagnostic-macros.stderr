@@ -1,0 +1,20 @@
+error: cannot find macro `__build_diagnostic_array!` in this scope
+  --> $DIR/feature-gate-rustc-diagnostic-macros.rs:12:1
+   |
+LL | __build_diagnostic_array!(DIAGNOSTICS);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find macro `__register_diagnostic!` in this scope
+  --> $DIR/feature-gate-rustc-diagnostic-macros.rs:4:1
+   |
+LL | __register_diagnostic!(E0001);
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find macro `__diagnostic_used!` in this scope
+  --> $DIR/feature-gate-rustc-diagnostic-macros.rs:8:5
+   |
+LL |     __diagnostic_used!(E0001);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

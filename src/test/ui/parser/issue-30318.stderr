@@ -1,0 +1,10 @@
+error: expected outer doc comment
+  --> $DIR/issue-30318.rs:3:1
+   |
+LL | //! Misplaced comment...
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+
+error: aborting due to previous error
+

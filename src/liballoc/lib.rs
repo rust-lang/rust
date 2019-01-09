@@ -1,13 +1,3 @@
-// Copyright 2014-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # The Rust core allocation and collections library
 //!
 //! This library provides smart pointers and collections for managing
@@ -72,40 +62,40 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 #![needs_allocator]
+
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
-#![cfg_attr(test, allow(deprecated))] // rand
-#![cfg_attr(not(test), feature(exact_size_is_empty))]
+#![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
-#![cfg_attr(test, feature(rand, test))]
+#![cfg_attr(test, feature(test))]
+
 #![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
-#![feature(ascii_ctype)]
 #![feature(box_into_raw_non_null)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
-#![feature(collections_range)]
-#![feature(const_fn)]
+#![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
-#![feature(from_ref)]
 #![feature(fundamental)]
 #![feature(futures_api)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
+#![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
-#![feature(pin)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
+#![feature(receiver_trait)]
 #![feature(specialization)]
 #![feature(split_ascii_whitespace)]
 #![feature(staged_api)]
@@ -117,14 +107,11 @@
 #![feature(unsize)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
-#![feature(exact_chunks)]
-#![feature(pointer_methods)]
-#![feature(inclusive_range_methods)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
-
-#![cfg_attr(not(test), feature(fn_traits, i128))]
-#![cfg_attr(test, feature(test))]
+#![feature(slice_partition_dedup)]
+#![feature(maybe_uninit)]
+#![feature(alloc_layout_extra)]
 
 // Allow testing this library
 
@@ -162,10 +149,7 @@ mod boxed {
 #[cfg(test)]
 mod boxed_test;
 pub mod collections;
-#[cfg(any(
-    all(stage0, target_has_atomic = "ptr"),
-    all(not(stage0), target_has_atomic = "ptr", target_has_atomic = "cas")
-))]
+#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 pub mod sync;
 pub mod rc;
 pub mod raw_vec;

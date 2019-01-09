@@ -1,0 +1,12 @@
+error[E0061]: this function takes 1 parameter but 0 parameters were supplied
+  --> $DIR/arg-count-mismatch.rs:5:28
+   |
+LL | fn f(x: isize) { }
+   | -------------- defined here
+LL | 
+LL | fn main() { let i: (); i = f(); }
+   |                            ^^^ expected 1 parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.

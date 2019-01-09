@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // compile-flags:-Zprint-mono-items=eager
 
@@ -28,7 +18,7 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _: (char, u32) = Trait::without_default_impl(0);
 
     // Currently, no object code is generated for trait methods with default
-    // implemenations, unless they are actually called from somewhere. Therefore
+    // implementations, unless they are actually called from somewhere. Therefore
     // we cannot import the implementations and have to create our own inline.
     //~ MONO_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl[0]<u32>
     let _ = Trait::with_default_impl(0u32);

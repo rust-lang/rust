@@ -1,0 +1,9 @@
+error[E0220]: associated type `anything_here_kills_it` not found for `Self`
+  --> $DIR/issue-23595-2.rs:6:16
+   |
+LL |     type B = C<Self::anything_here_kills_it>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated type `anything_here_kills_it` not found
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0220`.

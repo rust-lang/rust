@@ -1,19 +1,24 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// run-rustfix
 
 // Test that we DO warn when lifetime name is not used at all.
 
 #![deny(unused_lifetimes)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
+#![allow(dead_code, unused_variables)]
 
-fn d<'a>() { } //~ ERROR `'a` never used
+fn september<'a>() {}
+//~^ ERROR lifetime parameter `'a` never used
+//~| HELP elide the unused lifetime
 
-fn main() { }
+fn october<'a, 'b, T>(s: &'b T) -> &'b T {
+    //~^ ERROR lifetime parameter `'a` never used
+    //~| HELP elide the unused lifetime
+    s
+}
+
+fn november<'a, 'b>(s: &'a str) -> (&'a str) {
+    //~^ ERROR lifetime parameter `'b` never used
+    //~| HELP elide the unused lifetime
+    s
+}
+
+fn main() {}

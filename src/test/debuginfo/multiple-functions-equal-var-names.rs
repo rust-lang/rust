@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -33,15 +23,18 @@
 // lldb-command:run
 
 // lldb-command:print abc
-// lldb-check:[...]$0 = 10101
+// lldbg-check:[...]$0 = 10101
+// lldbr-check:(i32) abc = 10101
 // lldb-command:continue
 
 // lldb-command:print abc
-// lldb-check:[...]$1 = 20202
+// lldbg-check:[...]$1 = 20202
+// lldbr-check:(i32) abc = 20202
 // lldb-command:continue
 
 // lldb-command:print abc
-// lldb-check:[...]$2 = 30303
+// lldbg-check:[...]$2 = 30303
+// lldbr-check:(i32) abc = 30303
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

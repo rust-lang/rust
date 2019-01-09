@@ -1,0 +1,18 @@
+error[E0277]: `NoSync` cannot be shared between threads safely
+  --> $DIR/mutable-enum-indirect.rs:17:5
+   |
+LL |     bar(&x);
+   |     ^^^ `NoSync` cannot be shared between threads safely
+   |
+   = help: within `&Foo`, the trait `std::marker::Sync` is not implemented for `NoSync`
+   = note: required because it appears within the type `Foo`
+   = note: required because it appears within the type `&Foo`
+note: required by `bar`
+  --> $DIR/mutable-enum-indirect.rs:13:1
+   |
+LL | fn bar<T: Sync>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

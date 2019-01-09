@@ -1,0 +1,13 @@
+error[E0618]: expected function, found `&str`
+  --> $DIR/issue-22468.rs:3:13
+   |
+LL |     let foo = "bar";
+   |         --- `&str` defined here
+LL |     let x = foo("baz");
+   |             ^^^-------
+   |             |
+   |             call expression requires function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0618`.

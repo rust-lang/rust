@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Bar: std::hash::Hash` is not satisfied
+  --> $DIR/issue-21160.rs:8:12
+   |
+LL | struct Foo(Bar);
+   |            ^^^ the trait `std::hash::Hash` is not implemented for `Bar`
+   |
+   = note: required by `std::hash::Hash::hash`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

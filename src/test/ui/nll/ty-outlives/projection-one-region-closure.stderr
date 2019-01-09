@@ -1,23 +1,5 @@
-warning: not reporting region error due to nll
-  --> $DIR/projection-one-region-closure.rs:55:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-one-region-closure.rs:67:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-one-region-closure.rs:89:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:55:29
+  --> $DIR/projection-one-region-closure.rs:45:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,26 +10,13 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: late-bound region is '_#3r
+   = note: number of external vids: 4
    = note: where T: '_#2r
    = note: where '_#1r: '_#2r
 
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/projection-one-region-closure.rs:55:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
-
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:55:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:51:1
+  --> $DIR/projection-one-region-closure.rs:41:1
    |
 LL | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -63,8 +32,27 @@ LL | | }
                T
            ]
 
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/projection-one-region-closure.rs:45:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:45:39
+   |
+LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                          --  -- lifetime `'b` defined here
+   |                          |
+   |                          lifetime `'a` defined here
+...
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:67:29
+  --> $DIR/projection-one-region-closure.rs:56:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,26 +64,12 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: number of external vids: 4
    = note: where T: '_#3r
    = note: where '_#2r: '_#3r
 
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/projection-one-region-closure.rs:67:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
-
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:67:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:62:1
+  --> $DIR/projection-one-region-closure.rs:51:1
    |
 LL | / fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -112,8 +86,27 @@ LL | | }
                T
            ]
 
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/projection-one-region-closure.rs:56:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:56:39
+   |
+LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                           --  -- lifetime `'b` defined here
+   |                           |
+   |                           lifetime `'a` defined here
+...
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:89:29
+  --> $DIR/projection-one-region-closure.rs:70:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -125,33 +118,18 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 5
-   = note: where T: '_#3r
-   = note: where '_#2r: '_#3r
-
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/projection-one-region-closure.rs:89:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
-
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:89:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   = note: number of external vids: 4
+   = note: where <T as Anything<ReClosureBound('_#2r)>>::AssocType: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:74:1
+  --> $DIR/projection-one-region-closure.rs:62:1
    |
 LL | / fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
@@ -162,7 +140,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:102:29
+  --> $DIR/projection-one-region-closure.rs:80:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,12 +152,12 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: number of external vids: 4
    = note: where T: '_#3r
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:96:1
+  --> $DIR/projection-one-region-closure.rs:74:1
    |
 LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -196,6 +174,6 @@ LL | | }
                T
            ]
 
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0309`.

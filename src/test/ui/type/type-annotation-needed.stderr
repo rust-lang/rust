@@ -1,0 +1,15 @@
+error[E0283]: type annotations required: cannot resolve `_: std::convert::Into<std::string::String>`
+  --> $DIR/type-annotation-needed.rs:5:5
+   |
+LL |     foo(42);
+   |     ^^^
+   |
+note: required by `foo`
+  --> $DIR/type-annotation-needed.rs:1:1
+   |
+LL | fn foo<T: Into<String>>(x: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

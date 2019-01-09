@@ -1,0 +1,17 @@
+error[E0271]: type mismatch resolving `<<T as Trait>::A as MultiDispatch<i32>>::O == T`
+  --> $DIR/issue-24204.rs:14:1
+   |
+LL | fn test<T: Trait<B=i32>>(b: i32) -> T where T::A: MultiDispatch<i32> { T::new(b) }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found type parameter
+   |
+   = note: expected type `<<T as Trait>::A as MultiDispatch<i32>>::O`
+              found type `T`
+note: required by `Trait`
+  --> $DIR/issue-24204.rs:7:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

@@ -1,0 +1,6 @@
+warning: Linking globals named 'foo': symbol multiply defined!
+
+error: failed to load bc of "lto_duplicate_symbols1.3a1fbbbh-cgu.0": 
+
+error: aborting due to previous error
+

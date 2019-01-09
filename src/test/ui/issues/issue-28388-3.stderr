@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/issue-28388-3.rs:7:5
+   |
+LL | use lint_stability::UnstableEnum::{};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

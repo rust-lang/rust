@@ -1,0 +1,19 @@
+error[E0277]: `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
+  --> $DIR/suggest-remove-refs-3.rs:4:19
+   |
+LL |        for (i, n) in & & &
+   |   ___________________^
+   |  |___________________|
+   | ||
+LL | ||         & &v
+   | ||___________- help: consider removing 5 leading `&`-references
+LL | |          .iter()
+LL | |          .enumerate() {
+   | |_____________________^ `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,10 @@
+error: `std::any::TypeId::of` is not yet stable as a const fn
+  --> $DIR/const-typeid-of.rs:6:26
+   |
+LL |     const A_ID: TypeId = TypeId::of::<A>();
+   |                          ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_type_id)]` to the crate attributes to enable
+
+error: aborting due to previous error
+

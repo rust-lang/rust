@@ -1,15 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::ffi::CString;
-use std::ptr;
 
 use attributes;
 use libc::c_uint;
@@ -21,8 +10,8 @@ use ModuleLlvm;
 use llvm::{self, False, True};
 
 pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
-    let llcx = mods.llcx;
-    let llmod = mods.llmod;
+    let llcx = &*mods.llcx;
+    let llmod = mods.llmod();
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {
         "16" => llvm::LLVMInt16TypeInContext(llcx),
         "32" => llvm::LLVMInt32TypeInContext(llcx),
@@ -34,7 +23,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
     let void = llvm::LLVMVoidTypeInContext(llcx);
 
     for method in ALLOCATOR_METHODS {
-        let mut args = Vec::new();
+        let mut args = Vec::with_capacity(method.inputs.len());
         for ty in method.inputs.iter() {
             match *ty {
                 AllocatorTy::Layout => {
@@ -68,14 +57,15 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
         if tcx.sess.target.target.options.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
-       if tcx.sess.target.target.options.requires_uwtable {
-           attributes::emit_uwtable(llfn, true);
-       }
+        if tcx.sess.target.target.options.requires_uwtable {
+            attributes::emit_uwtable(llfn, true);
+        }
 
         let callee = CString::new(kind.fn_name(method.name)).unwrap();
         let callee = llvm::LLVMRustGetOrInsertFunction(llmod,
                                                        callee.as_ptr(),
                                                        ty);
+        llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
         let llbb = llvm::LLVMAppendBasicBlockInContext(llcx,
                                                        llfn,
@@ -90,7 +80,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
                                           callee,
                                           args.as_ptr(),
                                           args.len() as c_uint,
-                                          ptr::null_mut(),
+                                          None,
                                           "\0".as_ptr() as *const _);
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {

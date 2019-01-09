@@ -1,33 +1,22 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::tcx::RvalueInitializationState;
-use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
+use smallvec::{SmallVec, smallvec};
 
 use std::collections::hash_map::Entry;
 use std::mem;
 
 use super::abs_domain::Lift;
-
 use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, MoveOut, MoveOutIndex};
-use super::{MoveError, InitIndex, Init, LookupResult, InitKind};
+use super::{MoveError, InitIndex, Init, InitLocation, LookupResult, InitKind};
 use super::IllegalMoveOriginKind::*;
 
 struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     data: MoveData<'tcx>,
-    errors: Vec<MoveError<'tcx>>,
+    errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
@@ -53,7 +42,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                             v,
                         )
                     }).collect(),
-                    projections: FxHashMap(),
+                    projections: Default::default(),
                 },
                 move_paths,
                 path_map,
@@ -65,8 +54,8 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 
     fn new_move_path(move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
-                     path_map: &mut IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
-                     init_path_map: &mut IndexVec<MovePathIndex, Vec<InitIndex>>,
+                     path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+                     init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
                      parent: Option<MovePathIndex>,
                      place: Place<'tcx>)
                      -> MovePathIndex
@@ -84,10 +73,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
             move_paths[move_path].next_sibling = next_sibling;
         }
 
-        let path_map_ent = path_map.push(vec![]);
+        let path_map_ent = path_map.push(smallvec![]);
         assert_eq!(path_map_ent, move_path);
 
-        let init_path_map_ent = init_path_map.push(vec![]);
+        let init_path_map_ent = init_path_map.push(smallvec![]);
         assert_eq!(init_path_map_ent, move_path);
 
         move_path
@@ -129,24 +118,24 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                                 proj: &PlaceProjection<'tcx>)
                                 -> Result<MovePathIndex, MoveError<'tcx>>
     {
-        let base = try!(self.move_path_for(&proj.base));
+        let base = self.move_path_for(&proj.base)?;
         let mir = self.builder.mir;
         let tcx = self.builder.tcx;
         let place_ty = proj.base.ty(mir, tcx).to_ty(tcx);
         match place_ty.sty {
-            ty::TyRef(..) | ty::TyRawPtr(..) =>
+            ty::Ref(..) | ty::RawPtr(..) =>
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
                     BorrowedContent { target_place: place.clone() })),
-            ty::TyAdt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
+            ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                 return Err(MoveError::cannot_move_out_of(self.loc,
                                                          InteriorOfTypeWithDestructor {
                     container_ty: place_ty
                 })),
             // move out of union - always move the entire union
-            ty::TyAdt(adt, _) if adt.is_union() =>
+            ty::Adt(adt, _) if adt.is_union() =>
                 return Err(MoveError::UnionMove { path: base }),
-            ty::TySlice(_) =>
+            ty::Slice(_) =>
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
                     InteriorOfSliceOrArray {
@@ -155,7 +144,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                             _ => false
                         },
                     })),
-            ty::TyArray(..) => match proj.elem {
+            ty::Array(..) => match proj.elem {
                 ProjectionElem::Index(..) =>
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
@@ -186,7 +175,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
-    fn finalize(self) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
+    fn finalize(
+        self
+    ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         debug!("{}", {
             debug!("moves for {:?}:", self.mir.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -199,7 +190,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
             "done dumping moves"
         });
 
-        if self.errors.len() > 0 {
+        if !self.errors.is_empty() {
             Err((self.data, self.errors))
         } else {
             Ok(self.data)
@@ -207,9 +198,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                                           -> Result<MoveData<'tcx>,
-                                                     (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
+pub(super) fn gather_moves<'a, 'gcx, 'tcx>(
+    mir: &Mir<'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>
+) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
     let mut builder = MoveDataBuilder::new(mir, tcx);
 
     builder.gather_args();
@@ -234,10 +226,9 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn gather_args(&mut self) {
         for arg in self.mir.args_iter() {
             let path = self.data.rev_lookup.locals[arg];
-            let span = self.mir.local_decls[arg].source_info.span;
 
             let init = self.data.inits.push(Init {
-                path, span, kind: InitKind::Deep
+                path, kind: InitKind::Deep, location: InitLocation::Argument(arg),
             });
 
             debug!("gather_args: adding init {:?} of {:?} for argument {:?}",
@@ -279,7 +270,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
-            StatementKind::ReadForMatch(ref place) => {
+            StatementKind::FakeRead(_, ref place) => {
                 self.create_move_path(place);
             }
             StatementKind::InlineAsm { ref outputs, ref inputs, ref asm } => {
@@ -288,7 +279,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                         self.gather_init(output, InitKind::Deep);
                     }
                 }
-                for input in inputs {
+                for (_, input) in inputs.iter() {
                     self.gather_operand(input);
                 }
             }
@@ -300,9 +291,8 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
-            StatementKind::EndRegion(_) |
-            StatementKind::Validate(..) |
-            StatementKind::UserAssertTy(..) |
+            StatementKind::Retag { .. } |
+            StatementKind::AscribeUserType(..) |
             StatementKind::Nop => {}
         }
     }
@@ -378,7 +368,13 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 self.gather_operand(value);
                 self.gather_init(location, InitKind::Deep);
             }
-            TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
+            TerminatorKind::Call {
+                ref func,
+                ref args,
+                ref destination,
+                cleanup: _,
+                from_hir_call: _,
+            } => {
                 self.gather_operand(func);
                 for arg in args {
                     self.gather_operand(arg);
@@ -407,7 +403,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let path = match self.move_path_for(place) {
             Ok(path) | Err(MoveError::UnionMove { path }) => path,
             Err(error @ MoveError::IllegalMove { .. }) => {
-                self.builder.errors.push(error);
+                self.builder.errors.push((place.clone(), error));
                 return;
             }
         };
@@ -423,9 +419,23 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     fn gather_init(&mut self, place: &Place<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
+        let place = match place {
+            // Check if we are assigning into a field of a union, if so, lookup the place
+            // of the union so it is marked as initialized again.
+            Place::Projection(box Projection {
+                base,
+                elem: ProjectionElem::Field(_, _),
+            }) if match base.ty(self.builder.mir, self.builder.tcx).to_ty(self.builder.tcx).sty {
+                    ty::TyKind::Adt(def, _) if def.is_union() => true,
+                    _ => false,
+            } => base,
+            // Otherwise, lookup the place.
+            _ => place,
+        };
+
         if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place) {
             let init = self.builder.data.inits.push(Init {
-                span: self.builder.mir.source_info(self.loc).span,
+                location: InitLocation::Statement(self.loc),
                 path,
                 kind,
             });

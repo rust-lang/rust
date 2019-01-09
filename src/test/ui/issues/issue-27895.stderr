@@ -1,0 +1,9 @@
+error[E0080]: runtime values cannot be referenced in patterns
+  --> $DIR/issue-27895.rs:6:13
+   |
+LL |         0..=index => println!("winner"),
+   |             ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

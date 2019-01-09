@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:18:5
+   |
+LL |     want_foo_for_any_tcx(f); //~ ERROR E0308
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'tcx> Foo<'tcx>`
+              found type `Foo<'x>`
+
+error[E0308]: mismatched types
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:35:5
+   |
+LL |     want_bar_for_any_ccx(b); //~ ERROR E0308
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'ccx> Bar<'ccx>`
+              found type `Bar<'x>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,17 +1,11 @@
-// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 // min-lldb-version: 310
+
+// This fails on lldb 6.0.1 on x86-64 Fedora 28; so mark it macOS-only
+// for now.
+// only-macos
 
 // aux-build:cross_crate_spans.rs
 extern crate cross_crate_spans;
@@ -21,7 +15,7 @@ extern crate cross_crate_spans;
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:break cross_crate_spans.rs:24
+// gdb-command:break cross_crate_spans.rs:14
 // gdb-command:run
 
 // gdb-command:print result
@@ -46,23 +40,29 @@ extern crate cross_crate_spans;
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:b cross_crate_spans.rs:24
+// lldb-command:b cross_crate_spans.rs:14
 // lldb-command:run
 
 // lldb-command:print result
-// lldb-check:[...]$0 = (17, 17)
+// lldbg-check:[...]$0 = (17, 17)
+// lldbr-check:((u32, u32)) result = { = 17 = 17 }
 // lldb-command:print a_variable
-// lldb-check:[...]$1 = 123456789
+// lldbg-check:[...]$1 = 123456789
+// lldbr-check:(u32) a_variable = 123456789
 // lldb-command:print another_variable
-// lldb-check:[...]$2 = 123456789.5
+// lldbg-check:[...]$2 = 123456789.5
+// lldbr-check:(f64) another_variable = 123456789.5
 // lldb-command:continue
 
 // lldb-command:print result
-// lldb-check:[...]$3 = (1212, 1212)
+// lldbg-check:[...]$3 = (1212, 1212)
+// lldbr-check:((i16, i16)) result = { = 1212 = 1212 }
 // lldb-command:print a_variable
-// lldb-check:[...]$4 = 123456789
+// lldbg-check:[...]$4 = 123456789
+// lldbr-check:(u32) a_variable = 123456789
 // lldb-command:print another_variable
-// lldb-check:[...]$5 = 123456789.5
+// lldbg-check:[...]$5 = 123456789.5
+// lldbr-check:(f64) another_variable = 123456789.5
 // lldb-command:continue
 
 

@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![deny(warnings)]
 #![allow(unused_must_use)]
 #![allow(unused_features)]
@@ -310,7 +300,7 @@ fn test_order() {
 }
 
 fn test_once() {
-    // Make sure each argument are evaluted only once even though it may be
+    // Make sure each argument are evaluated only once even though it may be
     // formatted multiple times
     fn foo() -> isize {
         static mut FOO: isize = 0;

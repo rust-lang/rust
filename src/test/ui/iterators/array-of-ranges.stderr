@@ -1,0 +1,93 @@
+error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:2:14
+   |
+LL |     for _ in [0..1] {}
+   |              ^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   = note: `[start..end]` is an array of one `Range`; you might have meant to have a `Range` without the brackets: `start..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::RangeInclusive<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:4:14
+   |
+LL |     for _ in [0..=1] {}
+   |              ^^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::RangeInclusive<{integer}>; 1]`
+   = note: `[start..=end]` is an array of one `RangeInclusive`; you might have meant to have a `RangeInclusive` without the brackets: `start..=end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::RangeFrom<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:6:14
+   |
+LL |     for _ in [0..] {}
+   |              ^^^^^ if you meant to iterate from a value onwards, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::RangeFrom<{integer}>; 1]`
+   = note: `[start..]` is an array of one `RangeFrom`; you might have meant to have a `RangeFrom` without the brackets: `start..`, keeping in mind that iterating over an unbounded iterator will run forever unless you `break` or `return` from within the loop
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::RangeTo<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:8:14
+   |
+LL |     for _ in [..1] {}
+   |              ^^^^^ if you meant to iterate until a value, remove the square brackets and add a starting value
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::RangeTo<{integer}>; 1]`
+   = note: `[..end]` is an array of one `RangeTo`; you might have meant to have a bounded `Range` without the brackets: `0..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::RangeToInclusive<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:10:14
+   |
+LL |     for _ in [..=1] {}
+   |              ^^^^^^ if you meant to iterate until a value (including it), remove the square brackets and add a starting value
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::RangeToInclusive<{integer}>; 1]`
+   = note: `[..=end]` is an array of one `RangeToInclusive`; you might have meant to have a bounded `RangeInclusive` without the brackets: `0..=end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:14:14
+   |
+LL |     for _ in [start..end] {}
+   |              ^^^^^^^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   = note: `[start..end]` is an array of one `Range`; you might have meant to have a `Range` without the brackets: `start..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:17:14
+   |
+LL |     for _ in array_of_range {}
+   |              ^^^^^^^^^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   = note: `[start..end]` is an array of one `Range`; you might have meant to have a `Range` without the brackets: `start..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::Range<{integer}>; 2]` is not an iterator
+  --> $DIR/array-of-ranges.rs:19:14
+   |
+LL |     for _ in [0..1, 2..3] {}
+   |              ^^^^^^^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 2]`
+   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::RangeInclusive<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:21:14
+   |
+LL |     for _ in [0..=1] {}
+   |              ^^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::RangeInclusive<{integer}>; 1]`
+   = note: `[start..=end]` is an array of one `RangeInclusive`; you might have meant to have a `RangeInclusive` without the brackets: `start..=end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

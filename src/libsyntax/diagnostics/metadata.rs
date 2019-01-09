@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains utilities for outputting metadata for diagnostic errors.
 //!
 //! Each set of errors is mapped to a metadata file by a name, which is
@@ -45,7 +35,7 @@ pub struct ErrorLocation {
 impl ErrorLocation {
     /// Create an error location from a span.
     pub fn from_span(ecx: &ExtCtxt, sp: Span) -> ErrorLocation {
-        let loc = ecx.codemap().lookup_char_pos_adj(sp.lo());
+        let loc = ecx.source_map().lookup_char_pos_adj(sp.lo());
         ErrorLocation {
             filename: loc.filename,
             line: loc.line

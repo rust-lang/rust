@@ -1,32 +1,11 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! the rustc crate store interface. This also includes types that
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use hir::def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
-use hir::map::definitions::{Definitions, DefKey, DefPathTable};
-use hir::svh::Svh;
+use hir::map::definitions::{DefKey, DefPathTable};
+use rustc_data_structures::svh::Svh;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;
@@ -34,8 +13,6 @@ use session::search_paths::PathKind;
 use std::any::Any;
 use std::path::{Path, PathBuf};
 use syntax::ast;
-use syntax::edition::Edition;
-use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
@@ -44,11 +21,6 @@ use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
-
-#[derive(Clone, Debug, Copy)]
-pub struct LinkMeta {
-    pub crate_hash: Svh,
-}
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
@@ -67,7 +39,7 @@ pub enum DepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g. the injected allocator.
+    /// doesn't need to be linked to an rlib, e.g., the injected allocator.
     Implicit,
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
@@ -138,11 +110,6 @@ pub struct NativeLibrary {
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
-}
-
-pub enum LoadedMacro {
-    MacroDef(ast::Item),
-    ProcMacro(Lrc<SyntaxExtension>),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -221,9 +188,6 @@ pub trait MetadataLoader {
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
 
-    // access to the metadata loader
-    fn metadata_loader(&self) -> &dyn MetadataLoader;
-
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
@@ -231,19 +195,11 @@ pub trait CrateStore {
     fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility;
-    fn export_macros_untracked(&self, cnum: CrateNum);
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition;
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
-    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
@@ -252,123 +208,12 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta)
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
-
-// FIXME: find a better place for this?
-pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
-    let mut err_count = 0;
-    {
-        let mut say = |s: &str| {
-            match (sp, sess) {
-                (_, None) => bug!("{}", s),
-                (Some(sp), Some(sess)) => sess.span_err(sp, s),
-                (None, Some(sess)) => sess.err(s),
-            }
-            err_count += 1;
-        };
-        if s.is_empty() {
-            say("crate name must not be empty");
-        }
-        for c in s.chars() {
-            if c.is_alphanumeric() { continue }
-            if c == '_'  { continue }
-            say(&format!("invalid character `{}` in crate name: `{}`", c, s));
-        }
-    }
-
-    if err_count > 0 {
-        sess.unwrap().abort_if_errors();
-    }
-}
-
-/// A dummy crate store that does not support any non-local crates,
-/// for test purposes.
-pub struct DummyCrateStore;
-
-#[allow(unused_variables)]
-impl CrateStore for DummyCrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>
-        { bug!("crate_data_as_rc_any") }
-    // item info
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics
-        { bug!("item_generics_cloned") }
-
-    // trait/impl-item info
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
-        { bug!("associated_item_cloned") }
-
-    // crate metadata
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
-    fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator {
-        bug!("crate_disambiguator")
-    }
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
-    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition { bug!("crate_edition_untracked") }
-
-    // resolve
-    fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
-    fn def_path(&self, def: DefId) -> hir_map::DefPath {
-        bug!("relative_def_path")
-    }
-    fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash {
-        bug!("def_path_hash")
-    }
-    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
-        bug!("def_path_table")
-    }
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
-        bug!("struct_field_names")
-    }
-    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
-        bug!("item_children")
-    }
-    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
-
-    fn crates_untracked(&self) -> Vec<CrateNum> { vec![] }
-
-    // utility functions
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
-    fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta)
-                                 -> EncodedMetadata {
-        bug!("encode_metadata")
-    }
-    fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> { bug!("postorder_cnums_untracked") }
-
-    // access to the metadata loader
-    fn metadata_loader(&self) -> &dyn MetadataLoader { bug!("metadata_loader") }
-}
-
-pub trait CrateLoader {
-    fn process_extern_crate(&mut self, item: &ast::Item, defs: &Definitions) -> CrateNum;
-
-    fn process_path_extern(
-        &mut self,
-        name: Symbol,
-        span: Span,
-    ) -> CrateNum;
-
-    fn process_use_extern(
-        &mut self,
-        name: Symbol,
-        span: Span,
-        id: ast::NodeId,
-        defs: &Definitions,
-    ) -> CrateNum;
-
-    fn postprocess(&mut self, krate: &ast::Crate);
-}
 
 // This method is used when generating the command line to pass through to
 // system linker. The linker expects undefined symbols on the left of the
@@ -379,7 +224,7 @@ pub trait CrateLoader {
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt, prefer: LinkagePreference)
+pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
     -> Vec<(CrateNum, LibSource)>
 {
     let mut libs = tcx.crates()

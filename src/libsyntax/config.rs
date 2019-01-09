@@ -1,38 +1,33 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use attr::HasAttrs;
-use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
+use feature_gate::{
+    feature_err,
+    EXPLAIN_STMT_ATTR_SYNTAX,
+    Features,
+    get_features,
+    GateIssue,
+};
 use {fold, attr};
 use ast;
-use codemap::Spanned;
+use source_map::Spanned;
 use edition::Edition;
 use parse::{token, ParseSess};
+use smallvec::SmallVec;
+use errors::Applicability;
 
 use ptr::P;
-use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
-    pub should_test: bool,
     pub sess: &'a ParseSess,
     pub features: Option<&'a Features>,
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, edition: Edition)
+pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition)
                 -> (ast::Crate, Features) {
     let features;
     {
         let mut strip_unconfigured = StripUnconfigured {
-            should_test,
             sess,
             features: None,
         };
@@ -74,78 +69,133 @@ impl<'a> StripUnconfigured<'a> {
         if self.in_cfg(node.attrs()) { Some(node) } else { None }
     }
 
+    /// Parse and expand all `cfg_attr` attributes into a list of attributes
+    /// that are within each `cfg_attr` that has a true configuration predicate.
+    ///
+    /// Gives compiler warnigns if any `cfg_attr` does not contain any
+    /// attributes and is in the original source code. Gives compiler errors if
+    /// the syntax of any `cfg_attr` is incorrect.
     pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: T) -> T {
         node.map_attrs(|attrs| {
-            attrs.into_iter().filter_map(|attr| self.process_cfg_attr(attr)).collect()
+            attrs.into_iter().flat_map(|attr| self.process_cfg_attr(attr)).collect()
         })
     }
 
-    fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Option<ast::Attribute> {
+    /// Parse and expand a single `cfg_attr` attribute into a list of attributes
+    /// when the configuration predicate is true, or otherwise expand into an
+    /// empty list of attributes.
+    ///
+    /// Gives a compiler warning when the `cfg_attr` contains no attributes and
+    /// is in the original source file. Gives a compiler error if the syntax of
+    /// the attribute is incorrect
+    fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
         if !attr.check_name("cfg_attr") {
-            return Some(attr);
+            return vec![attr];
         }
 
-        let (cfg, path, tokens, span) = match attr.parse(self.sess, |parser| {
+        let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
             parser.expect(&token::OpenDelim(token::Paren))?;
-            let cfg = parser.parse_meta_item()?;
+
+            let cfg_predicate = parser.parse_meta_item()?;
             parser.expect(&token::Comma)?;
-            let lo = parser.span.lo();
-            let (path, tokens) = parser.parse_path_and_tokens()?;
+
+            // Presumably, the majority of the time there will only be one attr.
+            let mut expanded_attrs = Vec::with_capacity(1);
+
+            while !parser.check(&token::CloseDelim(token::Paren)) {
+                let lo = parser.span.lo();
+                let (path, tokens) = parser.parse_meta_item_unrestricted()?;
+                expanded_attrs.push((path, tokens, parser.prev_span.with_lo(lo)));
+                parser.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;
+            }
+
             parser.expect(&token::CloseDelim(token::Paren))?;
-            Ok((cfg, path, tokens, parser.prev_span.with_lo(lo)))
+            Ok((cfg_predicate, expanded_attrs))
         }) {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();
-                return None;
+                return Vec::new();
             }
         };
 
-        if attr::cfg_matches(&cfg, self.sess, self.features) {
-            self.process_cfg_attr(ast::Attribute {
+        // Check feature gate and lint on zero attributes in source. Even if the feature is gated,
+        // we still compute as if it wasn't, since the emitted error will stop compilation further
+        // along the compilation.
+        if expanded_attrs.len() == 0 {
+            // FIXME: Emit unused attribute lint here.
+        }
+
+        if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
+            // We call `process_cfg_attr` recursively in case there's a
+            // `cfg_attr` inside of another `cfg_attr`. E.g.
+            //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
+            expanded_attrs.into_iter()
+            .flat_map(|(path, tokens, span)| self.process_cfg_attr(ast::Attribute {
                 id: attr::mk_attr_id(),
                 style: attr.style,
                 path,
                 tokens,
                 is_sugared_doc: false,
                 span,
-            })
+            }))
+            .collect()
         } else {
-            None
+            Vec::new()
         }
     }
 
-    // Determine if a node with the given attributes should be included in this configuration.
+    /// Determine if a node with the given attributes should be included in this configuration.
     pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
-            // When not compiling with --test we should not compile the #[test] functions
-            if !self.should_test && is_test_or_bench(attr) {
-                return false;
+            if !is_cfg(attr) {
+                return true;
             }
 
-            let mis = if !is_cfg(attr) {
-                return true;
-            } else if let Some(mis) = attr.meta_item_list() {
-                mis
-            } else {
-                return true;
+            let error = |span, msg, suggestion: &str| {
+                let mut err = self.sess.span_diagnostic.struct_span_err(span, msg);
+                if !suggestion.is_empty() {
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "expected syntax is",
+                        suggestion.into(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                err.emit();
+                true
             };
 
-            if mis.len() != 1 {
-                self.sess.span_diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
-                return true;
+            let meta_item = if let Some(meta_item) = attr.meta() {
+                meta_item
+            } else {
+                // Not a well-formed meta-item. Why? We don't know.
+                return error(attr.span, "`cfg` is not a well-formed meta-item",
+                                        "#[cfg(/* predicate */)]");
+            };
+            let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
+                nested_meta_items
+            } else {
+                return error(meta_item.span, "`cfg` is not followed by parentheses",
+                                             "cfg(/* predicate */)");
+            };
+
+            if nested_meta_items.is_empty() {
+                return error(meta_item.span, "`cfg` predicate is not specified", "");
+            } else if nested_meta_items.len() > 1 {
+                return error(nested_meta_items.last().unwrap().span,
+                             "multiple `cfg` predicates are specified", "");
             }
 
-            if !mis[0].is_meta_item() {
-                self.sess.span_diagnostic.span_err(mis[0].span, "unexpected literal");
-                return true;
+            match nested_meta_items[0].meta_item() {
+                Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
+                None => error(nested_meta_items[0].span,
+                              "`cfg` predicate key cannot be a literal", ""),
             }
-
-            attr::cfg_matches(mis[0].meta_item().unwrap(), self.sess, self.features)
         })
     }
 
-    // Visit attributes on expression and statements (but not attributes on items in blocks).
+    /// Visit attributes on expression and statements (but not attributes on items in blocks).
     fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
@@ -247,9 +297,9 @@ impl<'a> StripUnconfigured<'a> {
         // Anything else is always required, and thus has to error out
         // in case of a cfg attr.
         //
-        // NB: This is intentionally not part of the fold_expr() function
+        // N.B., this is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             let msg = "removing an expression is not supported in this position";
             self.sess.span_diagnostic.span_err(attr.span, msg);
         }
@@ -319,27 +369,28 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         Some(P(fold::noop_fold_expr(expr, self)))
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         match self.configure_stmt(stmt) {
             Some(stmt) => fold::noop_fold_stmt(stmt, self),
-            None => return SmallVector::new(),
+            None => return SmallVec::new(),
         }
     }
 
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         fold::noop_fold_item(configure!(self, item), self)
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]>
+    {
         fold::noop_fold_impl_item(configure!(self, item), self)
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         fold::noop_fold_trait_item(configure!(self, item), self)
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        // Don't configure interpolated AST (c.f. #34171).
+        // Don't configure interpolated AST (cf. issue #34171).
         // Interpolated AST will get configured once the surrounding tokens are parsed.
         mac
     }
@@ -351,8 +402,4 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
-}
-
-pub fn is_test_or_bench(attr: &ast::Attribute) -> bool {
-    attr.check_name("test") || attr.check_name("bench")
 }

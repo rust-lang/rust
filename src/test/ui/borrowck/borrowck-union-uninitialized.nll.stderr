@@ -1,0 +1,15 @@
+error[E0381]: assign to part of possibly uninitialized variable: `s`
+  --> $DIR/borrowck-union-uninitialized.rs:13:9
+   |
+LL |         s.a = 0;
+   |         ^^^^^^^ use of possibly uninitialized `s`
+
+error[E0381]: assign to part of possibly uninitialized variable: `u`
+  --> $DIR/borrowck-union-uninitialized.rs:14:9
+   |
+LL |         u.a = 0;
+   |         ^^^^^^^ use of possibly uninitialized `u`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

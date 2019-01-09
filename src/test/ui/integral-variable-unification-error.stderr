@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/integral-variable-unification-error.rs:3:9
+   |
+LL |     x = 5.0;
+   |         ^^^ expected integer, found floating-point number
+   |
+   = note: expected type `{integer}`
+              found type `{float}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

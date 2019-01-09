@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/if-typeck.rs:9:8
+   |
+LL |     if f { }
+   |        ^ expected bool, found fn item
+   |
+   = note: expected type `bool`
+              found type `fn() {f}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

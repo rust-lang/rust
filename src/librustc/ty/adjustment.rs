@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
@@ -48,7 +38,7 @@ use ty::subst::Substs;
 ///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
 ///    the underlying conversions from `[i32; 4]` to `[i32]`.
 ///
-/// 3. Coercing a `Box<T>` to `Box<Trait>` is an interesting special case.  In
+/// 3. Coercing a `Box<T>` to `Box<dyn Trait>` is an interesting special case.  In
 ///    that case, we have the pointer we need coming in, so there are no
 ///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
 ///    At some point, of course, `Box` should move out of the compiler, in which
@@ -83,7 +73,7 @@ pub enum Adjust<'tcx> {
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow<'tcx>),
 
-    /// Unsize a pointer/reference value, e.g. `&[T; n]` to
+    /// Unsize a pointer/reference value, e.g., `&[T; n]` to
     /// `&[T]`. Note that the source could be a thin or fat pointer.
     /// This will do things like convert thin pointers to fat
     /// pointers, or convert structs containing thin pointers to

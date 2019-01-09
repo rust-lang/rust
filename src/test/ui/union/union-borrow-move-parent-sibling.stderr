@@ -1,0 +1,67 @@
+error[E0502]: cannot borrow `u.y` as immutable because `u.x.0` is also borrowed as mutable
+  --> $DIR/union-borrow-move-parent-sibling.rs:15:14
+   |
+LL |     let a = &mut u.x.0;
+   |                  ----- mutable borrow occurs here
+LL |     let b = &u.y; //~ ERROR cannot borrow `u.y`
+   |              ^^^ immutable borrow occurs here
+LL |     use_borrow(a);
+LL | }
+   | - mutable borrow ends here
+
+error[E0382]: use of moved value: `u.y`
+  --> $DIR/union-borrow-move-parent-sibling.rs:22:9
+   |
+LL |     let a = u.x.0;
+   |         - value moved here
+LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
+   |         ^ value used here after move
+   |
+   = note: move occurs because `u.y` has type `[type error]`, which does not implement the `Copy` trait
+
+error[E0502]: cannot borrow `u.y` as immutable because `u.x.0.0` is also borrowed as mutable
+  --> $DIR/union-borrow-move-parent-sibling.rs:28:14
+   |
+LL |     let a = &mut (u.x.0).0;
+   |                  --------- mutable borrow occurs here
+LL |     let b = &u.y; //~ ERROR cannot borrow `u.y`
+   |              ^^^ immutable borrow occurs here
+LL |     use_borrow(a);
+LL | }
+   | - mutable borrow ends here
+
+error[E0382]: use of moved value: `u.y`
+  --> $DIR/union-borrow-move-parent-sibling.rs:35:9
+   |
+LL |     let a = (u.x.0).0;
+   |         - value moved here
+LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
+   |         ^ value used here after move
+   |
+   = note: move occurs because `u.y` has type `[type error]`, which does not implement the `Copy` trait
+
+error[E0502]: cannot borrow `u` (via `u.x`) as immutable because `u` is also borrowed as mutable (via `*u.y`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:41:14
+   |
+LL |     let a = &mut *u.y;
+   |                  ---- mutable borrow occurs here (via `*u.y`)
+LL |     let b = &u.x; //~ ERROR cannot borrow `u` (via `u.x`)
+   |              ^^^ immutable borrow occurs here (via `u.x`)
+LL |     use_borrow(a);
+LL | }
+   | - mutable borrow ends here
+
+error[E0382]: use of moved value: `u.x`
+  --> $DIR/union-borrow-move-parent-sibling.rs:48:9
+   |
+LL |     let a = *u.y;
+   |         - value moved here
+LL |     let b = u.x; //~ ERROR use of moved value: `u.x`
+   |         ^ value used here after move
+   |
+   = note: move occurs because `u.x` has type `[type error]`, which does not implement the `Copy` trait
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0382, E0502.
+For more information about an error, try `rustc --explain E0382`.

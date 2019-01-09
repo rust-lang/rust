@@ -1,0 +1,91 @@
+error[E0277]: a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+  --> $DIR/type-check-defaults.rs:6:19
+   |
+LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
+   |                   ^ a collection of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |
+   = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
+note: required by `Foo`
+  --> $DIR/type-check-defaults.rs:5:1
+   |
+LL | struct Foo<T, U: FromIterator<T>>(T, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+  --> $DIR/type-check-defaults.rs:8:27
+   |
+LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
+   |                           ^ a collection of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |
+   = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
+note: required by `Foo`
+  --> $DIR/type-check-defaults.rs:5:1
+   |
+LL | struct Foo<T, U: FromIterator<T>>(T, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:11:1
+   |
+LL | struct Bounds<T:Copy=String>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+   |
+note: required by `Bounds`
+  --> $DIR/type-check-defaults.rs:11:1
+   |
+LL | struct Bounds<T:Copy=String>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:14:1
+   |
+LL | struct WhereClause<T=String>(T) where T: Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+   |
+note: required by `WhereClause`
+  --> $DIR/type-check-defaults.rs:14:1
+   |
+LL | struct WhereClause<T=String>(T) where T: Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:17:1
+   |
+LL | trait TraitBound<T:Copy=String> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+   |
+note: required by `TraitBound`
+  --> $DIR/type-check-defaults.rs:17:1
+   |
+LL | trait TraitBound<T:Copy=String> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:21:1
+   |
+LL | trait Base<T = String>: Super<T> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
+note: required by `Super`
+  --> $DIR/type-check-defaults.rs:20:1
+   |
+LL | trait Super<T: Copy> { }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: cannot add `u8` to `i32`
+  --> $DIR/type-check-defaults.rs:24:1
+   |
+LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u8`
+   |
+   = help: the trait `std::ops::Add<u8>` is not implemented for `i32`
+note: required by `ProjectionPred`
+  --> $DIR/type-check-defaults.rs:24:1
+   |
+LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

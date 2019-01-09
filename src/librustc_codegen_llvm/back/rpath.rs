@@ -1,14 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -31,25 +21,24 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
         return Vec::new();
     }
 
-    let mut flags = Vec::new();
-
     debug!("preparing the RPATH!");
 
     let libs = config.used_crates.clone();
     let libs = libs.iter().filter_map(|&(_, ref l)| l.option()).collect::<Vec<_>>();
     let rpaths = get_rpaths(config, &libs);
-    flags.extend_from_slice(&rpaths_to_flags(&rpaths));
+    let mut flags = rpaths_to_flags(&rpaths);
 
     // Use DT_RUNPATH instead of DT_RPATH if available
     if config.linker_is_gnu {
-        flags.push("-Wl,--enable-new-dtags".to_string());
+        flags.push("-Wl,--enable-new-dtags".to_owned());
     }
 
     flags
 }
 
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
-    let mut ret = Vec::new();
+    let mut ret = Vec::with_capacity(rpaths.len()); // the minimum needed capacity
+
     for rpath in rpaths {
         if rpath.contains(',') {
             ret.push("-Wl,-rpath".into());
@@ -59,7 +48,8 @@ fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
             ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
         }
     }
-    return ret;
+
+    ret
 }
 
 fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
@@ -92,7 +82,8 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
 
     // Remove duplicates
     let rpaths = minimize_rpaths(&rpaths);
-    return rpaths;
+
+    rpaths
 }
 
 fn get_rpaths_relative_to_output(config: &mut RPathConfig,
@@ -109,7 +100,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     };
 
     let cwd = env::current_dir().unwrap();
-    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or(cwd.join(lib));
+    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or_else(|_| cwd.join(lib));
     lib.pop();
     let mut output = cwd.join(&config.out_filename);
     output.pop();
@@ -117,8 +108,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     let relative = path_relative_from(&lib, &output).unwrap_or_else(||
         panic!("couldn't create relative path from {:?} to {:?}", output, lib));
     // FIXME (#9639): This needs to handle non-utf8 paths
-    format!("{}/{}", prefix,
-            relative.to_str().expect("non-utf8 component in path"))
+    format!("{}/{}", prefix, relative.to_str().expect("non-utf8 component in path"))
 }
 
 // This routine is adapted from the *old* Path's `path_relative_from`
@@ -168,11 +158,11 @@ fn get_install_prefix_rpath(config: &mut RPathConfig) -> String {
     let path = (config.get_install_prefix_lib_path)();
     let path = env::current_dir().unwrap().join(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    path.to_str().expect("non-utf8 component in rpath").to_string()
+    path.to_str().expect("non-utf8 component in rpath").to_owned()
 }
 
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
-    let mut set = HashSet::new();
+    let mut set = FxHashSet::default();
     let mut minimized = Vec::new();
     for rpath in rpaths {
         if set.insert(rpath) {

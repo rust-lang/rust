@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Functionality for ordering and comparison.
 //!
 //! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
@@ -75,7 +65,12 @@ use self::Ordering::*;
 /// the same book if their ISBN matches, even if the formats differ:
 ///
 /// ```
-/// enum BookFormat { Paperback, Hardback, Ebook }
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
+///
 /// struct Book {
 ///     isbn: i32,
 ///     format: BookFormat,
@@ -93,6 +88,84 @@ use self::Ordering::*;
 ///
 /// assert!(b1 == b2);
 /// assert!(b1 != b3);
+/// ```
+///
+/// ## How can I compare two different types?
+///
+/// The type you can compare with is controlled by `PartialEq`'s type parameter.
+/// For example, let's tweak our previous code a bit:
+///
+/// ```
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
+///
+/// struct Book {
+///     isbn: i32,
+///     format: BookFormat,
+/// }
+///
+/// impl PartialEq<BookFormat> for Book {
+///     fn eq(&self, other: &BookFormat) -> bool {
+///         match (&self.format, other) {
+///            (BookFormat::Paperback, BookFormat::Paperback) => true,
+///            (BookFormat::Hardback,  BookFormat::Hardback)  => true,
+///            (BookFormat::Ebook,     BookFormat::Ebook)     => true,
+///            (_, _) => false,
+///         }
+///     }
+/// }
+///
+/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
+///
+/// assert!(b1 == BookFormat::Paperback);
+/// assert!(b1 != BookFormat::Ebook);
+/// ```
+///
+/// By changing `impl PartialEq for Book` to `impl PartialEq<BookFormat> for Book`,
+/// we've changed what type we can use on the right side of the `==` operator.
+/// This lets us use it in the `assert!` statements at the bottom.
+///
+/// You can also combine these implementations to let the `==` operator work with
+/// two different types:
+///
+/// ```
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
+///
+/// struct Book {
+///     isbn: i32,
+///     format: BookFormat,
+/// }
+///
+/// impl PartialEq<BookFormat> for Book {
+///     fn eq(&self, other: &BookFormat) -> bool {
+///         match (&self.format, other) {
+///            (&BookFormat::Paperback, &BookFormat::Paperback) => true,
+///            (&BookFormat::Hardback,  &BookFormat::Hardback)  => true,
+///            (&BookFormat::Ebook,     &BookFormat::Ebook)     => true,
+///            (_, _) => false,
+///         }
+///     }
+/// }
+///
+/// impl PartialEq for Book {
+///     fn eq(&self, other: &Book) -> bool {
+///         self.isbn == other.isbn
+///     }
+/// }
+///
+/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
+/// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
+///
+/// assert!(b1 == BookFormat::Paperback);
+/// assert!(b1 != BookFormat::Ebook);
+/// assert!(b1 == b2);
 /// ```
 ///
 /// # Examples
@@ -399,9 +472,11 @@ impl<T: Ord> Ord for Reverse<T> {
 /// Then you must define an implementation for `cmp()`. You may find it useful to use
 /// `cmp()` on your type's fields.
 ///
-/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with each other. It's
-/// easy to accidentally make them disagree by deriving some of the traits and manually
-/// implementing others.
+/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must*
+/// agree with each other. That is, `a.cmp(b) == Ordering::Equal` if
+/// and only if `a == b` and `Some(a.cmp(b)) == a.partial_cmp(b)` for
+/// all `a` and `b`. It's easy to accidentally make them disagree by
+/// deriving some of the traits and manually implementing others.
 ///
 /// Here's an example where you want to sort people by height only, disregarding `id`
 /// and `name`:
@@ -469,6 +544,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(2, 2.max(2));
     /// ```
     #[stable(feature = "ord_max_min", since = "1.21.0")]
+    #[inline]
     fn max(self, other: Self) -> Self
     where Self: Sized {
         if other >= self { other } else { self }
@@ -485,6 +561,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(2, 2.min(2));
     /// ```
     #[stable(feature = "ord_max_min", since = "1.21.0")]
+    #[inline]
     fn min(self, other: Self) -> Self
     where Self: Sized {
         if self <= other { self } else { other }
@@ -948,12 +1025,12 @@ mod impls {
         fn gt(&self, other: & &'b B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
+    impl<A: ?Sized> Ord for &A where A: Ord {
         #[inline]
-        fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
+        fn cmp(&self, other: &Self) -> Ordering { Ord::cmp(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Eq for &'a A where A: Eq {}
+    impl<A: ?Sized> Eq for &A where A: Eq {}
 
     // &mut pointers
 
@@ -980,12 +1057,12 @@ mod impls {
         fn gt(&self, other: &&'b mut B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Ord for &'a mut A where A: Ord {
+    impl<A: ?Sized> Ord for &mut A where A: Ord {
         #[inline]
-        fn cmp(&self, other: &&'a mut A) -> Ordering { Ord::cmp(*self, *other) }
+        fn cmp(&self, other: &Self) -> Ordering { Ord::cmp(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Eq for &'a mut A where A: Eq {}
+    impl<A: ?Sized> Eq for &mut A where A: Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {

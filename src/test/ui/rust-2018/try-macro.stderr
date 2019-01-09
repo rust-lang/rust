@@ -1,0 +1,15 @@
+warning: `try` is a keyword in the 2018 edition
+  --> $DIR/try-macro.rs:12:5
+   |
+LL |     try!(x);
+   |     ^^^ help: you can use a raw identifier to stay compatible: `r#try`
+   |
+note: lint level defined here
+  --> $DIR/try-macro.rs:6:9
+   |
+LL | #![warn(rust_2018_compatibility)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(keyword_idents)] implied by #[warn(rust_2018_compatibility)]
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+

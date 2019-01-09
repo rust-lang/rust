@@ -1,0 +1,27 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-uninhabit.rs:14:1
+   |
+LL | const BAD_BAD_BAD: Bar = unsafe { (TransmuteUnion::<(), Bar> { a: () }).b };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-uninhabit.rs:17:1
+   |
+LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type at .<deref>
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-uninhabit.rs:20:1
+   |
+LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { (TransmuteUnion::<(), [Bar; 1]> { a: () }).b };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

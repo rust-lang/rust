@@ -1,9 +1,0 @@
-error: compilation successful
-  --> $DIR/issue-37366.rs:25:1
-   |
-LL | / fn main() { //~ ERROR compilation successful
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

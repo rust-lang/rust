@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/output-type-mismatch.rs:5:31
+   |
+LL | fn main() { let i: isize; i = f(); }
+   |                               ^^^ expected isize, found ()
+   |
+   = note: expected type `isize`
+              found type `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

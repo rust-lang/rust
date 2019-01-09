@@ -1,0 +1,8 @@
+error: expected `;`, found keyword `as`
+  --> $DIR/import-from-rename.rs:3:16
+   |
+LL | use foo::{bar} as baz;
+   |                ^^ expected `;`
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error: expected one of `...`, `..=`, `..`, `:`, `;`, or `=`, found `-`
+  --> $DIR/pat-ranges-4.rs:4:12
+   |
+LL |     let 10 - 3 ..= 10 = 8;
+   |            ^ expected one of `...`, `..=`, `..`, `:`, `;`, or `=` here
+
+error: aborting due to previous error
+

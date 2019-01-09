@@ -1,0 +1,19 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/rfc1623.rs:8:42
+   |
+LL | static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
+   |                                          ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/rfc1623.rs:10:39
+   |
+LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
+   |                                       ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

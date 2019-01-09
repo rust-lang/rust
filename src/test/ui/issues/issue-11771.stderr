@@ -1,0 +1,19 @@
+error[E0277]: cannot add `()` to `{integer}`
+  --> $DIR/issue-11771.rs:3:7
+   |
+LL |     1 +
+   |       ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `std::ops::Add<()>` is not implemented for `{integer}`
+
+error[E0277]: cannot add `()` to `{integer}`
+  --> $DIR/issue-11771.rs:8:7
+   |
+LL |     1 +
+   |       ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `std::ops::Add<()>` is not implemented for `{integer}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

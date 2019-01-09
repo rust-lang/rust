@@ -1,0 +1,15 @@
+error[E0624]: method `static_meth_struct` is private
+  --> $DIR/xc-private-method.rs:6:13
+   |
+LL |     let _ = xc_private_method_lib::Struct::static_meth_struct();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0624]: method `static_meth_enum` is private
+  --> $DIR/xc-private-method.rs:9:13
+   |
+LL |     let _ = xc_private_method_lib::Enum::static_meth_enum();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0624`.

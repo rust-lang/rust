@@ -1,0 +1,32 @@
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/range-inclusive-pattern-precedence.rs:17:10
+   |
+LL |         &10..=15 => {}
+   |          ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
+
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/range-inclusive-pattern-precedence.rs:28:13
+   |
+LL |         box 10..=15 => {}
+   |             ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
+
+warning: `...` range patterns are deprecated
+  --> $DIR/range-inclusive-pattern-precedence.rs:14:9
+   |
+LL |         &0...9 => {}
+   |         ^^^^^^ help: use `..=` for an inclusive range: `&(0..=9)`
+   |
+note: lint level defined here
+  --> $DIR/range-inclusive-pattern-precedence.rs:9:9
+   |
+LL | #![warn(ellipsis_inclusive_range_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `...` range patterns are deprecated
+  --> $DIR/range-inclusive-pattern-precedence.rs:25:14
+   |
+LL |         box 0...9 => {}
+   |              ^^^ help: use `..=` for an inclusive range
+
+error: aborting due to 2 previous errors
+

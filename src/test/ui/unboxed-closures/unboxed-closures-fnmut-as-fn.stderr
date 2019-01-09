@@ -1,0 +1,16 @@
+error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `S`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:28:13
+   |
+LL |     let x = call_it(&S, 22);
+   |             ^^^^^^^ expected an `Fn<(isize,)>` closure, found `S`
+   |
+   = help: the trait `std::ops::Fn<(isize,)>` is not implemented for `S`
+note: required by `call_it`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:23:1
+   |
+LL | fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

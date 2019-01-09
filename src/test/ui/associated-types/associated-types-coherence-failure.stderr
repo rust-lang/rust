@@ -1,0 +1,21 @@
+error[E0119]: conflicting implementations of trait `IntoCow<'_, _>` for type `Cow<'_, _>`:
+  --> $DIR/associated-types-coherence-failure.rs:21:1
+   |
+LL | impl<'a, B: ?Sized> IntoCow<'a, B> for <B as ToOwned>::Owned where B: ToOwned {
+   | ----------------------------------------------------------------------------- first implementation here
+...
+LL | impl<'a, B: ?Sized> IntoCow<'a, B> for Cow<'a, B> where B: ToOwned {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Cow<'_, _>`
+
+error[E0119]: conflicting implementations of trait `IntoCow<'_, _>` for type `&_`:
+  --> $DIR/associated-types-coherence-failure.rs:28:1
+   |
+LL | impl<'a, B: ?Sized> IntoCow<'a, B> for <B as ToOwned>::Owned where B: ToOwned {
+   | ----------------------------------------------------------------------------- first implementation here
+...
+LL | impl<'a, B: ?Sized> IntoCow<'a, B> for &'a B where B: ToOwned {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/blind-item-block-middle.rs:6:9
+   |
+LL |     let bar = 5;
+   |         ^^^ expected integer, found struct `foo::bar`
+   |
+   = note: expected type `{integer}`
+              found type `foo::bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

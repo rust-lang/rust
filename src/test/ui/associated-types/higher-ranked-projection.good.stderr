@@ -1,0 +1,11 @@
+error: compilation successful
+  --> $DIR/higher-ranked-projection.rs:24:1
+   |
+LL | / fn main() { //[good]~ ERROR compilation successful
+LL | |     foo(());
+LL | |     //[bad]~^ ERROR E0308
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

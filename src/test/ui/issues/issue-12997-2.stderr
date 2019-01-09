@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-12997-2.rs:6:1
+   |
+LL | fn bar(x: isize) { }
+   | ^^^^^^^^^^^^^^^^^^^^ expected isize, found mutable reference
+   |
+   = note: expected type `isize`
+              found type `&mut test::Bencher`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

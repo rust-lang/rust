@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 
 // min-lldb-version: 310
@@ -52,27 +42,36 @@
 // lldb-command:run
 
 // lldb-command:print *t0
-// lldb-check:[...]$0 = 1
+// lldbg-check:[...]$0 = 1
+// lldbr-check:(i32) *t0 = 1
 // lldb-command:print *t1
-// lldb-check:[...]$1 = 2.5
+// lldbg-check:[...]$1 = 2.5
+// lldbr-check:(f64) *t1 = 2.5
 // lldb-command:print ret
-// lldb-check:[...]$2 = ((1, 2.5), (2.5, 1))
+// lldbg-check:[...]$2 = ((1, 2.5), (2.5, 1))
+// lldbr-check:(((i32, f64), (f64, i32))) ret = { = { = 1 = 2.5 } = { = 2.5 = 1 } }
 // lldb-command:continue
 
 // lldb-command:print *t0
-// lldb-check:[...]$3 = 3.5
+// lldbg-check:[...]$3 = 3.5
+// lldbr-check:(f64) *t0 = 3.5
 // lldb-command:print *t1
-// lldb-check:[...]$4 = 4
+// lldbg-check:[...]$4 = 4
+// lldbr-check:(u16) *t1 = 4
 // lldb-command:print ret
-// lldb-check:[...]$5 = ((3.5, 4), (4, 3.5))
+// lldbg-check:[...]$5 = ((3.5, 4), (4, 3.5))
+// lldbr-check:(((f64, u16), (u16, f64))) ret = { = { = 3.5 = 4 } = { = 4 = 3.5 } }
 // lldb-command:continue
 
 // lldb-command:print *t0
-// lldb-check:[...]$6 = 5
+// lldbg-check:[...]$6 = 5
+// lldbr-check:(i32) *t0 = 5
 // lldb-command:print *t1
-// lldb-check:[...]$7 = Struct { a: 6, b: 7.5 }
+// lldbg-check:[...]$7 = Struct { a: 6, b: 7.5 }
+// lldbr-check:(generic_function::Struct) *t1 = Struct { a: 6, b: 7.5 }
 // lldb-command:print ret
-// lldb-check:[...]$8 = ((5, Struct { a: 6, b: 7.5 }), (Struct { a: 6, b: 7.5 }, 5))
+// lldbg-check:[...]$8 = ((5, Struct { a: 6, b: 7.5 }), (Struct { a: 6, b: 7.5 }, 5))
+// lldbr-check:(((i32, generic_function::Struct), (generic_function::Struct, i32))) ret = { = { = 5 = Struct { a: 6, b: 7.5 } } = { = Struct { a: 6, b: 7.5 } = 5 } }
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

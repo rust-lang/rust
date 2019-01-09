@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
@@ -18,7 +8,7 @@ use syntax::ast;
 use syntax::ast::{Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{respan, DUMMY_SP};
+use syntax::source_map::{respan, DUMMY_SP};
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::keywords;
@@ -32,7 +22,7 @@ pub enum PtrTy<'a> {
     Raw(ast::Mutability),
 }
 
-/// A path, e.g. `::std::option::Option::<i32>` (global). Has support
+/// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters and a lifetime.
 #[derive(Clone)]
 pub struct Path<'a> {

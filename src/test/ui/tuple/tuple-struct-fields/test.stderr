@@ -1,0 +1,15 @@
+error: expected one of `)` or `,`, found `(`
+  --> $DIR/test.rs:4:26
+   |
+LL |     struct S2(pub((foo)) ());
+   |                          ^ expected one of `)` or `,` here
+
+error[E0412]: cannot find type `foo` in this scope
+  --> $DIR/test.rs:4:20
+   |
+LL |     struct S2(pub((foo)) ());
+   |                    ^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

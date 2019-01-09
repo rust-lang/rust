@@ -1,0 +1,8 @@
+error: could not evaluate float literal (see issue #31407)
+  --> $DIR/issue-31109.rs:4:18
+   |
+LL |     let _: f64 = 1234567890123456789012345678901234567890e-340;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

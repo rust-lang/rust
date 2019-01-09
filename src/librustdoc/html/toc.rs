@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Table-of-contents creation.
 
 use std::fmt;
@@ -52,7 +42,7 @@ pub struct TocEntry {
 pub struct TocBuilder {
     top_level: Toc,
     /// The current hierarchy of parent headings, the levels are
-    /// strictly increasing (i.e. chain[0].level < chain[1].level <
+    /// strictly increasing (i.e., chain[0].level < chain[1].level <
     /// ...) with each entry being the most recent occurrence of a
     /// heading with that level (it doesn't include the most recent
     /// occurrences of every level, just, if it *is* in `chain` then
@@ -76,7 +66,7 @@ impl TocBuilder {
     }
 
     /// Collapse the chain until the first heading more important than
-    /// `level` (i.e. lower level)
+    /// `level` (i.e., lower level)
     ///
     /// Example:
     ///
@@ -91,7 +81,7 @@ impl TocBuilder {
     /// ### H
     /// ```
     ///
-    /// If we are considering H (i.e. level 3), then A and B are in
+    /// If we are considering H (i.e., level 3), then A and B are in
     /// self.top_level, D is in C.children, and C, E, F, G are in
     /// self.chain.
     ///
@@ -102,7 +92,7 @@ impl TocBuilder {
     ///
     /// This leaves us looking at E, which does have a smaller level,
     /// and, by construction, it's the most recent thing with smaller
-    /// level, i.e. it's the immediate parent of H.
+    /// level, i.e., it's the immediate parent of H.
     fn fold_until(&mut self, level: u32) {
         let mut this = None;
         loop {
@@ -133,7 +123,7 @@ impl TocBuilder {
         assert!(level >= 1);
 
         // collapse all previous sections into their parents until we
-        // get to relevant heading (i.e. the first one with a smaller
+        // get to relevant heading (i.e., the first one with a smaller
         // level than us)
         self.fold_until(level);
 
@@ -150,7 +140,7 @@ impl TocBuilder {
                     (entry.level, &entry.children)
                 }
             };
-            // fill in any missing zeros, e.g. for
+            // fill in any missing zeros, e.g., for
             // # Foo (1)
             // ### Bar (1.0.1)
             for _ in toc_level..level - 1 {

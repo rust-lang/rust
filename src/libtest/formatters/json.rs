@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::*;
 
 pub(crate) struct JsonFormatter<T> {
@@ -50,7 +40,7 @@ impl<T: Write> JsonFormatter<T> {
 impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
         self.write_message(&*format!(
-            r#"{{ "type": "suite", "event": "started", "test_count": "{}" }}"#,
+            r#"{{ "type": "suite", "event": "started", "test_count": {} }}"#,
             test_count
         ))
     }
@@ -102,7 +92,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 
                 let mbps = if bs.mb_s == 0 {
-                    "".into()
+                    String::new()
                 } else {
                     format!(r#", "mib_per_second": {}"#, bs.mb_s)
                 };
@@ -136,7 +126,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
-             \"filtered_out\": \"{}\" }}",
+             \"filtered_out\": {} }}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
             state.failed + state.allowed_fail,

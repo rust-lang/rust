@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/return-type.rs:10:5
+   |
+LL |     foo(4 as usize)
+   |     ^^^^^^^^^^^^^^^ expected (), found struct `S`
+   |
+   = note: expected type `()`
+              found type `S<usize>`
+help: try adding a semicolon
+   |
+LL |     foo(4 as usize);
+   |                    ^
+help: try adding a return type
+   |
+LL | fn bar() -> S<usize> {
+   |          ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -36,8 +36,6 @@ print-type-size type: `MyOption<std::num::NonZeroU32>`: 4 bytes, alignment: 4 by
 print-type-size     variant `None`: 0 bytes
 print-type-size     variant `Some`: 4 bytes
 print-type-size         field `.0`: 4 bytes
-print-type-size type: `core::nonzero::NonZero<u32>`: 4 bytes, alignment: 4 bytes
-print-type-size     field `.0`: 4 bytes
 print-type-size type: `std::num::NonZeroU32`: 4 bytes, alignment: 4 bytes
 print-type-size     field `.0`: 4 bytes
 print-type-size type: `Enum4<(), (), (), MyOption<u8>>`: 2 bytes, alignment: 1 bytes

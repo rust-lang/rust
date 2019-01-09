@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
 // min-llvm-version 7.0
@@ -46,6 +36,16 @@ pub fn align64(i : i32) -> Align64 {
 // CHECK: call void @llvm.memcpy.{{.*}}(i8* align 64 %{{.*}}, i8* align 64 %{{.*}}, i{{[0-9]+}} 64, i1 false)
     let a64 = Align64(i);
     a64
+}
+
+// For issue 54028: make sure that we are specifying the correct alignment for fields of aligned
+// structs
+// CHECK-LABEL: @align64_load
+#[no_mangle]
+pub fn align64_load(a: Align64) -> i32 {
+// CHECK: [[FIELD:%.*]] = bitcast %Align64* %{{.*}} to i32*
+// CHECK: {{%.*}} = load i32, i32* [[FIELD]], align 64
+    a.0
 }
 
 // CHECK-LABEL: @nested64

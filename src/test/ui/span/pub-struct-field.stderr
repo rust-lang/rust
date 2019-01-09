@@ -1,5 +1,5 @@
 error[E0124]: field `bar` is already declared
-  --> $DIR/pub-struct-field.rs:16:5
+  --> $DIR/pub-struct-field.rs:6:5
    |
 LL |     bar: u8,
    |     ------- `bar` first declared here
@@ -7,7 +7,7 @@ LL |     pub bar: u8, //~ ERROR is already declared
    |     ^^^^^^^^^^^ field already declared
 
 error[E0124]: field `bar` is already declared
-  --> $DIR/pub-struct-field.rs:17:5
+  --> $DIR/pub-struct-field.rs:7:5
    |
 LL |     bar: u8,
    |     ------- `bar` first declared here

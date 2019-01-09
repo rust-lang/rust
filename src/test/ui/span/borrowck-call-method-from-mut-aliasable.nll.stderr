@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-call-method-from-mut-aliasable.rs:27:5
+  --> $DIR/borrowck-call-method-from-mut-aliasable.rs:17:5
    |
 LL | fn b(x: &Foo) {
    |         ---- help: consider changing this to be a mutable reference: `&mut Foo`

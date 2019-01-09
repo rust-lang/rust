@@ -1,5 +1,5 @@
 error[E0503]: cannot use `value` because it was mutably borrowed
-  --> $DIR/E0503.rs:14:16
+  --> $DIR/E0503.rs:4:16
    |
 LL |     let _borrow = &mut value;
    |                        ----- borrow of `value` occurs here

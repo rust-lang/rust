@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A nice interface for working with the infcx.  The basic idea is to
 //! do `infcx.at(cause, param_env)`, which sets the "cause" of the
 //! operation as well as the surrounding parameter environment.  Then
@@ -52,6 +42,7 @@ pub struct Trace<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    #[inline]
     pub fn at(&'a self,
               cause: &'a ObligationCause<'tcx>,
               param_env: ty::ParamEnv<'tcx>)
@@ -140,6 +131,28 @@ impl<'a, 'gcx, 'tcx> At<'a, 'gcx, 'tcx> {
         where T: ToTrace<'tcx>
     {
         self.trace(expected, actual).eq(&expected, &actual)
+    }
+
+    pub fn relate<T>(
+        self,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+        where T: ToTrace<'tcx>
+    {
+        match variance {
+            ty::Variance::Covariant => self.sub(expected, actual),
+            ty::Variance::Invariant => self.eq(expected, actual),
+            ty::Variance::Contravariant => self.sup(expected, actual),
+
+            // We could make this make sense but it's not readily
+            // exposed and I don't feel like dealing with it. Note
+            // that bivariance in general does a bit more than just
+            // *nothing*, it checks that the types are the same
+            // "modulo variance" basically.
+            ty::Variance::Bivariant => panic!("Bivariant given to `relate()`"),
+        }
     }
 
     /// Compute the least-upper-bound, or mutual supertype, of two

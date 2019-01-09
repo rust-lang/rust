@@ -1,0 +1,11 @@
+error[E0605]: non-primitive cast: `u32` as `()`
+  --> $DIR/cast-to-nil.rs:2:21
+   |
+LL | fn main() { let u = 0u32 as (); }
+   |                     ^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0605`.

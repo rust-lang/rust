@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test how overloaded deref interacts with borrows when DerefMut
 // is implemented.
 
@@ -86,8 +76,8 @@ fn deref_extend_mut_field3(x: &mut Own<Point>) {
 
     let _x = &mut x.x;
     let _y = &mut x.y; //~ ERROR cannot borrow
+    use_mut(_x);
 }
-
 fn deref_extend_mut_field4<'a>(x: &'a mut Own<Point>) {
     let p = &mut **x;
     let _x = &mut p.x;
@@ -109,8 +99,8 @@ fn assign_field3<'a>(x: &'a mut Own<Point>) {
 fn assign_field4<'a>(x: &'a mut Own<Point>) {
     let _p: &mut Point = &mut **x;
     x.y = 3; //~ ERROR cannot borrow
+    use_mut(_p);
 }
-
 fn deref_imm_method(x: Own<Point>) {
     let __isize = x.get();
 }
@@ -148,3 +138,5 @@ fn assign_method3<'a>(x: &'a mut Own<Point>) {
 }
 
 pub fn main() {}
+
+fn use_mut<T>(_: &mut T) {}

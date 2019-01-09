@@ -1,26 +1,16 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Code for the 'normalization' query. This consists of a wrapper
 //! which folds deeply, invoking the underlying
 //! `normalize_projection_ty` query when it encounters projections.
 
-use infer::{InferCtxt, InferOk};
 use infer::at::At;
-use mir::interpret::{GlobalId, ConstValue};
-use rustc_data_structures::small_vec::SmallVec;
-use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
+use infer::canonical::OriginalQueryValues;
+use infer::{InferCtxt, InferOk};
+use mir::interpret::GlobalId;
 use traits::project::Normalized;
-use ty::{self, Ty, TyCtxt};
+use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::{Subst, Substs};
+use ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
@@ -48,6 +38,13 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
             value,
             self.param_env,
         );
+        if !value.has_projections() {
+            return Ok(Normalized {
+                value: value.clone(),
+                obligations: vec![],
+            });
+        }
+
         let mut normalizer = QueryNormalizer {
             infcx: self.infcx,
             cause: self.cause,
@@ -56,12 +53,6 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
             error: false,
             anon_depth: 0,
         };
-        if !value.has_projections() {
-            return Ok(Normalized {
-                value: value.clone(),
-                obligations: vec![],
-            });
-        }
 
         let value1 = value.fold_with(&mut normalizer);
         if normalizer.error {
@@ -99,7 +90,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = ty.super_fold_with(self);
         match ty.sty {
-            ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => {
+            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
@@ -121,9 +112,14 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            bug!("infinite recursion generic_ty: {:#?}, substs: {:#?}, \
-                                  concrete_ty: {:#?}, ty: {:#?}", generic_ty, substs, concrete_ty,
-                                  ty);
+                            bug!(
+                                "infinite recursion generic_ty: {:#?}, substs: {:#?}, \
+                                 concrete_ty: {:#?}, ty: {:#?}",
+                                generic_ty,
+                                substs,
+                                concrete_ty,
+                                ty
+                            );
                         }
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.anon_depth -= 1;
@@ -132,7 +128,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 }
             }
 
-            ty::TyProjection(ref data) if !data.has_escaping_regions() => {
+            ty::Projection(ref data) if !data.has_escaping_bound_vars() => {
                 // (*)
                 // (*) This is kind of hacky -- we need to be able to
                 // handle normalization within binders because
@@ -148,9 +144,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
 
                 let gcx = self.infcx.tcx.global_tcx();
 
-                let mut orig_values = SmallVec::new();
-                let c_data =
-                    self.infcx.canonicalize_query(&self.param_env.and(*data), &mut orig_values);
+                let mut orig_values = OriginalQueryValues::default();
+                let c_data = self.infcx.canonicalize_query(
+                    &self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match gcx.normalize_projection_ty(c_data) {
@@ -161,16 +157,13 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             return ty;
                         }
 
-                        match self.infcx.instantiate_query_result_and_region_obligations(
+                        match self.infcx.instantiate_query_response_and_region_obligations(
                             self.cause,
                             self.param_env,
                             &orig_values,
-                            &result,
-                        ) {
-                            Ok(InferOk {
-                                value: result,
-                                obligations,
-                            }) => {
+                            &result)
+                        {
+                            Ok(InferOk { value: result, obligations }) => {
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                                 self.obligations.extend(obligations);
@@ -195,11 +188,11 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
         }
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
+    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        if let ty::LazyConst::Unevaluated(def_id, substs) = *constant {
             let tcx = self.infcx.tcx.global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
-                if substs.needs_infer() || substs.has_skol() {
+                if substs.needs_infer() || substs.has_placeholders() {
                     let identity_substs = Substs::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
                     if let Some(instance) = instance {
@@ -207,12 +200,10 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             instance,
                             promoted: None,
                         };
-                        match tcx.const_eval(param_env.and(cid)) {
-                            Ok(evaluated) => {
-                                let evaluated = evaluated.subst(self.tcx(), substs);
-                                return self.fold_const(evaluated);
-                            }
-                            Err(_) => {}
+                        if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
+                            let substs = tcx.lift_to_global(&substs).unwrap();
+                            let evaluated = evaluated.subst(tcx, substs);
+                            return tcx.intern_lazy_const(ty::LazyConst::Evaluated(evaluated));
                         }
                     }
                 } else {
@@ -223,9 +214,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 instance,
                                 promoted: None,
                             };
-                            match tcx.const_eval(param_env.and(cid)) {
-                                Ok(evaluated) => return self.fold_const(evaluated),
-                                Err(_) => {}
+                            if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
+                                return tcx.intern_lazy_const(ty::LazyConst::Evaluated(evaluated));
                             }
                         }
                     }

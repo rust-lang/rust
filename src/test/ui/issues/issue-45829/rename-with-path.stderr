@@ -1,0 +1,17 @@
+error[E0252]: the name `A` is defined multiple times
+  --> $DIR/rename-with-path.rs:1:38
+   |
+LL | use std::{collections::HashMap as A, sync::Arc as A};
+   |           -------------------------  ^^^^^^^^^^^^^^ `A` reimported here
+   |           |
+   |           previous import of the type `A` here
+   |
+   = note: `A` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use std::{collections::HashMap as A, sync::Arc as OtherA};
+   |                                      ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0252`.

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementations of things like `Eq` for fixed-length arrays
 //! up to a certain length. Eventually we should able to generalize
 //! to all lengths.
@@ -145,6 +135,15 @@ macro_rules! array_impls {
             impl<T> BorrowMut<[T]> for [T; $N] {
                 fn borrow_mut(&mut self) -> &mut [T] {
                     self
+                }
+            }
+
+            #[unstable(feature = "try_from", issue = "33417")]
+            impl<'a, T> TryFrom<&'a [T]> for [T; $N] where T: Copy {
+                type Error = TryFromSliceError;
+
+                fn try_from(slice: &[T]) -> Result<[T; $N], TryFromSliceError> {
+                    <&Self>::try_from(slice).map(|r| *r)
                 }
             }
 

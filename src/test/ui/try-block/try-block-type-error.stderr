@@ -1,0 +1,24 @@
+error[E0271]: type mismatch resolving `<std::option::Option<f32> as std::ops::Try>::Ok == {integer}`
+  --> $DIR/try-block-type-error.rs:10:9
+   |
+LL |         42
+   |         ^^
+   |         |
+   |         expected f32, found integer
+   |         help: use a float literal: `42.0`
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0271]: type mismatch resolving `<std::option::Option<i32> as std::ops::Try>::Ok == ()`
+  --> $DIR/try-block-type-error.rs:16:5
+   |
+LL |     };
+   |     ^ expected i32, found ()
+   |
+   = note: expected type `i32`
+              found type `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

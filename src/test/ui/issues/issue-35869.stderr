@@ -1,0 +1,51 @@
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/issue-35869.rs:11:15
+   |
+LL |     fn foo(_: fn(u8) -> ());
+   |               ------------ type in trait
+...
+LL |     fn foo(_: fn(u16) -> ()) {}
+   |               ^^^^^^^^^^^^^ expected u8, found u16
+   |
+   = note: expected type `fn(fn(u8))`
+              found type `fn(fn(u16))`
+
+error[E0053]: method `bar` has an incompatible type for trait
+  --> $DIR/issue-35869.rs:13:15
+   |
+LL |     fn bar(_: Option<u8>);
+   |               ---------- type in trait
+...
+LL |     fn bar(_: Option<u16>) {}
+   |               ^^^^^^^^^^^ expected u8, found u16
+   |
+   = note: expected type `fn(std::option::Option<u8>)`
+              found type `fn(std::option::Option<u16>)`
+
+error[E0053]: method `baz` has an incompatible type for trait
+  --> $DIR/issue-35869.rs:15:15
+   |
+LL |     fn baz(_: (u8, u16));
+   |               --------- type in trait
+...
+LL |     fn baz(_: (u16, u16)) {}
+   |               ^^^^^^^^^^ expected u8, found u16
+   |
+   = note: expected type `fn((u8, u16))`
+              found type `fn((u16, u16))`
+
+error[E0053]: method `qux` has an incompatible type for trait
+  --> $DIR/issue-35869.rs:17:17
+   |
+LL |     fn qux() -> u8;
+   |                 -- type in trait
+...
+LL |     fn qux() -> u16 { 5u16 }
+   |                 ^^^ expected u8, found u16
+   |
+   = note: expected type `fn() -> u8`
+              found type `fn() -> u16`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

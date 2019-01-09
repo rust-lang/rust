@@ -1,19 +1,12 @@
-warning: not reporting region error due to nll
-  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
-   |
-LL |     &*x
-   |     ^^^
-
-error[E0623]: lifetime mismatch
-  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+error: unsatisfied lifetime constraints
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:9:5
    |
 LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
-   |                   -------                 -------
-   |                   |
-   |                   this parameter and the return type are declared with different lifetimes...
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
 LL |     &*x
-   |     ^^^ ...but data from `x` is returned here
+   |     ^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

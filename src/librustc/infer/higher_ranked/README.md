@@ -72,11 +72,11 @@ the same lifetime, but not the reverse.
 Here is the algorithm we use to perform the subtyping check:
 
 1. Replace all bound regions in the subtype with new variables
-2. Replace all bound regions in the supertype with skolemized
-   equivalents. A "skolemized" region is just a new fresh region
+2. Replace all bound regions in the supertype with placeholder
+   equivalents. A "placeholder" region is just a new fresh region
    name.
 3. Check that the parameter and return types match as normal
-4. Ensure that no skolemized regions 'leak' into region variables
+4. Ensure that no placeholder regions 'leak' into region variables
    visible from "the outside"
 
 Let's walk through some examples and see how this algorithm plays out.
@@ -95,7 +95,7 @@ like so:
 Here the upper case `&A` indicates a *region variable*, that is, a
 region whose value is being inferred by the system. I also replaced
 `&b` with `&x`---I'll use letters late in the alphabet (`x`, `y`, `z`)
-to indicate skolemized region names. We can assume they don't appear
+to indicate placeholder region names. We can assume they don't appear
 elsewhere. Note that neither the sub- nor the supertype bind any
 region names anymore (as indicated by the absence of `<` and `>`).
 
@@ -133,7 +133,7 @@ match. This will ultimately require (as before) that `'a` <= `&x`
 must hold: but this does not hold. `self` and `x` are both distinct
 free regions. So the subtype check fails.
 
-#### Checking for skolemization leaks
+#### Checking for placeholder leaks
 
 You may be wondering about that mysterious last step in the algorithm.
 So far it has not been relevant. The purpose of that last step is to
@@ -159,7 +159,7 @@ Now we compare the return types, which are covariant, and hence we have:
 
     fn(&'A T) <: for<'b> fn(&'b T)?
 
-Here we skolemize the bound region in the supertype to yield:
+Here we replace the bound region in the supertype with a placeholder to yield:
 
     fn(&'A T) <: fn(&'x T)?
 
@@ -175,23 +175,23 @@ region `x` and think that everything is happy. In fact, this behavior
 is *necessary*, it was key to the first example we walked through.
 
 The difference between this example and the first one is that the variable
-`A` already existed at the point where the skolemization occurred. In
+`A` already existed at the point where the placeholders were added. In
 the first example, you had two functions:
 
     for<'a> fn(&'a T) <: for<'b> fn(&'b T)
 
 and hence `&A` and `&x` were created "together". In general, the
-intention of the skolemized names is that they are supposed to be
+intention of the placeholder names is that they are supposed to be
 fresh names that could never be equal to anything from the outside.
 But when inference comes into play, we might not be respecting this
 rule.
 
 So the way we solve this is to add a fourth step that examines the
-constraints that refer to skolemized names. Basically, consider a
+constraints that refer to placeholder names. Basically, consider a
 non-directed version of the constraint graph. Let `Tainted(x)` be the
-set of all things reachable from a skolemized variable `x`.
+set of all things reachable from a placeholder variable `x`.
 `Tainted(x)` should not contain any regions that existed before the
-step at which the skolemization was performed. So this case here
+step at which the placeholders were created. So this case here
 would fail because `&x` was created alone, but is relatable to `&A`.
 
 ## Computing the LUB and GLB

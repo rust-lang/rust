@@ -1,0 +1,8 @@
+error: expected one of `=>`, `@`, `if`, or `|`, found `<`
+  --> $DIR/pat-lt-bracket-3.rs:6:16
+   |
+LL |             Foo<T>(x, y) => {
+   |                ^ expected one of `=>`, `@`, `if`, or `|` here
+
+error: aborting due to previous error
+

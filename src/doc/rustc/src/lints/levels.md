@@ -45,7 +45,7 @@ pub fn foo() {
 
 This will produce this warning:
 
-```console
+```bash
 $ rustc lib.rs --crate-type=lib
 warning: unused variable: `x`
  --> lib.rs:2:9
@@ -69,7 +69,7 @@ fn main() {
 ```
 
 ```bash
-> rustc main.rs
+$ rustc main.rs
 error: bitshift exceeds the type's number of bits
  --> main.rs:2:13
   |
@@ -129,7 +129,10 @@ warning: missing documentation for a function
   |
 1 | pub fn foo() {}
   | ^^^^^^^^^^^^
-> rustc lib.rs --crate-type=lib -D missing-docs
+```
+
+```bash
+$ rustc lib.rs --crate-type=lib -D missing-docs
 error: missing documentation for crate
  --> lib.rs:1:1
   |
@@ -150,13 +153,13 @@ error: aborting due to 2 previous errors
 You can also pass each flag more than once for changing multiple lints:
 
 ```bash
-rustc lib.rs --crate-type=lib -D missing-docs -D unused-variables
+$ rustc lib.rs --crate-type=lib -D missing-docs -D unused-variables
 ```
 
 And of course, you can mix these four flags together:
 
 ```bash
-rustc lib.rs --crate-type=lib -D missing-docs -A unused-variables
+$ rustc lib.rs --crate-type=lib -D missing-docs -A unused-variables
 ```
 
 ### Via an attribute
@@ -164,7 +167,7 @@ rustc lib.rs --crate-type=lib -D missing-docs -A unused-variables
 You can also modify the lint level with a crate-wide attribute:
 
 ```bash
-> cat lib.rs
+$ cat lib.rs
 #![warn(missing_docs)]
 
 pub fn foo() {}

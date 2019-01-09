@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::iter::*;
 use test::{Bencher, black_box};
 
@@ -280,6 +270,12 @@ bench_sums! {
     bench_take_while_chain_sum,
     bench_take_while_chain_ref_sum,
     (0i64..1000000).chain(1000000..).take_while(|&x| x < 1111111)
+}
+
+bench_sums! {
+    bench_cycle_take_sum,
+    bench_cycle_take_ref_sum,
+    (0i64..10000).cycle().take(1000000)
 }
 
 // Checks whether Skip<Zip<A,B>> is as fast as Zip<Skip<A>, Skip<B>>, from

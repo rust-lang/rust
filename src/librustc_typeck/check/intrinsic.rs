@@ -1,19 +1,10 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
 use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
+use rustc::ty::subst::Subst;
 use rustc::util::nodemap::FxHashMap;
 use require_same_types;
 
@@ -26,13 +17,16 @@ use rustc::hir;
 
 use std::iter;
 
-fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   it: &hir::ForeignItem,
-                                   n_tps: usize,
-                                   abi: Abi,
-                                   inputs: Vec<Ty<'tcx>>,
-                                   output: Ty<'tcx>) {
-    let def_id = tcx.hir.local_def_id(it.id);
+fn equate_intrinsic_type<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    it: &hir::ForeignItem,
+    n_tps: usize,
+    abi: Abi,
+    safety: hir::Unsafety,
+    inputs: Vec<Ty<'tcx>>,
+    output: Ty<'tcx>,
+) {
+    let def_id = tcx.hir().local_def_id(it.id);
 
     match it.node {
         hir::ForeignItemKind::Fn(..) => {}
@@ -54,7 +48,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         struct_span_err!(tcx.sess, span, E0094,
                         "intrinsic has wrong number of type \
-                        parameters: found {}, expected {}",
+                         parameters: found {}, expected {}",
                         i_n_tps, n_tps)
             .span_label(span, format!("expected {} type parameter", n_tps))
             .emit();
@@ -65,7 +59,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         inputs.into_iter(),
         output,
         false,
-        hir::Unsafety::Unsafe,
+        safety,
         abi
     )));
     let cause = ObligationCause::new(it.span, it.id, ObligationCauseCode::IntrinsicType);
@@ -77,10 +71,20 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
-    let name = it.name.as_str();
-    let (n_tps, inputs, output) = if name.starts_with("atomic_") {
+    let name = it.ident.as_str();
+
+    let mk_va_list_ty = || {
+        tcx.lang_items().va_list().map(|did| {
+            let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
+            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+            tcx.mk_mut_ref(tcx.mk_region(env_region), va_list_ty)
+        })
+    };
+
+    let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic not correct format");
+        assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
         //We only care about the operation here
         let (n_tps, inputs, output) = match split[1] {
@@ -91,7 +95,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "load" => (1, vec![tcx.mk_imm_ptr(param(0))],
                        param(0)),
             "store" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)],
-                        tcx.mk_nil()),
+                        tcx.mk_unit()),
 
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or" | "xor" | "max" |
             "min"  | "umax" | "umin" => {
@@ -99,7 +103,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                  param(0))
             }
             "fence" | "singlethreadfence" => {
-                (0, Vec::new(), tcx.mk_nil())
+                (0, Vec::new(), tcx.mk_unit())
             }
             op => {
                 struct_span_err!(tcx.sess, it.span, E0092,
@@ -109,24 +113,30 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return;
             }
         };
-        (n_tps, inputs, output)
+        (n_tps, inputs, output, hir::Unsafety::Unsafe)
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
-        (0, Vec::new(), tcx.types.never)
+        (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
+        let unsafety = match &name[..] {
+            "size_of" | "min_align_of" | "needs_drop" => hir::Unsafety::Normal,
+            _ => hir::Unsafety::Unsafe,
+        };
         let (n_tps, inputs, output) = match &name[..] {
-            "breakpoint" => (0, Vec::new(), tcx.mk_nil()),
+            "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1, Vec::new(), tcx.types.usize),
             "size_of_val" |  "min_align_of_val" => {
                 (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
-                                                                  ty::BrAnon(0))),
-                                    param(0))
+                                                                 ty::BrAnon(0))),
+                                   param(0))
                  ], tcx.types.usize)
             }
             "rustc_peek" => (1, vec![param(0)], param(0)),
+            "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),
             "init" => (1, Vec::new(), param(0)),
             "uninit" => (1, Vec::new(), param(0)),
+            "forget" => (1, vec![param(0)], tcx.mk_unit()),
             "transmute" => (2, vec![ param(0) ], param(1)),
             "move_val_init" => {
                 (1,
@@ -134,7 +144,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     tcx.mk_mut_ptr(param(0)),
                     param(0)
                   ],
-               tcx.mk_nil())
+               tcx.mk_unit())
             }
             "prefetch_read_data" | "prefetch_write_data" |
             "prefetch_read_instruction" | "prefetch_write_instruction" => {
@@ -142,10 +152,10 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty: param(0),
                           mutbl: hir::MutImmutable
                          }), tcx.types.i32],
-                    tcx.mk_nil())
+                    tcx.mk_unit())
             }
             "drop_in_place" => {
-                (1, vec![tcx.mk_mut_ptr(param(0))], tcx.mk_nil())
+                (1, vec![tcx.mk_mut_ptr(param(0))], tcx.mk_unit())
             }
             "needs_drop" => (1, Vec::new(), tcx.types.bool),
 
@@ -178,7 +188,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   }),
                   tcx.types.usize,
                ],
-               tcx.mk_nil())
+               tcx.mk_unit())
             }
             "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
               (1,
@@ -193,7 +203,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   }),
                   tcx.types.usize,
                ],
-               tcx.mk_nil())
+               tcx.mk_unit())
             }
             "write_bytes" | "volatile_set_memory" => {
               (1,
@@ -205,7 +215,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   tcx.types.u8,
                   tcx.types.usize,
                ],
-               tcx.mk_nil())
+               tcx.mk_unit())
             }
             "sqrtf32" => (0, vec![ tcx.types.f32 ], tcx.types.f32),
             "sqrtf64" => (0, vec![ tcx.types.f64 ], tcx.types.f64),
@@ -273,7 +283,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "volatile_load" | "unaligned_volatile_load" =>
                 (1, vec![ tcx.mk_imm_ptr(param(0)) ], param(0)),
             "volatile_store" | "unaligned_volatile_store" =>
-                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil()),
+                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_unit()),
 
             "ctpop" | "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" |
             "bswap" | "bitreverse" =>
@@ -285,7 +295,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
-            "unchecked_shl" | "unchecked_shr" =>
+            "unchecked_shl" | "unchecked_shr" |
+            "rotate_left" | "rotate_right" =>
                 (1, vec![param(0), param(0)], param(0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
@@ -293,20 +304,20 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" =>
                 (1, vec![param(0), param(0)], param(0)),
 
-            "assume" => (0, vec![tcx.types.bool], tcx.mk_nil()),
+            "assume" => (0, vec![tcx.types.bool], tcx.mk_unit()),
             "likely" => (0, vec![tcx.types.bool], tcx.types.bool),
             "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             "discriminant_value" => (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
-                                                                  ty::BrAnon(0))),
+                                                                 ty::BrAnon(0))),
                                    param(0))], tcx.types.u64),
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
                 let fn_ty = ty::Binder::bind(tcx.mk_fn_sig(
                     iter::once(mut_u8),
-                    tcx.mk_nil(),
+                    tcx.mk_unit(),
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust,
@@ -314,22 +325,63 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
+            "va_start" | "va_end" => {
+                match mk_va_list_ty() {
+                    Some(va_list_ty) => (0, vec![va_list_ty], tcx.mk_unit()),
+                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                }
+            }
+
+            "va_copy" => {
+                match tcx.lang_items().va_list() {
+                    Some(did) => {
+                        let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
+                        let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                        let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+                        let ret_ty = match va_list_ty.sty {
+                            ty::Adt(def, _) if def.is_struct() => {
+                                let fields = &def.non_enum_variant().fields;
+                                match tcx.type_of(fields[0].did).subst(tcx, &[region.into()]).sty {
+                                    ty::Ref(_, element_ty, _) => match element_ty.sty {
+                                        ty::Adt(..) => element_ty,
+                                        _ => va_list_ty
+                                    }
+                                    _ => bug!("va_list structure is invalid")
+                                }
+                            }
+                            _ => {
+                                bug!("va_list structure is invalid")
+                            }
+                        };
+                        (0, vec![tcx.mk_imm_ref(tcx.mk_region(env_region), va_list_ty)], ret_ty)
+                    }
+                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                }
+            }
+
+            "va_arg" => {
+                match mk_va_list_ty() {
+                    Some(va_list_ty) => (1, vec![va_list_ty], param(0)),
+                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                }
+            }
+
             "nontemporal_store" => {
-                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil())
+                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_unit())
             }
 
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
-                                "unrecognized intrinsic function: `{}`",
-                                *other)
-                                .span_label(it.span, "unrecognized intrinsic")
-                                .emit();
+                                 "unrecognized intrinsic function: `{}`",
+                                 *other)
+                                 .span_label(it.span, "unrecognized intrinsic")
+                                 .emit();
                 return;
             }
         };
-        (n_tps, inputs, output)
+        (n_tps, inputs, output, unsafety)
     };
-    equate_intrinsic_type(tcx, it, n_tps, Abi::RustIntrinsic, inputs, output)
+    equate_intrinsic_type(tcx, it, n_tps, Abi::RustIntrinsic, unsafety, inputs, output)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -340,9 +392,9 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.mk_ty_param(n, name)
     };
 
-    let def_id = tcx.hir.local_def_id(it.id);
+    let def_id = tcx.hir().local_def_id(it.id);
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
-    let name = it.name.as_str();
+    let name = it.ident.as_str();
 
     let (n_tps, inputs, output) = match &*name {
         "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
@@ -369,12 +421,13 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             (3, vec![param(0), param(1), param(2)], param(0))
         }
         "simd_scatter" => {
-            (3, vec![param(0), param(1), param(2)], tcx.mk_nil())
+            (3, vec![param(0), param(1), param(2)], tcx.mk_unit())
         }
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
         "simd_cast" => (2, vec![param(0)], param(1)),
-        "simd_select" => (2, vec![param(0), param(1), param(1)], param(1)),
+        "simd_select" |
+        "simd_select_bitmask" => (2, vec![param(0), param(1), param(1)], param(1)),
         "simd_reduce_all" | "simd_reduce_any" => (1, vec![param(0)], tcx.types.bool),
         "simd_reduce_add_ordered" | "simd_reduce_mul_ordered"
             => (2, vec![param(0), param(1)], param(1)),
@@ -409,10 +462,10 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         return
                     }
 
-                    let mut structural_to_nomimal = FxHashMap();
+                    let mut structural_to_nomimal = FxHashMap::default();
 
                     let sig = tcx.fn_sig(def_id);
-                    let sig = sig.no_late_bound_regions().unwrap();
+                    let sig = sig.no_bound_vars().unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \
@@ -439,12 +492,12 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    equate_intrinsic_type(tcx, it, n_tps, Abi::PlatformIntrinsic,
+    equate_intrinsic_type(tcx, it, n_tps, Abi::PlatformIntrinsic, hir::Unsafety::Unsafe,
                           inputs, output)
 }
 
 // walk the expected type and the actual type in lock step, checking they're
-// the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
+// the same, in a kinda-structural way, i.e., `Vector`s have to be simd structs with
 // exactly the right element type
 fn match_intrinsic_type_to_type<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -463,35 +516,35 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
 
     match *expected {
         Void => match t.sty {
-            ty::TyTuple(ref v) if v.is_empty() => {},
+            ty::Tuple(ref v) if v.is_empty() => {},
             _ => simple_error(&format!("`{}`", t), "()"),
         },
         // (The width we pass to LLVM doesn't concern the type checker.)
         Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
-            (true,  8,  &ty::TyInt(ast::IntTy::I8)) |
-            (false, 8,  &ty::TyUint(ast::UintTy::U8)) |
-            (true,  16, &ty::TyInt(ast::IntTy::I16)) |
-            (false, 16, &ty::TyUint(ast::UintTy::U16)) |
-            (true,  32, &ty::TyInt(ast::IntTy::I32)) |
-            (false, 32, &ty::TyUint(ast::UintTy::U32)) |
-            (true,  64, &ty::TyInt(ast::IntTy::I64)) |
-            (false, 64, &ty::TyUint(ast::UintTy::U64)) |
-            (true,  128, &ty::TyInt(ast::IntTy::I128)) |
-            (false, 128, &ty::TyUint(ast::UintTy::U128)) => {},
+            (true,  8,  &ty::Int(ast::IntTy::I8)) |
+            (false, 8,  &ty::Uint(ast::UintTy::U8)) |
+            (true,  16, &ty::Int(ast::IntTy::I16)) |
+            (false, 16, &ty::Uint(ast::UintTy::U16)) |
+            (true,  32, &ty::Int(ast::IntTy::I32)) |
+            (false, 32, &ty::Uint(ast::UintTy::U32)) |
+            (true,  64, &ty::Int(ast::IntTy::I64)) |
+            (false, 64, &ty::Uint(ast::UintTy::U64)) |
+            (true,  128, &ty::Int(ast::IntTy::I128)) |
+            (false, 128, &ty::Uint(ast::UintTy::U128)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`{}{n}`",
                                        if signed {"i"} else {"u"},
                                        n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
-            (32, &ty::TyFloat(ast::FloatTy::F32)) |
-            (64, &ty::TyFloat(ast::FloatTy::F64)) => {},
+            (32, &ty::Float(ast::FloatTy::F32)) |
+            (64, &ty::Float(ast::FloatTy::F64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`f{n}`", n = bits)),
         },
         Pointer(ref inner_expected, ref _llvm_type, const_) => {
             match t.sty {
-                ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
                     if (mutbl == hir::MutImmutable) != const_ {
                         simple_error(&format!("`{}`", t),
                                      if const_ {"const pointer"} else {"mut pointer"})
@@ -537,7 +590,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
         }
         Aggregate(_flatten, ref expected_contents) => {
             match t.sty {
-                ty::TyTuple(contents) => {
+                ty::Tuple(contents) => {
                     if contents.len() != expected_contents.len() {
                         simple_error(&format!("tuple with length {}", contents.len()),
                                      &format!("tuple with length {}", expected_contents.len()));

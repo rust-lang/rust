@@ -1,0 +1,15 @@
+error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
+  --> $DIR/no-send-res-ports.rs:25:5
+   |
+LL |     thread::spawn(move|| {
+   |     ^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
+   |
+   = help: within `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6 x:main::Foo]`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
+   = note: required because it appears within the type `Port<()>`
+   = note: required because it appears within the type `main::Foo`
+   = note: required because it appears within the type `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6 x:main::Foo]`
+   = note: required by `std::thread::spawn`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

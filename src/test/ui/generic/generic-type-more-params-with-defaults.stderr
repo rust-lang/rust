@@ -1,0 +1,9 @@
+error[E0107]: wrong number of type arguments: expected at most 2, found 3
+  --> $DIR/generic-type-more-params-with-defaults.rs:9:12
+   |
+LL |     let _: Vec<isize, Heap, bool>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^ expected at most 2 type arguments
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

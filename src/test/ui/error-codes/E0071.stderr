@@ -1,5 +1,5 @@
 error[E0071]: expected struct, variant or union type, found enum `Foo`
-  --> $DIR/E0071.rs:15:13
+  --> $DIR/E0071.rs:5:13
    |
 LL |     let u = FooAlias { value: 0 };
    |             ^^^^^^^^ not a struct

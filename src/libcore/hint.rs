@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![stable(feature = "core_hint", since = "1.27.0")]
 
 //! Hints to compiler that affects how code should be emitted or optimized.
@@ -24,7 +14,7 @@ use intrinsics;
 /// therefore will eliminate all branches that reach to a call to
 /// `unreachable_unchecked()`.
 ///
-/// Like all instances of UB, if this assumption turns out to be wrong, i.e. the
+/// Like all instances of UB, if this assumption turns out to be wrong, i.e., the
 /// `unreachable_unchecked()` call is actually reachable among all possible
 /// control flow, the compiler will apply the wrong optimization strategy, and
 /// may sometimes even corrupt seemingly unrelated code, causing

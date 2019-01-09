@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `T: MyHash` is not satisfied
+  --> $DIR/wf-impl-associated-type-trait.rs:17:5
+   |
+LL |     type Bar = MySet<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `MyHash` is not implemented for `T`
+   |
+   = help: consider adding a `where T: MyHash` bound
+note: required by `MySet`
+  --> $DIR/wf-impl-associated-type-trait.rs:8:1
+   |
+LL | pub struct MySet<T:MyHash> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

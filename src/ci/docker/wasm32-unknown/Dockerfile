@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
@@ -36,7 +36,6 @@ ENV SCRIPT python2.7 /checkout/x.py test --target $TARGETS \
   src/test/ui \
   src/test/run-pass \
   src/test/compile-fail \
-  src/test/parse-fail \
   src/test/mir-opt \
   src/test/codegen-units \
   src/libcore \

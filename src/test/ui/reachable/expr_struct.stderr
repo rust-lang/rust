@@ -1,29 +1,29 @@
 error: unreachable expression
-  --> $DIR/expr_struct.rs:24:13
+  --> $DIR/expr_struct.rs:14:13
    |
 LL |     let x = Foo { a: 22, b: 33, ..return }; //~ ERROR unreachable
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/expr_struct.rs:14:9
+  --> $DIR/expr_struct.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_struct.rs:29:33
+  --> $DIR/expr_struct.rs:19:33
    |
 LL |     let x = Foo { a: return, b: 33, ..return }; //~ ERROR unreachable
    |                                 ^^
 
 error: unreachable expression
-  --> $DIR/expr_struct.rs:34:39
+  --> $DIR/expr_struct.rs:24:39
    |
 LL |     let x = Foo { a: 22, b: return, ..return }; //~ ERROR unreachable
    |                                       ^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_struct.rs:39:13
+  --> $DIR/expr_struct.rs:29:13
    |
 LL |     let x = Foo { a: 22, b: return }; //~ ERROR unreachable
    |             ^^^^^^^^^^^^^^^^^^^^^^^^

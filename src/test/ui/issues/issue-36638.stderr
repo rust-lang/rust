@@ -1,0 +1,23 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-36638.rs:3:12
+   |
+LL | struct Foo<Self>(Self);
+   |            ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-36638.rs:7:11
+   |
+LL | trait Bar<Self> {}
+   |           ^^^^ expected identifier, found keyword
+
+error[E0392]: parameter `Self` is never used
+  --> $DIR/issue-36638.rs:3:12
+   |
+LL | struct Foo<Self>(Self);
+   |            ^^^^ unused type parameter
+   |
+   = help: consider removing `Self` or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

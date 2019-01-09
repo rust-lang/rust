@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::{InferCtxt, FixupError, FixupResult};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::{TypeFolder, TypeVisitor};
@@ -25,8 +15,9 @@ pub struct OpportunisticTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> OpportunisticTypeResolver<'a, 'gcx, 'tcx> {
+    #[inline]
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        OpportunisticTypeResolver { infcx: infcx }
+        OpportunisticTypeResolver { infcx }
     }
 }
 
@@ -54,7 +45,7 @@ pub struct OpportunisticTypeAndRegionResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        OpportunisticTypeAndRegionResolver { infcx: infcx }
+        OpportunisticTypeAndRegionResolver { infcx }
     }
 }
 
@@ -104,7 +95,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
-            if let ty::TyInfer(_) = t.sty {
+            if let ty::Infer(_) = t.sty {
                 // Since we called `shallow_resolve` above, this must
                 // be an (as yet...) unresolved inference variable.
                 true
@@ -153,24 +144,24 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.needs_infer() && !ty::keep_local(&t) {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
-                // ^ we need to have the `keep_local` check to un-default
-                // defaulted tuples.
+              // ^ we need to have the `keep_local` check to un-default
+              // defaulted tuples.
         } else {
             let t = self.infcx.shallow_resolve(t);
             match t.sty {
-                ty::TyInfer(ty::TyVar(vid)) => {
+                ty::Infer(ty::TyVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedTy(vid));
                     self.tcx().types.err
                 }
-                ty::TyInfer(ty::IntVar(vid)) => {
+                ty::Infer(ty::IntVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedIntTy(vid));
                     self.tcx().types.err
                 }
-                ty::TyInfer(ty::FloatVar(vid)) => {
+                ty::Infer(ty::FloatVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedFloatTy(vid));
                     self.tcx().types.err
                 }
-                ty::TyInfer(_) => {
+                ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
                 _ => {

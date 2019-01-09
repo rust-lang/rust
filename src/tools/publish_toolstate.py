@@ -1,20 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-
 import sys
 import re
 import json
-import copy
 import datetime
 import collections
 import textwrap
@@ -27,7 +16,7 @@ except ImportError:
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk',
-    'rls': '@nrc',
+    'rls': '@nrc @Xanewok',
     'rustfmt': '@nrc',
     'book': '@carols10cents @steveklabnik',
     'nomicon': '@frewsxcv @Gankro',
@@ -82,8 +71,8 @@ def update_latest(
                 status[os] = new
                 if new > old:
                     changed = True
-                    message += '🎉 {} on {}: {} → {}.\n' \
-                        .format(tool, os, old, new)
+                    message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                        .format(tool, os, old, new, MAINTAINERS.get(tool))
                 elif new < old:
                     changed = True
                     message += '💔 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
@@ -131,6 +120,11 @@ if __name__ == '__main__':
         sys.exit(0)
 
     print(message)
+
+    if not github_token:
+        print('Dry run only, not committing anything')
+        sys.exit(0)
+
     with open(save_message_to_path, 'w') as f:
         f.write(message)
 

@@ -1,0 +1,8 @@
+error: expected `;`, found `::`
+  --> $DIR/import-glob-path.rs:2:11
+   |
+LL | use foo::*::bar
+   |           ^^ expected `;`
+
+error: aborting due to previous error
+

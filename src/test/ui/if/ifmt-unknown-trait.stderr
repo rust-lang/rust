@@ -1,0 +1,8 @@
+error: unknown format trait `notimplemented`
+  --> $DIR/ifmt-unknown-trait.rs:2:34
+   |
+LL |     format!("{:notimplemented}", "3");
+   |                                  ^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/issue-20433.rs:6:5
+   |
+LL |     fn iceman(c: Vec<[i32]>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[i32]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required by `std::vec::Vec`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

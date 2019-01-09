@@ -1,0 +1,9 @@
+error[E0532]: expected tuple struct/variant, found struct `Box`
+  --> $DIR/issue-38412.rs:2:9
+   |
+LL |     let Box(a) = loop { };
+   |         ^^^ constructor is not visible here due to private fields
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

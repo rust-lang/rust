@@ -1,0 +1,27 @@
+error[E0005]: refutable pattern in local binding: `-2147483648i32..=-1i32` not covered
+  --> $DIR/const-match-check.rs:4:22
+   |
+LL | const X: i32 = { let 0 = 0; 0 };
+   |                      ^ pattern `-2147483648i32..=-1i32` not covered
+
+error[E0005]: refutable pattern in local binding: `-2147483648i32..=-1i32` not covered
+  --> $DIR/const-match-check.rs:8:23
+   |
+LL | static Y: i32 = { let 0 = 0; 0 };
+   |                       ^ pattern `-2147483648i32..=-1i32` not covered
+
+error[E0005]: refutable pattern in local binding: `-2147483648i32..=-1i32` not covered
+  --> $DIR/const-match-check.rs:13:26
+   |
+LL |     const X: i32 = { let 0 = 0; 0 };
+   |                          ^ pattern `-2147483648i32..=-1i32` not covered
+
+error[E0005]: refutable pattern in local binding: `-2147483648i32..=-1i32` not covered
+  --> $DIR/const-match-check.rs:19:26
+   |
+LL |     const X: i32 = { let 0 = 0; 0 };
+   |                          ^ pattern `-2147483648i32..=-1i32` not covered
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

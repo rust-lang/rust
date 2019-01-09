@@ -1,17 +1,11 @@
-warning: not reporting region error due to nll
-  --> $DIR/mir_check_cast_unsafe_fn.rs:18:32
-   |
-LL |     let g: unsafe fn(_) -> _ = f;
-   |                                ^
-
-error: borrowed data escapes outside of function
-  --> $DIR/mir_check_cast_unsafe_fn.rs:20:14
+error: unsatisfied lifetime constraints
+  --> $DIR/mir_check_cast_unsafe_fn.rs:9:14
    |
 LL | fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
-   |            ----- `input` is a reference that is only valid in the function body
+   |        -- lifetime `'a` defined here
 ...
 LL |     unsafe { g(input) }
-   |              ^^^^^^^^ `input` escapes the function body here
+   |              ^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

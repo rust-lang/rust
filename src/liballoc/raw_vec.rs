@@ -1,14 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-#![unstable(feature = "raw_vec_internals", reason = "implemention detail", issue = "0")]
+#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "0")]
 #![doc(hidden)]
 
 use core::cmp;
@@ -44,7 +34,7 @@ use boxed::Box;
 /// This enables you to use capacity growing logic catch the overflows in your length
 /// that might occur with zero-sized types.
 ///
-/// However this means that you need to be careful when roundtripping this type
+/// However this means that you need to be careful when round-tripping this type
 /// with a `Box<[T]>`: `cap()` won't yield the len. However `with_capacity`,
 /// `shrink_to_fit`, and `from_box` will actually set RawVec's private capacity
 /// field. This allows zero-sized types to not be special-cased by consumers of
@@ -282,7 +272,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///         // double would have aborted or panicked if the len exceeded
     ///         // `isize::MAX` so this is safe to do unchecked now.
     ///         unsafe {
-    ///             ptr::write(self.buf.ptr().offset(self.len as isize), elem);
+    ///             ptr::write(self.buf.ptr().add(self.len), elem);
     ///         }
     ///         self.len += 1;
     ///     }
@@ -487,7 +477,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///         // `isize::MAX` so this is safe to do unchecked now.
     ///         for x in elems {
     ///             unsafe {
-    ///                 ptr::write(self.buf.ptr().offset(self.len as isize), x.clone());
+    ///                 ptr::write(self.buf.ptr().add(self.len), x.clone());
     ///             }
     ///             self.len += 1;
     ///         }
@@ -739,7 +729,7 @@ unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
 // On 64-bit we just need to check for overflow since trying to allocate
 // `> isize::MAX` bytes will surely fail. On 32-bit and 16-bit we need to add
 // an extra guard for this in case we're running on a platform which can use
-// all 4GB in user-space. e.g. PAE or x32
+// all 4GB in user-space. e.g., PAE or x32
 
 #[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), CollectionAllocErr> {

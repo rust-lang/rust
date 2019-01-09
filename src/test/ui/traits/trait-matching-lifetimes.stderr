@@ -1,0 +1,41 @@
+error[E0308]: method not compatible with trait
+  --> $DIR/trait-matching-lifetimes.rs:14:5
+   |
+LL |     fn foo(x: Foo<'b,'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `fn(Foo<'a, 'b>)`
+              found type `fn(Foo<'b, 'a>)`
+note: the lifetime 'b as defined on the impl at 13:9...
+  --> $DIR/trait-matching-lifetimes.rs:13:9
+   |
+LL | impl<'a,'b> Tr for Foo<'a,'b> {
+   |         ^^
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 13:6
+  --> $DIR/trait-matching-lifetimes.rs:13:6
+   |
+LL | impl<'a,'b> Tr for Foo<'a,'b> {
+   |      ^^
+
+error[E0308]: method not compatible with trait
+  --> $DIR/trait-matching-lifetimes.rs:14:5
+   |
+LL |     fn foo(x: Foo<'b,'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `fn(Foo<'a, 'b>)`
+              found type `fn(Foo<'b, 'a>)`
+note: the lifetime 'a as defined on the impl at 13:6...
+  --> $DIR/trait-matching-lifetimes.rs:13:6
+   |
+LL | impl<'a,'b> Tr for Foo<'a,'b> {
+   |      ^^
+note: ...does not necessarily outlive the lifetime 'b as defined on the impl at 13:9
+  --> $DIR/trait-matching-lifetimes.rs:13:9
+   |
+LL | impl<'a,'b> Tr for Foo<'a,'b> {
+   |         ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,13 +1,3 @@
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Basic test for liveness constraints: the region (`R1`) that appears
 // in the type of `p` includes the points after `&v[0]` up to (but not
 // including) the call to `use_x`. The `else` branch is not included.
@@ -32,9 +22,9 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#2r    | U0 | {bb2[0..=3], bb3[0..=1]}
-// | '_#3r    | U0 | {bb2[1..=3], bb3[0..=1]}
-// | '_#4r    | U0 | {bb2[3], bb3[0..=1]}
+// | '_#2r    | U0 | {bb2[0..=5], bb3[0..=1]}
+// | '_#3r    | U0 | {bb2[1..=5], bb3[0..=1]}
+// | '_#4r    | U0 | {bb2[4..=5], bb3[0..=1]}
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
 // let _6: &'_#4r usize;

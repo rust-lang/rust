@@ -1,0 +1,27 @@
+error[E0107]: wrong number of type arguments: expected 1, found 2
+  --> $DIR/bad-mid-path-type-params.rs:30:28
+   |
+LL |     let _ = S::new::<isize,f64>(1, 1.0);
+   |                            ^^^ unexpected type argument
+
+error[E0107]: wrong number of lifetime arguments: expected 0, found 1
+  --> $DIR/bad-mid-path-type-params.rs:33:17
+   |
+LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
+   |                 ^^ unexpected lifetime argument
+
+error[E0107]: wrong number of type arguments: expected 1, found 2
+  --> $DIR/bad-mid-path-type-params.rs:36:36
+   |
+LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
+   |                                    ^^^ unexpected type argument
+
+error[E0107]: wrong number of lifetime arguments: expected 0, found 1
+  --> $DIR/bad-mid-path-type-params.rs:39:25
+   |
+LL |     let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
+   |                         ^^ unexpected lifetime argument
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

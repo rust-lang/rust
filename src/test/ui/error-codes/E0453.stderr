@@ -1,5 +1,5 @@
 error[E0453]: allow(non_snake_case) overruled by outer forbid(non_snake_case)
-  --> $DIR/E0453.rs:13:9
+  --> $DIR/E0453.rs:3:9
    |
 LL | #![forbid(non_snake_case)]
    |           -------------- `forbid` level set here

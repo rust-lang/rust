@@ -1,30 +1,12 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use std::mem;
-
 use clean::*;
 
-pub enum FoldItem {
-    Retain(Item),
-    Strip(Item),
-    Erase,
-}
+pub struct StripItem(pub Item);
 
-impl FoldItem {
-    pub fn fold(self) -> Option<Item> {
-        match self {
-            FoldItem::Erase => None,
-            FoldItem::Retain(i) => Some(i),
-            FoldItem::Strip(item@ Item { inner: StrippedItem(..), .. } ) => Some(item),
-            FoldItem::Strip(mut i) => {
+impl StripItem {
+    pub fn strip(self) -> Option<Item> {
+        match self.0 {
+            Item { inner: StrippedItem(..), .. } => Some(self.0),
+            mut i => {
                 i.inner = StrippedItem(box i.inner);
                 Some(i)
             }
@@ -122,11 +104,14 @@ pub trait DocFolder : Sized {
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
         c.module = c.module.take().and_then(|module| self.fold_item(module));
 
-        let traits = mem::replace(&mut c.external_traits, Default::default());
-        c.external_traits.extend(traits.into_iter().map(|(k, mut v)| {
-            v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
-            (k, v)
-        }));
+        {
+            let guard = c.external_traits.lock();
+            let traits = guard.replace(Default::default());
+            guard.borrow_mut().extend(traits.into_iter().map(|(k, mut v)| {
+                v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+                (k, v)
+            }));
+        }
         c
     }
 }

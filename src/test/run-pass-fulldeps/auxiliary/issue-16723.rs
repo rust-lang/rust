@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // force-host
 
 #![feature(plugin_registrar, quote, rustc_private)]
@@ -15,12 +5,13 @@
 
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_data_structures;
 extern crate rustc_plugin;
+#[macro_use] extern crate smallvec;
 extern crate syntax_pos;
 
-use syntax::ast;
+use smallvec::SmallVec;
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
-use syntax::util::small_vector::SmallVector;
 use syntax::tokenstream;
 use rustc_plugin::Registry;
 
@@ -31,8 +22,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 fn expand(cx: &mut ExtCtxt, _: syntax_pos::Span, _: &[tokenstream::TokenTree])
           -> Box<MacResult+'static> {
-    MacEager::items(SmallVector::many(vec![
+    MacEager::items(smallvec![
         quote_item!(cx, struct Struct1;).unwrap(),
         quote_item!(cx, struct Struct2;).unwrap()
-    ]))
+    ])
 }

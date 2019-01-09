@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 //! Thread-safe reference-counting pointers.
@@ -24,10 +14,11 @@ use core::fmt;
 use core::cmp::Ordering;
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val};
-use core::ops::Deref;
-use core::ops::CoerceUnsized;
+use core::ops::{Deref, Receiver};
+use core::ops::{CoerceUnsized, DispatchFromDyn};
+use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::marker::{Unsize, PhantomData};
+use core::marker::{Unpin, Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
@@ -49,9 +40,10 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// The type `Arc<T>` provides shared ownership of a value of type `T`,
 /// allocated in the heap. Invoking [`clone`][clone] on `Arc` produces
-/// a new pointer to the same value in the heap. When the last `Arc`
-/// pointer to a given value is destroyed, the pointed-to value is
-/// also destroyed.
+/// a new `Arc` instance, which points to the same value on the heap as the
+/// source `Arc`, while increasing a reference count. When the last `Arc`
+/// pointer to a given value is destroyed, the pointed-to value is also
+/// destroyed.
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
 /// exception: you cannot generally obtain a mutable reference to something
@@ -107,7 +99,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// // The two syntaxes below are equivalent.
 /// let a = foo.clone();
 /// let b = Arc::clone(&foo);
-/// // a and b both point to the same memory location as foo.
+/// // a, b, and foo are all Arcs that point to the same memory location
 /// ```
 ///
 /// The [`Arc::clone(&from)`] syntax is the most idiomatic because it conveys more explicitly
@@ -118,8 +110,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
-/// clashes with `T`'s methods, the methods of `Arc<T>` itself are [associated
-/// functions][assoc], called using function-like syntax:
+/// clashes with `T`'s methods, the methods of `Arc<T>` itself are associated
+/// functions, called using function-like syntax:
 ///
 /// ```
 /// use std::sync::Arc;
@@ -144,7 +136,6 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [downgrade]: struct.Arc.html#method.downgrade
 /// [upgrade]: struct.Weak.html#method.upgrade
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
 /// [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
 /// [`std::sync`]: ../../std/sync/index.html
 /// [`Arc::clone(&from)`]: #method.clone
@@ -197,6 +188,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// counting in general.
 ///
 /// [rc_examples]: ../../std/rc/index.html#examples
+#[cfg_attr(not(test), lang = "arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: NonNull<ArcInner<T>>,
@@ -210,6 +202,9 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
+
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
 /// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
@@ -251,6 +246,8 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
@@ -294,6 +291,13 @@ impl<T> Arc<T> {
             data,
         };
         Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
+    }
+
+    /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
+    /// `data` will be pinned in memory and unable to be moved.
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub fn pin(data: T) -> Pin<Arc<T>> {
+        unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.
@@ -558,16 +562,20 @@ impl<T: ?Sized> Arc<T> {
 impl<T: ?Sized> Arc<T> {
     // Allocates an `ArcInner<T>` with sufficient space for an unsized value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
-        // Create a fake ArcInner to find allocation size and alignment
-        let fake_ptr = ptr as *mut ArcInner<T>;
-
-        let layout = Layout::for_value(&*fake_ptr);
+        // Calculate layout using the given value.
+        // Previously, layout was calculated on the expression
+        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+        // reference (see #54908).
+        let layout = Layout::new::<ArcInner<()>>()
+            .extend(Layout::for_value(&*ptr)).unwrap().0
+            .pad_to_align().unwrap();
 
         let mem = Global.alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
-        // Initialize the real ArcInner
+        // Initialize the ArcInner
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut ArcInner<T>;
+        debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
         ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
@@ -672,7 +680,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             };
 
             for (i, item) in v.iter().enumerate() {
-                ptr::write(elems.offset(i as isize), item.clone());
+                ptr::write(elems.add(i), item.clone());
                 guard.n_elems += 1;
             }
 
@@ -705,7 +713,7 @@ impl<T: ?Sized> Clone for Arc<T> {
     ///
     /// let five = Arc::new(5);
     ///
-    /// Arc::clone(&five);
+    /// let _ = Arc::clone(&five);
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
@@ -750,6 +758,9 @@ impl<T: ?Sized> Deref for Arc<T> {
         &self.inner().data
     }
 }
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for Arc<T> {}
 
 impl<T: Clone> Arc<T> {
     /// Makes a mutable reference into the given `Arc`.
@@ -915,9 +926,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     ///
     /// This will decrement the strong reference count. If the strong reference
     /// count reaches zero then the only other references (if any) are
-    /// [`Weak`][weak], so we `drop` the inner value.
-    ///
-    /// [weak]: struct.Weak.html
+    /// [`Weak`], so we `drop` the inner value.
     ///
     /// # Examples
     ///
@@ -938,6 +947,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    ///
+    /// [`Weak`]: ../../std/sync/struct.Weak.html
     #[inline]
     fn drop(&mut self) {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
@@ -1107,7 +1118,7 @@ impl<T: ?Sized> Weak<T> {
     }
 
     /// Return `None` when the pointer is dangling and there is no allocated `ArcInner`,
-    /// i.e. this `Weak` was created by `Weak::new`
+    /// i.e., this `Weak` was created by `Weak::new`
     #[inline]
     fn inner(&self) -> Option<&ArcInner<T>> {
         if is_dangling(self.ptr) {
@@ -1115,6 +1126,53 @@ impl<T: ?Sized> Weak<T> {
         } else {
             Some(unsafe { self.ptr.as_ref() })
         }
+    }
+
+    /// Returns true if the two `Weak`s point to the same value (not just values
+    /// that compare as equal).
+    ///
+    /// # Notes
+    ///
+    /// Since this compares pointers it means that `Weak::new()` will equal each
+    /// other, even though they don't point to any value.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_ptr_eq)]
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let first_rc = Arc::new(5);
+    /// let first = Arc::downgrade(&first_rc);
+    /// let second = Arc::downgrade(&first_rc);
+    ///
+    /// assert!(Weak::ptr_eq(&first, &second));
+    ///
+    /// let third_rc = Arc::new(5);
+    /// let third = Arc::downgrade(&third_rc);
+    ///
+    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// ```
+    ///
+    /// Comparing `Weak::new`.
+    ///
+    /// ```
+    /// #![feature(weak_ptr_eq)]
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let first = Weak::new();
+    /// let second = Weak::new();
+    /// assert!(Weak::ptr_eq(&first, &second));
+    ///
+    /// let third_rc = Arc::new(());
+    /// let third = Arc::downgrade(&third_rc);
+    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// ```
+    #[inline]
+    #[unstable(feature = "weak_ptr_eq", issue = "55981")]
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+        this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
@@ -1129,7 +1187,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     ///
     /// let weak_five = Arc::downgrade(&Arc::new(5));
     ///
-    /// Weak::clone(&weak_five);
+    /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
@@ -1158,10 +1216,11 @@ impl<T: ?Sized> Clone for Weak<T> {
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating memory.
-    /// Calling [`upgrade`] on the return value always gives [`None`].
+    /// Calling [`upgrade`] on the return value always
+    /// gives [`None`].
     ///
-    /// [`upgrade`]: struct.Weak.html#method.upgrade
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`upgrade`]: ../../std/sync/struct.Weak.html#method.upgrade
     ///
     /// # Examples
     ///
@@ -1227,10 +1286,44 @@ impl<T: ?Sized> Drop for Weak<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+trait ArcEqIdent<T: ?Sized + PartialEq> {
+    fn eq(&self, other: &Arc<T>) -> bool;
+    fn ne(&self, other: &Arc<T>) -> bool;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
+    #[inline]
+    default fn eq(&self, other: &Arc<T>) -> bool {
+        **self == **other
+    }
+    #[inline]
+    default fn ne(&self, other: &Arc<T>) -> bool {
+        **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Eq> ArcEqIdent<T> for Arc<T> {
+    #[inline]
+    fn eq(&self, other: &Arc<T>) -> bool {
+        Arc::ptr_eq(self, other) || **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &Arc<T>) -> bool {
+        !Arc::ptr_eq(self, other) && **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// Equality for two `Arc`s.
     ///
     /// Two `Arc`s are equal if their inner values are equal.
+    ///
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// always equal.
     ///
     /// # Examples
     ///
@@ -1241,13 +1334,17 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// assert!(five == Arc::new(5));
     /// ```
+    #[inline]
     fn eq(&self, other: &Arc<T>) -> bool {
-        *(*self) == *(*other)
+        ArcEqIdent::eq(self, other)
     }
 
     /// Inequality for two `Arc`s.
     ///
     /// Two `Arc`s are unequal if their inner values are unequal.
+    ///
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// never unequal.
     ///
     /// # Examples
     ///
@@ -1258,10 +1355,12 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// assert!(five != Arc::new(6));
     /// ```
+    #[inline]
     fn ne(&self, other: &Arc<T>) -> bool {
-        *(*self) != *(*other)
+        ArcEqIdent::ne(self, other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     /// Partial comparison for two `Arc`s.
@@ -1942,3 +2041,6 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
         &**self
     }
 }
+
+#[stable(feature = "pin", since = "1.33.0")]
+impl<T: ?Sized> Unpin for Arc<T> { }

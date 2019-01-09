@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `std::rc::Rc<u32>: std::marker::Copy` is not satisfied
+  --> $DIR/union-generic.rs:8:13
+   |
+LL |     let u = U { a: Rc::new(0u32) };
+   |             ^ the trait `std::marker::Copy` is not implemented for `std::rc::Rc<u32>`
+   |
+note: required by `U`
+  --> $DIR/union-generic.rs:3:1
+   |
+LL | union U<T: Copy> {
+   | ^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `std::rc::Rc<u32>: std::marker::Copy` is not satisfied
+  --> $DIR/union-generic.rs:10:13
+   |
+LL |     let u = U::<Rc<u32>> { a: Default::default() };
+   |             ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::rc::Rc<u32>`
+   |
+note: required by `U`
+  --> $DIR/union-generic.rs:3:1
+   |
+LL | union U<T: Copy> {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

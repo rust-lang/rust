@@ -1,0 +1,17 @@
+error[E0277]: `std::rc::Rc<usize>` cannot be sent between threads safely
+  --> $DIR/kindck-nonsendable-1.rs:9:5
+   |
+LL |     bar(move|| foo(x));
+   |     ^^^ `std::rc::Rc<usize>` cannot be sent between threads safely
+   |
+   = help: within `[closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:22 x:std::rc::Rc<usize>]`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<usize>`
+   = note: required because it appears within the type `[closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:22 x:std::rc::Rc<usize>]`
+note: required by `bar`
+  --> $DIR/kindck-nonsendable-1.rs:5:1
+   |
+LL | fn bar<F:FnOnce() + Send>(_: F) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

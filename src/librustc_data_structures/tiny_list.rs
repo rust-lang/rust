@@ -1,14 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //! A singly-linked list.
 //!
 //! Using this data structure only makes sense under very specific
@@ -21,8 +10,6 @@
 //!
 //! If you expect to store more than 1 element in the common case, steer clear
 //! and use a `Vec<T>`, `Box<[T]>`, or a `SmallVec<T>`.
-
-use std::mem;
 
 #[derive(Clone, Hash, Debug, PartialEq)]
 pub struct TinyList<T: PartialEq> {
@@ -50,44 +37,22 @@ impl<T: PartialEq> TinyList<T> {
 
     #[inline]
     pub fn insert(&mut self, data: T) {
-        let current_head = mem::replace(&mut self.head, None);
-
-        if let Some(current_head) = current_head {
-            let current_head = Box::new(current_head);
-            self.head = Some(Element {
-                data,
-                next: Some(current_head)
-            });
-        } else {
-            self.head = Some(Element {
-                data,
-                next: None,
-            })
-        }
+        self.head = Some(Element {
+            data,
+            next: self.head.take().map(Box::new)
+        });
     }
 
     #[inline]
     pub fn remove(&mut self, data: &T) -> bool {
-        let remove_head = if let Some(ref mut head) = self.head {
-            if head.data == *data {
-                Some(mem::replace(&mut head.next, None))
-            } else {
-                None
+        self.head = match self.head {
+            Some(ref mut head) if head.data == *data => {
+                head.next.take().map(|x| *x)
             }
-        } else {
-            return false
+            Some(ref mut head) => return head.remove_next(data),
+            None => return false,
         };
-
-        if let Some(remove_head) = remove_head {
-            if let Some(next) = remove_head {
-                self.head = Some(*next);
-            } else {
-                self.head = None;
-            }
-            return true
-        }
-
-        self.head.as_mut().unwrap().remove_next(data)
+        true
     }
 
     #[inline]
@@ -122,14 +87,15 @@ impl<T: PartialEq> Element<T> {
             if next.data != *data {
                 return next.remove_next(data)
             } else {
-                mem::replace(&mut next.next, None)
+                next.next.take()
             }
         } else {
             return false
         };
 
         self.next = new_next;
-        return true
+
+        true
     }
 
     fn len(&self) -> usize {
@@ -156,6 +122,8 @@ impl<T: PartialEq> Element<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    extern crate test;
+    use self::test::Bencher;
 
     #[test]
     fn test_contains_and_insert() {
@@ -247,5 +215,42 @@ mod test {
         assert!(!list.contains(&1));
 
         assert_eq!(list.len(), 0);
+    }
+
+    #[bench]
+    fn bench_insert_empty(b: &mut Bencher) {
+        b.iter(|| {
+            let mut list = TinyList::new();
+            list.insert(1);
+        })
+    }
+
+    #[bench]
+    fn bench_insert_one(b: &mut Bencher) {
+        b.iter(|| {
+            let mut list = TinyList::new_single(0);
+            list.insert(1);
+        })
+    }
+
+    #[bench]
+    fn bench_remove_empty(b: &mut Bencher) {
+        b.iter(|| {
+            TinyList::new().remove(&1)
+        });
+    }
+
+    #[bench]
+    fn bench_remove_unknown(b: &mut Bencher) {
+        b.iter(|| {
+            TinyList::new_single(0).remove(&1)
+        });
+    }
+
+    #[bench]
+    fn bench_remove_one(b: &mut Bencher) {
+        b.iter(|| {
+            TinyList::new_single(1).remove(&1)
+        });
     }
 }

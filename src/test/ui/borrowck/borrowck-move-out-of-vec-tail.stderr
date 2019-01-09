@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
-  --> $DIR/borrowck-move-out-of-vec-tail.rs:30:18
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:20:18
    |
 LL |                   &[Foo { string: a },
    |                    ^              - hint: to prevent move, use `ref a` or `ref mut a`

@@ -1,0 +1,12 @@
+error: expected identifier, found keyword `break`
+  --> $DIR/keyword.rs:1:9
+   |
+LL | pub mod break {
+   |         ^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | pub mod r#break {
+   |         ^^^^^^^
+
+error: aborting due to previous error
+

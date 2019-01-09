@@ -1,0 +1,12 @@
+error: missing fragment specifier
+  --> $DIR/issue-39404.rs:3:19
+   |
+LL | macro_rules! m { ($i) => {} }
+   |                   ^^
+   |
+   = note: #[deny(missing_fragment_specifier)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+
+error: aborting due to previous error
+

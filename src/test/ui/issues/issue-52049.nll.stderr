@@ -1,0 +1,14 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-52049.rs:6:10
+   |
+LL |     foo(&unpromotable(5u32));
+   |     -----^^^^^^^^^^^^^^^^^^-
+   |     |    |
+   |     |    creates a temporary which is freed while still in use
+   |     argument requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.

@@ -1,0 +1,10 @@
+error: an inner attribute is not permitted following an outer doc comment
+  --> $DIR/inner-attr-after-doc-comment.rs:6:3
+   |
+LL | #![recursion_limit="100"]
+   |   ^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
+
+error: aborting due to previous error
+

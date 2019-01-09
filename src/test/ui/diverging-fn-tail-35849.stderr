@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/diverging-fn-tail-35849.rs:3:9
+   |
+LL | fn assert_sizeof() -> ! {
+   |                       - expected `!` because of return type
+LL |     unsafe {
+LL |         ::std::mem::transmute::<f64, [u8; 8]>(panic!())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected !, found array of 8 elements
+   |
+   = note: expected type `!`
+              found type `[u8; 8]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

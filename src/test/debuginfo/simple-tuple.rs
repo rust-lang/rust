@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 // ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
@@ -110,21 +100,28 @@
 // lldb-command:run
 
 // lldb-command:print/d noPadding8
-// lldb-check:[...]$0 = (-100, 100)
+// lldbg-check:[...]$0 = (-100, 100)
+// lldbr-check:((i8, u8)) noPadding8 = { = -100 -100 = 100 100 }
 // lldb-command:print noPadding16
-// lldb-check:[...]$1 = (0, 1, 2)
+// lldbg-check:[...]$1 = (0, 1, 2)
+// lldbr-check:((i16, i16, u16)) noPadding16 = { = 0 = 1 = 2 }
 // lldb-command:print noPadding32
-// lldb-check:[...]$2 = (3, 4.5, 5)
+// lldbg-check:[...]$2 = (3, 4.5, 5)
+// lldbr-check:((i32, f32, u32)) noPadding32 = { = 3 = 4.5 = 5 }
 // lldb-command:print noPadding64
-// lldb-check:[...]$3 = (6, 7.5, 8)
+// lldbg-check:[...]$3 = (6, 7.5, 8)
+// lldbr-check:((i64, f64, u64)) noPadding64 = { = 6 = 7.5 = 8 }
 
 // lldb-command:print internalPadding1
-// lldb-check:[...]$4 = (9, 10)
+// lldbg-check:[...]$4 = (9, 10)
+// lldbr-check:((i16, i32)) internalPadding1 = { = 9 = 10 }
 // lldb-command:print internalPadding2
-// lldb-check:[...]$5 = (11, 12, 13, 14)
+// lldbg-check:[...]$5 = (11, 12, 13, 14)
+// lldbr-check:((i16, i32, u32, u64)) internalPadding2 = { = 11 = 12 = 13 = 14 }
 
 // lldb-command:print paddingAtEnd
-// lldb-check:[...]$6 = (15, 16)
+// lldbg-check:[...]$6 = (15, 16)
+// lldbr-check:((i32, i16)) paddingAtEnd = { = 15 = 16 }
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

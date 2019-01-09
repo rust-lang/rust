@@ -1,19 +1,9 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test that the CompilerCalls interface to the compiler works.
 
 // ignore-cross-compile
+// ignore-stage1
 
-#![feature(rustc_private, path)]
-#![feature(core)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate rustc;
@@ -21,12 +11,13 @@ extern crate rustc_driver;
 extern crate rustc_codegen_utils;
 extern crate syntax;
 extern crate rustc_errors as errors;
+extern crate rustc_metadata;
 
-use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::session::config::{self, Input};
 use rustc_driver::{driver, CompilerCalls, Compilation};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_metadata::cstore::CStore;
 use syntax::ast;
 
 use std::path::PathBuf;
@@ -51,7 +42,7 @@ impl<'a> CompilerCalls<'a> for TestCalls<'a> {
                      _: &CodegenBackend,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &CrateStore,
+                     _: &CStore,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -92,7 +83,9 @@ fn main() {
         let tc = TestCalls { count: &mut count };
         // we should never get use this filename, but lets make sure they are valid args.
         let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
-        rustc_driver::run_compiler(&args, Box::new(tc), None, None);
+        syntax::with_globals(|| {
+            rustc_driver::run_compiler(&args, Box::new(tc), None, None);
+        });
     }
     assert_eq!(count, 30);
 }

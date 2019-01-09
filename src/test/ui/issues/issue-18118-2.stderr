@@ -1,0 +1,9 @@
+error[E0013]: constants cannot refer to statics, use a constant instead
+  --> $DIR/issue-18118-2.rs:4:9
+   |
+LL |         &p
+   |         ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0013`.

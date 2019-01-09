@@ -1,0 +1,20 @@
+error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/ambiguity-nested.rs:8:13
+   |
+LL |     pub use std::io;
+   |             ^^^ ambiguous name
+   |
+   = note: `std` could refer to a built-in extern crate
+   = help: use `::std` to refer to this extern crate unambiguously
+note: `std` could also refer to the module defined here
+  --> $DIR/ambiguity-nested.rs:11:5
+   |
+LL | /     mod std {
+LL | |         pub struct io;
+LL | |     }
+   | |_____^
+   = help: use `self::std` to refer to this module unambiguously
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

@@ -1,0 +1,34 @@
+error[E0556]: malformed feature, expected just one word
+  --> $DIR/gated-bad-feature.rs:3:5
+   |
+LL |     foo(bar),
+   |     ^^^^^^^^
+
+error[E0556]: malformed feature, expected just one word
+  --> $DIR/gated-bad-feature.rs:4:5
+   |
+LL |     foo = "baz"
+   |     ^^^^^^^^^^^
+
+error[E0555]: malformed feature attribute, expected #![feature(...)]
+  --> $DIR/gated-bad-feature.rs:9:1
+   |
+LL | #![feature] //~ ERROR: malformed feature
+   | ^^^^^^^^^^^
+
+error[E0555]: malformed feature attribute, expected #![feature(...)]
+  --> $DIR/gated-bad-feature.rs:10:1
+   |
+LL | #![feature = "foo"] //~ ERROR: malformed feature
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0557]: feature has been removed
+  --> $DIR/gated-bad-feature.rs:12:12
+   |
+LL | #![feature(test_removed_feature)] //~ ERROR: feature has been removed
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0555, E0556, E0557.
+For more information about an error, try `rustc --explain E0555`.

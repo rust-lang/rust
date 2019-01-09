@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `+`, `::`, `<`, or `{`, found `22`
+  --> $DIR/closure-return-syntax.rs:5:23
+   |
+LL |     let x = || -> i32 22;
+   |                       ^^ expected one of `!`, `(`, `+`, `::`, `<`, or `{` here
+
+error: aborting due to previous error
+

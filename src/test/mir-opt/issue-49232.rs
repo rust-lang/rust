@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // We must mark a variable whose initialization fails due to an
 // abort statement as StorageDead.
 
@@ -34,10 +24,9 @@ fn main() {
 //     }
 //     let mut _1: ();
 //     let mut _3: bool;
-//     let mut _4: u8;
-//     let mut _5: !;
-//     let mut _6: ();
-//     let mut _7: &i32;
+//     let mut _4: !;
+//     let mut _5: ();
+//     let mut _6: &i32;
 //     bb0: {
 //         goto -> bb1;
 //     }
@@ -45,13 +34,13 @@ fn main() {
 //         falseUnwind -> [real: bb3, cleanup: bb4];
 //     }
 //     bb2: {
-//         goto -> bb29;
+//         goto -> bb20;
 //     }
 //     bb3: {
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         _3 = const true;
-//         _4 = discriminant(_3);
+//         FakeRead(ForMatchedPlace, _3);
 //         switchInt(_3) -> [false: bb11, otherwise: bb10];
 //     }
 //     bb4: {
@@ -87,61 +76,35 @@ fn main() {
 //         goto -> bb6;
 //     }
 //     bb14: {
+//         FakeRead(ForLet, _2);
 //         StorageDead(_3);
-//         StorageLive(_7);
-//         _7 = &_2;
-//         _6 = const std::mem::drop(move _7) -> [return: bb28, unwind: bb4];
+//         StorageLive(_6);
+//         _6 = &_2;
+//         _5 = const std::mem::drop(move _6) -> [return: bb19, unwind: bb4];
 //     }
 //     bb15: {
+//         StorageDead(_3);
 //         goto -> bb16;
 //     }
 //     bb16: {
-//         goto -> bb17;
-//     }
-//     bb17: {
-//         goto -> bb18;
-//     }
-//     bb18: {
-//         goto -> bb19;
-//     }
-//     bb19: {
-//         goto -> bb20;
-//     }
-//     bb20: {
-//         StorageDead(_3);
-//         goto -> bb21;
-//     }
-//     bb21: {
-//         goto -> bb22;
-//     }
-//     bb22: {
 //         StorageDead(_2);
-//         goto -> bb23;
-//     }
-//     bb23: {
-//         goto -> bb24;
-//     }
-//     bb24: {
-//         goto -> bb25;
-//     }
-//     bb25: {
 //         goto -> bb2;
 //     }
-//     bb26: {
-//         _5 = ();
+//     bb17: {
+//         _4 = ();
 //         unreachable;
 //     }
-//     bb27: {
-//         StorageDead(_5);
+//     bb18: {
+//         StorageDead(_4);
 //         goto -> bb14;
 //     }
-//     bb28: {
-//         StorageDead(_7);
+//     bb19: {
+//         StorageDead(_6);
 //         _1 = ();
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }
-//     bb29: {
+//     bb20: {
 //         return;
 //     }
 // }

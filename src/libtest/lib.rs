@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Support code for rustc's built in unit-test and micro-benchmarking
 //! framework.
 //!
@@ -23,7 +13,7 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
-// NB: this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
+// N.B., this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
 // this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
 // cargo) to detect this crate.
 
@@ -33,18 +23,29 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(asm)]
+#![feature(cfg_target_vendor)]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
+#![feature(nll)]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
+#![feature(test)]
 
 extern crate getopts;
 #[cfg(any(unix, target_os = "cloudabi"))]
 extern crate libc;
-extern crate panic_unwind;
 extern crate term;
+
+// FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
+//                on aarch64-pc-windows-msvc, so we don't link libtest against
+//                libunwind (for the time being), even though it means that
+//                libtest won't be fully functional on this platform.
+//
+// See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
+#[cfg(not(all(windows, target_arch = "aarch64")))]
+extern crate panic_unwind;
 
 pub use self::TestFn::*;
 pub use self::ColorConfig::*;
@@ -79,7 +80,7 @@ const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in qu
 // to be used by rustc to compile tests in libtest
 pub mod test {
     pub use {assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
-             Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, ShouldPanic,
+             Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
              StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName,
              TestOpts, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
 }
@@ -89,8 +90,12 @@ mod formatters;
 
 use formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
+/// Whether to execute tests concurrently or not
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Concurrent { Yes, No }
+
 // The name of a test. By convention this follows the rules for rust
-// paths; i.e. it should be a series of identifiers separated by double
+// paths; i.e., it should be a series of identifiers separated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
@@ -300,7 +305,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
 // a Vec<TestDescAndFn> is used in order to effect ownership-transfer
 // semantics into parallel test runners, which in turn requires a Vec<>
 // rather than a &[].
-pub fn test_main_static(tests: &[TestDescAndFn]) {
+pub fn test_main_static(tests: &[&TestDescAndFn]) {
     let args = env::args().collect::<Vec<_>>();
     let owned_tests = tests
         .iter()
@@ -323,7 +328,14 @@ pub fn test_main_static(tests: &[TestDescAndFn]) {
 /// test is considered a failure. By default, invokes `report()`
 /// and checks for a `0` result.
 pub fn assert_test_result<T: Termination>(result: T) {
-    assert_eq!(result.report(), 0);
+    let code = result.report();
+    assert_eq!(
+        code,
+        0,
+        "the test returned a termination value with a non-zero status code ({}) \
+         which indicates a failure",
+        code
+    );
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -340,12 +352,19 @@ pub enum OutputFormat {
     Json,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RunIgnored {
+    Yes,
+    No,
+    Only,
+}
+
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
     pub filter: Option<String>,
     pub filter_exact: bool,
-    pub run_ignored: bool,
+    pub run_ignored: RunIgnored,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
@@ -364,7 +383,7 @@ impl TestOpts {
             list: false,
             filter: None,
             filter_exact: false,
-            run_ignored: false,
+            run_ignored: RunIgnored::No,
             run_tests: false,
             bench_benchmarks: false,
             logfile: None,
@@ -383,7 +402,8 @@ pub type OptRes = Result<TestOpts, String>;
 
 fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
-    opts.optflag("", "ignored", "Run ignored tests")
+    opts.optflag("", "include-ignored", "Run ignored and not ignored tests")
+        .optflag("", "ignored", "Run only ignored tests")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
@@ -482,15 +502,15 @@ Test Attributes:
                      contain: #[should_panic(expected = "foo")].
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
-                     normal test runs. Running with --ignored will run these
-                     tests."#,
+                     normal test runs. Running with --ignored or --include-ignored will run
+                     these tests."#,
         usage = options.usage(&message)
     );
 }
 
 // FIXME: Copied from libsyntax until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
-    // Whether this is a feature-staged build, i.e. on the beta or stable channel
+    // Whether this is a feature-staged build, i.e., on the beta or stable channel
     let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
     // Whether we should enable unstable features for bootstrapping
     let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
@@ -536,7 +556,21 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         None
     };
 
-    let run_ignored = matches.opt_present("ignored");
+    let include_ignored = matches.opt_present("include-ignored");
+    if !allow_unstable && include_ignored {
+        return Some(Err(
+            "The \"include-ignored\" flag is only accepted on the nightly compiler".into()
+        ));
+    }
+
+    let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
+        (true, true) => return Some(Err(
+            "the options --include-ignored and --ignored are mutually exclusive".into()
+        )),
+        (true, false) => RunIgnored::Yes,
+        (false, true) => RunIgnored::Only,
+        (false, false) => RunIgnored::No,
+    };
     let quiet = matches.opt_present("quiet");
     let exact = matches.opt_present("exact");
     let list = matches.opt_present("list");
@@ -979,10 +1013,12 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[cfg(any(target_os = "cloudabi", target_os = "redox",
-          all(target_arch = "wasm32", not(target_os = "emscripten"))))]
+#[cfg(any(target_os = "cloudabi",
+          target_os = "redox",
+          all(target_arch = "wasm32", not(target_os = "emscripten")),
+          all(target_vendor = "fortanix", target_env = "sgx")))]
 fn stdout_isatty() -> bool {
-    // FIXME: Implement isatty on Redox
+    // FIXME: Implement isatty on Redox and SGX
     false
 }
 #[cfg(unix)]
@@ -1032,8 +1068,12 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
-    use std::collections::HashMap;
+    use std::collections::{self, HashMap};
+    use std::hash::BuildHasherDefault;
     use std::sync::mpsc::RecvTimeoutError;
+    // Use a deterministic hasher
+    type TestMap =
+        HashMap<TestDesc, Instant, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
 
     let tests_len = tests.len();
 
@@ -1072,9 +1112,9 @@ where
 
     let (tx, rx) = channel::<MonitorMsg>();
 
-    let mut running_tests: HashMap<TestDesc, Instant> = HashMap::new();
+    let mut running_tests: TestMap = HashMap::default();
 
-    fn get_timed_out_tests(running_tests: &mut HashMap<TestDesc, Instant>) -> Vec<TestDesc> {
+    fn get_timed_out_tests(running_tests: &mut TestMap) -> Vec<TestDesc> {
         let now = Instant::now();
         let timed_out = running_tests
             .iter()
@@ -1092,7 +1132,7 @@ where
         timed_out
     };
 
-    fn calc_timeout(running_tests: &HashMap<TestDesc, Instant>) -> Option<Duration> {
+    fn calc_timeout(running_tests: &TestMap) -> Option<Duration> {
         running_tests.values().min().map(|next_timeout| {
             let now = Instant::now();
             if *next_timeout >= now {
@@ -1107,7 +1147,7 @@ where
         while !remaining.is_empty() {
             let test = remaining.pop().unwrap();
             callback(TeWait(test.desc.clone()))?;
-            run_test(opts, !opts.run_tests, test, tx.clone());
+            run_test(opts, !opts.run_tests, test, tx.clone(), Concurrent::No);
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
         }
@@ -1118,7 +1158,7 @@ where
                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
                 running_tests.insert(test.desc.clone(), timeout);
                 callback(TeWait(test.desc.clone()))?; //here no pad
-                run_test(opts, !opts.run_tests, test, tx.clone());
+                run_test(opts, !opts.run_tests, test, tx.clone(), Concurrent::Yes);
                 pending += 1;
             }
 
@@ -1150,7 +1190,7 @@ where
         // All benchmarks run at the end, in serial.
         for b in filtered_benchs {
             callback(TeWait(b.desc.clone()))?;
-            run_test(opts, false, b, tx.clone());
+            run_test(opts, false, b, tx.clone(), Concurrent::No);
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
         }
@@ -1175,7 +1215,7 @@ fn get_concurrency() -> usize {
     };
 
     #[cfg(windows)]
-    #[allow(bad_style)]
+    #[allow(nonstandard_style)]
     fn num_cpus() -> usize {
         #[repr(C)]
         struct SYSTEM_INFO {
@@ -1207,7 +1247,8 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+    #[cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")),
+              all(target_vendor = "fortanix", target_env = "sgx")))]
     fn num_cpus() -> usize {
         1
     }
@@ -1288,55 +1329,36 @@ fn get_concurrency() -> usize {
 
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
-    // Remove tests that don't match the test filter
-    filtered = match opts.filter {
-        None => filtered,
-        Some(ref filter) => filtered
-            .into_iter()
-            .filter(|test| {
-                if opts.filter_exact {
-                    test.desc.name.as_slice() == &filter[..]
-                } else {
-                    test.desc.name.as_slice().contains(&filter[..])
-                }
-            })
-            .collect(),
+    let matches_filter = |test: &TestDescAndFn, filter: &str| {
+        let test_name = test.desc.name.as_slice();
+
+        match opts.filter_exact {
+            true => test_name == filter,
+            false => test_name.contains(filter),
+        }
     };
+
+    // Remove tests that don't match the test filter
+    if let Some(ref filter) = opts.filter {
+        filtered.retain(|test| matches_filter(test, filter));
+    }
 
     // Skip tests that match any of the skip filters
-    filtered = filtered
-        .into_iter()
-        .filter(|t| {
-            !opts.skip.iter().any(|sf| {
-                if opts.filter_exact {
-                    t.desc.name.as_slice() == &sf[..]
-                } else {
-                    t.desc.name.as_slice().contains(&sf[..])
-                }
-            })
-        })
-        .collect();
+    filtered.retain(|test| {
+        !opts.skip.iter().any(|sf| matches_filter(test, sf))
+    });
 
-    // Maybe pull out the ignored test and unignore them
-    filtered = if !opts.run_ignored {
-        filtered
-    } else {
-        fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
-            if test.desc.ignore {
-                let TestDescAndFn { desc, testfn } = test;
-                Some(TestDescAndFn {
-                    desc: TestDesc {
-                        ignore: false,
-                        ..desc
-                    },
-                    testfn,
-                })
-            } else {
-                None
-            }
+    // maybe unignore tests
+    match opts.run_ignored {
+        RunIgnored::Yes => {
+            filtered.iter_mut().for_each(|test| test.desc.ignore = false);
+        },
+        RunIgnored::Only => {
+            filtered.retain(|test| test.desc.ignore);
+            filtered.iter_mut().for_each(|test| test.desc.ignore = false);
         }
-        filtered.into_iter().filter_map(filter).collect()
-    };
+        RunIgnored::No => {}
+    }
 
     // Sort the tests alphabetically
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
@@ -1371,6 +1393,7 @@ pub fn run_test(
     force_ignore: bool,
     test: TestDescAndFn,
     monitor_ch: Sender<MonitorMsg>,
+    concurrency: Concurrent,
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
@@ -1387,6 +1410,7 @@ pub fn run_test(
         monitor_ch: Sender<MonitorMsg>,
         nocapture: bool,
         testfn: Box<dyn FnBox() + Send>,
+        concurrency: Concurrent,
     ) {
         // Buffer for capturing standard I/O
         let data = Arc::new(Mutex::new(Vec::new()));
@@ -1421,7 +1445,7 @@ pub fn run_test(
         // the test synchronously, regardless of the concurrency
         // level.
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
-        if supports_threads {
+        if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
             cfg.spawn(runtest).unwrap();
         } else {
@@ -1442,13 +1466,14 @@ pub fn run_test(
         }
         DynTestFn(f) => {
             let cb = move || __rust_begin_short_backtrace(f);
-            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
+            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb), concurrency)
         }
         StaticTestFn(f) => run_test_inner(
             desc,
             monitor_ch,
             opts.nocapture,
             Box::new(move || __rust_begin_short_backtrace(f)),
+            concurrency,
         ),
     }
 }
@@ -1592,7 +1617,7 @@ where
     // be left doing 0 iterations on every loop. The unfortunate
     // side effect of not being able to do as many runs is
     // automatically handled by the statistical analysis below
-    // (i.e. larger error bars).
+    // (i.e., larger error bars).
     n = cmp::max(1, n);
 
     let mut total_run = Duration::new(0, 0);
@@ -1725,12 +1750,37 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, ShouldPanic,
-               StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
-               TrIgnored, TrOk};
+    use test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
+               ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed,
+               TrFailedMsg, TrIgnored, TrOk};
     use std::sync::mpsc::channel;
     use bench;
     use Bencher;
+    use Concurrent;
+
+
+    fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
+        vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("1"),
+                    ignore: true,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                },
+                testfn: DynTestFn(Box::new(move || {})),
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("2"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                },
+                testfn: DynTestFn(Box::new(move || {})),
+            },
+        ]
+    }
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1747,7 +1797,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res != TrOk);
     }
@@ -1765,7 +1815,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrIgnored);
     }
@@ -1785,7 +1835,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrOk);
     }
@@ -1805,7 +1855,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrOk);
     }
@@ -1827,7 +1877,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
     }
@@ -1845,7 +1895,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrFailed);
     }
@@ -1857,11 +1907,20 @@ mod tests {
             "filter".to_string(),
             "--ignored".to_string(),
         ];
-        let opts = match parse_opts(&args) {
-            Some(Ok(o)) => o,
-            _ => panic!("Malformed arg in parse_ignored_flag"),
-        };
-        assert!((opts.run_ignored));
+        let opts = parse_opts(&args).unwrap().unwrap();
+        assert_eq!(opts.run_ignored, RunIgnored::Only);
+    }
+
+    #[test]
+    fn parse_include_ignored_flag() {
+        let args = vec![
+            "progname".to_string(),
+            "filter".to_string(),
+            "-Zunstable-options".to_string(),
+            "--include-ignored".to_string(),
+        ];
+        let opts = parse_opts(&args).unwrap().unwrap();
+        assert_eq!(opts.run_ignored, RunIgnored::Yes);
     }
 
     #[test]
@@ -1871,33 +1930,31 @@ mod tests {
 
         let mut opts = TestOpts::new();
         opts.run_tests = true;
-        opts.run_ignored = true;
+        opts.run_ignored = RunIgnored::Only;
 
-        let tests = vec![
-            TestDescAndFn {
-                desc: TestDesc {
-                    name: StaticTestName("1"),
-                    ignore: true,
-                    should_panic: ShouldPanic::No,
-                    allow_fail: false,
-                },
-                testfn: DynTestFn(Box::new(move || {})),
-            },
-            TestDescAndFn {
-                desc: TestDesc {
-                    name: StaticTestName("2"),
-                    ignore: false,
-                    should_panic: ShouldPanic::No,
-                    allow_fail: false,
-                },
-                testfn: DynTestFn(Box::new(move || {})),
-            },
-        ];
+        let tests = one_ignored_one_unignored_test();
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].desc.name.to_string(), "1");
         assert!(!filtered[0].desc.ignore);
+    }
+
+    #[test]
+    pub fn run_include_ignored_option() {
+        // When we "--include-ignored" tests, the ignore flag should be set to false on
+        // all tests and no test filtered out
+
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.run_ignored = RunIgnored::Yes;
+
+        let tests = one_ignored_one_unignored_test();
+        let filtered = filter_tests(&opts, tests);
+
+        assert_eq!(filtered.len(), 2);
+        assert!(!filtered[0].desc.ignore);
+        assert!(!filtered[1].desc.ignore);
     }
 
     #[test]
@@ -2007,7 +2064,9 @@ mod tests {
             "test::ignored_tests_result_in_ignored".to_string(),
             "test::first_free_arg_should_be_a_filter".to_string(),
             "test::parse_ignored_flag".to_string(),
+            "test::parse_include_ignored_flag".to_string(),
             "test::filter_for_ignored_option".to_string(),
+            "test::run_include_ignored_option".to_string(),
             "test::sort_tests".to_string(),
         ];
         let tests = {
@@ -2038,6 +2097,8 @@ mod tests {
             "test::first_free_arg_should_be_a_filter".to_string(),
             "test::ignored_tests_result_in_ignored".to_string(),
             "test::parse_ignored_flag".to_string(),
+            "test::parse_include_ignored_flag".to_string(),
+            "test::run_include_ignored_option".to_string(),
             "test::sort_tests".to_string(),
         ];
 

@@ -1,15 +1,3 @@
-/**
- * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
- * file at the top-level directory of this distribution and at
- * http://rust-lang.org/COPYRIGHT.
- *
- * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
- * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
- * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
- * option. This file may not be copied, modified, or distributed
- * except according to those terms.
- */
-
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
 	font-family: 'Fira Sans';
@@ -70,7 +58,7 @@
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+	font: 16px/1.4 "Source Serif Pro", serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -97,7 +85,6 @@ h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4
 h1.fqn {
 	border-bottom: 1px dashed;
 	margin-top: 0;
-	position: relative;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
@@ -114,15 +101,16 @@ h3.impl, h3.method, h3.type {
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table :not(code)>a,
-.collapse-toggle, ul.item-list > li > .out-of-band {
-	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+.collapse-toggle, div.item-list .out-of-band,
+#source-sidebar, #sidebar-toggle {
+	font-family: "Fira Sans", sans-serif;
 }
 
 ol, ul {
 	padding-left: 25px;
 }
 ul ul, ol ul, ul ol, ol ol {
-	margin-bottom: 0;
+	margin-bottom: .6em;
 }
 
 p {
@@ -134,12 +122,11 @@ summary {
 }
 
 code, pre {
-	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
-	white-space: pre-wrap;
+	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
 	border-radius: 3px;
-	padding: 0 0.2em;
+	padding: 0 0.1em;
 }
 .docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
@@ -283,6 +270,33 @@ nav.sub {
 	padding-left: 0;
 }
 
+.rustdoc:not(.source) .example-wrap {
+	display: inline-flex;
+	margin-bottom: 10px;
+}
+
+.example-wrap {
+	width: 100%;
+}
+
+.example-wrap > pre.line-number {
+	overflow: initial;
+	border: 1px solid;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+	padding: 13px 8px;
+	text-align: right;
+}
+
+.rustdoc:not(.source) .example-wrap > pre.rust {
+	width: 100%;
+	overflow-x: auto;
+}
+
+.rustdoc:not(.source) .example-wrap > pre {
+	margin: 0;
+}
+
 #search {
 	margin-left: 230px;
 	position: relative;
@@ -342,6 +356,10 @@ nav.sub {
 #main > .docblock h2 { font-size: 1.15em; }
 #main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
 
+#main > h2 + div, #main > h2 + h3, #main > h3 + div {
+	display: none;
+}
+
 .docblock h1 { font-size: 1em; }
 .docblock h2 { font-size: 0.95em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 0.9em; }
@@ -352,14 +370,11 @@ nav.sub {
 }
 
 .content .out-of-band {
+	float: right;
 	font-size: 23px;
 	margin: 0px;
 	padding: 0px;
-	text-align: right;
-	display: inline-block;
 	font-weight: normal;
-	position: absolute;
-	right: 0;
 }
 
 h3.impl > .out-of-band {
@@ -367,10 +382,6 @@ h3.impl > .out-of-band {
 }
 
 h4.method > .out-of-band {
-	font-size: 19px;
-}
-
-ul.item-list > li > .out-of-band {
 	font-size: 19px;
 }
 
@@ -402,7 +413,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: "Fira Sans", sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -439,10 +450,6 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li {
-	margin-bottom: 1em;
-}
-
 .content .multi-column {
 	-moz-column-count: 5;
 	-moz-column-gap: 2.5em;
@@ -470,12 +477,6 @@ h4 > code, h3 > code, .invisible > code {
 	margin-bottom: 15px;
 }
 
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
-	margin-left: 20px;
-}
-.content .impl-items .docblock, .content .impl-items .stability {
-	margin-bottom: .6em;
-}
 .content .docblock > .impl-items {
 	margin-left: 20px;
 	margin-top: -34px;
@@ -498,6 +499,44 @@ h4 > code, h3 > code, .invisible > code {
 
 .content .stability code {
 	font-size: 90%;
+}
+
+.content .stability {
+	position: relative;
+	margin-left: 33px;
+	margin-top: -13px;
+}
+
+.sub-variant > div > .stability {
+	margin-top: initial;
+}
+
+.content .stability::before {
+	content: '˪';
+	font-size: 30px;
+	position: absolute;
+	top: -9px;
+	left: -13px;
+}
+
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+	margin-left: 20px;
+}
+
+.content .impl-items .docblock, .content .impl-items .stability {
+	margin-bottom: .6em;
+}
+
+.content .impl-items > .stability {
+	margin-left: 40px;
+}
+
+.methods > .stability, .content .impl-items > .stability {
+	margin-top: -8px;
+}
+
+#main > .stability {
+	margin-top: 0;
 }
 
 nav {
@@ -548,10 +587,8 @@ a {
 	left: -5px;
 }
 .small-section-header > .anchor {
-	left: -20px;
-}
-.small-section-header > .anchor:not(.field) {
 	left: -28px;
+	padding-right: 10px; /* avoid gap that causes hover to disappear */
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
@@ -562,10 +599,42 @@ a {
 	text-decoration: underline;
 }
 
+.invisible > .srclink, h4 > code + .srclink {
+	position: absolute;
+	top: 0;
+	right: 0;
+	font-size: 17px;
+	font-weight: normal;
+}
+
 .block a.current.crate { font-weight: 500; }
 
 .search-container {
 	position: relative;
+}
+.search-container > div {
+	display: inline-flex;
+	width: calc(100% - 34px);
+}
+#crate-search {
+	margin-top: 5px;
+	padding: 6px;
+	padding-right: 19px;
+	border: 0;
+	border-right: 0;
+	border-radius: 4px 0 0 4px;
+	outline: none;
+	cursor: pointer;
+	border-right: 1px solid;
+	-moz-appearance: none;
+	-webkit-appearance: none;
+	/* Removes default arrow from firefox */
+	text-indent: 0.01px;
+	text-overflow: "";
+	background-repeat: no-repeat;
+	background-color: transparent;
+	background-size: 20px;
+	background-position: calc(100% - 1px) 56%;
 }
 .search-container > .top-button {
 	position: absolute;
@@ -573,7 +642,6 @@ a {
 	top: 10px;
 }
 .search-input {
-	width: calc(100% - 34px);
 	/* Override Normalize.css: we have margins and do
 	 not want to overflow - the `moz` attribute is necessary
 	 until Firefox 29, too early to drop at this point */
@@ -588,6 +656,11 @@ a {
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
+	width: 100%;
+}
+
+#crate-search + .search-input {
+	border-radius: 0 1px 1px 0;
 }
 
 .search-input:focus {
@@ -610,10 +683,15 @@ a {
 
 .content .search-results td:first-child {
 	padding-right: 0;
-	width: 75%;
+	width: 50%;
 }
 .content .search-results td:first-child a {
 	padding-right: 10px;
+}
+.content .search-results td:first-child a:after {
+	clear: both;
+	content: "";
+	display: block;
 }
 .content .search-results td:first-child a span {
 	float: left;
@@ -683,7 +761,7 @@ body.blur > :not(#help) {
 	display: list-item;
 }
 
-.stab .microscope {
+.stab .emoji {
 	font-size: 1.5em;
 }
 
@@ -743,6 +821,7 @@ a.test-arrow:hover{
 .section-header:hover a:before {
 	position: absolute;
 	left: -25px;
+	padding-right: 10px; /* avoid gap that causes hover to disappear */
 	content: '\2002\00a7\2002';
 }
 
@@ -788,6 +867,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	text-align: center;
 }
 
+.collapse-toggle.hidden-default {
+	position: relative;
+	margin-left: 20px;
+}
+
 .ghost {
 	display: none;
 }
@@ -822,7 +906,23 @@ span.since {
 }
 
 .sub-variant, .sub-variant > h3 {
-	margin-top: 0 !important;
+	margin-top: 1px !important;
+}
+
+#main > .sub-variant > h3 {
+	font-size: 15px;
+	margin-left: 25px;
+	margin-bottom: 5px;
+}
+
+.sub-variant > div {
+	margin-left: 20px;
+	margin-bottom: 10px;
+}
+
+.sub-variant > div > span {
+	display: block;
+	position: relative;
 }
 
 .toggle-label {
@@ -882,15 +982,14 @@ span.since {
 		padding-top: 0px;
 	}
 
-	.sidebar {
+	.rustdoc > .sidebar {
 		height: 45px;
 		min-height: 40px;
-		width: calc(100% + 30px);
 		margin: 0;
 		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
-		z-index: 1;
+		z-index: 11;
 	}
 
 	.sidebar > .location {
@@ -987,6 +1086,10 @@ span.since {
 	.anchor {
 		display: none !important;
 	}
+
+	h1.fqn {
+		overflow: initial;
+	}
 }
 
 @media print {
@@ -1049,6 +1152,13 @@ pre.rust {
 	margin-top: 20px;
 }
 
+.search-failed > ul {
+	text-align: left;
+	max-width: 570px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
 #titles {
 	height: 35px;
 }
@@ -1057,17 +1167,14 @@ pre.rust {
 	float: left;
 	width: 33.3%;
 	text-align: center;
-	border-bottom: 1px solid;
 	font-size: 18px;
 	cursor: pointer;
+	border-top: 2px solid;
 }
 
-#titles > div.selected {
-	border-bottom: 3px solid;
-}
-
-#titles > div:hover {
-	border-bottom: 3px solid;
+#titles > div:not(:last-child):not(.selected) {
+	margin-right: 1px;
+	width: calc(33.3% - 1px);
 }
 
 #titles > div > div.count {
@@ -1084,6 +1191,18 @@ h4 > .important-traits {
 	position: absolute;
 	left: -44px;
 	top: 2px;
+}
+
+#all-types {
+	text-align: center;
+	border: 1px solid;
+	margin: 0 10px;
+	margin-bottom: 10px;
+	display: block;
+	border-radius: 7px;
+}
+#all-types > p {
+	margin: 5px 0;
 }
 
 @media (max-width: 700px) {
@@ -1108,6 +1227,9 @@ h4 > .important-traits {
 		margin-left: 0;
 		background-color: rgba(0,0,0,0);
 		height: 100%;
+	}
+	.sidebar {
+		width: calc(100% + 30px);
 	}
 
 	.show-it {
@@ -1153,6 +1275,10 @@ h4 > .important-traits {
 
 	.impl > .collapse-toggle {
 		left: -10px;
+	}
+
+	#all-types {
+		margin: 10px;
 	}
 }
 
@@ -1245,7 +1371,7 @@ h3.important {
 kbd {
 	display: inline-block;
 	padding: 3px 5px;
-	font: 15px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	font: 15px monospace;
 	line-height: 10px;
 	vertical-align: middle;
 	border: solid 1px;
@@ -1341,6 +1467,15 @@ kbd {
 	font-size: 19px;
 	display: block;
 }
+#implementors-list > .impl-items .table-display .out-of-band {
+	font-size: 17px;
+}
+
+.table-display td:hover .anchor {
+	display: block;
+	top: 2px;
+	left: -5px;
+}
 
 #main > ul {
 	padding-left: 10px;
@@ -1348,18 +1483,72 @@ kbd {
 #main > ul > li {
 	list-style: none;
 }
-#all-types {
-	text-align: center;
-	border: 1px solid;
-	margin: 0 10px;
-	margin-bottom: 10px;
-	display: block;
-	border-radius: 7px;
-}
-#all-types > p {
-	margin: 5px 0;
-}
 
 .non-exhaustive {
 	margin-bottom: 1em;
+}
+
+#sidebar-toggle {
+	position: fixed;
+	top: 30px;
+	left: 300px;
+	z-index: 10;
+	padding: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: left .5s;
+	font-size: 1.2em;
+	border: 1px solid;
+	border-left: 0;
+}
+#source-sidebar {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 300px;
+	z-index: 1;
+	overflow: auto;
+	transition: left .5s;
+	border-right: 1px solid;
+}
+#source-sidebar > .title {
+	font-size: 1.5em;
+	text-align: center;
+	border-bottom: 1px solid;
+	margin-bottom: 6px;
+}
+
+div.children {
+	padding-left: 27px;
+	display: none;
+}
+div.name {
+	cursor: pointer;
+	position: relative;
+	margin-left: 16px;
+}
+div.files > a {
+	display: block;
+	padding: 0 3px;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #a14b4b;
+}
+div.name.expand + .children {
+	display: block;
+}
+div.name::before {
+	content: "\25B6";
+	padding-left: 4px;
+	font-size: 0.7em;
+	position: absolute;
+	left: -16px;
+	top: 4px;
+}
+div.name.expand::before {
+	transform: rotate(90deg);
+	left: -14px;
 }

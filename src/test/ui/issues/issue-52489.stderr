@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'issue_52489_unstable'
+  --> $DIR/issue-52489.rs:5:5
+   |
+LL | use issue_52489;
+   |     ^^^^^^^^^^^
+   |
+   = help: add #![feature(issue_52489_unstable)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

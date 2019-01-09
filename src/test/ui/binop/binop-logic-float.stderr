@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/binop-logic-float.rs:1:21
+   |
+LL | fn main() { let x = 1.0_f32 || 2.0_f32; }
+   |                     ^^^^^^^ expected bool, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/binop-logic-float.rs:1:32
+   |
+LL | fn main() { let x = 1.0_f32 || 2.0_f32; }
+   |                                ^^^^^^^ expected bool, found f32
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

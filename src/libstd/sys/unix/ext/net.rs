@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![stable(feature = "unix_socket", since = "1.10.0")]
 
 //! Unix-specific networking functionality
@@ -132,7 +122,7 @@ impl SocketAddr {
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
-            len = sun_path_offset() as libc::socklen_t;  // i.e. zero-length address
+            len = sun_path_offset() as libc::socklen_t;  // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                       "file descriptor did not correspond to a Unix socket"));
@@ -1654,8 +1644,9 @@ mod test {
         or_panic!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut buf = [0; 10];
-        let kind = stream.read(&mut buf).err().expect("expected error").kind();
-        assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
+        let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                "unexpected_error: {:?}", kind);
     }
 
     #[test]
@@ -1675,8 +1666,9 @@ mod test {
         or_panic!(stream.read(&mut buf));
         assert_eq!(b"hello world", &buf[..]);
 
-        let kind = stream.read(&mut buf).err().expect("expected error").kind();
-        assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
+        let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                "unexpected_error: {:?}", kind);
     }
 
     // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors

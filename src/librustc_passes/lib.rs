@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Various checks
 //!
 //! # Note
@@ -18,7 +8,10 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
+
+#![recursion_limit="256"]
 
 #[macro_use]
 extern crate rustc;
@@ -40,7 +33,6 @@ pub mod ast_validation;
 pub mod rvalue_promotion;
 pub mod hir_stats;
 pub mod loops;
-mod mir_stats;
 
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 

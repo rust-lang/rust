@@ -1,0 +1,11 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/capture1.rs:5:32
+   |
+LL |     fn foo() -> isize { return bar; }
+   |                                ^^^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0434`.

@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fs;
 use std::env;
 use std::iter;
@@ -15,65 +5,16 @@ use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::collections::HashSet;
 
-use Mode;
-use Compiler;
-use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{exe, add_lib_path};
-use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
-use native;
-use channel::GitInfo;
-use cache::Interned;
-use toolstate::ToolState;
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CleanTools {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-    pub cause: Mode,
-}
-
-impl Step for CleanTools {
-    type Output = ();
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.never()
-    }
-
-    fn run(self, builder: &Builder) {
-        let compiler = self.compiler;
-        let target = self.target;
-        let cause = self.cause;
-
-        // This is for the original compiler, but if we're forced to use stage 1, then
-        // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
-        // we copy the libs forward.
-        let tools_dir = builder.stage_out(compiler, Mode::ToolRustc);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
-
-        for &cur_mode in &[Mode::Std, Mode::Test, Mode::Rustc] {
-            let stamp = match cur_mode {
-                Mode::Std => libstd_stamp(builder, compiler, target),
-                Mode::Test => libtest_stamp(builder, compiler, target),
-                Mode::Rustc => librustc_stamp(builder, compiler, target),
-                _ => panic!(),
-            };
-
-            if builder.clear_if_dirty(&tools_dir, &stamp) {
-                break;
-            }
-
-            // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
-            // dependencies depend on std. Therefore, we iterate up until our own mode.
-            if cause == cur_mode {
-                break;
-            }
-        }
-    }
-}
+use crate::Mode;
+use crate::Compiler;
+use crate::builder::{Step, RunConfig, ShouldRun, Builder};
+use crate::util::{exe, add_lib_path};
+use crate::compile;
+use crate::native;
+use crate::channel::GitInfo;
+use crate::channel;
+use crate::cache::Interned;
+use crate::toolstate::ToolState;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -130,8 +71,8 @@ impl Step for ToolBuild {
             "build",
             path,
             self.source_type,
+            &self.extra_features,
         );
-        cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
@@ -183,7 +124,7 @@ impl Step for ToolBuild {
                 let mut artifacts = builder.tool_artifacts.borrow_mut();
                 let prev_artifacts = artifacts
                     .entry(target)
-                    .or_insert_with(Default::default);
+                    .or_default();
                 if let Some(prev) = prev_artifacts.get(&*id) {
                     if prev.1 != val.1 {
                         duplicates.push((
@@ -198,8 +139,8 @@ impl Step for ToolBuild {
             }
         });
 
-        if is_expected && duplicates.len() != 0 {
-            println!("duplicate artfacts found when compiling a tool, this \
+        if is_expected && !duplicates.is_empty() {
+            println!("duplicate artifacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n");
@@ -220,7 +161,11 @@ impl Step for ToolBuild {
                 println!("    `{}` additionally enabled features {:?} at {:?}",
                          prev.0, &prev_features - &cur_features, prev.1);
             }
-            println!("");
+            println!();
+            println!("to fix this you will probably want to edit the local \
+                      src/tools/rustc-workspace-hack/Cargo.toml crate, as \
+                      that will update the dependency graph to ensure that \
+                      these crates all share the same feature set");
             panic!("tools should not compile multiple copies of the same crate");
         }
 
@@ -234,7 +179,7 @@ impl Step for ToolBuild {
             if !is_optional_tool {
                 exit(1);
             } else {
-                return None;
+                None
             }
         } else {
             let cargo_out = builder.cargo_out(compiler, self.mode, target)
@@ -254,6 +199,7 @@ pub fn prepare_tool_cargo(
     command: &'static str,
     path: &'static str,
     source_type: SourceType,
+    extra_features: &[String],
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
@@ -267,10 +213,16 @@ pub fn prepare_tool_cargo(
         cargo.env("RUSTC_EXTERNAL_TOOL", "1");
     }
 
-    if let Some(dir) = builder.openssl_install_dir(target) {
-        cargo.env("OPENSSL_STATIC", "1");
-        cargo.env("OPENSSL_DIR", dir);
-        cargo.env("LIBZ_SYS_STATIC", "1");
+    let mut features = extra_features.iter().cloned().collect::<Vec<_>>();
+    if builder.build.config.cargo_native_static {
+        if path.ends_with("cargo") ||
+            path.ends_with("rls") ||
+            path.ends_with("clippy") ||
+            path.ends_with("rustfmt")
+        {
+            cargo.env("LIBZ_SYS_STATIC", "1");
+            features.push("rustc-workspace-hack/all-static".to_string());
+        }
     }
 
     // if tools are using lzma we want to force the build script to build its
@@ -279,6 +231,7 @@ pub fn prepare_tool_cargo(
 
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
     cargo.env("CFG_VERSION", builder.rust_version());
+    cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
 
     let info = GitInfo::new(&builder.config, &dir);
     if let Some(sha) = info.sha() {
@@ -290,12 +243,19 @@ pub fn prepare_tool_cargo(
     if let Some(date) = info.commit_date() {
         cargo.env("CFG_COMMIT_DATE", date);
     }
+    if !features.is_empty() {
+        cargo.arg("--features").arg(&features.join(", "));
+    }
     cargo
 }
 
 macro_rules! tool {
-    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr
-        $(,llvm_tools = $llvm:expr)* $(,is_external_tool = $external:expr)*;)+) => {
+    ($(
+        $name:ident, $path:expr, $tool_name:expr, $mode:expr
+        $(,llvm_tools = $llvm:expr)*
+        $(,is_external_tool = $external:expr)*
+        ;
+    )+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
@@ -485,6 +445,7 @@ impl Step for Rustdoc {
             "build",
             "src/tools/rustdoc",
             SourceType::InTree,
+            &[],
         );
 
         // Most tools don't get debuginfo, but rustdoc should.
@@ -541,9 +502,6 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
-        builder.ensure(native::Openssl {
-            target: self.target,
-        });
         // Cargo depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
@@ -643,9 +601,6 @@ tool_extended!((self, builder),
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
-        builder.ensure(native::Openssl {
-            target: self.target,
-        });
         // RLS depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
@@ -681,7 +636,7 @@ impl<'a> Builder<'a> {
             self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
         ];
 
-        // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
+        // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do
         // so here.
         if compiler.host.contains("msvc") {

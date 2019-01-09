@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // Gdb doesn't know about UTF-32 character encoding and will print a rust char as only
@@ -70,46 +60,60 @@
 // lldb-command:run
 
 // lldb-command:print *bool_ref
-// lldb-check:[...]$0 = true
+// lldbg-check:[...]$0 = true
+// lldbr-check:(bool) *bool_ref = true
 
 // lldb-command:print *int_ref
-// lldb-check:[...]$1 = -1
+// lldbg-check:[...]$1 = -1
+// lldbr-check:(isize) *int_ref = -1
 
-// d ebugger:print *char_ref
-// c heck:[...]$3 = 97
+// NOTE: only rust-enabled lldb supports 32bit chars
+// lldbr-command:print *char_ref
+// lldbr-check:(char) *char_ref = 97
 
 // lldb-command:print *i8_ref
-// lldb-check:[...]$2 = 68
+// lldbg-check:[...]$2 = 68
+// lldbr-check:(i8) *i8_ref = 68
 
 // lldb-command:print *i16_ref
-// lldb-check:[...]$3 = -16
+// lldbg-check:[...]$3 = -16
+// lldbr-check:(i16) *i16_ref = -16
 
 // lldb-command:print *i32_ref
-// lldb-check:[...]$4 = -32
+// lldbg-check:[...]$4 = -32
+// lldbr-check:(i32) *i32_ref = -32
 
 // lldb-command:print *i64_ref
-// lldb-check:[...]$5 = -64
+// lldbg-check:[...]$5 = -64
+// lldbr-check:(i64) *i64_ref = -64
 
 // lldb-command:print *uint_ref
-// lldb-check:[...]$6 = 1
+// lldbg-check:[...]$6 = 1
+// lldbr-check:(usize) *uint_ref = 1
 
 // lldb-command:print *u8_ref
-// lldb-check:[...]$7 = 100
+// lldbg-check:[...]$7 = 100
+// lldbr-check:(u8) *u8_ref = 100
 
 // lldb-command:print *u16_ref
-// lldb-check:[...]$8 = 16
+// lldbg-check:[...]$8 = 16
+// lldbr-check:(u16) *u16_ref = 16
 
 // lldb-command:print *u32_ref
-// lldb-check:[...]$9 = 32
+// lldbg-check:[...]$9 = 32
+// lldbr-check:(u32) *u32_ref = 32
 
 // lldb-command:print *u64_ref
-// lldb-check:[...]$10 = 64
+// lldbg-check:[...]$10 = 64
+// lldbr-check:(u64) *u64_ref = 64
 
 // lldb-command:print *f32_ref
-// lldb-check:[...]$11 = 2.5
+// lldbg-check:[...]$11 = 2.5
+// lldbr-check:(f32) *f32_ref = 2.5
 
 // lldb-command:print *f64_ref
-// lldb-check:[...]$12 = 3.5
+// lldbg-check:[...]$12 = 3.5
+// lldbr-check:(f64) *f64_ref = 3.5
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]

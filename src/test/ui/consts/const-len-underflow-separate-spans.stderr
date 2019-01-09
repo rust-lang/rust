@@ -1,0 +1,19 @@
+error: any use of this value will cause an error
+  --> $DIR/const-len-underflow-separate-spans.rs:7:1
+   |
+LL | const LEN: usize = ONE - TWO;
+   | ^^^^^^^^^^^^^^^^^^^---------^
+   |                    |
+   |                    attempt to subtract with overflow
+   |
+   = note: #[deny(const_err)] on by default
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-len-underflow-separate-spans.rs:11:17
+   |
+LL |     let a: [i8; LEN] = unimplemented!();
+   |                 ^^^ referenced constant has errors
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

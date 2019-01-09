@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Management of the encoding of LLVM bytecode into rlibs
 //!
 //! This module contains the management of encoding LLVM bytecode into rlibs,
@@ -42,7 +32,7 @@ use flate2::write::DeflateEncoder;
 
 // This is the "magic number" expected at the beginning of a LLVM bytecode
 // object in an rlib.
-pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
+pub const RLIB_BYTECODE_OBJECT_MAGIC: &[u8] = b"RUST_OBJECT";
 
 // The version number this compiler will write to bytecode objects in rlibs
 pub const RLIB_BYTECODE_OBJECT_VERSION: u8 = 2;
@@ -106,39 +96,39 @@ pub struct DecodedBytecode<'a> {
 }
 
 impl<'a> DecodedBytecode<'a> {
-    pub fn new(data: &'a [u8]) -> Result<DecodedBytecode<'a>, String> {
+    pub fn new(data: &'a [u8]) -> Result<DecodedBytecode<'a>, &'static str> {
         if !data.starts_with(RLIB_BYTECODE_OBJECT_MAGIC) {
-            return Err("magic bytecode prefix not found".to_string())
+            return Err("magic bytecode prefix not found")
         }
         let data = &data[RLIB_BYTECODE_OBJECT_MAGIC.len()..];
         if !data.starts_with(&[RLIB_BYTECODE_OBJECT_VERSION, 0, 0, 0]) {
-            return Err("wrong version prefix found in bytecode".to_string())
+            return Err("wrong version prefix found in bytecode")
         }
         let data = &data[4..];
         if data.len() < 4 {
-            return Err("bytecode corrupted".to_string())
+            return Err("bytecode corrupted")
         }
         let identifier_len = unsafe {
             u32::from_le(ptr::read_unaligned(data.as_ptr() as *const u32)) as usize
         };
         let data = &data[4..];
         if data.len() < identifier_len {
-            return Err("bytecode corrupted".to_string())
+            return Err("bytecode corrupted")
         }
         let identifier = match str::from_utf8(&data[..identifier_len]) {
             Ok(s) => s,
-            Err(_) => return Err("bytecode corrupted".to_string())
+            Err(_) => return Err("bytecode corrupted")
         };
         let data = &data[identifier_len..];
         if data.len() < 8 {
-            return Err("bytecode corrupted".to_string())
+            return Err("bytecode corrupted")
         }
         let bytecode_len = unsafe {
             u64::from_le(ptr::read_unaligned(data.as_ptr() as *const u64)) as usize
         };
         let data = &data[8..];
         if data.len() < bytecode_len {
-            return Err("bytecode corrupted".to_string())
+            return Err("bytecode corrupted")
         }
         let encoded_bytecode = &data[..bytecode_len];
 

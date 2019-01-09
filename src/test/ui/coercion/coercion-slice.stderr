@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/coercion-slice.rs:4:21
+   |
+LL |     let _: &[i32] = [0];
+   |                     ^^^
+   |                     |
+   |                     expected &[i32], found array of 1 elements
+   |                     help: consider borrowing here: `&[0]`
+   |
+   = note: expected type `&[i32]`
+              found type `[{integer}; 1]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

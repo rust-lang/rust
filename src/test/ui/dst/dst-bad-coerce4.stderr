@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce4.rs:12:32
+   |
+LL |     let f2: &Fat<[isize; 3]> = f1;
+   |                                ^^ expected array of 3 elements, found slice
+   |
+   = note: expected type `&Fat<[isize; 3]>`
+              found type `&Fat<[isize]>`
+
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce4.rs:20:30
+   |
+LL |     let f2: &([isize; 3],) = f1;
+   |                              ^^ expected array of 3 elements, found slice
+   |
+   = note: expected type `&([isize; 3],)`
+              found type `&([isize],)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

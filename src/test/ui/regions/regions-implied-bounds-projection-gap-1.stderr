@@ -1,0 +1,18 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-implied-bounds-projection-gap-1.rs:16:10
+   |
+LL | fn func<'x, T:Trait1<'x>>(t: &'x T::Foo)
+   |             -- help: consider adding an explicit lifetime bound `T: 'x`...
+LL | {
+LL |     wf::<&'x T>();
+   |          ^^^^^
+   |
+note: ...so that the reference type `&'x T` does not outlive the data it points at
+  --> $DIR/regions-implied-bounds-projection-gap-1.rs:16:10
+   |
+LL |     wf::<&'x T>();
+   |          ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

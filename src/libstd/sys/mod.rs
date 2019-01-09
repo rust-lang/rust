@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Platform-dependent platform abstraction
 //!
 //! The `std::sys` module is the abstracted interface through which
@@ -48,6 +38,9 @@ cfg_if! {
     } else if #[cfg(target_arch = "wasm32")] {
         mod wasm;
         pub use self::wasm::*;
+    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+        mod sgx;
+        pub use self::sgx::*;
     } else {
         compile_error!("libstd doesn't compile for this platform yet");
     }
@@ -57,12 +50,14 @@ cfg_if! {
 // then later used in the `std::os` module when documenting, for example,
 // Windows when we're compiling for Linux.
 
-#[cfg(dox)]
+#[cfg(rustdoc)]
 cfg_if! {
     if #[cfg(any(unix, target_os = "redox"))] {
         // On unix we'll document what's already available
         pub use self::ext as unix_ext;
-    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
+    } else if #[cfg(any(target_os = "cloudabi",
+                        target_arch = "wasm32",
+                        all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the module below doesn't compile
         // (missing things in `libc` which is empty) so just omit everything
         // with an empty module
@@ -77,13 +72,15 @@ cfg_if! {
     }
 }
 
-#[cfg(dox)]
+#[cfg(rustdoc)]
 cfg_if! {
     if #[cfg(windows)] {
         // On windows we'll just be documenting what's already available
         #[allow(missing_docs)]
         pub use self::ext as windows_ext;
-    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
+    } else if #[cfg(any(target_os = "cloudabi",
+                        target_arch = "wasm32",
+                        all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the shim below doesn't compile, so
         // just omit it
         #[unstable(issue = "0", feature = "std_internals")]

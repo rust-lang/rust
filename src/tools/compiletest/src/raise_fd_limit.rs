@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// darwin_fd_limit exists to work around an issue where launchctl on macOS
 /// defaults the rlimit maxfiles to 256/unlimited. The default soft limit of 256
 /// ends up being far too low for our multithreaded scheduler testing, depending
@@ -57,14 +47,16 @@ pub unsafe fn raise_fd_limit() {
         panic!("raise_fd_limit: error calling getrlimit: {}", err);
     }
 
-    // Bump the soft limit to the smaller of kern.maxfilesperproc and the hard
-    // limit
-    rlim.rlim_cur = cmp::min(maxfiles as libc::rlim_t, rlim.rlim_max);
+    // Make sure we're only ever going to increase the rlimit.
+    if rlim.rlim_cur < maxfiles as libc::rlim_t {
+        // Bump the soft limit to the smaller of kern.maxfilesperproc and the hard limit.
+        rlim.rlim_cur = cmp::min(maxfiles as libc::rlim_t, rlim.rlim_max);
 
-    // Set our newly-increased resource limit
-    if libc::setrlimit(libc::RLIMIT_NOFILE, &rlim) != 0 {
-        let err = io::Error::last_os_error();
-        panic!("raise_fd_limit: error calling setrlimit: {}", err);
+        // Set our newly-increased resource limit.
+        if libc::setrlimit(libc::RLIMIT_NOFILE, &rlim) != 0 {
+            let err = io::Error::last_os_error();
+            panic!("raise_fd_limit: error calling setrlimit: {}", err);
+        }
     }
 }
 

@@ -1,0 +1,101 @@
+error[E0277]: `dummy::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:23:5
+   |
+LL |     Outer(TestType);
+   |     ^^^^^ `dummy::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
+note: required by `Outer`
+  --> $DIR/traits-negative-impls.rs:10:1
+   |
+LL | struct Outer<T: Send>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `dummy::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:23:5
+   |
+LL |     Outer(TestType);
+   |     ^^^^^^^^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
+note: required by `Outer`
+  --> $DIR/traits-negative-impls.rs:10:1
+   |
+LL | struct Outer<T: Send>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:32:5
+   |
+LL |     is_send(TestType);
+   |     ^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy1b::TestType`
+note: required by `is_send`
+  --> $DIR/traits-negative-impls.rs:16:1
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:40:5
+   |
+LL |     is_send((8, TestType));
+   |     ^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
+   |
+   = help: within `({integer}, dummy1c::TestType)`, the trait `std::marker::Send` is not implemented for `dummy1c::TestType`
+   = note: required because it appears within the type `({integer}, dummy1c::TestType)`
+note: required by `is_send`
+  --> $DIR/traits-negative-impls.rs:16:1
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `dummy2::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:48:5
+   |
+LL |     is_send(Box::new(TestType));
+   |     ^^^^^^^ `dummy2::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy2::TestType`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<dummy2::TestType>`
+   = note: required because it appears within the type `std::boxed::Box<dummy2::TestType>`
+note: required by `is_send`
+  --> $DIR/traits-negative-impls.rs:16:1
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `dummy3::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:56:5
+   |
+LL |     is_send(Box::new(Outer2(TestType)));
+   |     ^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
+   |
+   = help: within `Outer2<dummy3::TestType>`, the trait `std::marker::Send` is not implemented for `dummy3::TestType`
+   = note: required because it appears within the type `Outer2<dummy3::TestType>`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<Outer2<dummy3::TestType>>`
+   = note: required because it appears within the type `std::boxed::Box<Outer2<dummy3::TestType>>`
+note: required by `is_send`
+  --> $DIR/traits-negative-impls.rs:16:1
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `main::TestType` cannot be sent between threads safely
+  --> $DIR/traits-negative-impls.rs:66:5
+   |
+LL |     is_sync(Outer2(TestType));
+   |     ^^^^^^^ `main::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `main::TestType`
+   = note: required because of the requirements on the impl of `std::marker::Sync` for `Outer2<main::TestType>`
+note: required by `is_sync`
+  --> $DIR/traits-negative-impls.rs:17:1
+   |
+LL | fn is_sync<T: Sync>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

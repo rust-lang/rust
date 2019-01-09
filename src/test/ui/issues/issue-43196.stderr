@@ -1,0 +1,16 @@
+error: expected `|`, found `}`
+  --> $DIR/issue-43196.rs:3:1
+   |
+LL |     |
+   |      - expected `|` here
+LL | }
+   | ^ unexpected token
+
+error: expected item, found `|`
+  --> $DIR/issue-43196.rs:5:1
+   |
+LL | |
+   | ^ expected item
+
+error: aborting due to 2 previous errors
+

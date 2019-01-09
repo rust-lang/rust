@@ -1,0 +1,15 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/assoc-type.rs:11:19
+   |
+LL |     type Output = &i32;
+   |                   ^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/assoc-type.rs:16:20
+   |
+LL |     type Output = &'_ i32;
+   |                    ^^ expected lifetime parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

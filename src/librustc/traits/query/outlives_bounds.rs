@@ -1,17 +1,7 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use infer::InferCtxt;
+use infer::canonical::OriginalQueryValues;
 use syntax::ast;
-use syntax::codemap::Span;
-use rustc_data_structures::small_vec::SmallVec;
+use syntax::source_map::Span;
 use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use traits::query::NoSolution;
 use ty::{self, Ty, TyCtxt};
@@ -105,7 +95,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) -> Vec<OutlivesBound<'tcx>> {
         debug!("implied_outlives_bounds(ty = {:?})", ty);
 
-        let mut orig_values = SmallVec::new();
+        let mut orig_values = OriginalQueryValues::default();
         let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
         let result = match self.tcx.global_tcx().implied_outlives_bounds(key) {
             Ok(r) => r,
@@ -119,7 +109,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         };
         assert!(result.value.is_proven());
 
-        let result = self.instantiate_query_result_and_region_obligations(
+        let result = self.instantiate_query_response_and_region_obligations(
             &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {
@@ -137,7 +127,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // variables. Process these constraints.
         let mut fulfill_cx = FulfillmentContext::new();
         fulfill_cx.register_predicate_obligations(self, result.obligations);
-        if let Err(_) = fulfill_cx.select_all_or_error(self) {
+        if fulfill_cx.select_all_or_error(self).is_err() {
             self.tcx.sess.delay_span_bug(
                 span,
                 "implied_outlives_bounds failed to solve obligations from instantiation"
@@ -164,7 +154,7 @@ pub fn explicit_outlives_bounds<'tcx>(
             ty::Predicate::ClosureKind(..) |
             ty::Predicate::TypeOutlives(..) |
             ty::Predicate::ConstEvaluatable(..) => None,
-            ty::Predicate::RegionOutlives(ref data) => data.no_late_bound_regions().map(
+            ty::Predicate::RegionOutlives(ref data) => data.no_bound_vars().map(
                 |ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a),
             ),
         })

@@ -1,0 +1,9 @@
+error[E0606]: casting `Test` as `*const isize` is invalid
+  --> $DIR/issue-17444.rs:6:14
+   |
+LL |     let _x = Test::Foo as *const isize;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0606`.

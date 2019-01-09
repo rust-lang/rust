@@ -1,0 +1,14 @@
+error[E0597]: `line` does not live long enough
+  --> $DIR/issue-52126-assign-op-invariance.rs:34:28
+   |
+LL |         let v: Vec<&str> = line.split_whitespace().collect();
+   |                            ^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `line` dropped here while still borrowed
+LL | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

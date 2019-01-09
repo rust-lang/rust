@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Temporal quantification.
 //!
 //! Example:
@@ -22,14 +12,19 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+use cmp;
 use error::Error;
 use fmt;
 use ops::{Add, Sub, AddAssign, SubAssign};
 use sys::time;
 use sys_common::FromInner;
+use sys_common::mutex::Mutex;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
+
+#[unstable(feature = "duration_constants", issue = "57391")]
+pub use core::time::{SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with `Duration`.
@@ -160,7 +155,45 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn now() -> Instant {
-        Instant(time::Instant::now())
+        let os_now = time::Instant::now();
+
+        // And here we come upon a sad state of affairs. The whole point of
+        // `Instant` is that it's monotonically increasing. We've found in the
+        // wild, however, that it's not actually monotonically increasing for
+        // one reason or another. These appear to be OS and hardware level bugs,
+        // and there's not really a whole lot we can do about them. Here's a
+        // taste of what we've found:
+        //
+        // * #48514 - OpenBSD, x86_64
+        // * #49281 - linux arm64 and s390x
+        // * #51648 - windows, x86
+        // * #56560 - windows, x86_64, AWS
+        // * #56612 - windows, x86, vm (?)
+        // * #56940 - linux, arm64
+        // * https://bugzilla.mozilla.org/show_bug.cgi?id=1487778 - a similar
+        //   Firefox bug
+        //
+        // It simply seems that this it just happens so that a lot in the wild
+        // we're seeing panics across various platforms where consecutive calls
+        // to `Instant::now`, such as via the `elapsed` function, are panicking
+        // as they're going backwards. Placed here is a last-ditch effort to try
+        // to fix things up. We keep a global "latest now" instance which is
+        // returned instead of what the OS says if the OS goes backwards.
+        //
+        // To hopefully mitigate the impact of this though a few platforms are
+        // whitelisted as "these at least haven't gone backwards yet".
+        if time::Instant::actually_monotonic() {
+            return Instant(os_now)
+        }
+
+        static LOCK: Mutex = Mutex::new();
+        static mut LAST_NOW: time::Instant = time::Instant::zero();
+        unsafe {
+            let _lock = LOCK.lock();
+            let now = cmp::max(LAST_NOW, os_now);
+            LAST_NOW = now;
+            Instant(now)
+        }
     }
 
     /// Returns the amount of time elapsed from another instant to this one.
@@ -208,14 +241,37 @@ impl Instant {
     pub fn elapsed(&self) -> Duration {
         Instant::now() - *self
     }
+
+    /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
+    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
+        self.0.checked_add_duration(&duration).map(|t| Instant(t))
+    }
+
+    /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
+    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
+        self.0.checked_sub_duration(&duration).map(|t| Instant(t))
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl Add<Duration> for Instant {
     type Output = Instant;
 
+    /// # Panics
+    ///
+    /// This function may panic if the resulting point in time cannot be represented by the
+    /// underlying data structure. See [`checked_add`] for a version without panic.
+    ///
+    /// [`checked_add`]: ../../std/time/struct.Instant.html#method.checked_add
     fn add(self, other: Duration) -> Instant {
-        Instant(self.0.add_duration(&other))
+        self.checked_add(other)
+            .expect("overflow when adding duration to instant")
     }
 }
 
@@ -231,7 +287,8 @@ impl Sub<Duration> for Instant {
     type Output = Instant;
 
     fn sub(self, other: Duration) -> Instant {
-        Instant(self.0.sub_duration(&other))
+        self.checked_sub(other)
+            .expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -330,7 +387,7 @@ impl SystemTime {
     /// Returns the amount of time elapsed since this system time was created.
     ///
     /// This function may fail as the underlying system clock is susceptible to
-    /// drift and updates (e.g. the system clock could go backwards), so this
+    /// drift and updates (e.g., the system clock could go backwards), so this
     /// function may not always succeed. If successful, [`Ok`]`(`[`Duration`]`)` is
     /// returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
@@ -357,14 +414,37 @@ impl SystemTime {
     pub fn elapsed(&self) -> Result<Duration, SystemTimeError> {
         SystemTime::now().duration_since(*self)
     }
+
+    /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
+    /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
+        self.0.checked_add_duration(&duration).map(|t| SystemTime(t))
+    }
+
+    /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
+    /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
+        self.0.checked_sub_duration(&duration).map(|t| SystemTime(t))
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl Add<Duration> for SystemTime {
     type Output = SystemTime;
 
+    /// # Panics
+    ///
+    /// This function may panic if the resulting point in time cannot be represented by the
+    /// underlying data structure. See [`checked_add`] for a version without panic.
+    ///
+    /// [`checked_add`]: ../../std/time/struct.SystemTime.html#method.checked_add
     fn add(self, dur: Duration) -> SystemTime {
-        SystemTime(self.0.add_duration(&dur))
+        self.checked_add(dur)
+            .expect("overflow when adding duration to instant")
     }
 }
 
@@ -380,7 +460,8 @@ impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
-        SystemTime(self.0.sub_duration(&dur))
+        self.checked_sub(dur)
+            .expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -481,7 +562,8 @@ mod tests {
             let (a, b) = ($a, $b);
             if a != b {
                 let (a, b) = if a > b {(a, b)} else {(b, a)};
-                assert!(a - Duration::new(0, 100) <= b);
+                assert!(a - Duration::new(0, 1000) <= b,
+                        "{:?} is not almost equal to {:?}", a, b);
             }
         })
     }
@@ -503,12 +585,29 @@ mod tests {
     fn instant_math() {
         let a = Instant::now();
         let b = Instant::now();
+        println!("a: {:?}", a);
+        println!("b: {:?}", b);
         let dur = b.duration_since(a);
+        println!("dur: {:?}", dur);
         assert_almost_eq!(b - dur, a);
         assert_almost_eq!(a + dur, b);
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a - second + second, a);
+        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
+
+        // checked_add_duration will not panic on overflow
+        let mut maybe_t = Some(Instant::now());
+        let max_duration = Duration::from_secs(u64::max_value());
+        // in case `Instant` can store `>= now + max_duration`.
+        for _ in 0..2 {
+            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
+        }
+        assert_eq!(maybe_t, None);
+
+        // checked_add_duration calculates the right time and will work for another year
+        let year = Duration::from_secs(60 * 60 * 24 * 365);
+        assert_eq!(a + year, a.checked_add(year).unwrap());
     }
 
     #[test]
@@ -545,6 +644,7 @@ mod tests {
                            .duration(), second);
 
         assert_almost_eq!(a - second + second, a);
+        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
         // A difference of 80 and 800 years cannot fit inside a 32-bit time_t
         if !(cfg!(unix) && ::mem::size_of::<::libc::time_t>() <= 4) {
@@ -557,6 +657,19 @@ mod tests {
         let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
             + Duration::new(0, 500_000_000);
         assert_eq!(one_second_from_epoch, one_second_from_epoch2);
+
+        // checked_add_duration will not panic on overflow
+        let mut maybe_t = Some(SystemTime::UNIX_EPOCH);
+        let max_duration = Duration::from_secs(u64::max_value());
+        // in case `SystemTime` can store `>= UNIX_EPOCH + max_duration`.
+        for _ in 0..2 {
+            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
+        }
+        assert_eq!(maybe_t, None);
+
+        // checked_add_duration calculates the right time and will work for another year
+        let year = Duration::from_secs(60 * 60 * 24 * 365);
+        assert_eq!(a + year, a.checked_add(year).unwrap());
     }
 
     #[test]

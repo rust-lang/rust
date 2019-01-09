@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `u32: Signed` is not satisfied
+  --> $DIR/typeck-default-trait-impl-precedence.rs:18:5
+   |
+LL |     is_defaulted::<&'static u32>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Signed` is not implemented for `u32`
+   |
+   = note: required because of the requirements on the impl of `Defaulted` for `&'static u32`
+note: required by `is_defaulted`
+  --> $DIR/typeck-default-trait-impl-precedence.rs:11:1
+   |
+LL | fn is_defaulted<T:Defaulted>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

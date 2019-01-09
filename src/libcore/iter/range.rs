@@ -1,13 +1,3 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use convert::TryFrom;
 use mem;
 use ops::{self, Add, Sub};
@@ -165,8 +155,16 @@ macro_rules! step_impl_no_between {
     )*)
 }
 
-step_impl_unsigned!(usize u8 u16 u32);
-step_impl_signed!([isize: usize] [i8: u8] [i16: u16] [i32: u32]);
+step_impl_unsigned!(usize u8 u16);
+#[cfg(not(target_pointer_width = "16"))]
+step_impl_unsigned!(u32);
+#[cfg(target_pointer_width = "16")]
+step_impl_no_between!(u32);
+step_impl_signed!([isize: usize] [i8: u8] [i16: u16]);
+#[cfg(not(target_pointer_width = "16"))]
+step_impl_signed!([i32: u32]);
+#[cfg(target_pointer_width = "16")]
+step_impl_no_between!(i32);
 #[cfg(target_pointer_width = "64")]
 step_impl_unsigned!(u64);
 #[cfg(target_pointer_width = "64")]

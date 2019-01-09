@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-16338.rs:7:9
+   |
+LL |     let Slice { data: data, len: len } = "foo";
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected str, found struct `Slice`
+   |
+   = note: expected type `str`
+              found type `Slice<_>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

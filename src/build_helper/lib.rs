@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -91,13 +81,13 @@ pub fn try_run_suppressed(cmd: &mut Command) -> bool {
     output.status.success()
 }
 
-pub fn gnu_target(target: &str) -> String {
+pub fn gnu_target(target: &str) -> &str {
     match target {
-        "i686-pc-windows-msvc" => "i686-pc-win32".to_string(),
-        "x86_64-pc-windows-msvc" => "x86_64-pc-win32".to_string(),
-        "i686-pc-windows-gnu" => "i686-w64-mingw32".to_string(),
-        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32".to_string(),
-        s => s.to_string(),
+        "i686-pc-windows-msvc" => "i686-pc-win32",
+        "x86_64-pc-windows-msvc" => "x86_64-pc-win32",
+        "i686-pc-windows-gnu" => "i686-w64-mingw32",
+        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32",
+        s => s,
     }
 }
 
@@ -178,6 +168,37 @@ pub struct NativeLibBoilerplate {
     pub out_dir: PathBuf,
 }
 
+impl NativeLibBoilerplate {
+    /// On OSX we don't want to ship the exact filename that compiler-rt builds.
+    /// This conflicts with the system and ours is likely a wildly different
+    /// version, so they can't be substituted.
+    ///
+    /// As a result, we rename it here but we need to also use
+    /// `install_name_tool` on OSX to rename the commands listed inside of it to
+    /// ensure it's linked against correctly.
+    pub fn fixup_sanitizer_lib_name(&self, sanitizer_name: &str) {
+        if env::var("TARGET").unwrap() != "x86_64-apple-darwin" {
+            return
+        }
+
+        let dir = self.out_dir.join("build/lib/darwin");
+        let name = format!("clang_rt.{}_osx_dynamic", sanitizer_name);
+        let src = dir.join(&format!("lib{}.dylib", name));
+        let new_name = format!("lib__rustc__{}.dylib", name);
+        let dst = dir.join(&new_name);
+
+        println!("{} => {}", src.display(), dst.display());
+        fs::rename(&src, &dst).unwrap();
+        let status = Command::new("install_name_tool")
+            .arg("-id")
+            .arg(format!("@rpath/{}", new_name))
+            .arg(&dst)
+            .status()
+            .expect("failed to execute `install_name_tool`");
+        assert!(status.success());
+    }
+}
+
 impl Drop for NativeLibBoilerplate {
     fn drop(&mut self) {
         if !thread::panicking() {
@@ -193,16 +214,15 @@ impl Drop for NativeLibBoilerplate {
 // Timestamps are created automatically when the result of `native_lib_boilerplate` goes out
 // of scope, so all the build actions should be completed until then.
 pub fn native_lib_boilerplate(
-    src_name: &str,
+    src_dir: &Path,
     out_name: &str,
     link_name: &str,
     search_subdir: &str,
 ) -> Result<NativeLibBoilerplate, ()> {
-    let current_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let src_dir = current_dir.join("..").join(src_name);
-    rerun_if_changed_anything_in_dir(&src_dir);
+    rerun_if_changed_anything_in_dir(src_dir);
 
-    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
+    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or_else(||
+        env::var_os("OUT_DIR").unwrap());
     let out_dir = PathBuf::from(out_dir).join(out_name);
     t!(fs::create_dir_all(&out_dir));
     if link_name.contains('=') {
@@ -216,9 +236,9 @@ pub fn native_lib_boilerplate(
     );
 
     let timestamp = out_dir.join("rustbuild.timestamp");
-    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(&src_dir, &timestamp) {
+    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(src_dir, &timestamp) {
         Ok(NativeLibBoilerplate {
-            src_dir: src_dir,
+            src_dir: src_dir.to_path_buf(),
             out_dir: out_dir,
         })
     } else {
@@ -229,7 +249,7 @@ pub fn native_lib_boilerplate(
 pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
     -> Result<(NativeLibBoilerplate, String), ()>
 {
-    let (link_name, search_path, dynamic) = match &*env::var("TARGET").unwrap() {
+    let (link_name, search_path, apple) = match &*env::var("TARGET").unwrap() {
         "x86_64-unknown-linux-gnu" => (
             format!("clang_rt.{}-x86_64", sanitizer_name),
             "build/lib/linux",
@@ -242,13 +262,16 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
         ),
         _ => return Err(()),
     };
-    let to_link = if dynamic {
-        format!("dylib={}", link_name)
+    let to_link = if apple {
+        format!("dylib=__rustc__{}", link_name)
     } else {
         format!("static={}", link_name)
     };
+    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
+    // load our env var set by cargo to find the source code.
+    let dir = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
     let lib = native_lib_boilerplate(
-        "libcompiler_builtins/compiler-rt",
+        dir.as_ref(),
         sanitizer_name,
         &to_link,
         search_path,

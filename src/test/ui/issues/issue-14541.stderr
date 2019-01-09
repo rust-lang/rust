@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-14541.rs:5:9
+   |
+LL |     let Vec3 { y: _, z: _ } = v;
+   |         ^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found struct `Vec3`
+   |
+   = note: expected type `Vec2`
+              found type `Vec3`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

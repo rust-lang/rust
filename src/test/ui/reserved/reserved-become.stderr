@@ -1,0 +1,8 @@
+error: expected pattern, found reserved keyword `become`
+  --> $DIR/reserved-become.rs:2:9
+   |
+LL |     let become = 0;
+   |         ^^^^^^ expected pattern
+
+error: aborting due to previous error
+

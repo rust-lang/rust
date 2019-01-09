@@ -1,0 +1,17 @@
+error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
+  --> $DIR/mutexguard-sync.rs:11:5
+   |
+LL |     test_sync(guard);
+   |     ^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::Cell<i32>`
+   = note: required because of the requirements on the impl of `std::marker::Sync` for `std::sync::MutexGuard<'_, std::cell::Cell<i32>>`
+note: required by `test_sync`
+  --> $DIR/mutexguard-sync.rs:5:1
+   |
+LL | fn test_sync<T: Sync>(_t: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

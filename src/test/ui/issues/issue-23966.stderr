@@ -1,0 +1,11 @@
+error[E0277]: expected a `std::ops::FnMut<(_, char)>` closure, found `()`
+  --> $DIR/issue-23966.rs:2:16
+   |
+LL |     "".chars().fold(|_, _| (), ());
+   |                ^^^^ expected an `FnMut<(_, char)>` closure, found `()`
+   |
+   = help: the trait `std::ops::FnMut<(_, char)>` is not implemented for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

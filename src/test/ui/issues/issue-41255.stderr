@@ -1,0 +1,88 @@
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:10:9
+   |
+LL |         5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |         ^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-41255.rs:5:11
+   |
+LL | #![forbid(illegal_floating_point_literal_pattern)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:12:9
+   |
+LL |         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |         ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:14:10
+   |
+LL |         -5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |          ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:16:9
+   |
+LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |         ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:16:16
+   |
+LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |                ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:20:9
+   |
+LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |         ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:20:18
+   |
+LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+   |                  ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:29:10
+   |
+LL |         (3.14, 1) => {}, //~ ERROR floating-point types cannot be used
+   |          ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-41255.rs:36:18
+   |
+LL |         Foo { x: 2.0 } => {}, //~ ERROR floating-point types cannot be used
+   |                  ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: aborting due to 9 previous errors
+

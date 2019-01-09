@@ -1,0 +1,27 @@
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/issue-47715.rs:9:37
+   |
+LL | struct Container<T: Iterable<Item = impl Foo>> {
+   |                                     ^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/issue-47715.rs:14:30
+   |
+LL | enum Enum<T: Iterable<Item = impl Foo>> {
+   |                              ^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/issue-47715.rs:19:32
+   |
+LL | union Union<T: Iterable<Item = impl Foo> + Copy> {
+   |                                ^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/issue-47715.rs:24:30
+   |
+LL | type Type<T: Iterable<Item = impl Foo>> = T;
+   |                              ^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

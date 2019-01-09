@@ -1,0 +1,33 @@
+error[E0277]: `*const Bar` cannot be shared between threads safely
+  --> $DIR/recursive-requirements.rs:16:12
+   |
+LL |     let _: AssertSync<Foo> = unimplemented!();
+   |            ^^^^^^^^^^^^^^^ `*const Bar` cannot be shared between threads safely
+   |
+   = help: within `Foo`, the trait `std::marker::Sync` is not implemented for `*const Bar`
+   = note: required because it appears within the type `Foo`
+note: required by `AssertSync`
+  --> $DIR/recursive-requirements.rs:3:1
+   |
+LL | struct AssertSync<T: Sync>(PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `*const Foo` cannot be shared between threads safely
+  --> $DIR/recursive-requirements.rs:16:12
+   |
+LL |     let _: AssertSync<Foo> = unimplemented!();
+   |            ^^^^^^^^^^^^^^^ `*const Foo` cannot be shared between threads safely
+   |
+   = help: within `Foo`, the trait `std::marker::Sync` is not implemented for `*const Foo`
+   = note: required because it appears within the type `Bar`
+   = note: required because it appears within the type `std::marker::PhantomData<Bar>`
+   = note: required because it appears within the type `Foo`
+note: required by `AssertSync`
+  --> $DIR/recursive-requirements.rs:3:1
+   |
+LL | struct AssertSync<T: Sync>(PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

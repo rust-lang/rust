@@ -1,23 +1,13 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use attr::HasAttrs;
 use ast;
-use codemap::{hygiene, ExpnInfo, ExpnFormat};
+use source_map::{hygiene, ExpnInfo, ExpnFormat};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use parse::parser::PathStyle;
 use symbol::Symbol;
 use syntax_pos::Span;
 
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 
 pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
@@ -48,7 +38,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
 pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: T) -> T
     where T: HasAttrs,
 {
-    let (mut names, mut pretty_name) = (HashSet::new(), "derive(".to_owned());
+    let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
     for (i, path) in traits.iter().enumerate() {
         if i > 0 {
             pretty_name.push_str(", ");

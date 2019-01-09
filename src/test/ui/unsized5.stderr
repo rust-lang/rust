@@ -1,0 +1,67 @@
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:4:5
+   |
+LL |     f1: X,
+   |     ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: only the last field of a struct may have a dynamically sized type
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:10:5
+   |
+LL |     g: X,
+   |     ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: only the last field of a struct may have a dynamically sized type
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized5.rs:15:5
+   |
+LL |     f: str,
+   |     ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: only the last field of a struct may have a dynamically sized type
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized5.rs:20:5
+   |
+LL |     f: [u8],
+   |     ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: only the last field of a struct may have a dynamically sized type
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:25:8
+   |
+LL |     V1(X, isize),
+   |        ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: no field of an enum variant may have a dynamically sized type
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:29:8
+   |
+LL |     V2{f1: X, f: isize},
+   |        ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+   = note: no field of an enum variant may have a dynamically sized type
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

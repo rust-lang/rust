@@ -1,0 +1,51 @@
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:10:17
+   |
+LL |     let x = 2.0.neg();
+   |                 ^^^
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+LL |     let x = 2.0_f32.neg();
+   |             ^^^^^^^
+
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:14:15
+   |
+LL |     let x = y.neg();
+   |               ^^^
+help: you must specify a type for this binding, like `f32`
+   |
+LL |     let y: f32 = 2.0;
+   |         ^^^^^^
+
+error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:19:26
+   |
+LL |     for i in 0..100 {
+   |         - you must specify a type for this binding, like `i32`
+LL |         println!("{}", i.pow(2));
+   |                          ^^^
+
+error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:24:15
+   |
+LL |     local_bar.pow(2);
+   |               ^^^
+help: you must specify a type for this binding, like `i32`
+   |
+LL |     ($ident:ident) => { let $ident: i32 = 42; }
+   |                             ^^^^^^^^^^^
+
+error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:30:9
+   |
+LL |     mac!(bar);
+   |     ---------- you must specify a type for this binding, like `i32`
+LL |     bar.pow(2);
+   |         ^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0689`.

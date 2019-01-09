@@ -1,5 +1,5 @@
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/E0053.rs:19:15
+  --> $DIR/E0053.rs:9:15
    |
 LL |     fn foo(x: u16);
    |               --- type in trait
@@ -11,7 +11,7 @@ LL |     fn foo(x: i16) { }
               found type `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/E0053.rs:21:12
+  --> $DIR/E0053.rs:11:12
    |
 LL |     fn bar(&self);
    |            ----- type in trait

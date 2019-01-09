@@ -1,0 +1,8 @@
+error: expected `where`, `{`, `(`, or `;` after struct name, found keyword `for`
+  --> $DIR/unsized.rs:3:11
+   |
+LL | struct S1 for type;
+   |           ^^^ expected `where`, `{`, `(`, or `;` after struct name
+
+error: aborting due to previous error
+

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The MIR is built from some high-level abstract IR
 //! (HAIR). This section defines the HAIR along with a trait for
 //! accessing it. The intention is to allow MIR construction to be
@@ -16,18 +6,24 @@
 
 use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc::hir::def_id::DefId;
+use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const};
+use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserTypeAnnotation};
+use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
 use self::cx::Cx;
 
 pub mod cx;
+mod constant;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
+pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternRange, FieldPattern};
+pub(crate) use self::pattern::PatternTypeProjection;
+
+mod util;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
@@ -69,9 +65,13 @@ pub enum StmtRef<'tcx> {
 }
 
 #[derive(Clone, Debug)]
+pub struct StatementSpan(pub Span);
+
+#[derive(Clone, Debug)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_scope: Option<region::Scope>,
+    pub span: StatementSpan,
 }
 
 #[derive(Clone, Debug)]
@@ -93,11 +93,10 @@ pub enum StmtKind<'tcx> {
         /// lifetime of temporaries
         init_scope: region::Scope,
 
-        /// let <PAT>: ty = ...
+        /// `let <PAT> = ...`
+        ///
+        /// if a type is included, it is added as an ascription pattern
         pattern: Pattern<'tcx>,
-
-        /// let pat: <TY> = init ...
-        ty: Option<hir::HirId>,
 
         /// let pat: ty = <INIT> ...
         initializer: Option<ExprRef<'tcx>>,
@@ -113,7 +112,7 @@ pub enum StmtKind<'tcx> {
 /// reference to an expression in this enum is an `ExprRef<'tcx>`, which
 /// may in turn be another instance of this enum (boxed), or else an
 /// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
-/// shortlived. They are created by `Hair::to_expr`, analyzed and
+/// short-lived. They are created by `Hair::to_expr`, analyzed and
 /// converted into MIR, and then discarded.
 ///
 /// If you compare `Expr` to the full compiler AST, you will see it is
@@ -151,6 +150,9 @@ pub enum ExprKind<'tcx> {
         ty: Ty<'tcx>,
         fun: ExprRef<'tcx>,
         args: Vec<ExprRef<'tcx>>,
+        // Whether this is from a call in HIR, rather than from an overloaded
+        // operator. True for overloaded function call.
+        from_hir_call: bool,
     },
     Deref {
         arg: ExprRef<'tcx>,
@@ -233,7 +235,6 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: Region<'tcx>,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },
@@ -259,10 +260,25 @@ pub enum ExprKind<'tcx> {
     },
     Adt {
         adt_def: &'tcx AdtDef,
-        variant_index: usize,
+        variant_index: VariantIdx,
         substs: &'tcx Substs<'tcx>,
+
+        /// Optional user-given substs: for something like `let x =
+        /// Bar::<T> { ... }`.
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
+
         fields: Vec<FieldExprRef<'tcx>>,
         base: Option<FruInfo<'tcx>>
+    },
+    PlaceTypeAscription {
+        source: ExprRef<'tcx>,
+        /// Type that the user gave to this expression
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
+    },
+    ValueTypeAscription {
+        source: ExprRef<'tcx>,
+        /// Type that the user gave to this expression
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
     },
     Closure {
         closure_id: DefId,
@@ -271,7 +287,8 @@ pub enum ExprKind<'tcx> {
         movability: Option<hir::GeneratorMovability>,
     },
     Literal {
-        literal: &'tcx Const<'tcx>,
+        literal: &'tcx LazyConst<'tcx>,
+        user_ty: Option<Canonical<'tcx, UserTypeAnnotation<'tcx>>>,
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsm,
@@ -304,9 +321,14 @@ pub struct FruInfo<'tcx> {
 #[derive(Clone, Debug)]
 pub struct Arm<'tcx> {
     pub patterns: Vec<Pattern<'tcx>>,
-    pub guard: Option<ExprRef<'tcx>>,
+    pub guard: Option<Guard<'tcx>>,
     pub body: ExprRef<'tcx>,
     pub lint_level: LintLevel,
+}
+
+#[derive(Clone, Debug)]
+pub enum Guard<'tcx> {
+    If(ExprRef<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]

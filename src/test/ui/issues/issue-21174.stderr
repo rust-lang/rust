@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/issue-21174.rs:7:30
+   |
+LL |     let new: T::B = unsafe { std::mem::transmute(value) };
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `<T as Trait<'a>>::A` (size can vary because of <T as Trait>::A)
+   = note: target type: `<T as Trait<'a>>::B` (size can vary because of <T as Trait>::B)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

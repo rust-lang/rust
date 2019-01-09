@@ -1,0 +1,9 @@
+error[E0107]: wrong number of type arguments: expected 1, found 2
+  --> $DIR/typeck_type_placeholder_lifetime_2.rs:9:19
+   |
+LL |     let c: Foo<_, usize> = Foo { r: &5 };
+   |                   ^^^^^ unexpected type argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

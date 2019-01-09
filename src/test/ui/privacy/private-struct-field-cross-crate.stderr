@@ -1,0 +1,9 @@
+error[E0616]: field `meows` of struct `cci_class::kitties::cat` is private
+  --> $DIR/private-struct-field-cross-crate.rs:7:14
+   |
+LL |   assert_eq!(nyan.meows, 52);
+   |              ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0616`.

@@ -1,0 +1,93 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+   |          - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // oh dear!
+LL |     box B(&*v) as Box<X>
+   |     ^^^^^^^^^^
+   |
+note: ...so that the type `B<'_, T>` will meet its required lifetime bounds
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL |     box B(&*v) as Box<X>
+   |     ^^^^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+   |          - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // oh dear!
+LL |     box B(&*v) as Box<X>
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...so that it can be closed over into an object
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL |     box B(&*v) as Box<X>
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:9
+   |
+LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+   |          - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // oh dear!
+LL |     box B(&*v) as Box<X>
+   |         ^
+   |
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/regions-close-object-into-object-5.rs:17:9
+   |
+LL |     box B(&*v) as Box<X>
+   |         ^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:9
+   |
+LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+   |          - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // oh dear!
+LL |     box B(&*v) as Box<X>
+   |         ^^^^^^
+   |
+note: ...so that the reference type `&dyn A<T>` does not outlive the data it points at
+  --> $DIR/regions-close-object-into-object-5.rs:17:9
+   |
+LL |     box B(&*v) as Box<X>
+   |         ^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:9
+   |
+LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+   |          - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // oh dear!
+LL |     box B(&*v) as Box<X>
+   |         ^^^^^^
+   |
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/regions-close-object-into-object-5.rs:17:9
+   |
+LL |     box B(&*v) as Box<X>
+   |         ^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:11
+   |
+LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+   |          - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // oh dear!
+LL |     box B(&*v) as Box<X>
+   |           ^^^
+   |
+note: ...so that the type `(dyn A<T> + 'static)` is not borrowed for too long
+  --> $DIR/regions-close-object-into-object-5.rs:17:11
+   |
+LL |     box B(&*v) as Box<X>
+   |           ^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

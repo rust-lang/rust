@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `Struct: std::cmp::Eq` is not satisfied
+  --> $DIR/where-clauses-unsatisfied.rs:6:10
+   |
+LL |     drop(equal(&Struct, &Struct))
+   |          ^^^^^ the trait `std::cmp::Eq` is not implemented for `Struct`
+   |
+note: required by `equal`
+  --> $DIR/where-clauses-unsatisfied.rs:1:1
+   |
+LL | fn equal<T>(a: &T, b: &T) -> bool where T : Eq { a == b }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

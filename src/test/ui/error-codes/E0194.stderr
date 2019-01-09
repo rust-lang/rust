@@ -1,5 +1,5 @@
 error[E0194]: type parameter `T` shadows another type parameter of the same name
-  --> $DIR/E0194.rs:13:26
+  --> $DIR/E0194.rs:3:26
    |
 LL | trait Foo<T> {
    |           - first `T` declared here

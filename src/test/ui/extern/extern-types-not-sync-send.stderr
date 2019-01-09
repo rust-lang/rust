@@ -1,0 +1,29 @@
+error[E0277]: `A` cannot be shared between threads safely
+  --> $DIR/extern-types-not-sync-send.rs:13:5
+   |
+LL |     assert_sync::<A>();
+   |     ^^^^^^^^^^^^^^^^ `A` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `A`
+note: required by `assert_sync`
+  --> $DIR/extern-types-not-sync-send.rs:9:1
+   |
+LL | fn assert_sync<T: ?Sized + Sync>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `A` cannot be sent between threads safely
+  --> $DIR/extern-types-not-sync-send.rs:16:5
+   |
+LL |     assert_send::<A>();
+   |     ^^^^^^^^^^^^^^^^ `A` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `A`
+note: required by `assert_send`
+  --> $DIR/extern-types-not-sync-send.rs:10:1
+   |
+LL | fn assert_send<T: ?Sized + Send>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

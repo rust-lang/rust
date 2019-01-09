@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Self: Get` is not satisfied
+  --> $DIR/associated-types-projection-to-unrelated-trait-in-method-without-default.rs:9:5
+   |
+LL |     fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
+   |
+   = help: consider adding a `where Self: Get` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

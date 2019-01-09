@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// Convert unsigned integers into a string representation with some base.
 /// Bases up to and including 36 can be used for case-insensitive things.
 
@@ -17,7 +7,7 @@ pub const MAX_BASE: usize = 64;
 pub const ALPHANUMERIC_ONLY: usize = 62;
 pub const CASE_INSENSITIVE: usize = 36;
 
-const BASE_64: &'static [u8; MAX_BASE as usize] =
+const BASE_64: &[u8; MAX_BASE as usize] =
     b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@$";
 
 #[inline]
@@ -37,7 +27,8 @@ pub fn push_str(mut n: u128, base: usize, output: &mut String) {
             break;
         }
     }
-    &mut s[0..index].reverse();
+    s[0..index].reverse();
+
     output.push_str(str::from_utf8(&s[0..index]).unwrap());
 }
 

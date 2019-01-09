@@ -1,0 +1,12 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/where_clauses_in_functions.rs:13:5
+   |
+LL | fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     foo(x, y)
+   |     ^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+
+error: aborting due to previous error
+

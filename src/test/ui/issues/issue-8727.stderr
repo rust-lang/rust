@@ -1,0 +1,21 @@
+warning: function cannot return without recursing
+  --> $DIR/issue-8727.rs:4:1
+   |
+LL | fn generic<T>() {
+   | ^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     generic::<Option<T>>();
+   |     ---------------------- recursive call site
+   |
+   = note: #[warn(unconditional_recursion)] on by default
+   = help: a `loop` may express intention better if this is on purpose
+
+error: reached the recursion limit while instantiating `generic::<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<i32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
+  --> $DIR/issue-8727.rs:4:1
+   |
+LL | / fn generic<T>() {
+LL | |     generic::<Option<T>>();
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

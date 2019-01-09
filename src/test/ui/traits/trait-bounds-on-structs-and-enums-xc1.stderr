@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `f64: trait_bounds_on_structs_and_enums_xc::Trait` is not satisfied
+  --> $DIR/trait-bounds-on-structs-and-enums-xc1.rs:12:14
+   |
+LL |     let bar: Bar<f64> = return;
+   |              ^^^^^^^^ the trait `trait_bounds_on_structs_and_enums_xc::Trait` is not implemented for `f64`
+   |
+   = note: required by `trait_bounds_on_structs_and_enums_xc::Bar`
+
+error[E0277]: the trait bound `{integer}: trait_bounds_on_structs_and_enums_xc::Trait` is not satisfied
+  --> $DIR/trait-bounds-on-structs-and-enums-xc1.rs:8:15
+   |
+LL |     let foo = Foo {
+   |               ^^^ the trait `trait_bounds_on_structs_and_enums_xc::Trait` is not implemented for `{integer}`
+   |
+   = note: required by `trait_bounds_on_structs_and_enums_xc::Foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

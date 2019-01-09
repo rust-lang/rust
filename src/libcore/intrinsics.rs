@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! rustc compiler intrinsics.
 //!
 //! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
@@ -52,7 +42,7 @@
 pub use ptr::drop_in_place;
 
 extern "rust-intrinsic" {
-    // NB: These intrinsics take raw pointers because they mutate aliased
+    // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
     /// Stores a value if the current value is the same as the `old` value.
@@ -635,7 +625,7 @@ extern "rust-intrinsic" {
     /// Tells LLVM that this point in the code is not reachable, enabling
     /// further optimizations.
     ///
-    /// NB: This is very different from the `unreachable!()` macro: Unlike the
+    /// N.B., this is very different from the `unreachable!()` macro: Unlike the
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
     ///
@@ -672,6 +662,9 @@ extern "rust-intrinsic" {
     ///
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::size_of`](../../std/mem/fn.size_of.html).
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.
@@ -697,6 +690,11 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
+    /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
+    /// This will statically either panic, or do nothing.
+    #[cfg(not(stage0))]
+    pub fn panic_if_uninhabited<T>();
+
     /// Creates a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
@@ -713,6 +711,9 @@ extern "rust-intrinsic" {
     /// undropped. In the general case one must use `ptr::write` to
     /// initialize memory previous set to the result of `uninit`.
     pub fn uninit<T>() -> T;
+
+    /// Moves a value out of scope without running drop glue.
+    pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
     ///
@@ -918,7 +919,7 @@ extern "rust-intrinsic" {
     ///         // treat it as "dead", and therefore, you only have two real
     ///         // mutable slices.
     ///         (slice::from_raw_parts_mut(ptr, mid),
-    ///          slice::from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
+    ///          slice::from_raw_parts_mut(ptr.add(mid), len - mid))
     ///     }
     /// }
     /// ```
@@ -962,59 +963,127 @@ extern "rust-intrinsic" {
     /// value is not necessarily valid to be used to actually access memory.
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
-    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
-    /// and destination may *not* overlap.
+    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
+    /// and destination must *not* overlap.
     ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    /// For regions of memory which might overlap, use [`copy`] instead.
+    ///
+    /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
+    /// with the argument order swapped.
+    ///
+    /// [`copy`]: ./fn.copy.html
+    /// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
     ///
     /// # Safety
     ///
-    /// Beyond requiring that the program must be allowed to access both regions
-    /// of memory, it is Undefined Behavior for source and destination to
-    /// overlap. Care must also be taken with the ownership of `src` and
-    /// `dst`. This method semantically moves the values of `src` into `dst`.
-    /// However it does not drop the contents of `dst`, or prevent the contents
-    /// of `src` from being dropped or used.
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+    ///
+    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+    ///
+    /// * Both `src` and `dst` must be properly aligned.
+    ///
+    /// * The region of memory beginning at `src` with a size of `count *
+    ///   size_of::<T>()` bytes must *not* overlap with the region of memory
+    ///   beginning at `dst` with the same size.
+    ///
+    /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
+    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using *both* the values
+    /// in the region beginning at `*src` and the region beginning at `*dst` can
+    /// [violate memory safety][read-ownership].
+    ///
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+    /// `0`, the pointers must be non-NULL and properly aligned.
+    ///
+    /// [`Copy`]: ../marker/trait.Copy.html
+    /// [`read`]: ../ptr/fn.read.html
+    /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
+    /// [valid]: ../ptr/index.html#safety
     ///
     /// # Examples
     ///
-    /// A safe swap function:
+    /// Manually implement [`Vec::append`]:
     ///
     /// ```
-    /// use std::mem;
     /// use std::ptr;
     ///
-    /// # #[allow(dead_code)]
-    /// fn swap<T>(x: &mut T, y: &mut T) {
+    /// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
+    /// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
+    ///     let src_len = src.len();
+    ///     let dst_len = dst.len();
+    ///
+    ///     // Ensure that `dst` has enough capacity to hold all of `src`.
+    ///     dst.reserve(src_len);
+    ///
     ///     unsafe {
-    ///         // Give ourselves some scratch space to work with
-    ///         let mut t: T = mem::uninitialized();
+    ///         // The call to offset is always safe because `Vec` will never
+    ///         // allocate more than `isize::MAX` bytes.
+    ///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+    ///         let src_ptr = src.as_ptr();
     ///
-    ///         // Perform the swap, `&mut` pointers never alias
-    ///         ptr::copy_nonoverlapping(x, &mut t, 1);
-    ///         ptr::copy_nonoverlapping(y, x, 1);
-    ///         ptr::copy_nonoverlapping(&t, y, 1);
+    ///         // Truncate `src` without dropping its contents. We do this first,
+    ///         // to avoid problems in case something further down panics.
+    ///         src.set_len(0);
     ///
-    ///         // y and t now point to the same thing, but we need to completely forget `t`
-    ///         // because it's no longer relevant.
-    ///         mem::forget(t);
+    ///         // The two regions cannot overlap because mutable references do
+    ///         // not alias, and two different vectors cannot own the same
+    ///         // memory.
+    ///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
+    ///
+    ///         // Notify `dst` that it now holds the contents of `src`.
+    ///         dst.set_len(dst_len + src_len);
     ///     }
     /// }
+    ///
+    /// let mut a = vec!['r'];
+    /// let mut b = vec!['u', 's', 't'];
+    ///
+    /// append(&mut a, &mut b);
+    ///
+    /// assert_eq!(a, &['r', 'u', 's', 't']);
+    /// assert!(b.is_empty());
     /// ```
+    ///
+    /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
-    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
+    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
     /// and destination may overlap.
     ///
-    /// `copy` is semantically equivalent to C's `memmove`.
+    /// If the source and destination will *never* overlap,
+    /// [`copy_nonoverlapping`] can be used instead.
+    ///
+    /// `copy` is semantically equivalent to C's [`memmove`], but with the argument
+    /// order swapped.  Copying takes place as if the bytes were copied from `src`
+    /// to a temporary array and then copied from the array to `dst`.
+    ///
+    /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
+    /// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
     ///
     /// # Safety
     ///
-    /// Care must be taken with the ownership of `src` and `dst`.
-    /// This method semantically moves the values of `src` into `dst`.
-    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
-    /// from being dropped or used.
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+    ///
+    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+    ///
+    /// * Both `src` and `dst` must be properly aligned.
+    ///
+    /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
+    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
+    /// in the region beginning at `*src` and the region beginning at `*dst` can
+    /// [violate memory safety][read-ownership].
+    ///
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+    /// `0`, the pointers must be non-NULL and properly aligned.
+    ///
+    /// [`Copy`]: ../marker/trait.Copy.html
+    /// [`read`]: ../ptr/fn.read.html
+    /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
+    /// [valid]: ../ptr/index.html#safety
     ///
     /// # Examples
     ///
@@ -1031,24 +1100,80 @@ extern "rust-intrinsic" {
     ///     dst
     /// }
     /// ```
-    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
-    /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
-    /// bytes of memory starting at `dst` to `val`.
+    /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
+    /// `val`.
+    ///
+    /// `write_bytes` is similar to C's [`memset`], but sets `count *
+    /// size_of::<T>()` bytes to `val`.
+    ///
+    /// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+    ///
+    /// * `dst` must be properly aligned.
+    ///
+    /// Additionally, the caller must ensure that writing `count *
+    /// size_of::<T>()` bytes to the given region of memory results in a valid
+    /// value of `T`. Using a region of memory typed as a `T` that contains an
+    /// invalid value of `T` is undefined behavior.
+    ///
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+    /// `0`, the pointer must be non-NULL and properly aligned.
+    ///
+    /// [valid]: ../ptr/index.html#safety
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::ptr;
     ///
-    /// let mut vec = vec![0; 4];
+    /// let mut vec = vec![0u32; 4];
     /// unsafe {
     ///     let vec_ptr = vec.as_mut_ptr();
-    ///     ptr::write_bytes(vec_ptr, b'a', 2);
+    ///     ptr::write_bytes(vec_ptr, 0xfe, 2);
     /// }
-    /// assert_eq!(vec, [b'a', b'a', 0, 0]);
+    /// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
+    /// ```
+    ///
+    /// Creating an invalid value:
+    ///
+    /// ```
+    /// use std::ptr;
+    ///
+    /// let mut v = Box::new(0i32);
+    ///
+    /// unsafe {
+    ///     // Leaks the previously held value by overwriting the `Box<T>` with
+    ///     // a null pointer.
+    ///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
+    /// }
+    ///
+    /// // At this point, using or dropping `v` results in undefined behavior.
+    /// // drop(v); // ERROR
+    ///
+    /// // Even leaking `v` "uses" it, and hence is undefined behavior.
+    /// // mem::forget(v); // ERROR
+    ///
+    /// // In fact, `v` is invalid according to basic type layout invariants, so *any*
+    /// // operation touching it is undefined behavior.
+    /// // let v2 = v; // ERROR
+    ///
+    /// unsafe {
+    ///     // Let us instead put in a valid value
+    ///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
+    /// }
+    ///
+    /// // Now the box is fine
+    /// assert_eq!(*v, 42);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
@@ -1066,7 +1191,7 @@ extern "rust-intrinsic" {
     /// `min_align_of::<T>()`
     ///
     /// The volatile parameter is set to `true`, so it will not be optimized out
-    /// unless size is equal to zero..
+    /// unless size is equal to zero.
     pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count` * `size_of::<T>()` and an alignment of
@@ -1087,11 +1212,9 @@ extern "rust-intrinsic" {
 
     /// Perform a volatile load from the `src` pointer
     /// The pointer is not required to be aligned.
-    #[cfg(not(stage0))]
     pub fn unaligned_volatile_load<T>(src: *const T) -> T;
     /// Perform a volatile store to the `dst` pointer.
     /// The pointer is not required to be aligned.
-    #[cfg(not(stage0))]
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
@@ -1342,6 +1465,18 @@ extern "rust-intrinsic" {
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
+
+    /// Performs rotate left.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `rotate_left` method. For example,
+    /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
+    pub fn rotate_left<T>(x: T, y: T) -> T;
+
+    /// Performs rotate right.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `rotate_right` method. For example,
+    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
+    pub fn rotate_right<T>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer

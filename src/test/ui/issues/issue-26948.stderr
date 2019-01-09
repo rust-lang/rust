@@ -1,0 +1,9 @@
+error[E0436]: functional record update syntax requires a struct
+  --> $DIR/issue-26948.rs:4:22
+   |
+LL |     Foo::A { x: 6, ..orig };
+   |                      ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0436`.

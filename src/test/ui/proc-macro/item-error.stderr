@@ -1,0 +1,9 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/item-error.rs:10:8
+   |
+LL |     a: &u64
+   |        ^ expected lifetime parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0106`.

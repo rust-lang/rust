@@ -1,5 +1,5 @@
 error[E0597]: `first_dropped` does not live long enough
-  --> $DIR/issue28498-reject-passed-to-fn.rs:46:19
+  --> $DIR/issue28498-reject-passed-to-fn.rs:36:19
    |
 LL |     foo1 = Foo(1, &first_dropped, Box::new(callback));
    |                   ^^^^^^^^^^^^^^ borrowed value does not live long enough
@@ -8,7 +8,7 @@ LL | }
    | -
    | |
    | `first_dropped` dropped here while still borrowed
-   | borrow later used here, when `foo1` is dropped
+   | borrow might be used here, when `foo1` is dropped and runs the `Drop` code for type `Foo`
    |
    = note: values in a scope are dropped in the opposite order they are defined
 

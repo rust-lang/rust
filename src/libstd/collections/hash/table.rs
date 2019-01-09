@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
 use collections::CollectionAllocErr;
 use hash::{BuildHasher, Hash, Hasher};
@@ -234,10 +224,10 @@ fn can_alias_safehash_as_hash() {
 // make a RawBucket point to invalid memory using safe code.
 impl<K, V> RawBucket<K, V> {
     unsafe fn hash(&self) -> *mut HashUint {
-        self.hash_start.offset(self.idx as isize)
+        self.hash_start.add(self.idx)
     }
     unsafe fn pair(&self) -> *mut (K, V) {
-        self.pair_start.offset(self.idx as isize) as *mut (K, V)
+        self.pair_start.add(self.idx) as *mut (K, V)
     }
     unsafe fn hash_pair(&self) -> (*mut HashUint, *mut (K, V)) {
         (self.hash(), self.pair())
@@ -329,6 +319,7 @@ impl<K, V, M> Put<K, V> for FullBucket<K, V, M>
 }
 
 impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
+    #[inline]
     pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as usize)
     }
@@ -342,6 +333,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
         }
     }
 
+    #[inline]
     pub fn at_index(table: M, ib_index: usize) -> Bucket<K, V, M> {
         // if capacity is 0, then the RawBucket will be populated with bogus pointers.
         // This is an uncommon case though, so avoid it in release builds.
@@ -654,6 +646,7 @@ impl<K, V, M> GapThenFull<K, V, M>
 
 // Returns a Layout which describes the allocation required for a hash table,
 // and the offset of the array of (key, value) pairs in the allocation.
+#[inline(always)]
 fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr> {
     let hashes = Layout::array::<HashUint>(capacity)?;
     let pairs = Layout::array::<(K, V)>(capacity)?;
@@ -722,6 +715,7 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    #[inline(always)]
     fn raw_bucket_at(&self, index: usize) -> RawBucket<K, V> {
         let (_, pairs_offset) = calculate_layout::<K, V>(self.capacity())
             .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
@@ -736,25 +730,30 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    #[inline]
     fn new_internal(
         capacity: usize,
         fallibility: Fallibility,
     ) -> Result<RawTable<K, V>, CollectionAllocErr> {
         unsafe {
             let ret = RawTable::new_uninitialized_internal(capacity, fallibility)?;
-            ptr::write_bytes(ret.hashes.ptr(), 0, capacity);
+            if capacity > 0 {
+                ptr::write_bytes(ret.hashes.ptr(), 0, capacity);
+            }
             Ok(ret)
         }
     }
 
     /// Tries to create a new raw table from a given capacity. If it cannot allocate,
     /// it returns with AllocErr.
+    #[inline]
     pub fn try_new(capacity: usize) -> Result<RawTable<K, V>, CollectionAllocErr> {
         Self::new_internal(capacity, Fallible)
     }
 
     /// Creates a new raw table from a given capacity. All buckets are
     /// initially empty.
+    #[inline]
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::new_internal(capacity, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),

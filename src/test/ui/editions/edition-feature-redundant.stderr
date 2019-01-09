@@ -1,0 +1,6 @@
+warning[E0705]: the feature `rust_2018_preview` is included in the Rust 2018 edition
+  --> $DIR/edition-feature-redundant.rs:4:12
+   |
+LL | #![feature(rust_2018_preview)]
+   |            ^^^^^^^^^^^^^^^^^
+

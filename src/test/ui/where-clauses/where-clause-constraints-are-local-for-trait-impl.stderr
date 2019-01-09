@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/where-clause-constraints-are-local-for-trait-impl.rs:18:9
+   |
+LL |         require_copy(self.x);
+   |         ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
+note: required by `require_copy`
+  --> $DIR/where-clause-constraints-are-local-for-trait-impl.rs:1:1
+   |
+LL | fn require_copy<T: Copy>(x: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

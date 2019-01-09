@@ -5,16 +5,16 @@ error[E0412]: cannot find type `B` in this scope
   |          ^ did you mean `A`?
 
 error[E0412]: cannot find type `D` in this scope
-  --> $DIR/ui-testing-optout.rs:17:10
+  --> $DIR/ui-testing-optout.rs:10:10
    |
-17 | type C = D; //~ ERROR
+10 | type C = D; //~ ERROR
    |          ^ did you mean `A`?
 
 error[E0412]: cannot find type `F` in this scope
-   --> $DIR/ui-testing-optout.rs:102:10
-    |
-102 | type E = F; //~ ERROR
-    |          ^ did you mean `A`?
+  --> $DIR/ui-testing-optout.rs:95:10
+   |
+95 | type E = F; //~ ERROR
+   |          ^ did you mean `A`?
 
 error: aborting due to 3 previous errors
 

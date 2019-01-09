@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
@@ -56,9 +46,9 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let (span, sub, sup) = self.get_regions();
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let anon_reg_sup = self.is_suitable_region(sup)?;
+        let anon_reg_sup = self.tcx.is_suitable_region(sup)?;
 
-        let anon_reg_sub = self.is_suitable_region(sub)?;
+        let anon_reg_sub = self.tcx.is_suitable_region(sub)?;
         let scope_def_id_sup = anon_reg_sup.def_id;
         let bregion_sup = anon_reg_sup.boundregion;
         let scope_def_id_sub = anon_reg_sub.def_id;
@@ -113,12 +103,12 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             (None, None) => {
                 let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
                     (
-                        "this type is declared with multiple lifetimes...".to_string(),
-                        "...but data with one lifetime flows into the other here".to_string()
+                        "this type is declared with multiple lifetimes...".to_owned(),
+                        "...but data with one lifetime flows into the other here".to_owned()
                     )
                 } else {
                     (
-                        "these two types are declared with different lifetimes...".to_string(),
+                        "these two types are declared with different lifetimes...".to_owned(),
                         format!(
                             "...but data{} flows{} here",
                             span_label_var1,
@@ -133,7 +123,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ty_sub.span,
                 ret_span,
                 "this parameter and the return type are declared \
-                 with different lifetimes...".to_string()
+                 with different lifetimes...".to_owned()
                 ,
                 format!("...but data{} is returned here", span_label_var1),
             ),
@@ -141,7 +131,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ty_sup.span,
                 ret_span,
                 "this parameter and the return type are declared \
-                 with different lifetimes...".to_string()
+                 with different lifetimes...".to_owned()
                 ,
                 format!("...but data{} is returned here", span_label_var1),
             ),

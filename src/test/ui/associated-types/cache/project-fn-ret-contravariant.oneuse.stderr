@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/project-fn-ret-contravariant.rs:50:1
+   |
+LL | fn main() { }
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

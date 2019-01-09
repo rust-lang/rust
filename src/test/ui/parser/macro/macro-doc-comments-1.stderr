@@ -1,0 +1,11 @@
+error: no rules expected the token `!`
+  --> $DIR/macro-doc-comments-1.rs:6:5
+   |
+LL | macro_rules! outer {
+   | ------------------ when calling this macro
+...
+LL |     //! Inner
+   |     ^^^^^^^^^ no rules expected this token in macro call
+
+error: aborting due to previous error
+

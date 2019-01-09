@@ -1,0 +1,18 @@
+error: cannot find macro `m!` in this scope
+  --> $DIR/macro-expansion-tests.rs:7:21
+   |
+LL |     fn g() -> i32 { m!() }
+   |                     ^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `m!` in this scope
+  --> $DIR/macro-expansion-tests.rs:15:21
+   |
+LL |     fn g() -> i32 { m!() }
+   |                     ^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: aborting due to 2 previous errors
+

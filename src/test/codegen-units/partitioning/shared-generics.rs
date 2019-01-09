@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe
 
@@ -19,7 +9,7 @@ extern crate shared_generics_aux;
 //~ MONO_ITEM fn shared_generics::foo[0]
 pub fn foo() {
 
-    //~ MONO_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux.volatile[External]
+    //~ MONO_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux-in-shared_generics.volatile[External]
     let _ = shared_generics_aux::generic_fn(0u16, 1u16);
 
     // This should not generate a monomorphization because it's already

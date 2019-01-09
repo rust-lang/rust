@@ -1,19 +1,10 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! See rustc guide chapters on [trait-resolution] and [trait-specialization] for more info on how
 //! this works.
 //!
-//! [trait-resolution]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html
-//! [trait-specialization]: https://rust-lang-nursery.github.io/rustc-guide/traits/specialization.html
+//! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
+//! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
+use infer::CombinedSnapshot;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
 use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
@@ -42,6 +33,17 @@ pub enum Conflict {
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+
+    /// True if the overlap might've been permitted before the shift
+    /// to universes.
+    pub involves_placeholder: bool,
+}
+
+pub fn add_placeholder_note(err: &mut ::errors::DiagnosticBuilder<'_>) {
+    err.note(&format!(
+        "this behavior recently changed as a result of a bug fix; \
+         see rust-lang/rust#56105 for details"
+    ));
 }
 
 /// If there are types that satisfy both impls, invokes `on_overlap`
@@ -96,10 +98,10 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 
     let header = ty::ImplHeader {
         impl_def_id,
-        self_ty: tcx.type_of(impl_def_id),
-        trait_ref: tcx.impl_trait_ref(impl_def_id),
-        predicates: tcx.predicates_of(impl_def_id).predicates
-    }.subst(tcx, impl_substs);
+        self_ty: tcx.type_of(impl_def_id).subst(tcx, impl_substs),
+        trait_ref: tcx.impl_trait_ref(impl_def_id).subst(tcx, impl_substs),
+        predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
+    };
 
     let Normalized { value: mut header, obligations } =
         traits::normalize(selcx, param_env, ObligationCause::dummy(), &header);
@@ -110,16 +112,23 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
-                            a_def_id: DefId,
-                            b_def_id: DefId)
-                            -> Option<OverlapResult<'tcx>>
-{
-    debug!("overlap(a_def_id={:?}, b_def_id={:?})",
-           a_def_id,
-           b_def_id);
+fn overlap<'cx, 'gcx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+    a_def_id: DefId,
+    b_def_id: DefId,
+) -> Option<OverlapResult<'tcx>> {
+    debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
 
-    // For the purposes of this check, we don't bring any skolemized
+    selcx.infcx().probe(|snapshot| overlap_within_probe(selcx, a_def_id, b_def_id, snapshot))
+}
+
+fn overlap_within_probe(
+    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+    a_def_id: DefId,
+    b_def_id: DefId,
+    snapshot: &CombinedSnapshot<'_, 'tcx>,
+) -> Option<OverlapResult<'tcx>> {
+    // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
     // empty environment.
@@ -133,10 +142,9 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
 
     // Do `a` and `b` unify? If not, no overlap.
     let obligations = match selcx.infcx().at(&ObligationCause::dummy(), param_env)
-                                         .eq_impl_headers(&a_impl_header, &b_impl_header) {
-        Ok(InferOk { obligations, value: () }) => {
-            obligations
-        }
+                                         .eq_impl_headers(&a_impl_header, &b_impl_header)
+    {
+        Ok(InferOk { obligations, value: () }) => obligations,
         Err(_) => return None
     };
 
@@ -164,10 +172,16 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
         return None
     }
 
-    let impl_header =  selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
+    let impl_header = selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
-    Some(OverlapResult { impl_header, intercrate_ambiguity_causes })
+
+    let involves_placeholder = match selcx.infcx().region_constraints_added_in_snapshot(snapshot) {
+        Some(true) => true,
+        _ => false,
+    };
+
+    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -259,12 +273,12 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 /// The current rule is that a trait-ref orphan checks in a crate C:
 ///
 /// 1. Order the parameters in the trait-ref in subst order - Self first,
-///    others linearly (e.g. `<U as Foo<V, W>>` is U < V < W).
+///    others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
 /// 2. Of these type parameters, there is at least one type parameter
 ///    in which, walking the type as a tree, you can reach a type local
 ///    to C where all types in-between are fundamental types. Call the
 ///    first such parameter the "local key parameter".
-///     - e.g. `Box<LocalType>` is OK, because you can visit LocalType
+///     - e.g., `Box<LocalType>` is OK, because you can visit LocalType
 ///       going through `Box`, which is fundamental.
 ///     - similarly, `FundamentalPair<Vec<()>, Box<LocalType>>` is OK for
 ///       the same reason.
@@ -272,7 +286,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///       not local), `Vec<LocalType>` is bad, because `Vec<->` is between
 ///       the local type and the type parameter.
 /// 3. Every type parameter before the local key parameter is fully known in C.
-///     - e.g. `impl<T> T: Trait<LocalType>` is bad, because `T` might be
+///     - e.g., `impl<T> T: Trait<LocalType>` is bad, because `T` might be
 ///       an unknown type.
 ///     - but `impl<T> LocalType: Trait<T>` is OK, because `LocalType`
 ///       occurs before `T`.
@@ -280,7 +294,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///    through the parameter's type tree, must appear only as a subtree of
 ///    a type local to C, with only fundamental types between the type
 ///    local to C and the local key parameter.
-///     - e.g. `Vec<LocalType<T>>>` (or equivalently `Box<Vec<LocalType<T>>>`)
+///     - e.g., `Vec<LocalType<T>>>` (or equivalently `Box<Vec<LocalType<T>>>`)
 ///     is bad, because the only local type with `T` as a subtree is
 ///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
 ///     - similarly, `FundamentalPair<LocalType<T>, T>` is bad, because
@@ -291,7 +305,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///
 /// The orphan rules actually serve several different purposes:
 ///
-/// 1. They enable link-safety - i.e. 2 mutually-unknowing crates (where
+/// 1. They enable link-safety - i.e., 2 mutually-unknowing crates (where
 ///    every type local to one crate is unknown in the other) can't implement
 ///    the same trait-ref. This follows because it can be seen that no such
 ///    type can orphan-check in 2 such crates.
@@ -340,7 +354,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
-fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
+fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
                                 trait_ref: ty::TraitRef<'tcx>,
                                 in_crate: InCrate)
                                 -> Result<(), OrphanCheckErr<'tcx>>
@@ -353,50 +367,75 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
              trait_ref);
     }
 
-    // First, create an ordered iterator over all the type parameters to the trait, with the self
-    // type appearing first.
-    // Find the first input type that either references a type parameter OR
-    // some local type.
-    for input_ty in trait_ref.input_types() {
-        if ty_is_local(tcx, input_ty, in_crate) {
-            debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
+    if tcx.features().re_rebalance_coherence {
+        // Given impl<P1..=Pn> Trait<T1..=Tn> for T0, an impl is valid only
+        // if at least one of the following is true:
+        //
+        // - Trait is a local trait
+        // (already checked in orphan_check prior to calling this function)
+        // - All of
+        //     - At least one of the types T0..=Tn must be a local type.
+        //      Let Ti be the first such type.
+        //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
+        //
+        for input_ty in trait_ref.input_types() {
+            debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
+            if ty_is_local(tcx, input_ty, in_crate) {
+                debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
+                return Ok(());
+            } else if let ty::Param(_) = input_ty.sty {
+                debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
+                return Err(OrphanCheckErr::UncoveredTy(input_ty))
+            }
+        }
+        // If we exit above loop, never found a local type.
+        debug!("orphan_check_trait_ref: no local type");
+        Err(OrphanCheckErr::NoLocalInputType)
+    } else {
+        // First, create an ordered iterator over all the type
+        // parameters to the trait, with the self type appearing
+        // first.  Find the first input type that either references a
+        // type parameter OR some local type.
+        for input_ty in trait_ref.input_types() {
+            if ty_is_local(tcx, input_ty, in_crate) {
+                debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
 
-            // First local input type. Check that there are no
-            // uncovered type parameters.
-            let uncovered_tys = uncovered_tys(tcx, input_ty, in_crate);
-            for uncovered_ty in uncovered_tys {
-                if let Some(param) = uncovered_ty.walk()
-                    .find(|t| is_possibly_remote_type(t, in_crate))
-                {
-                    debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
-                    return Err(OrphanCheckErr::UncoveredTy(param));
+                // First local input type. Check that there are no
+                // uncovered type parameters.
+                let uncovered_tys = uncovered_tys(tcx, input_ty, in_crate);
+                for uncovered_ty in uncovered_tys {
+                    if let Some(param) = uncovered_ty.walk()
+                        .find(|t| is_possibly_remote_type(t, in_crate))
+                    {
+                        debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
+                        return Err(OrphanCheckErr::UncoveredTy(param));
+                    }
                 }
+
+                // OK, found local type, all prior types upheld invariant.
+                return Ok(());
             }
 
-            // OK, found local type, all prior types upheld invariant.
-            return Ok(());
+            // Otherwise, enforce invariant that there are no type
+            // parameters reachable.
+            if let Some(param) = input_ty.walk()
+                .find(|t| is_possibly_remote_type(t, in_crate))
+            {
+                debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
+                return Err(OrphanCheckErr::UncoveredTy(param));
+            }
         }
-
-        // Otherwise, enforce invariant that there are no type
-        // parameters reachable.
-        if let Some(param) = input_ty.walk()
-            .find(|t| is_possibly_remote_type(t, in_crate))
-        {
-            debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
-            return Err(OrphanCheckErr::UncoveredTy(param));
-        }
+        // If we exit above loop, never found a local type.
+        debug!("orphan_check_trait_ref: no local type");
+        Err(OrphanCheckErr::NoLocalInputType)
     }
-
-    // If we exit above loop, never found a local type.
-    debug!("orphan_check_trait_ref: no local type");
-    return Err(OrphanCheckErr::NoLocalInputType);
 }
 
-fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
+fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>, in_crate: InCrate)
                        -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         vec![]
-    } else if fundamental_ty(tcx, ty) {
+    } else if fundamental_ty(ty) {
         ty.walk_shallow()
           .flat_map(|t| uncovered_tys(tcx, t, in_crate))
           .collect()
@@ -405,25 +444,22 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
     }
 }
 
-fn is_possibly_remote_type(ty: Ty, _in_crate: InCrate) -> bool {
+fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
     match ty.sty {
-        ty::TyProjection(..) | ty::TyParam(..) => true,
+        ty::Projection(..) | ty::Param(..) => true,
         _ => false,
     }
 }
 
-fn ty_is_local(tcx: TyCtxt, ty: Ty, in_crate: InCrate) -> bool {
+fn ty_is_local(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     ty_is_local_constructor(ty, in_crate) ||
-        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
+        fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
-fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
+fn fundamental_ty(ty: Ty<'_>) -> bool {
     match ty.sty {
-        ty::TyRef(..) => true,
-        ty::TyAdt(def, _) => def.is_fundamental(),
-        ty::TyDynamic(ref data, ..) => {
-            data.principal().map_or(false, |p| tcx.has_attr(p.def_id(), "fundamental"))
-        }
+        ty::Ref(..) => true,
+        ty::Adt(def, _) => def.is_fundamental(),
         _ => false
     }
 }
@@ -437,53 +473,54 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
+fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {
-        ty::TyBool |
-        ty::TyChar |
-        ty::TyInt(..) |
-        ty::TyUint(..) |
-        ty::TyFloat(..) |
-        ty::TyStr |
-        ty::TyFnDef(..) |
-        ty::TyFnPtr(_) |
-        ty::TyArray(..) |
-        ty::TySlice(..) |
-        ty::TyRawPtr(..) |
-        ty::TyRef(..) |
-        ty::TyNever |
-        ty::TyTuple(..) |
-        ty::TyParam(..) |
-        ty::TyProjection(..) => {
+        ty::Bool |
+        ty::Char |
+        ty::Int(..) |
+        ty::Uint(..) |
+        ty::Float(..) |
+        ty::Str |
+        ty::FnDef(..) |
+        ty::FnPtr(_) |
+        ty::Array(..) |
+        ty::Slice(..) |
+        ty::RawPtr(..) |
+        ty::Ref(..) |
+        ty::Never |
+        ty::Tuple(..) |
+        ty::Param(..) |
+        ty::Projection(..) => {
             false
         }
 
-        ty::TyInfer(..) => match in_crate {
+        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match in_crate {
             InCrate::Local => false,
             // The inference variable might be unified with a local
             // type in that remote crate.
             InCrate::Remote => true,
         },
 
-        ty::TyAdt(def, _) => def_id_is_local(def.did, in_crate),
-        ty::TyForeign(did) => def_id_is_local(did, in_crate),
+        ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
+        ty::Foreign(did) => def_id_is_local(did, in_crate),
 
-        ty::TyDynamic(ref tt, ..) => {
-            tt.principal().map_or(false, |p| {
-                def_id_is_local(p.def_id(), in_crate)
-            })
+        ty::Dynamic(ref tt, ..) => {
+            if let Some(principal) = tt.principal() {
+                def_id_is_local(principal.def_id(), in_crate)
+            } else {
+                false
+            }
         }
 
-        ty::TyError => {
-            true
-        }
+        ty::Error => true,
 
-        ty::TyClosure(..) |
-        ty::TyGenerator(..) |
-        ty::TyGeneratorWitness(..) |
-        ty::TyAnon(..) => {
+        ty::UnnormalizedProjection(..) |
+        ty::Closure(..) |
+        ty::Generator(..) |
+        ty::GeneratorWitness(..) |
+        ty::Opaque(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

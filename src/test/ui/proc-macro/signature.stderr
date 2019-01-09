@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/signature.rs:10:1
+   |
+LL | / pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
+LL | |     //~^ ERROR: mismatched types
+LL | |     loop {}
+LL | | }
+   | |_^ expected normal fn, found unsafe fn
+   |
+   = note: expected type `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found type `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,26 @@
+error: unreachable pattern
+  --> $DIR/match-arm-statics.rs:25:9
+   |
+LL |         (true, true) => ()
+   |         ^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-arm-statics.rs:2:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-arm-statics.rs:40:9
+   |
+LL |         Some(Some(East)) => (),
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-arm-statics.rs:60:9
+   |
+LL |         Foo { bar: Some(EAST), baz: NewBool(false) } => ()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

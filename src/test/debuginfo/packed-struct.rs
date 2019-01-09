@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // min-lldb-version: 310
 // ignore-gdb-version: 7.11.90 - 7.12.9
@@ -46,22 +36,28 @@
 // lldb-command:run
 
 // lldb-command:print packed
-// lldb-check:[...]$0 = Packed { x: 123, y: 234, z: 345 }
+// lldbg-check:[...]$0 = Packed { x: 123, y: 234, z: 345 }
+// lldbr-check:(packed_struct::Packed) packed = Packed { x: 123, y: 234, z: 345 }
 
 // lldb-command:print packedInPacked
-// lldb-check:[...]$1 = PackedInPacked { a: 1111, b: Packed { x: 2222, y: 3333, z: 4444 }, c: 5555, d: Packed { x: 6666, y: 7777, z: 8888 } }
+// lldbg-check:[...]$1 = PackedInPacked { a: 1111, b: Packed { x: 2222, y: 3333, z: 4444 }, c: 5555, d: Packed { x: 6666, y: 7777, z: 8888 } }
+// lldbr-check:(packed_struct::PackedInPacked) packedInPacked = PackedInPacked { a: 1111, b: Packed { x: 2222, y: 3333, z: 4444 }, c: 5555, d: Packed { x: 6666, y: 7777, z: 8888 } }
 
 // lldb-command:print packedInUnpacked
-// lldb-check:[...]$2 = PackedInUnpacked { a: -1111, b: Packed { x: -2222, y: -3333, z: -4444 }, c: -5555, d: Packed { x: -6666, y: -7777, z: -8888 } }
+// lldbg-check:[...]$2 = PackedInUnpacked { a: -1111, b: Packed { x: -2222, y: -3333, z: -4444 }, c: -5555, d: Packed { x: -6666, y: -7777, z: -8888 } }
+// lldbr-check:(packed_struct::PackedInUnpacked) packedInUnpacked = PackedInUnpacked { a: -1111, b: Packed { x: -2222, y: -3333, z: -4444 }, c: -5555, d: Packed { x: -6666, y: -7777, z: -8888 } }
 
 // lldb-command:print unpackedInPacked
-// lldb-check:[...]$3 = UnpackedInPacked { a: 987, b: Unpacked { x: 876, y: 765, z: 654, w: 543 }, c: Unpacked { x: 432, y: 321, z: 210, w: 109 }, d: -98 }
+// lldbg-check:[...]$3 = UnpackedInPacked { a: 987, b: Unpacked { x: 876, y: 765, z: 654, w: 543 }, c: Unpacked { x: 432, y: 321, z: 210, w: 109 }, d: -98 }
+// lldbr-check:(packed_struct::UnpackedInPacked) unpackedInPacked = UnpackedInPacked { a: 987, b: Unpacked { x: 876, y: 765, z: 654, w: 543 }, c: Unpacked { x: 432, y: 321, z: 210, w: 109 }, d: -98 }
 
 // lldb-command:print sizeof(packed)
-// lldb-check:[...]$4 = 14
+// lldbg-check:[...]$4 = 14
+// lldbr-check:(usize) = 14
 
 // lldb-command:print sizeof(packedInPacked)
-// lldb-check:[...]$5 = 40
+// lldbg-check:[...]$5 = 40
+// lldbr-check:(usize) = 40
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

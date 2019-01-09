@@ -1,0 +1,22 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/issue-32963.rs:8:25
+   |
+LL |     size_of_copy::<Misc+Copy>();
+   |                         ^^^^ non-auto additional trait
+
+error[E0277]: the trait bound `dyn Misc: std::marker::Copy` is not satisfied
+  --> $DIR/issue-32963.rs:8:5
+   |
+LL |     size_of_copy::<Misc+Copy>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `dyn Misc`
+   |
+note: required by `size_of_copy`
+  --> $DIR/issue-32963.rs:5:1
+   |
+LL | fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0225, E0277.
+For more information about an error, try `rustc --explain E0225`.

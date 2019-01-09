@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `X: std::cmp::Ord` is not satisfied
+  --> $DIR/issue-20162.rs:5:7
+   |
+LL |     b.sort();
+   |       ^^^^ the trait `std::cmp::Ord` is not implemented for `X`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

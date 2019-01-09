@@ -1,0 +1,8 @@
+error: expected item after attributes
+  --> $DIR/attr-dangling-in-mod.rs:6:14
+   |
+LL | #[foo = "bar"]
+   |              ^
+
+error: aborting due to previous error
+

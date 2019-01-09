@@ -1,0 +1,15 @@
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/const-fn-not-in-trait.rs:7:5
+   |
+LL |     const fn f() -> u32;
+   |     ^^^^^ trait fns cannot be const
+
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/const-fn-not-in-trait.rs:9:5
+   |
+LL |     const fn g() -> u32 { 0 }
+   |     ^^^^^ trait fns cannot be const
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

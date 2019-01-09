@@ -1,17 +1,8 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
 use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
+use rustc::util::nodemap::FxHashMap;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
@@ -21,7 +12,6 @@ use syntax::ast;
 use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
 
-use std::collections::HashMap;
 use std::borrow::ToOwned;
 
 /// Structure used to register plugins.
@@ -53,15 +43,13 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
-    pub lint_groups: HashMap<&'static str, Vec<LintId>>,
+    pub lint_groups: FxHashMap<&'static str, (Vec<LintId>, Option<&'static str>)>,
 
     #[doc(hidden)]
     pub llvm_passes: Vec<String>,
 
     #[doc(hidden)]
     pub attributes: Vec<(String, AttributeType)>,
-
-    whitelisted_custom_derives: Vec<ast::Name>,
 }
 
 impl<'a> Registry<'a> {
@@ -74,10 +62,9 @@ impl<'a> Registry<'a> {
             syntax_exts: vec![],
             early_lint_passes: vec![],
             late_lint_passes: vec![],
-            lint_groups: HashMap::new(),
+            lint_groups: FxHashMap::default(),
             llvm_passes: vec![],
             attributes: vec![],
-            whitelisted_custom_derives: Vec::new(),
         }
     }
 
@@ -130,19 +117,6 @@ impl<'a> Registry<'a> {
         }));
     }
 
-    /// This can be used in place of `register_syntax_extension` to register legacy custom derives
-    /// (i.e. attribute syntax extensions whose name begins with `derive_`). Legacy custom
-    /// derives defined by this function do not trigger deprecation warnings when used.
-    pub fn register_custom_derive(&mut self, name: ast::Name, extension: SyntaxExtension) {
-        assert!(name.as_str().starts_with("derive_"));
-        self.whitelisted_custom_derives.push(name);
-        self.register_syntax_extension(name, extension);
-    }
-
-    pub fn take_whitelisted_custom_derives(&mut self) -> Vec<ast::Name> {
-        ::std::mem::replace(&mut self.whitelisted_custom_derives, Vec::new())
-    }
-
     /// Register a macro of the usual kind.
     ///
     /// This is a convenience wrapper for `register_syntax_extension`.
@@ -170,8 +144,15 @@ impl<'a> Registry<'a> {
         self.late_lint_passes.push(lint_pass);
     }
     /// Register a lint group.
-    pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
-        self.lint_groups.insert(name, to.into_iter().map(|x| LintId::of(x)).collect());
+    pub fn register_lint_group(
+        &mut self,
+        name: &'static str,
+        deprecated_name: Option<&'static str>,
+        to: Vec<&'static Lint>
+    ) {
+        self.lint_groups.insert(name,
+                                (to.into_iter().map(|x| LintId::of(x)).collect(),
+                                 deprecated_name));
     }
 
     /// Register an LLVM pass.

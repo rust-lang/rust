@@ -1,0 +1,57 @@
+error[E0659]: `Foo` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow.rs:11:9
+   |
+LL |     use Foo::*;
+   |         ^^^ ambiguous name
+   |
+note: `Foo` could refer to the enum defined here
+  --> $DIR/block-scoped-shadow.rs:10:5
+   |
+LL |     enum Foo { A, B }
+   |     ^^^^^^^^^^^^^^^^^
+note: `Foo` could also refer to the enum defined here
+  --> $DIR/block-scoped-shadow.rs:5:1
+   |
+LL | enum Foo {}
+   | ^^^^^^^^^^^
+   = help: use `crate::Foo` to refer to this enum unambiguously
+
+error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow.rs:18:9
+   |
+LL |     use std as foo;
+   |         ^^^ ambiguous name
+   |
+note: `std` could refer to the enum defined here
+  --> $DIR/block-scoped-shadow.rs:17:5
+   |
+LL |     enum std {}
+   |     ^^^^^^^^^^^
+note: `std` could also refer to the struct defined here
+  --> $DIR/block-scoped-shadow.rs:7:1
+   |
+LL | struct std;
+   | ^^^^^^^^^^^
+   = help: use `crate::std` to refer to this struct unambiguously
+
+error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow.rs:18:9
+   |
+LL |     use std as foo;
+   |         ^^^ ambiguous name
+   |
+note: `std` could refer to the function defined here
+  --> $DIR/block-scoped-shadow.rs:16:5
+   |
+LL |     fn std() {}
+   |     ^^^^^^^^^^^
+note: `std` could also refer to the unit struct defined here
+  --> $DIR/block-scoped-shadow.rs:7:1
+   |
+LL | struct std;
+   | ^^^^^^^^^^^
+   = help: use `crate::std` to refer to this unit struct unambiguously
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

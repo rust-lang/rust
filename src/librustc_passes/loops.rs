@@ -1,21 +1,13 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 use self::Context::*;
 
 use rustc::session::Session;
 
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Destination};
+use rustc::hir::{self, Node, Destination};
 use syntax::ast;
 use syntax_pos::Span;
+use errors::Applicability;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum LoopKind {
@@ -114,9 +106,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 };
 
                 if loop_id != ast::DUMMY_NODE_ID {
-                    match self.hir_map.find(loop_id).unwrap() {
-                        hir::map::NodeBlock(_) => return,
-                        _=> (),
+                    if let Node::Block(_) = self.hir_map.find(loop_id).unwrap() {
+                        return
                     }
                 }
 
@@ -141,11 +132,16 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                 .span_label(e.span,
                                             "can only break with a value inside \
                                             `loop` or breakable block")
-                                .span_suggestion(e.span,
-                                                 &format!("instead, use `break` on its own \
-                                                           without a value inside this `{}` loop",
-                                                          kind.name()),
-                                                 "break".to_string())
+                                .span_suggestion_with_applicability(
+                                    e.span,
+                                    &format!(
+                                        "instead, use `break` on its own \
+                                        without a value inside this `{}` loop",
+                                        kind.name()
+                                    ),
+                                    "break".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                )
                                 .emit();
                         }
                     }
@@ -153,12 +149,12 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 self.require_break_cx("break", e.span);
             }
-            hir::ExprKind::Continue(label) => {
-                self.require_label_in_labeled_block(e.span, &label, "continue");
+            hir::ExprKind::Continue(destination) => {
+                self.require_label_in_labeled_block(e.span, &destination, "continue");
 
-                match label.target_id {
+                match destination.target_id {
                     Ok(loop_id) => {
-                        if let hir::map::NodeBlock(block) = self.hir_map.find(loop_id).unwrap() {
+                        if let Node::Block(block) = self.hir_map.find(loop_id).unwrap() {
                             struct_span_err!(self.sess, e.span, E0696,
                                             "`continue` pointing to a labeled block")
                                 .span_label(e.span,
@@ -171,7 +167,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
                         self.emit_unlabled_cf_in_while_condition(e.span, "continue");
                     }
-                    _ => {}
+                    Err(_) => {}
                 }
                 self.require_break_cx("continue", e.span)
             },
@@ -192,8 +188,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
 
     fn require_break_cx(&self, name: &str, span: Span) {
         match self.cx {
-            LabeledBlock |
-            Loop(_) => {}
+            LabeledBlock | Loop(_) => {}
             Closure => {
                 struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
                 .span_label(span, "cannot break inside of a closure")

@@ -1,0 +1,14 @@
+error[E0072]: recursive type `Bar` has infinite size
+  --> $DIR/issue-3008-1.rs:5:1
+   |
+LL | enum Bar {
+   | ^^^^^^^^ recursive type has infinite size
+...
+LL |     BarSome(Bar)
+   |             --- recursive without indirection
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

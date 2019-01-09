@@ -1,0 +1,23 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/union-unsized.rs:4:5
+   |
+LL |     a: str,
+   |     ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: no field of a union may have a dynamically sized type
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/union-unsized.rs:12:5
+   |
+LL |     b: str,
+   |     ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: no field of a union may have a dynamically sized type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

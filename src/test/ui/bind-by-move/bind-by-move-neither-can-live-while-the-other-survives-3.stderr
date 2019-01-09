@@ -1,0 +1,11 @@
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-3.rs:14:37
+   |
+LL |         DoubleOption::Some2(ref _y, _z) => { },
+   |                             ------  ^^ by-move pattern here
+   |                             |
+   |                             both by-ref and by-move used
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0009`.

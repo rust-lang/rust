@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A character type.
 //!
 //! The `char` type represents a single character. More specifically, since
@@ -50,11 +40,6 @@ pub use self::decode::{decode_utf16, DecodeUtf16, DecodeUtf16Error};
 pub use unicode::tables::UNICODE_VERSION;
 #[unstable(feature = "unicode_version", issue = "49726")]
 pub use unicode::version::UnicodeVersion;
-#[unstable(feature = "decode_utf8", issue = "33906")]
-#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
-    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
-#[allow(deprecated)]
-pub use self::decode::{decode_utf8, DecodeUtf8, InvalidSequence};
 
 use fmt::{self, Write};
 use iter::FusedIterator;
@@ -136,7 +121,7 @@ pub struct EscapeUnicode {
     state: EscapeUnicodeState,
 
     // The index of the next hex digit to be printed (0 if none),
-    // i.e. the number of remaining hex digits to be printed;
+    // i.e., the number of remaining hex digits to be printed;
     // increasing from the least significant digit: 0x543210
     hex_digit_idx: usize,
 }
@@ -317,8 +302,8 @@ impl Iterator for EscapeDefault {
                     None
                 }
             },
-            EscapeDefaultState::Done => return None,
-            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
+            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Unicode(ref mut i) => i.nth(n),
         }
     }
 

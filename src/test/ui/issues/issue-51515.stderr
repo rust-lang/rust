@@ -1,0 +1,21 @@
+error[E0594]: cannot assign to `*foo` which is behind a `&` reference
+  --> $DIR/issue-51515.rs:7:5
+   |
+LL |     let foo = &16;
+   |               --- help: consider changing this to be a mutable reference: `&mut 16`
+...
+LL |     *foo = 32;
+   |     ^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be written
+
+error[E0594]: cannot assign to `*bar` which is behind a `&` reference
+  --> $DIR/issue-51515.rs:12:5
+   |
+LL |     let bar = foo;
+   |         --- help: consider changing this to be a mutable reference: `&mut i32`
+...
+LL |     *bar = 64;
+   |     ^^^^^^^^^ `bar` is a `&` reference, so the data it refers to cannot be written
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

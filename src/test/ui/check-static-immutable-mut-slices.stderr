@@ -1,0 +1,9 @@
+error[E0017]: references in statics may only refer to immutable values
+  --> $DIR/check-static-immutable-mut-slices.rs:3:37
+   |
+LL | static TEST: &'static mut [isize] = &mut [];
+   |                                     ^^^^^^^ statics require immutable values
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0017`.

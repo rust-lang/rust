@@ -1,0 +1,16 @@
+error[E0277]: `Foo` cannot be shared between threads safely
+  --> $DIR/no_share-struct.rs:12:5
+   |
+LL |     bar(x);
+   |     ^^^ `Foo` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `Foo`
+note: required by `bar`
+  --> $DIR/no_share-struct.rs:8:1
+   |
+LL | fn bar<T: Sync>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `A: Foo` is not satisfied
+  --> $DIR/associated-const-type-parameter-arrays.rs:16:23
+   |
+LL |     let _array: [u32; <A as Foo>::Y];
+   |                       ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
+   |
+   = help: consider adding a `where A: Foo` bound
+note: required by `Foo::Y`
+  --> $DIR/associated-const-type-parameter-arrays.rs:2:5
+   |
+LL |     const Y: usize;
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

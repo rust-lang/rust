@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -74,55 +64,73 @@
 // lldb-command:run
 
 // lldb-command:print shadowed
-// lldb-check:[...]$0 = 231
+// lldbg-check:[...]$0 = 231
+// lldbr-check:(i32) shadowed = 231
 // lldb-command:print not_shadowed
-// lldb-check:[...]$1 = 232
+// lldbg-check:[...]$1 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$2 = 233
+// lldbg-check:[...]$2 = 233
+// lldbr-check:(i32) shadowed = 233
 // lldb-command:print not_shadowed
-// lldb-check:[...]$3 = 232
+// lldbg-check:[...]$3 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:print local_to_arm
-// lldb-check:[...]$4 = 234
+// lldbg-check:[...]$4 = 234
+// lldbr-check:(i32) local_to_arm = 234
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$5 = 236
+// lldbg-check:[...]$5 = 236
+// lldbr-check:(i32) shadowed = 236
 // lldb-command:print not_shadowed
-// lldb-check:[...]$6 = 232
+// lldbg-check:[...]$6 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$7 = 237
+// lldbg-check:[...]$7 = 237
+// lldbr-check:(isize) shadowed = 237
 // lldb-command:print not_shadowed
-// lldb-check:[...]$8 = 232
+// lldbg-check:[...]$8 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:print local_to_arm
-// lldb-check:[...]$9 = 238
+// lldbg-check:[...]$9 = 238
+// lldbr-check:(isize) local_to_arm = 238
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$10 = 239
+// lldbg-check:[...]$10 = 239
+// lldbr-check:(isize) shadowed = 239
 // lldb-command:print not_shadowed
-// lldb-check:[...]$11 = 232
+// lldbg-check:[...]$11 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$12 = 241
+// lldbg-check:[...]$12 = 241
+// lldbr-check:(isize) shadowed = 241
 // lldb-command:print not_shadowed
-// lldb-check:[...]$13 = 232
+// lldbg-check:[...]$13 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$14 = 243
+// lldbg-check:[...]$14 = 243
+// lldbr-check:(i32) shadowed = 243
 // lldb-command:print *local_to_arm
-// lldb-check:[...]$15 = 244
+// lldbg-check:[...]$15 = 244
+// lldbr-check:(i32) *local_to_arm = 244
 // lldb-command:continue
 
 // lldb-command:print shadowed
-// lldb-check:[...]$16 = 231
+// lldbg-check:[...]$16 = 231
+// lldbr-check:(i32) shadowed = 231
 // lldb-command:print not_shadowed
-// lldb-check:[...]$17 = 232
+// lldbg-check:[...]$17 = 232
+// lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

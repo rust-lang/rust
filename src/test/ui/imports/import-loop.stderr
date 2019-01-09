@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `y::x`
+  --> $DIR/import-loop.rs:6:13
+   |
+LL |     pub use y::x;
+   |             ^^^^ no `x` in `y`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

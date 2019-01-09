@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 extern crate cc;
 extern crate build_helper;
 
@@ -81,7 +71,7 @@ fn main() {
     let is_crossed = target != host;
 
     let mut optional_components =
-        vec!["x86", "arm", "aarch64", "mips", "powerpc",
+        vec!["x86", "arm", "aarch64", "amdgpu", "mips", "powerpc",
              "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
 
     let mut version_cmd = Command::new(&llvm_config);
@@ -98,6 +88,10 @@ fn main() {
 
     if major > 3 {
         optional_components.push("hexagon");
+    }
+
+    if major > 6 {
+        optional_components.push("riscv");
     }
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
@@ -135,6 +129,10 @@ fn main() {
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
+            continue;
+        }
+
+        if flag.starts_with("-flto") {
             continue;
         }
 
@@ -188,11 +186,11 @@ fn main() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
             let name = Path::new(lib).file_name().unwrap().to_str().unwrap();
-            name.trim_right_matches(".lib")
+            name.trim_end_matches(".lib")
         } else if lib.ends_with(".lib") {
             // Some MSVC libraries just come up with `.lib` tacked on, so chop
             // that off
-            lib.trim_right_matches(".lib")
+            lib.trim_end_matches(".lib")
         } else {
             continue;
         };
@@ -238,6 +236,7 @@ fn main() {
     }
 
     let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
+    let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
         // llvm-config on OpenBSD doesn't mention stdlib=libc++
@@ -247,6 +246,8 @@ fn main() {
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
         "stdc++_pic"
+    } else if llvm_use_libcxx.is_some() {
+        "c++"
     } else {
         "stdc++"
     };
@@ -271,5 +272,6 @@ fn main() {
     if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=static-nobundle=gcc_s");
         println!("cargo:rustc-link-lib=static-nobundle=pthread");
+        println!("cargo:rustc-link-lib=dylib=uuid");
     }
 }

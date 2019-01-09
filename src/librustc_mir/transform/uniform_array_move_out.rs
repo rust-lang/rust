@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // This pass converts move out from array by Subslice and
 // ConstIndex{.., from_end: true} to ConstIndex move out(s) from begin
 // of array. It allows detect error by mir borrowck and elaborate
@@ -39,7 +29,7 @@
 use rustc::ty;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::visit::{Visitor, PlaceContext};
+use rustc::mir::visit::{Visitor, PlaceContext, NonUseContext};
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 use rustc_data_structures::indexed_vec::{IndexVec};
@@ -80,7 +70,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                     // no need to transformation
                 } else {
                     let place_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                    if let ty::TyArray(item_ty, const_size) = place_ty.sty {
+                    if let ty::Array(item_ty, const_size) = place_ty.sty {
                         if let Some(size) = const_size.assert_usize(self.tcx) {
                             assert!(size <= u32::max_value() as u64,
                                     "uniform array move out doesn't supported
@@ -184,13 +174,13 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
             for candidate in &visitor.candidates {
                 let statement = &mir[candidate.block].statements[candidate.statement_index];
                 if let StatementKind::Assign(ref dst_place, ref rval) = statement.kind {
-                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
+                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = **rval {
                         let items : Vec<_> = items.iter().map(|item| {
                             if let Operand::Move(Place::Local(local)) = item {
                                 let local_use = &visitor.locals_use[*local];
                                 let opt_index_and_place = Self::try_get_item_source(local_use, mir);
                                 // each local should be used twice:
-                                //  in assign and in aggregate statments
+                                //  in assign and in aggregate statements
                                 if local_use.use_count == 2 && opt_index_and_place.is_some() {
                                     let (index, src_place) = opt_index_and_place.unwrap();
                                     return Some((local_use, index, src_place));
@@ -202,7 +192,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
                             let src_ty = src_place.ty(mir, tcx).to_ty(tcx);
-                            if let ty::TyArray(_, ref size_o) = src_ty.sty {
+                            if let ty::Array(_, ref size_o) = src_ty.sty {
                                 size_o.assert_usize(tcx)
                             } else {
                                 None
@@ -231,15 +221,15 @@ impl RestoreSubsliceArrayMoveOut {
         if opt_size.is_some() && items.iter().all(
             |l| l.is_some() && l.unwrap().2 == opt_src_place.unwrap()) {
 
-            let indicies: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
-            for i in 1..indicies.len() {
-                if indicies[i - 1] + 1 != indicies[i] {
+            let indices: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
+            for i in 1..indices.len() {
+                if indices[i - 1] + 1 != indices[i] {
                     return;
                 }
             }
 
-            let min = *indicies.first().unwrap();
-            let max = *indicies.last().unwrap();
+            let min = *indices.first().unwrap();
+            let max = *indices.last().unwrap();
 
             for item in items {
                 let locals_use = item.unwrap().0;
@@ -268,7 +258,7 @@ impl RestoreSubsliceArrayMoveOut {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
                     Place::Local(_),
-                    Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
+                    box Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
                         ref base, elem: ProjectionElem::ConstantIndex{
                             offset, min_length: _, from_end: false}})))) = statement.kind {
                     return Some((offset, base))
@@ -316,8 +306,8 @@ impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
                    location: Location) {
         let local_use = &mut self.locals_use[*local];
         match context {
-            PlaceContext::StorageLive => local_use.alive = Some(location),
-            PlaceContext::StorageDead => local_use.dead = Some(location),
+            PlaceContext::NonUse(NonUseContext::StorageLive) => local_use.alive = Some(location),
+            PlaceContext::NonUse(NonUseContext::StorageDead) => local_use.dead = Some(location),
             _ => {
                 local_use.use_count += 1;
                 if local_use.first_use.is_none() {

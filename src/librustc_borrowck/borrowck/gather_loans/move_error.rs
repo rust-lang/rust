@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -17,7 +7,7 @@ use rustc::ty;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 use syntax::ast;
 use syntax_pos;
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, Applicability};
 use borrowck::gather_loans::gather_moves::PatternSource;
 
 pub struct MoveErrorCollector<'tcx> {
@@ -79,10 +69,13 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &[MoveErr
                 // see `get_pattern_source()` for details
                 let initializer =
                     e.init.as_ref().expect("should have an initializer to get an error");
-                if let Ok(snippet) = bccx.tcx.sess.codemap().span_to_snippet(initializer.span) {
-                    err.span_suggestion(initializer.span,
-                                        "consider using a reference instead",
-                                        format!("&{}", snippet));
+                if let Ok(snippet) = bccx.tcx.sess.source_map().span_to_snippet(initializer.span) {
+                    err.span_suggestion_with_applicability(
+                        initializer.span,
+                        "consider using a reference instead",
+                        format!("&{}", snippet),
+                        Applicability::MaybeIncorrect // using a reference may not be the right fix
+                    );
                 }
             }
             _ => {
@@ -94,8 +87,8 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &[MoveErr
             }
         }
         if let NoteClosureEnv(upvar_id) = error.move_from.note {
-            let var_node_id = bccx.tcx.hir.hir_to_node_id(upvar_id.var_id);
-            err.span_label(bccx.tcx.hir.span(var_node_id),
+            let var_node_id = bccx.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
+            err.span_label(bccx.tcx.hir().span(var_node_id),
                            "captured outer variable");
         }
         err.emit();
@@ -142,6 +135,8 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
     match move_from.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
+        Categorization::Deref(_, mc::Unique) |
+        Categorization::ThreadLocal(..) |
         Categorization::StaticItem => {
             bccx.cannot_move_out_of(
                 move_from.span, &move_from.descriptive_string(bccx.tcx), Origin::Ast)
@@ -154,7 +149,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
-                ty::TyAdt(def, _) if def.has_dtor(bccx.tcx) => {
+                ty::Adt(def, _) if def.has_dtor(bccx.tcx) => {
                     bccx.cannot_move_out_of_interior_of_drop(
                         move_from.span, b.ty, Origin::Ast)
                 }
@@ -163,7 +158,10 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
                 }
             }
         }
-        _ => {
+
+        Categorization::Rvalue(..) |
+        Categorization::Local(..) |
+        Categorization::Upvar(..) => {
             span_bug!(move_from.span, "this path should not cause illegal move");
         }
     }

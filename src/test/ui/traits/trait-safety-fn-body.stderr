@@ -1,0 +1,11 @@
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
+  --> $DIR/trait-safety-fn-body.rs:11:9
+   |
+LL |         *self += 1;
+   |         ^^^^^^^^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0133`.

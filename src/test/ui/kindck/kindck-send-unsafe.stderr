@@ -1,0 +1,16 @@
+error[E0277]: `*mut &'a isize` cannot be sent between threads safely
+  --> $DIR/kindck-send-unsafe.rs:6:5
+   |
+LL |     assert_send::<*mut &'a isize>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*mut &'a isize` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `*mut &'a isize`
+note: required by `assert_send`
+  --> $DIR/kindck-send-unsafe.rs:3:1
+   |
+LL | fn assert_send<T:Send>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

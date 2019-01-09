@@ -1,0 +1,50 @@
+error: cannot find derive macro `FooWithLongNan` in this scope
+  --> $DIR/resolve-error.rs:26:10
+   |
+LL | #[derive(FooWithLongNan)]
+   |          ^^^^^^^^^^^^^^ help: try: `FooWithLongName`
+
+error: cannot find derive macro `Dlone` in this scope
+  --> $DIR/resolve-error.rs:36:10
+   |
+LL | #[derive(Dlone)]
+   |          ^^^^^ help: try: `Clone`
+
+error: cannot find derive macro `Dlona` in this scope
+  --> $DIR/resolve-error.rs:40:10
+   |
+LL | #[derive(Dlona)]
+   |          ^^^^^ help: try: `Clona`
+
+error: cannot find derive macro `attr_proc_macra` in this scope
+  --> $DIR/resolve-error.rs:44:10
+   |
+LL | #[derive(attr_proc_macra)]
+   |          ^^^^^^^^^^^^^^^ help: try: `attr_proc_macro`
+
+error: cannot find macro `FooWithLongNama!` in this scope
+  --> $DIR/resolve-error.rs:49:5
+   |
+LL |     FooWithLongNama!();
+   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `FooWithLongNam`
+
+error: cannot find macro `attr_proc_macra!` in this scope
+  --> $DIR/resolve-error.rs:52:5
+   |
+LL |     attr_proc_macra!();
+   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `attr_proc_mac`
+
+error: cannot find macro `Dlona!` in this scope
+  --> $DIR/resolve-error.rs:55:5
+   |
+LL |     Dlona!();
+   |     ^^^^^
+
+error: cannot find macro `bang_proc_macrp!` in this scope
+  --> $DIR/resolve-error.rs:58:5
+   |
+LL |     bang_proc_macrp!();
+   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `bang_proc_macro`
+
+error: aborting due to 8 previous errors
+

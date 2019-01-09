@@ -1,0 +1,11 @@
+error[E0658]: custom test frameworks are an unstable feature (see issue #50297)
+  --> $DIR/feature-gate-custom_test_frameworks.rs:1:1
+   |
+LL | #![test_runner(main)] //~ ERROR custom test frameworks are an unstable feature
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_test_frameworks)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

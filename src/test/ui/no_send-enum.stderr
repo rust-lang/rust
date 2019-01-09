@@ -1,0 +1,17 @@
+error[E0277]: `NoSend` cannot be sent between threads safely
+  --> $DIR/no_send-enum.rs:16:5
+   |
+LL |     bar(x);
+   |     ^^^ `NoSend` cannot be sent between threads safely
+   |
+   = help: within `Foo`, the trait `std::marker::Send` is not implemented for `NoSend`
+   = note: required because it appears within the type `Foo`
+note: required by `bar`
+  --> $DIR/no_send-enum.rs:12:1
+   |
+LL | fn bar<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

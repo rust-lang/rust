@@ -1,0 +1,13 @@
+// compile-pass
+#![allow(dead_code)]
+// pretty-expanded FIXME #23616
+
+pub trait Writer {
+    fn write(&mut self, b: &[u8]) -> Result<(), ()>;
+}
+
+fn foo(a: &mut Writer) {
+    a.write(&[]).unwrap();
+}
+
+pub fn main(){}

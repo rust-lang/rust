@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `bar::S: std::clone::Clone` is not satisfied
+  --> $DIR/issue-1920-2.rs:10:5
+   |
+LL |     assert_clone::<bar::S>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `bar::S`
+   |
+note: required by `assert_clone`
+  --> $DIR/issue-1920-2.rs:7:1
+   |
+LL | fn assert_clone<T>() where T : Clone { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

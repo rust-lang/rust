@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Panic support in the standard library.
 
 #![stable(feature = "std_panic", since = "1.9.0")]
@@ -16,13 +6,13 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use future::Future;
-use mem::PinMut;
+use pin::Pin;
 use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, NonNull};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
-use task::{self, Poll};
+use task::{LocalWaker, Poll};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -79,8 +69,8 @@ pub use core::panic::{PanicInfo, Location};
 ///
 /// Simply put, a type `T` implements `UnwindSafe` if it cannot easily allow
 /// witnessing a broken invariant through the use of `catch_unwind` (catching a
-/// panic). This trait is a marker trait, so it is automatically implemented for
-/// many types, and it is also structurally composed (e.g. a struct is unwind
+/// panic). This trait is an auto trait, so it is automatically implemented for
+/// many types, and it is also structurally composed (e.g., a struct is unwind
 /// safe if all of its components are unwind safe).
 ///
 /// Note, however, that this is not an unsafe trait, so there is not a succinct
@@ -264,6 +254,9 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
 #[cfg(target_has_atomic = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI64 {}
+#[cfg(target_has_atomic = "128")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicI128 {}
 
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
@@ -280,6 +273,9 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
 #[cfg(target_has_atomic = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU64 {}
+#[cfg(target_has_atomic = "128")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicU128 {}
 
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
@@ -327,9 +323,9 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
 impl<'a, F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 
-    fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        let pinned_field = unsafe { PinMut::map_unchecked(self, |x| &mut x.0) };
-        pinned_field.poll(cx)
+    fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
+        let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
+        F::poll(pinned_field, lw)
     }
 }
 

@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-39974.rs:4:19
+   |
+LL |     f: [[f64; 2]; LENGTH],
+   |                   ^^^^^^ expected usize, found f64
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

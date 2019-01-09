@@ -1,0 +1,8 @@
+error: expected item, found reserved keyword `virtual`
+  --> $DIR/virtual-structs.rs:3:1
+   |
+LL | virtual struct SuperStruct {
+   | ^^^^^^^ expected item
+
+error: aborting due to previous error
+

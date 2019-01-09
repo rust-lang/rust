@@ -1,0 +1,20 @@
+error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
+  --> $DIR/issue-21763.rs:9:5
+   |
+LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
+   |
+   = help: within `std::collections::HashMap<std::rc::Rc<()>, std::rc::Rc<()>>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
+   = note: required because it appears within the type `(std::rc::Rc<()>, std::rc::Rc<()>)`
+   = note: required because it appears within the type `std::marker::PhantomData<(std::rc::Rc<()>, std::rc::Rc<()>)>`
+   = note: required because it appears within the type `std::collections::hash::table::RawTable<std::rc::Rc<()>, std::rc::Rc<()>>`
+   = note: required because it appears within the type `std::collections::HashMap<std::rc::Rc<()>, std::rc::Rc<()>>`
+note: required by `foo`
+  --> $DIR/issue-21763.rs:6:1
+   |
+LL | fn foo<T: Send>() {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*f.s` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-38147-4.rs:16:5
+  --> $DIR/issue-38147-4.rs:6:5
    |
 LL | fn f(x: usize, f: &Foo) {
    |                   ---- help: consider changing this to be a mutable reference: `&mut Foo<'_>`

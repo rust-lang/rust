@@ -1,21 +1,9 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // asmjs can't even pass i128 as arguments or return values, so ignore it.
 // this will hopefully be fixed by the LLVM 5 upgrade (#43370)
 // ignore-asmjs
 // ignore-emscripten
 
 // compile-flags: -Z lower_128bit_ops=yes -C debug_assertions=yes
-
-#![feature(const_fn)]
 
 static TEST_SIGNED: i128 = const_signed(-222);
 static TEST_UNSIGNED: u128 = const_unsigned(200);

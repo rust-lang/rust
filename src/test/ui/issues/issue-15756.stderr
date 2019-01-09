@@ -1,0 +1,14 @@
+error[E0277]: the size for values of type `[T]` cannot be known at compilation time
+  --> $DIR/issue-15756.rs:7:10
+   |
+LL |     &mut something
+   |          ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[T]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

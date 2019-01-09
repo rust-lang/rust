@@ -1,0 +1,8 @@
+error: expected type, found `{`
+  --> $DIR/issue-33262.rs:4:22
+   |
+LL |     for i in 0..a as { }
+   |                      ^
+
+error: aborting due to previous error
+

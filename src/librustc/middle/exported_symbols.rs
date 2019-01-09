@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::def_id::{DefId, LOCAL_CRATE};
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
@@ -35,12 +25,8 @@ impl_stable_hash_for!(enum self::SymbolExportLevel {
 
 impl SymbolExportLevel {
     pub fn is_below_threshold(self, threshold: SymbolExportLevel) -> bool {
-        if threshold == SymbolExportLevel::Rust {
-            // We export everything from Rust dylibs
-            true
-        } else {
-            self == SymbolExportLevel::C
-        }
+        threshold == SymbolExportLevel::Rust // export everything from Rust dylibs
+          || self == SymbolExportLevel::C
     }
 }
 
@@ -106,7 +92,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
     }
 }
 
-pub fn metadata_symbol_name(tcx: ty::TyCtxt) -> String {
+pub fn metadata_symbol_name(tcx: ty::TyCtxt<'_, '_, '_>) -> String {
     format!("rust_metadata_{}_{}",
             tcx.original_crate_name(LOCAL_CRATE),
             tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())

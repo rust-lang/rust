@@ -1,0 +1,20 @@
+error: unused return value of `foo` that must be used
+  --> $DIR/must_use-unit.rs:14:5
+   |
+LL |     foo(); //~ unused return value of `foo`
+   |     ^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/must_use-unit.rs:3:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: unused return value of `bar` that must be used
+  --> $DIR/must_use-unit.rs:16:5
+   |
+LL |     bar(); //~ unused return value of `bar`
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
+

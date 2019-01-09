@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/occurs-check-2.rs:7:9
+   |
+LL |     f = box g;
+   |         ^^^^^
+   |         |
+   |         cyclic type of infinite size
+   |         help: try using a conversion method: `box g.to_string()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

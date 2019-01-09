@@ -1,0 +1,63 @@
+error[E0603]: static `j` is private
+  --> $DIR/xcrate-private-by-default.rs:23:29
+   |
+LL |     static_priv_by_default::j;
+   |                             ^
+
+error[E0603]: function `k` is private
+  --> $DIR/xcrate-private-by-default.rs:25:29
+   |
+LL |     static_priv_by_default::k;
+   |                             ^
+
+error[E0603]: unit struct `l` is private
+  --> $DIR/xcrate-private-by-default.rs:27:29
+   |
+LL |     static_priv_by_default::l;
+   |                             ^
+
+error[E0603]: enum `m` is private
+  --> $DIR/xcrate-private-by-default.rs:29:35
+   |
+LL |     foo::<static_priv_by_default::m>();
+   |                                   ^
+
+error[E0603]: type alias `n` is private
+  --> $DIR/xcrate-private-by-default.rs:31:35
+   |
+LL |     foo::<static_priv_by_default::n>();
+   |                                   ^
+
+error[E0603]: module `foo` is private
+  --> $DIR/xcrate-private-by-default.rs:35:29
+   |
+LL |     static_priv_by_default::foo::a;
+   |                             ^^^
+
+error[E0603]: module `foo` is private
+  --> $DIR/xcrate-private-by-default.rs:37:29
+   |
+LL |     static_priv_by_default::foo::b;
+   |                             ^^^
+
+error[E0603]: module `foo` is private
+  --> $DIR/xcrate-private-by-default.rs:39:29
+   |
+LL |     static_priv_by_default::foo::c;
+   |                             ^^^
+
+error[E0603]: module `foo` is private
+  --> $DIR/xcrate-private-by-default.rs:41:35
+   |
+LL |     foo::<static_priv_by_default::foo::d>();
+   |                                   ^^^
+
+error[E0603]: module `foo` is private
+  --> $DIR/xcrate-private-by-default.rs:43:35
+   |
+LL |     foo::<static_priv_by_default::foo::e>();
+   |                                   ^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

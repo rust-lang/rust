@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `Item`
-  --> $DIR/issue-23729.rs:20:9
+  --> $DIR/issue-23729.rs:10:9
    |
 LL |         impl Iterator for Recurrence {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Item` in implementation

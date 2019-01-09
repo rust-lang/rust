@@ -1,0 +1,21 @@
+error[E0391]: cycle detected when computing the supertraits of `B`
+  --> $DIR/cycle-trait-supertrait-indirect.rs:7:10
+   |
+LL | trait B: C {
+   |          ^
+   |
+note: ...which requires computing the supertraits of `C`...
+  --> $DIR/cycle-trait-supertrait-indirect.rs:11:10
+   |
+LL | trait C: B { }
+   |          ^
+   = note: ...which again requires computing the supertraits of `B`, completing the cycle
+note: cycle used when computing the supertraits of `A`
+  --> $DIR/cycle-trait-supertrait-indirect.rs:4:10
+   |
+LL | trait A: B {
+   |          ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

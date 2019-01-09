@@ -1,0 +1,11 @@
+error: no rules expected the token `a`
+  --> $DIR/macro-non-lifetime.rs:8:8
+   |
+LL | macro_rules! m { ($x:lifetime) => { } }
+   | -------------- when calling this macro
+...
+LL |     m!(a);
+   |        ^ no rules expected this token in macro call
+
+error: aborting due to previous error
+

@@ -1,5 +1,5 @@
 error[E0302]: cannot assign in a pattern guard
-  --> $DIR/E0302.rs:14:21
+  --> $DIR/E0302.rs:4:21
    |
 LL |         option if { option = None; false } => { }, //~ ERROR E0302
    |                     ^^^^^^^^^^^^^ assignment in pattern guard

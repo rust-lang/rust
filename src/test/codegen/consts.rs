@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
 // min-llvm-version 7.0
@@ -21,11 +11,11 @@
 // CHECK: @STATIC = {{.*}}, align 4
 
 // This checks the constants from inline_enum_const
-// CHECK: @byte_str.{{[0-9]+}} = {{.*}}, align 2
+// CHECK: @{{[0-9]+}} = {{.*}}, align 2
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@byte_str.[0-9]+]] = {{.*}}, align 4
+// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}}, align 4
 
 #[derive(Copy, Clone)]
 

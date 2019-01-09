@@ -1,0 +1,13 @@
+error[E0072]: recursive type `E2` has infinite size
+  --> $DIR/issue-3008-3.rs:4:1
+   |
+LL | enum E2<T> { V2(E2<E1>, marker::PhantomData<T>), }
+   | ^^^^^^^^^^      ------ recursive without indirection
+   | |
+   | recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `E2` representable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

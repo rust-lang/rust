@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // compile-pass
 
        //! Test with [Foo::baz], [Bar::foo], ...
@@ -55,3 +45,33 @@ macro_rules! f {
     }
 }
 f!("Foo\nbar [BarF] bar\nbaz");
+
+/** # for example,
+ *
+ * time to introduce a link [error]*/
+pub struct A;
+
+/**
+ * # for example,
+ *
+ * time to introduce a link [error]
+ */
+pub struct B;
+
+#[doc = "single line [error]"]
+pub struct C;
+
+#[doc = "single line with \"escaping\" [error]"]
+pub struct D;
+
+/// Item docs.
+#[doc="Hello there!"]
+/// [error]
+pub struct E;
+
+///
+/// docs [error1]
+
+/// docs [error2]
+///
+pub struct F;

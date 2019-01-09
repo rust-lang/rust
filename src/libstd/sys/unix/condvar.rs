@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cell::UnsafeCell;
 use libc;
 use sys::mutex::{self, Mutex};
@@ -41,13 +31,15 @@ impl Condvar {
     #[cfg(any(target_os = "macos",
               target_os = "ios",
               target_os = "l4re",
-              target_os = "android"))]
+              target_os = "android",
+              target_os = "hermit"))]
     pub unsafe fn init(&mut self) {}
 
     #[cfg(not(any(target_os = "macos",
                   target_os = "ios",
                   target_os = "l4re",
-                  target_os = "android")))]
+                  target_os = "android",
+                  target_os = "hermit")))]
     pub unsafe fn init(&mut self) {
         use mem;
         let mut attr: libc::pthread_condattr_t = mem::uninitialized();
@@ -83,7 +75,10 @@ impl Condvar {
     // where we configure condition variable to use monotonic clock (instead of
     // default system clock). This approach avoids all problems that result
     // from changes made to the system time.
-    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+    #[cfg(not(any(target_os = "macos",
+                  target_os = "ios",
+                  target_os = "android",
+                  target_os = "hermit")))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use mem;
 
@@ -113,7 +108,7 @@ impl Condvar {
     // This implementation is modeled after libcxx's condition_variable
     // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
     // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "hermit"))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
         use ptr;
         use time::Instant;

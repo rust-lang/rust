@@ -1,14 +1,3 @@
-// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 // This test makes sure that the LLDB pretty printer does not throw an exception
 // when trying to handle a Vec<> or anything else that contains zero-sized
 // fields.
@@ -23,10 +12,12 @@
 // lldb-command:run
 
 // lldb-command:print v
-// lldb-check:[...]$0 = vec![1, 2, 3]
+// lldbg-check:[...]$0 = vec![1, 2, 3]
+// lldbr-check:(alloc::vec::Vec<i32>) v = vec![1, 2, 3]
 // lldb-command:print zs
-// lldb-check:[...]$1 = StructWithZeroSizedField { x: ZeroSizedStruct, y: 123, z: ZeroSizedStruct, w: 456 }
-// lldb-command:continue
+// lldbg-check:[...]$1 = StructWithZeroSizedField { x: ZeroSizedStruct, y: 123, z: ZeroSizedStruct, w: 456 }
+// lldbr-check:(issue_22656::StructWithZeroSizedField) zs = StructWithZeroSizedField { x: ZeroSizedStruct { }, y: 123, z: ZeroSizedStruct { }, w: 456 }
+// lldbr-command:continue
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

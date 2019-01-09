@@ -1,0 +1,12 @@
+error[E0609]: no field `trace` on type `&T`
+  --> $DIR/issue-31011.rs:3:17
+   |
+LL |         if $ctx.trace {
+   |                 ^^^^^
+...
+LL |     log!(context, "entered wrapper");
+   |     --------------------------------- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

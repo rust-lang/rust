@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use leb128::{self, read_signed_leb128, write_signed_leb128};
 use std::borrow::Cow;
 use serialize;
@@ -31,6 +21,7 @@ impl Encoder {
         self.data
     }
 
+    #[inline]
     pub fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.data.extend_from_slice(s);
     }
@@ -54,7 +45,7 @@ impl serialize::Encoder for Encoder {
     type Error = !;
 
     #[inline]
-    fn emit_nil(&mut self) -> EncodeResult {
+    fn emit_unit(&mut self) -> EncodeResult {
         Ok(())
     }
 
@@ -171,6 +162,7 @@ pub struct Decoder<'a> {
 }
 
 impl<'a> Decoder<'a> {
+    #[inline]
     pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
         Decoder {
             data,
@@ -193,6 +185,7 @@ impl<'a> Decoder<'a> {
         self.position += bytes;
     }
 
+    #[inline]
     pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
         let start = self.position;
         let end = start + s.len();
@@ -326,6 +319,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         Ok(Cow::Borrowed(s))
     }
 
+    #[inline]
     fn error(&mut self, err: &str) -> Self::Error {
         err.to_string()
     }

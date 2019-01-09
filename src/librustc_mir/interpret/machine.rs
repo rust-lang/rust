@@ -2,130 +2,211 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
+use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
-use rustc::mir::interpret::{AllocId, EvalResult, Scalar, Pointer, AccessKind, GlobalId};
-use super::{EvalContext, Place, ValTy, Memory};
-
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::Size;
-use syntax::codemap::Span;
-use syntax::ast::Mutability;
+use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
+
+use super::{
+    Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
+    EvalContext, PlaceTy, MPlaceTy, OpTy, Pointer, MemoryKind,
+};
+
+/// Whether this kind of memory is allowed to leak
+pub trait MayLeak: Copy {
+    fn may_leak(self) -> bool;
+}
+
+/// The functionality needed by memory to manage its allocations
+pub trait AllocMap<K: Hash + Eq, V> {
+    /// Test if the map contains the given key.
+    /// Deliberately takes `&mut` because that is sufficient, and some implementations
+    /// can be more efficient then (using `RefCell::get_mut`).
+    fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
+        where K: Borrow<Q>;
+
+    /// Insert new entry into the map.
+    fn insert(&mut self, k: K, v: V) -> Option<V>;
+
+    /// Remove entry from the map.
+    fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
+        where K: Borrow<Q>;
+
+    /// Return data based the keys and values in the map.
+    fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
+
+    /// Return a reference to entry `k`.  If no such entry exists, call
+    /// `vacant` and either forward its error, or add its result to the map
+    /// and return a reference to *that*.
+    fn get_or<E>(
+        &self,
+        k: K,
+        vacant: impl FnOnce() -> Result<V, E>
+    ) -> Result<&V, E>;
+
+    /// Return a mutable reference to entry `k`.  If no such entry exists, call
+    /// `vacant` and either forward its error, or add its result to the map
+    /// and return a reference to *that*.
+    fn get_mut_or<E>(
+        &mut self,
+        k: K,
+        vacant: impl FnOnce() -> Result<V, E>
+    ) -> Result<&mut V, E>;
+}
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
-/// and some use case dependent behaviour can instead be applied
-pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
-    /// Additional data that can be accessed via the Memory
-    type MemoryData: Clone + Eq + Hash;
-
+/// and some use case dependent behaviour can instead be applied.
+pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;
+    type MemoryKinds: ::std::fmt::Debug + MayLeak + Eq + 'static;
+
+    /// Tag tracked alongside every pointer.  This is used to implement "Stacked Borrows"
+    /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
+    /// The `default()` is used for pointers to consts, statics, vtables and functions.
+    type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
+
+    /// Extra data stored in every call frame.
+    type FrameExtra;
+
+    /// Extra data stored in memory.  A reference to this is available when `AllocExtra`
+    /// gets initialized, so you can e.g., have an `Rc` here if there is global state you
+    /// need access to in the `AllocExtra` hooks.
+    type MemoryExtra: Default;
+
+    /// Extra data stored in every allocation.
+    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra> + 'static;
+
+    /// Memory's allocation map
+    type MemoryMap:
+        AllocMap<
+            AllocId,
+            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>)
+        > +
+        Default +
+        Clone;
+
+    /// The memory kind to use for copied statics -- or None if statics should not be mutated
+    /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
+    /// Statics are copied under two circumstances: When they are mutated, and when
+    /// `static_with_default_tag` or `find_foreign_static` (see below) returns an owned allocation
+    /// that is added to the memory so that the work is not done twice.
+    const STATIC_KIND: Option<Self::MemoryKinds>;
+
+    /// Whether to enforce the validity invariant
+    fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool;
+
+    /// Called before a basic block terminator is executed.
+    /// You can use this to detect endlessly running programs.
+    fn before_terminator(ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
-    /// Returns Ok(true) when the function was handled completely
-    /// e.g. due to missing mir
-    ///
-    /// Returns Ok(false) if a new stack frame was pushed
-    fn eval_fn_call<'a>(
+    /// Returns either the mir to use for the call, or `None` if execution should
+    /// just proceed (which usually means this hook did all the work that the
+    /// called function should usually have done).  In the latter case, it is
+    /// this hook's responsibility to call `goto_block(ret)` to advance the instruction pointer!
+    /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
+    /// nor just jump to `ret`, but instead push their own stack frame.)
+    /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
+    /// was used.
+    fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Place, mir::BasicBlock)>,
-        args: &[ValTy<'tcx>],
-        span: Span,
-        sig: ty::FnSig<'tcx>,
-    ) -> EvalResult<'tcx, bool>;
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
 
-    /// directly process an intrinsic without pushing a stack frame.
-    fn call_intrinsic<'a>(
+    /// Directly process an intrinsic without pushing a stack frame.
+    /// If this returns successfully, the engine will take care of jumping to the next block.
+    fn call_intrinsic(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[ValTy<'tcx>],
-        dest: Place,
-        dest_layout: ty::layout::TyLayout<'tcx>,
-        target: mir::BasicBlock,
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Called for all binary operations except on float types.
+    /// Called for read access to a foreign static item.
     ///
-    /// Returns `None` if the operation should be handled by the integer
-    /// op code in order to share more code between machines
+    /// This will only be called once per static and machine; the result is cached in
+    /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
+    fn find_foreign_static(
+        def_id: DefId,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        memory_extra: &Self::MemoryExtra,
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
+
+    /// Called to turn an allocation obtained from the `tcx` into one that has
+    /// the right type for this machine.
+    ///
+    /// This should avoid copying if no work has to be done! If this returns an owned
+    /// allocation (because a copy had to be done to add tags or metadata), machine memory will
+    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
+
+    /// Called for all binary operations on integer(-like) types when one operand is a pointer
+    /// value, and for the `Offset` operation that is inherently about pointers.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
-    fn try_ptr_op<'a>(
+    fn ptr_op(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: Scalar,
-        left_ty: Ty<'tcx>,
-        right: Scalar,
-        right_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
+        left: Scalar<Self::PointerTag>,
+        left_layout: TyLayout<'tcx>,
+        right: Scalar<Self::PointerTag>,
+        right_layout: TyLayout<'tcx>,
+    ) -> EvalResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
 
-    /// Called when trying to mark machine defined `MemoryKinds` as static
-    fn mark_static_initialized<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
-        _mutability: Mutability,
-    ) -> EvalResult<'tcx, bool>;
-
-    /// Called when requiring a pointer to a static. Non const eval can
-    /// create a mutable memory location for `static mut`
-    fn init_static<'a>(
+    /// Heap allocations via the `box` keyword.
+    fn box_alloc(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        cid: GlobalId<'tcx>,
-    ) -> EvalResult<'tcx, AllocId>;
-
-    /// Heap allocations via the `box` keyword
-    ///
-    /// Returns a pointer to the allocated memory
-    fn box_alloc<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ty: Ty<'tcx>,
-        dest: Place,
+        dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Called when trying to access a global declared with a `linkage` attribute
-    fn global_item_with_linkage<'a>(
+    /// Add the tag for a newly allocated pointer.
+    fn tag_new_allocation(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        instance: ty::Instance<'tcx>,
-        mutability: Mutability,
+        ptr: Pointer,
+        kind: MemoryKind<Self::MemoryKinds>,
+    ) -> Pointer<Self::PointerTag>;
+
+    /// Executed when evaluating the `*` operator: Following a reference.
+    /// This has the chance to adjust the tag.  It should not change anything else!
+    /// `mutability` can be `None` in case a raw ptr is being dereferenced.
+    #[inline]
+    fn tag_dereference(
+        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        place: MPlaceTy<'tcx, Self::PointerTag>,
+        _mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
+        Ok(place.ptr)
+    }
+
+    /// Execute a retagging operation
+    #[inline]
+    fn retag(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _kind: mir::RetagKind,
+        _place: PlaceTy<'tcx, Self::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately before a new stack frame got pushed
+    fn stack_push(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+    ) -> EvalResult<'tcx, Self::FrameExtra>;
+
+    /// Called immediately after a stack frame gets popped
+    fn stack_pop(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        extra: Self::FrameExtra,
     ) -> EvalResult<'tcx>;
-
-    fn check_locks<'a>(
-        _mem: &Memory<'a, 'mir, 'tcx, Self>,
-        _ptr: Pointer,
-        _size: Size,
-        _access: AccessKind,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    fn add_lock<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
-    ) {}
-
-    fn free_lock<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
-        _len: u64,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    fn end_region<'a>(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _reg: Option<::rustc::middle::region::Scope>,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    fn validation_op<'a>(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _op: ::rustc::mir::ValidationOp,
-        _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
 }

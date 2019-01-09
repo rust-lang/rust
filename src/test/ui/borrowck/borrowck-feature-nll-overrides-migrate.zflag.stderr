@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-feature-nll-overrides-migrate.rs:32:17
+  --> $DIR/borrowck-feature-nll-overrides-migrate.rs:22:17
    |
 LL |                 (|| { let bar = foo; bar.take() })();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content

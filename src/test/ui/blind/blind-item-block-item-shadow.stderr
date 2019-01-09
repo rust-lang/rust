@@ -1,0 +1,17 @@
+error[E0255]: the name `Bar` is defined multiple times
+  --> $DIR/blind-item-block-item-shadow.rs:6:13
+   |
+LL |         struct Bar;
+   |         ----------- previous definition of the type `Bar` here
+LL |         use foo::Bar;
+   |             ^^^^^^^^ `Bar` reimported here
+   |
+   = note: `Bar` must be defined only once in the type namespace of this block
+help: you can use `as` to change the binding name of the import
+   |
+LL |         use foo::Bar as OtherBar;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0255`.

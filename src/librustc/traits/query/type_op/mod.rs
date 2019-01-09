@@ -1,17 +1,8 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint,
-                       QueryResult};
+use infer::canonical::{
+    Canonical, Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues,
+    QueryRegionConstraint, QueryResponse,
+};
 use infer::{InferCtxt, InferOk};
-use rustc_data_structures::small_vec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use traits::query::Fallible;
@@ -19,8 +10,10 @@ use traits::ObligationCause;
 use ty::fold::TypeFoldable;
 use ty::{Lift, ParamEnvAnd, TyCtxt};
 
+pub mod ascribe_user_type;
 pub mod custom;
 pub mod eq;
+pub mod implied_outlives_bounds;
 pub mod normalize;
 pub mod outlives;
 pub mod prove_predicate;
@@ -50,11 +43,11 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
 /// first canonicalize the key and then invoke the query on the tcx,
 /// which produces the resulting query region constraints.
 ///
-/// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
+/// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'gcx>
 {
-    type QueryResult: TypeFoldable<'tcx> + Lift<'gcx>;
+    type QueryResponse: TypeFoldable<'tcx> + Lift<'gcx>;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
@@ -62,7 +55,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     fn try_fast_path(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
-    ) -> Option<Self::QueryResult>;
+    ) -> Option<Self::QueryResponse>;
 
     /// Performs the actual query with the canonicalized key -- the
     /// real work happens here. This method is not given an `infcx`
@@ -73,29 +66,29 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>>;
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>>;
 
     /// Casts a lifted query result (which is in the gcx lifetime)
     /// into the tcx lifetime. This is always just an identity cast,
     /// but the generic code doesn't realize it -- put another way, in
-    /// the generic code, we have a `Lifted<'gcx, Self::QueryResult>`
-    /// and we want to convert that to a `Self::QueryResult`. This is
+    /// the generic code, we have a `Lifted<'gcx, Self::QueryResponse>`
+    /// and we want to convert that to a `Self::QueryResponse`. This is
     /// not a priori valid, so we can't do it -- but in practice, it
     /// is always a no-op (e.g., the lifted form of a type,
     /// `Ty<'gcx>`, is a subtype of `Ty<'tcx>`). So we have to push
     /// the operation into the impls that know more specifically what
-    /// `QueryResult` is. This operation would (maybe) be nicer with
+    /// `QueryResponse` is. This operation would (maybe) be nicer with
     /// something like HKTs or GATs, since then we could make
-    /// `QueryResult` parametric and `'gcx` and `'tcx` etc.
+    /// `QueryResponse` parametric and `'gcx` and `'tcx` etc.
     fn shrink_to_tcx_lifetime(
-        lifted_query_result: &'a CanonicalizedQueryResult<'gcx, Self::QueryResult>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self::QueryResult>>;
+        lifted_query_result: &'a CanonicalizedQueryResponse<'gcx, Self::QueryResponse>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
-    ) -> Fallible<Self::QueryResult> {
+    ) -> Fallible<Self::QueryResponse> {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
             return Ok(result);
         }
@@ -104,7 +97,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
         // `canonicalize_hr_query_hack` here because of things
         // like the subtype query, which go awry around
         // `'static` otherwise.
-        let mut canonical_var_values = SmallVec::new();
+        let mut canonical_var_values = OriginalQueryValues::default();
         let canonical_self =
             infcx.canonicalize_hr_query_hack(&query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
@@ -113,7 +106,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
         let param_env = query_key.param_env;
 
         let InferOk { value, obligations } = infcx
-            .instantiate_nll_query_result_and_region_obligations(
+            .instantiate_nll_query_response_and_region_obligations(
                 &ObligationCause::dummy(),
                 param_env,
                 &canonical_var_values,
@@ -144,7 +137,7 @@ impl<'gcx: 'tcx, 'tcx, Q> TypeOp<'gcx, 'tcx> for ParamEnvAnd<'tcx, Q>
 where
     Q: QueryTypeOp<'gcx, 'tcx>,
 {
-    type Output = Q::QueryResult;
+    type Output = Q::QueryResponse;
 
     fn fully_perform(
         self,

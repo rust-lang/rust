@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::borrow::Cow;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::str::from_utf8;
@@ -727,33 +717,33 @@ fn test_is_char_boundary() {
 }
 
 #[test]
-fn test_trim_left_matches() {
+fn test_trim_start_matches() {
     let v: &[char] = &[];
-    assert_eq!(" *** foo *** ".trim_left_matches(v), " *** foo *** ");
+    assert_eq!(" *** foo *** ".trim_start_matches(v), " *** foo *** ");
     let chars: &[char] = &['*', ' '];
-    assert_eq!(" *** foo *** ".trim_left_matches(chars), "foo *** ");
-    assert_eq!(" ***  *** ".trim_left_matches(chars), "");
-    assert_eq!("foo *** ".trim_left_matches(chars), "foo *** ");
+    assert_eq!(" *** foo *** ".trim_start_matches(chars), "foo *** ");
+    assert_eq!(" ***  *** ".trim_start_matches(chars), "");
+    assert_eq!("foo *** ".trim_start_matches(chars), "foo *** ");
 
-    assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
+    assert_eq!("11foo1bar11".trim_start_matches('1'), "foo1bar11");
     let chars: &[char] = &['1', '2'];
-    assert_eq!("12foo1bar12".trim_left_matches(chars), "foo1bar12");
-    assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_numeric()), "foo1bar123");
+    assert_eq!("12foo1bar12".trim_start_matches(chars), "foo1bar12");
+    assert_eq!("123foo1bar123".trim_start_matches(|c: char| c.is_numeric()), "foo1bar123");
 }
 
 #[test]
-fn test_trim_right_matches() {
+fn test_trim_end_matches() {
     let v: &[char] = &[];
-    assert_eq!(" *** foo *** ".trim_right_matches(v), " *** foo *** ");
+    assert_eq!(" *** foo *** ".trim_end_matches(v), " *** foo *** ");
     let chars: &[char] = &['*', ' '];
-    assert_eq!(" *** foo *** ".trim_right_matches(chars), " *** foo");
-    assert_eq!(" ***  *** ".trim_right_matches(chars), "");
-    assert_eq!(" *** foo".trim_right_matches(chars), " *** foo");
+    assert_eq!(" *** foo *** ".trim_end_matches(chars), " *** foo");
+    assert_eq!(" ***  *** ".trim_end_matches(chars), "");
+    assert_eq!(" *** foo".trim_end_matches(chars), " *** foo");
 
-    assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
+    assert_eq!("11foo1bar11".trim_end_matches('1'), "11foo1bar");
     let chars: &[char] = &['1', '2'];
-    assert_eq!("12foo1bar12".trim_right_matches(chars), "12foo1bar");
-    assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_numeric()), "123foo1bar");
+    assert_eq!("12foo1bar12".trim_end_matches(chars), "12foo1bar");
+    assert_eq!("123foo1bar123".trim_end_matches(|c: char| c.is_numeric()), "123foo1bar");
 }
 
 #[test]
@@ -772,23 +762,23 @@ fn test_trim_matches() {
 }
 
 #[test]
-fn test_trim_left() {
-    assert_eq!("".trim_left(), "");
-    assert_eq!("a".trim_left(), "a");
-    assert_eq!("    ".trim_left(), "");
-    assert_eq!("     blah".trim_left(), "blah");
-    assert_eq!("   \u{3000}  wut".trim_left(), "wut");
-    assert_eq!("hey ".trim_left(), "hey ");
+fn test_trim_start() {
+    assert_eq!("".trim_start(), "");
+    assert_eq!("a".trim_start(), "a");
+    assert_eq!("    ".trim_start(), "");
+    assert_eq!("     blah".trim_start(), "blah");
+    assert_eq!("   \u{3000}  wut".trim_start(), "wut");
+    assert_eq!("hey ".trim_start(), "hey ");
 }
 
 #[test]
-fn test_trim_right() {
-    assert_eq!("".trim_right(), "");
-    assert_eq!("a".trim_right(), "a");
-    assert_eq!("    ".trim_right(), "");
-    assert_eq!("blah     ".trim_right(), "blah");
-    assert_eq!("wut   \u{3000}  ".trim_right(), "wut");
-    assert_eq!(" hey".trim_right(), " hey");
+fn test_trim_end() {
+    assert_eq!("".trim_end(), "");
+    assert_eq!("a".trim_end(), "a");
+    assert_eq!("    ".trim_end(), "");
+    assert_eq!("blah     ".trim_end(), "blah");
+    assert_eq!("wut   \u{3000}  ".trim_end(), "wut");
+    assert_eq!(" hey".trim_end(), " hey");
 }
 
 #[test]
@@ -1005,7 +995,7 @@ fn test_escape_debug() {
     // Note that there are subtleties with the number of backslashes
     // on the left- and right-hand sides. In particular, Unicode code points
     // are usually escaped with two backslashes on the right-hand side, as
-    // they are escaped. However, when the character is unescaped (e.g. for
+    // they are escaped. However, when the character is unescaped (e.g., for
     // printable characters), only a single backslash appears (as the character
     // itself appears in the debug string).
     assert_eq!("abc".escape_debug(), "abc");
@@ -1378,7 +1368,7 @@ fn test_bool_from_str() {
 fn check_contains_all_substrings(s: &str) {
     assert!(s.contains(""));
     for i in 0..s.len() {
-        for j in i+1..s.len() + 1 {
+        for j in i+1..=s.len() {
             assert!(s.contains(&s[i..j]));
         }
     }
@@ -1514,15 +1504,23 @@ fn contains_weird_cases() {
 
 #[test]
 fn trim_ws() {
-    assert_eq!(" \t  a \t  ".trim_left_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t  a \t  ".trim_start_matches(|c: char| c.is_whitespace()),
                     "a \t  ");
-    assert_eq!(" \t  a \t  ".trim_right_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t  a \t  ".trim_end_matches(|c: char| c.is_whitespace()),
+               " \t  a");
+    assert_eq!(" \t  a \t  ".trim_start_matches(|c: char| c.is_whitespace()),
+                    "a \t  ");
+    assert_eq!(" \t  a \t  ".trim_end_matches(|c: char| c.is_whitespace()),
                " \t  a");
     assert_eq!(" \t  a \t  ".trim_matches(|c: char| c.is_whitespace()),
                     "a");
-    assert_eq!(" \t   \t  ".trim_left_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t   \t  ".trim_start_matches(|c: char| c.is_whitespace()),
                          "");
-    assert_eq!(" \t   \t  ".trim_right_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t   \t  ".trim_end_matches(|c: char| c.is_whitespace()),
+               "");
+    assert_eq!(" \t   \t  ".trim_start_matches(|c: char| c.is_whitespace()),
+                         "");
+    assert_eq!(" \t   \t  ".trim_end_matches(|c: char| c.is_whitespace()),
                "");
     assert_eq!(" \t   \t  ".trim_matches(|c: char| c.is_whitespace()),
                "");

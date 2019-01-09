@@ -1,0 +1,12 @@
+error[E0599]: no method named `deref` found for type `std::result::Result<{integer}, _>` in the current scope
+  --> $DIR/result-deref.rs:4:27
+   |
+LL |     let _result = &Ok(42).deref();
+   |                           ^^^^^
+   |
+   = note: the method `deref` exists but the following trait bounds were not satisfied:
+           `{integer} : std::ops::Deref`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

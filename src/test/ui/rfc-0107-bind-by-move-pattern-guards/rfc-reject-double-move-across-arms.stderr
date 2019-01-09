@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/rfc-reject-double-move-across-arms.rs:8:36
+   |
+LL |         VecWrapper::A(v) if { drop(v); false } => 1,
+   |                                    ^ cannot move out of borrowed content
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,8 @@
+error: expected one of `:`, `;`, `=`, or `@`, found `.`
+  --> $DIR/bad-name.rs:4:8
+   |
+LL |   let x.y::<isize>.z foo;
+   |        ^ expected one of `:`, `;`, `=`, or `@` here
+
+error: aborting due to previous error
+

@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// This is a small server which is intended to run inside of an emulator or
 /// on a remote test device. This server pairs with the `remote-test-client`
 /// program in this repository. The `remote-test-client` connects to this
@@ -267,7 +257,7 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
     t!(io::copy(&mut io.take(amt),
                 &mut t!(File::create(&dst))));
     t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
-    return dst
+    dst
 }
 
 fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {

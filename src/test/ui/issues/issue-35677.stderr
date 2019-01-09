@@ -1,0 +1,13 @@
+error[E0599]: no method named `drain` found for type `&mut std::collections::HashMap<K, V>` in the current scope
+  --> $DIR/issue-35677.rs:3:10
+   |
+LL |     this.drain()
+   |          ^^^^^
+   |
+   = note: the method `drain` exists but the following trait bounds were not satisfied:
+           `K : std::cmp::Eq`
+           `K : std::hash::Hash`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

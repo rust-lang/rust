@@ -1,0 +1,16 @@
+error: variable does not need to be mutable
+  --> $DIR/unused-mut-warning-captured-var.rs:4:9
+   |
+LL |     let mut x = 1;
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+   |
+note: lint level defined here
+  --> $DIR/unused-mut-warning-captured-var.rs:1:11
+   |
+LL | #![forbid(unused_mut)]
+   |           ^^^^^^^^^^
+
+error: aborting due to previous error
+

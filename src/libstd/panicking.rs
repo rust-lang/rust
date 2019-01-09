@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of various bits and pieces of the `panic!` macro and
 //! associated runtime pieces.
 //!
@@ -29,7 +19,7 @@ use intrinsics;
 use mem;
 use ptr;
 use raw;
-use sys::stdio::{Stderr, stderr_prints_nothing};
+use sys::stdio::panic_output;
 use sys_common::rwlock::RWLock;
 use sys_common::thread_info;
 use sys_common::util;
@@ -193,7 +183,6 @@ fn default_hook(info: &PanicInfo) {
             None => "Box<Any>",
         }
     };
-    let mut err = Stderr::new().ok();
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
@@ -210,22 +199,20 @@ fn default_hook(info: &PanicInfo) {
             if let Some(format) = log_backtrace {
                 let _ = backtrace::print(err, format);
             } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
-                let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` for a backtrace.");
+                let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` \
+                                       environment variable to display a backtrace.");
             }
         }
     };
 
-    let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
-    match (prev, err.as_mut()) {
-       (Some(mut stderr), _) => {
-           write(&mut *stderr);
-           let mut s = Some(stderr);
-           LOCAL_STDERR.with(|slot| {
-               *slot.borrow_mut() = s.take();
-           });
-       }
-       (None, Some(ref mut err)) => { write(err) }
-       _ => {}
+    if let Some(mut local) = LOCAL_STDERR.with(|s| s.borrow_mut().take()) {
+       write(&mut *local);
+       let mut s = Some(local);
+       LOCAL_STDERR.with(|slot| {
+           *slot.borrow_mut() = s.take();
+       });
+    } else if let Some(mut out) = panic_output() {
+        write(&mut out);
     }
 }
 
@@ -319,7 +306,7 @@ pub fn panicking() -> bool {
 
 /// Entry point of panic from the libcore crate.
 #[cfg(not(test))]
-#[panic_implementation]
+#[panic_handler]
 #[unwind(allowed)]
 pub fn rust_begin_panic(info: &PanicInfo) -> ! {
     continue_panic_fmt(&info)
@@ -334,9 +321,17 @@ pub fn rust_begin_panic(info: &PanicInfo) -> ! {
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
-#[inline(never)] #[cold]
+#[cold]
+// If panic_immediate_abort, inline the abort call,
+// otherwise avoid inlining because of it is cold path.
+#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
+#[cfg_attr(    feature="panic_immediate_abort" ,inline)]
 pub fn begin_panic_fmt(msg: &fmt::Arguments,
                        file_line_col: &(&'static str, u32, u32)) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        unsafe { intrinsics::abort() }
+    }
+
     let (file, line, col) = *file_line_col;
     let info = PanicInfo::internal_constructor(
         Some(msg),
@@ -397,8 +392,16 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
-#[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
+#[cfg_attr(not(test), lang = "begin_panic")]
+// never inline unless panic_immediate_abort to avoid code
+// bloat at the call sites as much as possible
+#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
+#[cold]
 pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u32)) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        unsafe { intrinsics::abort() }
+    }
+
     // Note that this should be the only allocation performed in this code path.
     // Currently this means that panic!() on OOM will invoke this code path,
     // but then again we're not really ready for panic on OOM anyway. If
@@ -448,7 +451,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
 
     let panics = update_panic_count(1);
 
-    // If this is the third nested call (e.g. panics == 2, this is 0-indexed),
+    // If this is the third nested call (e.g., panics == 2, this is 0-indexed),
     // the panic hook probably triggered the last panic, otherwise the
     // double-panic check would have aborted the process. In this case abort the
     // process real quickly as we don't want to try calling it again as it'll
@@ -469,7 +472,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
             // Some platforms know that printing to stderr won't ever actually
             // print anything, and if that's the case we can skip the default
             // hook.
-            Hook::Default if stderr_prints_nothing() => {}
+            Hook::Default if panic_output().is_none() => {}
             Hook::Default => {
                 info.set_payload(payload.get());
                 default_hook(&info);
@@ -478,7 +481,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
                 info.set_payload(payload.get());
                 (*ptr)(&info);
             }
-        }
+        };
         HOOK_LOCK.read_unlock();
     }
 
@@ -514,10 +517,11 @@ pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
     rust_panic(&mut RewrapBox(msg))
 }
 
-/// A private no-mangle function on which to slap yer breakpoints.
-#[no_mangle]
-#[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
-pub fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
+/// An unmangled function (through `rustc_std_internal_symbol`) on which to slap
+/// yer breakpoints.
+#[inline(never)]
+#[cfg_attr(not(test), rustc_std_internal_symbol)]
+fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
     let code = unsafe {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
         __rust_start_panic(obj as usize)

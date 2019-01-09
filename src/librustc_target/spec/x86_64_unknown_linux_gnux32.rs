@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use spec::{LinkerFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -17,6 +7,9 @@ pub fn target() -> TargetResult {
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-mx32".to_string());
     base.stack_probes = true;
     base.has_elf_tls = false;
+    // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
+    // breaks code gen. See LLVM bug 36743
+    base.needs_plt = true;
 
     Ok(Target {
         llvm_target: "x86_64-unknown-linux-gnux32".to_string(),

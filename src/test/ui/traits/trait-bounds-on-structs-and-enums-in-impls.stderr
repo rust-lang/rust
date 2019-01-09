@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `u16: Trait` is not satisfied
+  --> $DIR/trait-bounds-on-structs-and-enums-in-impls.rs:20:6
+   |
+LL | impl PolyTrait<Foo<u16>> for Struct {
+   |      ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u16`
+   |
+note: required by `Foo`
+  --> $DIR/trait-bounds-on-structs-and-enums-in-impls.rs:3:1
+   |
+LL | struct Foo<T:Trait> {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

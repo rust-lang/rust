@@ -1,0 +1,33 @@
+error[E0277]: `[{integer}; 2]` is not an iterator
+  --> $DIR/array.rs:2:14
+   |
+LL |     for _ in [1, 2] {}
+   |              ^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[{integer}; 2]`
+   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[{integer}; 2]` is not an iterator
+  --> $DIR/array.rs:5:14
+   |
+LL |     for _ in x {}
+   |              ^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[{integer}; 2]`
+   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[{float}; 2]` is not an iterator
+  --> $DIR/array.rs:7:14
+   |
+LL |     for _ in [1.0, 2.0] {}
+   |              ^^^^^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[{float}; 2]`
+   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

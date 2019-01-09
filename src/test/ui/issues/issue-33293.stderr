@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared type or module `aaa`
+  --> $DIR/issue-33293.rs:3:9
+   |
+LL |         aaa::bbb(_) => ()
+   |         ^^^ use of undeclared type or module `aaa`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

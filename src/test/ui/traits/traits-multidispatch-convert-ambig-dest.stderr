@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/traits-multidispatch-convert-ambig-dest.rs:26:5
+   |
+LL |     test(22, std::default::Default::default());
+   |     ^^^^ cannot infer type for `U`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

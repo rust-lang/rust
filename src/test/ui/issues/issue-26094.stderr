@@ -1,0 +1,15 @@
+error[E0061]: this function takes 0 parameters but 1 parameter was supplied
+  --> $DIR/issue-26094.rs:3:9
+   |
+LL |         $other(None)
+   |         ^^^^^^^^^^^^ expected 0 parameters
+...
+LL | fn some_function() {}
+   | ------------------ defined here
+...
+LL |     some_macro!(some_function);
+   |     --------------------------- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.

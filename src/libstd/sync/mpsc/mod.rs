@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Multi-producer, single-consumer FIFO queue communication primitives.
 //!
 //! This module provides message-based communication over channels, concretely
@@ -124,6 +114,7 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(deprecated)] // for mpsc_select
 
 // A description of how Rust's channel implementation works
 //
@@ -931,7 +922,7 @@ impl<T> fmt::Debug for Sender<T> {
 
 impl<T> SyncSender<T> {
     fn new(inner: Arc<sync::Packet<T>>) -> SyncSender<T> {
-        SyncSender { inner: inner }
+        SyncSender { inner }
     }
 
     /// Sends a value on this synchronous channel.
@@ -1247,6 +1238,34 @@ impl<T> Receiver<T> {
     /// [`SyncSender`]: struct.SyncSender.html
     /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
+    /// # Known Issues
+    ///
+    /// There is currently a known issue (see [`#39364`]) that causes `recv_timeout`
+    /// to panic unexpectedly with the following example:
+    ///
+    /// ```no_run
+    /// use std::sync::mpsc::channel;
+    /// use std::thread;
+    /// use std::time::Duration;
+    ///
+    /// let (tx, rx) = channel::<String>();
+    ///
+    /// thread::spawn(move || {
+    ///     let d = Duration::from_millis(10);
+    ///     loop {
+    ///         println!("recv");
+    ///         let _r = rx.recv_timeout(d);
+    ///     }
+    /// });
+    ///
+    /// thread::sleep(Duration::from_millis(100));
+    /// let _c1 = tx.clone();
+    ///
+    /// thread::sleep(Duration::from_secs(1));
+    /// ```
+    ///
+    /// [`#39364`]: https://github.com/rust-lang/rust/issues/39364
+    ///
     /// # Examples
     ///
     /// Successfully receiving value before encountering timeout:
@@ -1292,12 +1311,13 @@ impl<T> Receiver<T> {
         // Do an optimistic try_recv to avoid the performance impact of
         // Instant::now() in the full-channel case.
         match self.try_recv() {
-            Ok(result)
-                => Ok(result),
-            Err(TryRecvError::Disconnected)
-                => Err(RecvTimeoutError::Disconnected),
-            Err(TryRecvError::Empty)
-                => self.recv_deadline(Instant::now() + timeout)
+            Ok(result) => Ok(result),
+            Err(TryRecvError::Disconnected) => Err(RecvTimeoutError::Disconnected),
+            Err(TryRecvError::Empty) => match Instant::now().checked_add(timeout) {
+                Some(deadline) => self.recv_deadline(deadline),
+                // So far in the future that it's practically the same as waiting indefinitely.
+                None => self.recv().map_err(RecvTimeoutError::from),
+            },
         }
     }
 
@@ -2280,6 +2300,17 @@ mod tests {
         }
 
         assert_eq!(recv_count, stress);
+    }
+
+    #[test]
+    fn very_long_recv_timeout_wont_panic() {
+        let (tx, rx) = channel::<()>();
+        let join_handle = thread::spawn(move || {
+            rx.recv_timeout(Duration::from_secs(u64::max_value()))
+        });
+        thread::sleep(Duration::from_secs(1));
+        assert!(tx.send(()).is_ok());
+        assert_eq!(join_handle.join().unwrap(), Ok(()));
     }
 
     #[test]

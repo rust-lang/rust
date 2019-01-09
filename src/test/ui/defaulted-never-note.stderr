@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `!: ImplementedForUnitButNotNever` is not satisfied
+  --> $DIR/defaulted-never-note.rs:26:5
+   |
+LL |     foo(_x);
+   |     ^^^ the trait `ImplementedForUnitButNotNever` is not implemented for `!`
+   |
+   = note: the trait is implemented for `()`. Possibly this error has been caused by changes to Rust's type-inference algorithm (see: https://github.com/rust-lang/rust/issues/48950 for more info). Consider whether you meant to use the type `()` here instead.
+note: required by `foo`
+  --> $DIR/defaulted-never-note.rs:21:1
+   |
+LL | fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

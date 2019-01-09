@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Decodes a floating-point value into individual parts and error ranges.
 
 use {f32, f64};
@@ -77,8 +67,8 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
             // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
             // Float::integer_decode always preserves the exponent,
             // so the mantissa is scaled for subnormals.
-            FullDecoded::Finite(Decoded { mant: mant, minus: 1, plus: 1,
-                                          exp: exp, inclusive: even })
+            FullDecoded::Finite(Decoded { mant, minus: 1, plus: 1,
+                                          exp, inclusive: even })
         }
         FpCategory::Normal => {
             let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();

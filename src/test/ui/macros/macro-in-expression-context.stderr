@@ -1,0 +1,15 @@
+error: macro expansion ignores token `assert_eq` and any following
+  --> $DIR/macro-in-expression-context.rs:6:9
+   |
+LL |         assert_eq!("B", "B");
+   |         ^^^^^^^^^
+...
+LL |     foo!()
+   |     ------- help: you might be missing a semicolon here: `;`
+   |     |
+   |     caused by the macro expansion here
+   |
+   = note: the usage of `foo!` is likely invalid in expression context
+
+error: aborting due to previous error
+

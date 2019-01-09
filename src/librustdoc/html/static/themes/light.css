@@ -1,15 +1,3 @@
-/**
- * Copyright 2015 The Rust Project Developers. See the COPYRIGHT
- * file at the top-level directory of this distribution and at
- * http://rust-lang.org/COPYRIGHT.
- *
- * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
- * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
- * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
- * option. This file may not be copied, modified, or distributed
- * except according to those terms.
- */
-
 /* General structure and fonts */
 
 body {
@@ -35,7 +23,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	background: rgba(0, 0, 0, 0);
 }
 
-.docblock p > code, .docblock-short p > code {
+.docblock code, .docblock-short code {
 	background-color: #F5F5F5;
 }
 pre {
@@ -124,6 +112,8 @@ pre {
 .content .highlighted.tymethod { background-color: #c6afb3; }
 .content .highlighted.type { background-color: #ffc891; }
 .content .highlighted.foreigntype { background-color: #f5c4ff; }
+.content .highlighted.attr,
+.content .highlighted.derive,
 .content .highlighted.macro { background-color: #8ce488; }
 .content .highlighted.constant,
 .content .highlighted.static { background-color: #c3e0ff; }
@@ -134,6 +124,8 @@ pre {
 .content span.struct, .content a.struct, .block a.current.struct { color: #ad448e; }
 .content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
 .content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #cd00e2; }
+.content span.attr, .content a.attr, .block a.current.attr,
+.content span.derive, .content a.derive, .block a.current.derive,
 .content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
 .content span.union, .content a.union, .block a.current.union { color: #767b27; }
 .content span.constant, .content a.constant, .block a.current.constant,
@@ -165,9 +157,13 @@ a {
 	color: #000;
 }
 
-.docblock a:not(.srclink):not(.test-arrow), .docblock-short a:not(.srclink):not(.test-arrow),
-.stability a {
+.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
+.docblock-short a:not(.srclink):not(.test-arrow), .stability a {
 	color: #3873AD;
+}
+
+.stab.internal a {
+	color: #304FFE;
 }
 
 a.test-arrow {
@@ -176,6 +172,13 @@ a.test-arrow {
 
 .collapse-toggle {
 	color: #999;
+}
+
+#crate-search {
+	color: #555;
+	background-color: white;
+	border-color: #e0e0e0;
+	box-shadow: 0px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 }
 
 .search-input {
@@ -188,7 +191,12 @@ a.test-arrow {
 	border-color: #66afe9;
 }
 
+#crate-search + .search-input {
+	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+}
+
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+.stab.internal { background: #FFB9B3; border-color: #B71C1C; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
 
@@ -221,6 +229,10 @@ pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
 pre.rust .question-mark {
 	color: #ff9011;
+}
+
+.example-wrap > pre.line-number {
+	border-color: #c7c7c7;
 }
 
 a.test-arrow {
@@ -271,7 +283,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: rgba(255,142,0,1);
 }
 
-.search-failed > a {
+.search-failed a {
 	color: #0089ff;
 }
 
@@ -290,16 +302,13 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: black;
 }
 
-#titles > div {
-	border-bottom-color:  #ccc;
+#titles > div:not(.selected) {
+	background-color: #e6e6e6;
+	border-top-color: #e6e6e6;
 }
 
-#titles > div.selected {
-	border-bottom-color: #0078ee;
-}
-
-#titles > div:hover {
-	border-bottom-color: #0089ff;
+#titles > div:hover, #titles > div.selected {
+	border-top-color: #0089ff;
 }
 
 #titles > div > div.count {
@@ -400,4 +409,27 @@ kbd {
 }
 .search-results td span.grey {
 	color: #999;
+}
+
+.impl-items code {
+	background-color: rgba(0, 0, 0, 0);
+}
+
+#sidebar-toggle {
+	background-color: #F1F1F1;
+}
+#sidebar-toggle:hover {
+	background-color: #E0E0E0;
+}
+#source-sidebar {
+	background-color: #F1F1F1;
+}
+#source-sidebar > .title {
+	border-bottom-color: #ccc;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #E0E0E0;
+}
+div.files > .selected {
+	background-color: #fff;
 }

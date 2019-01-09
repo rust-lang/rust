@@ -1,0 +1,10 @@
+error: mutating transmuted &mut T from &T may cause undefined behavior, consider instead using an UnsafeCell
+  --> $DIR/transmute-imut-to-mut.rs:6:32
+   |
+LL |     let _a: &mut u8 = unsafe { transmute(&1u8) };
+   |                                ^^^^^^^^^
+   |
+   = note: #[deny(mutable_transmutes)] on by default
+
+error: aborting due to previous error
+

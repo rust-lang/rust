@@ -1,0 +1,12 @@
+error[E0195]: lifetime parameters or bounds on method `get` do not match the trait declaration
+  --> $DIR/issue-16048.rs:21:11
+   |
+LL |     fn get<'p, T : Test<'p>>(&self) -> T;
+   |           ------------------ lifetimes in impl do not match this method in trait
+...
+LL |     fn get<'p, T : Test<'a>>(&self) -> T {
+   |           ^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0195`.

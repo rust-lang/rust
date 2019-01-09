@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! From the NLL RFC: "The deep [aka 'supporting'] prefixes for an
 //! place are formed by stripping away fields and derefs, except that
 //! we stop when we reach the deref of a shared reference. [...] "
@@ -79,7 +69,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             next: Some(place),
             kind,
             mir: self.mir,
-            tcx: self.tcx,
+            tcx: self.infcx.tcx,
         }
     }
 }
@@ -87,14 +77,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
     type Item = &'cx Place<'tcx>;
     fn next(&mut self) -> Option<Self::Item> {
-        let mut cursor = match self.next {
-            None => return None,
-            Some(place) => place,
-        };
+        let mut cursor = self.next?;
 
         // Post-processing `place`: Enqueue any remaining
         // work. Also, `place` may not be a prefix itself, but
-        // may hold one further down (e.g. we never return
+        // may hold one further down (e.g., we never return
         // downcasts here, but may return a base of a downcast).
 
         'cursor: loop {
@@ -155,8 +142,8 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
 
             let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
             match ty.sty {
-                ty::TyRawPtr(_) |
-                ty::TyRef(
+                ty::RawPtr(_) |
+                ty::Ref(
                     _, /*rgn*/
                     _, /*ty*/
                     hir::MutImmutable
@@ -166,7 +153,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
                     return Some(cursor);
                 }
 
-                ty::TyRef(
+                ty::Ref(
                     _, /*rgn*/
                     _, /*ty*/
                     hir::MutMutable,
@@ -175,7 +162,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
                     return Some(cursor);
                 }
 
-                ty::TyAdt(..) if ty.is_box() => {
+                ty::Adt(..) if ty.is_box() => {
                     self.next = Some(&proj.base);
                     return Some(cursor);
                 }

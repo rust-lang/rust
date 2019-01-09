@@ -1,0 +1,72 @@
+error[E0277]: the size for values of type `U` cannot be known at compilation time
+  --> $DIR/trait-suggest-where-clause.rs:7:5
+   |
+LL |     mem::size_of::<U>();
+   |     ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `U`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where U: std::marker::Sized` bound
+   = note: required by `std::mem::size_of`
+
+error[E0277]: the size for values of type `U` cannot be known at compilation time
+  --> $DIR/trait-suggest-where-clause.rs:10:5
+   |
+LL |     mem::size_of::<Misc<U>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Misc<U>`, the trait `std::marker::Sized` is not implemented for `U`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where U: std::marker::Sized` bound
+   = note: required because it appears within the type `Misc<U>`
+   = note: required by `std::mem::size_of`
+
+error[E0277]: the trait bound `u64: std::convert::From<T>` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:15:5
+   |
+LL |     <u64 as From<T>>::from;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `u64`
+   |
+   = help: consider adding a `where u64: std::convert::From<T>` bound
+   = note: required by `std::convert::From::from`
+
+error[E0277]: the trait bound `u64: std::convert::From<<T as std::iter::Iterator>::Item>` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:18:5
+   |
+LL |     <u64 as From<<T as Iterator>::Item>>::from;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<<T as std::iter::Iterator>::Item>` is not implemented for `u64`
+   |
+   = help: consider adding a `where u64: std::convert::From<<T as std::iter::Iterator>::Item>` bound
+   = note: required by `std::convert::From::from`
+
+error[E0277]: the trait bound `Misc<_>: std::convert::From<T>` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:23:5
+   |
+LL |     <Misc<_> as From<T>>::from;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `Misc<_>`
+   |
+   = note: required by `std::convert::From::from`
+
+error[E0277]: the size for values of type `[T]` cannot be known at compilation time
+  --> $DIR/trait-suggest-where-clause.rs:28:5
+   |
+LL |     mem::size_of::<[T]>();
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[T]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required by `std::mem::size_of`
+
+error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
+  --> $DIR/trait-suggest-where-clause.rs:31:5
+   |
+LL |     mem::size_of::<[&U]>();
+   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[&U]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required by `std::mem::size_of`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

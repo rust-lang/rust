@@ -1,20 +1,8 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-use mir::interpret::ConstValue;
 use ty::{self, Ty};
-use rustc_data_structures::small_vec::SmallVec;
-use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
+use smallvec::{self, SmallVec};
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
 // avoid heap allocations.
@@ -28,7 +16,7 @@ pub struct TypeWalker<'tcx> {
 
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(ty: Ty<'tcx>) -> TypeWalker<'tcx> {
-        TypeWalker { stack: SmallVec::one(ty), last_subtree: 1, }
+        TypeWalker { stack: smallvec![ty], last_subtree: 1, }
     }
 
     /// Skips the subtree of types corresponding to the last type
@@ -55,7 +43,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
         debug!("next(): stack={:?}", self.stack);
         match self.stack.pop() {
             None => {
-                return None;
+                None
             }
             Some(ty) => {
                 self.last_subtree = self.stack.len();
@@ -67,7 +55,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> AccIntoIter<TypeWalkerArray<'tcx>> {
+pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> smallvec::IntoIter<TypeWalkerArray<'tcx>> {
     let mut stack = SmallVec::new();
     push_subtypes(&mut stack, ty);
     stack.into_iter()
@@ -81,27 +69,29 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> AccIntoIter<TypeWalkerArray<'tcx>> {
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
     match parent_ty.sty {
-        ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-        ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError |
-        ty::TyForeign(..) => {
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
+        ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
+        ty::Placeholder(..) | ty::Bound(..) | ty::Foreign(..) => {
         }
-        ty::TyArray(ty, len) => {
-            push_const(stack, len);
+        ty::Array(ty, len) => {
+            if let ty::LazyConst::Unevaluated(_, substs) = len {
+                stack.extend(substs.types().rev());
+            }
             stack.push(ty);
         }
-        ty::TySlice(ty) => {
+        ty::Slice(ty) => {
             stack.push(ty);
         }
-        ty::TyRawPtr(ref mt) => {
+        ty::RawPtr(ref mt) => {
             stack.push(mt.ty);
         }
-        ty::TyRef(_, ty, _) => {
+        ty::Ref(_, ty, _) => {
             stack.push(ty);
         }
-        ty::TyProjection(ref data) => {
+        ty::Projection(ref data) | ty::UnnormalizedProjection(ref data) => {
             stack.extend(data.substs.types().rev());
         }
-        ty::TyDynamic(ref obj, ..) => {
+        ty::Dynamic(ref obj, ..) => {
             stack.extend(obj.iter().rev().flat_map(|predicate| {
                 let (substs, opt_ty) = match *predicate.skip_binder() {
                     ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
@@ -115,34 +105,27 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
                 substs.types().rev().chain(opt_ty)
             }));
         }
-        ty::TyAdt(_, substs) | ty::TyAnon(_, substs) => {
+        ty::Adt(_, substs) | ty::Opaque(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::TyClosure(_, ref substs) => {
+        ty::Closure(_, ref substs) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyGenerator(_, ref substs, _) => {
+        ty::Generator(_, ref substs, _) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyGeneratorWitness(ts) => {
+        ty::GeneratorWitness(ts) => {
             stack.extend(ts.skip_binder().iter().cloned().rev());
         }
-        ty::TyTuple(ts) => {
+        ty::Tuple(ts) => {
             stack.extend(ts.iter().cloned().rev());
         }
-        ty::TyFnDef(_, substs) => {
+        ty::FnDef(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::TyFnPtr(sig) => {
+        ty::FnPtr(sig) => {
             stack.push(sig.skip_binder().output());
             stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
         }
     }
-}
-
-fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const<'tcx>) {
-    if let ConstValue::Unevaluated(_, substs) = constant.val {
-        stack.extend(substs.types().rev());
-    }
-    stack.push(constant.ty);
 }

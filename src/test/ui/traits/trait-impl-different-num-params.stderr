@@ -1,0 +1,12 @@
+error[E0050]: method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 2
+  --> $DIR/trait-impl-different-num-params.rs:5:12
+   |
+LL |     fn bar(&self, x: usize) -> Self;
+   |            --------------- trait requires 2 parameters
+...
+LL |     fn bar(&self) -> isize {
+   |            ^^^^^ expected 2 parameters, found 1
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0050`.

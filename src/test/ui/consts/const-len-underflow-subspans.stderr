@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-len-underflow-subspans.rs:8:17
+   |
+LL |     let a: [i8; ONE - TWO] = unimplemented!();
+   |                 ^^^^^^^^^ attempt to subtract with overflow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-eval-overflow-3.rs:20:11
+   |
+LL |     = [0; (i8::MAX + 1) as usize];
+   |           ^^^^^^^^^^^^^ attempt to add with overflow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Error handling with the `Result` type.
 //!
 //! [`Result<T, E>`][`Result`] is the type used for returning and propagating
@@ -242,7 +232,7 @@
 
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use ops;
+use ops::{self, Deref};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -470,6 +460,36 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Maps a `Result<T, E>` to `U` by applying a function to a
+    /// contained [`Ok`] value, or a fallback function to a
+    /// contained [`Err`] value.
+    ///
+    /// This function can be used to unpack a successful result
+    /// while handling an error.
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(result_map_or_else)]
+    /// let k = 21;
+    ///
+    /// let x : Result<_, &str> = Ok("foo");
+    /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 3);
+    ///
+    /// let x : Result<&str, _> = Err("bar");
+    /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 42);
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_map_or_else", issue = "53268")]
+    pub fn map_or_else<U, M: FnOnce(T) -> U, F: FnOnce(E) -> U>(self, fallback: F, map: M) -> U {
+        self.map(map).unwrap_or_else(fallback)
+    }
+
     /// Maps a `Result<T, E>` to `Result<T, F>` by applying a function to a
     /// contained [`Err`] value, leaving an [`Ok`] value untouched.
     ///
@@ -507,7 +527,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns an iterator over the possibly contained value.
     ///
-    /// The iterator yields one value if the result is [`Ok`], otherwise none.
+    /// The iterator yields one value if the result is [`Result::Ok`], otherwise none.
     ///
     /// # Examples
     ///
@@ -520,8 +540,6 @@ impl<T, E> Result<T, E> {
     /// let x: Result<u32, &str> = Err("nothing!");
     /// assert_eq!(x.iter().next(), None);
     /// ```
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -530,7 +548,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns a mutable iterator over the possibly contained value.
     ///
-    /// The iterator yields one value if the result is [`Ok`], otherwise none.
+    /// The iterator yields one value if the result is [`Result::Ok`], otherwise none.
     ///
     /// # Examples
     ///
@@ -547,8 +565,6 @@ impl<T, E> Result<T, E> {
     /// let mut x: Result<u32, &str> = Err("nothing!");
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
@@ -909,6 +925,44 @@ impl<T: Default, E> Result<T, E> {
     }
 }
 
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref, E> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Ok` arm of the Result via
+    /// `Deref`.
+    pub fn deref_ok(&self) -> Result<&T::Target, &E> {
+        self.as_ref().map(|t| t.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T, E: Deref> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Err` arm of the Result via
+    /// `Deref`.
+    pub fn deref_err(&self) -> Result<&T, &E::Target>
+    {
+        self.as_ref().map_err(|e| e.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref, E: Deref> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing both the `Ok` and `Err` arms
+    /// of the Result via `Deref`.
+    pub fn deref(&self) -> Result<&T::Target, &E::Target>
+    {
+        self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
+    }
+}
+
 impl<T, E> Result<Option<T>, E> {
     /// Transposes a `Result` of an `Option` into an `Option` of a `Result`.
     ///
@@ -956,7 +1010,7 @@ impl<T, E> IntoIterator for Result<T, E> {
 
     /// Returns a consuming iterator over the possibly contained value.
     ///
-    /// The iterator yields one value if the result is [`Ok`], otherwise none.
+    /// The iterator yields one value if the result is [`Result::Ok`], otherwise none.
     ///
     /// # Examples
     ///
@@ -971,8 +1025,6 @@ impl<T, E> IntoIterator for Result<T, E> {
     /// let v: Vec<u32> = x.into_iter().collect();
     /// assert_eq!(v, []);
     /// ```
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
     #[inline]
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { inner: self.ok() }
@@ -1036,17 +1088,18 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
+impl<T> ExactSizeIterator for Iter<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for Iter<'a, T> {}
+impl<T> FusedIterator for Iter<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
+unsafe impl<A> TrustedLen for Iter<'_, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for Iter<'a, T> {
-    fn clone(&self) -> Iter<'a, T> { Iter { inner: self.inner } }
+impl<T> Clone for Iter<'_, T> {
+    #[inline]
+    fn clone(&self) -> Self { Iter { inner: self.inner } }
 }
 
 /// An iterator over a mutable reference to the [`Ok`] variant of a [`Result`].
@@ -1080,13 +1133,13 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
+impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for IterMut<'a, T> {}
+impl<T> FusedIterator for IterMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
+unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 
 /// An iterator over the value in a [`Ok`] variant of a [`Result`].
 ///
@@ -1197,14 +1250,17 @@ impl<T,E> ops::Try for Result<T, E> {
     type Ok = T;
     type Error = E;
 
+    #[inline]
     fn into_result(self) -> Self {
         self
     }
 
+    #[inline]
     fn from_ok(v: T) -> Self {
         Ok(v)
     }
 
+    #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
     }

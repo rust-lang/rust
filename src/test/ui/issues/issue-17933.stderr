@@ -1,0 +1,9 @@
+error[E0532]: expected unit struct/variant or constant, found static `self::X`
+  --> $DIR/issue-17933.rs:5:9
+   |
+LL |         self::X => { },
+   |         ^^^^^^^ not a unit struct/variant or constant
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

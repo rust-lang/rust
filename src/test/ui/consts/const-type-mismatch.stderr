@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/const-type-mismatch.rs:4:21
+   |
+LL | const TWELVE: u16 = TEN + 2;
+   |                     ^^^^^^^ expected u16, found u8
+
+error[E0308]: mismatched types
+  --> $DIR/const-type-mismatch.rs:9:27
+   |
+LL |     const ALSO_TEN: u16 = TEN;
+   |                           ^^^ expected u16, found u8
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

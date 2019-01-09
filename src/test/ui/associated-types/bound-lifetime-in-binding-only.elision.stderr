@@ -1,0 +1,11 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/bound-lifetime-in-binding-only.rs:52:23
+   |
+LL | fn elision<T: Fn() -> &i32>() {
+   |                       ^ help: consider giving it a 'static lifetime: `&'static`
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0106`.

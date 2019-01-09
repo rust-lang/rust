@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-24819.rs:5:9
+   |
+LL |     foo(&mut v);
+   |         ^^^^^^ expected struct `std::collections::HashSet`, found struct `std::vec::Vec`
+   |
+   = note: expected type `&mut std::collections::HashSet<u32>`
+              found type `&mut std::vec::Vec<_>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

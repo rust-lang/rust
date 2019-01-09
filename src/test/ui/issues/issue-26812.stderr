@@ -1,0 +1,9 @@
+error[E0128]: type parameters with a default cannot use forward declared identifiers
+  --> $DIR/issue-26812.rs:3:10
+   |
+LL | fn avg<T=T::Item>(_: T) {}
+   |          ^^^^^^^ defaulted type parameters cannot be forward declared
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0128`.

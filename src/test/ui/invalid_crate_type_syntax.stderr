@@ -1,0 +1,10 @@
+error: `crate_type` requires a value
+  --> $DIR/invalid_crate_type_syntax.rs:2:1
+   |
+LL | #![crate_type(lib)]  //~ ERROR `crate_type` requires a value
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for example: `#![crate_type="lib"]`
+
+error: aborting due to previous error
+

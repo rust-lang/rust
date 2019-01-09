@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-35030.rs:19:14
+  --> $DIR/issue-35030.rs:9:14
    |
 LL |         Some(true) //~ ERROR mismatched types
    |              ^^^^ expected type parameter, found bool

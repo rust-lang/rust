@@ -1,5 +1,5 @@
 error[E0574]: expected struct, variant or union type, found enum `Result`
-  --> $DIR/issue-16058.rs:19:9
+  --> $DIR/issue-16058.rs:8:9
    |
 LL |         Result {
    |         ^^^^^^ not a struct, variant or union type

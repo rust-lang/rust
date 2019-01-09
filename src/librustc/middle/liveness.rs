@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A classic liveness analysis based on dataflow over the AST.  Computes,
 //! for each local variable in a function, whether that variable is live
 //! at a given point.  Program execution points are identified by their
@@ -64,10 +54,10 @@
 //! methods.  It effectively does a reverse walk of the AST; whenever we
 //! reach a loop node, we iterate until a fixed point is reached.
 //!
-//! ## The `Users` struct
+//! ## The `RWU` struct
 //!
 //! At each live node `N`, we track three pieces of information for each
-//! variable `V` (these are encapsulated in the `Users` struct):
+//! variable `V` (these are encapsulated in the `RWU` struct):
 //!
 //! - `reader`: the `LiveNode` ID of some node which will read the value
 //!    that `V` holds on entry to `N`.  Formally: a node `M` such
@@ -102,11 +92,13 @@
 //!   only dead if the end of the function's block can never be reached.
 //!   It is the responsibility of typeck to ensure that there are no
 //!   `return` expressions in a function declared as diverging.
+
 use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use hir::def::*;
+use hir::Node;
 use ty::{self, TyCtxt};
 use lint;
 use errors::Applicability;
@@ -156,8 +148,8 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
-    let cm = tcx.sess.codemap();
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> String {
+    let cm = tcx.sess.source_map();
     match lnk {
         FreeVarNode(s) => {
             format!("Free var node [{}]", cm.span_to_string(s))
@@ -168,13 +160,13 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
         VarDefNode(s) => {
             format!("Var def node [{}]", cm.span_to_string(s))
         }
-        ExitNode => "Exit node".to_string(),
+        ExitNode => "Exit node".to_owned(),
     }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
@@ -188,18 +180,18 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
+    tcx.hir().krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
 impl fmt::Debug for LiveNode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ln({})", self.get())
     }
 }
 
 impl fmt::Debug for Variable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "v({})", self.get())
     }
 }
@@ -255,7 +247,6 @@ enum VarKind {
 
 struct IrMaps<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-
     num_live_nodes: usize,
     num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
@@ -271,9 +262,9 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             tcx,
             num_live_nodes: 0,
             num_vars: 0,
-            live_node_map: HirIdMap(),
-            variable_map: HirIdMap(),
-            capture_info_map: NodeMap(),
+            live_node_map: HirIdMap::default(),
+            variable_map: HirIdMap::default(),
+            capture_info_map: Default::default(),
             var_kinds: Vec::new(),
             lnks: Vec::new(),
         }
@@ -328,7 +319,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
                 name.to_string()
             },
-            CleanExit => "<clean-exit>".to_string()
+            CleanExit => "<clean-exit>".to_owned()
         }
     }
 
@@ -361,17 +352,17 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
-        let parent = ir.tcx.hir.get_parent(id);
-        if let Some(hir::map::Node::NodeItem(i)) = ir.tcx.hir.find(parent) {
+        let parent = ir.tcx.hir().get_parent(id);
+        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
             if i.attrs.iter().any(|a| a.check_name("automatically_derived")) {
                 return;
             }
         }
     }
 
-    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
+    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps<'_, '_>);
 
-    let body = ir.tcx.hir.body(body_id);
+    let body = ir.tcx.hir().body(body_id);
 
     for arg in &body.arguments {
         arg.pat.each_binding(|_bm, hir_id, _x, ident| {
@@ -396,7 +387,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
     // For struct patterns, take note of which fields used shorthand
     // (`x` rather than `x: x`).
-    let mut shorthand_field_ids = HirIdSet();
+    let mut shorthand_field_ids = HirIdSet::default();
     let mut pats = VecDeque::new();
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
@@ -472,13 +463,15 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // construction site.
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.id, |freevars| {
-            for fv in freevars {
+            call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                    let var_hid = ir.tcx.hir.node_to_hir_id(rv);
-                    call_caps.push(CaptureInfo { ln: fv_ln, var_hid });
+                    let var_hid = ir.tcx.hir().node_to_hir_id(rv);
+                    Some(CaptureInfo { ln: fv_ln, var_hid })
+                } else {
+                    None
                 }
-            }
+            }));
         });
         ir.set_captures(expr.id, call_caps);
 
@@ -522,6 +515,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprKind::Box(..) |
       hir::ExprKind::Yield(..) |
       hir::ExprKind::Type(..) |
+      hir::ExprKind::Err |
       hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
           intravisit::walk_expr(ir, expr);
       }
@@ -535,17 +529,108 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
 // the same basic propagation framework in all cases.
 
 #[derive(Clone, Copy)]
-struct Users {
+struct RWU {
     reader: LiveNode,
     writer: LiveNode,
     used: bool
 }
 
-fn invalid_users() -> Users {
-    Users {
-        reader: invalid_node(),
-        writer: invalid_node(),
-        used: false
+/// Conceptually, this is like a `Vec<RWU>`. But the number of `RWU`s can get
+/// very large, so it uses a more compact representation that takes advantage
+/// of the fact that when the number of `RWU`s is large, most of them have an
+/// invalid reader and an invalid writer.
+struct RWUTable {
+    /// Each entry in `packed_rwus` is either INV_INV_FALSE, INV_INV_TRUE, or
+    /// an index into `unpacked_rwus`. In the common cases, this compacts the
+    /// 65 bits of data into 32; in the uncommon cases, it expands the 65 bits
+    /// in 96.
+    ///
+    /// More compact representations are possible -- e.g., use only 2 bits per
+    /// packed `RWU` and make the secondary table a HashMap that maps from
+    /// indices to `RWU`s -- but this one strikes a good balance between size
+    /// and speed.
+    packed_rwus: Vec<u32>,
+    unpacked_rwus: Vec<RWU>,
+}
+
+// A constant representing `RWU { reader: invalid_node(); writer: invalid_node(); used: false }`.
+const INV_INV_FALSE: u32 = u32::MAX;
+
+// A constant representing `RWU { reader: invalid_node(); writer: invalid_node(); used: true }`.
+const INV_INV_TRUE: u32 = u32::MAX - 1;
+
+impl RWUTable {
+    fn new(num_rwus: usize) -> RWUTable {
+        Self {
+            packed_rwus: vec![INV_INV_FALSE; num_rwus],
+            unpacked_rwus: vec![],
+        }
+    }
+
+    fn get(&self, idx: usize) -> RWU {
+        let packed_rwu = self.packed_rwus[idx];
+        match packed_rwu {
+            INV_INV_FALSE => RWU { reader: invalid_node(), writer: invalid_node(), used: false },
+            INV_INV_TRUE => RWU { reader: invalid_node(), writer: invalid_node(), used: true },
+            _ => self.unpacked_rwus[packed_rwu as usize],
+        }
+    }
+
+    fn get_reader(&self, idx: usize) -> LiveNode {
+        let packed_rwu = self.packed_rwus[idx];
+        match packed_rwu {
+            INV_INV_FALSE | INV_INV_TRUE => invalid_node(),
+            _ => self.unpacked_rwus[packed_rwu as usize].reader,
+        }
+    }
+
+    fn get_writer(&self, idx: usize) -> LiveNode {
+        let packed_rwu = self.packed_rwus[idx];
+        match packed_rwu {
+            INV_INV_FALSE | INV_INV_TRUE => invalid_node(),
+            _ => self.unpacked_rwus[packed_rwu as usize].writer,
+        }
+    }
+
+    fn get_used(&self, idx: usize) -> bool {
+        let packed_rwu = self.packed_rwus[idx];
+        match packed_rwu {
+            INV_INV_FALSE => false,
+            INV_INV_TRUE => true,
+            _ => self.unpacked_rwus[packed_rwu as usize].used,
+        }
+    }
+
+    #[inline]
+    fn copy_packed(&mut self, dst_idx: usize, src_idx: usize) {
+        self.packed_rwus[dst_idx] = self.packed_rwus[src_idx];
+    }
+
+    fn assign_unpacked(&mut self, idx: usize, rwu: RWU) {
+        if rwu.reader == invalid_node() && rwu.writer == invalid_node() {
+            // When we overwrite an indexing entry in `self.packed_rwus` with
+            // `INV_INV_{TRUE,FALSE}` we don't remove the corresponding entry
+            // from `self.unpacked_rwus`; it's not worth the effort, and we
+            // can't have entries shifting around anyway.
+            self.packed_rwus[idx] = if rwu.used {
+                INV_INV_TRUE
+            } else {
+                INV_INV_FALSE
+            }
+        } else {
+            // Add a new RWU to `unpacked_rwus` and make `packed_rwus[idx]`
+            // point to it.
+            self.packed_rwus[idx] = self.unpacked_rwus.len() as u32;
+            self.unpacked_rwus.push(rwu);
+        }
+    }
+
+    fn assign_inv_inv(&mut self, idx: usize) {
+        self.packed_rwus[idx] = if self.get_used(idx) {
+            INV_INV_TRUE
+        } else {
+            INV_INV_FALSE
+        };
     }
 }
 
@@ -565,7 +650,7 @@ struct Liveness<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     s: Specials,
     successors: Vec<LiveNode>,
-    users: Vec<Users>,
+    rwu_table: RWUTable,
 
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
@@ -596,9 +681,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             tables,
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
-            users: vec![invalid_users(); num_live_nodes * num_vars],
-            break_ln: NodeMap(),
-            cont_ln: NodeMap(),
+            rwu_table: RWUTable::new(num_live_nodes * num_vars),
+            break_ln: Default::default(),
+            cont_ln: Default::default(),
         }
     }
 
@@ -660,16 +745,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         ln.get() * self.ir.num_vars + var.get()
     }
 
-    fn live_on_entry(&self, ln: LiveNode, var: Variable)
-                      -> Option<LiveNodeKind> {
+    fn live_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
-        let reader = self.users[self.idx(ln, var)].reader;
-        if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
+        let reader = self.rwu_table.get_reader(self.idx(ln, var));
+        if reader.is_valid() { Some(self.ir.lnk(reader)) } else { None }
     }
 
-    /*
-    Is this variable live on entry to any of its successor nodes?
-    */
+    // Is this variable live on entry to any of its successor nodes?
     fn live_on_exit(&self, ln: LiveNode, var: Variable)
                     -> Option<LiveNodeKind> {
         let successor = self.successors[ln.get()];
@@ -678,14 +760,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
         assert!(ln.is_valid());
-        self.users[self.idx(ln, var)].used
+        self.rwu_table.get_used(self.idx(ln, var))
     }
 
     fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
                          -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
-        let writer = self.users[self.idx(ln, var)].writer;
-        if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
+        let writer = self.rwu_table.get_writer(self.idx(ln, var));
+        if writer.is_valid() { Some(self.ir.lnk(writer)) } else { None }
     }
 
     fn assigned_on_exit(&self, ln: LiveNode, var: Variable)
@@ -728,9 +810,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         {
             let wr = &mut wr as &mut dyn Write;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
-            self.write_vars(wr, ln, |idx| self.users[idx].reader);
+            self.write_vars(wr, ln, |idx| self.rwu_table.get_reader(idx));
             write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| self.users[idx].writer);
+            self.write_vars(wr, ln, |idx| self.rwu_table.get_writer(idx));
             write!(wr, "  precedes {:?}]", self.successors[ln.get()]);
         }
         String::from_utf8(wr).unwrap()
@@ -739,14 +821,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {
         self.successors[ln.get()] = succ_ln;
 
-        // It is not necessary to initialize the
-        // values to empty because this is the value
-        // they have when they are created, and the sets
-        // only grow during iterations.
-        //
-        // self.indices(ln) { |idx|
-        //     self.users[idx] = invalid_users();
-        // }
+        // It is not necessary to initialize the RWUs here because they are all
+        // set to INV_INV_FALSE when they are created, and the sets only grow
+        // during iterations.
     }
 
     fn init_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) {
@@ -754,7 +831,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.successors[ln.get()] = succ_ln;
 
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            this.users[idx] = this.users[succ_idx]
+            this.rwu_table.copy_packed(idx, succ_idx);
         });
         debug!("init_from_succ(ln={}, succ={})",
                self.ln_str(ln), self.ln_str(succ_ln));
@@ -769,28 +846,31 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let mut changed = false;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            changed |= copy_if_invalid(this.users[succ_idx].reader,
-                                       &mut this.users[idx].reader);
-            changed |= copy_if_invalid(this.users[succ_idx].writer,
-                                       &mut this.users[idx].writer);
-            if this.users[succ_idx].used && !this.users[idx].used {
-                this.users[idx].used = true;
+            let mut rwu = this.rwu_table.get(idx);
+            let succ_rwu = this.rwu_table.get(succ_idx);
+            if succ_rwu.reader.is_valid() && !rwu.reader.is_valid() {
+                rwu.reader = succ_rwu.reader;
+                changed = true
+            }
+
+            if succ_rwu.writer.is_valid() && !rwu.writer.is_valid() {
+                rwu.writer = succ_rwu.writer;
+                changed = true
+            }
+
+            if succ_rwu.used && !rwu.used {
+                rwu.used = true;
                 changed = true;
+            }
+
+            if changed {
+                this.rwu_table.assign_unpacked(idx, rwu);
             }
         });
 
         debug!("merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
                ln, self.ln_str(succ_ln), first_merge, changed);
         return changed;
-
-        fn copy_if_invalid(src: LiveNode, dst: &mut LiveNode) -> bool {
-            if src.is_valid() && !dst.is_valid() {
-                *dst = src;
-                true
-            } else {
-                false
-            }
-        }
     }
 
     // Indicates that a local variable was *defined*; we know that no
@@ -798,8 +878,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     // this) so we just clear out all the data.
     fn define(&mut self, writer: LiveNode, var: Variable) {
         let idx = self.idx(writer, var);
-        self.users[idx].reader = invalid_node();
-        self.users[idx].writer = invalid_node();
+        self.rwu_table.assign_inv_inv(idx);
 
         debug!("{:?} defines {:?} (idx={}): {}", writer, var,
                idx, self.ln_str(writer));
@@ -811,32 +890,32 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                ln, acc, var, self.ln_str(ln));
 
         let idx = self.idx(ln, var);
-        let user = &mut self.users[idx];
+        let mut rwu = self.rwu_table.get(idx);
 
         if (acc & ACC_WRITE) != 0 {
-            user.reader = invalid_node();
-            user.writer = ln;
+            rwu.reader = invalid_node();
+            rwu.writer = ln;
         }
 
         // Important: if we both read/write, must do read second
         // or else the write will override.
         if (acc & ACC_READ) != 0 {
-            user.reader = ln;
+            rwu.reader = ln;
         }
 
         if (acc & ACC_USE) != 0 {
-            user.used = true;
+            rwu.used = true;
         }
-    }
 
-    // _______________________________________________________________________
+        self.rwu_table.assign_unpacked(idx, rwu);
+    }
 
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
-        debug!("compute: using id for body, {}", self.ir.tcx.hir.node_to_pretty_string(body.id));
+        debug!("compute: using id for body, {}", self.ir.tcx.hir().node_to_pretty_string(body.id));
 
         let exit_ln = self.s.exit_ln;
 
@@ -852,10 +931,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let entry_ln = self.propagate_through_expr(body, s.fallthrough_ln);
 
         // hack to skip the loop unless debug! is enabled:
-        debug!("^^ liveness computation results for body {} (entry={:?})",
-               {
+        debug!("^^ liveness computation results for body {} (entry={:?})", {
                    for ln_idx in 0..self.ir.num_live_nodes {
-                       debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
+                        debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
                    }
                    body.id
                },
@@ -934,239 +1012,235 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
                               -> LiveNode {
-        debug!("propagate_through_expr: {}", self.ir.tcx.hir.node_to_pretty_string(expr.id));
+        debug!("propagate_through_expr: {}", self.ir.tcx.hir().node_to_pretty_string(expr.id));
 
         match expr.node {
-          // Interesting cases with control flow or which gen/kill
-          hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-              self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
-          }
+            // Interesting cases with control flow or which gen/kill
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+                self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
+            }
 
-          hir::ExprKind::Field(ref e, _) => {
-              self.propagate_through_expr(&e, succ)
-          }
+            hir::ExprKind::Field(ref e, _) => {
+                self.propagate_through_expr(&e, succ)
+            }
 
-          hir::ExprKind::Closure(.., blk_id, _, _) => {
-              debug!("{} is an ExprKind::Closure", self.ir.tcx.hir.node_to_pretty_string(expr.id));
+            hir::ExprKind::Closure(.., blk_id, _, _) => {
+                debug!("{} is an ExprKind::Closure",
+                       self.ir.tcx.hir().node_to_pretty_string(expr.id));
 
-              // The next-node for a break is the successor of the entire
-              // loop. The next-node for a continue is the top of this loop.
-              let node = self.live_node(expr.hir_id, expr.span);
+                // The next-node for a break is the successor of the entire
+                // loop. The next-node for a continue is the top of this loop.
+                let node = self.live_node(expr.hir_id, expr.span);
 
-              let break_ln = succ;
-              let cont_ln = node;
-              self.break_ln.insert(blk_id.node_id, break_ln);
-              self.cont_ln.insert(blk_id.node_id, cont_ln);
+                let break_ln = succ;
+                let cont_ln = node;
+                self.break_ln.insert(blk_id.node_id, break_ln);
+                self.cont_ln.insert(blk_id.node_id, cont_ln);
 
-              // the construction of a closure itself is not important,
-              // but we have to consider the closed over variables.
-              let caps = match self.ir.capture_info_map.get(&expr.id) {
-                  Some(caps) => caps.clone(),
-                  None => {
-                      span_bug!(expr.span, "no registered caps");
-                  }
-              };
-              caps.iter().rev().fold(succ, |succ, cap| {
-                  self.init_from_succ(cap.ln, succ);
-                  let var = self.variable(cap.var_hid, expr.span);
-                  self.acc(cap.ln, var, ACC_READ | ACC_USE);
-                  cap.ln
-              })
-          }
+                // the construction of a closure itself is not important,
+                // but we have to consider the closed over variables.
+                let caps = self.ir.capture_info_map.get(&expr.id).cloned().unwrap_or_else(||
+                    span_bug!(expr.span, "no registered caps"));
 
-          hir::ExprKind::If(ref cond, ref then, ref els) => {
-            //
-            //     (cond)
-            //       |
-            //       v
-            //     (expr)
-            //     /   \
-            //    |     |
-            //    v     v
-            //  (then)(els)
-            //    |     |
-            //    v     v
-            //   (  succ  )
-            //
-            let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
-            let then_ln = self.propagate_through_expr(&then, succ);
-            let ln = self.live_node(expr.hir_id, expr.span);
-            self.init_from_succ(ln, else_ln);
-            self.merge_from_succ(ln, then_ln, false);
-            self.propagate_through_expr(&cond, ln)
-          }
+                caps.iter().rev().fold(succ, |succ, cap| {
+                    self.init_from_succ(cap.ln, succ);
+                    let var = self.variable(cap.var_hid, expr.span);
+                    self.acc(cap.ln, var, ACC_READ | ACC_USE);
+                    cap.ln
+                })
+            }
 
-          hir::ExprKind::While(ref cond, ref blk, _) => {
-            self.propagate_through_loop(expr, WhileLoop(&cond), &blk, succ)
-          }
+            hir::ExprKind::If(ref cond, ref then, ref els) => {
+                //
+                //     (cond)
+                //       |
+                //       v
+                //     (expr)
+                //     /   \
+                //    |     |
+                //    v     v
+                //  (then)(els)
+                //    |     |
+                //    v     v
+                //   (  succ  )
+                //
+                let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
+                let then_ln = self.propagate_through_expr(&then, succ);
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_from_succ(ln, else_ln);
+                self.merge_from_succ(ln, then_ln, false);
+                self.propagate_through_expr(&cond, ln)
+            }
 
-          // Note that labels have been resolved, so we don't need to look
-          // at the label ident
-          hir::ExprKind::Loop(ref blk, _, _) => {
-            self.propagate_through_loop(expr, LoopLoop, &blk, succ)
-          }
+            hir::ExprKind::While(ref cond, ref blk, _) => {
+                self.propagate_through_loop(expr, WhileLoop(&cond), &blk, succ)
+            }
 
-          hir::ExprKind::Match(ref e, ref arms, _) => {
-            //
-            //      (e)
-            //       |
-            //       v
-            //     (expr)
-            //     / | \
-            //    |  |  |
-            //    v  v  v
-            //   (..arms..)
-            //    |  |  |
-            //    v  v  v
-            //   (  succ  )
-            //
-            //
-            let ln = self.live_node(expr.hir_id, expr.span);
-            self.init_empty(ln, succ);
-            let mut first_merge = true;
-            for arm in arms {
-                let body_succ =
-                    self.propagate_through_expr(&arm.body, succ);
-                let guard_succ =
-                    self.propagate_through_opt_expr(arm.guard.as_ref().map(|e| &**e), body_succ);
-                // only consider the first pattern; any later patterns must have
-                // the same bindings, and we also consider the first pattern to be
-                // the "authoritative" set of ids
-                let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
-                                                     guard_succ);
-                self.merge_from_succ(ln, arm_succ, first_merge);
-                first_merge = false;
-            };
-            self.propagate_through_expr(&e, ln)
-          }
+            // Note that labels have been resolved, so we don't need to look
+            // at the label ident
+            hir::ExprKind::Loop(ref blk, _, _) => {
+                self.propagate_through_loop(expr, LoopLoop, &blk, succ)
+            }
 
-          hir::ExprKind::Ret(ref o_e) => {
-            // ignore succ and subst exit_ln:
-            let exit_ln = self.s.exit_ln;
-            self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
-          }
+            hir::ExprKind::Match(ref e, ref arms, _) => {
+                //
+                //      (e)
+                //       |
+                //       v
+                //     (expr)
+                //     / | \
+                //    |  |  |
+                //    v  v  v
+                //   (..arms..)
+                //    |  |  |
+                //    v  v  v
+                //   (  succ  )
+                //
+                //
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_empty(ln, succ);
+                let mut first_merge = true;
+                for arm in arms {
+                    let body_succ = self.propagate_through_expr(&arm.body, succ);
 
-          hir::ExprKind::Break(label, ref opt_expr) => {
-              // Find which label this break jumps to
-              let target = match label.target_id {
+                    let guard_succ = self.propagate_through_opt_expr(
+                        arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
+                        body_succ
+                    );
+                    // only consider the first pattern; any later patterns must have
+                    // the same bindings, and we also consider the first pattern to be
+                    // the "authoritative" set of ids
+                    let arm_succ =
+                        self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
+                                                         guard_succ);
+                    self.merge_from_succ(ln, arm_succ, first_merge);
+                    first_merge = false;
+                };
+                self.propagate_through_expr(&e, ln)
+            }
+
+            hir::ExprKind::Ret(ref o_e) => {
+                // ignore succ and subst exit_ln:
+                let exit_ln = self.s.exit_ln;
+                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
+            }
+
+            hir::ExprKind::Break(label, ref opt_expr) => {
+                // Find which label this break jumps to
+                let target = match label.target_id {
                     Ok(node_id) => self.break_ln.get(&node_id),
                     Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              }.map(|x| *x);
+                }.cloned();
 
-              // Now that we know the label we're going to,
-              // look it up in the break loop nodes table
+                // Now that we know the label we're going to,
+                // look it up in the break loop nodes table
 
-              match target {
-                  Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
-                  None => span_bug!(expr.span, "break to unknown label")
-              }
-          }
+                match target {
+                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+                    None => span_bug!(expr.span, "break to unknown label")
+                }
+            }
 
-          hir::ExprKind::Continue(label) => {
-              // Find which label this expr continues to
-              let sc = match label.target_id {
-                    Ok(node_id) => node_id,
-                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              };
+            hir::ExprKind::Continue(label) => {
+                // Find which label this expr continues to
+                let sc = label.target_id.unwrap_or_else(|err|
+                    span_bug!(expr.span, "loop scope error: {}", err));
 
-              // Now that we know the label we're going to,
-              // look it up in the continue loop nodes table
+                // Now that we know the label we're going to,
+                // look it up in the continue loop nodes table
+                self.cont_ln.get(&sc).cloned().unwrap_or_else(||
+                    span_bug!(expr.span, "continue to unknown label"))
+            }
 
-              match self.cont_ln.get(&sc) {
-                  Some(&b) => b,
-                  None => span_bug!(expr.span, "continue to unknown label")
-              }
-          }
-
-          hir::ExprKind::Assign(ref l, ref r) => {
-            // see comment on places in
-            // propagate_through_place_components()
-            let succ = self.write_place(&l, succ, ACC_WRITE);
-            let succ = self.propagate_through_place_components(&l, succ);
-            self.propagate_through_expr(&r, succ)
-          }
-
-          hir::ExprKind::AssignOp(_, ref l, ref r) => {
-            // an overloaded assign op is like a method call
-            if self.tables.is_method_call(expr) {
-                let succ = self.propagate_through_expr(&l, succ);
-                self.propagate_through_expr(&r, succ)
-            } else {
+            hir::ExprKind::Assign(ref l, ref r) => {
                 // see comment on places in
                 // propagate_through_place_components()
-                let succ = self.write_place(&l, succ, ACC_WRITE|ACC_READ);
-                let succ = self.propagate_through_expr(&r, succ);
-                self.propagate_through_place_components(&l, succ)
+                let succ = self.write_place(&l, succ, ACC_WRITE);
+                let succ = self.propagate_through_place_components(&l, succ);
+                self.propagate_through_expr(&r, succ)
             }
-          }
 
-          // Uninteresting cases: just propagate in rev exec order
+            hir::ExprKind::AssignOp(_, ref l, ref r) => {
+                // an overloaded assign op is like a method call
+                if self.tables.is_method_call(expr) {
+                    let succ = self.propagate_through_expr(&l, succ);
+                    self.propagate_through_expr(&r, succ)
+                } else {
+                    // see comment on places in
+                    // propagate_through_place_components()
+                    let succ = self.write_place(&l, succ, ACC_WRITE|ACC_READ);
+                    let succ = self.propagate_through_expr(&r, succ);
+                    self.propagate_through_place_components(&l, succ)
+                }
+            }
 
-          hir::ExprKind::Array(ref exprs) => {
-            self.propagate_through_exprs(exprs, succ)
-          }
+            // Uninteresting cases: just propagate in rev exec order
 
-          hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
-            let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
-            fields.iter().rev().fold(succ, |succ, field| {
-                self.propagate_through_expr(&field.expr, succ)
-            })
-          }
+            hir::ExprKind::Array(ref exprs) => {
+                self.propagate_through_exprs(exprs, succ)
+            }
 
-          hir::ExprKind::Call(ref f, ref args) => {
-            // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let succ = if self.tables.expr_ty(expr).is_never() {
-                self.s.exit_ln
-            } else {
-                succ
-            };
-            let succ = self.propagate_through_exprs(args, succ);
-            self.propagate_through_expr(&f, succ)
-          }
+            hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
+                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
+                fields.iter().rev().fold(succ, |succ, field| {
+                    self.propagate_through_expr(&field.expr, succ)
+                })
+            }
 
-          hir::ExprKind::MethodCall(.., ref args) => {
-            // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let succ = if self.tables.expr_ty(expr).is_never() {
-                self.s.exit_ln
-            } else {
-                succ
-            };
-            self.propagate_through_exprs(args, succ)
-          }
+            hir::ExprKind::Call(ref f, ref args) => {
+                let m = self.ir.tcx.hir().get_module_parent(expr.id);
+                let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
+                    self.s.exit_ln
+                } else {
+                    succ
+                };
+                let succ = self.propagate_through_exprs(args, succ);
+                self.propagate_through_expr(&f, succ)
+            }
 
-          hir::ExprKind::Tup(ref exprs) => {
-            self.propagate_through_exprs(exprs, succ)
-          }
+            hir::ExprKind::MethodCall(.., ref args) => {
+                let m = self.ir.tcx.hir().get_module_parent(expr.id);
+                let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
+                    self.s.exit_ln
+                } else {
+                    succ
+                };
 
-          hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
-            let r_succ = self.propagate_through_expr(&r, succ);
+                self.propagate_through_exprs(args, succ)
+            }
 
-            let ln = self.live_node(expr.hir_id, expr.span);
-            self.init_from_succ(ln, succ);
-            self.merge_from_succ(ln, r_succ, false);
+            hir::ExprKind::Tup(ref exprs) => {
+                self.propagate_through_exprs(exprs, succ)
+            }
 
-            self.propagate_through_expr(&l, ln)
-          }
+            hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
+                let r_succ = self.propagate_through_expr(&r, succ);
 
-          hir::ExprKind::Index(ref l, ref r) |
-          hir::ExprKind::Binary(_, ref l, ref r) => {
-            let r_succ = self.propagate_through_expr(&r, succ);
-            self.propagate_through_expr(&l, r_succ)
-          }
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_from_succ(ln, succ);
+                self.merge_from_succ(ln, r_succ, false);
 
-          hir::ExprKind::Box(ref e) |
-          hir::ExprKind::AddrOf(_, ref e) |
-          hir::ExprKind::Cast(ref e, _) |
-          hir::ExprKind::Type(ref e, _) |
-          hir::ExprKind::Unary(_, ref e) |
-          hir::ExprKind::Yield(ref e) |
-          hir::ExprKind::Repeat(ref e, _) => {
-            self.propagate_through_expr(&e, succ)
-          }
+                self.propagate_through_expr(&l, ln)
+            }
 
-          hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
-            let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
+            hir::ExprKind::Index(ref l, ref r) |
+            hir::ExprKind::Binary(_, ref l, ref r) => {
+                let r_succ = self.propagate_through_expr(&r, succ);
+                self.propagate_through_expr(&l, r_succ)
+            }
+
+            hir::ExprKind::Box(ref e) |
+            hir::ExprKind::AddrOf(_, ref e) |
+            hir::ExprKind::Cast(ref e, _) |
+            hir::ExprKind::Type(ref e, _) |
+            hir::ExprKind::Unary(_, ref e) |
+            hir::ExprKind::Yield(ref e) |
+            hir::ExprKind::Repeat(ref e, _) => {
+                self.propagate_through_expr(&e, succ)
+            }
+
+            hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
+                let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
                 // see comment on places
                 // in propagate_through_place_components()
                 if o.is_indirect {
@@ -1175,29 +1249,29 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
                     let succ = self.write_place(output, succ, acc);
                     self.propagate_through_place_components(output, succ)
-                }
-            });
+                }});
 
-            // Inputs are executed first. Propagate last because of rev order
-            self.propagate_through_exprs(inputs, succ)
-          }
+                // Inputs are executed first. Propagate last because of rev order
+                self.propagate_through_exprs(inputs, succ)
+            }
 
-          hir::ExprKind::Lit(..) | hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
-            succ
-          }
+            hir::ExprKind::Lit(..) | hir::ExprKind::Err |
+            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
+                succ
+            }
 
-          // Note that labels have been resolved, so we don't need to look
-          // at the label ident
-          hir::ExprKind::Block(ref blk, _) => {
-            self.propagate_through_block(&blk, succ)
-          }
+            // Note that labels have been resolved, so we don't need to look
+            // at the label ident
+            hir::ExprKind::Block(ref blk, _) => {
+                self.propagate_through_block(&blk, succ)
+            }
         }
     }
 
     fn propagate_through_place_components(&mut self,
-                                           expr: &Expr,
-                                           succ: LiveNode)
-                                           -> LiveNode {
+                                          expr: &Expr,
+                                          succ: LiveNode)
+                                          -> LiveNode {
         // # Places
         //
         // In general, the full flow graph structure for an
@@ -1255,18 +1329,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     // see comment on propagate_through_place()
-    fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
-                    -> LiveNode {
+    fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32) -> LiveNode {
         match expr.node {
-          hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-              self.access_path(expr.hir_id, path, succ, acc)
-          }
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+                self.access_path(expr.hir_id, path, succ, acc)
+            }
 
-          // We do not track other places, so just propagate through
-          // to their subcomponents.  Also, it may happen that
-          // non-places occur here, because those are detected in the
-          // later pass borrowck.
-          _ => succ
+            // We do not track other places, so just propagate through
+            // to their subcomponents.  Also, it may happen that
+            // non-places occur here, because those are detected in the
+            // later pass borrowck.
+            _ => succ
         }
     }
 
@@ -1275,7 +1348,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let ln = self.live_node(hir_id, span);
         if acc != 0 {
             self.init_from_succ(ln, succ);
-            let var_hid = self.ir.tcx.hir.node_to_hir_id(nid);
+            let var_hid = self.ir.tcx.hir().node_to_hir_id(nid);
             let var = self.variable(var_hid, span);
             self.acc(ln, var, acc);
         }
@@ -1285,20 +1358,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, hir_id: HirId, path: &hir::Path, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match path.def {
-          Def::Local(nid) => {
-            self.access_var(hir_id, nid, succ, acc, path.span)
-          }
-          _ => succ
+            Def::Local(nid) => {
+              self.access_var(hir_id, nid, succ, acc, path.span)
+            }
+            _ => succ
         }
     }
 
     fn propagate_through_loop(&mut self,
                               expr: &Expr,
-                              kind: LoopKind,
+                              kind: LoopKind<'_>,
                               body: &hir::Block,
                               succ: LiveNode)
                               -> LiveNode {
-
         /*
 
         We model control flow like this:
@@ -1333,7 +1405,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, self.ir.tcx.hir.node_to_pretty_string(body.id));
+               expr.id, self.ir.tcx.hir().node_to_pretty_string(body.id));
 
         let break_ln = succ;
         let cont_ln = ln;
@@ -1356,8 +1428,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.propagate_through_expr(&cond, ln)
                 }
             };
-            assert!(cond_ln == new_cond_ln);
-            assert!(body_ln == self.propagate_through_block(body, cond_ln));
+            assert_eq!(cond_ln, new_cond_ln);
+            assert_eq!(body_ln, self.propagate_through_block(body, cond_ln));
         }
 
         cond_ln
@@ -1411,49 +1483,49 @@ fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
 
 fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
-      hir::ExprKind::Assign(ref l, _) => {
-        this.check_place(&l);
-
-        intravisit::walk_expr(this, expr);
-      }
-
-      hir::ExprKind::AssignOp(_, ref l, _) => {
-        if !this.tables.is_method_call(expr) {
+        hir::ExprKind::Assign(ref l, _) => {
             this.check_place(&l);
+
+            intravisit::walk_expr(this, expr);
         }
 
-        intravisit::walk_expr(this, expr);
-      }
+        hir::ExprKind::AssignOp(_, ref l, _) => {
+            if !this.tables.is_method_call(expr) {
+                this.check_place(&l);
+            }
 
-      hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
-        for input in inputs {
-          this.visit_expr(input);
+            intravisit::walk_expr(this, expr);
         }
 
-        // Output operands must be places
-        for (o, output) in ia.outputs.iter().zip(outputs) {
-          if !o.is_indirect {
-            this.check_place(output);
-          }
-          this.visit_expr(output);
+        hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
+            for input in inputs {
+                this.visit_expr(input);
+            }
+
+            // Output operands must be places
+            for (o, output) in ia.outputs.iter().zip(outputs) {
+                if !o.is_indirect {
+                    this.check_place(output);
+                }
+                this.visit_expr(output);
+            }
+
+            intravisit::walk_expr(this, expr);
         }
 
-        intravisit::walk_expr(this, expr);
-      }
-
-      // no correctness conditions related to liveness
-      hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) | hir::ExprKind::If(..) |
-      hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
-      hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
-      hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |
-      hir::ExprKind::Cast(..) | hir::ExprKind::Unary(..) | hir::ExprKind::Ret(..) |
-      hir::ExprKind::Break(..) | hir::ExprKind::Continue(..) | hir::ExprKind::Lit(_) |
-      hir::ExprKind::Block(..) | hir::ExprKind::AddrOf(..) |
-      hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
-      hir::ExprKind::Closure(..) | hir::ExprKind::Path(_) | hir::ExprKind::Yield(..) |
-      hir::ExprKind::Box(..) | hir::ExprKind::Type(..) => {
-        intravisit::walk_expr(this, expr);
-      }
+        // no correctness conditions related to liveness
+        hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) | hir::ExprKind::If(..) |
+        hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
+        hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
+        hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |
+        hir::ExprKind::Cast(..) | hir::ExprKind::Unary(..) | hir::ExprKind::Ret(..) |
+        hir::ExprKind::Break(..) | hir::ExprKind::Continue(..) | hir::ExprKind::Lit(_) |
+        hir::ExprKind::Block(..) | hir::ExprKind::AddrOf(..) |
+        hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
+        hir::ExprKind::Closure(..) | hir::ExprKind::Path(_) | hir::ExprKind::Yield(..) |
+        hir::ExprKind::Box(..) | hir::ExprKind::Type(..) | hir::ExprKind::Err => {
+            intravisit::walk_expr(this, expr);
+        }
     }
 }
 
@@ -1467,7 +1539,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // mutable, then check for a reassignment to flag the mutability
                     // as being used.
                     let ln = self.live_node(expr.hir_id, expr.span);
-                    let var_hid = self.ir.tcx.hir.node_to_hir_id(nid);
+                    let var_hid = self.ir.tcx.hir().node_to_hir_id(nid);
                     let var = self.variable(var_hid, expr.span);
                     self.warn_about_dead_assign(expr.span, expr.hir_id, ln, var);
                 }
@@ -1482,7 +1554,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.is_empty() || name.as_bytes()[0] == ('_' as u8) {
+        if name.is_empty() || name.as_bytes()[0] == b'_' {
             None
         } else {
             Some(name)
@@ -1495,7 +1567,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let sp = ident.span;
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.
-                if ident.name != keywords::SelfValue.name() {
+                if ident.name != keywords::SelfLower.name() {
                     if !self.warn_about_unused(sp, hir_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(hir_id, sp, var, true);
@@ -1523,7 +1595,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if !self.used_on_entry(ln, var) {
             let r = self.should_warn(var);
             if let Some(name) = r {
-
                 // annoying: for parameters in funcs like `fn(x: i32)
                 // {ret}`, there is only one node, so asking about
                 // assigned_on_exit() is not meaningful.
@@ -1533,8 +1604,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.assigned_on_exit(ln, var).is_some()
                 };
 
-                let suggest_underscore_msg = format!("consider using `_{}` instead",
-                                                     name);
+                let suggest_underscore_msg = format!("consider using `_{}` instead", name);
 
                 if is_assigned {
                     self.ir.tcx
@@ -1579,11 +1649,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn report_dead_assign(&self, hir_id: HirId, sp: Span, var: Variable, is_argument: bool) {
         if let Some(name) = self.should_warn(var) {
             if is_argument {
-                self.ir.tcx.lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
-                    &format!("value passed to `{}` is never read", name));
+                self.ir.tcx.struct_span_lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
+                &format!("value passed to `{}` is never read", name))
+                .help("maybe it is overwritten before being read?")
+                .emit();
             } else {
-                self.ir.tcx.lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
-                    &format!("value assigned to `{}` is never read", name));
+                self.ir.tcx.struct_span_lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
+                &format!("value assigned to `{}` is never read", name))
+                .help("maybe it is overwritten before being read?")
+                .emit();
             }
         }
     }

@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Helper functions used only in tests
 
 #include <stdint.h>
@@ -163,11 +153,7 @@ rust_get_null_ptr() {
     return 0;
 }
 
-/* Debug helpers strictly to verify ABI conformance.
- *
- * FIXME (#2665): move these into a testcase when the testsuite
- * understands how to have explicit C files included.
- */
+// Debug helpers strictly to verify ABI conformance.
 
 struct quad {
     uint64_t a;

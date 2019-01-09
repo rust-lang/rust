@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `U: std::cmp::Eq` is not satisfied
+  --> $DIR/specialization-wfcheck.rs:7:17
+   |
+LL | default impl<U> Foo<'static, U> for () {}
+   |                 ^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `U`
+   |
+   = help: consider adding a `where U: std::cmp::Eq` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

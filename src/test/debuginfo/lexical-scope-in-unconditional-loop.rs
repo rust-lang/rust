@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -78,57 +68,70 @@
 
 // FIRST ITERATION
 // lldb-command:print x
-// lldb-check:[...]$0 = 0
+// lldbg-check:[...]$0 = 0
+// lldbr-check:(i32) x = 0
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$1 = 1
+// lldbg-check:[...]$1 = 1
+// lldbr-check:(i32) x = 1
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$2 = 101
+// lldbg-check:[...]$2 = 101
+// lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$3 = 101
+// lldbg-check:[...]$3 = 101
+// lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$4 = -987
+// lldbg-check:[...]$4 = -987
+// lldbr-check:(i32) x = -987
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$5 = 101
+// lldbg-check:[...]$5 = 101
+// lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 
 // SECOND ITERATION
 // lldb-command:print x
-// lldb-check:[...]$6 = 1
+// lldbg-check:[...]$6 = 1
+// lldbr-check:(i32) x = 1
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$7 = 2
+// lldbg-check:[...]$7 = 2
+// lldbr-check:(i32) x = 2
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$8 = 102
+// lldbg-check:[...]$8 = 102
+// lldbr-check:(i32) x = 102
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$9 = 102
+// lldbg-check:[...]$9 = 102
+// lldbr-check:(i32) x = 102
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$10 = -987
+// lldbg-check:[...]$10 = -987
+// lldbr-check:(i32) x = -987
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$11 = 102
+// lldbg-check:[...]$11 = 102
+// lldbr-check:(i32) x = 102
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$12 = 2
+// lldbg-check:[...]$12 = 2
+// lldbr-check:(i32) x = 2
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

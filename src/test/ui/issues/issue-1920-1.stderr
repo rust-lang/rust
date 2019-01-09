@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `foo::issue_1920::S: std::clone::Clone` is not satisfied
+  --> $DIR/issue-1920-1.rs:12:5
+   |
+LL |     assert_clone::<foo::issue_1920::S>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `foo::issue_1920::S`
+   |
+note: required by `assert_clone`
+  --> $DIR/issue-1920-1.rs:9:1
+   |
+LL | fn assert_clone<T>() where T : Clone { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

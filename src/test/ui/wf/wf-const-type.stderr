@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `NotCopy: std::marker::Copy` is not satisfied
+  --> $DIR/wf-const-type.rs:10:12
+   |
+LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `NotCopy`
+   |
+   = note: required because of the requirements on the impl of `std::marker::Copy` for `std::option::Option<NotCopy>`
+note: required by `IsCopy`
+  --> $DIR/wf-const-type.rs:7:1
+   |
+LL | struct IsCopy<T:Copy> { t: T }
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

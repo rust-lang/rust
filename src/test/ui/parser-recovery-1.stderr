@@ -1,0 +1,40 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/parser-recovery-1.rs:15:55
+   |
+LL | trait Foo {
+   |           - un-closed delimiter
+LL |     fn bar() {
+   |              - this delimiter might not be properly closed...
+...
+LL | }
+   | - ...as it matches this but it has different indentation
+...
+LL | } //~ ERROR this file contains an un-closed delimiter
+   |                                                       ^
+
+error: unexpected token: `;`
+  --> $DIR/parser-recovery-1.rs:12:15
+   |
+LL |     let x = y.;
+   |               ^
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/parser-recovery-1.rs:7:17
+   |
+LL |         let x = foo();
+   |                 ^^^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/parser-recovery-1.rs:12:13
+   |
+LL |     let x = y.;
+   |             ^ not found in this scope
+
+error[E0601]: `main` function not found in crate `parser_recovery_1`
+   |
+   = note: consider adding a `main` function to `$DIR/parser-recovery-1.rs`
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0425, E0601.
+For more information about an error, try `rustc --explain E0425`.

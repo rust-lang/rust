@@ -1,21 +1,10 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
-use ich::{self, CachingCodemapView, Fingerprint};
+use ich::{self, CachingSourceMapView, Fingerprint};
 use middle::cstore::CrateStore;
 use ty::{TyCtxt, fast_reject};
-use mir::interpret::AllocId;
 use session::Session;
 
 use std::cmp::Ord;
@@ -25,19 +14,20 @@ use std::cell::RefCell;
 
 use syntax::ast;
 
-use syntax::codemap::CodeMap;
+use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
+use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene;
 
 use rustc_data_structures::stable_hasher::{HashStable,
                                            StableHasher, StableHasherResult,
                                            ToStableHashKey};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use smallvec::SmallVec;
 
-pub fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
+fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
     ich::IGNORED_ATTRIBUTES.iter().map(|&s| Symbol::intern(s)).collect()
 }
@@ -45,7 +35,7 @@ pub fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 /// This is the context state available during incr. comp. hashing. It contains
 /// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
 /// a reference to the TyCtxt) and it holds a few caches for speeding up various
-/// things (e.g. each DefId/DefPath is only hashed once).
+/// things (e.g., each DefId/DefPath is only hashed once).
 #[derive(Clone)]
 pub struct StableHashingContext<'a> {
     sess: &'a Session,
@@ -57,11 +47,9 @@ pub struct StableHashingContext<'a> {
     node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
-    // CachingCodemapView, so we initialize it lazily.
-    raw_codemap: &'a CodeMap,
-    caching_codemap: Option<CachingCodemapView<'a>>,
-
-    pub(super) alloc_id_recursion_tracker: FxHashSet<AllocId>,
+    // CachingSourceMapView, so we initialize it lazily.
+    raw_source_map: &'a SourceMap,
+    caching_source_map: Option<CachingSourceMapView<'a>>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -88,6 +76,7 @@ impl<'a> StableHashingContext<'a> {
     // The `krate` here is only used for mapping BodyIds to Bodies.
     // Don't use it for anything else or you'll run the risk of
     // leaking data out of the tracking system.
+    #[inline]
     pub fn new(sess: &'a Session,
                krate: &'a hir::Crate,
                definitions: &'a Definitions,
@@ -100,12 +89,11 @@ impl<'a> StableHashingContext<'a> {
             body_resolver: BodyResolver(krate),
             definitions,
             cstore,
-            caching_codemap: None,
-            raw_codemap: sess.codemap(),
+            caching_source_map: None,
+            raw_source_map: sess.source_map(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            alloc_id_recursion_tracker: Default::default(),
         }
     }
 
@@ -169,13 +157,13 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn codemap(&mut self) -> &mut CachingCodemapView<'a> {
-        match self.caching_codemap {
+    pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
+        match self.caching_source_map {
             Some(ref mut cm) => {
                 cm
             }
             ref mut none => {
-                *none = Some(CachingCodemapView::new(self.raw_codemap));
+                *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
             }
         }
@@ -183,7 +171,10 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn is_ignored_attr(&self, name: Symbol) -> bool {
-        self.sess.ignored_attr_names.contains(&name)
+        thread_local! {
+            static IGNORED_ATTRIBUTES: FxHashSet<Symbol> = compute_ignored_attr_names();
+        }
+        IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
     }
 
     pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
@@ -305,9 +296,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
-    // offsets into the CodeMap). Instead, we hash the (file name, line, column)
-    // triple, which stays the same even if the containing FileMap has moved
-    // within the CodeMap.
+    // offsets into the SourceMap). Instead, we hash the (file name, line, column)
+    // triple, which stays the same even if the containing SourceFile has moved
+    // within the SourceMap.
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.
     // Also, hashing filenames is expensive so we avoid doing it twice when the
@@ -337,7 +328,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
-        let (file_lo, line_lo, col_lo) = match hcx.codemap()
+        let (file_lo, line_lo, col_lo) = match hcx.source_map()
                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {
@@ -369,8 +360,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             // times, we cache a stable hash of it and hash that instead of
             // recursing every time.
             thread_local! {
-                static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> =
-                    RefCell::new(FxHashMap());
+                static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> = Default::default();
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {
@@ -393,6 +383,17 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
     }
 }
 
+impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        self.open.hash_stable(hcx, hasher);
+        self.close.hash_stable(hcx, hasher);
+    }
+}
+
 pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
@@ -402,7 +403,7 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
           R: std_hash::BuildHasher,
 {
     {
-        let mut blanket_impls: AccumulateVec<[_; 8]> = blanket_impls
+        let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
             .iter()
             .map(|&def_id| hcx.def_path_hash(def_id))
             .collect();
@@ -415,7 +416,7 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
     }
 
     {
-        let mut keys: AccumulateVec<[_; 8]> =
+        let mut keys: SmallVec<[_; 8]> =
             non_blanket_impls.keys()
                              .map(|k| (k, k.map_def(|d| hcx.def_path_hash(d))))
                              .collect();
@@ -423,7 +424,7 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
         keys.len().hash_stable(hcx, hasher);
         for (key, ref stable_key) in keys {
             stable_key.hash_stable(hcx, hasher);
-            let mut impls : AccumulateVec<[_; 8]> = non_blanket_impls[key]
+            let mut impls : SmallVec<[_; 8]> = non_blanket_impls[key]
                 .iter()
                 .map(|&impl_id| hcx.def_path_hash(impl_id))
                 .collect();

@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-4517.rs:5:9
+   |
+LL |     bar(foo);
+   |         ^^^ expected usize, found array of 4 elements
+   |
+   = note: expected type `usize`
+              found type `[u8; 4]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

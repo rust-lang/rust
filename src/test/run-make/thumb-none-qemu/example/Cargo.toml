@@ -1,0 +1,11 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["Hideki Sekine <sekineh@me.com>"]
+# edition = "2018"
+
+[dependencies]
+cortex-m = "0.5.4"
+cortex-m-rt = "=0.5.4"
+panic-halt = "0.2.0"
+cortex-m-semihosting = "0.3.1"

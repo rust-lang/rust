@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module defines types which are thread safe if cfg!(parallel_queries) is true.
 //!
 //! `Lrc` is an alias of either Rc or Arc.
@@ -26,7 +16,7 @@
 //!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
 //!
-//! `MTRef` is a immutable refernce if cfg!(parallel_queries), and an mutable reference otherwise.
+//! `MTRef` is a immutable reference if cfg!(parallel_queries), and an mutable reference otherwise.
 //!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_queries).
@@ -93,8 +83,11 @@ cfg_if! {
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
         pub use std::cell::Ref as ReadGuard;
+        pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
+        pub use std::cell::RefMut as MappedWriteGuard;
         pub use std::cell::RefMut as LockGuard;
+        pub use std::cell::RefMut as MappedLockGuard;
 
         use std::cell::RefCell as InnerRwLock;
         use std::cell::RefCell as InnerLock;
@@ -130,7 +123,7 @@ cfg_if! {
 
         pub type MTRef<'a, T> = &'a mut T;
 
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct MTLock<T>(T);
 
         impl<T> MTLock<T> {
@@ -213,16 +206,19 @@ cfg_if! {
         pub use std::marker::Sync as Sync;
 
         pub use parking_lot::RwLockReadGuard as ReadGuard;
+        pub use parking_lot::MappedRwLockReadGuard as MappedReadGuard;
         pub use parking_lot::RwLockWriteGuard as WriteGuard;
+        pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
 
         pub use parking_lot::MutexGuard as LockGuard;
+        pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 
         pub type MTRef<'a, T> = &'a T;
 
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct MTLock<T>(Lock<T>);
 
         impl<T> MTLock<T> {
@@ -327,6 +323,7 @@ cfg_if! {
 }
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
+pub fn assert_send<T: ?Sized + Send>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
@@ -432,7 +429,7 @@ impl<T> Once<T> {
     /// closures may concurrently be computing a value which the inner value should take.
     /// Only one of these closures are used to actually initialize the value.
     /// If some other closure already set the value, we assert that it our closure computed
-    /// a value equal to the value aready set and then
+    /// a value equal to the value already set and then
     /// we return the value our closure computed wrapped in a `Option`.
     /// If our closure set the value, `None` is returned.
     /// If the value is already initialized, the closure is not called and `None` is returned.

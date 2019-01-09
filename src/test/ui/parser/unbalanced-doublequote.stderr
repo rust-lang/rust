@@ -1,0 +1,9 @@
+error: unterminated double quote string
+  --> $DIR/unbalanced-doublequote.rs:5:5
+   |
+LL | /     "
+LL | | }
+   | |__^
+
+error: aborting due to previous error
+

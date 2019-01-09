@@ -1,26 +1,16 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
-#![feature(fs_read_write)]
 #![feature(libc)]
-#![feature(macro_at_most_once_rep)]
+#![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
+#![feature(crate_visibility_modifier)]
 #![feature(specialization)]
 #![feature(rustc_private)]
 
@@ -29,6 +19,8 @@
 extern crate libc;
 #[macro_use]
 extern crate log;
+extern crate memmap;
+extern crate stable_deref_trait;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
@@ -61,5 +53,35 @@ pub mod creader;
 pub mod cstore;
 pub mod dynamic_lib;
 pub mod locator;
+
+pub fn validate_crate_name(
+    sess: Option<&rustc::session::Session>,
+    s: &str,
+    sp: Option<syntax_pos::Span>
+) {
+    let mut err_count = 0;
+    {
+        let mut say = |s: &str| {
+            match (sp, sess) {
+                (_, None) => bug!("{}", s),
+                (Some(sp), Some(sess)) => sess.span_err(sp, s),
+                (None, Some(sess)) => sess.err(s),
+            }
+            err_count += 1;
+        };
+        if s.is_empty() {
+            say("crate name must not be empty");
+        }
+        for c in s.chars() {
+            if c.is_alphanumeric() { continue }
+            if c == '_'  { continue }
+            say(&format!("invalid character `{}` in crate name: `{}`", c, s));
+        }
+    }
+
+    if err_count > 0 {
+        sess.unwrap().abort_if_errors();
+    }
+}
 
 __build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }

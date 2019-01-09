@@ -1,21 +1,12 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_target::spec::abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
 use syntax_pos::{Pos, Span, DUMMY_SP};
-use codemap::{dummy_spanned, respan, Spanned};
+use source_map::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
 use symbol::{Symbol, keywords};
+use ThinVec;
 
 // Transitional re-exports so qquote can find the paths it is looking for
 mod syntax {
@@ -317,9 +308,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
+        assert!(!idents.is_empty());
+        let add_root = global && !idents[0].is_path_segment_keyword();
+        let mut segments = Vec::with_capacity(idents.len() + add_root as usize);
+        if add_root {
+            segments.push(ast::PathSegment::path_root(span));
+        }
         let last_ident = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = vec![];
-
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
@@ -328,14 +323,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             None
         };
-        segments.push(ast::PathSegment { ident: last_ident.with_span_pos(span), args });
-        let mut path = ast::Path { span, segments };
-        if global {
-            if let Some(seg) = path.make_root() {
-                path.segments.insert(0, seg);
-            }
-        }
-        path
+        segments.push(ast::PathSegment {
+            ident: last_ident.with_span_pos(span),
+            id: ast::DUMMY_NODE_ID,
+            args,
+        });
+        ast::Path { span, segments }
     }
 
     /// Constructs a qualified path.
@@ -365,7 +358,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             None
         };
-        path.segments.push(ast::PathSegment { ident, args });
+        path.segments.push(ast::PathSegment { ident, id: ast::DUMMY_NODE_ID, args });
 
         (ast::QSelf {
             ty: self_type,
@@ -519,7 +512,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -547,7 +540,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -564,7 +557,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: None,
             id: ast::DUMMY_NODE_ID,
             span,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -594,7 +587,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
            id: ast::DUMMY_NODE_ID,
            rules: BlockCheckMode::Default,
            span,
-           recovered: false,
         })
     }
 
@@ -603,7 +595,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             node,
             span,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         })
     }
 
@@ -620,7 +612,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, keywords::SelfValue.ident())
+        self.expr_ident(span, keywords::SelfLower.ident())
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
@@ -678,7 +670,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             expr: e,
             span,
             is_shorthand: false,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         }
     }
     fn expr_struct(&self, span: Span, path: ast::Path, fields: Vec<ast::Field>) -> P<ast::Expr> {
@@ -690,7 +682,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_lit(&self, sp: Span, lit: ast::LitKind) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::Lit(P(respan(sp, lit))))
+        self.expr(sp, ast::ExprKind::Lit(respan(sp, lit)))
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitKind::Int(i as u128,
@@ -763,7 +755,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
-        let loc = self.codemap().lookup_char_pos(span.lo());
+        let loc = self.source_map().lookup_char_pos(span.lo());
         let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name.to_string()));
         let expr_line = self.expr_u32(span, loc.line as u32);
         let expr_col = self.expr_u32(span, loc.col.to_usize() as u32 + 1);
@@ -1100,6 +1092,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             ast::ItemKind::Mod(ast::Mod {
                 inner: inner_span,
                 items,
+                inline: true
             })
         )
     }

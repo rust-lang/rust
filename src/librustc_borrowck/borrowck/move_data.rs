@@ -1,28 +1,14 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Data structures used for tracking moves. Please see the extensive
 //! comments in the section "Moves and initialization" in `README.md`.
 
 pub use self::MoveKind::*;
 
+use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
+
 use borrowck::*;
 use rustc::cfg;
-use rustc::middle::dataflow::DataFlowContext;
-use rustc::middle::dataflow::BitwiseOperator;
-use rustc::middle::dataflow::DataFlowOperator;
-use rustc::middle::dataflow::KillFrom;
-use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashMap;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -51,9 +37,6 @@ pub struct MoveData<'tcx> {
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
     pub path_assignments: RefCell<Vec<Assignment>>,
-
-    /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
-    pub assignee_ids: RefCell<FxHashSet<hir::ItemLocalId>>,
 }
 
 pub struct FlowedMoveData<'a, 'tcx: 'a> {
@@ -151,9 +134,6 @@ pub struct Assignment {
 
     /// span of node where assignment occurs
     pub span: Span,
-
-    /// id for place expression on lhs of assignment
-    pub assignee_id: hir::ItemLocalId,
 }
 
 #[derive(Clone, Copy)]
@@ -339,7 +319,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
         // all parent union fields, moves do not propagate upwards automatically.
         let mut lp = orig_lp.clone();
         while let LpExtend(ref base_lp, mutbl, lp_elem) = lp.clone().kind {
-            if let (&ty::TyAdt(adt_def, _), LpInterior(opt_variant_id, interior))
+            if let (&ty::Adt(adt_def, _), LpInterior(opt_variant_id, interior))
                     = (&base_lp.ty.sty, lp_elem) {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
@@ -357,7 +337,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
             lp = base_lp.clone();
         }
 
-        self.add_move_helper(tcx, orig_lp.clone(), id, kind);
+        self.add_move_helper(tcx, orig_lp, id, kind);
     }
 
     fn add_move_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -369,7 +349,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                id,
                kind);
 
-        let path_index = self.move_path(tcx, lp.clone());
+        let path_index = self.move_path(tcx, lp);
         let move_index = MoveIndex(self.moves.borrow().len());
 
         let next_move = self.path_first_move(path_index);
@@ -388,12 +368,10 @@ impl<'a, 'tcx> MoveData<'tcx> {
     pub fn add_assignment(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           lp: Rc<LoanPath<'tcx>>,
                           assign_id: hir::ItemLocalId,
-                          span: Span,
-                          assignee_id: hir::ItemLocalId,
-                          mode: euv::MutateMode) {
+                          span: Span) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
-            if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
+            if let ty::Adt(adt_def, _) = base_lp.ty.sty {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
                         let field =
@@ -407,39 +385,28 @@ impl<'a, 'tcx> MoveData<'tcx> {
                                                     LpInterior(opt_variant_id, field));
                         let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
                         self.add_assignment_helper(tcx, sibling_lp, assign_id,
-                                                   span, assignee_id, mode);
+                                                   span);
                     }
                     return;
                 }
             }
         }
 
-        self.add_assignment_helper(tcx, lp.clone(), assign_id, span, assignee_id, mode);
+        self.add_assignment_helper(tcx, lp, assign_id, span);
     }
 
     fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              lp: Rc<LoanPath<'tcx>>,
                              assign_id: hir::ItemLocalId,
-                             span: Span,
-                             assignee_id: hir::ItemLocalId,
-                             mode: euv::MutateMode) {
-        debug!("add_assignment(lp={:?}, assign_id={:?}, assignee_id={:?}",
-               lp, assign_id, assignee_id);
+                             span: Span) {
+        debug!("add_assignment(lp={:?}, assign_id={:?}", lp, assign_id);
 
         let path_index = self.move_path(tcx, lp.clone());
-
-        match mode {
-            MutateMode::Init | MutateMode::JustWrite => {
-                self.assignee_ids.borrow_mut().insert(assignee_id);
-            }
-            MutateMode::WriteAndRead => { }
-        }
 
         let assignment = Assignment {
             path: path_index,
             id: assign_id,
             span,
-            assignee_id,
         };
 
         if self.is_var_path(path_index) {

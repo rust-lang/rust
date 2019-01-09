@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module provides linkage between libgraphviz traits and
 //! `rustc::middle::typeck::infer::region_constraints`, generating a
 //! rendering of the graph represented by the list of `Constraint`
@@ -31,9 +21,8 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::btree_map::BTreeMap;
 use std::env;
-use std::fs::File;
+use std::fs;
 use std::io;
-use std::io::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 fn print_help_message() {
@@ -112,12 +101,9 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    match dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
-        Ok(()) => {}
-        Err(e) => {
-            let msg = format!("io error dumping region constraints: {}", e);
-            tcx.sess.err(&msg)
-        }
+    if let Err(e) = dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
+        let msg = format!("io error dumping region constraints: {}", e);
+        tcx.sess.err(&msg)
     }
 }
 
@@ -146,7 +132,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
            map: &'a ConstraintMap<'tcx>)
            -> ConstraintGraph<'a, 'gcx, 'tcx> {
         let mut i = 0;
-        let mut node_ids = FxHashMap();
+        let mut node_ids = FxHashMap::default();
         {
             let mut add_node = |node| {
                 if let Vacant(e) = node_ids.entry(node) {
@@ -178,38 +164,35 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
-    fn graph_id(&self) -> dot::Id {
+    fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new(&*self.graph_name).unwrap()
     }
-    fn node_id(&self, n: &Node) -> dot::Id {
+    fn node_id(&self, n: &Node) -> dot::Id<'_> {
         let node_id = match self.node_ids.get(n) {
             Some(node_id) => node_id,
             None => bug!("no node_id found for node: {:?}", n),
         };
         let name = || format!("node_{}", node_id);
-        match dot::Id::new(name()) {
-            Ok(id) => id,
-            Err(_) => {
-                bug!("failed to create graphviz node identified by {}", name());
-            }
-        }
+
+        dot::Id::new(name()).unwrap_or_else(|_|
+            bug!("failed to create graphviz node identified by {}", name()))
     }
-    fn node_label(&self, n: &Node) -> dot::LabelText {
+    fn node_label(&self, n: &Node) -> dot::LabelText<'_> {
         match *n {
             Node::RegionVid(n_vid) => dot::LabelText::label(format!("{:?}", n_vid)),
             Node::Region(n_rgn) => dot::LabelText::label(format!("{:?}", n_rgn)),
         }
     }
-    fn edge_label(&self, e: &Edge) -> dot::LabelText {
+    fn edge_label(&self, e: &Edge<'_>) -> dot::LabelText<'_> {
         match *e {
             Edge::Constraint(ref c) =>
                 dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap())),
-            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_string()),
+            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_owned()),
         }
     }
 }
 
-fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
+fn constraint_to_nodes(c: &Constraint<'_>) -> (Node, Node) {
     match *c {
         Constraint::VarSubVar(rv_1, rv_2) =>
             (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
@@ -222,7 +205,7 @@ fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
     }
 }
 
-fn edge_to_nodes(e: &Edge) -> (Node, Node) {
+fn edge_to_nodes(e: &Edge<'_>) -> (Node, Node) {
     match *e {
         Edge::Constraint(ref c) => constraint_to_nodes(c),
         Edge::EnclScope(sub, sup) => {
@@ -235,15 +218,12 @@ fn edge_to_nodes(e: &Edge) -> (Node, Node) {
 impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
-    fn nodes(&self) -> dot::Nodes<Node> {
-        let mut set = FxHashSet();
-        for node in self.node_ids.keys() {
-            set.insert(*node);
-        }
+    fn nodes(&self) -> dot::Nodes<'_, Node> {
+        let set = self.node_ids.keys().cloned().collect::<FxHashSet<_>>();
         debug!("constraint graph has {} nodes", set.len());
         set.into_iter().collect()
     }
-    fn edges(&self) -> dot::Edges<Edge<'tcx>> {
+    fn edges(&self) -> dot::Edges<'_, Edge<'tcx>> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v: Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
         self.region_rels.region_scope_tree.each_encl_scope(|sub, sup| {
@@ -277,5 +257,5 @@ fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, '
     debug!("dump_region_data calling render");
     let mut v = Vec::new();
     dot::render(&g, &mut v).unwrap();
-    File::create(path).and_then(|mut f| f.write_all(&v))
+    fs::write(path, &v)
 }

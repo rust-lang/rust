@@ -1,0 +1,12 @@
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/builtin-superkinds-typaram-not-send.rs:5:24
+   |
+LL | impl <T: Sync+'static> Foo for T { }
+   |                        ^^^ `T` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Send` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

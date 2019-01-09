@@ -1,17 +1,8 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // The outlines relation `T: 'a` or `'a: 'b`. This code frequently
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 
+use smallvec::SmallVec;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 #[derive(Debug)]
@@ -55,31 +46,28 @@ pub enum Component<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Returns all the things that must outlive `'a` for the condition
+    /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-    pub fn outlives_components(&self, ty0: Ty<'tcx>)
-                               -> Vec<Component<'tcx>> {
-        let mut components = vec![];
-        self.compute_components(ty0, &mut components);
-        debug!("components({:?}) = {:?}", ty0, components);
-        components
+    pub fn push_outlives_components(&self, ty0: Ty<'tcx>,
+                                    out: &mut SmallVec<[Component<'tcx>; 4]>) {
+        self.compute_components(ty0, out);
+        debug!("components({:?}) = {:?}", ty0, out);
     }
 
-    fn compute_components(&self, ty: Ty<'tcx>, out: &mut Vec<Component<'tcx>>) {
+    fn compute_components(&self, ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
         // Descend through the types, looking for the various "base"
         // components and collecting them into `out`. This is not written
         // with `collect()` because of the need to sometimes skip subtrees
         // in the `subtys` iterator (e.g., when encountering a
         // projection).
         match ty.sty {
-            ty::TyClosure(def_id, ref substs) => {
-
+            ty::Closure(def_id, ref substs) => {
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
             }
 
-            ty::TyGenerator(def_id, ref substs, _) => {
+            ty::Generator(def_id, ref substs, _) => {
                 // Same as the closure case
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
@@ -90,11 +78,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             // All regions are bound inside a witness
-            ty::TyGeneratorWitness(..) => (),
+            ty::GeneratorWitness(..) => (),
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
-            ty::TyParam(p) => {
+            ty::Param(p) => {
                 out.push(Component::Param(p));
             }
 
@@ -106,8 +94,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // trait-ref. Therefore, if we see any higher-ranke regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::TyProjection(ref data) => {
-                if !data.has_escaping_regions() {
+            ty::Projection(ref data) => {
+                if !data.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
                     // constraints for Pi). This defers the choice between
@@ -124,10 +112,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+
             // We assume that inference variables are fully resolved.
             // So, if we encounter an inference variable, just record
             // the unresolved variable as a component.
-            ty::TyInfer(infer_ty) => {
+            ty::Infer(infer_ty) => {
                 out.push(Component::UnresolvedInferenceVariable(infer_ty));
             }
 
@@ -137,32 +127,34 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // the type and then visits the types that are lexically
             // contained within. (The comments refer to relevant rules
             // from RFC1214.)
-            ty::TyBool |            // OutlivesScalar
-            ty::TyChar |            // OutlivesScalar
-            ty::TyInt(..) |         // OutlivesScalar
-            ty::TyUint(..) |        // OutlivesScalar
-            ty::TyFloat(..) |       // OutlivesScalar
-            ty::TyNever |           // ...
-            ty::TyAdt(..) |         // OutlivesNominalType
-            ty::TyAnon(..) |        // OutlivesNominalType (ish)
-            ty::TyForeign(..) |     // OutlivesNominalType
-            ty::TyStr |             // OutlivesScalar (ish)
-            ty::TyArray(..) |       // ...
-            ty::TySlice(..) |       // ...
-            ty::TyRawPtr(..) |      // ...
-            ty::TyRef(..) |         // OutlivesReference
-            ty::TyTuple(..) |       // ...
-            ty::TyFnDef(..) |       // OutlivesFunction (*)
-            ty::TyFnPtr(_) |        // OutlivesFunction (*)
-            ty::TyDynamic(..) |       // OutlivesObject, OutlivesFragment (*)
-            ty::TyError => {
+            ty::Bool |            // OutlivesScalar
+            ty::Char |            // OutlivesScalar
+            ty::Int(..) |         // OutlivesScalar
+            ty::Uint(..) |        // OutlivesScalar
+            ty::Float(..) |       // OutlivesScalar
+            ty::Never |           // ...
+            ty::Adt(..) |         // OutlivesNominalType
+            ty::Opaque(..) |        // OutlivesNominalType (ish)
+            ty::Foreign(..) |     // OutlivesNominalType
+            ty::Str |             // OutlivesScalar (ish)
+            ty::Array(..) |       // ...
+            ty::Slice(..) |       // ...
+            ty::RawPtr(..) |      // ...
+            ty::Ref(..) |         // OutlivesReference
+            ty::Tuple(..) |       // ...
+            ty::FnDef(..) |       // OutlivesFunction (*)
+            ty::FnPtr(_) |        // OutlivesFunction (*)
+            ty::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
+            ty::Placeholder(..) |
+            ty::Bound(..) |
+            ty::Error => {
                 // (*) Bare functions and traits are both binders. In the
                 // RFC, this means we would add the bound regions to the
                 // "bound regions list".  In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
 
-                push_region_constraints(out, ty.regions());
+                push_region_constraints(ty, out);
                 for subty in ty.walk_shallow() {
                     self.compute_components(subty, out);
                 }
@@ -171,19 +163,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn capture_components(&self, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
-        let mut temp = vec![];
-        push_region_constraints(&mut temp, ty.regions());
+        let mut temp = smallvec![];
+        push_region_constraints(ty, &mut temp);
         for subty in ty.walk_shallow() {
             self.compute_components(subty, &mut temp);
         }
-        temp
+        temp.into_iter().collect()
     }
 }
 
-fn push_region_constraints<'tcx>(out: &mut Vec<Component<'tcx>>, regions: Vec<ty::Region<'tcx>>) {
-    for r in regions {
-        if !r.is_late_bound() {
-            out.push(Component::Region(r));
-        }
-    }
+fn push_region_constraints<'tcx>(ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
+    let mut regions = smallvec![];
+    ty.push_regions(&mut regions);
+    out.extend(regions.iter().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r)));
 }

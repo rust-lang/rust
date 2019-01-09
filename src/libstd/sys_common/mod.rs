@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Platform-independent platform abstraction
 //!
 //! This is the platform-independent portion of the standard library's
@@ -38,6 +28,7 @@ macro_rules! rtassert {
     })
 }
 
+pub mod alloc;
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
@@ -56,9 +47,11 @@ pub mod bytestring;
 pub mod process;
 
 cfg_if! {
-    if #[cfg(any(target_os = "cloudabi", target_os = "l4re", target_os = "redox"))] {
-        pub use sys::net;
-    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+    if #[cfg(any(target_os = "cloudabi",
+                 target_os = "l4re",
+                 target_os = "redox",
+                 all(target_arch = "wasm32", not(target_os = "emscripten")),
+                 all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use sys::net;
     } else {
         pub mod net;

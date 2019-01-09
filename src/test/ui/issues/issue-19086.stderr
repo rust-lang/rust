@@ -1,0 +1,9 @@
+error[E0532]: expected tuple struct/variant, found struct variant `FooB`
+  --> $DIR/issue-19086.rs:10:9
+   |
+LL |         FooB(a, b) => println!("{} {}", a, b),
+   |         ^^^^ did you mean `FooB { /* fields */ }`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

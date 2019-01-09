@@ -1,0 +1,19 @@
+error[E0053]: method `bar` has an incompatible type for trait
+  --> $DIR/issue-13033.rs:8:30
+   |
+LL |     fn bar(&mut self, other: &mut Foo);
+   |                              -------- type in trait
+...
+LL |     fn bar(&mut self, other: &Foo) {}
+   |                              ^^^^ types differ in mutability
+   |
+   = note: expected type `fn(&mut Baz, &mut dyn Foo)`
+              found type `fn(&mut Baz, &dyn Foo)`
+help: consider change the type to match the mutability in trait
+   |
+LL |     fn bar(&mut self, other: &mut Foo) {}
+   |                              ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

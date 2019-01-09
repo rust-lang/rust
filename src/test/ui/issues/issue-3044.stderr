@@ -1,0 +1,9 @@
+error[E0061]: this function takes 2 parameters but 1 parameter was supplied
+  --> $DIR/issue-3044.rs:3:23
+   |
+LL |     needlesArr.iter().fold(|x, y| {
+   |                       ^^^^ expected 2 parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.

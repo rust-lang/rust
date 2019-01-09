@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized7.rs:12:21
+   |
+LL | impl<X: ?Sized + T> T1<X> for S3<X> {
+   |                     ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where X: std::marker::Sized` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

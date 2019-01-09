@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Some code that abstracts away much of the boilerplate of writing
 //! `derive` instances for traits. Among other things it manages getting
 //! access to the fields of the 4 different sorts of structs and enum
@@ -18,7 +8,7 @@
 //! - Methods taking any number of parameters of any type, and returning
 //!   any type, other than vectors, bottom and closures.
 //! - Generating `impl`s for types with type parameters and lifetimes
-//!   (e.g. `Option<T>`), the parameters are automatically given the
+//!   (e.g., `Option<T>`), the parameters are automatically given the
 //!   current trait as a bound. (This includes separate type parameters
 //!   and lifetimes for methods.)
 //! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
@@ -30,9 +20,9 @@
 //! - `Struct`, when `Self` is a struct (including tuple structs, e.g
 //!   `struct T(i32, char)`).
 //! - `EnumMatching`, when `Self` is an enum and all the arguments are the
-//!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
+//!   same variant of the enum (e.g., `Some(1)`, `Some(3)` and `Some(4)`)
 //! - `EnumNonMatchingCollapsed` when `Self` is an enum and the arguments
-//!   are not the same variant (e.g. `None`, `Some(1)` and `None`).
+//!   are not the same variant (e.g., `None`, `Some(1)` and `None`).
 //! - `StaticEnum` and `StaticStruct` for static methods, where the type
 //!   being derived upon is either an enum or struct respectively. (Any
 //!   argument with type Self is just grouped among the non-self
@@ -68,7 +58,7 @@
 //! The `i32`s in `B` and `C0` don't have an identifier, so the
 //! `Option<ident>`s would be `None` for them.
 //!
-//! In the static cases, the structure is summarised, either into the just
+//! In the static cases, the structure is summarized, either into the just
 //! spans of the fields or a list of spans and the field idents (for tuple
 //! structs and record structs, respectively), or a list of these, for
 //! enums (one for each variant). For empty struct and empty enum
@@ -191,18 +181,19 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, respan};
+use syntax::source_map::{self, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
+use syntax::parse::ParseSess;
 use syntax_pos::{DUMMY_SP, Span};
-use errors::Handler;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -223,7 +214,7 @@ pub struct TraitDef<'a> {
     /// other than the current trait
     pub additional_bounds: Vec<Ty<'a>>,
 
-    /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
+    /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
     pub generics: LifetimeBounds<'a>,
 
     /// Is it an `unsafe` trait?
@@ -241,10 +232,10 @@ pub struct TraitDef<'a> {
 pub struct MethodDef<'a> {
     /// name of the method
     pub name: &'a str,
-    /// List of generics, e.g. `R: rand::Rng`
+    /// List of generics, e.g., `R: rand::Rng`
     pub generics: LifetimeBounds<'a>,
 
-    /// Whether there is a self argument (outer Option) i.e. whether
+    /// Whether there is a self argument (outer Option) i.e., whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
     pub explicit_self: Option<Option<PtrTy<'a>>>,
@@ -411,7 +402,7 @@ impl<'a> TraitDef<'a> {
         match *item {
             Annotatable::Item(ref item) => {
                 let is_packed = item.attrs.iter().any(|attr| {
-                    for r in attr::find_repr_attrs(&cx.parse_sess.span_diagnostic, attr) {
+                    for r in attr::find_repr_attrs(&cx.parse_sess, attr) {
                         if let attr::ReprPacked(_) = r {
                             return true;
                         }
@@ -554,7 +545,7 @@ impl<'a> TraitDef<'a> {
             GenericParamKind::Type { .. } => {
                 // I don't think this can be moved out of the loop, since
                 // a GenericBound requires an ast id
-                let mut bounds: Vec<_> =
+                let bounds: Vec<_> =
                     // extra restrictions on the generics parameters to the
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
@@ -810,10 +801,10 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &'static str {
+fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'static str {
     let mut repr_type_name = "isize";
     for a in type_attrs {
-        for r in &attr::find_repr_attrs(diagnostic, a) {
+        for r in &attr::find_repr_attrs(sess, a) {
             repr_type_name = match *r {
                 attr::ReprPacked(_) | attr::ReprSimd | attr::ReprAlign(_) | attr::ReprTransparent =>
                     continue,
@@ -937,7 +928,7 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 ast::Arg::from_self(explicit_self,
-                                    keywords::SelfValue.ident().with_span_pos(trait_.span))
+                                    keywords::SelfLower.ident().with_span_pos(trait_.span))
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.arg(trait_.span, name, ty));
@@ -1199,16 +1190,14 @@ impl<'a> MethodDef<'a> {
         let sp = trait_.span;
         let variants = &enum_def.variants;
 
-        let self_arg_names = self_args.iter()
-            .enumerate()
-            .map(|(arg_count, _self_arg)| {
-                if arg_count == 0 {
-                    "__self".to_string()
-                } else {
+        let self_arg_names = iter::once("__self".to_string()).chain(
+            self_args.iter()
+                .enumerate()
+                .skip(1)
+                .map(|(arg_count, _self_arg)|
                     format!("__arg_{}", arg_count)
-                }
-            })
-            .collect::<Vec<String>>();
+                )
+            ).collect::<Vec<String>>();
 
         let self_arg_idents = self_arg_names.iter()
             .map(|name| cx.ident_of(&name[..]))
@@ -1217,7 +1206,7 @@ impl<'a> MethodDef<'a> {
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
         // value corresponding to its discriminant.
-        let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
+        let vi_idents = self_arg_names.iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
                 cx.ident_of(&vi_suffix[..]).gensym()
@@ -1372,7 +1361,7 @@ impl<'a> MethodDef<'a> {
             // that type.  Otherwise casts to `i32` (the default repr
             // type).
             //
-            // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
+            // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
@@ -1383,13 +1372,13 @@ impl<'a> MethodDef<'a> {
             // let __self2_vi = unsafe {
             //     std::intrinsics::discriminant_value(&arg2) } as i32;
             // ```
-            let mut index_let_stmts: Vec<ast::Stmt> = Vec::new();
+            let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
 
             // We also build an expression which checks whether all discriminants are equal
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
             let mut discriminant_test = cx.expr_bool(sp, true);
 
-            let target_type_name = find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
+            let target_type_name = find_repr_type_name(&cx.parse_sess, type_attrs);
 
             let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
@@ -1490,8 +1479,8 @@ impl<'a> MethodDef<'a> {
             //
             // (See also #4499 and #12609; note that some of the
             // discussions there influence what choice we make here;
-            // e.g. if we feature-gate `match x { ... }` when x refers
-            // to an uninhabited type (e.g. a zero-variant enum or a
+            // e.g., if we feature-gate `match x { ... }` when x refers
+            // to an uninhabited type (e.g., a zero-variant enum or a
             // type holding such an enum), but do not feature-gate
             // zero-variant enums themselves, then attempting to
             // derive Debug on such a type could here generate code
@@ -1618,13 +1607,13 @@ impl<'a> TraitDef<'a> {
                         if ident.is_none() {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
-                        codemap::Spanned {
+                        source_map::Spanned {
                             span: pat.span.with_ctxt(self.span.ctxt()),
                             node: ast::FieldPat {
                                 ident: ident.unwrap(),
                                 pat,
                                 is_shorthand: false,
-                                attrs: ast::ThinVec::new(),
+                                attrs: ThinVec::new(),
                             },
                         }
                     })

@@ -1,0 +1,12 @@
+error[E0277]: `MyStruct` is not an iterator
+  --> $DIR/for-loop-bogosity.rs:17:14
+   |
+LL |     for x in bogus {
+   |              ^^^^^ `MyStruct` is not an iterator
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `MyStruct`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,27 @@
+error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
+  --> $DIR/macros-in-extern.rs:15:5
+   |
+LL |     #[no_output]
+   |     ^^^^^^^^^^^^
+   |
+   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+
+error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
+  --> $DIR/macros-in-extern.rs:19:5
+   |
+LL |     #[nop_attr]
+   |     ^^^^^^^^^^^
+   |
+   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+
+error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
+  --> $DIR/macros-in-extern.rs:23:5
+   |
+LL |     emit_input!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

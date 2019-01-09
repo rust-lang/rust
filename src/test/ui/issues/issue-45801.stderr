@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `Params: Plugin<i32>` is not satisfied
+  --> $DIR/issue-45801.rs:21:9
+   |
+LL |     req.get_ref::<Params>();
+   |         ^^^^^^^ the trait `Plugin<i32>` is not implemented for `Params`
+   |
+   = help: the following implementations were found:
+             <Params as Plugin<Foo>>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `asdf_fdsa` in this scope
+  --> $DIR/syntax-extension-minor.rs:10:13
+   |
+LL |     assert!(concat_idents!(asd, f_f, dsa) == "<.<".to_string());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

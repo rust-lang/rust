@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Support for "weak linkage" to symbols on Unix
 //!
 //! Some I/O operations we do in libstd require newer versions of OSes but we
@@ -76,4 +66,39 @@ unsafe fn fetch(name: &str) -> usize {
         Err(..) => return 0,
     };
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
+}
+
+#[cfg(not(target_os = "linux"))]
+macro_rules! syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name: $t),*) -> $ret {
+            use libc;
+            use super::os;
+
+            weak! { fn $name($($t),*) -> $ret }
+
+            if let Some(fun) = $name.get() {
+                fun($($arg_name),*)
+            } else {
+                os::set_errno(libc::ENOSYS);
+                -1
+            }
+        }
+    )
+}
+
+#[cfg(target_os = "linux")]
+macro_rules! syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name:$t),*) -> $ret {
+            // This looks like a hack, but concat_idents only accepts idents
+            // (not paths).
+            use libc::*;
+
+            syscall(
+                concat_idents!(SYS_, $name),
+                $($arg_name as c_long),*
+            ) as $ret
+        }
+    )
 }

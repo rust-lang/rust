@@ -1,5 +1,5 @@
 error[E0585]: found a documentation comment that doesn't document anything
-  --> $DIR/E0585.rs:12:5
+  --> $DIR/E0585.rs:2:5
    |
 LL |     /// Hello! I'm useless...
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

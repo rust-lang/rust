@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use io::prelude::*;
 
 use core::convert::TryInto;
@@ -90,7 +80,7 @@ pub struct Cursor<T> {
 impl<T> Cursor<T> {
     /// Creates a new cursor wrapping the provided underlying in-memory buffer.
     ///
-    /// Cursor initial position is `0` even if underlying buffer (e.g. `Vec`)
+    /// Cursor initial position is `0` even if underlying buffer (e.g., `Vec`)
     /// is not empty. So writing to cursor starts with overwriting `Vec`
     /// content, not with appending to it.
     ///
@@ -548,26 +538,6 @@ mod tests {
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_read_char() {
-        let b = &b"Vi\xE1\xBB\x87t"[..];
-        let mut c = Cursor::new(b).chars();
-        assert_eq!(c.next().unwrap().unwrap(), 'V');
-        assert_eq!(c.next().unwrap().unwrap(), 'i');
-        assert_eq!(c.next().unwrap().unwrap(), 'ệ');
-        assert_eq!(c.next().unwrap().unwrap(), 't');
-        assert!(c.next().is_none());
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_read_bad_char() {
-        let b = &b"\x80"[..];
-        let mut c = Cursor::new(b).chars();
-        assert!(c.next().unwrap().is_err());
     }
 
     #[test]

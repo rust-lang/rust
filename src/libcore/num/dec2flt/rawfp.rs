@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Bit fiddling on positive IEEE 754 floats. Negative numbers aren't and needn't be handled.
 //! Normal floating point numbers have a canonical representation as (frac, exp) such that the
 //! value is 2<sup>exp</sup> * (1 + sum(frac[N-i] / 2<sup>i</sup>)) where N is the number of bits.
@@ -45,7 +35,7 @@ pub struct Unpacked {
 
 impl Unpacked {
     pub fn new(sig: u64, k: i16) -> Self {
-        Unpacked { sig: sig, k: k }
+        Unpacked { sig, k }
     }
 }
 
@@ -317,13 +307,13 @@ pub fn big_to_fp(f: &Big) -> Fp {
     // We cut off all bits prior to the index `start`, i.e., we effectively right-shift by
     // an amount of `start`, so this is also the exponent we need.
     let e = start as i16;
-    let rounded_down = Fp { f: leading, e: e }.normalize();
+    let rounded_down = Fp { f: leading, e }.normalize();
     // Round (half-to-even) depending on the truncated bits.
     match num::compare_with_half_ulp(f, start) {
         Less => rounded_down,
         Equal if leading % 2 == 0 => rounded_down,
         Equal | Greater => match leading.checked_add(1) {
-            Some(f) => Fp { f: f, e: e }.normalize(),
+            Some(f) => Fp { f, e }.normalize(),
             None => Fp { f: 1 << 63, e: e + 1 },
         }
     }
@@ -349,7 +339,7 @@ pub fn prev_float<T: RawFloat>(x: T) -> T {
 }
 
 // Find the smallest floating point number strictly larger than the argument.
-// This operation is saturating, i.e. next_float(inf) == inf.
+// This operation is saturating, i.e., next_float(inf) == inf.
 // Unlike most code in this module, this function does handle zero, subnormals, and infinities.
 // However, like all other code here, it does not deal with NaN and negative numbers.
 pub fn next_float<T: RawFloat>(x: T) -> T {

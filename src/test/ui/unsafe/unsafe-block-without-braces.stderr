@@ -1,0 +1,10 @@
+error: expected one of `extern`, `fn`, or `{`, found `std`
+  --> $DIR/unsafe-block-without-braces.rs:3:9
+   |
+LL |     unsafe //{
+   |           - expected one of `extern`, `fn`, or `{` here
+LL |         std::mem::transmute::<f32, u32>(1.0);
+   |         ^^^ unexpected token
+
+error: aborting due to previous error
+

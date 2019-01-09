@@ -1,18 +1,9 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use infer::InferCtxt;
-use ty::{self, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt, ToPredicate};
+use traits::Obligation;
 use hir::def_id::DefId;
 
-use super::{FulfillmentContext, FulfillmentError};
+use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation};
 
 pub trait TraitEngine<'tcx>: 'tcx {
@@ -24,6 +15,9 @@ pub trait TraitEngine<'tcx>: 'tcx {
         cause: ObligationCause<'tcx>,
     ) -> Ty<'tcx>;
 
+    /// Requires that `ty` must implement the trait with `def_id` in
+    /// the given environment. This trait must not have any type
+    /// parameters (except for `Self`).
     fn register_bound(
         &mut self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
@@ -31,7 +25,18 @@ pub trait TraitEngine<'tcx>: 'tcx {
         ty: Ty<'tcx>,
         def_id: DefId,
         cause: ObligationCause<'tcx>,
-    );
+    ) {
+        let trait_ref = ty::TraitRef {
+            def_id,
+            substs: infcx.tcx.mk_substs_trait(ty, &[]),
+        };
+        self.register_predicate_obligation(infcx, Obligation {
+            cause,
+            recursion_depth: 0,
+            param_env,
+            predicate: trait_ref.to_predicate()
+        });
+    }
 
     fn register_predicate_obligation(
         &mut self,
@@ -73,7 +78,11 @@ impl<T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
 }
 
 impl dyn TraitEngine<'tcx> {
-    pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
-        Box::new(FulfillmentContext::new())
+    pub fn new(tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
+        if tcx.sess.opts.debugging_opts.chalk {
+            Box::new(ChalkFulfillmentContext::new())
+        } else {
+            Box::new(FulfillmentContext::new())
+        }
     }
 }

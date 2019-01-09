@@ -1,18 +1,12 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowed-universal-error.rs:20:12
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/borrowed-universal-error.rs:10:5
    |
 LL |     gimme(&(v,))
-   |            ^^^^ temporary value does not live long enough
-LL |     //~^ ERROR borrowed value does not live long enough [E0597]
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 18:8...
-  --> $DIR/borrowed-universal-error.rs:18:8
-   |
-LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
-   |        ^^
+   |     ^^^^^^^----^
+   |     |      |
+   |     |      temporary value created here
+   |     returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

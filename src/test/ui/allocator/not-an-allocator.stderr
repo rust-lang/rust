@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:1
+   |
+LL | static A: usize = 0;
+   | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
+   |
+   = note: required by `std::alloc::GlobalAlloc::alloc`
+
+error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:1
+   |
+LL | static A: usize = 0;
+   | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
+   |
+   = note: required by `std::alloc::GlobalAlloc::dealloc`
+
+error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:1
+   |
+LL | static A: usize = 0;
+   | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
+   |
+   = note: required by `std::alloc::GlobalAlloc::realloc`
+
+error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:1
+   |
+LL | static A: usize = 0;
+   | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
+   |
+   = note: required by `std::alloc::GlobalAlloc::alloc_zeroed`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

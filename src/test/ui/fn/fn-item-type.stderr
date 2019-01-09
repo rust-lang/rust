@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:13:19
+   |
+LL |     eq(foo::<u8>, bar::<u8>);
+   |                   ^^^^^^^^^ expected fn item, found a different fn item
+   |
+   = note: expected type `fn(isize) -> isize {foo::<u8>}`
+              found type `fn(isize) -> isize {bar::<u8>}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:19:19
+   |
+LL |     eq(foo::<u8>, foo::<i8>);
+   |                   ^^^^^^^^^ expected u8, found i8
+   |
+   = note: expected type `fn(isize) -> isize {foo::<u8>}`
+              found type `fn(isize) -> isize {foo::<i8>}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:23:23
+   |
+LL |     eq(bar::<String>, bar::<Vec<u8>>);
+   |                       ^^^^^^^^^^^^^^ expected struct `std::string::String`, found struct `std::vec::Vec`
+   |
+   = note: expected type `fn(isize) -> isize {bar::<std::string::String>}`
+              found type `fn(isize) -> isize {bar::<std::vec::Vec<u8>>}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:30:26
+   |
+LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
+   |                          ^^^^^^^^^^^^^^^^^ expected u8, found u16
+   |
+   = note: expected type `fn() {<u8 as Foo>::foo}`
+              found type `fn() {<u16 as Foo>::foo}`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

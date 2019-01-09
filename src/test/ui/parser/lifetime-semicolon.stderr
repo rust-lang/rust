@@ -1,0 +1,8 @@
+error: expected one of `,` or `>`, found `;`
+  --> $DIR/lifetime-semicolon.rs:5:30
+   |
+LL | fn foo<'a, 'b>(x: &mut Foo<'a; 'b>) {}
+   |                              ^ expected one of `,` or `>` here
+
+error: aborting due to previous error
+

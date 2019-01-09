@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Self: Get` is not satisfied
+  --> $DIR/associated-types-for-unimpl-trait.rs:7:5
+   |
+LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
+   |
+   = help: consider adding a `where Self: Get` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

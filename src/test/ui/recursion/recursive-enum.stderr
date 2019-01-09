@@ -1,0 +1,13 @@
+error[E0072]: recursive type `List` has infinite size
+  --> $DIR/recursive-enum.rs:1:1
+   |
+LL | enum List<T> { Cons(T, List<T>), Nil }
+   | ^^^^^^^^^^^^           ------- recursive without indirection
+   | |
+   | recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

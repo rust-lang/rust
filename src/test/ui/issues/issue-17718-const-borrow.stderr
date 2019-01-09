@@ -1,0 +1,21 @@
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/issue-17718-const-borrow.rs:4:39
+   |
+LL | const B: &'static UnsafeCell<usize> = &A;
+   |                                       ^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/issue-17718-const-borrow.rs:9:39
+   |
+LL | const E: &'static UnsafeCell<usize> = &D.a;
+   |                                       ^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/issue-17718-const-borrow.rs:11:23
+   |
+LL | const F: &'static C = &D;
+   |                       ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0492`.

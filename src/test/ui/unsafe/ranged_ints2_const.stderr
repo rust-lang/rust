@@ -1,0 +1,24 @@
+error[E0017]: references in constant functions may only refer to immutable values
+  --> $DIR/ranged_ints2_const.rs:11:13
+   |
+LL |     let y = &mut x.0; //~ ERROR references in constant functions may only refer to immutable
+   |             ^^^^^^^^ constant functions require immutable values
+
+error[E0017]: references in constant functions may only refer to immutable values
+  --> $DIR/ranged_ints2_const.rs:18:22
+   |
+LL |     let y = unsafe { &mut x.0 }; //~ ERROR references in constant functions may only refer to immut
+   |                      ^^^^^^^^ constant functions require immutable values
+
+error[E0133]: mutation of layout constrained field is unsafe and requires unsafe function or block
+  --> $DIR/ranged_ints2_const.rs:11:13
+   |
+LL |     let y = &mut x.0; //~ ERROR references in constant functions may only refer to immutable
+   |             ^^^^^^^^ mutation of layout constrained field
+   |
+   = note: mutating layout constrained fields cannot statically be checked for valid values
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0017, E0133.
+For more information about an error, try `rustc --explain E0017`.

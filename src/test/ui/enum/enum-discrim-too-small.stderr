@@ -1,0 +1,35 @@
+error[E0600]: cannot apply unary operator `-` to type `u8`
+  --> $DIR/enum-discrim-too-small.rs:5:11
+   |
+LL |     Cu8 = -23,
+   |           ^^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `u16`
+  --> $DIR/enum-discrim-too-small.rs:13:12
+   |
+LL |     Cu16 = -22333,
+   |            ^^^^^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `u32`
+  --> $DIR/enum-discrim-too-small.rs:21:12
+   |
+LL |     Cu32 = -2_000_000_000,
+   |            ^^^^^^^^^^^^^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `u64`
+  --> $DIR/enum-discrim-too-small.rs:29:12
+   |
+LL |     Cu32 = -2_000_000_000,
+   |            ^^^^^^^^^^^^^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0600`.

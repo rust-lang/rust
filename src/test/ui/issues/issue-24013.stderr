@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-24013.rs:5:20
+   |
+LL |     unsafe {swap::<&mut _>(transmute(&a), transmute(&b))};
+   |                    ^^^^^^ cannot infer type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

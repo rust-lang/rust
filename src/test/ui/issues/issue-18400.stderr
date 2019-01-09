@@ -1,0 +1,75 @@
+error[E0275]: overflow evaluating the requirement `_: std::marker::Sized`
+  --> $DIR/issue-18400.rs:24:7
+   |
+LL |     0.contains(bits);
+   |       ^^^^^^^^
+   |
+   = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
+   = note: required because of the requirements on the impl of `Set<&[_]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[_]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[_]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[_]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[_]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[_]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[_]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[_]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[_]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+   = note: required because of the requirements on the impl of `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>` for `{integer}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,13 +1,3 @@
-// Copyright 2016-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 macro_rules! unimpl {
     () => (return Err(io::Error::new(io::ErrorKind::Other, "No networking available on L4Re."));)
 }
@@ -21,7 +11,7 @@ pub mod net {
     use sys_common::{AsInner, FromInner, IntoInner};
     use sys::fd::FileDesc;
     use time::Duration;
-
+    use convert::TryFrom;
 
     pub extern crate libc as netc;
 
@@ -118,7 +108,7 @@ pub mod net {
     }
 
     impl TcpStream {
-        pub fn connect(_: &SocketAddr) -> io::Result<TcpStream> {
+        pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
             unimpl!();
         }
 
@@ -216,7 +206,7 @@ pub mod net {
     }
 
     impl TcpListener {
-        pub fn bind(_: &SocketAddr) -> io::Result<TcpListener> {
+        pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
             unimpl!();
         }
 
@@ -278,7 +268,7 @@ pub mod net {
     }
 
     impl UdpSocket {
-        pub fn bind(_: &SocketAddr) -> io::Result<UdpSocket> {
+        pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
             unimpl!();
         }
 
@@ -402,7 +392,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn connect(&self, _: &SocketAddr) -> io::Result<()> {
+        pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
             unimpl!();
         }
     }
@@ -431,11 +421,30 @@ pub mod net {
         }
     }
 
+    impl LookupHost {
+        pub fn port(&self) -> u16 {
+            unimpl!();
+        }
+    }
+
     unsafe impl Sync for LookupHost {}
     unsafe impl Send for LookupHost {}
 
-    pub fn lookup_host(_: &str) -> io::Result<LookupHost> {
-        unimpl!();
+
+    impl<'a> TryFrom<&'a str> for LookupHost {
+        type Error = io::Error;
+
+        fn try_from(_v: &'a str) -> io::Result<LookupHost> {
+            unimpl!();
+        }
+    }
+
+    impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
+        type Error = io::Error;
+
+        fn try_from(_v: (&'a str, u16)) -> io::Result<LookupHost> {
+            unimpl!();
+        }
     }
 }
 

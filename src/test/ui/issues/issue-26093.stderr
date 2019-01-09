@@ -1,0 +1,12 @@
+error[E0070]: invalid left-hand side expression
+  --> $DIR/issue-26093.rs:3:9
+   |
+LL |         $thing = 42;
+   |         ^^^^^^^^^^^ left-hand of expression not valid
+...
+LL |     not_a_place!(99);
+   |     ----------------- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0070`.

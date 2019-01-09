@@ -1,0 +1,57 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrow-after-move.rs:20:25
+   |
+LL |         let y = *x;
+   |             - value moved here
+LL |         drop_unsized(y);
+LL |         println!("{}", &x);
+   |                         ^ value used here after move
+   |
+   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `y`
+  --> $DIR/borrow-after-move.rs:22:25
+   |
+LL |         drop_unsized(y);
+   |                      - value moved here
+...
+LL |         println!("{}", &y);
+   |                         ^ value used here after move
+   |
+   = note: move occurs because `y` has type `str`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrow-after-move.rs:30:25
+   |
+LL |         let y = *x;
+   |             - value moved here
+LL |         y.foo();
+LL |         println!("{}", &x);
+   |                         ^ value used here after move
+   |
+   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `y`
+  --> $DIR/borrow-after-move.rs:32:25
+   |
+LL |         y.foo();
+   |         - value moved here
+...
+LL |         println!("{}", &y);
+   |                         ^ value used here after move
+   |
+   = note: move occurs because `y` has type `str`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrow-after-move.rs:39:25
+   |
+LL |         x.foo();
+   |         - value moved here
+LL |         println!("{}", &x);
+   |                         ^ value used here after move
+   |
+   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

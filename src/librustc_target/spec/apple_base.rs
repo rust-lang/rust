@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::env;
 
 use spec::{LinkArgs, TargetOptions};
@@ -26,7 +16,7 @@ pub fn opts() -> TargetOptions {
     // TLS is flagged as enabled if it looks to be supported.
     let deployment_target = env::var("MACOSX_DEPLOYMENT_TARGET").ok();
     let version = deployment_target.as_ref().and_then(|s| {
-        let mut i = s.splitn(2, ".");
+        let mut i = s.splitn(2, '.');
         i.next().and_then(|a| i.next().map(|b| (a, b)))
     }).and_then(|(a, b)| {
         a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok()
@@ -44,7 +34,6 @@ pub fn opts() -> TargetOptions {
         dll_suffix: ".dylib".to_string(),
         archive_format: "bsd".to_string(),
         pre_link_args: LinkArgs::new(),
-        exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,

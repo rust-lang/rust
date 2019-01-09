@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::def::Def;
 use hir::def_id::DefId;
 use hir::{self, HirId, PatKind};
@@ -101,7 +91,7 @@ impl hir::Pat {
     }
 
     /// Checks if the pattern contains any patterns that bind something to
-    /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
+    /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
     pub fn contains_bindings(&self) -> bool {
         let mut contains_bindings = false;
         self.walk(|p| {
@@ -116,7 +106,7 @@ impl hir::Pat {
     }
 
     /// Checks if the pattern contains any patterns that bind something to
-    /// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
+    /// an ident or wildcard, e.g., `foo`, or `Foo(_)`, `foo @ Bar(..)`,
     pub fn contains_bindings_or_wild(&self) -> bool {
         let mut contains_bindings = false;
         self.walk(|p| {

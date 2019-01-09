@@ -1,19 +1,9 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
 use rustc::mir::{Local, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax_pos::symbol::Symbol;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -50,11 +40,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .defining_ty
             .upvar_tys(tcx)
             .position(|upvar_ty| {
-                debug!(
-                    "get_upvar_index_for_region: upvar_ty = {:?}",
-                    upvar_ty,
-                );
-                tcx.any_free_region_meets(&upvar_ty, |r| r.to_region_vid() == fr)
+                debug!("get_upvar_index_for_region: upvar_ty={:?}", upvar_ty);
+                tcx.any_free_region_meets(&upvar_ty, |r| {
+                    let r = r.to_region_vid();
+                    debug!("get_upvar_index_for_region: r={:?} fr={:?}", r, fr);
+                    r == fr
+                })
             })?;
 
         let upvar_ty = self
@@ -80,11 +71,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         upvar_index: usize,
     ) -> (Symbol, Span) {
         let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
-        let upvar_node_id = tcx.hir.hir_to_node_id(upvar_hir_id);
+        let upvar_node_id = tcx.hir().hir_to_node_id(upvar_hir_id);
         debug!("get_upvar_name_and_span_for_region: upvar_node_id={:?}", upvar_node_id);
 
-        let upvar_name = tcx.hir.name(upvar_node_id);
-        let upvar_span = tcx.hir.span(upvar_node_id);
+        let upvar_name = tcx.hir().name(upvar_node_id);
+        let upvar_span = tcx.hir().span(upvar_node_id);
         debug!("get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
                upvar_name, upvar_span);
 
@@ -94,7 +85,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Search the argument types for one that references fr (which should be a free region).
     /// Returns Some(_) with the index of the input if one is found.
     ///
-    /// NB: In the case of a closure, the index is indexing into the signature as seen by the
+    /// N.B., in the case of a closure, the index is indexing into the signature as seen by the
     /// user - in particular, index 0 is not the implicit self parameter.
     crate fn get_argument_index_for_region(
         &self,

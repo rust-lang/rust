@@ -1,0 +1,15 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/path-by-value.rs:3:6
+   |
+LL | fn f(p: Path) { }
+   |      ^ borrow the `Path` instead
+   |
+   = help: within `std::path::Path`, the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `std::path::Path`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

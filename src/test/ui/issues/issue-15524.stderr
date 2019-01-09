@@ -1,0 +1,29 @@
+error[E0081]: discriminant value `1` already exists
+  --> $DIR/issue-15524.rs:5:9
+   |
+LL |     A = 1,
+   |         - first use of `1`
+LL |     B = 1,
+   |         ^ enum already has `1`
+
+error[E0081]: discriminant value `1` already exists
+  --> $DIR/issue-15524.rs:8:5
+   |
+LL |     A = 1,
+   |         - first use of `1`
+...
+LL |     D,
+   |     ^ enum already has `1`
+
+error[E0081]: discriminant value `1` already exists
+  --> $DIR/issue-15524.rs:11:9
+   |
+LL |     A = 1,
+   |         - first use of `1`
+...
+LL |     E = N,
+   |         ^ enum already has `1`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0081`.

@@ -1,0 +1,21 @@
+error[E0391]: cycle detected when const-evaluating `FOO`
+  --> $DIR/recursive-static-definition.rs:1:23
+   |
+LL | pub static FOO: u32 = FOO;
+   |                       ^^^
+   |
+note: ...which requires const-evaluating `FOO`...
+  --> $DIR/recursive-static-definition.rs:1:1
+   |
+LL | pub static FOO: u32 = FOO;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires const-evaluating `FOO`, completing the cycle
+note: cycle used when const-evaluating + checking `FOO`
+  --> $DIR/recursive-static-definition.rs:1:1
+   |
+LL | pub static FOO: u32 = FOO;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

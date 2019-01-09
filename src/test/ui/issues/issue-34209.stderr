@@ -1,0 +1,8 @@
+error: no variant `B` on enum `S`
+  --> $DIR/issue-34209.rs:7:9
+   |
+LL |         S::B { } => { },
+   |         ^^^^ help: did you mean: `S::A`
+
+error: aborting due to previous error
+

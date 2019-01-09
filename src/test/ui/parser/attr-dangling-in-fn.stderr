@@ -1,0 +1,8 @@
+error: expected statement after outer attribute
+  --> $DIR/attr-dangling-in-fn.rs:5:1
+   |
+LL | }
+   | ^
+
+error: aborting due to previous error
+

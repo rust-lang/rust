@@ -1,0 +1,246 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/where-allowed.rs:50:51
+   |
+LL | fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
+   |                                           --------^^^^^^^^^^-
+   |                                           |       |
+   |                                           |       nested `impl Trait` here
+   |                                           outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/where-allowed.rs:59:57
+   |
+LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
+   |                                                 --------^^^^^^^^^^-
+   |                                                 |       |
+   |                                                 |       nested `impl Trait` here
+   |                                                 outer `impl Trait`
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:18:40
+   |
+LL | fn in_fn_parameter_in_parameters(_: fn(impl Debug)) { panic!() }
+   |                                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:22:42
+   |
+LL | fn in_fn_return_in_parameters(_: fn() -> impl Debug) { panic!() }
+   |                                          ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:26:38
+   |
+LL | fn in_fn_parameter_in_return() -> fn(impl Debug) { panic!() }
+   |                                      ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:30:40
+   |
+LL | fn in_fn_return_in_return() -> fn() -> impl Debug { panic!() }
+   |                                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:34:49
+   |
+LL | fn in_dyn_Fn_parameter_in_parameters(_: &dyn Fn(impl Debug)) { panic!() }
+   |                                                 ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:38:51
+   |
+LL | fn in_dyn_Fn_return_in_parameters(_: &dyn Fn() -> impl Debug) { panic!() }
+   |                                                   ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:42:55
+   |
+LL | fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
+   |                                                       ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:46:57
+   |
+LL | fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
+   |                                                         ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:50:51
+   |
+LL | fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
+   |                                                   ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:55:53
+   |
+LL | fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
+   |                                                     ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:59:57
+   |
+LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
+   |                                                         ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:64:59
+   |
+LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
+   |                                                           ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:68:38
+   |
+LL | fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
+   |                                      ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:72:40
+   |
+LL | fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
+   |                                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:85:32
+   |
+LL | struct InBraceStructField { x: impl Debug }
+   |                                ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:89:41
+   |
+LL | struct InAdtInBraceStructField { x: Vec<impl Debug> }
+   |                                         ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:93:27
+   |
+LL | struct InTupleStructField(impl Debug);
+   |                           ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:98:25
+   |
+LL |     InBraceVariant { x: impl Debug },
+   |                         ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:100:20
+   |
+LL |     InTupleVariant(impl Debug),
+   |                    ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:111:23
+   |
+LL |     fn in_return() -> impl Debug;
+   |                       ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:122:16
+   |
+LL |     type Out = impl Debug;
+   |                ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:128:34
+   |
+LL |     fn in_trait_impl_return() -> impl Debug { () }
+   |                                  ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:141:33
+   |
+LL |     fn in_foreign_parameters(_: impl Debug);
+   |                                 ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:144:31
+   |
+LL |     fn in_foreign_return() -> impl Debug;
+   |                               ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:157:23
+   |
+LL | type InTypeAlias<R> = impl Debug;
+   |                       ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:160:39
+   |
+LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
+   |                                       ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:164:16
+   |
+LL | impl PartialEq<impl Debug> for () {
+   |                ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:169:24
+   |
+LL | impl PartialEq<()> for impl Debug {
+   |                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:174:6
+   |
+LL | impl impl Debug {
+   |      ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:180:24
+   |
+LL | impl InInherentImplAdt<impl Debug> {
+   |                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:186:11
+   |
+LL |     where impl Debug: Debug
+   |           ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:193:15
+   |
+LL |     where Vec<impl Debug>: Debug
+   |               ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:200:24
+   |
+LL |     where T: PartialEq<impl Debug>
+   |                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:207:17
+   |
+LL |     where T: Fn(impl Debug)
+   |                 ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:214:22
+   |
+LL |     where T: Fn() -> impl Debug
+   |                      ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:220:29
+   |
+LL |     let _in_local_variable: impl Fn() = || {};
+   |                             ^^^^^^^^^
+   |
+   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/where-allowed.rs:222:46
+   |
+LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
+   |                                              ^^^^^^^^^
+
+error: aborting due to 39 previous errors
+
+Some errors occurred: E0562, E0666.
+For more information about an error, try `rustc --explain E0562`.

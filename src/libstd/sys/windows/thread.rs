@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use boxed::FnBox;
 use io;
 use ffi::CStr;
@@ -28,7 +18,8 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<dyn FnBox() + 'a>)
+    // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    pub unsafe fn new(stack: usize, p: Box<dyn FnBox()>)
                           -> io::Result<Thread> {
         let p = box p;
 
@@ -42,7 +33,8 @@ impl Thread {
         let stack_size = (stack + 0xfffe) & (!0xfffe);
         let ret = c::CreateThread(ptr::null_mut(), stack_size,
                                   thread_start, &*p as *const _ as *mut _,
-                                  0, ptr::null_mut());
+                                  c::STACK_SIZE_PARAM_IS_A_RESERVATION,
+                                  ptr::null_mut());
 
         return if ret as usize == 0 {
             Err(io::Error::last_os_error())
@@ -96,5 +88,4 @@ pub mod guard {
     pub type Guard = !;
     pub unsafe fn current() -> Option<Guard> { None }
     pub unsafe fn init() -> Option<Guard> { None }
-    pub unsafe fn deinit() {}
 }

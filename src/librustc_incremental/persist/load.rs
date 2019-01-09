@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
@@ -48,7 +38,7 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
-                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
+                Default::default()
             },
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
@@ -56,7 +46,7 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
                                       incremental compilation session directory contents `{}`: {}.",
                                       dep_graph_path(sess).display(), err));
                 }
-                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
+                Default::default()
             }
             LoadResult::Ok { data } => data
         }
@@ -117,7 +107,7 @@ pub fn load_dep_graph(sess: &Session) ->
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
         return MaybeAsync::Sync(LoadResult::Ok {
-            data: (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
+            data: Default::default(),
         });
     }
 
@@ -127,7 +117,7 @@ pub fn load_dep_graph(sess: &Session) ->
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash();
 
-    let mut prev_work_products = FxHashMap();
+    let mut prev_work_products = FxHashMap::default();
 
     // If we are only building with -Zquery-dep-graph but without an actual
     // incr. comp. session directory, we skip this. Otherwise we'd fail
@@ -207,11 +197,11 @@ pub fn load_dep_graph(sess: &Session) ->
 pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess> {
     if sess.opts.incremental.is_none() ||
        !sess.opts.debugging_opts.incremental_queries {
-        return OnDiskCache::new_empty(sess.codemap());
+        return OnDiskCache::new_empty(sess.source_map());
     }
 
     match load_data(sess.opts.debugging_opts.incremental_info, &query_cache_path(sess)) {
         LoadResult::Ok{ data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
-        _ => OnDiskCache::new_empty(sess.codemap())
+        _ => OnDiskCache::new_empty(sess.source_map())
     }
 }

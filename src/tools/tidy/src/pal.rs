@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Tidy check to enforce rules about platform-specific code in std
 //!
 //! This is intended to maintain existing standards of code
@@ -26,9 +16,6 @@
 //! exceptions:
 //!
 //! - core may not have platform-specific code
-//! - libcompiler_builtins may have platform-specific code
-//! - liballoc_system may have platform-specific code
-//! - liballoc_jemalloc may have platform-specific code
 //! - libpanic_abort may have platform-specific code
 //! - libpanic_unwind may have platform-specific code
 //! - libunwind may have platform-specific code
@@ -50,12 +37,8 @@ use std::path::Path;
 use std::iter::Iterator;
 
 // Paths that may contain platform-specific code
-const EXCEPTION_PATHS: &'static [&'static str] = &[
+const EXCEPTION_PATHS: &[&str] = &[
     // std crates
-    "src/liballoc_jemalloc",
-    "src/liballoc_system",
-    "src/libcompiler_builtins",
-    "src/liblibc",
     "src/libpanic_abort",
     "src/libpanic_unwind",
     "src/libunwind",
@@ -65,7 +48,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/rtstartup", // Not sure what to do about this. magic stuff for mingw
 
     // temporary exceptions
-    "src/libstd/lib.rs", // FIXME(#44217)
+    "src/libstd/lib.rs",
     "src/libstd/path.rs",
     "src/libstd/f32.rs",
     "src/libstd/f64.rs",
@@ -78,6 +61,13 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libcore/tests",
     "src/liballoc/tests/lib.rs",
 
+    // The `VaList` implementation must have platform specific code.
+    // The Windows implementation of a `va_list` is always a character
+    // pointer regardless of the target architecture. As a result,
+    // we must use `#[cfg(windows)]` to conditionally compile the
+    // correct `VaList` structure for windows.
+    "src/libcore/ffi.rs",
+
     // non-std crates
     "src/test",
     "src/tools",
@@ -88,10 +78,10 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let ref mut contents = String::new();
+    let mut contents = String::new();
     // Sanity check that the complex parsing here works
-    let ref mut saw_target_arch = false;
-    let ref mut saw_cfg_bang = false;
+    let mut saw_target_arch = false;
+    let mut saw_cfg_bang = false;
     super::walk(path, &mut super::filter_dirs, &mut |file| {
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") { return }
@@ -99,11 +89,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         let is_exception_path = EXCEPTION_PATHS.iter().any(|s| filestr.contains(&**s));
         if is_exception_path { return }
 
-        check_cfgs(contents, &file, bad, saw_target_arch, saw_cfg_bang);
+        check_cfgs(&mut contents, &file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
     });
 
-    assert!(*saw_target_arch);
-    assert!(*saw_cfg_bang);
+    assert!(saw_target_arch);
+    assert!(saw_cfg_bang);
 }
 
 fn check_cfgs(contents: &mut String, file: &Path,
@@ -130,7 +120,7 @@ fn check_cfgs(contents: &mut String, file: &Path,
         tidy_error!(bad, "{}:{}: platform-specific cfg: {}", file.display(), line, cfg);
     };
 
-    for (idx, cfg) in cfgs.into_iter() {
+    for (idx, cfg) in cfgs {
         // Sanity check that the parsing here works
         if !*saw_target_arch && cfg.contains("target_arch") { *saw_target_arch = true }
         if !*saw_cfg_bang && cfg.contains("cfg!") { *saw_cfg_bang = true }
@@ -163,7 +153,7 @@ fn check_cfgs(contents: &mut String, file: &Path,
 
 fn find_test_mod(contents: &str) -> usize {
     if let Some(mod_tests_idx) = contents.find("mod tests") {
-        // Also capture a previos line indicating "mod tests" in cfg-ed out
+        // Also capture a previous line indicating "mod tests" in cfg-ed out
         let prev_newline_idx = contents[..mod_tests_idx].rfind('\n').unwrap_or(mod_tests_idx);
         let prev_newline_idx = contents[..prev_newline_idx].rfind('\n');
         if let Some(nl) = prev_newline_idx {
@@ -216,7 +206,7 @@ fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
                 b')' => {
                     depth -= 1;
                     if depth == 0 {
-                        return (i, &contents_from[.. j + 1]);
+                        return (i, &contents_from[..=j]);
                     }
                 }
                 _ => { }

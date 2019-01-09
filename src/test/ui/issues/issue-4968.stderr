@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-4968.rs:5:16
+   |
+LL |     match 42 { A => () }
+   |                ^ expected integer, found tuple
+   |
+   = note: expected type `{integer}`
+              found type `(isize, isize)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

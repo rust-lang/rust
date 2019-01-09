@@ -1,0 +1,8 @@
+error: cannot find macro `macro_two!` in this scope
+  --> $DIR/missing-macro-use.rs:6:5
+   |
+LL |     macro_two!();
+   |     ^^^^^^^^^
+
+error: aborting due to previous error
+

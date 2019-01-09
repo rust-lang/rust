@@ -1,0 +1,29 @@
+error[E0560]: struct `xc::B` has no field named `aa`
+  --> $DIR/suggest-private-fields.rs:15:9
+   |
+LL |         aa: 20,
+   |         ^^ help: a field with a similar name exists: `a`
+
+error[E0560]: struct `xc::B` has no field named `bb`
+  --> $DIR/suggest-private-fields.rs:17:9
+   |
+LL |         bb: 20,
+   |         ^^ `xc::B` does not have this field
+   |
+   = note: available fields are: `a`
+
+error[E0560]: struct `A` has no field named `aa`
+  --> $DIR/suggest-private-fields.rs:22:9
+   |
+LL |         aa: 20,
+   |         ^^ help: a field with a similar name exists: `a`
+
+error[E0560]: struct `A` has no field named `bb`
+  --> $DIR/suggest-private-fields.rs:24:9
+   |
+LL |         bb: 20,
+   |         ^^ help: a field with a similar name exists: `b`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0560`.

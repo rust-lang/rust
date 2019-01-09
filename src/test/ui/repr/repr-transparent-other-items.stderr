@@ -1,0 +1,69 @@
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:3:8
+   |
+LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
+   |        ^^^^^^^^^^^
+LL | enum Void {}         //~| ERROR should be applied to struct
+   | ------------ not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:6:8
+   |
+LL |   #[repr(transparent)] //~ ERROR should be applied to struct
+   |          ^^^^^^^^^^^
+LL | / enum FieldlessEnum {
+LL | |     Foo,
+LL | |     Bar,
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:12:8
+   |
+LL |   #[repr(transparent)] //~ ERROR should be applied to struct
+   |          ^^^^^^^^^^^
+LL | / enum Enum {
+LL | |     Foo(String),
+LL | |     Bar(u32),
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:18:8
+   |
+LL |   #[repr(transparent)] //~ ERROR should be applied to struct
+   |          ^^^^^^^^^^^
+LL | / union Foo {
+LL | |     u: u32,
+LL | |     s: i32
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:24:8
+   |
+LL | #[repr(transparent)] //~ ERROR should be applied to struct
+   |        ^^^^^^^^^^^
+LL | fn cant_repr_this() {}
+   | ---------------------- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:27:8
+   |
+LL | #[repr(transparent)] //~ ERROR should be applied to struct
+   |        ^^^^^^^^^^^
+LL | static CANT_REPR_THIS: u32 = 0;
+   | ------------------------------- not a struct
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/repr-transparent-other-items.rs:3:1
+   |
+LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | enum Void {}         //~| ERROR should be applied to struct
+   | ------------ zero-variant enum
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0084, E0517.
+For more information about an error, try `rustc --explain E0084`.

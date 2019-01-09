@@ -1,16 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // aux-build:two_macros.rs
-
-#![feature(item_like_imports, use_extern_macros)]
 
 extern crate two_macros; // two identity macros `m` and `n`
 
@@ -47,7 +35,7 @@ mod m3 {
 mod m4 {
     macro_rules! m { () => {} }
     use two_macros::m;
-    m!(); //~ ERROR ambiguous
+    m!();
 }
 
 fn main() {}

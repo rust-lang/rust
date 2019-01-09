@@ -1,0 +1,9 @@
+error[E0405]: cannot find trait `NoSuchTrait` in this scope
+  --> $DIR/extern-with-type-bounds.rs:16:20
+   |
+LL |     fn align_of<T: NoSuchTrait>() -> usize;
+   |                    ^^^^^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0405`.

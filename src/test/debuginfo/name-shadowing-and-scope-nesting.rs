@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -58,39 +48,51 @@
 // lldb-command:run
 
 // lldb-command:print x
-// lldb-check:[...]$0 = false
+// lldbg-check:[...]$0 = false
+// lldbr-check:(bool) x = false
 // lldb-command:print y
-// lldb-check:[...]$1 = true
+// lldbg-check:[...]$1 = true
+// lldbr-check:(bool) y = true
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$2 = 10
+// lldbg-check:[...]$2 = 10
+// lldbr-check:(i32) x = 10
 // lldb-command:print y
-// lldb-check:[...]$3 = true
+// lldbg-check:[...]$3 = true
+// lldbr-check:(bool) y = true
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$4 = 10.5
+// lldbg-check:[...]$4 = 10.5
+// lldbr-check:(f64) x = 10.5
 // lldb-command:print y
-// lldb-check:[...]$5 = 20
+// lldbg-check:[...]$5 = 20
+// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$6 = true
+// lldbg-check:[...]$6 = true
+// lldbr-check:(bool) x = true
 // lldb-command:print y
-// lldb-check:[...]$7 = 2220
+// lldbg-check:[...]$7 = 2220
+// lldbr-check:(i32) y = 2220
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$8 = 203203.5
+// lldbg-check:[...]$8 = 203203.5
+// lldbr-check:(f64) x = 203203.5
 // lldb-command:print y
-// lldb-check:[...]$9 = 2220
+// lldbg-check:[...]$9 = 2220
+// lldbr-check:(i32) y = 2220
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$10 = 10.5
+// lldbg-check:[...]$10 = 10.5
+// lldbr-check:(f64) x = 10.5
 // lldb-command:print y
-// lldb-check:[...]$11 = 20
+// lldbg-check:[...]$11 = 20
+// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

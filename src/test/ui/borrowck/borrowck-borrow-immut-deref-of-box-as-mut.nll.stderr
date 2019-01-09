@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `*a` as mutable, as `a` is not declared as mutable
+  --> $DIR/borrowck-borrow-immut-deref-of-box-as-mut.rs:12:5
+   |
+LL |     let a: Box<_> = box A;
+   |         - help: consider changing this to be mutable: `mut a`
+LL |     a.foo();
+   |     ^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

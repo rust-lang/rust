@@ -1,0 +1,17 @@
+error[E0581]: return type references an anonymous lifetime which is not constrained by the fn input types
+  --> $DIR/issue-47511.rs:5:15
+   |
+LL | fn f(_: X) -> X {
+   |               ^
+   |
+   = note: lifetimes appearing in an associated type are not considered constrained
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/issue-47511.rs:10:23
+   |
+LL | fn g<'a>(_: X<'a>) -> X<'a> {
+   |                       ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0581`.

@@ -1,0 +1,11 @@
+trait Array: Sized {}
+
+fn f<T: Array>(x: &T) {
+    let _ = x
+    //~^ ERROR `Array` cannot be made into an object
+    as
+    &Array;
+    //~^ ERROR `Array` cannot be made into an object
+}
+
+fn main() {}

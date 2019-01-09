@@ -1,0 +1,8 @@
+error: unexpected `{` after qualified path
+  --> $DIR/brace-after-qualified-path-in-match.rs:3:27
+   |
+LL |         <T as Trait>::Type{key: value} => (),
+   |                           ^ unexpected `{` after qualified path
+
+error: aborting due to previous error
+

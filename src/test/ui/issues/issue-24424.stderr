@@ -1,0 +1,15 @@
+error[E0283]: type annotations required: cannot resolve `T0: Trait0<'l0>`
+  --> $DIR/issue-24424.rs:4:1
+   |
+LL | impl <'l0, 'l1, T0> Trait1<'l0, T0> for bool where T0 : Trait0<'l0>, T0 : Trait0<'l1> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by `Trait0`
+  --> $DIR/issue-24424.rs:2:1
+   |
+LL | trait Trait0<'l0>  {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

@@ -1,0 +1,19 @@
+error: crate name using dashes are not valid in `extern crate` statements
+  --> $DIR/bad-crate-name.rs:1:14
+   |
+LL | extern crate krate-name-here;
+   |              ^^^^^^^^^^^^^^^ dash-separated idents are not valid
+help: if the original crate name uses dashes you need to use underscores in the code
+   |
+LL | extern crate krate_name_here;
+   |                   ^    ^
+
+error[E0463]: can't find crate for `krate_name_here`
+  --> $DIR/bad-crate-name.rs:1:1
+   |
+LL | extern crate krate-name-here;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0463`.

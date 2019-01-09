@@ -1,0 +1,8 @@
+error: extern items cannot be `const`
+  --> $DIR/removed-syntax-extern-const.rs:2:5
+   |
+LL |     const i: isize;
+   |     ^^^^^ help: try using a static value: `static`
+
+error: aborting due to previous error
+

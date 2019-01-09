@@ -1,0 +1,29 @@
+error[E0194]: type parameter `T` shadows another type parameter of the same name
+  --> $DIR/shadowed-type-parameter.rs:20:27
+   |
+LL | trait Bar<T> {
+   |           - first `T` declared here
+...
+LL |     fn shadow_in_required<T>(&self);
+   |                           ^ shadows another type parameter
+
+error[E0194]: type parameter `T` shadows another type parameter of the same name
+  --> $DIR/shadowed-type-parameter.rs:23:27
+   |
+LL | trait Bar<T> {
+   |           - first `T` declared here
+...
+LL |     fn shadow_in_provided<T>(&self) {}
+   |                           ^ shadows another type parameter
+
+error[E0194]: type parameter `T` shadows another type parameter of the same name
+  --> $DIR/shadowed-type-parameter.rs:8:25
+   |
+LL | impl<T> Foo<T> {
+   |      - first `T` declared here
+LL |     fn shadow_in_method<T>(&self) {}
+   |                         ^ shadows another type parameter
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0194`.

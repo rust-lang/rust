@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-10398.rs:7:14
+   |
+LL |         let _a = x;
+   |                  - value moved here
+LL |         drop(x);
+   |              ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

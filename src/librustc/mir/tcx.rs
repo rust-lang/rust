@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /*!
  * Methods for the various MIR types. These are intended for use after
  * building is complete.
@@ -16,6 +6,7 @@
 use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
+use ty::layout::VariantIdx;
 use hir;
 use ty::util::IntTypeExt;
 
@@ -27,12 +18,16 @@ pub enum PlaceTy<'tcx> {
     /// Downcast to a particular variant of an enum.
     Downcast { adt_def: &'tcx AdtDef,
                substs: &'tcx Substs<'tcx>,
-               variant_index: usize },
+               variant_index: VariantIdx },
 }
+
+static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
+    mem::size_of::<PlaceTy<'_>>() <= 24
+);
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
-        PlaceTy::Ty { ty: ty }
+        PlaceTy::Ty { ty }
     }
 
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
@@ -44,11 +39,61 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
         }
     }
 
+    /// `place_ty.field_ty(tcx, f)` computes the type at a given field
+    /// of a record or enum-variant. (Most clients of `PlaceTy` can
+    /// instead just extract the relevant type directly from their
+    /// `PlaceElem`, but some instances of `ProjectionElem<V, T>` do
+    /// not carry a `Ty` for `T`.)
+    ///
+    /// Note that the resulting type has not been normalized.
+    pub fn field_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
+    {
+        // Pass `0` here so it can be used as a "default" variant_index in first arm below
+        let answer = match (self, VariantIdx::new(0)) {
+            (PlaceTy::Ty {
+                ty: &ty::TyS { sty: ty::TyKind::Adt(adt_def, substs), .. } }, variant_index) |
+            (PlaceTy::Downcast { adt_def, substs, variant_index }, _) => {
+                let variant_def = &adt_def.variants[variant_index];
+                let field_def = &variant_def.fields[f.index()];
+                field_def.ty(tcx, substs)
+            }
+            (PlaceTy::Ty { ty }, _) => {
+                match ty.sty {
+                    ty::Tuple(ref tys) => tys[f.index()],
+                    _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
+                }
+            }
+        };
+        debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
+        answer
+    }
+
+    /// Convenience wrapper around `projection_ty_core` for
+    /// `PlaceElem`, where we can just use the `Ty` that is already
+    /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                          elem: &PlaceElem<'tcx>)
                          -> PlaceTy<'tcx>
     {
-        match *elem {
+        self.projection_ty_core(tcx, elem, |_, _, ty| -> Result<Ty<'tcx>, ()> { Ok(ty) })
+            .unwrap()
+    }
+
+    /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
+    /// projects `place_ty` onto `elem`, returning the appropriate
+    /// `Ty` or downcast variant corresponding to that projection.
+    /// The `handle_field` callback must map a `Field` to its `Ty`,
+    /// (which should be trivial when `T` = `Ty`).
+    pub fn projection_ty_core<V, T, E>(
+        self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        elem: &ProjectionElem<'tcx, V, T>,
+        mut handle_field: impl FnMut(&Self, &Field, &T) -> Result<Ty<'tcx>, E>)
+        -> Result<PlaceTy<'tcx>, E>
+    where
+        V: ::std::fmt::Debug, T: ::std::fmt::Debug
+    {
+        let answer = match *elem {
             ProjectionElem::Deref => {
                 let ty = self.to_ty(tcx)
                              .builtin_deref(true)
@@ -68,12 +113,12 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 let ty = self.to_ty(tcx);
                 PlaceTy::Ty {
                     ty: match ty.sty {
-                        ty::TyArray(inner, size) => {
+                        ty::Array(inner, size) => {
                             let size = size.unwrap_usize(tcx);
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }
-                        ty::TySlice(..) => ty,
+                        ty::Slice(..) => ty,
                         _ => {
                             bug!("cannot subslice non-array type: `{:?}`", self)
                         }
@@ -82,20 +127,23 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
             }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
-                    ty::TyAdt(adt_def, substs) => {
+                    ty::Adt(adt_def, substs) => {
                         assert!(adt_def.is_enum());
-                        assert!(index < adt_def.variants.len());
+                        assert!(index.as_usize() < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
                         PlaceTy::Downcast { adt_def,
-                                             substs,
-                                             variant_index: index }
+                                            substs,
+                                            variant_index: index }
                     }
                     _ => {
                         bug!("cannot downcast non-ADT type: `{:?}`", self)
                     }
                 },
-            ProjectionElem::Field(_, fty) => PlaceTy::Ty { ty: fty }
-        }
+            ProjectionElem::Field(ref f, ref fty) =>
+                PlaceTy::Ty { ty: handle_field(&self, f, fty)? },
+        };
+        debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
+        Ok(answer)
     }
 }
 
@@ -127,14 +175,14 @@ impl<'tcx> Place<'tcx> {
     /// of a closure type.
     pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
                                                 tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
-        let place = if let Place::Projection(ref proj) = self {
+        let (place, by_ref) = if let Place::Projection(ref proj) = self {
             if let ProjectionElem::Deref = proj.elem {
-                &proj.base
+                (&proj.base, true)
             } else {
-                self
+                (self, false)
             }
         } else {
-            self
+            (self, false)
         };
 
         match place {
@@ -142,14 +190,16 @@ impl<'tcx> Place<'tcx> {
                 ProjectionElem::Field(field, _ty) => {
                     let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
 
-                    if  base_ty.is_closure() || base_ty.is_generator() {
+                    if (base_ty.is_closure() || base_ty.is_generator()) &&
+                        (!by_ref || mir.upvar_decls[field.index()].by_ref)
+                    {
                         Some(field)
                     } else {
                         None
                     }
                 },
                 _ => None,
-            },
+            }
             _ => None,
         }
     }
@@ -197,7 +247,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::Discriminant(ref place) => {
                 let ty = place.ty(local_decls, tcx).to_ty(tcx);
-                if let ty::TyAdt(adt_def, _) = ty.sty {
+                if let ty::Adt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
                     // This can only be `0`, for now, so `u8` will suffice.
@@ -214,7 +264,7 @@ impl<'tcx> Rvalue<'tcx> {
                     AggregateKind::Tuple => {
                         tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx)))
                     }
-                    AggregateKind::Adt(def, _, substs, _) => {
+                    AggregateKind::Adt(def, _, substs, _, _) => {
                         tcx.type_of(def.did).subst(tcx, substs)
                     }
                     AggregateKind::Closure(did, substs) => {
@@ -253,9 +303,9 @@ impl<'tcx> Operand<'tcx> {
 
 impl<'tcx> BinOp {
       pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    lhs_ty: Ty<'tcx>,
-                    rhs_ty: Ty<'tcx>)
-                    -> Ty<'tcx> {
+                          lhs_ty: Ty<'tcx>,
+                          rhs_ty: Ty<'tcx>)
+                          -> Ty<'tcx> {
         // FIXME: handle SIMD correctly
         match self {
             &BinOp::Add | &BinOp::Sub | &BinOp::Mul | &BinOp::Div | &BinOp::Rem |
@@ -285,6 +335,10 @@ impl BorrowKind {
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
             BorrowKind::Unique => hir::MutMutable,
+
+            // We have no type corresponding to a shallow borrow, so use
+            // `&` as an approximation.
+            BorrowKind::Shallow => hir::MutImmutable,
         }
     }
 }

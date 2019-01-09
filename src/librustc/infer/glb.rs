@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use super::combine::CombineFields;
 use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
@@ -15,7 +5,6 @@ use super::Subtype;
 
 use traits::ObligationCause;
 use ty::{self, Ty, TyCtxt};
-use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
@@ -76,31 +65,12 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         where T: Relate<'tcx>
     {
         debug!("binders(a={:?}, b={:?})", a, b);
-        let was_error = self.infcx().probe(|_snapshot| {
-            // Subtle: use a fresh combine-fields here because we recover
-            // from Err. Doing otherwise could propagate obligations out
-            // through our `self.obligations` field.
-            self.infcx()
-                .combine_fields(self.fields.trace.clone(), self.fields.param_env)
-                .higher_ranked_glb(a, b, self.a_is_expected)
-                .is_err()
-        });
-        debug!("binders: was_error={:?}", was_error);
 
         // When higher-ranked types are involved, computing the LUB is
         // very challenging, switch to invariance. This is obviously
         // overly conservative but works ok in practice.
-        match self.relate_with_variance(ty::Variance::Invariant, a, b) {
-            Ok(_) => Ok(a.clone()),
-            Err(err) => {
-                debug!("binders: error occurred, was_error={:?}", was_error);
-                if !was_error {
-                    Err(TypeError::OldStyleLUB(Box::new(err)))
-                } else {
-                    Err(err)
-                }
-            }
-        }
+        self.relate_with_variance(ty::Variance::Invariant, a, b)?;
+        Ok(a.clone())
     }
 }
 

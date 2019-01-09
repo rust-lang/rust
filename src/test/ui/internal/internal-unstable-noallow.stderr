@@ -1,0 +1,39 @@
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable-noallow.rs:16:5
+   |
+LL |     call_unstable_noallow!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature 'struct_field'
+  --> $DIR/internal-unstable-noallow.rs:18:5
+   |
+LL |     construct_unstable_noallow!(0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(struct_field)] to the crate attributes to enable
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature 'method'
+  --> $DIR/internal-unstable-noallow.rs:20:35
+   |
+LL |     |x: internal_unstable::Foo| { call_method_noallow!(x) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(method)] to the crate attributes to enable
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature 'struct2_field'
+  --> $DIR/internal-unstable-noallow.rs:22:35
+   |
+LL |     |x: internal_unstable::Bar| { access_field_noallow!(x) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(struct2_field)] to the crate attributes to enable
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

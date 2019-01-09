@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-report-with-custom-diagnostic.rs:17:13
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:8:13
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
@@ -8,10 +8,10 @@ LL |     let z = &x; //~ ERROR cannot borrow
    |             ^^ immutable borrow occurs here
 ...
 LL |     y.use_mut();
-   |     - borrow later used here
+   |     - mutable borrow later used here
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-report-with-custom-diagnostic.rs:30:21
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:21:21
    |
 LL |             let y = &x;
    |                     -- immutable borrow occurs here
@@ -20,10 +20,10 @@ LL |             let z = &mut x; //~ ERROR cannot borrow
    |                     ^^^^^^ mutable borrow occurs here
 ...
 LL |             y.use_ref();
-   |             - borrow later used here
+   |             - immutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-report-with-custom-diagnostic.rs:45:17
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:36:17
    |
 LL |         let y = &mut x;
    |                 ------ first mutable borrow occurs here
@@ -32,7 +32,7 @@ LL |         let z = &mut x; //~ ERROR cannot borrow
    |                 ^^^^^^ second mutable borrow occurs here
 ...
 LL |         y.use_mut();
-   |         - borrow later used here
+   |         - first borrow later used here
 
 error: aborting due to 3 previous errors
 

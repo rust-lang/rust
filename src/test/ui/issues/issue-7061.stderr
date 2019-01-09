@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-7061.rs:4:46
+   |
+LL |     fn foo(&'a mut self) -> Box<BarStruct> { self }
+   |                             --------------   ^^^^ expected struct `std::boxed::Box`, found mutable reference
+   |                             |
+   |                             expected `std::boxed::Box<BarStruct>` because of return type
+   |
+   = note: expected type `std::boxed::Box<BarStruct>`
+              found type `&'a mut BarStruct`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

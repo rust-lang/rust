@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
@@ -77,7 +67,7 @@ use self::Entry::*;
 /// movie_reviews.insert("Office Space",       "Deals with real issues in the workplace.");
 /// movie_reviews.insert("Pulp Fiction",       "Masterpiece.");
 /// movie_reviews.insert("The Godfather",      "Very enjoyable.");
-/// movie_reviews.insert("The Blues Brothers", "Eye lyked it alot.");
+/// movie_reviews.insert("The Blues Brothers", "Eye lyked it a lot.");
 ///
 /// // check for a specific one.
 /// if !movie_reviews.contains_key("Les Misérables") {
@@ -96,6 +86,9 @@ use self::Entry::*;
 ///        None => println!("{} is unreviewed.", book)
 ///     }
 /// }
+///
+/// // Look up the value for a key (will panic if the key is not found).
+/// println!("Movie review: {}", movie_reviews["Office Space"]);
 ///
 /// // iterate over everything.
 /// for (movie, review) in &movie_reviews {
@@ -853,9 +846,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     /// use std::collections::BTreeMap;
     ///
-    /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
-    ///                                                                       .map(|&s| (s, 0))
-    ///                                                                       .collect();
+    /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"]
+    ///     .iter()
+    ///     .map(|&s| (s, 0))
+    ///     .collect();
     /// for (_, balance) in map.range_mut("B".."Cheryl") {
     ///     *balance += 100;
     /// }

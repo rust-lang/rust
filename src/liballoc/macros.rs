@@ -1,13 +1,3 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// Creates a [`Vec`] containing the arguments.
 ///
 /// `vec!` allows `Vec`s to be defined with the same syntax as array expressions.
@@ -83,9 +73,14 @@ macro_rules! vec {
 /// The same convention is used with [`print!`] and [`write!`] macros,
 /// depending on the intended destination of the string.
 ///
+/// To convert a single value to a string, use the [`to_string`] method.  This
+/// will use the [`Display`] formatting trait.
+///
 /// [fmt]: ../std/fmt/index.html
 /// [`print!`]: ../std/macro.print.html
 /// [`write!`]: ../std/macro.write.html
+/// [`to_string`]: ../std/string/trait.ToString.html
+/// [`Display`]: ../std/fmt/trait.Display.html
 ///
 /// # Panics
 ///

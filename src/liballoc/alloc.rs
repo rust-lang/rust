@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Memory allocation APIs
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
@@ -21,6 +11,10 @@ use core::usize;
 pub use core::alloc::*;
 
 extern "Rust" {
+    // These are the magic symbols to call the global allocator.  rustc generates
+    // them from the `#[global_allocator]` attribute if there is one, or uses the
+    // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
+    // otherwise.
     #[allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
@@ -56,6 +50,22 @@ pub struct Global;
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc`].
+///
+/// # Examples
+///
+/// ```
+/// use std::alloc::{alloc, dealloc, Layout};
+///
+/// unsafe {
+///     let layout = Layout::new::<u16>();
+///     let ptr = alloc(layout);
+///
+///     *(ptr as *mut u16) = 42;
+///     assert_eq!(*(ptr as *mut u16), 42);
+///
+///     dealloc(ptr, layout);
+/// }
+/// ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
@@ -110,6 +120,21 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc_zeroed`].
+///
+/// # Examples
+///
+/// ```
+/// use std::alloc::{alloc_zeroed, dealloc, Layout};
+///
+/// unsafe {
+///     let layout = Layout::new::<u16>();
+///     let ptr = alloc_zeroed(layout);
+///
+///     assert_eq!(*(ptr as *mut u16), 0);
+///
+///     dealloc(ptr, layout);
+/// }
+/// ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
@@ -214,7 +239,7 @@ mod tests {
                 .unwrap_or_else(|_| handle_alloc_error(layout));
 
             let mut i = ptr.cast::<u8>().as_ptr();
-            let end = i.offset(layout.size() as isize);
+            let end = i.add(layout.size());
             while i < end {
                 assert_eq!(*i, 0);
                 i = i.offset(1);

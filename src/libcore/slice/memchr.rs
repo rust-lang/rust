@@ -1,12 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 //
 // Original implementation taken from rust-memchr
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
@@ -72,8 +63,8 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     if len >= 2 * usize_bytes {
         while offset <= len - 2 * usize_bytes {
             unsafe {
-                let u = *(ptr.offset(offset as isize) as *const usize);
-                let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
+                let u = *(ptr.add(offset) as *const usize);
+                let v = *(ptr.add(offset + usize_bytes) as *const usize);
 
                 // break if there is a matching byte
                 let zu = contains_zero_byte(u ^ repeated_x);
@@ -100,24 +91,30 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     // - the first remaining bytes, < 2 word size
     let len = text.len();
     let ptr = text.as_ptr();
-    let usize_bytes = mem::size_of::<usize>();
+    type Chunk = usize;
 
-    let mut offset = {
-        // We call this just to obtain the length of the suffix
-        let (_, _, suffix) = unsafe { text.align_to::<usize>() };
-        len - suffix.len()
+    let (min_aligned_offset, max_aligned_offset) = {
+        // We call this just to obtain the length of the prefix and suffix.
+        // In the middle we always process two chunks at once.
+        let (prefix, _, suffix) = unsafe { text.align_to::<(Chunk, Chunk)>() };
+        (prefix.len(), len - suffix.len())
     };
+
+    let mut offset = max_aligned_offset;
     if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
         return Some(offset + index);
     }
 
-    // search the body of the text
+    // search the body of the text, make sure we don't cross min_aligned_offset.
+    // offset is always aligned, so just testing `>` is sufficient and avoids possible
+    // overflow.
     let repeated_x = repeat_byte(x);
+    let chunk_bytes = mem::size_of::<Chunk>();
 
-    while offset >= 2 * usize_bytes {
+    while offset > min_aligned_offset {
         unsafe {
-            let u = *(ptr.offset(offset as isize - 2 * usize_bytes as isize) as *const usize);
-            let v = *(ptr.offset(offset as isize - usize_bytes as isize) as *const usize);
+            let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
+            let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
 
             // break if there is a matching byte
             let zu = contains_zero_byte(u ^ repeated_x);
@@ -126,7 +123,7 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
                 break;
             }
         }
-        offset -= 2 * usize_bytes;
+        offset -= 2 * chunk_bytes;
     }
 
     // find the byte before the point the body loop stopped

@@ -1,0 +1,9 @@
+error[E0423]: expected value, found struct `xcrate_unit_struct::StructWithFields`
+  --> $DIR/xcrate-unit-struct.rs:9:13
+   |
+LL |     let _ = xcrate_unit_struct::StructWithFields;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `xcrate_unit_struct::StructWithFields { /* fields */ }`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.

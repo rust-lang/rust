@@ -1,0 +1,8 @@
+error: cannot find macro `macro_two!` in this scope
+  --> $DIR/macro-use-wrong-name.rs:7:5
+   |
+LL |     macro_two!();
+   |     ^^^^^^^^^ help: you could try the macro: `macro_one`
+
+error: aborting due to previous error
+

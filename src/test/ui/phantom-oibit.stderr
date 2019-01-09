@@ -1,0 +1,38 @@
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/phantom-oibit.rs:21:5
+   |
+LL |     is_zen(x)
+   |     ^^^^^^ `T` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Sync` bound
+   = note: required because of the requirements on the impl of `Zen` for `&T`
+   = note: required because it appears within the type `std::marker::PhantomData<&T>`
+   = note: required because it appears within the type `Guard<'_, T>`
+note: required by `is_zen`
+  --> $DIR/phantom-oibit.rs:18:1
+   |
+LL | fn is_zen<T: Zen>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/phantom-oibit.rs:26:5
+   |
+LL |     is_zen(x)
+   |     ^^^^^^ `T` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Sync` bound
+   = note: required because of the requirements on the impl of `Zen` for `&T`
+   = note: required because it appears within the type `std::marker::PhantomData<&T>`
+   = note: required because it appears within the type `Guard<'_, T>`
+   = note: required because it appears within the type `Nested<Guard<'_, T>>`
+note: required by `is_zen`
+  --> $DIR/phantom-oibit.rs:18:1
+   |
+LL | fn is_zen<T: Zen>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

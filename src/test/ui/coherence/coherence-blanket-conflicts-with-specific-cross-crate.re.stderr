@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `go_trait::GoMut` for type `MyThingy`:
+  --> $DIR/coherence-blanket-conflicts-with-specific-cross-crate.rs:18:1
+   |
+LL | impl GoMut for MyThingy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `go_trait`:
+           - impl<G> go_trait::GoMut for G
+             where G: go_trait::Go;
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

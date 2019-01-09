@@ -1,0 +1,19 @@
+error[E0600]: cannot apply unary operator `-` to type `usize`
+  --> $DIR/feature-gate-negate-unsigned.rs:10:23
+   |
+LL |     let _max: usize = -1;
+   |                       ^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `u8`
+  --> $DIR/feature-gate-negate-unsigned.rs:14:14
+   |
+LL |     let _y = -x;
+   |              ^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0600`.

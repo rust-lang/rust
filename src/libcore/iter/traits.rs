@@ -1,12 +1,3 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 use ops::{Mul, Add, Try};
 use num::Wrapping;
 
@@ -427,6 +418,62 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// Returns the `n`th element from the end of the iterator.
+    ///
+    /// This is essentially the reversed version of [`nth`]. Although like most indexing
+    /// operations, the count starts from zero, so `nth_back(0)` returns the first value fro
+    /// the end, `nth_back(1)` the second, and so on.
+    ///
+    /// Note that all elements between the end and the returned element will be
+    /// consumed, including the returned element. This also means that calling
+    /// `nth_back(0)` multiple times on the same iterator will return different
+    /// elements.
+    ///
+    /// `nth_back()` will return [`None`] if `n` is greater than or equal to the length of the
+    /// iterator.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`nth`]: ../../std/iter/trait.Iterator.html#method.nth
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_nth_back)]
+    /// let a = [1, 2, 3];
+    /// assert_eq!(a.iter().nth_back(2), Some(&1));
+    /// ```
+    ///
+    /// Calling `nth_back()` multiple times doesn't rewind the iterator:
+    ///
+    /// ```
+    /// #![feature(iter_nth_back)]
+    /// let a = [1, 2, 3];
+    ///
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.nth_back(1), Some(&2));
+    /// assert_eq!(iter.nth_back(1), None);
+    /// ```
+    ///
+    /// Returning `None` if there are less than `n + 1` elements:
+    ///
+    /// ```
+    /// #![feature(iter_nth_back)]
+    /// let a = [1, 2, 3];
+    /// assert_eq!(a.iter().nth_back(10), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_nth_back", issue = "56995")]
+    fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
+        for x in self.rev() {
+            if n == 0 { return Some(x) }
+            n -= 1;
+        }
+        None
+    }
+
     /// This is the reverse version of [`try_fold()`]: it takes elements
     /// starting from the back of the iterator.
     ///
@@ -461,8 +508,11 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok=B>
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {
@@ -524,8 +574,10 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfold", since = "1.27.0")]
-    fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
-        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    fn rfold<B, F>(mut self, accum: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
     {
         self.try_rfold(accum, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
     }
@@ -574,7 +626,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfind", since = "1.27.0")]
-    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
+    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool
     {
@@ -587,7 +640,12 @@ pub trait DoubleEndedIterator: Iterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
-    fn next_back(&mut self) -> Option<I::Item> { (**self).next_back() }
+    fn next_back(&mut self) -> Option<I::Item> {
+        (**self).next_back()
+    }
+    fn nth_back(&mut self, n: usize) -> Option<I::Item> {
+        (**self).nth_back(n)
+    }
 }
 
 /// An iterator that knows its exact length.
@@ -724,7 +782,7 @@ pub trait ExactSizeIterator: Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {
+impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for &mut I {
     fn len(&self) -> usize {
         (**self).len()
     }
@@ -770,7 +828,7 @@ pub trait Product<A = Self>: Sized {
     fn product<I: Iterator<Item=A>>(iter: I) -> Self;
 }
 
-// NB: explicitly use Add and Mul here to inherit overflow checks
+// N.B., explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
     (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
         #[$attr]
@@ -960,7 +1018,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
 /// to return [`None`] again. This trait should be implemented by all iterators
-/// that behave this way because it allows for some significant optimizations.
+/// that behave this way because it allows optimizing [`Iterator::fuse`].
 ///
 /// Note: In general, you should not use `FusedIterator` in generic bounds if
 /// you need a fused iterator. Instead, you should just call [`Iterator::fuse`]
@@ -974,7 +1032,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 pub trait FusedIterator: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 
 /// An iterator that reports an accurate length using size_hint.
 ///
@@ -999,4 +1057,4 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 pub unsafe trait TrustedLen : Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
+unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}

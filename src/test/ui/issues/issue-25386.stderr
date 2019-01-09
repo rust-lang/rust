@@ -1,0 +1,21 @@
+error[E0616]: field `c_object` of struct `stuff::Item` is private
+  --> $DIR/issue-25386.rs:19:11
+   |
+LL |         (*$var.c_object).$member.is_some()
+   |           ^^^^^^^^^^^^^
+...
+LL |     println!("{}", check_ptr_exist!(item, name));
+   |                    ---------------------------- in this macro invocation
+
+error[E0616]: field `name` of struct `stuff::CObj` is private
+  --> $DIR/issue-25386.rs:19:9
+   |
+LL |         (*$var.c_object).$member.is_some()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     println!("{}", check_ptr_exist!(item, name));
+   |                    ---------------------------- in this macro invocation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0616`.

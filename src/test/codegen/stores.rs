@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
 // min-llvm-version 7.0
@@ -31,7 +21,7 @@ pub fn small_array_alignment(x: &mut [i8; 4], y: [i8; 4]) {
 // CHECK: store i32 %0, i32* [[TMP]]
 // CHECK: [[Y8:%[0-9]+]] = bitcast [4 x i8]* %y to i8*
 // CHECK: [[TMP8:%[0-9]+]] = bitcast i32* [[TMP]] to i8*
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 1 [[Y8]], i8* align 1 [[TMP8]], i{{[0-9]+}} 4, i1 false)
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 1 [[Y8]], i8* align 4 [[TMP8]], i{{[0-9]+}} 4, i1 false)
     *x = y;
 }
 
@@ -45,6 +35,6 @@ pub fn small_struct_alignment(x: &mut Bytes, y: Bytes) {
 // CHECK: store i32 %0, i32* [[TMP]]
 // CHECK: [[Y8:%[0-9]+]] = bitcast %Bytes* %y to i8*
 // CHECK: [[TMP8:%[0-9]+]] = bitcast i32* [[TMP]] to i8*
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 1 [[Y8]], i8* align 1 [[TMP8]], i{{[0-9]+}} 4, i1 false)
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 1 [[Y8]], i8* align 4 [[TMP8]], i{{[0-9]+}} 4, i1 false)
     *x = y;
 }

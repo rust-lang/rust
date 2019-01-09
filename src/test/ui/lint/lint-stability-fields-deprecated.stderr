@@ -1,0 +1,380 @@
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated': text
+  --> $DIR/lint-stability-fields-deprecated.rs:94:17
+   |
+LL |         let x = Deprecated {
+   |                 ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-stability-fields-deprecated.rs:3:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated': text
+  --> $DIR/lint-stability-fields-deprecated.rs:111:13
+   |
+LL |         let Deprecated {
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated': text
+  --> $DIR/lint-stability-fields-deprecated.rs:121:13
+   |
+LL |         let Deprecated
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:126:17
+   |
+LL |         let x = Deprecated2(1, 2, 3);
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:136:13
+   |
+LL |         let Deprecated2
+   |             ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:145:13
+   |
+LL |         let Deprecated2
+   |             ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated': text
+  --> $DIR/lint-stability-fields-deprecated.rs:281:17
+   |
+LL |         let x = Deprecated {
+   |                 ^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated': text
+  --> $DIR/lint-stability-fields-deprecated.rs:298:13
+   |
+LL |         let Deprecated {
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated': text
+  --> $DIR/lint-stability-fields-deprecated.rs:308:13
+   |
+LL |         let Deprecated
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:313:17
+   |
+LL |         let x = Deprecated2(1, 2, 3);
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:323:13
+   |
+LL |         let Deprecated2
+   |             ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:332:13
+   |
+LL |         let Deprecated2
+   |             ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Stable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:18:13
+   |
+LL |             override2: 3,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Stable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:24:17
+   |
+LL |         let _ = x.override2;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Stable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:30:13
+   |
+LL |             override2: _
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Stable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:40:17
+   |
+LL |         let _ = x.2;
+   |                 ^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Stable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:45:20
+   |
+LL |                    _)
+   |                    ^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Unstable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:55:13
+   |
+LL |             override2: 3,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Unstable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:61:17
+   |
+LL |         let _ = x.override2;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Unstable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:67:13
+   |
+LL |             override2: _
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Unstable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:80:17
+   |
+LL |         let _ = x.2;
+   |                 ^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Unstable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:86:14
+   |
+LL |              _)
+   |              ^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::inherit': text
+  --> $DIR/lint-stability-fields-deprecated.rs:96:13
+   |
+LL |             inherit: 1,
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::override1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:98:13
+   |
+LL |             override1: 2,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:100:13
+   |
+LL |             override2: 3,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::inherit': text
+  --> $DIR/lint-stability-fields-deprecated.rs:104:17
+   |
+LL |         let _ = x.inherit;
+   |                 ^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::override1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:106:17
+   |
+LL |         let _ = x.override1;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:108:17
+   |
+LL |         let _ = x.override2;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::inherit': text
+  --> $DIR/lint-stability-fields-deprecated.rs:113:13
+   |
+LL |             inherit: _,
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::override1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:115:13
+   |
+LL |             override1: _,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:117:13
+   |
+LL |             override2: _
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2::0': text
+  --> $DIR/lint-stability-fields-deprecated.rs:129:17
+   |
+LL |         let _ = x.0;
+   |                 ^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2::1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:131:17
+   |
+LL |         let _ = x.1;
+   |                 ^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:133:17
+   |
+LL |         let _ = x.2;
+   |                 ^^^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2::0': text
+  --> $DIR/lint-stability-fields-deprecated.rs:138:14
+   |
+LL |             (_,
+   |              ^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2::1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:140:14
+   |
+LL |              _,
+   |              ^
+
+error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:142:14
+   |
+LL |              _)
+   |              ^
+
+error: use of deprecated item 'this_crate::Stable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:205:13
+   |
+LL |             override2: 3,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Stable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:211:17
+   |
+LL |         let _ = x.override2;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Stable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:217:13
+   |
+LL |             override2: _
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Stable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:227:17
+   |
+LL |         let _ = x.2;
+   |                 ^^^
+
+error: use of deprecated item 'this_crate::Stable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:232:20
+   |
+LL |                    _)
+   |                    ^
+
+error: use of deprecated item 'this_crate::Unstable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:242:13
+   |
+LL |             override2: 3,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Unstable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:248:17
+   |
+LL |         let _ = x.override2;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Unstable::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:254:13
+   |
+LL |             override2: _
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Unstable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:267:17
+   |
+LL |         let _ = x.2;
+   |                 ^^^
+
+error: use of deprecated item 'this_crate::Unstable2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:273:14
+   |
+LL |              _)
+   |              ^
+
+error: use of deprecated item 'this_crate::Deprecated::inherit': text
+  --> $DIR/lint-stability-fields-deprecated.rs:283:13
+   |
+LL |             inherit: 1,
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::override1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:285:13
+   |
+LL |             override1: 2,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:287:13
+   |
+LL |             override2: 3,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::inherit': text
+  --> $DIR/lint-stability-fields-deprecated.rs:291:17
+   |
+LL |         let _ = x.inherit;
+   |                 ^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::override1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:293:17
+   |
+LL |         let _ = x.override1;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:295:17
+   |
+LL |         let _ = x.override2;
+   |                 ^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::inherit': text
+  --> $DIR/lint-stability-fields-deprecated.rs:300:13
+   |
+LL |             inherit: _,
+   |             ^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::override1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:302:13
+   |
+LL |             override1: _,
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated::override2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:304:13
+   |
+LL |             override2: _
+   |             ^^^^^^^^^^^^
+
+error: use of deprecated item 'this_crate::Deprecated2::0': text
+  --> $DIR/lint-stability-fields-deprecated.rs:316:17
+   |
+LL |         let _ = x.0;
+   |                 ^^^
+
+error: use of deprecated item 'this_crate::Deprecated2::1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:318:17
+   |
+LL |         let _ = x.1;
+   |                 ^^^
+
+error: use of deprecated item 'this_crate::Deprecated2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:320:17
+   |
+LL |         let _ = x.2;
+   |                 ^^^
+
+error: use of deprecated item 'this_crate::Deprecated2::0': text
+  --> $DIR/lint-stability-fields-deprecated.rs:325:14
+   |
+LL |             (_,
+   |              ^
+
+error: use of deprecated item 'this_crate::Deprecated2::1': text
+  --> $DIR/lint-stability-fields-deprecated.rs:327:14
+   |
+LL |              _,
+   |              ^
+
+error: use of deprecated item 'this_crate::Deprecated2::2': text
+  --> $DIR/lint-stability-fields-deprecated.rs:329:14
+   |
+LL |              _)
+   |              ^
+
+error: aborting due to 62 previous errors
+

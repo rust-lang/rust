@@ -1,0 +1,13 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
+  --> $DIR/issue-6738.rs:6:9
+   |
+LL |         self.x += v.x;
+   |         ------^^^^^^^
+   |         |
+   |         cannot use `+=` on type `T`
+   |
+   = note: `T` might need a bound for `std::ops::AddAssign`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0368`.

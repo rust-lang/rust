@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![unstable(issue = "0", feature = "windows_stdio")]
 
 use io::prelude::*;
@@ -48,7 +38,7 @@ pub fn get(handle: c::DWORD) -> io::Result<Output> {
 }
 
 fn write(handle: c::DWORD, data: &[u8]) -> io::Result<usize> {
-    let handle = match try!(get(handle)) {
+    let handle = match get(handle)? {
         Output::Console(c) => c,
         Output::Pipe(p) => {
             let handle = Handle::new(p);
@@ -99,7 +89,7 @@ impl Stdin {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let handle = match try!(get(c::STD_INPUT_HANDLE)) {
+        let handle = match get(c::STD_INPUT_HANDLE)? {
             Output::Console(c) => c,
             Output::Pipe(p) => {
                 let handle = Handle::new(p);
@@ -137,11 +127,6 @@ impl Stdin {
 
         // MemReader shouldn't error here since we just filled it
         utf8.read(buf)
-    }
-
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let mut me = self;
-        (&mut me).read_to_end(buf)
     }
 }
 
@@ -228,6 +213,6 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 // been seen to be acceptable.
 pub const STDIN_BUF_SIZE: usize = 8 * 1024;
 
-pub fn stderr_prints_nothing() -> bool {
-    false
+pub fn panic_output() -> Option<impl io::Write> {
+    Stderr::new().ok()
 }

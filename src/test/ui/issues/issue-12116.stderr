@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/issue-12116.rs:15:9
+   |
+LL |         &IntList::Cons(val, box IntList::Nil)  => IntList::Cons(val, box IntList::Nil),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-12116.rs:5:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
