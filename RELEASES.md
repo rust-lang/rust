@@ -7,6 +7,15 @@ Language
 - [You can now use the `?` operator in macro definitions.][56245] The `?`
   operator allows you to specify zero or one repetitions similar to the `*` and
   `+` operators.
+- [Module paths with no leading keyword like `super`, `self`, or `crate`, will
+  now always resolve to the item (`enum`, `struct`, etc.) available in the
+  module if present, before resolving to a external crate or an item the prelude.][56759]
+  E.g.
+  ```rust
+  enum Color { Red, Green, Blue }
+
+  use Color::*;
+  ```
 
 #### All editions
 - [You can now match against `PhantomData<T>` types.][55837]
@@ -179,6 +188,7 @@ Compatibility Notes
 [56365]: https://github.com/rust-lang/rust/pull/56365/
 [56366]: https://github.com/rust-lang/rust/pull/56366/
 [56395]: https://github.com/rust-lang/rust/pull/56395/
+[56759]: https://github.com/rust-lang/rust/pull/56759/
 [cargo/6218]: https://github.com/rust-lang/cargo/pull/6218/
 [cargo/6242]: https://github.com/rust-lang/cargo/pull/6242/
 [`CStr::as_ptr`]: https://doc.rust-lang.org/std/ffi/struct.CStr.html#method.as_ptr
