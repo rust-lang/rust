@@ -133,6 +133,26 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
 }
 
 #[test]
+fn infer_literals() {
+    check_inference(
+        r#"
+fn test() {
+    5i32;
+    "hello";
+    b"bytes";
+    'c';
+    b'b';
+    3.14;
+    5000;
+    (0u32, -5isize);
+    [true, true, false]
+}
+"#,
+        "literals.txt",
+    );
+}
+
+#[test]
 fn infer_backwards() {
     check_inference(
         r#"

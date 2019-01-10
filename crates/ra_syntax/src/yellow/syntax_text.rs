@@ -15,6 +15,7 @@ impl<'a> SyntaxText<'a> {
             range: node.range(),
         }
     }
+
     pub fn chunks(&self) -> impl Iterator<Item = &'a str> {
         let range = self.range;
         self.node.descendants().filter_map(move |node| {
@@ -24,15 +25,19 @@ impl<'a> SyntaxText<'a> {
             Some(&text[range])
         })
     }
+
     pub fn push_to(&self, buf: &mut String) {
         self.chunks().for_each(|it| buf.push_str(it));
     }
+
     pub fn to_string(&self) -> String {
         self.chunks().collect()
     }
+
     pub fn contains(&self, c: char) -> bool {
         self.chunks().any(|it| it.contains(c))
     }
+
     pub fn find(&self, c: char) -> Option<TextUnit> {
         let mut acc: TextUnit = 0.into();
         for chunk in self.chunks() {
@@ -44,9 +49,11 @@ impl<'a> SyntaxText<'a> {
         }
         None
     }
+
     pub fn len(&self) -> TextUnit {
         self.range.len()
     }
+
     pub fn slice(&self, range: impl SyntaxTextSlice) -> SyntaxText<'a> {
         let range = range.restrict(self.range).unwrap_or_else(|| {
             panic!("invalid slice, range: {:?}, slice: {:?}", self.range, range)
@@ -56,8 +63,10 @@ impl<'a> SyntaxText<'a> {
             range,
         }
     }
-    pub fn char_at(&self, offset: TextUnit) -> Option<char> {
+
+    pub fn char_at(&self, offset: impl Into<TextUnit>) -> Option<char> {
         let mut start: TextUnit = 0.into();
+        let offset = offset.into();
         for chunk in self.chunks() {
             let end = start + TextUnit::of_str(chunk);
             if start <= offset && offset < end {

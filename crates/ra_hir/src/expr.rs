@@ -5,7 +5,10 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
-use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner};
+use ra_syntax::{
+    SyntaxKind,
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner}
+};
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
 
@@ -104,6 +107,19 @@ impl BodySyntaxMapping {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Literal {
+    String(String),
+    ByteString(Vec<u8>),
+    Char(char),
+    Bool(bool),
+    Byte(u8),
+    Int, // this and float need additional information
+    Float,
+    Tuple { values: Vec<ExprId> },
+    Array { values: Vec<ExprId> },
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if syntax tree does not have a required expression piece.
     Missing,
@@ -186,6 +202,7 @@ pub enum Expr {
     Tuple {
         exprs: Vec<ExprId>,
     },
+    Literal(Literal),
 }
 
 pub use ra_syntax::ast::PrefixOp as UnaryOp;
@@ -305,6 +322,20 @@ impl Expr {
                     f(*expr);
                 }
             }
+            Expr::Literal(l) => match l {
+                Literal::Array { values } | Literal::Tuple { values } => {
+                    for &val in values {
+                        f(val);
+                    }
+                }
+                Literal::String(..)
+                | Literal::ByteString(..)
+                | Literal::Byte(..)
+                | Literal::Bool(..)
+                | Literal::Char(..)
+                | Literal::Int
+                | Literal::Float => {}
+            },
         }
     }
 }
@@ -633,13 +664,56 @@ impl ExprCollector {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
+            ast::ExprKind::Literal(e) => {
+                let child = e.syntax().children().next();
+
+                if let Some(c) = child {
+                    let lit = match c.kind() {
+                        SyntaxKind::INT_NUMBER => Literal::Int,
+                        SyntaxKind::FLOAT_NUMBER => Literal::Float,
+                        SyntaxKind::STRING => {
+                            // FIXME: this likely includes the " characters
+                            let text = c.text().to_string();
+                            Literal::String(text)
+                        }
+                        SyntaxKind::ARRAY_EXPR => {
+                            // TODO: recursively call to self
+                            Literal::Array { values: vec![] }
+                        }
+                        SyntaxKind::PAREN_EXPR => {
+                            // TODO: recursively call to self
+                            Literal::Tuple { values: vec![] }
+                        }
+                        SyntaxKind::TRUE_KW => Literal::Bool(true),
+                        SyntaxKind::FALSE_KW => Literal::Bool(false),
+                        SyntaxKind::BYTE_STRING => {
+                            // FIXME: this is completely incorrect for a variety
+                            // of reasons, but at least it gives the right type
+                            let bytes = c.text().to_string().into_bytes();
+                            Literal::ByteString(bytes)
+                        }
+                        SyntaxKind::CHAR => {
+                            let character = c.text().char_at(1).unwrap_or('X');
+                            Literal::Char(character)
+                        }
+                        SyntaxKind::BYTE => {
+                            let character = c.text().char_at(1).unwrap_or('X');
+                            Literal::Byte(character as u8)
+                        }
+                        _ => return self.alloc_expr(Expr::Missing, syntax_ptr),
+                    };
+
+                    self.alloc_expr(Expr::Literal(lit), syntax_ptr)
+                } else {
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
+                }
+            }
 
             // TODO implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::Literal(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 

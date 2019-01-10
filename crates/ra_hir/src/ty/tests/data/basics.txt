@@ -9,5 +9,5 @@
 [69; 70) 'd': &str
 [76; 82) '1usize': [unknown]
 [88; 94) '1isize': [unknown]
-[100; 106) '"test"': [unknown]
+[100; 106) '"test"': &str
 [112; 118) '1.0f32': [unknown]

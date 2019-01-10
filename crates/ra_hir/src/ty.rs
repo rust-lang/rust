@@ -38,7 +38,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, ExprId, PatId, UnaryOp, BinaryOp, Statement},
+    expr::{Body, Expr, Literal, ExprId, PatId, UnaryOp, BinaryOp, Statement},
 };
 
 fn transpose<T>(x: Cancelable<Option<T>>) -> Option<Cancelable<T>> {
@@ -1067,6 +1067,37 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 Ty::Tuple(Arc::from(ty_vec))
             }
+            Expr::Literal(lit) => match lit {
+                Literal::Bool(..) => Ty::Bool,
+                Literal::String(..) => Ty::Ref(Arc::new(Ty::Str), Mutability::Shared),
+                Literal::ByteString(..) => {
+                    let byte_type = Arc::new(Ty::Uint(primitive::UintTy::U8));
+                    let slice_type = Arc::new(Ty::Slice(byte_type));
+                    Ty::Ref(slice_type, Mutability::Shared)
+                }
+                Literal::Byte(..) => Ty::Uint(primitive::UintTy::U8),
+                Literal::Char(..) => Ty::Char,
+                Literal::Tuple { values } => {
+                    let mut inner_tys = Vec::new();
+                    for &expr in values {
+                        let inner_ty = self.infer_expr(expr, &Expectation::none())?;
+                        inner_tys.push(inner_ty);
+                    }
+                    Ty::Tuple(Arc::from(inner_tys))
+                }
+                Literal::Array { values } => {
+                    // simply take the type of the first element for now
+                    let inner_ty = match values.get(0) {
+                        Some(&expr) => self.infer_expr(expr, &Expectation::none())?,
+                        None => Ty::Unknown,
+                    };
+                    // TODO: we should return a Ty::Array when it becomes
+                    // available
+                    Ty::Slice(Arc::new(inner_ty))
+                }
+                // TODO
+                Literal::Int | Literal::Float => Ty::Unknown,
+            },
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
