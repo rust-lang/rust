@@ -71,6 +71,10 @@ book!(
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum RustbookVersion {
     MdBook1,
+
+    /// Note: Currently no books use mdBook v2, but we want the option
+    /// to be available
+    #[allow(dead_code)]
     MdBook2,
 }
 
