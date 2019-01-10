@@ -2202,7 +2202,7 @@ impl Path {
     ///   beginning of the path. For example, `a/./b`, `a/b/`, `a/b/.` and
     ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
     ///   an additional [`CurDir`] component.
-    /// 
+    ///
     /// * A trailing slash is normalized away, `/a/b` and `/a/b/` are equivalent.
     ///
     /// Note that no other normalization takes place; in particular, `a/c`
