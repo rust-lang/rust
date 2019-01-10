@@ -15,7 +15,7 @@ use parking_lot::RwLock;
 use failure::format_err;
 
 use crate::{
-    project_model::{CargoWorkspace, TargetKind},
+    project_model::{ProjectWorkspace, TargetKind},
     Result,
 };
 
@@ -23,28 +23,33 @@ use crate::{
 pub struct ServerWorldState {
     pub roots_to_scan: usize,
     pub root: PathBuf,
-    pub workspaces: Arc<Vec<CargoWorkspace>>,
+    pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
 }
 
 pub struct ServerWorld {
-    pub workspaces: Arc<Vec<CargoWorkspace>>,
+    pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
 }
 
 impl ServerWorldState {
-    pub fn new(root: PathBuf, workspaces: Vec<CargoWorkspace>) -> ServerWorldState {
+    pub fn new(root: PathBuf, workspaces: Vec<ProjectWorkspace>) -> ServerWorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
         roots.push(root.clone());
         for ws in workspaces.iter() {
-            for pkg in ws.packages() {
-                roots.push(pkg.root(&ws).to_path_buf());
+            for pkg in ws.cargo.packages() {
+                roots.push(pkg.root(&ws.cargo).to_path_buf());
+            }
+            for krate in ws.sysroot.crates() {
+                roots.push(krate.root_dir(&ws.sysroot).to_path_buf())
             }
         }
+        roots.sort();
+        roots.dedup();
         let roots_to_scan = roots.len();
         let (mut vfs, roots) = Vfs::new(roots);
         for r in roots {
@@ -53,16 +58,43 @@ impl ServerWorldState {
         }
 
         let mut crate_graph = CrateGraph::default();
-        let mut pkg_to_lib_crate = FxHashMap::default();
-        let mut pkg_crates = FxHashMap::default();
         for ws in workspaces.iter() {
-            for pkg in ws.packages() {
-                for tgt in pkg.targets(ws) {
-                    let root = tgt.root(ws);
+            // First, load std
+            let mut sysroot_crates = FxHashMap::default();
+            for krate in ws.sysroot.crates() {
+                if let Some(file_id) = vfs.load(krate.root(&ws.sysroot)) {
+                    let file_id = FileId(file_id.0.into());
+                    sysroot_crates.insert(krate, crate_graph.add_crate_root(file_id));
+                }
+            }
+            for from in ws.sysroot.crates() {
+                for to in from.deps(&ws.sysroot) {
+                    let name = to.name(&ws.sysroot);
+                    if let (Some(&from), Some(&to)) =
+                        (sysroot_crates.get(&from), sysroot_crates.get(&to))
+                    {
+                        crate_graph.add_dep(from, name.clone(), to);
+                    }
+                }
+            }
+
+            let libstd = ws
+                .sysroot
+                .std()
+                .and_then(|it| sysroot_crates.get(&it).map(|&it| it));
+
+            let mut pkg_to_lib_crate = FxHashMap::default();
+            let mut pkg_crates = FxHashMap::default();
+            // Next, create crates for each package, target pair
+            for pkg in ws.cargo.packages() {
+                let mut lib_tgt = None;
+                for tgt in pkg.targets(&ws.cargo) {
+                    let root = tgt.root(&ws.cargo);
                     if let Some(file_id) = vfs.load(root) {
                         let file_id = FileId(file_id.0.into());
                         let crate_id = crate_graph.add_crate_root(file_id);
-                        if tgt.kind(ws) == TargetKind::Lib {
+                        if tgt.kind(&ws.cargo) == TargetKind::Lib {
+                            lib_tgt = Some(crate_id);
                             pkg_to_lib_crate.insert(pkg, crate_id);
                         }
                         pkg_crates
@@ -71,9 +103,24 @@ impl ServerWorldState {
                             .push(crate_id);
                     }
                 }
+
+                // Set deps to the std and to the lib target of the current package
+                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                    if let Some(to) = lib_tgt {
+                        if to != from {
+                            crate_graph.add_dep(from, pkg.name(&ws.cargo).into(), to);
+                        }
+                    }
+                    if let Some(std) = libstd {
+                        crate_graph.add_dep(from, "std".into(), std);
+                    }
+                }
             }
-            for pkg in ws.packages() {
-                for dep in pkg.dependencies(ws) {
+
+            // Now add a dep ednge from all targets of upstream to the lib
+            // target of downstream.
+            for pkg in ws.cargo.packages() {
+                for dep in pkg.dependencies(&ws.cargo) {
                     if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                         for &from in pkg_crates.get(&pkg).into_iter().flatten() {
                             crate_graph.add_dep(from, dep.name.clone(), to);

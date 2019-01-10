@@ -1,16 +1,47 @@
 mod support;
 
+use std::{
+    collections::HashMap,
+    time::Instant,
+};
+
 use languageserver_types::{
     CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range,
 };
 use ra_lsp_server::req::{
-    CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams,
+    CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams, CompletionParams, Completion,
 };
 use serde_json::json;
 
 use crate::support::project;
 
 const LOG: &'static str = "";
+
+#[test]
+fn completes_items_from_standard_library() {
+    let project_start = Instant::now();
+    let server = project(
+        r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+use std::collections::Spam;
+"#,
+    );
+    server.wait_for_feedback("workspace loaded");
+    eprintln!("loading took    {:?}", project_start.elapsed());
+    let completion_start = Instant::now();
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document: server.doc_id("src/lib.rs"),
+        context: None,
+        position: Position::new(0, 23),
+    });
+    assert!(format!("{}", res).contains("HashMap"));
+    eprintln!("completion took {:?}", completion_start.elapsed());
+}
 
 #[test]
 fn test_runnables_no_project() {
@@ -122,7 +153,6 @@ fn test_eggs() {}
     );
 }
 
-use std::collections::HashMap;
 #[test]
 fn test_format_document() {
     let server = project(
