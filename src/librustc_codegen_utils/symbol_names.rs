@@ -93,7 +93,7 @@ use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::print::{PrettyPath, PrettyPrinter, PrintCx, Printer};
+use rustc::ty::print::{PrettyPrinter, PrintCx, Printer};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -225,9 +225,10 @@ fn get_symbol_hash<'a, 'tcx>(
 }
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
-    PrintCx::with(tcx, SymbolPath::new(tcx), |mut cx| {
-        let _ = cx.print_def_path(def_id, None, Namespace::ValueNS, iter::empty());
-        cx.printer.into_interned()
+    PrintCx::with(tcx, SymbolPath::new(tcx), |cx| {
+        cx.print_def_path(def_id, None, Namespace::ValueNS, iter::empty())
+            .unwrap()
+            .into_interned()
     })
 }
 
@@ -348,7 +349,7 @@ struct SymbolPath {
     temp_buf: String,
     strict_naming: bool,
 
-    // When `true`, `finalize_pending_component` is a noop.
+    // When `true`, `finalize_pending_component` isn't used.
     // This is needed when recursing into `path_qualified`,
     // or `path_generic_args`, as any nested paths are
     // logically within one component.
@@ -407,18 +408,17 @@ impl SymbolPath {
 impl Printer for SymbolPath {
     type Error = fmt::Error;
 
-    type Path = PrettyPath;
+    type Path = Self;
 
     fn path_crate(
-        self: &mut PrintCx<'_, '_, '_, Self>,
+        mut self: PrintCx<'_, '_, '_, Self>,
         cnum: CrateNum,
     ) -> Result<Self::Path, Self::Error> {
         self.printer.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
-        Ok(PrettyPath { empty: false })
+        Ok(self.printer)
     }
     fn path_qualified(
-        self: &mut PrintCx<'_, '_, 'tcx, Self>,
-        impl_prefix: Option<Self::Path>,
+        mut self: PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
@@ -429,64 +429,85 @@ impl Printer for SymbolPath {
             ty::Adt(..) | ty::Foreign(_) |
             ty::Bool | ty::Char | ty::Str |
             ty::Int(_) | ty::Uint(_) | ty::Float(_)
-                if impl_prefix.is_none() && trait_ref.is_none() =>
+                if trait_ref.is_none() =>
             {
-                return self.pretty_path_qualified(None, self_ty, trait_ref, ns);
+                return self.pretty_path_qualified(self_ty, trait_ref, ns);
             }
             _ => {}
         }
 
-        // HACK(eddyb) make sure to finalize the last component of the
-        // `impl` prefix, to avoid it fusing with the following text.
-        let impl_prefix = match impl_prefix {
-            Some(prefix) => {
-                let mut prefix = self.path_append(prefix, "")?;
-
-                // HACK(eddyb) also avoid an unnecessary `::`.
-                prefix.empty = true;
-
-                Some(prefix)
-            }
-            None => None,
-        };
-
         let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
-        let r = self.pretty_path_qualified(impl_prefix, self_ty, trait_ref, ns);
-        self.printer.keep_within_component = kept_within_component;
-        r
-    }
-    fn path_append(
-        self: &mut PrintCx<'_, '_, '_, Self>,
-        mut path: Self::Path,
-        text: &str,
-    ) -> Result<Self::Path, Self::Error> {
-        if self.keep_within_component {
-            // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
-            if !path.empty {
-                self.printer.write_str("::")?;
-            } else {
-                path.empty = text.is_empty();
-            }
-        } else {
-            self.printer.finalize_pending_component();
-            path.empty = false;
-        }
-
-        self.printer.write_str(text)?;
+        let mut path = self.pretty_path_qualified(self_ty, trait_ref, ns)?;
+        path.keep_within_component = kept_within_component;
         Ok(path)
     }
-    fn path_generic_args(
-        self: &mut PrintCx<'_, '_, 'tcx, Self>,
-        path: Self::Path,
+
+    fn path_append_impl<'gcx, 'tcx>(
+        self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        print_prefix: impl FnOnce(
+            PrintCx<'_, 'gcx, 'tcx, Self>,
+        ) -> Result<Self::Path, Self::Error>,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Result<Self::Path, Self::Error> {
+        let kept_within_component = self.printer.keep_within_component;
+        let mut path = self.pretty_path_append_impl(
+            |cx| {
+                let mut path = print_prefix(cx)?;
+                path.keep_within_component = true;
+                Ok(path)
+            },
+            self_ty,
+            trait_ref,
+        )?;
+        path.keep_within_component = kept_within_component;
+        Ok(path)
+    }
+    fn path_append<'gcx, 'tcx>(
+        self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        print_prefix: impl FnOnce(
+            PrintCx<'_, 'gcx, 'tcx, Self>,
+        ) -> Result<Self::Path, Self::Error>,
+        text: &str,
+    ) -> Result<Self::Path, Self::Error> {
+        let keep_within_component = self.printer.keep_within_component;
+
+        let mut path = print_prefix(self)?;
+
+        if keep_within_component {
+            // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
+            path.write_str("::")?;
+        } else {
+            path.finalize_pending_component();
+        }
+
+        path.write_str(text)?;
+        Ok(path)
+    }
+    fn path_generic_args<'gcx, 'tcx>(
+        self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        print_prefix: impl FnOnce(
+            PrintCx<'_, 'gcx, 'tcx, Self>,
+        ) -> Result<Self::Path, Self::Error>,
         params: &[ty::GenericParamDef],
         substs: SubstsRef<'tcx>,
         ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     )  -> Result<Self::Path, Self::Error> {
-        let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
-        let r = self.pretty_path_generic_args(path, params, substs, ns, projections);
-        self.printer.keep_within_component = kept_within_component;
-        r
+        let kept_within_component = self.printer.keep_within_component;
+        let mut path = self.pretty_path_generic_args(
+            |cx| {
+                let mut path = print_prefix(cx)?;
+                path.keep_within_component = true;
+                Ok(path)
+            },
+            params,
+            substs,
+            ns,
+            projections,
+        )?;
+        path.keep_within_component = kept_within_component;
+        Ok(path)
     }
 }
 

@@ -2369,7 +2369,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
 
                 // When printing regions, add trailing space if necessary.
-                ty::print::PrintCx::with_tls_tcx(ty::print::FmtPrinter { fmt }, |cx| {
+                ty::print::PrintCx::with_tls_tcx(ty::print::FmtPrinter::new(fmt), |cx| {
                     let region = if cx.config.is_verbose || cx.config.identify_regions {
                         let mut region = region.to_string();
                         if region.len() > 0 {

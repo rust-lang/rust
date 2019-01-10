@@ -4235,50 +4235,70 @@ where F: Fn(DefId) -> Def {
         type Path = Vec<String>;
 
         fn path_crate(
-            self: &mut PrintCx<'_, '_, '_, Self>,
+            self: PrintCx<'_, '_, '_, Self>,
             cnum: CrateNum,
         ) -> Result<Self::Path, Self::Error> {
             Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
         }
         fn path_qualified(
-            self: &mut PrintCx<'_, '_, 'tcx, Self>,
-            impl_prefix: Option<Self::Path>,
+            self: PrintCx<'_, '_, 'tcx, Self>,
             self_ty: Ty<'tcx>,
             trait_ref: Option<ty::TraitRef<'tcx>>,
             _ns: Namespace,
         ) -> Result<Self::Path, Self::Error> {
-            let mut path = impl_prefix.unwrap_or(vec![]);
+            // This shouldn't ever be needed, but just in case:
+            Ok(vec![match trait_ref {
+                Some(trait_ref) => format!("{:?}", trait_ref),
+                None => format!("<{}>", self_ty),
+            }])
+        }
+
+        fn path_append_impl<'gcx, 'tcx>(
+            self: PrintCx<'_, 'gcx, 'tcx, Self>,
+            print_prefix: impl FnOnce(
+                PrintCx<'_, 'gcx, 'tcx, Self>,
+            ) -> Result<Self::Path, Self::Error>,
+            self_ty: Ty<'tcx>,
+            trait_ref: Option<ty::TraitRef<'tcx>>,
+        ) -> Result<Self::Path, Self::Error> {
+            let mut path = print_prefix(self)?;
 
             // This shouldn't ever be needed, but just in case:
-            if let Some(trait_ref) = trait_ref {
-                path.push(format!("{:?}", trait_ref));
-            } else {
-                path.push(format!("<{}>", self_ty));
-            }
+            path.push(match trait_ref {
+                Some(trait_ref) => {
+                    format!("<impl {} for {}>", trait_ref, self_ty)
+                }
+                None => format!("<impl {}>", self_ty),
+            });
 
             Ok(path)
         }
-        fn path_append(
-            self: &mut PrintCx<'_, '_, '_, Self>,
-            mut path: Self::Path,
+        fn path_append<'gcx, 'tcx>(
+            self: PrintCx<'_, 'gcx, 'tcx, Self>,
+            print_prefix: impl FnOnce(
+                PrintCx<'_, 'gcx, 'tcx, Self>,
+            ) -> Result<Self::Path, Self::Error>,
             text: &str,
         ) -> Result<Self::Path, Self::Error> {
+            let mut path = print_prefix(self)?;
             path.push(text.to_string());
             Ok(path)
         }
-        fn path_generic_args(
-            self: &mut PrintCx<'_, '_, 'tcx, Self>,
-            path: Self::Path,
+        fn path_generic_args<'gcx, 'tcx>(
+            self: PrintCx<'_, 'gcx, 'tcx, Self>,
+            print_prefix: impl FnOnce(
+                PrintCx<'_, 'gcx, 'tcx, Self>,
+            ) -> Result<Self::Path, Self::Error>,
             _params: &[ty::GenericParamDef],
             _substs: SubstsRef<'tcx>,
             _ns: Namespace,
             _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
         ) -> Result<Self::Path, Self::Error> {
-            Ok(path)
+            print_prefix(self)
         }
     }
 
-    let names = PrintCx::with(tcx, AbsolutePathPrinter, |mut cx| {
+    let names = PrintCx::with(tcx, AbsolutePathPrinter, |cx| {
         cx.print_def_path(def_id, None, Namespace::TypeNS, iter::empty()).unwrap()
     });
 
