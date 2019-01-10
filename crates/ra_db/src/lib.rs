@@ -5,6 +5,8 @@ mod input;
 mod loc2id;
 pub mod mock;
 
+use std::panic;
+
 use ra_syntax::{TextUnit, TextRange, SourceFile, TreePtr};
 
 pub use crate::{
@@ -18,13 +20,21 @@ pub use crate::{
     loc2id::LocationIntener,
 };
 
-pub trait BaseDatabase: salsa::Database {
+pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
     fn check_canceled(&self) -> Cancelable<()> {
-        if self.salsa_runtime().is_current_revision_canceled() {
-            Err(Canceled::new())
-        } else {
-            Ok(())
-        }
+        self.salsa_runtime()
+            .if_current_revision_is_canceled(Canceled::throw);
+        Ok(())
+    }
+
+    fn catch_canceled<F: FnOnce(&Self) -> T + panic::UnwindSafe, T>(
+        &self,
+        f: F,
+    ) -> Result<T, Canceled> {
+        panic::catch_unwind(|| f(self)).map_err(|err| match err.downcast::<Canceled>() {
+            Ok(canceled) => *canceled,
+            Err(payload) => panic::resume_unwind(payload),
+        })
     }
 }
 

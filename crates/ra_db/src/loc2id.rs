@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{panic, hash::Hash};
 
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
@@ -68,6 +68,15 @@ where
     LOC: Clone + Eq + Hash,
 {
     map: Mutex<Loc2IdMap<LOC, ID>>,
+}
+
+impl<LOC, ID> panic::RefUnwindSafe for LocationIntener<LOC, ID>
+where
+    ID: ArenaId + Clone,
+    LOC: Clone + Eq + Hash,
+    ID: panic::RefUnwindSafe,
+    LOC: panic::RefUnwindSafe,
+{
 }
 
 impl<LOC, ID> Default for LocationIntener<LOC, ID>

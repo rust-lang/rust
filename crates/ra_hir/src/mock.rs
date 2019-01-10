@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use salsa::{self, Database};
@@ -17,6 +17,8 @@ pub(crate) struct MockDatabase {
     id_maps: Arc<IdMaps>,
     file_counter: u32,
 }
+
+impl panic::RefUnwindSafe for MockDatabase {}
 
 impl MockDatabase {
     pub(crate) fn with_files(fixture: &str) -> (MockDatabase, SourceRoot) {

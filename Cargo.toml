@@ -7,3 +7,4 @@ debug = true
 
 [patch.'crates-io']
 cargo_metadata = { git = "https://github.com/oli-obk/cargo_metadata.git", rev="f73e27b24e" }
+salsa = { git = "https://github.com/matklad/salsa", branch = "panic-hooks" }

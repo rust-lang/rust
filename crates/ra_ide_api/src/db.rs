@@ -1,7 +1,7 @@
 use std::{fmt, sync::Arc};
 
 use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase, FileId};
+use ra_db::{LocationIntener, BaseDatabase, FileId, Canceled};
 
 use crate::{symbol_index, LineIndex};
 
@@ -28,6 +28,9 @@ impl fmt::Debug for IdMaps {
 impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
+    }
+    fn on_propagated_panic(&self) -> ! {
+        Canceled::throw()
     }
 }
 
