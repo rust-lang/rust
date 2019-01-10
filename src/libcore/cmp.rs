@@ -1,27 +1,22 @@
 //! Functionality for ordering and comparison.
 //!
-//! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
-//! by the compiler to implement comparison operators. Rust programs may
-//! implement [`PartialOrd`] to overload the `<`, `<=`, `>`, and `>=` operators,
-//! and may implement [`PartialEq`] to overload the `==` and `!=` operators.
+//! This module contains various tools for ordering and comparing values. In
+//! summary:
 //!
-//! [`PartialOrd`]: trait.PartialOrd.html
-//! [`PartialEq`]: trait.PartialEq.html
+//! * [`Eq`] and [`PartialEq`] are traits that allow you to define total and
+//!   partial equality between values, respectively. Implementing them overloads
+//!   the `==` and `!=` operators.
+//! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
+//!   partial orderings between values, respectively. Implementing them overloads
+//!   the `<`, `<=`, `>`, and `>=` operators.
+//! * [`Ordering`][cmp::Ordering] is an enum returned by the
+//!   main functions of [`Ord`] and [`PartialOrd`], and describes an ordering.
+//! * [`Reverse`][cmp::Reverse] is a struct that allows you to easily reverse
+//!   an ordering.
+//! * [`max`][cmp::max] and [`min`][cmp::min] are functions that build off of
+//!   [`Ord`] and allow you to find the maximum or minimum of two values.
 //!
-//! # Examples
-//!
-//! ```
-//! let x: u32 = 0;
-//! let y: u32 = 1;
-//!
-//! // these two lines are equivalent
-//! assert_eq!(x < y, true);
-//! assert_eq!(x.lt(&y), true);
-//!
-//! // these two lines are also equivalent
-//! assert_eq!(x == y, false);
-//! assert_eq!(x.eq(&y), false);
-//! ```
+//! For more details, see the respective documentation of each item in the list.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
