@@ -1,0 +1,39 @@
+error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:7:1
+   |
+LL | impl Foo for dyn Send {}
+   | --------------------- first implementation here
+LL | 
+LL | impl Foo for dyn Send + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
+   |
+   = note: #[deny(order_dependent_trait_objects)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+
+error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:13:1
+   |
+LL | impl Foo for dyn Send + Sync {}
+   | ---------------------------- first implementation here
+LL | 
+LL | impl Foo for dyn Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+
+error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:17:1
+   |
+LL | impl Foo for dyn Sync + Send {}
+   | ---------------------------- first implementation here
+...
+LL | impl Foo for dyn Send + Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+
+error: aborting due to 3 previous errors
+
