@@ -29,6 +29,8 @@ impl Canceled {
     }
 
     pub fn throw() -> ! {
+        // We use resume and not panic here to avoid running the panic
+        // hook (that is, to avoid collecting and printing backtrace).
         std::panic::resume_unwind(Box::new(Canceled::new()))
     }
 }
