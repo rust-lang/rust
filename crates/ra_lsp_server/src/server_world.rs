@@ -15,7 +15,7 @@ use parking_lot::RwLock;
 use failure::format_err;
 
 use crate::{
-    project_model::{CargoWorkspace, TargetKind},
+    project_model::{ProjectWorkspace, TargetKind},
     Result,
 };
 
@@ -23,26 +23,26 @@ use crate::{
 pub struct ServerWorldState {
     pub roots_to_scan: usize,
     pub root: PathBuf,
-    pub workspaces: Arc<Vec<CargoWorkspace>>,
+    pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
 }
 
 pub struct ServerWorld {
-    pub workspaces: Arc<Vec<CargoWorkspace>>,
+    pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
 }
 
 impl ServerWorldState {
-    pub fn new(root: PathBuf, workspaces: Vec<CargoWorkspace>) -> ServerWorldState {
+    pub fn new(root: PathBuf, workspaces: Vec<ProjectWorkspace>) -> ServerWorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
         roots.push(root.clone());
         for ws in workspaces.iter() {
-            for pkg in ws.packages() {
-                roots.push(pkg.root(&ws).to_path_buf());
+            for pkg in ws.cargo.packages() {
+                roots.push(pkg.root(&ws.cargo).to_path_buf());
             }
         }
         let roots_to_scan = roots.len();
@@ -56,13 +56,13 @@ impl ServerWorldState {
         let mut pkg_to_lib_crate = FxHashMap::default();
         let mut pkg_crates = FxHashMap::default();
         for ws in workspaces.iter() {
-            for pkg in ws.packages() {
-                for tgt in pkg.targets(ws) {
-                    let root = tgt.root(ws);
+            for pkg in ws.cargo.packages() {
+                for tgt in pkg.targets(&ws.cargo) {
+                    let root = tgt.root(&ws.cargo);
                     if let Some(file_id) = vfs.load(root) {
                         let file_id = FileId(file_id.0.into());
                         let crate_id = crate_graph.add_crate_root(file_id);
-                        if tgt.kind(ws) == TargetKind::Lib {
+                        if tgt.kind(&ws.cargo) == TargetKind::Lib {
                             pkg_to_lib_crate.insert(pkg, crate_id);
                         }
                         pkg_crates
@@ -72,8 +72,8 @@ impl ServerWorldState {
                     }
                 }
             }
-            for pkg in ws.packages() {
-                for dep in pkg.dependencies(ws) {
+            for pkg in ws.cargo.packages() {
+                for dep in pkg.dependencies(&ws.cargo) {
                     if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                         for &from in pkg_crates.get(&pkg).into_iter().flatten() {
                             crate_graph.add_dep(from, dep.name.clone(), to);

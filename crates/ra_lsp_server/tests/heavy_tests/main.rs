@@ -4,13 +4,52 @@ use languageserver_types::{
     CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range,
 };
 use ra_lsp_server::req::{
-    CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams,
+    CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams, CompletionParams, Completion,
 };
 use serde_json::json;
 
 use crate::support::project;
 
 const LOG: &'static str = "";
+
+#[test]
+fn completes_items_from_standard_library() {
+    let server = project(
+        r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+use std::collections::;
+"#,
+    );
+    server.wait_for_feedback("workspace loaded");
+    server.request::<Completion>(
+        CompletionParams {
+            text_document: server.doc_id("src/lib.rs"),
+            context: None,
+            position: Position::new(0, 22),
+        },
+        json!([
+          {
+            "filterText": "self",
+            "insertText": "self",
+            "insertTextFormat": 1,
+            "kind": 14,
+            "label": "self"
+          },
+          {
+            "filterText": "super",
+            "insertText": "super",
+            "insertTextFormat": 1,
+            "kind": 14,
+            "label": "super"
+          }
+        ]),
+    );
+}
 
 #[test]
 fn test_runnables_no_project() {

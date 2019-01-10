@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
@@ -8,6 +11,36 @@ use failure::{format_err, bail};
 use thread_worker::{WorkerHandle, Worker};
 
 use crate::Result;
+
+#[derive(Debug, Clone)]
+pub struct ProjectWorkspace {
+    pub(crate) cargo: CargoWorkspace,
+    pub(crate) sysroot: Sysroot,
+}
+
+impl ProjectWorkspace {
+    pub fn discover(path: &Path) -> Result<ProjectWorkspace> {
+        let cargo_toml = find_cargo_toml(path)?;
+        let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml)?;
+        let sysroot = sysroot_info(&cargo_toml)?;
+        let res = ProjectWorkspace { cargo, sysroot };
+        Ok(res)
+    }
+}
+
+pub fn workspace_loader() -> (Worker<PathBuf, Result<ProjectWorkspace>>, WorkerHandle) {
+    thread_worker::spawn::<PathBuf, Result<ProjectWorkspace>, _>(
+        "workspace loader",
+        1,
+        |input_receiver, output_sender| {
+            input_receiver
+                .into_iter()
+                .map(|path| ProjectWorkspace::discover(path.as_path()))
+                .try_for_each(|it| output_sender.send(it))
+                .unwrap()
+        },
+    )
+}
 
 /// `CargoWorksapce` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -61,6 +94,11 @@ pub enum TargetKind {
     Test,
     Bench,
     Other,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Sysroot {
+    crates: FxHashMap<SmolStr, PathBuf>,
 }
 
 impl Package {
@@ -160,6 +198,68 @@ impl CargoWorkspace {
     }
 }
 
+fn sysroot_info(cargo_toml: &Path) -> Result<Sysroot> {
+    let rustc_output = Command::new("rustc")
+        .current_dir(cargo_toml.parent().unwrap())
+        .args(&["--print", "sysroot"])
+        .output()?;
+    if !rustc_output.status.success() {
+        failure::bail!("failed to locate sysroot")
+    }
+    let stdout = String::from_utf8(rustc_output.stdout)?;
+    let sysroot_path = Path::new(stdout.trim());
+    let src = sysroot_path.join("lib/rustlib/src/rust/src");
+
+    let crates: &[(&str, &[&str])] = &[
+        (
+            "std",
+            &[
+                "alloc_jemalloc",
+                "alloc_system",
+                "panic_abort",
+                "rand",
+                "compiler_builtins",
+                "unwind",
+                "rustc_asan",
+                "rustc_lsan",
+                "rustc_msan",
+                "rustc_tsan",
+                "build_helper",
+            ],
+        ),
+        ("core", &[]),
+        ("alloc", &[]),
+        ("collections", &[]),
+        ("libc", &[]),
+        ("panic_unwind", &[]),
+        ("proc_macro", &[]),
+        ("rustc_unicode", &[]),
+        ("std_unicode", &[]),
+        ("test", &[]),
+        // Feature gated
+        ("alloc_jemalloc", &[]),
+        ("alloc_system", &[]),
+        ("compiler_builtins", &[]),
+        ("getopts", &[]),
+        ("panic_unwind", &[]),
+        ("panic_abort", &[]),
+        ("rand", &[]),
+        ("term", &[]),
+        ("unwind", &[]),
+        // Dependencies
+        ("build_helper", &[]),
+        ("rustc_asan", &[]),
+        ("rustc_lsan", &[]),
+        ("rustc_msan", &[]),
+        ("rustc_tsan", &[]),
+        ("syntax", &[]),
+    ];
+
+    Ok(Sysroot {
+        crates: FxHashMap::default(),
+    })
+}
+
 fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
     if path.ends_with("Cargo.toml") {
         return Ok(path.to_path_buf());
@@ -189,18 +289,4 @@ impl TargetKind {
         }
         TargetKind::Other
     }
-}
-
-pub fn workspace_loader() -> (Worker<PathBuf, Result<CargoWorkspace>>, WorkerHandle) {
-    thread_worker::spawn::<PathBuf, Result<CargoWorkspace>, _>(
-        "workspace loader",
-        1,
-        |input_receiver, output_sender| {
-            input_receiver
-                .into_iter()
-                .map(|path| CargoWorkspace::from_cargo_metadata(path.as_path()))
-                .try_for_each(|it| output_sender.send(it))
-                .unwrap()
-        },
-    )
 }

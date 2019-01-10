@@ -347,11 +347,11 @@ pub fn handle_runnables(
                 .read()
                 .file2path(ra_vfs::VfsFile(file_id.0.into()));
             let res = world.workspaces.iter().find_map(|ws| {
-                let tgt = ws.target_by_root(&path)?;
+                let tgt = ws.cargo.target_by_root(&path)?;
                 let res = CargoTargetSpec {
-                    package: tgt.package(ws).name(ws).to_string(),
-                    target: tgt.name(ws).to_string(),
-                    target_kind: tgt.kind(ws),
+                    package: tgt.package(&ws.cargo).name(&ws.cargo).to_string(),
+                    target: tgt.name(&ws.cargo).to_string(),
+                    target_kind: tgt.kind(&ws.cargo),
                 };
                 Some(res)
             });
