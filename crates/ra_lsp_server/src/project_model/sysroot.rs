@@ -25,7 +25,11 @@ struct SysrootCrateData {
 }
 
 impl Sysroot {
-    pub(crate) fn discover(cargo_toml: &Path) -> Result<Sysroot> {
+    pub(crate) fn std(&self) -> Option<SysrootCrate> {
+        self.by_name("std")
+    }
+
+    pub(super) fn discover(cargo_toml: &Path) -> Result<Sysroot> {
         let rustc_output = Command::new("rustc")
             .current_dir(cargo_toml.parent().unwrap())
             .args(&["--print", "sysroot"])
@@ -50,7 +54,7 @@ impl Sysroot {
                 });
             }
         }
-        if let Some(std) = sysroot.by_name("std") {
+        if let Some(std) = sysroot.std() {
             for dep in STD_DEPS.trim().lines() {
                 if let Some(dep) = sysroot.by_name(dep) {
                     sysroot.crates[std].deps.push(dep)
