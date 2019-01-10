@@ -125,8 +125,6 @@ fn test_eggs() {}
 use std::collections::HashMap;
 #[test]
 fn test_format_document() {
-    tools::install_rustfmt().unwrap();
-
     let server = project(
         r#"
 [package]

@@ -8,6 +8,7 @@ build: &rust_build
     language: rust
     rust: 1.31.1
     script:
+        - rustup component add rustfmt
         - cargo gen-tests --verify
         - cargo gen-syntax --verify
         - cargo test --no-run  # let's measure compile time separately
