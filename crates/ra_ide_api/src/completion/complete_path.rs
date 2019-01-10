@@ -125,4 +125,18 @@ mod tests {
             "foo",
         )
     }
+
+    #[test]
+    fn dont_render_function_parens_if_already_call() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            fn frobnicate() {}
+            fn main() {
+                frob<|>();
+            }
+            ",
+            "main;frobnicate",
+        )
+    }
 }

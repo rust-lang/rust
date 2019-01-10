@@ -32,8 +32,8 @@ pub(super) struct CompletionContext<'a> {
     pub(super) is_new_item: bool,
     /// The receiver if this is a field or method access, i.e. writing something.<|>
     pub(super) dot_receiver: Option<&'a ast::Expr>,
-    /// If this is a method call in particular, i.e. the () are already there.
-    pub(super) is_method_call: bool,
+    /// If this is a call (method or function) in particular, i.e. the () are already there.
+    pub(super) is_call: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -60,7 +60,7 @@ impl<'a> CompletionContext<'a> {
             can_be_stmt: false,
             is_new_item: false,
             dot_receiver: None,
-            is_method_call: false,
+            is_call: false,
         };
         ctx.fill(original_file, position.offset);
         Ok(Some(ctx))
@@ -172,6 +172,12 @@ impl<'a> CompletionContext<'a> {
                     }
                 }
             }
+            self.is_call = path
+                .syntax()
+                .parent()
+                .and_then(ast::PathExpr::cast)
+                .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
+                .is_some()
         }
         if let Some(field_expr) = ast::FieldExpr::cast(parent) {
             // The receiver comes before the point of insertion of the fake
@@ -187,7 +193,7 @@ impl<'a> CompletionContext<'a> {
                 .expr()
                 .map(|e| e.syntax().range())
                 .and_then(|r| find_node_with_range(original_file.syntax(), r));
-            self.is_method_call = true;
+            self.is_call = true;
         }
     }
 }
