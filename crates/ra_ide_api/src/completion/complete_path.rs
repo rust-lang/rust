@@ -15,11 +15,11 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
     match def_id.resolve(ctx.db)? {
         hir::Def::Module(module) => {
             let module_scope = module.scope(ctx.db)?;
-            module_scope.entries().for_each(|(name, res)| {
+            for (name, res) in module_scope.entries() {
                 CompletionItem::new(CompletionKind::Reference, name.to_string())
                     .from_resolution(ctx, res)
-                    .add_to(acc)
-            });
+                    .add_to(acc);
+            }
         }
         hir::Def::Enum(e) => {
             e.variants(ctx.db)?
