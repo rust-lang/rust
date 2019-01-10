@@ -142,20 +142,10 @@ impl Module {
                 Def::Enum(e) => {
                     if segments.len() == idx + 1 {
                         // enum variant
-                        let matching_variant = e.variants(db)?.map(|variants| {
-                            variants
-                                .into_iter()
-                                // FIXME: replace by match lol
-                                .find(|variant| {
-                                    variant
-                                        .name(db)
-                                        .map(|o| o.map(|ref n| n == name))
-                                        .unwrap_or(Some(false))
-                                        .unwrap_or(false)
-                                })
-                        });
+                        let matching_variant =
+                            e.variants(db)?.into_iter().find(|(n, _variant)| n == name);
 
-                        if let Some(Some(variant)) = matching_variant {
+                        if let Some((_n, variant)) = matching_variant {
                             return Ok(PerNs::both(variant.def_id(), e.def_id()));
                         } else {
                             return Ok(PerNs::none());

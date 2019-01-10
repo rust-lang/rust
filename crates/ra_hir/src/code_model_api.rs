@@ -201,7 +201,7 @@ impl Enum {
         Ok(db.enum_data(self.def_id)?.name.clone())
     }
 
-    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Option<Vec<EnumVariant>>> {
+    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, EnumVariant)>> {
         Ok(db.enum_data(self.def_id)?.variants.clone())
     }
 }

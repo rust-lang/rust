@@ -7,13 +7,9 @@ use ra_syntax::{
 };
 
 use crate::{
-<<<<<<< HEAD
-    DefId, Name, AsName, Struct, Enum, HirDatabase, DefKind,
-=======
     DefId, DefLoc, Name, AsName, Struct, Enum, EnumVariant,
-    VariantData, StructField, HirDatabase, DefKind,
+    HirDatabase, DefKind,
     SourceItemId,
->>>>>>> 95ac72a3... Implement type inference for enum variants
     type_ref::TypeRef,
 };
 
@@ -79,13 +75,11 @@ fn get_def_id(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub(crate) name: Option<Name>,
-    // TODO: keep track of names also since we already have them?
-    // then we won't need additional db lookups
-    pub(crate) variants: Option<Vec<EnumVariant>>,
+    pub(crate) variants: Vec<(Name, EnumVariant)>,
 }
 
 impl EnumData {
-    fn new(enum_def: &ast::EnumDef, variants: Option<Vec<EnumVariant>>) -> Self {
+    fn new(enum_def: &ast::EnumDef, variants: Vec<(Name, EnumVariant)>) -> Self {
         let name = enum_def.name().map(|n| n.as_name());
         EnumData { name, variants }
     }
@@ -98,14 +92,21 @@ impl EnumData {
         assert!(def_loc.kind == DefKind::Enum);
         let syntax = db.file_item(def_loc.source_item_id);
         let enum_def = ast::EnumDef::cast(&syntax).expect("enum def should point to EnumDef node");
-        let variants = enum_def.variant_list().map(|vl| {
+        let variants = if let Some(vl) = enum_def.variant_list() {
             vl.variants()
-                .map(|ev| {
-                    let def_id = get_def_id(db, &def_loc, ev.syntax(), DefKind::EnumVariant);
-                    EnumVariant::new(def_id)
+                .filter_map(|variant_def| {
+                    let name = variant_def.name().map(|n| n.as_name());
+
+                    name.map(|n| {
+                        let def_id =
+                            get_def_id(db, &def_loc, variant_def.syntax(), DefKind::EnumVariant);
+                        (n, EnumVariant::new(def_id))
+                    })
                 })
                 .collect()
-        });
+        } else {
+            Vec::new()
+        };
         Ok(Arc::new(EnumData::new(enum_def, variants)))
     }
 }
