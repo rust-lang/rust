@@ -30,7 +30,7 @@ impl MirPass for SimplifyBranches {
                     discr: Operand::Constant(ref c), switch_ty, ref values, ref targets, ..
                 } => {
                     let switch_ty = ParamEnv::empty().and(switch_ty);
-                    let constant = c.literal.map_evaluated(|c| c.assert_bits(tcx, switch_ty));
+                    let constant = c.literal.map_evaluated(|c| c.assert_bits(switch_ty));
                     if let Some(constant) = constant {
                         let (otherwise, targets) = targets.split_last().unwrap();
                         let mut ret = TerminatorKind::Goto { target: *otherwise };

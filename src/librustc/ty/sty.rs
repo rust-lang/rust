@@ -2152,20 +2152,19 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_bits(
-        &self,
-        tcx: TyCtxt<'_, '_, '_>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Option<u128> {
+    pub fn assert_bits(&self, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
         assert_eq!(self.ty, ty.value);
-        let ty = tcx.lift_to_global(&ty).unwrap();
-        let size = tcx.layout_of(ty).ok()?.size;
-        self.val.try_to_bits(size)
+        match self.val.try_to_scalar()? {
+            Scalar::Bits { bits, .. } => {
+                Some(bits)
+            }
+            Scalar::Ptr(_) => None,
+        }
     }
 
     #[inline]
     pub fn assert_bool(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<bool> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
+        self.assert_bits(ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -2174,16 +2173,12 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn assert_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
+        self.assert_bits(ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(
-        &self,
-        tcx: TyCtxt<'_, '_, '_>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> u128 {
-        self.assert_bits(tcx, ty).unwrap_or_else(||
+    pub fn unwrap_bits(&self, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
+        self.assert_bits(ty).unwrap_or_else(||
             bug!("expected bits of {}, got {:#?}", ty.value, self))
     }
 

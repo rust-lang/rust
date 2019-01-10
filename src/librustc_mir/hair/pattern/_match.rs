@@ -844,7 +844,7 @@ impl<'tcx> IntRange<'tcx> {
             }
             ConstantValue(val) if is_integral(val.ty) => {
                 let ty = val.ty;
-                if let Some(val) = val.assert_bits(tcx, ty::ParamEnv::empty().and(ty)) {
+                if let Some(val) = val.assert_bits(ty::ParamEnv::empty().and(ty)) {
                     let bias = IntRange::signed_bias(tcx, ty);
                     let val = val ^ bias;
                     Some(IntRange { range: val..=val, ty })
@@ -1458,7 +1458,7 @@ fn slice_pat_covered_by_const<'tcx>(
     {
         match pat.kind {
             box PatternKind::Constant { value } => {
-                let b = value.unwrap_bits(tcx, ty::ParamEnv::empty().and(pat.ty));
+                let b = value.unwrap_bits(ty::ParamEnv::empty().and(pat.ty));
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
                     return Ok(false);
