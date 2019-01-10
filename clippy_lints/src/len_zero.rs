@@ -31,10 +31,10 @@ use syntax::source_map::{Span, Spanned};
 /// ```
 /// instead use
 /// ```rust
-/// if x.len().is_empty() {
+/// if x.is_empty() {
 ///     ..
 /// }
-/// if !y.len().is_empty() {
+/// if !y.is_empty() {
 ///     ..
 /// }
 /// ```
@@ -115,8 +115,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
                     check_cmp(cx, expr.span, left, right, "", 1); // len < 1
                     check_cmp(cx, expr.span, right, left, "!", 0); // 0 < len
                 },
-                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
-                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
+                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len >= 1
+                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 <= len
                 _ => (),
             }
         }
