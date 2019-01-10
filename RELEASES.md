@@ -45,8 +45,8 @@ Language
   where
       Self: PartialOrd<Self> // can write `Self` instead of `List<T>`
   {
-    Nil,
-    Cons(T, Box<Self>) // likewise here
+      Nil,
+      Cons(T, Box<Self>) // likewise here
   }
   ```
 - [You can now mark traits with `#[must_use]`.][55663] This provides a warning if
