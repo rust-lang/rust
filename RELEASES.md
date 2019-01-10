@@ -40,11 +40,11 @@ Language
     Cons(T, Box<Self>) // likewise here
   }
   ```
+- [You can now mark traits with `#[must_use]`.][55663] This provides a warning if
+  a `impl Trait` or `dyn Trait` is returned and unused in the program.
 
 Compiler
 --------
-- [You can now mark traits with `#[must_use]`.][55663] Providing a warning if
-  they unused in a program.
 - [The default allocator has changed from jemalloc to the default allocator on
   your system.][55238] The compiler itself on Linux & macOS will still use
   jemalloc, but programs compiled with them will use the system allocator.
@@ -75,7 +75,7 @@ The following APIs are now `const` functions and can be used in a
 - [`RangeInclusive::start`]
 - [`RangeInclusive::end`]
 - [`NonNull::as_ptr`]
-- [`[T]::as_ptr`]
+- [`slice::as_ptr`]
 - [`str::as_ptr`]
 - [`Duration::as_secs`]
 - [`Duration::subsec_millis`]
@@ -165,6 +165,7 @@ Compatibility Notes
   been changed from `*const` to `*mut` as the previous implementation
   was unsound.
 
+
 [55148]: https://github.com/rust-lang/rust/pull/55148/
 [55238]: https://github.com/rust-lang/rust/pull/55238/
 [55280]: https://github.com/rust-lang/rust/pull/55280/
@@ -195,7 +196,7 @@ Compatibility Notes
 [`RangeInclusive::end`]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html#method.end
 [`RangeInclusive::start`]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html#method.start
 [`UnsafeCell::get`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html#method.get
-[`[T]::as_ptr`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr
+[`slice::as_ptr`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr
 [`char::is_ascii`]: https://doc.rust-lang.org/std/primitive.char.html#method.is_ascii
 [`i16::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_be_bytes
 [`i16::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_le_bytes
