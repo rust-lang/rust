@@ -29,6 +29,10 @@ pub(super) fn struct_def(p: &mut Parser, kind: SyntaxKind) {
         L_CURLY => named_field_def_list(p),
         L_PAREN if kind == STRUCT_KW => {
             pos_field_list(p);
+            // test tuple_struct_where
+            // struct Test<T>(T) where T: Clone;
+            // struct Test<T>(T);
+            type_params::opt_where_clause(p);
             p.expect(SEMI);
         }
         _ if kind == STRUCT_KW => {
