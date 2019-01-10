@@ -1984,6 +1984,7 @@ impl Step for HashSign {
         cmd.arg(distdir(builder));
         cmd.arg(today.trim());
         cmd.arg(builder.rust_package_vers());
+        cmd.arg(addr);
         cmd.arg(builder.package_vers(&builder.release_num("cargo")));
         cmd.arg(builder.package_vers(&builder.release_num("rls")));
         cmd.arg(builder.package_vers(&builder.release_num("clippy")));
@@ -1991,7 +1992,6 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
         cmd.arg(builder.llvm_tools_package_vers());
         cmd.arg(builder.lldb_package_vers());
-        cmd.arg(addr);
 
         builder.create_dir(&distdir(builder));
 

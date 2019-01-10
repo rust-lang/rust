@@ -192,6 +192,7 @@ struct Builder {
     rustfmt_release: String,
     llvm_tools_release: String,
     lldb_release: String,
+    miri_release: String,
 
     input: PathBuf,
     output: PathBuf,
@@ -207,6 +208,7 @@ struct Builder {
     rustfmt_version: Option<String>,
     llvm_tools_version: Option<String>,
     lldb_version: Option<String>,
+    miri_version: Option<String>,
 
     rust_git_commit_hash: Option<String>,
     cargo_git_commit_hash: Option<String>,
@@ -215,6 +217,7 @@ struct Builder {
     rustfmt_git_commit_hash: Option<String>,
     llvm_tools_git_commit_hash: Option<String>,
     lldb_git_commit_hash: Option<String>,
+    miri_git_commit_hash: Option<String>,
 
     should_sign: bool,
 }
@@ -237,13 +240,14 @@ fn main() {
     let output = PathBuf::from(args.next().unwrap());
     let date = args.next().unwrap();
     let rust_release = args.next().unwrap();
+    let s3_address = args.next().unwrap();
     let cargo_release = args.next().unwrap();
     let rls_release = args.next().unwrap();
     let clippy_release = args.next().unwrap();
+    let miri_release = args.next().unwrap();
     let rustfmt_release = args.next().unwrap();
     let llvm_tools_release = args.next().unwrap();
     let lldb_release = args.next().unwrap();
-    let s3_address = args.next().unwrap();
 
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
@@ -259,6 +263,7 @@ fn main() {
         rustfmt_release,
         llvm_tools_release,
         lldb_release,
+        miri_release,
 
         input,
         output,
@@ -274,6 +279,7 @@ fn main() {
         rustfmt_version: None,
         llvm_tools_version: None,
         lldb_version: None,
+        miri_version: None,
 
         rust_git_commit_hash: None,
         cargo_git_commit_hash: None,
@@ -282,6 +288,7 @@ fn main() {
         rustfmt_git_commit_hash: None,
         llvm_tools_git_commit_hash: None,
         lldb_git_commit_hash: None,
+        miri_git_commit_hash: None,
 
         should_sign,
     }.build();
@@ -297,6 +304,7 @@ impl Builder {
         self.llvm_tools_version = self.version("llvm-tools", "x86_64-unknown-linux-gnu");
         // lldb is only built for macOS.
         self.lldb_version = self.version("lldb", "x86_64-apple-darwin");
+        self.miri_version = self.version("miri", "x86_64-unknown-linux-gnu");
 
         self.rust_git_commit_hash = self.git_commit_hash("rust", "x86_64-unknown-linux-gnu");
         self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
@@ -306,6 +314,7 @@ impl Builder {
         self.llvm_tools_git_commit_hash = self.git_commit_hash("llvm-tools",
                                                                "x86_64-unknown-linux-gnu");
         self.lldb_git_commit_hash = self.git_commit_hash("lldb", "x86_64-unknown-linux-gnu");
+        self.miri_git_commit_hash = self.git_commit_hash("miri", "x86_64-unknown-linux-gnu");
 
         self.digest_and_sign();
         let manifest = self.build_manifest();
@@ -516,6 +525,8 @@ impl Builder {
             format!("llvm-tools-{}-{}.tar.gz", self.llvm_tools_release, target)
         } else if component == "lldb" || component == "lldb-preview" {
             format!("lldb-{}-{}.tar.gz", self.lldb_release, target)
+        } else if component == "miri" || component == "miri-preview" {
+            format!("miri-{}-{}.tar.gz", self.miri_release, target)
         } else {
             format!("{}-{}-{}.tar.gz", component, self.rust_release, target)
         }
@@ -534,6 +545,8 @@ impl Builder {
             &self.llvm_tools_version
         } else if component == "lldb" || component == "lldb-preview" {
             &self.lldb_version
+        } else if component == "miri" || component == "miri-preview" {
+            &self.miri_version
         } else {
             &self.rust_version
         }
@@ -552,6 +565,8 @@ impl Builder {
             &self.llvm_tools_git_commit_hash
         } else if component == "lldb" || component == "lldb-preview" {
             &self.lldb_git_commit_hash
+        } else if component == "miri" || component == "miri-preview" {
+            &self.miri_git_commit_hash
         } else {
             &self.rust_git_commit_hash
         }
