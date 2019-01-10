@@ -1057,11 +1057,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
     try_err!(writeln!(&mut w, "var N = null;var searchIndex = {{}};"), &dst);
-    for index in &all_indexes {
-        try_err!(write_minify_replacer(&mut w, &*index, options.enable_minification,
-                                       &[(minifier::js::Keyword::Null, "N")]),
-                 &dst);
-    }
+    try_err!(write_minify_replacer(&mut w,
+                                   &all_indexes.join("\n"),
+                                   options.enable_minification,
+                                   &[(minifier::js::Keyword::Null, "N")]),
+             &dst);
     try_err!(writeln!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
 
     if options.enable_index_page {
