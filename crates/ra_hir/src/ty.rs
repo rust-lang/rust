@@ -30,7 +30,7 @@ use join_to_string::join;
 use ra_db::Cancelable;
 
 use crate::{
-    Def, DefId, Module, Function, Struct, Enum, Path, Name, ImplBlock,
+    Def, DefId, Module, Function, Struct, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
@@ -453,6 +453,12 @@ pub fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
     })
 }
 
+pub fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> Cancelable<Ty> {
+    let enum_parent = ev.parent_enum(db)?;
+
+    type_for_enum(db, enum_parent)
+}
+
 pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     let def = def_id.resolve(db)?;
     match def {
@@ -463,6 +469,7 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<T
         Def::Function(f) => type_for_fn(db, f),
         Def::Struct(s) => type_for_struct(db, s),
         Def::Enum(e) => type_for_enum(db, e),
+        Def::EnumVariant(ev) => type_for_enum_variant(db, ev),
         Def::Item => {
             log::debug!("trying to get type for item of unknown type {:?}", def_id);
             Ok(Ty::Unknown)
@@ -477,12 +484,9 @@ pub(super) fn type_for_field(
 ) -> Cancelable<Option<Ty>> {
     let def = def_id.resolve(db)?;
     let variant_data = match def {
-        Def::Struct(s) => {
-            let variant_data = s.variant_data(db)?;
-            variant_data
-        }
+        Def::Struct(s) => s.variant_data(db)?,
+        Def::EnumVariant(ev) => ev.variant_data(db)?,
         // TODO: unions
-        // TODO: enum variants
         _ => panic!(
             "trying to get type for field in non-struct/variant {:?}",
             def_id
@@ -786,6 +790,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         Ok(match def_id.resolve(self.db)? {
             Def::Struct(s) => {
                 let ty = type_for_struct(self.db, s)?;
+                (ty, Some(def_id))
+            }
+            Def::EnumVariant(ev) => {
+                let ty = type_for_enum_variant(self.db, ev)?;
                 (ty, Some(def_id))
             }
             _ => (Ty::Unknown, None),

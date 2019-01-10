@@ -58,6 +58,6 @@ pub use self::code_model_api::{
     Crate, CrateDependency,
     Def,
     Module, ModuleSource, Problem,
-    Struct, Enum,
+    Struct, Enum, EnumVariant,
     Function, FnSignature,
 };

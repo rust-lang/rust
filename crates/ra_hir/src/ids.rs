@@ -3,7 +3,7 @@ use ra_syntax::{TreePtr, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, PerNs, Def, Function, Struct, Enum, ImplBlock, Crate,
+    HirDatabase, PerNs, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
     module_tree::ModuleId,
 };
 
@@ -145,6 +145,7 @@ pub(crate) enum DefKind {
     Function,
     Struct,
     Enum,
+    EnumVariant,
     Item,
 
     StructCtor,
@@ -170,10 +171,8 @@ impl DefId {
                 let struct_def = Struct::new(self);
                 Def::Struct(struct_def)
             }
-            DefKind::Enum => {
-                let enum_def = Enum::new(self);
-                Def::Enum(enum_def)
-            }
+            DefKind::Enum => Def::Enum(Enum::new(self)),
+            DefKind::EnumVariant => Def::EnumVariant(EnumVariant::new(self)),
             DefKind::StructCtor => Def::Item,
             DefKind::Item => Def::Item,
         };
@@ -258,7 +257,9 @@ impl SourceFileItems {
         // change parent's id. This means that, say, adding a new function to a
         // trait does not chage ids of top-level items, which helps caching.
         bfs(source_file.syntax(), |it| {
-            if let Some(module_item) = ast::ModuleItem::cast(it) {
+            if let Some(enum_variant) = ast::EnumVariant::cast(it) {
+                self.alloc(enum_variant.syntax().to_owned());
+            } else if let Some(module_item) = ast::ModuleItem::cast(it) {
                 self.alloc(module_item.syntax().to_owned());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
                 self.alloc(macro_call.syntax().to_owned());

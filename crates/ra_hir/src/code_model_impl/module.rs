@@ -13,6 +13,7 @@ impl Module {
     pub(crate) fn new(def_id: DefId) -> Self {
         crate::code_model_api::Module { def_id }
     }
+
     pub(crate) fn from_module_id(
         db: &impl HirDatabase,
         source_root_id: SourceRootId,
@@ -85,6 +86,7 @@ impl Module {
         let module_id = loc.module_id.crate_root(&module_tree);
         Module::from_module_id(db, loc.source_root_id, module_id)
     }
+
     /// Finds a child module with the specified name.
     pub fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
@@ -92,12 +94,14 @@ impl Module {
         let child_id = ctry!(loc.module_id.child(&module_tree, name));
         Module::from_module_id(db, loc.source_root_id, child_id).map(Some)
     }
+
     pub fn parent_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         let parent_id = ctry!(loc.module_id.parent(&module_tree));
         Module::from_module_id(db, loc.source_root_id, parent_id).map(Some)
     }
+
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope_impl(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
         let loc = self.def_id.loc(db);
@@ -105,6 +109,7 @@ impl Module {
         let res = item_map.per_module[&loc.module_id].clone();
         Ok(res)
     }
+
     pub fn resolve_path_impl(
         &self,
         db: &impl HirDatabase,
@@ -126,7 +131,7 @@ impl Module {
         );
 
         let segments = &path.segments;
-        for name in segments.iter() {
+        for (idx, name) in segments.iter().enumerate() {
             let curr = if let Some(r) = curr_per_ns.as_ref().take_types() {
                 r
             } else {
@@ -134,7 +139,25 @@ impl Module {
             };
             let module = match curr.resolve(db)? {
                 Def::Module(it) => it,
-                // TODO here would be the place to handle enum variants...
+                Def::Enum(e) => {
+                    if segments.len() == idx + 1 {
+                        // enum variant
+                        let matching_variant =
+                            e.variants(db)?.into_iter().find(|(n, _variant)| n == name);
+
+                        if let Some((_n, variant)) = matching_variant {
+                            return Ok(PerNs::both(variant.def_id(), e.def_id()));
+                        } else {
+                            return Ok(PerNs::none());
+                        }
+                    } else if segments.len() == idx {
+                        // enum
+                        return Ok(PerNs::types(e.def_id()));
+                    } else {
+                        // malformed enum?
+                        return Ok(PerNs::none());
+                    }
+                }
                 _ => return Ok(PerNs::none()),
             };
             let scope = module.scope(db)?;
@@ -146,6 +169,7 @@ impl Module {
         }
         Ok(curr_per_ns)
     }
+
     pub fn problems_impl(
         &self,
         db: &impl HirDatabase,

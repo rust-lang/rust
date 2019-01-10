@@ -44,6 +44,7 @@ pub enum Def {
     Module(Module),
     Struct(Struct),
     Enum(Enum),
+    EnumVariant(EnumVariant),
     Function(Function),
     Item,
 }
@@ -188,6 +189,10 @@ pub struct Enum {
 }
 
 impl Enum {
+    pub(crate) fn new(def_id: DefId) -> Self {
+        Enum { def_id }
+    }
+
     pub fn def_id(&self) -> DefId {
         self.def_id
     }
@@ -196,8 +201,35 @@ impl Enum {
         Ok(db.enum_data(self.def_id)?.name.clone())
     }
 
-    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, Arc<VariantData>)>> {
+    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, EnumVariant)>> {
         Ok(db.enum_data(self.def_id)?.variants.clone())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EnumVariant {
+    pub(crate) def_id: DefId,
+}
+
+impl EnumVariant {
+    pub(crate) fn new(def_id: DefId) -> Self {
+        EnumVariant { def_id }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
+    pub fn parent_enum(&self, db: &impl HirDatabase) -> Cancelable<Enum> {
+        Ok(db.enum_variant_data(self.def_id)?.parent_enum.clone())
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+        Ok(db.enum_variant_data(self.def_id)?.name.clone())
+    }
+
+    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
+        Ok(db.enum_variant_data(self.def_id)?.variant_data.clone())
     }
 }
 
