@@ -27,6 +27,10 @@ impl Canceled {
     pub(crate) fn new() -> Canceled {
         Canceled { _private: () }
     }
+
+    pub fn throw() -> ! {
+        std::panic::resume_unwind(Box::new(Canceled::new()))
+    }
 }
 
 impl std::fmt::Display for Canceled {

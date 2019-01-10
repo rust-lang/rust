@@ -20,10 +20,10 @@ pub use crate::{
     loc2id::LocationIntener,
 };
 
-pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
+pub trait BaseDatabase: salsa::Database {
     fn check_canceled(&self) -> Cancelable<()> {
         self.salsa_runtime()
-            .unwind_if_current_revision_is_canceled();
+            .if_current_revision_is_canceled(Canceled::throw);
         Ok(())
     }
 
@@ -31,8 +31,9 @@ pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
         &self,
         f: F,
     ) -> Result<T, Canceled> {
-        panic::catch_unwind(|| f(self)).map_err(|err| match err.downcast::<salsa::Canceled>() {
-            Ok(_) => Canceled::new(),
+        let me = panic::AssertUnwindSafe(self);
+        panic::catch_unwind(|| f(me.0)).map_err(|err| match err.downcast::<Canceled>() {
+            Ok(canceled) => *canceled,
             Err(payload) => panic::resume_unwind(payload),
         })
     }

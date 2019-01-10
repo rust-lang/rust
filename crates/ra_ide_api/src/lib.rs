@@ -35,7 +35,7 @@ use std::{fmt, sync::Arc};
 
 use ra_syntax::{SmolStr, SourceFile, TreePtr, SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
-use ra_db::{SyntaxDatabase, FilesDatabase, LocalSyntaxPtr};
+use ra_db::{SyntaxDatabase, FilesDatabase, LocalSyntaxPtr, BaseDatabase};
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
@@ -420,43 +420,47 @@ impl Analysis {
 
     /// Fuzzy searches for a symbol.
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
-        let res = symbol_index::world_symbols(&*self.db, query)?
-            .into_iter()
-            .map(NavigationTarget::from_symbol)
-            .collect();
-        Ok(res)
+        self.with_db(|db| {
+            let res = symbol_index::world_symbols(db, query)?
+                .into_iter()
+                .map(NavigationTarget::from_symbol)
+                .collect::<Vec<_>>();
+            Ok(res)
+        })?
     }
 
     pub fn goto_definition(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<Vec<NavigationTarget>>> {
-        goto_definition::goto_definition(&*self.db, position)
+        self.db
+            .catch_canceled(|db| goto_definition::goto_definition(db, position))?
     }
 
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        self.db.find_all_refs(position)
+        self.with_db(|db| db.find_all_refs(position))?
     }
 
     /// Returns a short text descrbing element at position.
     pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
-        hover::hover(&*self.db, position)
+        self.with_db(|db| hover::hover(db, position))?
     }
 
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
-        call_info::call_info(&*self.db, position)
+        self.db
+            .catch_canceled(|db| call_info::call_info(db, position))?
     }
 
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        self.db.parent_module(position)
+        self.with_db(|db| db.parent_module(position))?
     }
 
     /// Returns crates this file belongs too.
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        self.db.crate_for(file_id)
+        self.with_db(|db| db.crate_for(file_id))?
     }
 
     /// Returns the root file of the given crate.
@@ -466,17 +470,21 @@ impl Analysis {
 
     /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
-        runnables::runnables(&*self.db, file_id)
+        self.db
+            .catch_canceled(|db| runnables::runnables(db, file_id))?
     }
 
     /// Computes syntax highlighting for the given file.
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        syntax_highlighting::highlight(&*self.db, file_id)
+        self.db
+            .catch_canceled(|db| syntax_highlighting::highlight(db, file_id))?
     }
 
     /// Computes completions at the given position.
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let completions = completion::completions(&self.db, position)?;
+        let completions = self
+            .db
+            .catch_canceled(|db| completion::completions(db, position))??;
         Ok(completions.map(|it| it.into()))
     }
 
@@ -488,12 +496,12 @@ impl Analysis {
 
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.db.diagnostics(file_id)
+        self.with_db(|db| db.diagnostics(file_id))?
     }
 
     /// Computes the type of the expression at the given position.
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        hover::type_of(&*self.db, frange)
+        self.with_db(|db| hover::type_of(db, frange))?
     }
 
     /// Returns the edit required to rename reference at the position to the new
@@ -503,7 +511,14 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Vec<SourceFileEdit>> {
-        self.db.rename(position, new_name)
+        self.with_db(|db| db.rename(position, new_name))?
+    }
+
+    fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
+        &self,
+        f: F,
+    ) -> Cancelable<T> {
+        self.db.catch_canceled(f)
     }
 }
 
