@@ -1,6 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;

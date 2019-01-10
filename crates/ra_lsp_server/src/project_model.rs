@@ -1,9 +1,7 @@
 mod cargo_workspace;
 mod sysroot;
 
-use std::{
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use failure::bail;
 use thread_worker::{WorkerHandle, Worker};
