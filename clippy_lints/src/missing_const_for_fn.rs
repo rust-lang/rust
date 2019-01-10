@@ -84,7 +84,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
     ) {
         let def_id = cx.tcx.hir().local_def_id(node_id);
         let mir = cx.tcx.optimized_mir(def_id);
-        if let Ok(_) = is_min_const_fn(cx.tcx, def_id, &mir) {
+        if let Err((span, err) = is_min_const_fn(cx.tcx, def_id, &mir) {
+            cx.tcx.sess.span_err(span, &err);
+        } else {
             match kind {
                 FnKind::ItemFn(name, _generics, header, _vis, attrs) => {
                     if !can_be_const_fn(&name.as_str(), header, attrs) {
