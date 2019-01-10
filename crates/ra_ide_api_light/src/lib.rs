@@ -11,6 +11,7 @@ mod line_index_utils;
 mod structure;
 #[cfg(test)]
 mod test_utils;
+mod join_lines;
 mod typing;
 mod diagnostics;
 
@@ -21,8 +22,10 @@ pub use self::{
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
     structure::{file_structure, StructureNode},
-    typing::{join_lines, on_enter, on_dot_typed, on_eq_typed},
-    diagnostics::diagnostics
+    diagnostics::diagnostics,
+    join_lines::join_lines,
+    typing::{on_enter, on_dot_typed, on_eq_typed},
+
 };
 use ra_text_edit::TextEditBuilder;
 use ra_syntax::{
