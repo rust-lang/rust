@@ -187,6 +187,25 @@ declare_clippy_lint! {
     "a match on an Option value instead of using `as_ref()` or `as_mut`"
 }
 
+/// **What it does:** Checks for wildcard matches using `_`.
+///
+/// **Why is this bad?** New variants added by library updates can be missed.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// match x {
+///     A => {},
+///     _ => {}
+/// }
+/// ```
+declare_clippy_lint! {
+    pub MATCH_WILD,
+    restriction,
+    "a wildcard match arm using `_`"
+}
+
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
 
@@ -199,7 +218,8 @@ impl LintPass for MatchPass {
             SINGLE_MATCH_ELSE,
             MATCH_OVERLAPPING_ARM,
             MATCH_WILD_ERR_ARM,
-            MATCH_AS_REF
+            MATCH_AS_REF,
+            MATCH_WILD
         )
     }
 
@@ -218,6 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
             check_match_bool(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
             check_wild_err_arm(cx, ex, arms);
+            check_wild_arm(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.node {
@@ -437,6 +458,22 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
                                             or use unreachable macro");
                     }
                 }
+            }
+        }
+    }
+}
+
+fn check_wild_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
+    let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
+    if match_type(cx, ex_ty, &paths::RESULT) {
+        for arm in arms {
+            if is_wild(&arm.pats[0]) {
+                span_note_and_lint(cx,
+                    MATCH_WILD,
+                    arm.pats[0].span,
+                    "Wildcard match will miss any future added variants.",
+                    arm.pats[0].span,
+                    "to resolve, match each variant explicitly");
             }
         }
     }
