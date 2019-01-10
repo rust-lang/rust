@@ -35,10 +35,19 @@ impl fmt::Display for RawId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Arena<ID: ArenaId, T> {
     data: Vec<T>,
     _ty: PhantomData<ID>,
+}
+
+impl<ID: ArenaId, T: fmt::Debug> fmt::Debug for Arena<ID, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("Arena")
+            .field("len", &self.len())
+            .field("data", &self.data)
+            .finish()
+    }
 }
 
 #[macro_export]
