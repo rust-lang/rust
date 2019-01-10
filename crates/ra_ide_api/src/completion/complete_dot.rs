@@ -16,7 +16,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
         None => return Ok(()),
     };
     let receiver_ty = infer_result[expr].clone();
-    if !ctx.is_method_call {
+    if !ctx.is_call {
         complete_fields(acc, ctx, receiver_ty)?;
     }
     Ok(())
