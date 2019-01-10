@@ -1,7 +1,7 @@
 use ra_syntax::{
-    AstNode,
+    AstNode, SyntaxNode, TextUnit,
     ast::{self, VisibilityOwner, NameOwner},
-    SyntaxKind::{VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT},
+    SyntaxKind::{VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT, WHITESPACE, COMMENT, ATTR},
 };
 
 use crate::assists::{AssistCtx, Assist};
@@ -30,14 +30,14 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
         if parent.children().any(|child| child.kind() == VISIBILITY) {
             return None;
         }
-        parent.range().start()
+        vis_offset(parent)
     } else {
         let ident = ctx.leaf_at_offset().find(|leaf| leaf.kind() == IDENT)?;
         let field = ident.ancestors().find_map(ast::NamedFieldDef::cast)?;
         if field.name()?.syntax().range() != ident.range() && field.visibility().is_some() {
             return None;
         }
-        field.syntax().range().start()
+        vis_offset(field.syntax())
     };
 
     ctx.build("make pub(crate)", |edit| {
@@ -46,14 +46,31 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
+fn vis_offset(node: &SyntaxNode) -> TextUnit {
+    node.children()
+        .skip_while(|it| match it.kind() {
+            WHITESPACE | COMMENT | ATTR => true,
+            _ => false,
+        })
+        .next()
+        .map(|it| it.range().start())
+        .unwrap_or(node.range().start())
+}
+
 fn change_vis(ctx: AssistCtx, vis: &ast::Visibility) -> Option<Assist> {
-    if vis.syntax().text() != "pub" {
-        return None;
+    if vis.syntax().text() == "pub" {
+        return ctx.build("chage to pub(crate)", |edit| {
+            edit.replace(vis.syntax().range(), "pub(crate)");
+            edit.set_cursor(vis.syntax().range().start());
+        });
     }
-    ctx.build("chage to pub(crate)", |edit| {
-        edit.replace(vis.syntax().range(), "pub(crate)");
-        edit.set_cursor(vis.syntax().range().start());
-    })
+    if vis.syntax().text() == "pub(crate)" {
+        return ctx.build("chage to pub", |edit| {
+            edit.replace(vis.syntax().range(), "pub");
+            edit.set_cursor(vis.syntax().range().start());
+        });
+    }
+    None
 }
 
 #[cfg(test)]
@@ -111,6 +128,38 @@ mod tests {
             change_visibility,
             "<|>pub fn foo() {}",
             "<|>pub(crate) fn foo() {}",
+        )
+    }
+
+    #[test]
+    fn change_visibility_pub_crate_to_pub() {
+        check_assist(
+            change_visibility,
+            "<|>pub(crate) fn foo() {}",
+            "<|>pub fn foo() {}",
+        )
+    }
+
+    #[test]
+    fn change_visibility_handles_comment_attrs() {
+        check_assist(
+            change_visibility,
+            "
+            /// docs
+
+            // comments
+
+            #[derive(Debug)]
+            <|>struct Foo;
+            ",
+            "
+            /// docs
+
+            // comments
+
+            #[derive(Debug)]
+            <|>pub(crate) struct Foo;
+            ",
         )
     }
 }
