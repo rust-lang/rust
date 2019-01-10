@@ -13,7 +13,7 @@ Language
 - [You can now match against literals in macros with the `literal`
   specifier.][56072] This will match against a literal of any type.
   E.g. `1`, `'A'`, `"Hello World"`
-- [Self can now be used as a constructor and pattern.][56365] E.g. 
+- [Self can now be used as a constructor and pattern for unit and tuple structs.][56365] E.g. 
   ```rust
   struct Point(i32, i32);
 
@@ -34,7 +34,7 @@ Language
   ```rust
   enum List<T>
   where
-  Self: PartialOrd<Self> // can write `Self` instead of `List<T>`
+      Self: PartialOrd<Self> // can write `Self` instead of `List<T>`
   {
     Nil,
     Cons(T, Box<Self>) // likewise here
@@ -47,7 +47,7 @@ Compiler
 --------
 - [The default allocator has changed from jemalloc to the default allocator on
   your system.][55238] The compiler itself on Linux & macOS will still use
-  jemalloc, but programs compiled with them will use the system allocator.
+  jemalloc, but programs compiled with it will use the system allocator.
 - [Added the `aarch64-pc-windows-msvc` target.][55702]
 
 Libraries
