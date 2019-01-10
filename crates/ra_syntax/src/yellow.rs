@@ -128,7 +128,7 @@ impl SyntaxNode {
     pub(crate) fn root_data(&self) -> &Vec<SyntaxError> {
         self.0.root_data()
     }
-    
+
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_self(replacement)
     }

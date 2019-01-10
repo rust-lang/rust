@@ -11,6 +11,7 @@ use ra_syntax::{
 };
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
+use crate::ty::primitive::{UintTy, IntTy, FloatTy, UncertainIntTy, UncertainFloatTy};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(RawId);
@@ -112,9 +113,8 @@ pub enum Literal {
     ByteString(Vec<u8>),
     Char(char),
     Bool(bool),
-    Byte(u8),
-    Int, // this and float need additional information
-    Float,
+    Int(u64, UncertainIntTy),
+    Float(u64, UncertainFloatTy), // FIXME: f64 is not Eq
     Tuple { values: Vec<ExprId> },
     Array { values: Vec<ExprId> },
 }
@@ -328,13 +328,7 @@ impl Expr {
                         f(val);
                     }
                 }
-                Literal::String(..)
-                | Literal::ByteString(..)
-                | Literal::Byte(..)
-                | Literal::Bool(..)
-                | Literal::Char(..)
-                | Literal::Int
-                | Literal::Float => {}
+                _ => {}
             },
         }
     }
@@ -669,8 +663,43 @@ impl ExprCollector {
 
                 if let Some(c) = child {
                     let lit = match c.kind() {
-                        SyntaxKind::INT_NUMBER => Literal::Int,
-                        SyntaxKind::FLOAT_NUMBER => Literal::Float,
+                        SyntaxKind::INT_NUMBER => {
+                            let text = c.text().to_string();
+
+                            // FIXME: don't do it like this. maybe use something like
+                            // the IntTy::from_name functions
+                            let ty = if text.ends_with("isize") {
+                                UncertainIntTy::Signed(IntTy::Isize)
+                            } else if text.ends_with("i128") {
+                                UncertainIntTy::Signed(IntTy::I128)
+                            } else if text.ends_with("i64") {
+                                UncertainIntTy::Signed(IntTy::I64)
+                            } else if text.ends_with("i32") {
+                                UncertainIntTy::Signed(IntTy::I32)
+                            } else if text.ends_with("i16") {
+                                UncertainIntTy::Signed(IntTy::I16)
+                            } else if text.ends_with("i8") {
+                                UncertainIntTy::Signed(IntTy::I8)
+                            } else if text.ends_with("usize") {
+                                UncertainIntTy::Unsigned(UintTy::Usize)
+                            } else if text.ends_with("u128") {
+                                UncertainIntTy::Unsigned(UintTy::U128)
+                            } else if text.ends_with("u64") {
+                                UncertainIntTy::Unsigned(UintTy::U64)
+                            } else if text.ends_with("u32") {
+                                UncertainIntTy::Unsigned(UintTy::U32)
+                            } else if text.ends_with("u16") {
+                                UncertainIntTy::Unsigned(UintTy::U16)
+                            } else if text.ends_with("u8") {
+                                UncertainIntTy::Unsigned(UintTy::U8)
+                            } else {
+                                UncertainIntTy::Unknown
+                            };
+
+                            // TODO: actually parse integer
+                            Literal::Int(0u64, ty)
+                        }
+                        SyntaxKind::FLOAT_NUMBER => Literal::Float(0, UncertainFloatTy::Unknown),
                         SyntaxKind::STRING => {
                             // FIXME: this likely includes the " characters
                             let text = c.text().to_string();
@@ -698,7 +727,10 @@ impl ExprCollector {
                         }
                         SyntaxKind::BYTE => {
                             let character = c.text().char_at(1).unwrap_or('X');
-                            Literal::Byte(character as u8)
+                            Literal::Int(
+                                character as u8 as u64,
+                                UncertainIntTy::Unsigned(UintTy::U8),
+                            )
                         }
                         _ => return self.alloc_expr(Expr::Missing, syntax_ptr),
                     };

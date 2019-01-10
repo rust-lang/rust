@@ -14,7 +14,7 @@
 //! rustc.
 
 mod autoderef;
-mod primitive;
+pub(crate) mod primitive;
 #[cfg(test)]
 mod tests;
 pub(crate) mod method_resolution;
@@ -151,14 +151,13 @@ pub enum Ty {
     /// (a non-surrogate code point). Written as `char`.
     Char,
 
-    /// A primitive signed integer type. For example, `i32`.
-    Int(primitive::IntTy),
+    /// A primitive integer type. For example, `i32`.
+    Int(primitive::UncertainIntTy),
 
-    /// A primitive unsigned integer type. For example, `u32`.
-    Uint(primitive::UintTy),
-
+    // /// A primitive unsigned integer type. For example, `u32`.
+    // Uint(primitive::UintTy),
     /// A primitive floating-point type. For example, `f64`.
-    Float(primitive::FloatTy),
+    Float(primitive::UncertainFloatTy),
 
     /// Structures, enumerations and unions.
     Adt {
@@ -318,11 +317,9 @@ impl Ty {
                 return Ok(Ty::Char);
             } else if let Some(KnownName::Str) = name.as_known_name() {
                 return Ok(Ty::Str);
-            } else if let Some(int_ty) = primitive::IntTy::from_name(name) {
+            } else if let Some(int_ty) = primitive::UncertainIntTy::from_name(name) {
                 return Ok(Ty::Int(int_ty));
-            } else if let Some(uint_ty) = primitive::UintTy::from_name(name) {
-                return Ok(Ty::Uint(uint_ty));
-            } else if let Some(float_ty) = primitive::FloatTy::from_name(name) {
+            } else if let Some(float_ty) = primitive::UncertainFloatTy::from_name(name) {
                 return Ok(Ty::Float(float_ty));
             } else if name.as_known_name() == Some(KnownName::SelfType) {
                 return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target_type()));
@@ -392,7 +389,6 @@ impl fmt::Display for Ty {
             Ty::Bool => write!(f, "bool"),
             Ty::Char => write!(f, "char"),
             Ty::Int(t) => write!(f, "{}", t.ty_to_string()),
-            Ty::Uint(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Str => write!(f, "str"),
             Ty::Slice(t) => write!(f, "[{}]", t),
@@ -587,7 +583,7 @@ fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match rhs_ty {
-            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) => rhs_ty,
+            Ty::Int(..) | Ty::Float(..) => rhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::RangeRightOpen | BinaryOp::RangeRightClosed => Ty::Unknown,
@@ -598,7 +594,7 @@ fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
     match op {
         BinaryOp::BooleanAnd | BinaryOp::BooleanOr => Ty::Bool,
         BinaryOp::Assignment | BinaryOp::EqualityTest => match lhs_ty {
-            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) | Ty::Str | Ty::Char | Ty::Bool => lhs_ty,
+            Ty::Int(..) | Ty::Float(..) | Ty::Str | Ty::Char | Ty::Bool => lhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::LesserEqualTest
@@ -625,7 +621,7 @@ fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match lhs_ty {
-            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) => lhs_ty,
+            Ty::Int(..) | Ty::Float(..) => lhs_ty,
             _ => Ty::Unknown,
         },
         _ => Ty::Unknown,
@@ -695,13 +691,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match (&*ty1, &*ty2) {
             (Ty::Unknown, ..) => true,
             (.., Ty::Unknown) => true,
-            (Ty::Bool, _)
-            | (Ty::Str, _)
-            | (Ty::Never, _)
-            | (Ty::Char, _)
-            | (Ty::Int(..), Ty::Int(..))
-            | (Ty::Uint(..), Ty::Uint(..))
-            | (Ty::Float(..), Ty::Float(..)) => ty1 == ty2,
+            (Ty::Int(t1), Ty::Int(t2)) => match (t1, t2) {
+                (primitive::UncertainIntTy::Unknown, _)
+                | (_, primitive::UncertainIntTy::Unknown) => true,
+                _ => t1 == t2,
+            },
+            (Ty::Float(t1), Ty::Float(t2)) => match (t1, t2) {
+                (primitive::UncertainFloatTy::Unknown, _)
+                | (_, primitive::UncertainFloatTy::Unknown) => true,
+                _ => t1 == t2,
+            },
+            (Ty::Bool, _) | (Ty::Str, _) | (Ty::Never, _) | (Ty::Char, _) => ty1 == ty2,
             (
                 Ty::Adt {
                     def_id: def_id1, ..
@@ -1071,11 +1071,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Literal::Bool(..) => Ty::Bool,
                 Literal::String(..) => Ty::Ref(Arc::new(Ty::Str), Mutability::Shared),
                 Literal::ByteString(..) => {
-                    let byte_type = Arc::new(Ty::Uint(primitive::UintTy::U8));
+                    let byte_type = Arc::new(Ty::Int(primitive::UncertainIntTy::Unsigned(
+                        primitive::UintTy::U8,
+                    )));
                     let slice_type = Arc::new(Ty::Slice(byte_type));
                     Ty::Ref(slice_type, Mutability::Shared)
                 }
-                Literal::Byte(..) => Ty::Uint(primitive::UintTy::U8),
                 Literal::Char(..) => Ty::Char,
                 Literal::Tuple { values } => {
                     let mut inner_tys = Vec::new();
@@ -1095,8 +1096,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // available
                     Ty::Slice(Arc::new(inner_ty))
                 }
-                // TODO
-                Literal::Int | Literal::Float => Ty::Unknown,
+                Literal::Int(_v, ty) => Ty::Int(*ty),
+                Literal::Float(_v, ty) => Ty::Float(*ty),
             },
         };
         // use a new type variable if we got Ty::Unknown here
