@@ -17,6 +17,8 @@ macro_rules! ctry {
 pub mod db;
 #[cfg(test)]
 mod mock;
+#[macro_use]
+mod marks;
 mod query_definitions;
 mod path;
 pub mod source_binder;

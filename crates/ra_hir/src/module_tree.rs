@@ -14,7 +14,7 @@ use ra_arena::{Arena, RawId, impl_arena_id};
 use crate::{Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource};
 
 impl ModuleSource {
-    pub fn from_source_item_id(
+    pub(crate) fn from_source_item_id(
         db: &impl HirDatabase,
         source_item_id: SourceItemId,
     ) -> ModuleSource {
@@ -217,6 +217,10 @@ fn modules(root: &impl ast::ModuleItemOwner) -> impl Iterator<Item = (Name, &ast
         })
         .filter_map(|module| {
             let name = module.name()?.as_name();
+            if !module.has_semi() && module.item_list().is_none() {
+                tested_by!(name_res_works_for_broken_modules);
+                return None;
+            }
             Some((name, module))
         })
 }
