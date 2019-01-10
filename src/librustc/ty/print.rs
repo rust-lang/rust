@@ -60,15 +60,32 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     }
 }
 
-pub struct PrintCx<'a, 'gcx, 'tcx, P> {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub printer: P,
+pub(crate) struct PrintConfig {
     pub(crate) is_debug: bool,
     pub(crate) is_verbose: bool,
     pub(crate) identify_regions: bool,
     pub(crate) used_region_names: Option<FxHashSet<InternedString>>,
     pub(crate) region_index: usize,
     pub(crate) binder_depth: usize,
+}
+
+impl PrintConfig {
+    pub(crate) fn new(tcx: TyCtxt<'_, '_, '_>) -> Self {
+        PrintConfig {
+            is_debug: false,
+            is_verbose: tcx.sess.verbose(),
+            identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
+            used_region_names: None,
+            region_index: 0,
+            binder_depth: 0,
+        }
+    }
+}
+
+pub struct PrintCx<'a, 'gcx, 'tcx, P> {
+    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub printer: P,
+    pub(crate) config: &'a mut PrintConfig,
 }
 
 // HACK(eddyb) this is solely for `self: &mut PrintCx<Self>`, e.g. to
@@ -80,30 +97,29 @@ impl<P> Deref for PrintCx<'_, '_, '_, P> {
     }
 }
 
-impl<P> PrintCx<'a, 'gcx, 'tcx, P> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, printer: P) -> Self {
-        PrintCx {
+impl<'a, 'gcx, 'tcx, P> PrintCx<'a, 'gcx, 'tcx, P> {
+    pub fn with<R>(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        printer: P,
+        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, P>) -> R,
+    ) -> R {
+        f(PrintCx {
             tcx,
             printer,
-            is_debug: false,
-            is_verbose: tcx.sess.verbose(),
-            identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
-            used_region_names: None,
-            region_index: 0,
-            binder_depth: 0,
-        }
+            config: &mut PrintConfig::new(tcx),
+        })
     }
 
-    pub(crate) fn with<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
-        ty::tls::with(|tcx| f(PrintCx::new(tcx, printer)))
+    pub(crate) fn with_tls_tcx<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
+        ty::tls::with(|tcx| PrintCx::with(tcx, printer, f))
     }
     pub(crate) fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
     where T: TypeFoldable<'tcx>
     {
         let mut collector = LateBoundRegionNameCollector(Default::default());
         value.visit_with(&mut collector);
-        self.used_region_names = Some(collector.0);
-        self.region_index = 0;
+        self.config.used_region_names = Some(collector.0);
+        self.config.region_index = 0;
     }
 }
 
@@ -116,17 +132,17 @@ pub trait Print<'tcx, P> {
         &self,
         cx: &mut PrintCx<'_, '_, 'tcx, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let old_debug = cx.is_debug;
-        cx.is_debug = false;
+        let old_debug = cx.config.is_debug;
+        cx.config.is_debug = false;
         let result = self.print(cx);
-        cx.is_debug = old_debug;
+        cx.config.is_debug = old_debug;
         result
     }
     fn print_debug(&self, cx: &mut PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
-        let old_debug = cx.is_debug;
-        cx.is_debug = true;
+        let old_debug = cx.config.is_debug;
+        cx.config.is_debug = true;
         let result = self.print(cx);
-        cx.is_debug = old_debug;
+        cx.config.is_debug = old_debug;
         result
     }
 }
@@ -215,8 +231,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let ns = self.guess_def_namespace(def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         let mut s = String::new();
-        let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
-            .print_def_path(def_id, None, ns, iter::empty());
+        let _ = PrintCx::with(self, FmtPrinter { fmt: &mut s }, |mut cx| {
+            cx.print_def_path(def_id, None, ns, iter::empty())
+        });
         s
     }
 }
@@ -613,7 +630,7 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         });
 
         // Don't print args that are the defaults of their respective parameters.
-        let num_supplied_defaults = if self.is_verbose {
+        let num_supplied_defaults = if self.config.is_verbose {
             0
         } else {
             params.iter().rev().take_while(|param| {

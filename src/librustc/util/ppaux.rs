@@ -161,7 +161,7 @@ impl RegionHighlightMode {
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
+            PrintCx::with_tls_tcx(FmtPrinter { fmt: f }, |mut cx| {
                 $with(&cx.tcx.lift(self).expect("could not lift for printing"), &mut cx)
             })
         }
@@ -197,7 +197,7 @@ macro_rules! gen_print_impl {
             type Error = fmt::Error;
             fn print(&$self, $cx: &mut PrintCx<'_, '_, 'tcx, P>) -> fmt::Result {
                 define_scoped_cx!($cx);
-                if $cx.is_debug $dbg
+                if $cx.config.is_debug $dbg
                 else $disp
             }
         }
@@ -208,7 +208,7 @@ macro_rules! gen_print_impl {
             type Error = fmt::Error;
             fn print(&$self, $cx: &mut PrintCx<'_, '_, 'tcx, P>) -> fmt::Result {
                 define_scoped_cx!($cx);
-                if $cx.is_debug $dbg
+                if $cx.config.is_debug $dbg
                 else $disp
             }
         }
@@ -316,7 +316,7 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         // clearly differentiate between named and unnamed regions in
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
-        if self.binder_depth == 0 {
+        if self.config.binder_depth == 0 {
             self.prepare_late_bound_region_info(value);
         }
 
@@ -337,7 +337,7 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         // is disallowed (name resolution thinks `scoped_cx!` is ambiguous).
         define_scoped_cx!(self);
 
-        let old_region_index = self.region_index;
+        let old_region_index = self.config.region_index;
         let mut region_index = old_region_index;
         let new_value = self.tcx.replace_late_bound_regions(value, |br| {
             let _ = start_or_continue(self, "for<", ", ");
@@ -365,16 +365,16 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         start_or_continue(self, "", "> ")?;
 
         // Push current state to gcx, and restore after writing new_value.
-        self.binder_depth += 1;
-        self.region_index = region_index;
+        self.config.binder_depth += 1;
+        self.config.region_index = region_index;
         let result = new_value.print_display(self);
-        self.region_index = old_region_index;
-        self.binder_depth -= 1;
+        self.config.region_index = old_region_index;
+        self.config.binder_depth -= 1;
         result
     }
 
     fn is_name_used(&self, name: &InternedString) -> bool {
-        match self.used_region_names {
+        match self.config.used_region_names {
             Some(ref names) => names.contains(name),
             None => false,
         }
@@ -387,7 +387,7 @@ pub fn parameterized<F: fmt::Write>(
     substs: SubstsRef<'_>,
     ns: Namespace,
 ) -> fmt::Result {
-    PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
+    PrintCx::with_tls_tcx(FmtPrinter { fmt: f }, |mut cx| {
         let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
         let _ = cx.print_def_path(did, Some(substs), ns, iter::empty())?;
         Ok(())
@@ -404,8 +404,9 @@ define_print! {
                 let mut resugared_principal = false;
 
                 // Special-case `Fn(...) -> ...` and resugar it.
-                if !cx.is_verbose && cx.tcx.lang_items().fn_trait_kind(principal.def_id).is_some() {
-                    if let Tuple(ref args) = principal.substs.type_at(0).sty {
+                let fn_trait_kind = cx.tcx.lang_items().fn_trait_kind(principal.def_id);
+                if !cx.config.is_verbose && fn_trait_kind.is_some() {
+                    if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
                         let mut projections = self.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
                             let _ = cx.print_def_path(
@@ -486,7 +487,7 @@ impl fmt::Debug for ty::GenericParamDef {
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
+        PrintCx::with_tls_tcx(FmtPrinter { fmt: f }, |mut cx| {
             let _ = cx.print_def_path(
                 self.def_id,
                 None,
@@ -500,7 +501,7 @@ impl fmt::Debug for ty::TraitDef {
 
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
+        PrintCx::with_tls_tcx(FmtPrinter { fmt: f }, |mut cx| {
             let _ = cx.print_def_path(
                 self.did,
                 None,
@@ -522,7 +523,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
+        PrintCx::with_tls_tcx(FmtPrinter { fmt: f }, |mut cx| {
             define_scoped_cx!(cx);
             p!(write("UpvarId({:?};`{}`;{:?})",
                 self.var_path.hir_id,
@@ -592,7 +593,7 @@ define_print! {
 define_print! {
     () ty::BoundRegion, (self, cx) {
         display {
-            if cx.is_verbose {
+            if cx.config.is_verbose {
                 return self.print_debug(cx);
             }
 
@@ -630,7 +631,7 @@ define_print! {
 // NB: this must be kept in sync with the printing logic above.
 impl ty::BoundRegion {
     fn display_outputs_anything<P>(&self, cx: &mut PrintCx<'_, '_, '_, P>) -> bool {
-        if cx.is_verbose {
+        if cx.config.is_verbose {
             return true;
         }
 
@@ -654,7 +655,7 @@ impl ty::BoundRegion {
 define_print! {
     () ty::PlaceholderRegion, (self, cx) {
         display {
-            if cx.is_verbose {
+            if cx.config.is_verbose {
                 return self.print_debug(cx);
             }
 
@@ -673,7 +674,7 @@ define_print! {
 // NB: this must be kept in sync with the printing logic above.
 impl ty::PlaceholderRegion {
     fn display_outputs_anything<P>(&self, cx: &mut PrintCx<'_, '_, '_, P>) -> bool {
-        if cx.is_verbose {
+        if cx.config.is_verbose {
             return true;
         }
 
@@ -689,7 +690,7 @@ impl ty::PlaceholderRegion {
 define_print! {
     () ty::RegionKind, (self, cx) {
         display {
-            if cx.is_verbose {
+            if cx.config.is_verbose {
                 return self.print_debug(cx);
             }
 
@@ -717,7 +718,7 @@ define_print! {
                 ty::RePlaceholder(p) => {
                     p!(print_display(p))
                 }
-                ty::ReScope(scope) if cx.identify_regions => {
+                ty::ReScope(scope) if cx.config.identify_regions => {
                     match scope.data {
                         region::ScopeData::Node =>
                             p!(write("'{}s", scope.item_local_id().as_usize())),
@@ -734,7 +735,7 @@ define_print! {
                         )),
                     }
                 }
-                ty::ReVar(region_vid) if cx.identify_regions => {
+                ty::ReVar(region_vid) if cx.config.identify_regions => {
                     p!(print_debug(region_vid))
                 }
                 ty::ReVar(region_vid) => {
@@ -801,7 +802,7 @@ define_print! {
 impl ty::RegionKind {
     // HACK(eddyb) `pub(crate)` only for `ty::print`.
     pub(crate) fn display_outputs_anything<P>(&self, cx: &mut PrintCx<'_, '_, '_, P>) -> bool {
-        if cx.is_verbose {
+        if cx.config.is_verbose {
             return true;
         }
 
@@ -822,7 +823,7 @@ impl ty::RegionKind {
             ty::RePlaceholder(p) => p.display_outputs_anything(cx),
 
             ty::ReScope(_) |
-            ty::ReVar(_) if cx.identify_regions => true,
+            ty::ReVar(_) if cx.config.identify_regions => true,
 
             ty::ReVar(region_vid) => region_vid.display_outputs_anything(cx),
 
@@ -905,7 +906,7 @@ impl fmt::Debug for ty::FloatVid {
 define_print! {
     () ty::RegionVid, (self, cx) {
         display {
-            if cx.is_verbose {
+            if cx.config.is_verbose {
                 return self.print_debug(cx);
             }
 
@@ -934,7 +935,7 @@ define_print! {
 // NB: this must be kept in sync with the printing logic above.
 impl ty::RegionVid {
     fn display_outputs_anything<P>(&self, cx: &mut PrintCx<'_, '_, '_, P>) -> bool {
-        if cx.is_verbose {
+        if cx.config.is_verbose {
             return true;
         }
 
@@ -950,7 +951,7 @@ impl ty::RegionVid {
 define_print! {
     () ty::InferTy, (self, cx) {
         display {
-            if cx.is_verbose {
+            if cx.config.is_verbose {
                 return self.print_debug(cx);
             }
             match *self {
@@ -997,7 +998,7 @@ impl fmt::Debug for ty::FloatVarValue {
           for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with(|cx| cx.in_binder(cx.tcx.lift(self)
+        PrintCx::with_tls_tcx(|cx| cx.in_binder(cx.tcx.lift(self)
             .expect("could not lift for printing")))
     }
 }*/
@@ -1146,7 +1147,7 @@ define_print! {
                     p!(write("Placeholder({:?})", placeholder))
                 }
                 Opaque(def_id, substs) => {
-                    if cx.is_verbose {
+                    if cx.config.is_verbose {
                         return p!(write("Opaque({:?}, {:?})", def_id, substs));
                     }
 
