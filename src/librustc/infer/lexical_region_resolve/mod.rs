@@ -274,6 +274,13 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.tcx();
+
+        // Equal scopes can show up quite often, if the fixed point
+        // iteration converges slowly, skip them
+        if a == b {
+            return a;
+        }
+
         match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
