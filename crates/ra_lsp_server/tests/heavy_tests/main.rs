@@ -1,5 +1,10 @@
 mod support;
 
+use std::{
+    collections::HashMap,
+    time::Instant,
+};
+
 use languageserver_types::{
     CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range,
 };
@@ -14,6 +19,7 @@ const LOG: &'static str = "";
 
 #[test]
 fn completes_items_from_standard_library() {
+    let project_start = Instant::now();
     let server = project(
         r#"
 //- Cargo.toml
@@ -22,33 +28,19 @@ name = "foo"
 version = "0.0.0"
 
 //- src/lib.rs
-use std::collections::;
+use std::collections::Spam;
 "#,
     );
     server.wait_for_feedback("workspace loaded");
-    server.request::<Completion>(
-        CompletionParams {
-            text_document: server.doc_id("src/lib.rs"),
-            context: None,
-            position: Position::new(0, 22),
-        },
-        json!([
-          {
-            "filterText": "self",
-            "insertText": "self",
-            "insertTextFormat": 1,
-            "kind": 14,
-            "label": "self"
-          },
-          {
-            "filterText": "super",
-            "insertText": "super",
-            "insertTextFormat": 1,
-            "kind": 14,
-            "label": "super"
-          }
-        ]),
-    );
+    eprintln!("loading took    {:?}", project_start.elapsed());
+    let completion_start = Instant::now();
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document: server.doc_id("src/lib.rs"),
+        context: None,
+        position: Position::new(0, 23),
+    });
+    assert!(format!("{}", res).contains("HashMap"));
+    eprintln!("completion took {:?}", completion_start.elapsed());
 }
 
 #[test]
@@ -161,7 +153,6 @@ fn test_eggs() {}
     );
 }
 
-use std::collections::HashMap;
 #[test]
 fn test_format_document() {
     let server = project(

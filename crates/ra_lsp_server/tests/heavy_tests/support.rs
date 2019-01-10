@@ -93,9 +93,7 @@ impl Server {
         R: Request,
         R::Params: Serialize,
     {
-        let id = self.req_id.get();
-        self.req_id.set(id + 1);
-        let actual = self.send_request::<R>(id, params);
+        let actual = self.send_request::<R>(params);
         match find_mismatch(&expected_resp, &actual) {
             Some((expected_part, actual_part)) => panic!(
                 "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",
@@ -108,11 +106,14 @@ impl Server {
         }
     }
 
-    fn send_request<R>(&self, id: u64, params: R::Params) -> Value
+    pub fn send_request<R>(&self, params: R::Params) -> Value
     where
         R: Request,
         R::Params: Serialize,
     {
+        let id = self.req_id.get();
+        self.req_id.set(id + 1);
+
         let r = RawRequest::new::<R>(id, &params);
         self.send_request_(r)
     }
@@ -178,7 +179,7 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        self.send_request::<Shutdown>(666, ());
+        self.send_request::<Shutdown>(());
         let receiver = self.worker.take().unwrap().shutdown();
         while let Some(msg) = recv_timeout(&receiver) {
             drop(msg);
@@ -188,7 +189,7 @@ impl Drop for Server {
 }
 
 fn recv_timeout(receiver: &Receiver<RawMessage>) -> Option<RawMessage> {
-    let timeout = Duration::from_secs(5);
+    let timeout = Duration::from_secs(50);
     select! {
         recv(receiver) -> msg => msg.ok(),
         recv(after(timeout)) -> _ => panic!("timed out"),

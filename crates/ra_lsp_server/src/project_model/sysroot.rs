@@ -20,13 +20,17 @@ impl_arena_id!(SysrootCrate);
 #[derive(Debug, Clone)]
 struct SysrootCrateData {
     name: SmolStr,
-    path: PathBuf,
+    root: PathBuf,
     deps: Vec<SysrootCrate>,
 }
 
 impl Sysroot {
     pub(crate) fn std(&self) -> Option<SysrootCrate> {
         self.by_name("std")
+    }
+
+    pub(crate) fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + 'a {
+        self.crates.iter().map(|(id, _data)| id)
     }
 
     pub(super) fn discover(cargo_toml: &Path) -> Result<Sysroot> {
@@ -45,11 +49,11 @@ impl Sysroot {
             crates: Arena::default(),
         };
         for name in SYSROOT_CRATES.trim().lines() {
-            let path = src.join(format!("lib{}", name)).join("lib.rs");
-            if path.exists() {
+            let root = src.join(format!("lib{}", name)).join("lib.rs");
+            if root.exists() {
                 sysroot.crates.alloc(SysrootCrateData {
                     name: name.into(),
-                    path,
+                    root,
                     deps: Vec::new(),
                 });
             }
@@ -69,6 +73,21 @@ impl Sysroot {
             .iter()
             .find(|(_id, data)| data.name == name)
             .map(|(id, _data)| id)
+    }
+}
+
+impl SysrootCrate {
+    pub(crate) fn name(self, sysroot: &Sysroot) -> &SmolStr {
+        &sysroot.crates[self].name
+    }
+    pub(crate) fn root(self, sysroot: &Sysroot) -> &Path {
+        sysroot.crates[self].root.as_path()
+    }
+    pub(crate) fn root_dir(self, sysroot: &Sysroot) -> &Path {
+        self.root(sysroot).parent().unwrap()
+    }
+    pub(crate) fn deps<'a>(self, sysroot: &'a Sysroot) -> impl Iterator<Item = SysrootCrate> + 'a {
+        sysroot.crates[self].deps.iter().map(|&it| it)
     }
 }
 
