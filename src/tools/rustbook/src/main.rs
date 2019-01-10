@@ -1,21 +1,24 @@
 //
-extern crate mdbook;
-#[macro_use]
-extern crate clap;
+use clap::{crate_version};
 
 use std::env;
 use std::path::{Path, PathBuf};
 
 use clap::{App, ArgMatches, SubCommand, AppSettings};
 
-use mdbook::MDBook;
-use mdbook::errors::Result;
+use mdbook_1::{MDBook as MDBook1};
+use mdbook_1::errors::{Result as Result1};
+
+use mdbook_2::{MDBook as MDBook2};
+use mdbook_2::errors::{Result as Result2};
 
 fn main() {
     let d_message = "-d, --dest-dir=[dest-dir]
 'The output directory for your book{n}(Defaults to ./book when omitted)'";
     let dir_message = "[dir]
 'A directory for your book{n}(Defaults to Current Directory when omitted)'";
+    let vers_message = "-m, --mdbook-vers=[md-version]
+'The version of mdbook to use for your book{n}(Defaults to 1 when omitted)'";
 
     let matches = App::new("rustbook")
                     .about("Build a book with mdBook")
@@ -25,29 +28,66 @@ fn main() {
                     .subcommand(SubCommand::with_name("build")
                         .about("Build the book from the markdown files")
                         .arg_from_usage(d_message)
-                        .arg_from_usage(dir_message))
+                        .arg_from_usage(dir_message)
+                        .arg_from_usage(vers_message))
                     .get_matches();
 
     // Check which subcomamnd the user ran...
-    let res = match matches.subcommand() {
-        ("build", Some(sub_matches)) => build(sub_matches),
+    match matches.subcommand() {
+        ("build", Some(sub_matches)) => {
+            match sub_matches.value_of("mdbook-vers") {
+                None | Some("1") => {
+                    if let Err(e) = build_1(sub_matches) {
+                        eprintln!("Error: {}", e);
+
+                        for cause in e.iter().skip(1) {
+                            eprintln!("\tCaused By: {}", cause);
+                        }
+
+                        ::std::process::exit(101);
+                    }
+                }
+                Some("2") => {
+                    if let Err(e) = build_2(sub_matches) {
+                        eprintln!("Error: {}", e);
+
+                        for cause in e.iter().skip(1) {
+                            eprintln!("\tCaused By: {}", cause);
+                        }
+
+                        ::std::process::exit(101);
+                    }
+                }
+                _ => {
+                    panic!("Invalid mdBook version! Select '1' or '2'");
+                }
+            };
+        },
         (_, _) => unreachable!(),
     };
-
-    if let Err(e) = res {
-        eprintln!("Error: {}", e);
-
-        for cause in e.iter().skip(1) {
-            eprintln!("\tCaused By: {}", cause);
-        }
-
-        ::std::process::exit(101);
-    }
 }
+
 // Build command implementation
-pub fn build(args: &ArgMatches) -> Result<()> {
+pub fn build_1(args: &ArgMatches) -> Result1<()> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::load(&book_dir)?;
+    let mut book = MDBook1::load(&book_dir)?;
+
+    // Set this to allow us to catch bugs in advance.
+    book.config.build.create_missing = false;
+
+    if let Some(dest_dir) = args.value_of("dest-dir") {
+        book.config.build.build_dir = PathBuf::from(dest_dir);
+    }
+
+    book.build()?;
+
+    Ok(())
+}
+
+// Build command implementation
+pub fn build_2(args: &ArgMatches) -> Result2<()> {
+    let book_dir = get_book_dir(args);
+    let mut book = MDBook2::load(&book_dir)?;
 
     // Set this to allow us to catch bugs in advance.
     book.config.build.create_missing = false;
