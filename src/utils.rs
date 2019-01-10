@@ -527,8 +527,10 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
                 Some(get_prefix_space_width(config, &line))
             };
 
-            let line = if veto_trim || (kind.is_string() && !line.ends_with('\\')) {
-                veto_trim = kind.is_string() && !line.ends_with('\\');
+            let new_veto_trim_value =
+                (kind.is_string() || kind.is_commented_string()) && !line.ends_with('\\');
+            let line = if veto_trim || new_veto_trim_value {
+                veto_trim = new_veto_trim_value;
                 trimmed = false;
                 line
             } else {
@@ -536,10 +538,13 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
             };
             trimmed_lines.push((trimmed, line, prefix_space_width));
 
-            // When computing the minimum, do not consider lines within a string.
-            // The reason is there is a veto against trimming and indenting such lines
+            // Because there is a veto against trimming and indenting lines within a string,
+            // such lines should not be taken into account when computing the minimum.
             match kind {
-                FullCodeCharKind::InString | FullCodeCharKind::EndString => None,
+                FullCodeCharKind::InString
+                | FullCodeCharKind::EndString
+                | FullCodeCharKind::InStringCommented
+                | FullCodeCharKind::EndStringCommented => None,
                 _ => prefix_space_width,
             }
         })

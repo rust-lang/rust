@@ -1029,21 +1029,28 @@ impl RichChar for (usize, char) {
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum CharClassesStatus {
     Normal,
+    /// Character is within a string
     LitString,
     LitStringEscape,
+    /// Character is within a raw string
     LitRawString(u32),
     RawStringPrefix(u32),
     RawStringSuffix(u32),
     LitChar,
     LitCharEscape,
-    // The u32 is the nesting deepness of the comment
+    /// Character inside a block comment, with the integer indicating the nesting deepness of the
+    /// comment
     BlockComment(u32),
-    // Status when the '/' has been consumed, but not yet the '*', deepness is
-    // the new deepness (after the comment opening).
+    /// Character inside a block-commented string, with the integer indicating the nesting deepness
+    /// of the comment
+    StringInBlockComment(u32),
+    /// Status when the '/' has been consumed, but not yet the '*', deepness is
+    /// the new deepness (after the comment opening).
     BlockCommentOpening(u32),
-    // Status when the '*' has been consumed, but not yet the '/', deepness is
-    // the new deepness (after the comment closing).
+    /// Status when the '*' has been consumed, but not yet the '/', deepness is
+    /// the new deepness (after the comment closing).
     BlockCommentClosing(u32),
+    /// Character is within a line comment
     LineComment,
 }
 
@@ -1067,6 +1074,12 @@ pub enum FullCodeCharKind {
     InComment,
     /// Last character of a comment, '\n' for a line comment, '/' for a block comment.
     EndComment,
+    /// Start of a mutlitine string inside a comment
+    StartStringCommented,
+    /// End of a mutlitine string inside a comment
+    EndStringCommented,
+    /// Inside a commented string
+    InStringCommented,
     /// Start of a mutlitine string
     StartString,
     /// End of a mutlitine string
@@ -1080,13 +1093,33 @@ impl FullCodeCharKind {
         match self {
             FullCodeCharKind::StartComment
             | FullCodeCharKind::InComment
-            | FullCodeCharKind::EndComment => true,
+            | FullCodeCharKind::EndComment
+            | FullCodeCharKind::StartStringCommented
+            | FullCodeCharKind::InStringCommented
+            | FullCodeCharKind::EndStringCommented => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if the character is inside a comment
+    pub fn inside_comment(self) -> bool {
+        match self {
+            FullCodeCharKind::InComment
+            | FullCodeCharKind::StartStringCommented
+            | FullCodeCharKind::InStringCommented
+            | FullCodeCharKind::EndStringCommented => true,
             _ => false,
         }
     }
 
     pub fn is_string(self) -> bool {
         self == FullCodeCharKind::InString || self == FullCodeCharKind::StartString
+    }
+
+    /// Returns true if the character is within a commented string
+    pub fn is_commented_string(self) -> bool {
+        self == FullCodeCharKind::InStringCommented
+            || self == FullCodeCharKind::StartStringCommented
     }
 
     fn to_codecharkind(self) -> CodeCharKind {
@@ -1232,18 +1265,27 @@ where
                 },
                 _ => CharClassesStatus::Normal,
             },
+            CharClassesStatus::StringInBlockComment(deepness) => {
+                char_kind = FullCodeCharKind::InStringCommented;
+                if chr == '"' {
+                    CharClassesStatus::BlockComment(deepness)
+                } else {
+                    CharClassesStatus::StringInBlockComment(deepness)
+                }
+            }
             CharClassesStatus::BlockComment(deepness) => {
                 assert_ne!(deepness, 0);
-                self.status = match self.base.peek() {
+                char_kind = FullCodeCharKind::InComment;
+                match self.base.peek() {
                     Some(next) if next.get_char() == '/' && chr == '*' => {
                         CharClassesStatus::BlockCommentClosing(deepness - 1)
                     }
                     Some(next) if next.get_char() == '*' && chr == '/' => {
                         CharClassesStatus::BlockCommentOpening(deepness + 1)
                     }
-                    _ => CharClassesStatus::BlockComment(deepness),
-                };
-                return Some((FullCodeCharKind::InComment, item));
+                    _ if chr == '"' => CharClassesStatus::StringInBlockComment(deepness),
+                    _ => self.status,
+                }
             }
             CharClassesStatus::BlockCommentOpening(deepness) => {
                 assert_eq!(chr, '*');
@@ -1299,26 +1341,33 @@ impl<'a> Iterator for LineClasses<'a> {
 
         let mut line = String::new();
 
-        let start_class = match self.base.peek() {
+        let start_kind = match self.base.peek() {
             Some((kind, _)) => *kind,
             None => unreachable!(),
         };
 
         while let Some((kind, c)) = self.base.next() {
+            // needed to set the kind of the ending character on the last line
+            self.kind = kind;
             if c == '\n' {
-                self.kind = match (start_class, kind) {
+                self.kind = match (start_kind, kind) {
                     (FullCodeCharKind::Normal, FullCodeCharKind::InString) => {
                         FullCodeCharKind::StartString
                     }
                     (FullCodeCharKind::InString, FullCodeCharKind::Normal) => {
                         FullCodeCharKind::EndString
                     }
+                    (FullCodeCharKind::InComment, FullCodeCharKind::InStringCommented) => {
+                        FullCodeCharKind::StartStringCommented
+                    }
+                    (FullCodeCharKind::InStringCommented, FullCodeCharKind::InComment) => {
+                        FullCodeCharKind::EndStringCommented
+                    }
                     _ => kind,
                 };
                 break;
-            } else {
-                line.push(c);
             }
+            line.push(c);
         }
 
         // Workaround for CRLF newline.
@@ -1364,7 +1413,12 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
             }
             FullCodeCharKind::StartComment => {
                 // Consume the whole comment
-                while let Some((FullCodeCharKind::InComment, (_, _))) = self.iter.next() {}
+                loop {
+                    match self.iter.next() {
+                        Some((kind, ..)) if kind.inside_comment() => continue,
+                        _ => break,
+                    }
+                }
             }
             _ => panic!(),
         }
