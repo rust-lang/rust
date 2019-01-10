@@ -611,12 +611,12 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
     ) -> Result<P::Path, P::Error> {
         let mut empty = true;
         let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
-            if empty {
+            write!(cx.printer, "{}", if empty {
                 empty = false;
-                write!(cx.printer, "{}", start)
+                start
             } else {
-                write!(cx.printer, "{}", cont)
-            }
+                cont
+            })
         };
 
         let start = if ns == Namespace::ValueNS { "::<" } else { "<" };
