@@ -137,6 +137,35 @@ fn re_exports() {
 }
 
 #[test]
+fn name_res_works_for_broken_modules() {
+    covers!(name_res_works_for_broken_modules);
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo // no `;`, no body
+
+        use self::foo::Baz;
+        <|>
+
+        //- /foo/mod.rs
+        pub mod bar;
+
+        pub use self::bar::Baz;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: _
+        ",
+    );
+}
+
+#[test]
 fn item_map_contains_items_from_expansions() {
     let (item_map, module_id) = item_map(
         "
