@@ -75,6 +75,7 @@ impl Conv for CompletionItem {
     fn conv(self) -> <Self as Conv>::Output {
         let mut res = ::languageserver_types::CompletionItem {
             label: self.label().to_string(),
+            detail: self.detail().map(|it| it.to_string()),
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
             ..Default::default()

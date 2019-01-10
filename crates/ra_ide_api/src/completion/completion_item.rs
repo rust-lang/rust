@@ -11,6 +11,7 @@ pub struct CompletionItem {
     /// completion.
     completion_kind: CompletionKind,
     label: String,
+    detail: Option<String>,
     lookup: Option<String>,
     snippet: Option<String>,
     kind: Option<CompletionItemKind>,
@@ -51,6 +52,7 @@ impl CompletionItem {
         Builder {
             completion_kind,
             label,
+            detail: None,
             lookup: None,
             snippet: None,
             kind: None,
@@ -59,6 +61,10 @@ impl CompletionItem {
     /// What user sees in pop-up in the UI.
     pub fn label(&self) -> &str {
         &self.label
+    }
+    /// Short one-line additional information, like a type
+    pub fn detail(&self) -> Option<&str> {
+        self.detail.as_ref().map(|it| it.as_str())
     }
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
@@ -87,6 +93,7 @@ impl CompletionItem {
 pub(crate) struct Builder {
     completion_kind: CompletionKind,
     label: String,
+    detail: Option<String>,
     lookup: Option<String>,
     snippet: Option<String>,
     kind: Option<CompletionItemKind>,
@@ -100,6 +107,7 @@ impl Builder {
     pub(crate) fn build(self) -> CompletionItem {
         CompletionItem {
             label: self.label,
+            detail: self.detail,
             lookup: self.lookup,
             snippet: self.snippet,
             kind: self.kind,
@@ -116,6 +124,14 @@ impl Builder {
     }
     pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
         self.kind = Some(kind);
+        self
+    }
+    #[allow(unused)]
+    pub(crate) fn detail(self, detail: impl Into<String>) -> Builder {
+        self.set_detail(Some(detail))
+    }
+    pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
+        self.detail = detail.map(Into::into);
         self
     }
     pub(super) fn from_resolution(
@@ -226,6 +242,9 @@ impl Completions {
                     res.push_str(&format!(" {:?}", c.label));
                 } else {
                     res.push_str(&c.label);
+                }
+                if let Some(detail) = &c.detail {
+                    res.push_str(&format!(" {:?}", detail));
                 }
                 if let Some(snippet) = &c.snippet {
                     res.push_str(&format!(" {:?}", snippet));
