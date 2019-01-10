@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
+use ra_arena::{Arena, RawId, impl_arena_id};
 use rustc_hash::FxHashMap;
 use failure::{format_err, bail};
 use thread_worker::{WorkerHandle, Worker};
@@ -17,14 +18,17 @@ use crate::Result;
 /// concepts.
 #[derive(Debug, Clone)]
 pub struct CargoWorkspace {
-    packages: Vec<PackageData>,
-    targets: Vec<TargetData>,
+    packages: Arena<Package, PackageData>,
+    targets: Arena<Target, TargetData>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Package(usize);
+pub struct Package(RawId);
+impl_arena_id!(Package);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Target(usize);
+pub struct Target(RawId);
+impl_arena_id!(Target);
 
 #[derive(Debug, Clone)]
 struct PackageData {
@@ -61,38 +65,38 @@ pub enum TargetKind {
 
 impl Package {
     pub fn name(self, ws: &CargoWorkspace) -> &str {
-        ws.pkg(self).name.as_str()
+        ws.packages[self].name.as_str()
     }
     pub fn root(self, ws: &CargoWorkspace) -> &Path {
-        ws.pkg(self).manifest.parent().unwrap()
+        ws.packages[self].manifest.parent().unwrap()
     }
     pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
-        ws.pkg(self).targets.iter().cloned()
+        ws.packages[self].targets.iter().cloned()
     }
     #[allow(unused)]
     pub fn is_member(self, ws: &CargoWorkspace) -> bool {
-        ws.pkg(self).is_member
+        ws.packages[self].is_member
     }
     pub fn dependencies<'a>(
         self,
         ws: &'a CargoWorkspace,
     ) -> impl Iterator<Item = &'a PackageDependency> + 'a {
-        ws.pkg(self).dependencies.iter()
+        ws.packages[self].dependencies.iter()
     }
 }
 
 impl Target {
     pub fn package(self, ws: &CargoWorkspace) -> Package {
-        ws.tgt(self).pkg
+        ws.targets[self].pkg
     }
     pub fn name(self, ws: &CargoWorkspace) -> &str {
-        ws.tgt(self).name.as_str()
+        ws.targets[self].name.as_str()
     }
     pub fn root(self, ws: &CargoWorkspace) -> &Path {
-        ws.tgt(self).root.as_path()
+        ws.targets[self].root.as_path()
     }
     pub fn kind(self, ws: &CargoWorkspace) -> TargetKind {
-        ws.tgt(self).kind
+        ws.targets[self].kind
     }
 }
 
@@ -106,25 +110,24 @@ impl CargoWorkspace {
         )
         .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
         let mut pkg_by_id = FxHashMap::default();
-        let mut packages = Vec::new();
-        let mut targets = Vec::new();
+        let mut packages = Arena::default();
+        let mut targets = Arena::default();
 
         let ws_members = &meta.workspace_members;
 
         for meta_pkg in meta.packages {
-            let pkg = Package(packages.len());
             let is_member = ws_members.contains(&meta_pkg.id);
-            pkg_by_id.insert(meta_pkg.id.clone(), pkg);
-            let mut pkg_data = PackageData {
+            let pkg = packages.alloc(PackageData {
                 name: meta_pkg.name.into(),
                 manifest: meta_pkg.manifest_path.clone(),
                 targets: Vec::new(),
                 is_member,
                 dependencies: Vec::new(),
-            };
+            });
+            let pkg_data = &mut packages[pkg];
+            pkg_by_id.insert(meta_pkg.id.clone(), pkg);
             for meta_tgt in meta_pkg.targets {
-                let tgt = Target(targets.len());
-                targets.push(TargetData {
+                let tgt = targets.alloc(TargetData {
                     pkg,
                     name: meta_tgt.name.into(),
                     root: meta_tgt.src_path.clone(),
@@ -132,7 +135,6 @@ impl CargoWorkspace {
                 });
                 pkg_data.targets.push(tgt);
             }
-            packages.push(pkg_data)
         }
         let resolve = meta.resolve.expect("metadata executed with deps");
         for node in resolve.nodes {
@@ -142,25 +144,19 @@ impl CargoWorkspace {
                     name: dep_node.name.into(),
                     pkg: pkg_by_id[&dep_node.pkg],
                 };
-                packages[source.0].dependencies.push(dep);
+                packages[source].dependencies.push(dep);
             }
         }
 
         Ok(CargoWorkspace { packages, targets })
     }
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + 'a {
-        (0..self.packages.len()).map(Package)
+        self.packages.iter().map(|(id, _pkg)| id)
     }
     pub fn target_by_root(&self, root: &Path) -> Option<Target> {
         self.packages()
             .filter_map(|pkg| pkg.targets(self).find(|it| it.root(self) == root))
             .next()
-    }
-    fn pkg(&self, pkg: Package) -> &PackageData {
-        &self.packages[pkg.0]
-    }
-    fn tgt(&self, tgt: Target) -> &TargetData {
-        &self.targets[tgt.0]
     }
 }
 
