@@ -1024,7 +1024,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "salsa"
 version = "0.9.1"
-source = "git+https://github.com/matklad/salsa?branch=panic-hooks#add15d83eaa865571cd33e60b2eb611a366ca3ff"
+source = "git+https://github.com/matklad/salsa?branch=panic-hooks#a17757bbaaadeed4839366745b848d66ac991cd0"
 dependencies = [
  "derive-new 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
