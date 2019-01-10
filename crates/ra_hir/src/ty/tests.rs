@@ -145,6 +145,7 @@ fn test() {
     3.14;
     5000;
     (0u32, -5isize);
+    false;
     [true, true, false]
 }
 "#,

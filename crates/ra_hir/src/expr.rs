@@ -699,7 +699,22 @@ impl ExprCollector {
                             // TODO: actually parse integer
                             Literal::Int(0u64, ty)
                         }
-                        SyntaxKind::FLOAT_NUMBER => Literal::Float(0, UncertainFloatTy::Unknown),
+                        SyntaxKind::FLOAT_NUMBER => {
+                            let text = c.text().to_string();
+
+                            // FIXME: don't do it like this. maybe use something like
+                            // the IntTy::from_name functions
+                            let ty = if text.ends_with("f64") {
+                                UncertainFloatTy::Known(FloatTy::F64)
+                            } else if text.ends_with("f32") {
+                                UncertainFloatTy::Known(FloatTy::F32)
+                            } else {
+                                UncertainFloatTy::Unknown
+                            };
+
+                            // TODO: actually parse value
+                            Literal::Float(0, ty)
+                        }
                         SyntaxKind::STRING => {
                             // FIXME: this likely includes the " characters
                             let text = c.text().to_string();

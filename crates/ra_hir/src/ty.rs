@@ -114,6 +114,8 @@ impl UnifyValue for TypeVarValue {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum InferTy {
     TypeVar(TypeVarId),
+    IntVar(TypeVarId),
+    FloatVar(TypeVarId),
 }
 
 /// When inferring an expression, we propagate downward whatever type hint we
@@ -718,12 +720,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .iter()
                 .zip(ts2.iter())
                 .all(|(t1, t2)| self.unify(t1, t2)),
-            (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2))) => {
+            (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
+            | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
+            | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2))) => {
                 // both type vars are unknown since we tried to resolve them
                 self.var_unification_table.union(*tv1, *tv2);
                 true
             }
-            (Ty::Infer(InferTy::TypeVar(tv)), other) | (other, Ty::Infer(InferTy::TypeVar(tv))) => {
+            (Ty::Infer(InferTy::TypeVar(tv)), other)
+            | (other, Ty::Infer(InferTy::TypeVar(tv)))
+            | (Ty::Infer(InferTy::IntVar(tv)), other)
+            | (other, Ty::Infer(InferTy::IntVar(tv)))
+            | (Ty::Infer(InferTy::FloatVar(tv)), other)
+            | (other, Ty::Infer(InferTy::FloatVar(tv))) => {
                 // the type var is unknown since we tried to resolve it
                 self.var_unification_table
                     .union_value(*tv, TypeVarValue::Known(other.clone()));
@@ -739,10 +748,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ))
     }
 
+    fn new_integer_var(&mut self) -> Ty {
+        Ty::Infer(InferTy::IntVar(
+            self.var_unification_table.new_key(TypeVarValue::Unknown),
+        ))
+    }
+
+    fn new_float_var(&mut self) -> Ty {
+        Ty::Infer(InferTy::FloatVar(
+            self.var_unification_table.new_key(TypeVarValue::Unknown),
+        ))
+    }
+
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
             Ty::Unknown => self.new_type_var(),
+            Ty::Int(primitive::UncertainIntTy::Unknown) => self.new_integer_var(),
+            Ty::Float(primitive::UncertainFloatTy::Unknown) => self.new_float_var(),
             _ => ty,
         }
     }
@@ -757,12 +780,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// known type.
     fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
+            Ty::Infer(InferTy::TypeVar(tv))
+            | Ty::Infer(InferTy::IntVar(tv))
+            | Ty::Infer(InferTy::FloatVar(tv)) => {
                 if let Some(known_ty) = self.var_unification_table.probe_value(tv).known() {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_as_possible(known_ty.clone())
                 } else {
-                    Ty::Infer(InferTy::TypeVar(tv))
+                    ty
                 }
             }
             _ => ty,
@@ -790,12 +815,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// replaced by Ty::Unknown.
     fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
+            Ty::Infer(i) => {
+                let tv = match i {
+                    InferTy::TypeVar(tv) | InferTy::IntVar(tv) | InferTy::FloatVar(tv) => tv,
+                };
+
                 if let Some(known_ty) = self.var_unification_table.probe_value(tv).known() {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_completely(known_ty.clone())
                 } else {
-                    Ty::Unknown
+                    match i {
+                        InferTy::TypeVar(..) => Ty::Unknown,
+                        InferTy::IntVar(..) => Ty::Int(primitive::UncertainIntTy::Unknown),
+                        InferTy::FloatVar(..) => Ty::Float(primitive::UncertainFloatTy::Unknown),
+                    }
                 }
             }
             _ => ty,
