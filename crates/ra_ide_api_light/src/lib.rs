@@ -14,6 +14,7 @@ mod test_utils;
 mod join_lines;
 mod typing;
 mod diagnostics;
+pub(crate) mod formatting;
 
 pub use self::{
     assists::LocalEdit,

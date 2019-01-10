@@ -1,14 +1,15 @@
-use std::mem;
-
 use itertools::Itertools;
 use ra_syntax::{
     SourceFile, TextRange, TextUnit, AstNode, SyntaxNode,
-    SyntaxKind::{self, WHITESPACE, COMMA, L_CURLY, R_CURLY, L_PAREN, R_PAREN, L_BRACK, R_BRACK, USE_TREE, DOT},
+    SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
     algo::find_covering_node,
     ast,
 };
 
-use crate::{LocalEdit, TextEditBuilder};
+use crate::{
+    LocalEdit, TextEditBuilder,
+    formatting::{compute_ws, extract_trivial_expression},
+};
 
 pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
@@ -132,32 +133,12 @@ fn remove_newline(
 fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
-    let expr = single_expr(block)?;
+    let expr = extract_trivial_expression(block)?;
     edit.replace(
         block_expr.syntax().range(),
         expr.syntax().text().to_string(),
     );
     Some(())
-}
-
-fn single_expr(block: &ast::Block) -> Option<&ast::Expr> {
-    let mut res = None;
-    for child in block.syntax().children() {
-        if let Some(expr) = ast::Expr::cast(child) {
-            if expr.syntax().text().contains('\n') {
-                return None;
-            }
-            if mem::replace(&mut res, Some(expr)).is_some() {
-                return None;
-            }
-        } else {
-            match child.kind() {
-                WHITESPACE | L_CURLY | R_CURLY => (),
-                _ => return None,
-            }
-        }
-    }
-    res
 }
 
 fn join_single_use_tree(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
@@ -175,29 +156,6 @@ fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
         (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
         _ => false,
     }
-}
-
-fn compute_ws(left: &SyntaxNode, right: &SyntaxNode) -> &'static str {
-    match left.kind() {
-        L_PAREN | L_BRACK => return "",
-        L_CURLY => {
-            if let USE_TREE = right.kind() {
-                return "";
-            }
-        }
-        _ => (),
-    }
-    match right.kind() {
-        R_PAREN | R_BRACK => return "",
-        R_CURLY => {
-            if let USE_TREE = left.kind() {
-                return "";
-            }
-        }
-        DOT => return "",
-        _ => (),
-    }
-    " "
 }
 
 #[cfg(test)]

@@ -1,9 +1,9 @@
-use ra_syntax::{
-    AstNode, SyntaxKind::{L_CURLY, R_CURLY, WHITESPACE},
-    ast,
-};
+use ra_syntax::{AstNode, ast};
 
-use crate::assists::{AssistCtx, Assist};
+use crate::{
+    assists::{AssistCtx, Assist},
+    formatting::extract_trivial_expression,
+};
 
 pub fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
     let if_expr: &ast::IfExpr = ctx.node_at_offset()?;
@@ -39,24 +39,10 @@ fn build_match_expr(
 }
 
 fn format_arm(block: &ast::Block) -> String {
-    match extract_expression(block) {
+    match extract_trivial_expression(block) {
         None => block.syntax().text().to_string(),
         Some(e) => format!("{},", e.syntax().text()),
     }
-}
-
-fn extract_expression(block: &ast::Block) -> Option<&ast::Expr> {
-    let expr = block.expr()?;
-    let non_trivial_children = block.syntax().children().filter(|it| {
-        !(it == &expr.syntax()
-            || it.kind() == L_CURLY
-            || it.kind() == R_CURLY
-            || it.kind() == WHITESPACE)
-    });
-    if non_trivial_children.count() > 0 {
-        return None;
-    }
-    Some(expr)
 }
 
 #[cfg(test)]
