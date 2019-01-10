@@ -46,7 +46,7 @@ use print::pprust;
 use ptr::P;
 use parse::PResult;
 use ThinVec;
-use tokenstream::{self, DelimSpan, TokenTree, TokenStream};
+use tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use symbol::{Symbol, keywords};
 
 use std::borrow::Cow;
@@ -280,8 +280,8 @@ struct TokenCursorFrame {
 /// on the parser.
 #[derive(Clone)]
 enum LastToken {
-    Collecting(Vec<TokenStream>),
-    Was(Option<TokenStream>),
+    Collecting(Vec<TreeAndJoint>),
+    Was(Option<TreeAndJoint>),
 }
 
 impl TokenCursorFrame {
@@ -7677,7 +7677,7 @@ impl<'a> Parser<'a> {
             &mut self.token_cursor.stack[prev].last_token
         };
 
-        // Pull our the toekns that we've collected from the call to `f` above
+        // Pull out the tokens that we've collected from the call to `f` above.
         let mut collected_tokens = match *last_token {
             LastToken::Collecting(ref mut v) => mem::replace(v, Vec::new()),
             LastToken::Was(_) => panic!("our vector went away?"),
@@ -7696,10 +7696,9 @@ impl<'a> Parser<'a> {
         // call. In that case we need to record all the tokens we collected in
         // our parent list as well. To do that we push a clone of our stream
         // onto the previous list.
-        let stream = collected_tokens.into_iter().collect::<TokenStream>();
         match prev_collecting {
             Some(mut list) => {
-                list.push(stream.clone());
+                list.extend(collected_tokens.iter().cloned());
                 list.extend(extra_token);
                 *last_token = LastToken::Collecting(list);
             }
@@ -7708,7 +7707,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok((ret?, stream))
+        Ok((ret?, TokenStream::new(collected_tokens)))
     }
 
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
