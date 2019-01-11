@@ -9,7 +9,7 @@ use languageserver_types::{
     SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, SourceChange,
+    FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity,
 };
 use ra_syntax::{TextUnit, AstNode};
 use rustc_hash::FxHashMap;
@@ -92,35 +92,30 @@ pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
-    let analysis: Option<Box<Fn(FilePosition) -> Option<SourceChange>>> = match params.ch.as_str() {
-        "=" => Some(Box::new(|pos| world.analysis().on_eq_typed(pos))),
-        "." => Some(Box::new(|pos| world.analysis().on_dot_typed(pos))),
-        _ => None,
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let position = FilePosition {
+        file_id,
+        /// in `ra_ide_api`, the `on_type` invariant is that
+        /// `text.char_at(position) == typed_char`.
+        offset: params.position.conv_with(&line_index) - TextUnit::of_char('.'),
     };
 
-    if let Some(ana) = analysis {
-        let file_id = params.text_document.try_conv_with(&world)?;
-        let line_index = world.analysis().file_line_index(file_id);
-        let position = FilePosition {
-            file_id,
-            offset: params.position.conv_with(&line_index),
-        };
+    let edit = match params.ch.as_str() {
+        "=" => world.analysis().on_eq_typed(position),
+        "." => world.analysis().on_dot_typed(position),
+        _ => return Ok(None),
+    };
+    let mut edit = match edit {
+        Some(it) => it,
+        None => return Ok(None),
+    };
 
-        if let Some(mut action) = ana(position) {
-            let change: Vec<TextEdit> = action
-                .source_file_edits
-                .pop()
-                .unwrap()
-                .edit
-                .as_atoms()
-                .iter()
-                .map_conv_with(&line_index)
-                .collect();
-            return Ok(Some(change));
-        }
-    }
+    // This should be a single-file edit
+    let edit = edit.source_file_edits.pop().unwrap();
 
-    return Ok(None);
+    let change: Vec<TextEdit> = edit.edit.conv_with(&line_index);
+    return Ok(Some(change));
 }
 
 pub fn handle_document_symbol(
