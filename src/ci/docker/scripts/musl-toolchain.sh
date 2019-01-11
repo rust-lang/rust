@@ -52,7 +52,7 @@ echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
 export CC=$TARGET-gcc
 export CXX=$TARGET-g++
 
-LLVM=60
+LLVM=70
 
 # may have been downloaded in a previous run
 if [ ! -d libunwind-release_$LLVM ]; then
