@@ -96,7 +96,7 @@ const fn foo30_2(x: *mut u32) -> usize { x as usize }
 const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
 //~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
 const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
-const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn
+const fn foo30_6() -> bool { let x = true; x }
 const fn foo36(a: bool, b: bool) -> bool { a && b }
 //~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
 const fn foo37(a: bool, b: bool) -> bool { a || b }

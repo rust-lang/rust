@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/promote_const_let.rs:6:10
+  --> $DIR/promote_const_let.rs:4:10
    |
 LL |         &y //~ ERROR does not live long enough
    |          ^ borrowed value does not live long enough
@@ -8,6 +8,20 @@ LL |     };
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error: aborting due to previous error
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promote_const_let.rs:6:28
+   |
+LL |       let x: &'static u32 = &{ //~ ERROR does not live long enough
+   |  ____________________________^
+LL | |         let y = 42;
+LL | |         y
+LL | |     };
+   | |_____^ temporary value does not live long enough
+LL |   }
+   |   - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0597`.

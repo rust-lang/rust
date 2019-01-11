@@ -65,12 +65,6 @@ pub fn is_min_const_fn(
         }
     }
 
-    for local in mir.vars_iter() {
-        return Err((
-            mir.local_decls[local].source_info.span,
-            "local variables in const fn are unstable".into(),
-        ));
-    }
     for local in &mir.local_decls {
         check_ty(tcx, local.ty, local.source_info.span)?;
     }
@@ -147,7 +141,7 @@ fn check_rvalue(
             check_operand(tcx, mir, operand, span)
         }
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) => {
-            check_place(tcx, mir, place, span, PlaceMode::Read)
+            check_place(tcx, mir, place, span)
         }
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc::ty::cast::CastTy;
@@ -213,11 +207,6 @@ fn check_rvalue(
     }
 }
 
-enum PlaceMode {
-    Assign,
-    Read,
-}
-
 fn check_statement(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
@@ -226,11 +215,11 @@ fn check_statement(
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(place, rval) => {
-            check_place(tcx, mir, place, span, PlaceMode::Assign)?;
+            check_place(tcx, mir, place, span)?;
             check_rvalue(tcx, mir, rval, span)
         }
 
-        StatementKind::FakeRead(_, place) => check_place(tcx, mir, place, span, PlaceMode::Read),
+        StatementKind::FakeRead(_, place) => check_place(tcx, mir, place, span),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),
@@ -256,7 +245,7 @@ fn check_operand(
 ) -> McfResult {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => {
-            check_place(tcx, mir, place, span, PlaceMode::Read)
+            check_place(tcx, mir, place, span)
         }
         Operand::Constant(_) => Ok(()),
     }
@@ -267,29 +256,17 @@ fn check_place(
     mir: &'a Mir<'tcx>,
     place: &Place<'tcx>,
     span: Span,
-    mode: PlaceMode,
 ) -> McfResult {
     match place {
-        Place::Local(l) => match mode {
-            PlaceMode::Assign => match mir.local_kind(*l) {
-                LocalKind::Temp | LocalKind::ReturnPointer => Ok(()),
-                LocalKind::Arg | LocalKind::Var => {
-                    Err((span, "assignments in const fn are unstable".into()))
-                }
-            },
-            PlaceMode::Read => Ok(()),
-        },
+        Place::Local(_) => Ok(()),
         // promoteds are always fine, they are essentially constants
         Place::Promoted(_) => Ok(()),
         Place::Static(_) => Err((span, "cannot access `static` items in const fn".into())),
         Place::Projection(proj) => {
             match proj.elem {
+                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
                 | ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
-                    check_place(tcx, mir, &proj.base, span, mode)
-                }
-                // slice patterns are unstable
-                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
-                    return Err((span, "slice patterns in const fn are unstable".into()))
+                    check_place(tcx, mir, &proj.base, span)
                 }
                 | ProjectionElem::Downcast(..) => {
                     Err((span, "`match` or `if let` in `const fn` is unstable".into()))
@@ -311,10 +288,10 @@ fn check_terminator(
         | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => {
-            check_place(tcx, mir, location, span, PlaceMode::Read)
+            check_place(tcx, mir, location, span)
         }
         TerminatorKind::DropAndReplace { location, value, .. } => {
-            check_place(tcx, mir, location, span, PlaceMode::Read)?;
+            check_place(tcx, mir, location, span)?;
             check_operand(tcx, mir, value, span)
         },
 

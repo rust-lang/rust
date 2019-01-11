@@ -1,5 +1,3 @@
-#![feature(const_let)]
-
 fn main() {}
 
 struct FakeNeedsDrop;

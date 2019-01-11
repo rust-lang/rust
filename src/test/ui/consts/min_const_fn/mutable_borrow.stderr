@@ -1,14 +1,14 @@
-error: local variables in const fn are unstable
-  --> $DIR/mutable_borrow.rs:2:9
+error: mutable references in const fn are unstable
+  --> $DIR/mutable_borrow.rs:3:9
    |
-LL |     let mut a = 0; //~ ERROR local variables in const fn
-   |         ^^^^^
+LL |     let b = &mut a; //~ ERROR mutable references in const fn
+   |         ^
 
-error: local variables in const fn are unstable
-  --> $DIR/mutable_borrow.rs:11:13
+error: mutable references in const fn are unstable
+  --> $DIR/mutable_borrow.rs:12:13
    |
-LL |         let mut a = 0; //~ ERROR local variables in const fn
-   |             ^^^^^
+LL |         let b = &mut a; //~ ERROR mutable references in const fn
+   |             ^
 
 error: aborting due to 2 previous errors
 
