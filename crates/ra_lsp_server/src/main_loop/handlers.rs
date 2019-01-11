@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use gen_lsp_server::ErrorCode;
 use languageserver_types::{
-    CodeActionResponse, Command, Diagnostic, DiagnosticSeverity, DocumentFormattingParams,
+    CodeActionResponse, Command, CodeLens, Diagnostic, DiagnosticSeverity, DocumentFormattingParams,
     DocumentHighlight, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
     FoldingRangeParams, Hover, HoverContents, Location, MarkedString, MarkupContent, MarkupKind,
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, RenameParams,
@@ -291,97 +291,93 @@ pub fn handle_runnables(
         env: FxHashMap::default(),
     });
     return Ok(res);
+}
 
-    fn runnable_args(
-        world: &ServerWorld,
-        file_id: FileId,
-        kind: &RunnableKind,
-    ) -> Result<Vec<String>> {
-        let spec = CargoTargetSpec::for_file(world, file_id)?;
-        let mut res = Vec::new();
-        match kind {
-            RunnableKind::Test { name } => {
-                res.push("test".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut res);
-                }
-                res.push("--".to_string());
-                res.push(name.to_string());
-                res.push("--nocapture".to_string());
+fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Result<Vec<String>> {
+    let spec = CargoTargetSpec::for_file(world, file_id)?;
+    let mut res = Vec::new();
+    match kind {
+        RunnableKind::Test { name } => {
+            res.push("test".to_string());
+            if let Some(spec) = spec {
+                spec.push_to(&mut res);
             }
-            RunnableKind::TestMod { path } => {
-                res.push("test".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut res);
-                }
-                res.push("--".to_string());
-                res.push(path.to_string());
-                res.push("--nocapture".to_string());
+            res.push("--".to_string());
+            res.push(name.to_string());
+            res.push("--nocapture".to_string());
+        }
+        RunnableKind::TestMod { path } => {
+            res.push("test".to_string());
+            if let Some(spec) = spec {
+                spec.push_to(&mut res);
             }
-            RunnableKind::Bin => {
-                res.push("run".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut res);
-                }
+            res.push("--".to_string());
+            res.push(path.to_string());
+            res.push("--nocapture".to_string());
+        }
+        RunnableKind::Bin => {
+            res.push("run".to_string());
+            if let Some(spec) = spec {
+                spec.push_to(&mut res);
             }
         }
+    }
+    Ok(res)
+}
+
+struct CargoTargetSpec {
+    package: String,
+    target: String,
+    target_kind: TargetKind,
+}
+
+impl CargoTargetSpec {
+    fn for_file(world: &ServerWorld, file_id: FileId) -> Result<Option<CargoTargetSpec>> {
+        let &crate_id = match world.analysis().crate_for(file_id)?.first() {
+            Some(crate_id) => crate_id,
+            None => return Ok(None),
+        };
+        let file_id = world.analysis().crate_root(crate_id)?;
+        let path = world
+            .vfs
+            .read()
+            .file2path(ra_vfs::VfsFile(file_id.0.into()));
+        let res = world.workspaces.iter().find_map(|ws| {
+            let tgt = ws.cargo.target_by_root(&path)?;
+            let res = CargoTargetSpec {
+                package: tgt.package(&ws.cargo).name(&ws.cargo).to_string(),
+                target: tgt.name(&ws.cargo).to_string(),
+                target_kind: tgt.kind(&ws.cargo),
+            };
+            Some(res)
+        });
         Ok(res)
     }
 
-    struct CargoTargetSpec {
-        package: String,
-        target: String,
-        target_kind: TargetKind,
-    }
-
-    impl CargoTargetSpec {
-        fn for_file(world: &ServerWorld, file_id: FileId) -> Result<Option<CargoTargetSpec>> {
-            let &crate_id = match world.analysis().crate_for(file_id)?.first() {
-                Some(crate_id) => crate_id,
-                None => return Ok(None),
-            };
-            let file_id = world.analysis().crate_root(crate_id)?;
-            let path = world
-                .vfs
-                .read()
-                .file2path(ra_vfs::VfsFile(file_id.0.into()));
-            let res = world.workspaces.iter().find_map(|ws| {
-                let tgt = ws.cargo.target_by_root(&path)?;
-                let res = CargoTargetSpec {
-                    package: tgt.package(&ws.cargo).name(&ws.cargo).to_string(),
-                    target: tgt.name(&ws.cargo).to_string(),
-                    target_kind: tgt.kind(&ws.cargo),
-                };
-                Some(res)
-            });
-            Ok(res)
-        }
-
-        fn push_to(self, buf: &mut Vec<String>) {
-            buf.push("--package".to_string());
-            buf.push(self.package);
-            match self.target_kind {
-                TargetKind::Bin => {
-                    buf.push("--bin".to_string());
-                    buf.push(self.target);
-                }
-                TargetKind::Test => {
-                    buf.push("--test".to_string());
-                    buf.push(self.target);
-                }
-                TargetKind::Bench => {
-                    buf.push("--bench".to_string());
-                    buf.push(self.target);
-                }
-                TargetKind::Example => {
-                    buf.push("--example".to_string());
-                    buf.push(self.target);
-                }
-                TargetKind::Lib => {
-                    buf.push("--lib".to_string());
-                }
-                TargetKind::Other => (),
+    fn push_to(self, buf: &mut Vec<String>) {
+        buf.push("--package".to_string());
+        buf.push(self.package);
+        match self.target_kind {
+            TargetKind::Bin => {
+                buf.push("--bin".to_string());
+                buf.push(self.target);
             }
+            TargetKind::Test => {
+                buf.push("--test".to_string());
+                buf.push(self.target);
+            }
+            TargetKind::Bench => {
+                buf.push("--bench".to_string());
+                buf.push(self.target);
+            }
+            TargetKind::Example => {
+                buf.push("--example".to_string());
+                buf.push(self.target);
+            }
+            TargetKind::Lib => {
+                buf.push("--lib".to_string());
+            }
+            TargetKind::Other => (),
         }
     }
 }
@@ -664,6 +660,50 @@ pub fn handle_code_action(
     }
 
     Ok(Some(CodeActionResponse::Commands(res)))
+}
+
+pub fn handle_code_lens(
+    world: ServerWorld,
+    params: req::CodeLensParams,
+) -> Result<Option<Vec<CodeLens>>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+
+    let mut lenses: Vec<CodeLens> = Default::default();
+
+    for runnable in world.analysis().runnables(file_id)? {
+        match &runnable.kind {
+            RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => {
+                let args = runnable_args(&world, file_id, &runnable.kind)?;
+
+                let range = runnable.range.conv_with(&line_index);
+
+                // This represents the actual command that will be run.
+                let r: req::Runnable = req::Runnable {
+                    range,
+                    label: Default::default(),
+                    bin: "cargo".into(),
+                    args,
+                    env: Default::default(),
+                };
+
+                let lens = CodeLens {
+                    range,
+                    command: Some(Command {
+                        title: "Run Test".into(),
+                        command: "ra-lsp.run-single".into(),
+                        arguments: Some(vec![to_value(r).unwrap()]),
+                    }),
+                    data: None,
+                };
+
+                lenses.push(lens);
+            }
+            _ => continue,
+        };
+    }
+
+    return Ok(Some(lenses));
 }
 
 pub fn handle_document_highlight(

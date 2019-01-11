@@ -300,6 +300,7 @@ fn on_request(
         .on::<req::DecorationsRequest>(handlers::handle_decorations)?
         .on::<req::Completion>(handlers::handle_completion)?
         .on::<req::CodeActionRequest>(handlers::handle_code_action)?
+        .on::<req::CodeLensRequest>(handlers::handle_code_lens)?
         .on::<req::FoldingRangeRequest>(handlers::handle_folding_range)?
         .on::<req::SignatureHelpRequest>(handlers::handle_signature_help)?
         .on::<req::HoverRequest>(handlers::handle_hover)?

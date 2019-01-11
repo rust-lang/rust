@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use url_serde;
 
 pub use languageserver_types::{
-    notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CompletionParams,
-    CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
+    notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens, CodeLensParams,
+    CompletionParams, CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
     PublishDiagnosticsParams, ReferenceParams, SignatureHelp, TextDocumentEdit,
     TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
