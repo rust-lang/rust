@@ -328,3 +328,23 @@ impl Function {
         db.infer(self.def_id)
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Const {
+    pub(crate) def_id: DefId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Static {
+    pub(crate) def_id: DefId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Trait {
+    pub(crate) def_id: DefId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Type {
+    pub(crate) def_id: DefId,
+}
