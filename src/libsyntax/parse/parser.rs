@@ -3660,8 +3660,6 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtArm, |x| x);
 
         let attrs = self.parse_outer_attributes()?;
-        // Allow a '|' before the pats (RFC 1925)
-        self.eat(&token::BinOp(token::Or));
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
             Some(Guard::If(self.parse_expr()?))
@@ -3768,6 +3766,9 @@ impl<'a> Parser<'a> {
 
     /// Parse patterns, separated by '|' s
     fn parse_pats(&mut self) -> PResult<'a, Vec<P<Pat>>> {
+        // Allow a '|' before the pats (RFC 1925 + RFC 2530)
+        self.eat(&token::BinOp(token::Or));
+
         let mut pats = Vec::new();
         loop {
             pats.push(self.parse_top_level_pat()?);
