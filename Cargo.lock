@@ -743,10 +743,8 @@ dependencies = [
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.34 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
- "text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "thread_worker 0.1.0",
  "threadpool 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -763,6 +761,7 @@ dependencies = [
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_text_edit 0.1.0",
  "rowan 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -980,7 +979,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1119,7 +1118,7 @@ dependencies = [
 
 [[package]]
 name = "smol_str"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1591,7 +1590,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum sha-1 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "51b9d1f3b5de8a167ab06834a7c883bd197f2191e1dda1a22d9ccfeedbf9aded"
 "checksum slug 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "b3bc762e6a4b6c6fcaade73e77f9ebc6991b676f88bb2358bddb56560f073373"
 "checksum smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b73ea3738b47563803ef814925e69be00799a8c07420be8b996f8e98fb2336db"
-"checksum smol_str 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "486a74e9b9fc53373808f7a17e10fc728adcb1fbe272292271d8bea61175e181"
+"checksum smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "9af1035bc5d742ab6b7ab16713e41cc2ffe78cb474f6f43cd696b2d16052007e"
 "checksum stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
 "checksum strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bb4f380125926a99e52bc279241539c018323fab05ad6368b56f93d9369ff550"
 "checksum superslice 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b50b13d42370e0f5fc62eafdd5c2d20065eaf5458dab215ff3e20e63eea96b30"
