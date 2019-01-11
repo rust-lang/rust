@@ -5,10 +5,12 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use crate::ty;
+use crate::ty::{self, TyCtxt};
 use crate::ty::error::ExpectedFound;
 use crate::ty::subst::SubstsRef;
-use crate::util::ppaux::RegionHighlightMode;
+use crate::ty::print::{Print, RegionHighlightMode, FmtPrinter};
+
+use std::fmt::{self, Write};
 
 impl NiceRegionError<'me, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -309,13 +311,48 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         sup_placeholder: Option<ty::Region<'tcx>>,
         has_sub: Option<usize>,
         has_sup: Option<usize>,
-        expected_trait_ref: ty::TraitRef<'_>,
-        actual_trait_ref: ty::TraitRef<'_>,
+        expected_trait_ref: ty::TraitRef<'tcx>,
+        actual_trait_ref: ty::TraitRef<'tcx>,
         vid: Option<ty::Region<'tcx>>,
         expected_has_vid: Option<usize>,
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
     ) {
+        // HACK(eddyb) maybe move this in a more central location.
+        #[derive(Copy, Clone)]
+        struct Highlighted<'a, 'gcx, 'tcx, T> {
+            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+            highlight: RegionHighlightMode,
+            value: T,
+        }
+
+        impl<'a, 'gcx, 'tcx, T> Highlighted<'a, 'gcx, 'tcx, T> {
+            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'a, 'gcx, 'tcx, U> {
+                Highlighted {
+                    tcx: self.tcx,
+                    highlight: self.highlight,
+                    value: f(self.value),
+                }
+            }
+        }
+
+        impl<'tcx, T> fmt::Display for Highlighted<'_, '_, 'tcx, T>
+            where T: for<'a, 'b> Print<'tcx,
+                FmtPrinter<&'a mut fmt::Formatter<'b>>,
+                Error = fmt::Error,
+            >,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let mut printer = ty::print::FmtPrinter::new(f);
+                printer.region_highlight_mode = self.highlight;
+
+                ty::print::PrintCx::with(self.tcx, printer, |cx| {
+                    self.value.print(cx)?;
+                    Ok(())
+                })
+            }
+        }
+
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
         //
@@ -331,112 +368,93 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         // None, an then we check again inside the closure, but this
         // setup sort of minimized the number of calls and so form.
 
-        RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
-            RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
-                match (has_sub, has_sup) {
-                    (Some(n1), Some(n2)) => {
-                        if any_self_ty_has_vid {
-                            err.note(&format!(
-                                "`{}` would have to be implemented for the type `{}`, \
-                                 for any two lifetimes `'{}` and `'{}`",
-                                expected_trait_ref,
-                                expected_trait_ref.self_ty(),
-                                std::cmp::min(n1, n2),
-                                std::cmp::max(n1, n2),
-                            ));
-                        } else {
-                            err.note(&format!(
-                                "`{}` must implement `{}`, \
-                                 for any two lifetimes `'{}` and `'{}`",
-                                expected_trait_ref.self_ty(),
-                                expected_trait_ref,
-                                std::cmp::min(n1, n2),
-                                std::cmp::max(n1, n2),
-                            ));
-                        }
+        let highlight_trait_ref = |trait_ref| Highlighted {
+            tcx: self.tcx(),
+            highlight: RegionHighlightMode::default(),
+            value: trait_ref,
+        };
+
+        let mut expected_trait_ref = highlight_trait_ref(expected_trait_ref);
+        expected_trait_ref.highlight.maybe_highlighting_region(sub_placeholder, has_sub);
+        expected_trait_ref.highlight.maybe_highlighting_region(sup_placeholder, has_sup);
+        err.note(&{
+            let passive_voice = match (has_sub, has_sup) {
+                (Some(_), _) | (_, Some(_)) => any_self_ty_has_vid,
+                (None, None) => {
+                    expected_trait_ref.highlight.maybe_highlighting_region(vid, expected_has_vid);
+                    match expected_has_vid {
+                        Some(_) => true,
+                        None => any_self_ty_has_vid,
                     }
-                    (Some(n), _) | (_, Some(n)) => {
-                        if any_self_ty_has_vid {
-                            err.note(&format!(
-                                "`{}` would have to be implemented for the type `{}`, \
-                                 for any lifetime `'{}`",
-                                expected_trait_ref,
-                                expected_trait_ref.self_ty(),
-                                n,
-                            ));
-                        } else {
-                            err.note(&format!(
-                                "`{}` must implement `{}`, for any lifetime `'{}`",
-                                expected_trait_ref.self_ty(),
-                                expected_trait_ref,
-                                n,
-                            ));
-                        }
-                    }
-                    (None, None) => RegionHighlightMode::maybe_highlighting_region(
-                        vid,
-                        expected_has_vid,
-                        || {
-                            if let Some(n) = expected_has_vid {
-                                err.note(&format!(
-                                    "`{}` would have to be implemented for the type `{}`, \
-                                     for some specific lifetime `'{}`",
-                                    expected_trait_ref,
-                                    expected_trait_ref.self_ty(),
-                                    n,
-                                ));
-                            } else {
-                                if any_self_ty_has_vid {
-                                    err.note(&format!(
-                                        "`{}` would have to be implemented for the type `{}`",
-                                        expected_trait_ref,
-                                        expected_trait_ref.self_ty(),
-                                    ));
-                                } else {
-                                    err.note(&format!(
-                                        "`{}` must implement `{}`",
-                                        expected_trait_ref.self_ty(),
-                                        expected_trait_ref,
-                                    ));
-                                }
-                            }
-                        },
-                    ),
                 }
-            })
+            };
+
+            let mut note = if passive_voice {
+                format!(
+                    "`{}` would have to be implemented for the type `{}`",
+                    expected_trait_ref,
+                    expected_trait_ref.map(|tr| tr.self_ty()),
+                )
+            } else {
+                format!(
+                    "`{}` must implement `{}`",
+                    expected_trait_ref.map(|tr| tr.self_ty()),
+                    expected_trait_ref,
+                )
+            };
+
+            match (has_sub, has_sup) {
+                (Some(n1), Some(n2)) => {
+                    let _ = write!(note,
+                        ", for any two lifetimes `'{}` and `'{}`",
+                        std::cmp::min(n1, n2),
+                        std::cmp::max(n1, n2),
+                    );
+                }
+                (Some(n), _) | (_, Some(n)) => {
+                    let _ = write!(note,
+                        ", for any lifetime `'{}`",
+                        n,
+                    );
+                }
+                (None, None) => if let Some(n) = expected_has_vid {
+                    let _ = write!(note,
+                        ", for some specific lifetime `'{}`",
+                        n,
+                    );
+                },
+            }
+
+            note
         });
 
-        RegionHighlightMode::maybe_highlighting_region(
-            vid,
-            actual_has_vid,
-            || match actual_has_vid {
-                Some(n) => {
-                    if any_self_ty_has_vid {
-                        err.note(&format!(
-                            "but `{}` is actually implemented for the type `{}`, \
-                             for some specific lifetime `'{}`",
-                            actual_trait_ref,
-                            actual_trait_ref.self_ty(),
-                            n
-                        ));
-                    } else {
-                        err.note(&format!(
-                            "but `{}` actually implements `{}`, for some specific lifetime `'{}`",
-                            actual_trait_ref.self_ty(),
-                            actual_trait_ref,
-                            n
-                        ));
-                    }
-                }
+        let mut actual_trait_ref = highlight_trait_ref(actual_trait_ref);
+        actual_trait_ref.highlight.maybe_highlighting_region(vid, actual_has_vid);
+        err.note(&{
+            let passive_voice = match actual_has_vid {
+                Some(_) => any_self_ty_has_vid,
+                None => true,
+            };
 
-                _ => {
-                    err.note(&format!(
-                        "but `{}` is actually implemented for the type `{}`",
-                        actual_trait_ref,
-                        actual_trait_ref.self_ty(),
-                    ));
-                }
-            },
-        );
+            let mut note = if passive_voice {
+                format!(
+                    "but `{}` is actually implemented for the type `{}`",
+                    actual_trait_ref,
+                    actual_trait_ref.map(|tr| tr.self_ty()),
+                )
+            } else {
+                format!(
+                    "but `{}` actually implements `{}`",
+                    actual_trait_ref.map(|tr| tr.self_ty()),
+                    actual_trait_ref,
+                )
+            };
+
+            if let Some(n) = actual_has_vid {
+                let _ = write!(note, ", for some specific lifetime `'{}`", n);
+            }
+
+            note
+        });
     }
 }

@@ -47,6 +47,102 @@ pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
 // FIXME(eddyb) this module uses `pub(crate)` for things used only
 // from `ppaux` - when that is removed, they can be re-privatized.
 
+/// The "region highlights" are used to control region printing during
+/// specific error messages. When a "region highlight" is enabled, it
+/// gives an alternate way to print specific regions. For now, we
+/// always print those regions using a number, so something like "`'0`".
+///
+/// Regions not selected by the region highlight mode are presently
+/// unaffected.
+#[derive(Copy, Clone, Default)]
+pub struct RegionHighlightMode {
+    /// If enabled, when we see the selected region, use "`'N`"
+    /// instead of the ordinary behavior.
+    highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
+
+    /// If enabled, when printing a "free region" that originated from
+    /// the given `ty::BoundRegion`, print it as "`'1`". Free regions that would ordinarily
+    /// have names print as normal.
+    ///
+    /// This is used when you have a signature like `fn foo(x: &u32,
+    /// y: &'a u32)` and we want to give a name to the region of the
+    /// reference `x`.
+    pub(crate) highlight_bound_region: Option<(ty::BoundRegion, usize)>,
+}
+
+impl RegionHighlightMode {
+    /// If `region` and `number` are both `Some`, invokes
+    /// `highlighting_region`.
+    pub fn maybe_highlighting_region(
+        &mut self,
+        region: Option<ty::Region<'_>>,
+        number: Option<usize>,
+    ) {
+        if let Some(k) = region {
+            if let Some(n) = number {
+                self.highlighting_region(k, n);
+            }
+        }
+    }
+
+    /// Highlights the region inference variable `vid` as `'N`.
+    pub fn highlighting_region(
+        &mut self,
+        region: ty::Region<'_>,
+        number: usize,
+    ) {
+        let num_slots = self.highlight_regions.len();
+        let first_avail_slot = self.highlight_regions.iter_mut()
+            .filter(|s| s.is_none())
+            .next()
+            .unwrap_or_else(|| {
+                bug!(
+                    "can only highlight {} placeholders at a time",
+                    num_slots,
+                )
+            });
+        *first_avail_slot = Some((*region, number));
+    }
+
+    /// Convenience wrapper for `highlighting_region`.
+    pub fn highlighting_region_vid(
+        &mut self,
+        vid: ty::RegionVid,
+        number: usize,
+    ) {
+        self.highlighting_region(&ty::ReVar(vid), number)
+    }
+
+    /// Returns `Some(n)` with the number to use for the given region, if any.
+    pub(crate) fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
+        self
+            .highlight_regions
+            .iter()
+            .filter_map(|h| match h {
+                Some((r, n)) if r == region => Some(*n),
+                _ => None,
+            })
+            .next()
+    }
+
+    /// Highlight the given bound region.
+    /// We can only highlight one bound region at a time. See
+    /// the field `highlight_bound_region` for more detailed notes.
+    pub fn highlighting_bound_region(
+        &mut self,
+        br: ty::BoundRegion,
+        number: usize,
+    ) {
+        assert!(self.highlight_bound_region.is_none());
+        self.highlight_bound_region = Some((br, number));
+    }
+
+    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as "`'N`".
+    pub(crate) fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
+        self.region_highlighted(&ty::RePlaceholder(p))
+    }
+}
+
 struct LateBoundRegionNameCollector(FxHashSet<InternedString>);
 impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
@@ -236,6 +332,10 @@ pub trait PrettyPrinter: Printer<Error = fmt::Error, Path = Self> + fmt::Write {
             printer,
             config: self.config,
         })
+    }
+
+    fn region_highlight_mode(&self) -> RegionHighlightMode {
+        RegionHighlightMode::default()
     }
 }
 
@@ -450,6 +550,7 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 pub struct FmtPrinter<F: fmt::Write> {
     pub(crate) fmt: F,
     empty: bool,
+    pub region_highlight_mode: RegionHighlightMode,
 }
 
 impl<F: fmt::Write> FmtPrinter<F> {
@@ -457,6 +558,7 @@ impl<F: fmt::Write> FmtPrinter<F> {
         FmtPrinter {
             fmt,
             empty: true,
+            region_highlight_mode: RegionHighlightMode::default(),
         }
     }
 }
@@ -919,5 +1021,9 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
             printer,
             config: self.config,
         })
+    }
+
+    fn region_highlight_mode(&self) -> RegionHighlightMode {
+        self.region_highlight_mode
     }
 }

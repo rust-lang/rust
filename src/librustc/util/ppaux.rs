@@ -12,7 +12,6 @@ use crate::ty::{self, ParamConst, Ty, TypeFoldable};
 use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print, Printer};
 use crate::mir::interpret::ConstValue;
 
-use std::cell::Cell;
 use std::fmt::{self, Write as _};
 use std::iter;
 use std::usize;
@@ -21,142 +20,6 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use crate::hir;
-
-/// The "region highlights" are used to control region printing during
-/// specific error messages. When a "region highlight" is enabled, it
-/// gives an alternate way to print specific regions. For now, we
-/// always print those regions using a number, so something like "`'0`".
-///
-/// Regions not selected by the region highlight mode are presently
-/// unaffected.
-#[derive(Copy, Clone, Default)]
-pub struct RegionHighlightMode {
-    /// If enabled, when we see the selected region, use "`'N`"
-    /// instead of the ordinary behavior.
-    highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
-
-    /// If enabled, when printing a "free region" that originated from
-    /// the given `ty::BoundRegion`, print it as "`'1`". Free regions that would ordinarily
-    /// have names print as normal.
-    ///
-    /// This is used when you have a signature like `fn foo(x: &u32,
-    /// y: &'a u32)` and we want to give a name to the region of the
-    /// reference `x`.
-    highlight_bound_region: Option<(ty::BoundRegion, usize)>,
-}
-
-thread_local! {
-    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
-    /// Contains region to highlight and counter for number to use when highlighting.
-    static REGION_HIGHLIGHT_MODE: Cell<RegionHighlightMode> =
-        Cell::new(RegionHighlightMode::default())
-}
-
-impl RegionHighlightMode {
-    /// Reads and returns the current region highlight settings (accesses thread-local state).
-    pub fn get() -> Self {
-        REGION_HIGHLIGHT_MODE.with(|c| c.get())
-    }
-
-    // Internal helper to update current settings during the execution of `op`.
-    fn set<R>(
-        old_mode: Self,
-        new_mode: Self,
-        op: impl FnOnce() -> R,
-    ) -> R {
-        REGION_HIGHLIGHT_MODE.with(|c| {
-            c.set(new_mode);
-            let result = op();
-            c.set(old_mode);
-            result
-        })
-    }
-
-    /// If `region` and `number` are both `Some`, invokes
-    /// `highlighting_region`; otherwise, just invokes `op` directly.
-    pub fn maybe_highlighting_region<R>(
-        region: Option<ty::Region<'_>>,
-        number: Option<usize>,
-        op: impl FnOnce() -> R,
-    ) -> R {
-        if let Some(k) = region {
-            if let Some(n) = number {
-                return Self::highlighting_region(k, n, op);
-            }
-        }
-
-        op()
-    }
-
-    /// During the execution of `op`, highlights the region inference
-    /// variable `vid` as `'N`. We can only highlight one region `vid`
-    /// at a time.
-    pub fn highlighting_region<R>(
-        region: ty::Region<'_>,
-        number: usize,
-        op: impl FnOnce() -> R,
-    ) -> R {
-        let old_mode = Self::get();
-        let mut new_mode = old_mode;
-        let first_avail_slot = new_mode.highlight_regions.iter_mut()
-            .filter(|s| s.is_none())
-            .next()
-            .unwrap_or_else(|| {
-                panic!(
-                    "can only highlight {} placeholders at a time",
-                    old_mode.highlight_regions.len(),
-                )
-            });
-        *first_avail_slot = Some((*region, number));
-        Self::set(old_mode, new_mode, op)
-    }
-
-    /// Convenience wrapper for `highlighting_region`.
-    pub fn highlighting_region_vid<R>(
-        vid: ty::RegionVid,
-        number: usize,
-        op: impl FnOnce() -> R,
-    ) -> R {
-        Self::highlighting_region(&ty::ReVar(vid), number, op)
-    }
-
-    /// Returns `Some(n)` with the number to use for the given region, if any.
-    fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
-        Self::get()
-            .highlight_regions
-            .iter()
-            .filter_map(|h| match h {
-                Some((r, n)) if r == region => Some(*n),
-                _ => None,
-            })
-            .next()
-    }
-
-    /// During the execution of `op`, highlight the given bound
-    /// region. We can only highlight one bound region at a time. See
-    /// the field `highlight_bound_region` for more detailed notes.
-    pub fn highlighting_bound_region<R>(
-        br: ty::BoundRegion,
-        number: usize,
-        op: impl FnOnce() -> R,
-    ) -> R {
-        let old_mode = Self::get();
-        assert!(old_mode.highlight_bound_region.is_none());
-        Self::set(
-            old_mode,
-            Self {
-                highlight_bound_region: Some((br, number)),
-                ..old_mode
-            },
-            op,
-        )
-    }
-
-    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as "`'N`".
-    pub fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
-        self.region_highlighted(&ty::RePlaceholder(p))
-    }
-}
 
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
@@ -622,7 +485,7 @@ define_print! {
                 }
             }
 
-            let highlight = RegionHighlightMode::get();
+            let highlight = cx.printer.region_highlight_mode();
             if let Some((region, counter)) = highlight.highlight_bound_region {
                 if *self == region {
                     p!(write("'{}", counter));
@@ -647,7 +510,9 @@ define_print! {
 //
 // NB: this must be kept in sync with the printing logic above.
 impl ty::BoundRegion {
-    fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool {
+    fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool
+        where P: PrettyPrinter
+    {
         if cx.config.is_verbose {
             return true;
         }
@@ -658,7 +523,7 @@ impl ty::BoundRegion {
             }
         }
 
-        let highlight = RegionHighlightMode::get();
+        let highlight = cx.printer.region_highlight_mode();
         if let Some((region, _)) = highlight.highlight_bound_region {
             if *self == region {
                 return true;
@@ -676,7 +541,7 @@ define_print! {
                 return self.print_debug(cx);
             }
 
-            let highlight = RegionHighlightMode::get();
+            let highlight = cx.printer.region_highlight_mode();
             if let Some(counter) = highlight.placeholder_highlight(*self) {
                 p!(write("'{}", counter));
             } else {
@@ -690,12 +555,14 @@ define_print! {
 //
 // NB: this must be kept in sync with the printing logic above.
 impl ty::PlaceholderRegion {
-    fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool {
+    fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool
+        where P: PrettyPrinter
+    {
         if cx.config.is_verbose {
             return true;
         }
 
-        let highlight = RegionHighlightMode::get();
+        let highlight = cx.printer.region_highlight_mode();
         if highlight.placeholder_highlight(*self).is_some() {
             return true;
         }
@@ -712,8 +579,8 @@ define_print! {
             }
 
             // Watch out for region highlights.
-            if let Some(n) = RegionHighlightMode::get().region_highlighted(self) {
-                p!(write("'{:?}", n));
+            if let Some(n) = cx.printer.region_highlight_mode().region_highlighted(self) {
+                p!(write("'{}", n));
                 return Ok(cx.printer);
             }
 
@@ -780,12 +647,12 @@ define_print! {
                 }
 
                 ty::ReLateBound(binder_id, ref bound_region) => {
-                    p!(write("ReLateBound({:?}, {:?})",
-                           binder_id,
-                           bound_region))
+                    p!(write("ReLateBound({:?}, ", binder_id),
+                       print_debug(bound_region),
+                       write(")"))
                 }
 
-                ty::ReFree(ref fr) => p!(write("{:?}", fr)),
+                ty::ReFree(ref fr) => p!(print_debug(fr)),
 
                 ty::ReScope(id) => {
                     p!(write("ReScope({:?})", id))
@@ -794,11 +661,11 @@ define_print! {
                 ty::ReStatic => p!(write("ReStatic")),
 
                 ty::ReVar(ref vid) => {
-                    p!(write("{:?}", vid))
+                    p!(print_debug(vid))
                 }
 
                 ty::RePlaceholder(placeholder) => {
-                    p!(write("RePlaceholder({:?})", placeholder))
+                    p!(write("RePlaceholder("), print_debug(placeholder), write(")"))
                 }
 
                 ty::ReEmpty => p!(write("ReEmpty")),
@@ -817,12 +684,14 @@ define_print! {
 // NB: this must be kept in sync with the printing logic above.
 impl ty::RegionKind {
     // HACK(eddyb) `pub(crate)` only for `ty::print`.
-    pub(crate) fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool {
+    pub(crate) fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool
+        where P: PrettyPrinter
+    {
         if cx.config.is_verbose {
             return true;
         }
 
-        if RegionHighlightMode::get().region_highlighted(self).is_some() {
+        if cx.printer.region_highlight_mode().region_highlighted(self).is_some() {
             return true;
         }
 
@@ -926,17 +795,17 @@ define_print! {
                 return self.print_debug(cx);
             }
 
-            let highlight = RegionHighlightMode::get();
+            let highlight = cx.printer.region_highlight_mode();
             if let Some(counter) = highlight.region_highlighted(&ty::ReVar(*self)) {
-                p!(write("'{:?}", counter));
+                p!(write("'{}", counter));
             }
         }
         debug {
             // HACK(eddyb) this is duplicated from `display` printing,
             // to keep NLL borrowck working even with `-Zverbose`.
-            let highlight = RegionHighlightMode::get();
+            let highlight = cx.printer.region_highlight_mode();
             if let Some(counter) = highlight.region_highlighted(&ty::ReVar(*self)) {
-                p!(write("'{:?}", counter));
+                p!(write("'{}", counter));
             } else {
                 p!(write("'_#{}r", self.index()));
             }
@@ -948,12 +817,14 @@ define_print! {
 //
 // NB: this must be kept in sync with the printing logic above.
 impl ty::RegionVid {
-    fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool {
+    fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool
+        where P: PrettyPrinter
+    {
         if cx.config.is_verbose {
             return true;
         }
 
-        let highlight = RegionHighlightMode::get();
+        let highlight = cx.printer.region_highlight_mode();
         if highlight.region_highlighted(&ty::ReVar(*self)).is_some() {
             return true;
         }
@@ -1165,9 +1036,9 @@ define_print! {
                         // FIXME(eddyb) print this with `print_def_path`.
                         if let Some(first) = substs.next() {
                             p!(write("::<"));
-                            p!(write("{}", first));
+                            p!(print_display(first));
                             for subst in substs {
-                                p!(write(", {}", subst));
+                                p!(write(", "), print_display(subst));
                             }
                             p!(write(">"));
                         }
