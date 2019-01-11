@@ -15,9 +15,10 @@ use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
     Direction, SyntaxNode, TextUnit, TextRange, SourceFile, AstNode,
     algo::{find_leaf_at_offset, find_node_at_offset, find_covering_node, LeafAtOffset},
-    ast::{self, AstToken},
 };
 use itertools::Itertools;
+
+use crate::formatting::leading_indent;
 
 pub use self::{
     flip_comma::flip_comma,
@@ -165,7 +166,7 @@ impl AssistBuilder {
     }
     fn replace_node_and_indent(&mut self, node: &SyntaxNode, replace_with: impl Into<String>) {
         let mut replace_with = replace_with.into();
-        if let Some(indent) = calc_indent(node) {
+        if let Some(indent) = leading_indent(node) {
             replace_with = reindent(&replace_with, indent)
         }
         self.replace(node.range(), replace_with)
@@ -180,12 +181,6 @@ impl AssistBuilder {
     fn set_cursor(&mut self, offset: TextUnit) {
         self.cursor_position = Some(offset)
     }
-}
-
-fn calc_indent(node: &SyntaxNode) -> Option<&str> {
-    let prev = node.prev_sibling()?;
-    let ws_text = ast::Whitespace::cast(prev)?.text();
-    ws_text.rfind('\n').map(|pos| &ws_text[pos + 1..])
 }
 
 fn reindent(text: &str, indent: &str) -> String {

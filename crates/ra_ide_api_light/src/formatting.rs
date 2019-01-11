@@ -1,7 +1,15 @@
 use ra_syntax::{
-    ast, AstNode,
+    AstNode,
     SyntaxNode, SyntaxKind::*,
+    ast::{self, AstToken},
 };
+
+/// If the node is on the begining of the line, calculate indent.
+pub(crate) fn leading_indent(node: &SyntaxNode) -> Option<&str> {
+    let prev = node.prev_sibling()?;
+    let ws_text = ast::Whitespace::cast(prev)?.text();
+    ws_text.rfind('\n').map(|pos| &ws_text[pos + 1..])
+}
 
 pub(crate) fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
     let expr = block.expr()?;

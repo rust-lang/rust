@@ -1,11 +1,11 @@
 use ra_syntax::{
+    AstNode, SourceFile, SyntaxKind::*,
+    SyntaxNode, TextUnit, TextRange,
     algo::{find_node_at_offset, find_leaf_at_offset, LeafAtOffset},
-    ast,
-    AstNode, Direction, SourceFile, SyntaxKind::*,
-    SyntaxNode, TextUnit,
+    ast::{self, AstToken},
 };
 
-use crate::{LocalEdit, TextEditBuilder};
+use crate::{LocalEdit, TextEditBuilder, formatting::leading_indent};
 
 pub fn on_enter(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     let comment = find_leaf_at_offset(file.syntax(), offset)
@@ -53,20 +53,21 @@ fn node_indent<'a>(file: &'a SourceFile, node: &SyntaxNode) -> Option<&'a str> {
     Some(&text[pos..])
 }
 
-pub fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
-    let let_stmt: &ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
+pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<LocalEdit> {
+    assert_eq!(file.syntax().text().char_at(eq_offset), Some('='));
+    let let_stmt: &ast::LetStmt = find_node_at_offset(file.syntax(), eq_offset)?;
     if let_stmt.has_semi() {
         return None;
     }
     if let Some(expr) = let_stmt.initializer() {
         let expr_range = expr.syntax().range();
-        if expr_range.contains(offset) && offset != expr_range.start() {
+        if expr_range.contains(eq_offset) && eq_offset != expr_range.start() {
             return None;
         }
         if file
             .syntax()
             .text()
-            .slice(offset..expr_range.start())
+            .slice(eq_offset..expr_range.start())
             .contains('\n')
         {
             return None;
@@ -84,54 +85,44 @@ pub fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     })
 }
 
-pub fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
-    let before_dot_offset = offset - TextUnit::of_char('.');
+pub fn on_dot_typed(file: &SourceFile, dot_offset: TextUnit) -> Option<LocalEdit> {
+    assert_eq!(file.syntax().text().char_at(dot_offset), Some('.'));
 
-    let whitespace = find_leaf_at_offset(file.syntax(), before_dot_offset).left_biased()?;
+    let whitespace = find_leaf_at_offset(file.syntax(), dot_offset)
+        .left_biased()
+        .and_then(ast::Whitespace::cast)?;
 
-    // find whitespace just left of the dot
-    ast::Whitespace::cast(whitespace)?;
+    let current_indent = {
+        let text = whitespace.text();
+        let newline = text.rfind('\n')?;
+        &text[newline + 1..]
+    };
+    let current_indent_len = TextUnit::of_str(current_indent);
 
-    // make sure there is a method call
-    let method_call = whitespace
-        .siblings(Direction::Prev)
-        // first is whitespace
-        .skip(1)
-        .next()?;
-
-    ast::MethodCallExpr::cast(method_call)?;
-
-    // find how much the _method call is indented
-    let method_chain_indent = method_call
-        .parent()?
-        .siblings(Direction::Prev)
-        .skip(1)
-        .next()?
-        .leaf_text()
-        .map(|x| last_line_indent_in_whitespace(x))?;
-
-    let current_indent = TextUnit::of_str(last_line_indent_in_whitespace(whitespace.leaf_text()?));
-    // TODO: indent is always 4 spaces now. A better heuristic could look on the previous line(s)
-
-    let target_indent = TextUnit::of_str(method_chain_indent) + TextUnit::from_usize(4);
-
-    let diff = target_indent - current_indent;
-
-    let indent = "".repeat(diff.to_usize());
-
-    let cursor_position = offset + diff;
+    // Make sure dot is a part of call chain
+    let field_expr = whitespace
+        .syntax()
+        .parent()
+        .and_then(ast::FieldExpr::cast)?;
+    let prev_indent = leading_indent(field_expr.syntax())?;
+    let target_indent = format!("    {}", prev_indent);
+    let target_indent_len = TextUnit::of_str(&target_indent);
+    if current_indent_len == target_indent_len {
+        return None;
+    }
     let mut edit = TextEditBuilder::default();
-    edit.insert(before_dot_offset, indent);
-    Some(LocalEdit {
-        label: "indent dot".to_string(),
+    edit.replace(
+        TextRange::from_to(dot_offset - current_indent_len, dot_offset),
+        target_indent.into(),
+    );
+    let res = LocalEdit {
+        label: "reindent dot".to_string(),
         edit: edit.finish(),
-        cursor_position: Some(cursor_position),
-    })
-}
-
-/// Finds the last line in the whitespace
-fn last_line_indent_in_whitespace(ws: &str) -> &str {
-    ws.split('\n').last().unwrap_or("")
+        cursor_position: Some(
+            dot_offset + target_indent_len - current_indent_len + TextUnit::of_char('.'),
+        ),
+    };
+    Some(res)
 }
 
 #[cfg(test)]
@@ -162,7 +153,7 @@ mod tests {
         do_check(
             r"
 fn foo() {
-    let foo =<|> 1 + 1
+    let foo <|>= 1 + 1
 }
 ",
             r"
@@ -189,107 +180,109 @@ fn foo() {
         fn do_check(before: &str, after: &str) {
             let (offset, before) = extract_offset(before);
             let file = SourceFile::parse(&before);
-            if let Some(result) = on_eq_typed(&file, offset) {
+            if let Some(result) = on_dot_typed(&file, offset) {
                 let actual = result.edit.apply(&before);
                 assert_eq_text!(after, &actual);
+            } else {
+                assert_eq_text!(&before, after)
             };
         }
         // indent if continuing chain call
         do_check(
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-        .<|>
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                <|>.
+            }
+            ",
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .
+            }
+            ",
         );
 
         // do not indent if already indented
         do_check(
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .<|>
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    <|>.
+            }
+            ",
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .
+            }
+            ",
         );
 
         // indent if the previous line is already indented
         do_check(
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .first()
-        .<|>
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                <|>.
+            }
+            ",
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .first()
-            .
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                    .
+            }
+            ",
         );
 
         // don't indent if indent matches previous line
         do_check(
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .first()
-            .<|>
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                    <|>.
+            }
+            ",
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .first()
-            .
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                    .
+            }
+            ",
         );
 
         // don't indent if there is no method call on previous line
         do_check(
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        .<|>
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                <|>.
+            }
+            ",
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        .
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                .
+            }
+            ",
         );
 
         // indent to match previous expr
         do_check(
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-.<|>
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+            <|>.
+                }
+            ",
             r"
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-        self.child_impl(db, name)
-            .
-    }
-",
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .
+            }
+            ",
         );
     }
 
