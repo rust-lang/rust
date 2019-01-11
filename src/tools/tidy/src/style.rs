@@ -111,6 +111,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_tab = contents.contains("ignore-tidy-tab");
         let skip_length = contents.contains("ignore-tidy-linelength");
         let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
+        let skip_copyright = contents.contains("ignore-tidy-copyright");
         let mut trailing_new_lines = 0;
         for (i, line) in contents.split('\n').enumerate() {
             let mut err = |msg: &str| {
@@ -120,13 +121,13 @@ pub fn check(path: &Path, bad: &mut bool) {
                 && !long_line_is_ok(line) {
                     err(&format!("line longer than {} chars", COLS));
             }
-            if line.contains('\t') && !skip_tab {
+            if !skip_tab && line.contains('\t') {
                 err("tab character");
             }
             if !skip_end_whitespace && (line.ends_with(' ') || line.ends_with('\t')) {
                 err("trailing whitespace");
             }
-            if line.contains('\r') && !skip_cr {
+            if !skip_cr && line.contains('\r') {
                 err("CR character");
             }
             if filename != "style.rs" {
@@ -136,6 +137,13 @@ pub fn check(path: &Path, bad: &mut bool) {
                 if line.contains("//") && line.contains(" XXX") {
                     err("XXX is deprecated; use FIXME")
                 }
+            }
+            if !skip_copyright && (line.starts_with("// Copyright") ||
+                                   line.starts_with("# Copyright") ||
+                                   line.starts_with("Copyright"))
+                               && (line.contains("Rust Developers") ||
+                                   line.contains("Rust Project Developers")) {
+                err("copyright notices attributed to the Rust Project Developers are deprecated");
             }
             if line.ends_with("```ignore") || line.ends_with("```rust,ignore") {
                 err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
