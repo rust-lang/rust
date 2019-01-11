@@ -459,10 +459,7 @@ declare_features! (
     // Support for arbitrary delimited token streams in non-macro attributes
     (active, unrestricted_attribute_tokens, "1.30.0", Some(55208), None),
 
-    // Allows `use x::y;` to resolve through `self::x`, not just `::x`
-    (active, uniform_paths, "1.30.0", Some(53130), None),
-
-    // Allows unsized rvalues at arguments and parameters
+    // Allows unsized rvalues at arguments and parameters.
     (active, unsized_locals, "1.30.0", Some(48055), None),
 
     // #![test_runner]
@@ -689,6 +686,8 @@ declare_features! (
     (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
     // `Self` in type definitions (RFC 2300)
     (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
+    // Allows `use x::y;` to search `x` in the current scope.
+    (accepted, uniform_paths, "1.32.0", Some(53130), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must

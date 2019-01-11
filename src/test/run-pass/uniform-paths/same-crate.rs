@@ -9,10 +9,7 @@
 // except according to those terms.
 
 // run-pass
-
 // edition:2018
-
-#![feature(uniform_paths)]
 
 pub const A: usize = 0;
 

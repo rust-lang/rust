@@ -1,4 +1,4 @@
-error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
+error: imports can only refer to extern crate names passed with `--extern` in macros originating from 2015 edition
   --> <::edition_imports_2015::gen_gated macros>:1:50
    |
 LL | (  ) => { fn check_gated (  ) { enum E { A } use E :: * ; } }
@@ -9,7 +9,6 @@ LL | (  ) => { fn check_gated (  ) { enum E { A } use E :: * ; } }
 LL |     gen_gated!();
    |     ------------- not an extern crate passed with `--extern`
    |
-   = help: add #![feature(uniform_paths)] to the crate attributes to enable
 note: this import refers to the enum defined here
   --> $DIR/edition-imports-virtual-2015-gated.rs:9:5
    |
@@ -19,4 +18,3 @@ LL |     gen_gated!();
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.

@@ -1,6 +1,7 @@
 // edition:2018
 
-#![feature(uniform_paths, underscore_imports)]
+#![feature(underscore_imports)]
+#![allow(non_camel_case_types)]
 
 mod T {
     pub struct U;
@@ -16,7 +17,7 @@ fn type_param<T>() {
 }
 
 fn self_import<T>() {
-    use T; // FIXME Should be an error, but future-proofing fails due to `T` being "self-shadowed"
+    use T; //~ ERROR imports cannot refer to type parameters
 }
 
 fn let_binding() {
