@@ -144,6 +144,10 @@ pub struct Config {
     /// (or, alternatively, to silently run them like regular run-pass tests).
     pub force_valgrind: bool,
 
+    /// Whether to fail if we don't have a clang version available that matches
+    /// rustc's LLVM version.
+    pub force_clang_based_tests: bool,
+
     /// The directory containing the tests to run
     pub src_base: PathBuf,
 
@@ -204,6 +208,9 @@ pub struct Config {
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,
+
+    /// The version of Clang available to run-make tests (if any).
+    pub clang_version: Option<String>,
 
     /// Path to the android tools
     pub android_cross_path: PathBuf,

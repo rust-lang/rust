@@ -111,6 +111,11 @@ impl EarlyProps {
                 if ignore_llvm(config, ln) {
                     props.ignore = Ignore::Ignore;
                 }
+
+                if !config.force_clang_based_tests &&
+                   config.parse_needs_matching_clang(ln) {
+                    props.ignore = Ignore::Ignore;
+                }
             }
 
             if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoBoth) &&
@@ -703,6 +708,10 @@ impl Config {
         } else {
             None
         }
+    }
+
+    fn parse_needs_matching_clang(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "needs-matching-clang")
     }
 
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
