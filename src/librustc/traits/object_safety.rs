@@ -252,6 +252,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                                           method: &ty::AssociatedItem)
                                           -> Option<MethodViolationCode>
     {
+        debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
         // Any method that has a `Self : Sized` requisite is otherwise
         // exempt from the regulations.
         if self.generics_require_sized_self(method.def_id) {
@@ -270,6 +271,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                                  method: &ty::AssociatedItem)
                                  -> bool
     {
+        debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
         // Any method that has a `Self : Sized` requisite can't be called.
         if self.generics_require_sized_self(method.def_id) {
             return false;
@@ -402,6 +404,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     fn receiver_for_self_ty(
         self, receiver_ty: Ty<'tcx>, self_ty: Ty<'tcx>, method_def_id: DefId
     ) -> Ty<'tcx> {
+        debug!("receiver_for_self_ty({:?}, {:?}, {:?})", receiver_ty, self_ty, method_def_id);
         let substs = Substs::for_item(self, method_def_id, |param, _| {
             if param.index == 0 {
                 self_ty.into()
@@ -410,7 +413,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             }
         });
 
-        receiver_ty.subst(self, substs)
+        let result = receiver_ty.subst(self, substs);
+        debug!("receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
+               receiver_ty, self_ty, method_def_id, result);
+        result
     }
 
     /// creates the object type for the current trait. For example,
@@ -426,18 +432,26 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         );
 
         let mut associated_types = traits::supertraits(self, ty::Binder::dummy(trait_ref))
-            .flat_map(|trait_ref| self.associated_items(trait_ref.def_id()))
-            .filter(|item| item.kind == ty::AssociatedKind::Type)
+            .flat_map(|super_trait_ref| {
+                self.associated_items(super_trait_ref.def_id())
+                    .map(move |item| (super_trait_ref, item))
+            })
+            .filter(|(_, item)| item.kind == ty::AssociatedKind::Type)
             .collect::<Vec<_>>();
 
         // existential predicates need to be in a specific order
-        associated_types.sort_by_cached_key(|item| self.def_path_hash(item.def_id));
+        associated_types.sort_by_cached_key(|(_, item)| self.def_path_hash(item.def_id));
 
-        let projection_predicates = associated_types.into_iter().map(|item| {
+        let projection_predicates = associated_types.into_iter().map(|(super_trait_ref, item)| {
+            // We *can* get bound lifetimes here in cases like
+            // `trait MyTrait: for<'s> OtherTrait<&'s T, Output=bool>`.
+            //
+            // binder moved to (*)...
+            let super_trait_ref = super_trait_ref.skip_binder();
             ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                ty: self.mk_projection(item.def_id, trait_ref.substs),
+                ty: self.mk_projection(item.def_id, super_trait_ref.substs),
                 item_def_id: item.def_id,
-                substs: trait_ref.substs,
+                substs: super_trait_ref.substs,
             })
         });
 
@@ -446,7 +460,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         );
 
         let object_ty = self.mk_dynamic(
-            ty::Binder::dummy(existential_predicates),
+            // (*) ... binder re-introduced here
+            ty::Binder::bind(existential_predicates),
             lifetime,
         );
 
