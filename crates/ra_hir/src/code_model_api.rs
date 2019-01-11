@@ -41,12 +41,17 @@ impl Crate {
     }
 }
 
+#[derive(Debug)]
 pub enum Def {
     Module(Module),
     Struct(Struct),
     Enum(Enum),
     EnumVariant(EnumVariant),
     Function(Function),
+    Const(Const),
+    Static(Static),
+    Trait(Trait),
+    Type(Type),
     Item,
 }
 
@@ -317,9 +322,32 @@ pub struct Const {
     pub(crate) def_id: DefId,
 }
 
+impl Const {
+    pub(crate) fn new(def_id: DefId) -> Const {
+        Const { def_id }
+    }
+
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::ConstDef>)> {
+        Ok(def_id_to_ast(db, self.def_id))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Static {
     pub(crate) def_id: DefId,
+}
+
+impl Static {
+    pub(crate) fn new(def_id: DefId) -> Static {
+        Static { def_id }
+    }
+
+    pub fn source(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Cancelable<(HirFileId, TreeArc<ast::StaticDef>)> {
+        Ok(def_id_to_ast(db, self.def_id))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -327,7 +355,27 @@ pub struct Trait {
     pub(crate) def_id: DefId,
 }
 
+impl Trait {
+    pub(crate) fn new(def_id: DefId) -> Trait {
+        Trait { def_id }
+    }
+
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::TraitDef>)> {
+        Ok(def_id_to_ast(db, self.def_id))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Type {
     pub(crate) def_id: DefId,
+}
+
+impl Type {
+    pub(crate) fn new(def_id: DefId) -> Type {
+        Type { def_id }
+    }
+
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::TypeDef>)> {
+        Ok(def_id_to_ast(db, self.def_id))
+    }
 }

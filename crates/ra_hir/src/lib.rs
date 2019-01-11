@@ -60,4 +60,6 @@ pub use self::code_model_api::{
     Module, ModuleSource, Problem,
     Struct, Enum, EnumVariant,
     Function, FnSignature, ScopeEntryWithSyntax,
+    Static, Const,
+    Trait, Type,
 };

@@ -108,6 +108,22 @@ impl NavigationTarget {
                 let (file_id, node) = f.source(db)?;
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
+            Def::Trait(f) => {
+                let (file_id, node) = f.source(db)?;
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+            Def::Type(f) => {
+                let (file_id, node) = f.source(db)?;
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+            Def::Static(f) => {
+                let (file_id, node) = f.source(db)?;
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+            Def::Const(f) => {
+                let (file_id, node) = f.source(db)?;
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
             Def::Module(m) => NavigationTarget::from_module(db, m)?,
             Def::Item => return Ok(None),
         };

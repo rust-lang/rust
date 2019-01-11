@@ -4,10 +4,9 @@ use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
     HirDatabase, PerNs, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
+    Module, Trait, Type, Static, Const,
     module_tree::ModuleId,
 };
-
-use crate::code_model_api::Module;
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor
@@ -146,6 +145,10 @@ pub(crate) enum DefKind {
     Struct,
     Enum,
     EnumVariant,
+    Const,
+    Static,
+    Trait,
+    Type,
     Item,
 
     StructCtor,
@@ -173,6 +176,23 @@ impl DefId {
             }
             DefKind::Enum => Def::Enum(Enum::new(self)),
             DefKind::EnumVariant => Def::EnumVariant(EnumVariant::new(self)),
+            DefKind::Const => {
+                let def = Const::new(self);
+                Def::Const(def)
+            }
+            DefKind::Static => {
+                let def = Static::new(self);
+                Def::Static(def)
+            }
+            DefKind::Trait => {
+                let def = Trait::new(self);
+                Def::Trait(def)
+            }
+            DefKind::Type => {
+                let def = Type::new(self);
+                Def::Type(def)
+            }
+
             DefKind::StructCtor => Def::Item,
             DefKind::Item => Def::Item,
         };
@@ -218,10 +238,10 @@ impl DefKind {
             SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
             SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
             // These define items, but don't have their own DefKinds yet:
-            SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Item),
-            SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Item),
-            SyntaxKind::CONST_DEF => PerNs::values(DefKind::Item),
-            SyntaxKind::STATIC_DEF => PerNs::values(DefKind::Item),
+            SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),
+            SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Type),
+            SyntaxKind::CONST_DEF => PerNs::values(DefKind::Const),
+            SyntaxKind::STATIC_DEF => PerNs::values(DefKind::Static),
             _ => PerNs::none(),
         }
     }
