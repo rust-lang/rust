@@ -1931,8 +1931,9 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                             result = field.ok()
                                 .and_then(|field| {
                                     if ptr_end <= field_start + field.size {
+                                        let off = offset - field_start;
                                         // We found the right field, look inside it.
-                                        Self::pointee_info_at(field, cx, offset - field_start, param_env)
+                                        Self::pointee_info_at(field, cx, off, param_env)
                                     } else {
                                         None
                                     }
