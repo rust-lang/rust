@@ -80,7 +80,7 @@ mod closure;
 mod callee;
 mod compare_method;
 mod generator_interior;
-mod intrinsic;
+pub mod intrinsic;
 mod op;
 
 use astconv::{AstConv, PathSeg};

@@ -16,6 +16,7 @@
 
 use astconv::{AstConv, Bounds};
 use constrained_type_params as ctp;
+use check::intrinsic::intrisic_operation_unsafety;
 use lint;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime as rl;
@@ -2080,10 +2081,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
-        match &*tcx.item_name(def_id).as_str() {
-            "size_of" | "min_align_of" | "needs_drop" => hir::Unsafety::Normal,
-            _ => hir::Unsafety::Unsafe,
-        }
+        intrisic_operation_unsafety(&*tcx.item_name(def_id).as_str())
     } else {
         hir::Unsafety::Unsafe
     };
