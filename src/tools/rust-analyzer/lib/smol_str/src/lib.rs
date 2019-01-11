@@ -45,6 +45,12 @@ impl SmolStr {
     }
 }
 
+impl Default for SmolStr {
+    fn default() -> SmolStr {
+        SmolStr::new("")
+    }
+}
+
 impl Deref for SmolStr {
     type Target = str;
 
