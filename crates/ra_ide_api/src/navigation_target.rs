@@ -1,6 +1,9 @@
 use ra_db::{FileId, LocalSyntaxPtr, Cancelable};
-use ra_syntax::{SyntaxNode, AstNode};
-use hir::{Name, Def, ModuleSource};
+use ra_syntax::{
+    SyntaxNode, AstNode, SmolStr,
+    ast
+};
+use hir::{Def, ModuleSource};
 
 use crate::{
     NavigationTarget,
@@ -24,46 +27,44 @@ impl NavigationTarget {
         Ok(match def {
             Def::Struct(s) => {
                 let (file_id, node) = s.source(db)?;
-                Some(NavigationTarget::from_syntax(
-                    s.name(db)?,
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
-                    node.syntax(),
+                    &*node,
                 ))
             }
             Def::Enum(e) => {
                 let (file_id, node) = e.source(db)?;
-                Some(NavigationTarget::from_syntax(
-                    e.name(db)?,
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
-                    node.syntax(),
+                    &*node,
                 ))
             }
             Def::EnumVariant(ev) => {
                 let (file_id, node) = ev.source(db)?;
-                Some(NavigationTarget::from_syntax(
-                    ev.name(db)?,
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
-                    node.syntax(),
+                    &*node,
                 ))
             }
             Def::Function(f) => {
                 let (file_id, node) = f.source(db)?;
-                let name = f.signature(db).name().clone();
-                Some(NavigationTarget::from_syntax(
-                    Some(name),
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
-                    node.syntax(),
+                    &*node,
                 ))
             }
             Def::Module(m) => {
                 let (file_id, source) = m.definition_source(db)?;
-                let name = m.name(db)?;
+                let name = m
+                    .name(db)?
+                    .map(|it| it.to_string().into())
+                    .unwrap_or_else(|| SmolStr::new(""));
                 match source {
                     ModuleSource::SourceFile(node) => {
-                        Some(NavigationTarget::from_syntax(name, file_id, node.syntax()))
+                        Some(NavigationTarget::from_syntax(file_id, name, node.syntax()))
                     }
                     ModuleSource::Module(node) => {
-                        Some(NavigationTarget::from_syntax(name, file_id, node.syntax()))
+                        Some(NavigationTarget::from_syntax(file_id, name, node.syntax()))
                     }
                 }
             }
@@ -71,10 +72,18 @@ impl NavigationTarget {
         })
     }
 
-    fn from_syntax(name: Option<Name>, file_id: FileId, node: &SyntaxNode) -> NavigationTarget {
+    fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
+        let name = node
+            .name()
+            .map(|it| it.text().clone())
+            .unwrap_or_else(|| SmolStr::new(""));
+        NavigationTarget::from_syntax(file_id, name, node.syntax())
+    }
+
+    fn from_syntax(file_id: FileId, name: SmolStr, node: &SyntaxNode) -> NavigationTarget {
         NavigationTarget {
             file_id,
-            name: name.map(|n| n.to_string().into()).unwrap_or("".into()),
+            name,
             kind: node.kind(),
             range: node.range(),
             ptr: Some(LocalSyntaxPtr::new(node)),
