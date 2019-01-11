@@ -1,5 +1,5 @@
 use languageserver_types::{
-    self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location,
+    self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location, LocationLink,
     Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
     WorkspaceEdit,
@@ -349,13 +349,25 @@ impl TryConvWith for &NavigationTarget {
     }
 }
 
-impl TryConvWith for &RangeInfo<NavigationTarget> {
-    type Ctx = ServerWorld;
-    type Output = Location;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
-        let line_index = world.analysis().file_line_index(self.info.file_id());
-        to_location(self.info.file_id(), self.info.range(), &world, &line_index)
-    }
+pub fn to_location_link(
+    target: &RangeInfo<NavigationTarget>,
+    world: &ServerWorld,
+    // line index for original range file
+    line_index: &LineIndex,
+) -> Result<LocationLink> {
+    let url = target.info.file_id().try_conv_with(world)?;
+    let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
+
+    let res = LocationLink {
+        origin_selection_range: Some(target.range.conv_with(line_index)),
+        target_uri: url.to_string(),
+        target_range: target.info.range().conv_with(&tgt_line_index),
+        target_selection_range: target
+            .info
+            .focus_range()
+            .map(|it| it.conv_with(&tgt_line_index)),
+    };
+    Ok(res)
 }
 
 pub fn to_location(
