@@ -65,6 +65,10 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::EnumVariant => EnumMember,
             CompletionItemKind::Binding => Variable,
             CompletionItemKind::Field => Field,
+            CompletionItemKind::Trait => Interface,
+            CompletionItemKind::TypeAlias => Struct,
+            CompletionItemKind::Const => Constant,
+            CompletionItemKind::Static => Value,
         }
     }
 }

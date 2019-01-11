@@ -470,8 +470,12 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<T
         Def::Struct(s) => type_for_struct(db, s),
         Def::Enum(e) => type_for_enum(db, e),
         Def::EnumVariant(ev) => type_for_enum_variant(db, ev),
-        Def::Item => {
-            log::debug!("trying to get type for item of unknown type {:?}", def_id);
+        _ => {
+            log::debug!(
+                "trying to get type for item of unknown type {:?} {:?}",
+                def_id,
+                def
+            );
             Ok(Ty::Unknown)
         }
     }

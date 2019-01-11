@@ -33,6 +33,10 @@ pub enum CompletionItemKind {
     EnumVariant,
     Binding,
     Field,
+    Static,
+    Const,
+    Trait,
+    TypeAlias,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -153,6 +157,22 @@ impl Builder {
                 types: Some(hir::Def::Enum(..)),
                 ..
             } => CompletionItemKind::Enum,
+            PerNs {
+                types: Some(hir::Def::Trait(..)),
+                ..
+            } => CompletionItemKind::Trait,
+            PerNs {
+                types: Some(hir::Def::Type(..)),
+                ..
+            } => CompletionItemKind::TypeAlias,
+            PerNs {
+                values: Some(hir::Def::Const(..)),
+                ..
+            } => CompletionItemKind::Const,
+            PerNs {
+                values: Some(hir::Def::Static(..)),
+                ..
+            } => CompletionItemKind::Static,
             PerNs {
                 values: Some(hir::Def::Function(function)),
                 ..
