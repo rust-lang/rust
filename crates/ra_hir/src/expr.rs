@@ -115,8 +115,6 @@ pub enum Literal {
     Bool(bool),
     Int(u64, UncertainIntTy),
     Float(u64, UncertainFloatTy), // FIXME: f64 is not Eq
-    Tuple { values: Vec<ExprId> },
-    Array { values: Vec<ExprId> },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -322,14 +320,7 @@ impl Expr {
                     f(*expr);
                 }
             }
-            Expr::Literal(l) => match l {
-                Literal::Array { values } | Literal::Tuple { values } => {
-                    for &val in values {
-                        f(val);
-                    }
-                }
-                _ => {}
-            },
+            Expr::Literal(_) => {}
         }
     }
 }
@@ -719,14 +710,6 @@ impl ExprCollector {
                             // FIXME: this likely includes the " characters
                             let text = c.text().to_string();
                             Literal::String(text)
-                        }
-                        SyntaxKind::ARRAY_EXPR => {
-                            // TODO: recursively call to self
-                            Literal::Array { values: vec![] }
-                        }
-                        SyntaxKind::PAREN_EXPR => {
-                            // TODO: recursively call to self
-                            Literal::Tuple { values: vec![] }
                         }
                         SyntaxKind::TRUE_KW => Literal::Bool(true),
                         SyntaxKind::FALSE_KW => Literal::Bool(false),

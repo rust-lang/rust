@@ -144,9 +144,7 @@ fn test() {
     b'b';
     3.14;
     5000;
-    (0u32, -5isize);
     false;
-    [true, true, false]
 }
 "#,
         "literals.txt",

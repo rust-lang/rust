@@ -107,15 +107,29 @@ impl UnifyValue for TypeVarValue {
     }
 }
 
-/// The kinds of placeholders we need during type inference. Currently, we only
-/// have type variables; in the future, we will probably also need int and float
-/// variables, for inference of literal values (e.g. `100` could be one of
+/// The kinds of placeholders we need during type inference. There's seperate
+/// values for general types, and for integer and float variables. The latter
+/// two are used for inference of literal values (e.g. `100` could be one of
 /// several integer types).
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum InferTy {
     TypeVar(TypeVarId),
     IntVar(TypeVarId),
     FloatVar(TypeVarId),
+}
+
+impl InferTy {
+    fn fallback_value(self) -> Ty {
+        match self {
+            InferTy::TypeVar(..) => Ty::Unknown,
+            InferTy::IntVar(..) => {
+                Ty::Int(primitive::UncertainIntTy::Signed(primitive::IntTy::I32))
+            }
+            InferTy::FloatVar(..) => {
+                Ty::Float(primitive::UncertainFloatTy::Known(primitive::FloatTy::F64))
+            }
+        }
+    }
 }
 
 /// When inferring an expression, we propagate downward whatever type hint we
@@ -156,8 +170,6 @@ pub enum Ty {
     /// A primitive integer type. For example, `i32`.
     Int(primitive::UncertainIntTy),
 
-    // /// A primitive unsigned integer type. For example, `u32`.
-    // Uint(primitive::UintTy),
     /// A primitive floating-point type. For example, `f64`.
     Float(primitive::UncertainFloatTy),
 
@@ -199,8 +211,9 @@ pub enum Ty {
     // above function pointer type. Once we implement generics, we will probably
     // need this as well.
 
-    // A trait, defined with `dyn trait`.
+    // A trait, defined with `dyn Trait`.
     // Dynamic(),
+
     // The anonymous type of a closure. Used to represent the type of
     // `|a| a`.
     // Closure(DefId, ClosureSubsts<'tcx>),
@@ -824,11 +837,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_completely(known_ty.clone())
                 } else {
-                    match i {
-                        InferTy::TypeVar(..) => Ty::Unknown,
-                        InferTy::IntVar(..) => Ty::Int(primitive::UncertainIntTy::Unknown),
-                        InferTy::FloatVar(..) => Ty::Float(primitive::UncertainFloatTy::Unknown),
-                    }
+                    i.fallback_value()
                 }
             }
             _ => ty,
@@ -1111,24 +1120,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::Ref(slice_type, Mutability::Shared)
                 }
                 Literal::Char(..) => Ty::Char,
-                Literal::Tuple { values } => {
-                    let mut inner_tys = Vec::new();
-                    for &expr in values {
-                        let inner_ty = self.infer_expr(expr, &Expectation::none())?;
-                        inner_tys.push(inner_ty);
-                    }
-                    Ty::Tuple(Arc::from(inner_tys))
-                }
-                Literal::Array { values } => {
-                    // simply take the type of the first element for now
-                    let inner_ty = match values.get(0) {
-                        Some(&expr) => self.infer_expr(expr, &Expectation::none())?,
-                        None => Ty::Unknown,
-                    };
-                    // TODO: we should return a Ty::Array when it becomes
-                    // available
-                    Ty::Slice(Arc::new(inner_ty))
-                }
                 Literal::Int(_v, ty) => Ty::Int(*ty),
                 Literal::Float(_v, ty) => Ty::Float(*ty),
             },
