@@ -47,6 +47,8 @@ enum Task {
     Notify(RawNotification),
 }
 
+const THREADPOOL_SIZE: usize = 8;
+
 pub fn main_loop(
     internal_mode: bool,
     ws_root: PathBuf,
@@ -54,7 +56,7 @@ pub fn main_loop(
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
-    let pool = ThreadPool::new(8);
+    let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (ws_worker, ws_watcher) = workspace_loader();
 
@@ -164,6 +166,11 @@ fn main_loop_inner(
     pending_requests: &mut FxHashSet<u64>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
+    // We try not to index more than THREADPOOL_SIZE - 3 libraries at the same
+    // time to always have a thread ready to react to input.
+    let mut in_flight_libraries = 0;
+    let mut pending_libraries = Vec::new();
+
     let (libdata_sender, libdata_receiver) = unbounded();
     loop {
         log::trace!("selecting");
@@ -191,6 +198,7 @@ fn main_loop_inner(
             Event::Lib(lib) => {
                 feedback(internal_mode, "library loaded", msg_sender);
                 state.add_lib(lib);
+                in_flight_libraries -= 1;
             }
             Event::Msg(msg) => match msg {
                 RawMessage::Request(req) => {
@@ -219,8 +227,10 @@ fn main_loop_inner(
             },
         };
 
-        for lib in state.process_changes() {
-            let (root, files) = lib;
+        pending_libraries.extend(state.process_changes());
+        while in_flight_libraries < THREADPOOL_SIZE - 3 && !pending_libraries.is_empty() {
+            let (root, files) = pending_libraries.pop().unwrap();
+            in_flight_libraries += 1;
             let sender = libdata_sender.clone();
             pool.execute(move || {
                 let start = ::std::time::Instant::now();
@@ -230,7 +240,8 @@ fn main_loop_inner(
                 sender.send(data).unwrap();
             });
         }
-        if state.roots_to_scan == 0 {
+
+        if state.roots_to_scan == 0 && pending_libraries.is_empty() && in_flight_libraries == 0 {
             feedback(internal_mode, "workspace loaded", msg_sender);
         }
 
