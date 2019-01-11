@@ -18,14 +18,14 @@ macro_rules! ctry {
     };
 }
 
-mod completion;
 mod db;
-mod goto_definition;
 mod imp;
 pub mod mock_analysis;
-mod runnables;
 mod symbol_index;
 
+mod completion;
+mod runnables;
+mod goto_definition;
 mod extend_selection;
 mod hover;
 mod call_info;
