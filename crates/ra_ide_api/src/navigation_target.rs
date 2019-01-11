@@ -24,34 +24,22 @@ impl NavigationTarget {
 
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
     pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Cancelable<Option<NavigationTarget>> {
-        Ok(match def {
+        let res = match def {
             Def::Struct(s) => {
                 let (file_id, node) = s.source(db)?;
-                Some(NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                ))
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Enum(e) => {
                 let (file_id, node) = e.source(db)?;
-                Some(NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                ))
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::EnumVariant(ev) => {
                 let (file_id, node) = ev.source(db)?;
-                Some(NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                ))
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Function(f) => {
                 let (file_id, node) = f.source(db)?;
-                Some(NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                ))
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Module(m) => {
                 let (file_id, source) = m.definition_source(db)?;
@@ -61,15 +49,16 @@ impl NavigationTarget {
                     .unwrap_or_else(|| SmolStr::new(""));
                 match source {
                     ModuleSource::SourceFile(node) => {
-                        Some(NavigationTarget::from_syntax(file_id, name, node.syntax()))
+                        NavigationTarget::from_syntax(file_id, name, node.syntax())
                     }
                     ModuleSource::Module(node) => {
-                        Some(NavigationTarget::from_syntax(file_id, name, node.syntax()))
+                        NavigationTarget::from_syntax(file_id, name, node.syntax())
                     }
                 }
             }
-            Def::Item => None,
-        })
+            Def::Item => return Ok(None),
+        };
+        Ok(Some(res))
     }
 
     fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
