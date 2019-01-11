@@ -251,7 +251,7 @@ pub struct RangeInfo<T> {
 }
 
 impl<T> RangeInfo<T> {
-    fn new(range: TextRange, info: T) -> RangeInfo<T> {
+    pub fn new(range: TextRange, info: T) -> RangeInfo<T> {
         RangeInfo { range, info }
     }
 }
@@ -391,7 +391,7 @@ impl Analysis {
     pub fn goto_definition(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<Vec<NavigationTarget>>> {
+    ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.db
             .catch_canceled(|db| goto_definition::goto_definition(db, position))?
     }

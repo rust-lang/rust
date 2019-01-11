@@ -6,7 +6,7 @@ use languageserver_types::{
 };
 use ra_ide_api::{
     CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
-    InsertText, NavigationTarget, SourceChange, SourceFileEdit,
+    InsertText, NavigationTarget, SourceChange, SourceFileEdit, RangeInfo,
     LineCol, LineIndex, translate_offset_with_edit
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
@@ -346,6 +346,15 @@ impl TryConvWith for &NavigationTarget {
     fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id());
         to_location(self.file_id(), self.range(), &world, &line_index)
+    }
+}
+
+impl TryConvWith for &RangeInfo<NavigationTarget> {
+    type Ctx = ServerWorld;
+    type Output = Location;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
+        let line_index = world.analysis().file_line_index(self.info.file_id());
+        to_location(self.info.file_id(), self.info.range(), &world, &line_index)
     }
 }
 

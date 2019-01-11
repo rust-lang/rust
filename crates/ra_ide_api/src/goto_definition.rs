@@ -4,19 +4,21 @@ use ra_syntax::{
     algo::find_node_at_offset,
 };
 
-use crate::{FilePosition, NavigationTarget, db::RootDatabase};
+use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
-) -> Cancelable<Option<Vec<NavigationTarget>>> {
+) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
     let file = db.source_file(position.file_id);
     let syntax = file.syntax();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-        return Ok(Some(reference_definition(db, position.file_id, name_ref)?));
+        let navs = reference_definition(db, position.file_id, name_ref)?;
+        return Ok(Some(RangeInfo::new(name_ref.syntax().range(), navs)));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
-        return name_definition(db, position.file_id, name);
+        let navs = ctry!(name_definition(db, position.file_id, name)?);
+        return Ok(Some(RangeInfo::new(name.syntax().range(), navs)));
     }
     Ok(None)
 }

@@ -9,7 +9,7 @@ use languageserver_types::{
     SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity,
+    FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, SourceChange, RangeInfo,
 };
 use ra_syntax::{TextUnit, AstNode};
 use rustc_hash::FxHashMap;
@@ -208,12 +208,15 @@ pub fn handle_goto_definition(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
-    let navs = match world.analysis().goto_definition(position)? {
+    let nav_info = match world.analysis().goto_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = navs
+    let nav_range = nav_info.range;
+    let res = nav_info
+        .info
         .into_iter()
+        .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| nav.try_conv_with(&world))
         .collect::<Result<Vec<_>>>()?;
     Ok(Some(req::GotoDefinitionResponse::Array(res)))
