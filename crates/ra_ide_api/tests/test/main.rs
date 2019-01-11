@@ -4,7 +4,7 @@ use ra_syntax::TextRange;
 use test_utils::{assert_eq_dbg, assert_eq_text};
 
 use ra_ide_api::{
-    mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
+    mock_analysis::{single_file, single_file_with_position, MockAnalysis},
     AnalysisChange, CrateGraph, FileId, Query
 };
 
@@ -32,42 +32,6 @@ fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
     let (analysis, file_id) = single_file("mod foo {}");
     let diagnostics = analysis.diagnostics(file_id).unwrap();
     assert_eq_dbg(r#"[]"#, &diagnostics);
-}
-
-#[test]
-fn test_resolve_parent_module() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod foo;
-        //- /foo.rs
-        <|>// empty
-    ",
-    );
-    let symbols = analysis.parent_module(pos).unwrap();
-    assert_eq_dbg(
-        r#"[NavigationTarget { file_id: FileId(1), name: "foo", kind: MODULE, range: [4; 7), ptr: None }]"#,
-        &symbols,
-    );
-}
-
-#[test]
-fn test_resolve_parent_module_for_inline() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod foo {
-            mod bar {
-                mod baz { <|> }
-            }
-        }
-    ",
-    );
-    let symbols = analysis.parent_module(pos).unwrap();
-    assert_eq_dbg(
-        r#"[NavigationTarget { file_id: FileId(1), name: "baz", kind: MODULE, range: [36; 39), ptr: None }]"#,
-        &symbols,
-    );
 }
 
 #[test]
@@ -245,5 +209,5 @@ pub trait HirDatabase: SyntaxDatabase {}
     let mut symbols = analysis.symbol_search(Query::new("Hir".into())).unwrap();
     let s = symbols.pop().unwrap();
     assert_eq!(s.name(), "HirDatabase");
-    assert_eq!(s.range(), TextRange::from_to(33.into(), 44.into()));
+    assert_eq!(s.full_range(), TextRange::from_to(33.into(), 44.into()));
 }

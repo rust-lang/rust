@@ -15,7 +15,7 @@ use crate::{
     impl_block::ImplBlock,
 };
 
-pub use self::scope::{FnScopes, ScopesWithSyntaxMapping};
+pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 
 impl Function {
     pub(crate) fn new(def_id: DefId) -> Function {

@@ -1,12 +1,12 @@
 use languageserver_types::{
-    self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location,
+    self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location, LocationLink,
     Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
     WorkspaceEdit,
 };
 use ra_ide_api::{
     CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
-    InsertText, NavigationTarget, SourceChange, SourceFileEdit,
+    InsertText, NavigationTarget, SourceChange, SourceFileEdit, RangeInfo,
     LineCol, LineIndex, translate_offset_with_edit
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
@@ -345,8 +345,30 @@ impl TryConvWith for &NavigationTarget {
     type Output = Location;
     fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id());
-        to_location(self.file_id(), self.range(), &world, &line_index)
+        let range = self.focus_range().unwrap_or(self.full_range());
+        to_location(self.file_id(), range, &world, &line_index)
     }
+}
+
+pub fn to_location_link(
+    target: &RangeInfo<NavigationTarget>,
+    world: &ServerWorld,
+    // line index for original range file
+    line_index: &LineIndex,
+) -> Result<LocationLink> {
+    let url = target.info.file_id().try_conv_with(world)?;
+    let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
+
+    let res = LocationLink {
+        origin_selection_range: Some(target.range.conv_with(line_index)),
+        target_uri: url.to_string(),
+        target_range: target.info.full_range().conv_with(&tgt_line_index),
+        target_selection_range: target
+            .info
+            .focus_range()
+            .map(|it| it.conv_with(&tgt_line_index)),
+    };
+    Ok(res)
 }
 
 pub fn to_location(

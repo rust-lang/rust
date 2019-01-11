@@ -18,25 +18,26 @@ macro_rules! ctry {
     };
 }
 
-mod completion;
 mod db;
-mod goto_definition;
 mod imp;
 pub mod mock_analysis;
-mod runnables;
 mod symbol_index;
+mod navigation_target;
 
+mod completion;
+mod runnables;
+mod goto_definition;
 mod extend_selection;
 mod hover;
 mod call_info;
 mod syntax_highlighting;
+mod parent_module;
 
 use std::{fmt, sync::Arc};
 
-use hir::{Def, ModuleSource, Name};
-use ra_syntax::{SmolStr, SourceFile, TreePtr, SyntaxKind, SyntaxNode, TextRange, TextUnit, AstNode};
+use ra_syntax::{SourceFile, TreePtr, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
-use ra_db::{SyntaxDatabase, FilesDatabase, LocalSyntaxPtr, BaseDatabase};
+use ra_db::{SyntaxDatabase, FilesDatabase, BaseDatabase};
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
@@ -50,6 +51,7 @@ use crate::{
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
+    navigation_target::NavigationTarget,
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode,
@@ -243,110 +245,6 @@ impl Query {
     }
 }
 
-/// `NavigationTarget` represents and element in the editor's UI whihc you can
-/// click on to navigate to a particular piece of code.
-///
-/// Typically, a `NavigationTarget` corresponds to some element in the source
-/// code, like a function or a struct, but this is not strictly required.
-#[derive(Debug, Clone)]
-pub struct NavigationTarget {
-    file_id: FileId,
-    name: SmolStr,
-    kind: SyntaxKind,
-    range: TextRange,
-    // Should be DefId ideally
-    ptr: Option<LocalSyntaxPtr>,
-}
-
-impl NavigationTarget {
-    fn from_symbol(symbol: FileSymbol) -> NavigationTarget {
-        NavigationTarget {
-            file_id: symbol.file_id,
-            name: symbol.name.clone(),
-            kind: symbol.ptr.kind(),
-            range: symbol.ptr.range(),
-            ptr: Some(symbol.ptr.clone()),
-        }
-    }
-
-    fn from_syntax(name: Option<Name>, file_id: FileId, node: &SyntaxNode) -> NavigationTarget {
-        NavigationTarget {
-            file_id,
-            name: name.map(|n| n.to_string().into()).unwrap_or("".into()),
-            kind: node.kind(),
-            range: node.range(),
-            ptr: Some(LocalSyntaxPtr::new(node)),
-        }
-    }
-    // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
-    fn from_def(db: &db::RootDatabase, def: Def) -> Cancelable<Option<NavigationTarget>> {
-        Ok(match def {
-            Def::Struct(s) => {
-                let (file_id, node) = s.source(db)?;
-                Some(NavigationTarget::from_syntax(
-                    s.name(db)?,
-                    file_id.original_file(db),
-                    node.syntax(),
-                ))
-            }
-            Def::Enum(e) => {
-                let (file_id, node) = e.source(db)?;
-                Some(NavigationTarget::from_syntax(
-                    e.name(db)?,
-                    file_id.original_file(db),
-                    node.syntax(),
-                ))
-            }
-            Def::EnumVariant(ev) => {
-                let (file_id, node) = ev.source(db)?;
-                Some(NavigationTarget::from_syntax(
-                    ev.name(db)?,
-                    file_id.original_file(db),
-                    node.syntax(),
-                ))
-            }
-            Def::Function(f) => {
-                let (file_id, node) = f.source(db)?;
-                let name = f.signature(db).name().clone();
-                Some(NavigationTarget::from_syntax(
-                    Some(name),
-                    file_id.original_file(db),
-                    node.syntax(),
-                ))
-            }
-            Def::Module(m) => {
-                let (file_id, source) = m.definition_source(db)?;
-                let name = m.name(db)?;
-                match source {
-                    ModuleSource::SourceFile(node) => {
-                        Some(NavigationTarget::from_syntax(name, file_id, node.syntax()))
-                    }
-                    ModuleSource::Module(node) => {
-                        Some(NavigationTarget::from_syntax(name, file_id, node.syntax()))
-                    }
-                }
-            }
-            Def::Item => None,
-        })
-    }
-
-    pub fn name(&self) -> &SmolStr {
-        &self.name
-    }
-
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub fn file_id(&self) -> FileId {
-        self.file_id
-    }
-
-    pub fn range(&self) -> TextRange {
-        self.range
-    }
-}
-
 #[derive(Debug)]
 pub struct RangeInfo<T> {
     pub range: TextRange,
@@ -354,7 +252,7 @@ pub struct RangeInfo<T> {
 }
 
 impl<T> RangeInfo<T> {
-    fn new(range: TextRange, info: T) -> RangeInfo<T> {
+    pub fn new(range: TextRange, info: T) -> RangeInfo<T> {
         RangeInfo { range, info }
     }
 }
@@ -494,7 +392,7 @@ impl Analysis {
     pub fn goto_definition(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<Vec<NavigationTarget>>> {
+    ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.db
             .catch_canceled(|db| goto_definition::goto_definition(db, position))?
     }
@@ -517,7 +415,7 @@ impl Analysis {
 
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        self.with_db(|db| db.parent_module(position))?
+        self.with_db(|db| parent_module::parent_module(db, position))?
     }
 
     /// Returns crates this file belongs too.

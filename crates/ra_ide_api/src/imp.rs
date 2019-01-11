@@ -11,12 +11,11 @@ use ra_syntax::{
     TextRange, AstNode, SourceFile,
     ast::{self, NameOwner},
     algo::find_node_at_offset,
-    SyntaxKind::*,
 };
 
 use crate::{
     AnalysisChange,
-    Cancelable, NavigationTarget,
+    Cancelable,
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{LibrarySymbolsQuery, FileSymbol},
@@ -99,29 +98,6 @@ impl db::RootDatabase {
 }
 
 impl db::RootDatabase {
-    /// This returns `Vec` because a module may be included from several places. We
-    /// don't handle this case yet though, so the Vec has length at most one.
-    pub(crate) fn parent_module(
-        &self,
-        position: FilePosition,
-    ) -> Cancelable<Vec<NavigationTarget>> {
-        let module = match source_binder::module_from_position(self, position)? {
-            None => return Ok(Vec::new()),
-            Some(it) => it,
-        };
-        let (file_id, ast_module) = match module.declaration_source(self)? {
-            None => return Ok(Vec::new()),
-            Some(it) => it,
-        };
-        let name = ast_module.name().unwrap();
-        Ok(vec![NavigationTarget {
-            file_id,
-            name: name.text().clone(),
-            range: name.syntax().range(),
-            kind: MODULE,
-            ptr: None,
-        }])
-    }
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         let module = match source_binder::module_from_file_id(self, file_id)? {

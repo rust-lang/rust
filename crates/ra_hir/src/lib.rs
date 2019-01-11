@@ -59,5 +59,5 @@ pub use self::code_model_api::{
     Def,
     Module, ModuleSource, Problem,
     Struct, Enum, EnumVariant,
-    Function, FnSignature,
+    Function, FnSignature, ScopeEntryWithSyntax,
 };

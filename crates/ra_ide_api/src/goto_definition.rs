@@ -1,22 +1,24 @@
 use ra_db::{FileId, Cancelable, SyntaxDatabase};
 use ra_syntax::{
-    TextRange, AstNode, ast, SyntaxKind::{NAME, MODULE},
+    AstNode, ast,
     algo::find_node_at_offset,
 };
 
-use crate::{FilePosition, NavigationTarget, db::RootDatabase};
+use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
-) -> Cancelable<Option<Vec<NavigationTarget>>> {
+) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
     let file = db.source_file(position.file_id);
     let syntax = file.syntax();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-        return Ok(Some(reference_definition(db, position.file_id, name_ref)?));
+        let navs = reference_definition(db, position.file_id, name_ref)?;
+        return Ok(Some(RangeInfo::new(name_ref.syntax().range(), navs)));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
-        return name_definition(db, position.file_id, name);
+        let navs = ctry!(name_definition(db, position.file_id, name)?);
+        return Ok(Some(RangeInfo::new(name.syntax().range(), navs)));
     }
     Ok(None)
 }
@@ -32,13 +34,7 @@ pub(crate) fn reference_definition(
         let scope = fn_descr.scopes(db)?;
         // First try to resolve the symbol locally
         if let Some(entry) = scope.resolve_local_name(name_ref) {
-            let nav = NavigationTarget {
-                file_id,
-                name: entry.name().to_string().into(),
-                range: entry.ptr().range(),
-                kind: NAME,
-                ptr: None,
-            };
+            let nav = NavigationTarget::from_scope_entry(file_id, &entry);
             return Ok(vec![nav]);
         };
     }
@@ -79,18 +75,7 @@ fn name_definition(
             if let Some(child_module) =
                 hir::source_binder::module_from_declaration(db, file_id, module)?
             {
-                let (file_id, _) = child_module.definition_source(db)?;
-                let name = match child_module.name(db)? {
-                    Some(name) => name.to_string().into(),
-                    None => "".into(),
-                };
-                let nav = NavigationTarget {
-                    file_id,
-                    name,
-                    range: TextRange::offset_len(0.into(), 0.into()),
-                    kind: MODULE,
-                    ptr: None,
-                };
+                let nav = NavigationTarget::from_module(db, child_module)?;
                 return Ok(Some(vec![nav]));
             }
         }
@@ -100,31 +85,32 @@ fn name_definition(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::assert_eq_dbg;
     use crate::mock_analysis::analysis_and_position;
+
+    fn check_goto(fixuture: &str, expected: &str) {
+        let (analysis, pos) = analysis_and_position(fixuture);
+
+        let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
+        assert_eq!(navs.len(), 1);
+        let nav = navs.pop().unwrap();
+        nav.assert_match(expected);
+    }
 
     #[test]
     fn goto_definition_works_in_items() {
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             struct Foo;
             enum E { X(Foo<|>) }
             ",
-        );
-
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(1), name: "Foo",
-                                   kind: STRUCT_DEF, range: [0; 11),
-                                   ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
-            &symbols,
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
     }
 
     #[test]
     fn goto_definition_resolves_correct_name() {
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             use a::Foo;
@@ -136,47 +122,30 @@ mod tests {
             //- /b.rs
             struct Foo;
             ",
-        );
-
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(2), name: "Foo",
-                                   kind: STRUCT_DEF, range: [0; 11),
-                                   ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
-            &symbols,
+            "Foo STRUCT_DEF FileId(2) [0; 11) [7; 10)",
         );
     }
 
     #[test]
     fn goto_definition_works_for_module_declaration() {
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             mod <|>foo;
             //- /foo.rs
             // empty
-        ",
+            ",
+            "foo SOURCE_FILE FileId(2) [0; 10)",
         );
 
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
-            &symbols,
-        );
-
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             mod <|>foo;
             //- /foo/mod.rs
             // empty
-        ",
-        );
-
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
-            &symbols,
+            ",
+            "foo SOURCE_FILE FileId(2) [0; 10)",
         );
     }
 }
