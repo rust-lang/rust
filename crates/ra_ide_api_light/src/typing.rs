@@ -133,12 +133,18 @@ mod tests {
 
     #[test]
     fn test_on_eq_typed() {
-        fn do_check(before: &str, after: &str) {
+        fn type_eq(before: &str, after: &str) {
             let (offset, before) = extract_offset(before);
+            let mut edit = TextEditBuilder::default();
+            edit.insert(offset, "=".to_string());
+            let before = edit.finish().apply(&before);
             let file = SourceFile::parse(&before);
-            let result = on_eq_typed(&file, offset).unwrap();
-            let actual = result.edit.apply(&before);
-            assert_eq_text!(after, &actual);
+            if let Some(result) = on_eq_typed(&file, offset) {
+                let actual = result.edit.apply(&before);
+                assert_eq_text!(after, &actual);
+            } else {
+                assert_eq_text!(&before, after)
+            };
         }
 
         //     do_check(r"
@@ -150,10 +156,10 @@ mod tests {
         //     let foo =;
         // }
         // ");
-        do_check(
+        type_eq(
             r"
 fn foo() {
-    let foo <|>= 1 + 1
+    let foo <|> 1 + 1
 }
 ",
             r"
@@ -175,24 +181,27 @@ fn foo() {
         // ");
     }
 
+    fn type_dot(before: &str, after: &str) {
+        let (offset, before) = extract_offset(before);
+        let mut edit = TextEditBuilder::default();
+        edit.insert(offset, ".".to_string());
+        let before = edit.finish().apply(&before);
+        let file = SourceFile::parse(&before);
+        if let Some(result) = on_dot_typed(&file, offset) {
+            let actual = result.edit.apply(&before);
+            assert_eq_text!(after, &actual);
+        } else {
+            assert_eq_text!(&before, after)
+        };
+    }
+
     #[test]
-    fn test_on_dot_typed() {
-        fn do_check(before: &str, after: &str) {
-            let (offset, before) = extract_offset(before);
-            let file = SourceFile::parse(&before);
-            if let Some(result) = on_dot_typed(&file, offset) {
-                let actual = result.edit.apply(&before);
-                assert_eq_text!(after, &actual);
-            } else {
-                assert_eq_text!(&before, after)
-            };
-        }
-        // indent if continuing chain call
-        do_check(
+    fn indents_new_chain_call() {
+        type_dot(
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
                 self.child_impl(db, name)
-                <|>.
+                <|>
             }
             ",
             r"
@@ -202,13 +211,11 @@ fn foo() {
             }
             ",
         );
-
-        // do not indent if already indented
-        do_check(
+        type_dot(
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
                 self.child_impl(db, name)
-                    <|>.
+                    <|>
             }
             ",
             r"
@@ -217,15 +224,17 @@ fn foo() {
                     .
             }
             ",
-        );
+        )
+    }
 
-        // indent if the previous line is already indented
-        do_check(
+    #[test]
+    fn indents_continued_chain_call() {
+        type_dot(
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
                 self.child_impl(db, name)
                     .first()
-                <|>.
+                <|>
             }
             ",
             r"
@@ -236,14 +245,12 @@ fn foo() {
             }
             ",
         );
-
-        // don't indent if indent matches previous line
-        do_check(
+        type_dot(
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
                 self.child_impl(db, name)
                     .first()
-                    <|>.
+                    <|>
             }
             ",
             r"
@@ -254,12 +261,14 @@ fn foo() {
             }
             ",
         );
+    }
 
-        // don't indent if there is no method call on previous line
-        do_check(
+    #[test]
+    fn dont_indent_freestanding_dot() {
+        type_dot(
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                <|>.
+                <|>
             }
             ",
             r"
@@ -268,19 +277,15 @@ fn foo() {
             }
             ",
         );
-
-        // indent to match previous expr
-        do_check(
+        type_dot(
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-            <|>.
-                }
+            <|>
+            }
             ",
             r"
             pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .
+            .
             }
             ",
         );
