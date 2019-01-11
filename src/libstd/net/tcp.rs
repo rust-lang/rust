@@ -1675,9 +1675,13 @@ mod tests {
 
     #[test]
     fn connect_timeout_unroutable() {
-        // this IP is unroutable, so connections should always time out,
-        // provided the network is reachable to begin with.
-        let addr = "10.255.255.1:80".parse().unwrap();
+        // We want an IP address that is always unreachable and will trigger a
+        // timeout, regardless of whether a network connection is available or
+        // not. IPv4 doesn't have any address that is guaranteed to be
+        // unreachable, but 192.0.2.0 is part of the TEST-NET-1 address block,
+        // which is reserved for documentation and examples, and so is very
+        // likely to be unreachable.
+        let addr = "192.0.2.0:80".parse().unwrap();
         let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
         assert!(e.kind() == io::ErrorKind::TimedOut ||
                 e.kind() == io::ErrorKind::Other,
