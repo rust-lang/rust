@@ -362,15 +362,6 @@ impl<'a> LoweringContext<'a> {
         }
 
         impl<'lcx, 'interner> Visitor<'lcx> for MiscCollector<'lcx, 'interner> {
-            fn visit_mod(&mut self, m: &'lcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
-                self.lctx.modules.insert(n, hir::ModuleItems {
-                    items: BTreeSet::new(),
-                    trait_items: BTreeSet::new(),
-                    impl_items: BTreeSet::new(),
-                });
-                visit::walk_mod(self, m);
-            }
-
             fn visit_item(&mut self, item: &'lcx Item) {
                 self.lctx.allocate_hir_id_counter(item.id, item);
 
@@ -430,6 +421,12 @@ impl<'a> LoweringContext<'a> {
 
         impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
             fn visit_mod(&mut self, m: &'lcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
+                self.lctx.modules.insert(n, hir::ModuleItems {
+                    items: BTreeSet::new(),
+                    trait_items: BTreeSet::new(),
+                    impl_items: BTreeSet::new(),
+                });
+
                 let old = self.lctx.current_module;
                 self.lctx.current_module = n;
                 visit::walk_mod(self, m);

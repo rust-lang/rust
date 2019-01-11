@@ -464,8 +464,8 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
-pub fn check_mod_unstable_api_usage<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
-    tcx.hir().visit_module_item_likes(module_def_id, &mut Checker { tcx }.as_deep_visitor());
+fn check_mod_unstable_api_usage<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut Checker { tcx }.as_deep_visitor());
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

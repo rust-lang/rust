@@ -52,8 +52,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-pub fn check_mod_loops<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
-    tcx.hir().visit_module_item_likes(module_def_id, &mut CheckLoopVisitor {
+fn check_mod_loops<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckLoopVisitor {
         sess: &tcx.sess,
         hir_map: &tcx.hir(),
         cx: Normal,
