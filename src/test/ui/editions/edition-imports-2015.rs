@@ -3,8 +3,6 @@
 // aux-build:edition-imports-2018.rs
 // aux-build:absolute.rs
 
-#![feature(uniform_paths)]
-
 #[macro_use]
 extern crate edition_imports_2018;
 

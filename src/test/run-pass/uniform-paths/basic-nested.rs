@@ -1,22 +1,12 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// This test is similar to `basic.rs`, but nested in modules.
 
 // run-pass
-#![allow(unused_imports)]
-#![allow(non_camel_case_types)]
-
 // edition:2018
 
-#![feature(decl_macro, uniform_paths)]
+#![feature(decl_macro)]
 
-// This test is similar to `basic.rs`, but nested in modules.
+#![allow(unused_imports)]
+#![allow(non_camel_case_types)]
 
 mod foo {
     // Test that ambiguity errors are not emitted between `self::test` and

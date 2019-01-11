@@ -42,9 +42,10 @@ use std::{mem, ptr};
 #[derive(Clone, Debug)]
 pub enum ImportDirectiveSubclass<'a> {
     SingleImport {
-        target: Ident,
         source: Ident,
-        result: PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
+        target: Ident,
+        source_bindings: PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
+        target_bindings: PerNS<Cell<Option<&'a NameBinding<'a>>>>,
         type_ns_only: bool,
     },
     GlobImport {
@@ -227,6 +228,11 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
+            if let Some(blacklisted_binding) = this.blacklisted_binding {
+                if ptr::eq(binding, blacklisted_binding) {
+                    return Err((Determined, Weak::No));
+                }
+            }
             // `extern crate` are always usable for backwards compatibility, see issue #37020,
             // remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`.
             let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();
@@ -234,7 +240,18 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         };
 
         if record_used {
-            return resolution.binding.ok_or((Determined, Weak::No)).and_then(|binding| {
+            return resolution.binding.and_then(|binding| {
+                // If the primary binding is blacklisted, search further and return the shadowed
+                // glob binding if it exists. What we really want here is having two separate
+                // scopes in a module - one for non-globs and one for globs, but until that's done
+                // use this hack to avoid inconsistent resolution ICEs during import validation.
+                if let Some(blacklisted_binding) = self.blacklisted_binding {
+                    if ptr::eq(binding, blacklisted_binding) {
+                        return resolution.shadowed_glob;
+                    }
+                }
+                Some(binding)
+            }).ok_or((Determined, Weak::No)).and_then(|binding| {
                 if self.last_import_segment && check_usable(self, binding).is_err() {
                     Err((Determined, Weak::No))
                 } else {
@@ -646,10 +663,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             if let Some((span, err, note)) = self.finalize_import(import) {
                 errors = true;
 
-                if let SingleImport { source, ref result, .. } = import.subclass {
+                if let SingleImport { source, ref source_bindings, .. } = import.subclass {
                     if source.name == "self" {
                         // Silence `unresolved import` error if E0429 is already emitted
-                        if let Err(Determined) = result.value_ns.get() {
+                        if let Err(Determined) = source_bindings.value_ns.get() {
                             continue;
                         }
                     }
@@ -769,9 +786,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         };
 
         directive.imported_module.set(Some(module));
-        let (source, target, result, type_ns_only) = match directive.subclass {
-            SingleImport { source, target, ref result, type_ns_only } =>
-                (source, target, result, type_ns_only),
+        let (source, target, source_bindings, target_bindings, type_ns_only) =
+                match directive.subclass {
+            SingleImport { source, target, ref source_bindings,
+                           ref target_bindings, type_ns_only } =>
+                (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { .. } => {
                 self.resolve_glob_import(directive);
                 return true;
@@ -781,7 +800,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
         let mut indeterminate = false;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-            if let Err(Undetermined) = result[ns].get() {
+            if let Err(Undetermined) = source_bindings[ns].get() {
                 // For better failure detection, pretend that the import will
                 // not define any names while resolving its module path.
                 let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
@@ -790,13 +809,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 );
                 directive.vis.set(orig_vis);
 
-                result[ns].set(binding);
+                source_bindings[ns].set(binding);
             } else {
                 return
             };
 
             let parent = directive.parent_scope.module;
-            match result[ns].get() {
+            match source_bindings[ns].get() {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
                     this.update_resolution(parent, target, ns, |_, resolution| {
@@ -814,6 +833,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 }
                 Ok(binding) => {
                     let imported_binding = this.import(binding, directive);
+                    target_bindings[ns].set(Some(imported_binding));
                     let conflict = this.try_define(parent, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
                         this.report_conflict(parent, target, ns, imported_binding, old_binding);
@@ -885,8 +905,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             PathResult::Indeterminate | PathResult::NonModule(..) => unreachable!(),
         };
 
-        let (ident, result, type_ns_only) = match directive.subclass {
-            SingleImport { source, ref result, type_ns_only, .. } => (source, result, type_ns_only),
+        let (ident, source_bindings, target_bindings, type_ns_only) = match directive.subclass {
+            SingleImport { source, ref source_bindings, ref target_bindings, type_ns_only, .. } =>
+                (source, source_bindings, target_bindings, type_ns_only),
             GlobImport { is_prelude, ref max_vis } => {
                 if directive.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
@@ -925,17 +946,20 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let mut all_ns_err = true;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
+            let orig_blacklisted_binding =
+                mem::replace(&mut this.blacklisted_binding, target_bindings[ns].get());
             let orig_last_import_segment = mem::replace(&mut this.last_import_segment, true);
             let binding = this.resolve_ident_in_module(
                 module, ident, ns, Some(&directive.parent_scope), true, directive.span
             );
             this.last_import_segment = orig_last_import_segment;
+            this.blacklisted_binding = orig_blacklisted_binding;
             directive.vis.set(orig_vis);
 
             match binding {
                 Ok(binding) => {
                     // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
-                    let initial_def = result[ns].get().map(|initial_binding| {
+                    let initial_def = source_bindings[ns].get().map(|initial_binding| {
                         all_ns_err = false;
                         this.record_use(ident, ns, initial_binding,
                                         directive.module_path.is_empty());
@@ -1040,7 +1064,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let mut reexport_error = None;
         let mut any_successful_reexport = false;
         self.per_ns(|this, ns| {
-            if let Ok(binding) = result[ns].get() {
+            if let Ok(binding) = source_bindings[ns].get() {
                 let vis = directive.vis.get();
                 if !binding.pseudo_vis().is_at_least(vis, &*this) {
                     reexport_error = Some((ns, binding));
@@ -1084,7 +1108,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             let mut full_path = directive.module_path.clone();
             full_path.push(Segment::from_ident(ident));
             self.per_ns(|this, ns| {
-                if let Ok(binding) = result[ns].get() {
+                if let Ok(binding) = source_bindings[ns].get() {
                     this.lint_if_path_starts_with_module(
                         directive.crate_lint(),
                         &full_path,
@@ -1098,7 +1122,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        self.per_ns(|this, ns| if let Some(binding) = result[ns].get().ok() {
+        self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
             let mut def = binding.def();
             if let Def::Macro(def_id, _) = def {
                 // `DefId`s from the "built-in macro crate" should not leak from resolve because
