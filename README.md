@@ -1,6 +1,6 @@
 # Clippy
 
-[![Build Status](https://travis-ci.org/rust-lang/rust-clippy.svg?branch=master)](https://travis-ci.org/rust-lang/rust-clippy)
+[![Build Status](https://travis-ci.com/rust-lang/rust-clippy.svg?branch=master)](https://travis-ci.com/rust-lang/rust-clippy)
 [![Windows Build status](https://ci.appveyor.com/api/projects/status/id677xpw1dguo7iw?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/rust-clippy)
 [![Current Version](https://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MIT/Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
