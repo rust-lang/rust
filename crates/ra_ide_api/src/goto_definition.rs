@@ -85,31 +85,32 @@ fn name_definition(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::assert_eq_dbg;
     use crate::mock_analysis::analysis_and_position;
+
+    fn check_goto(fixuture: &str, expected: &str) {
+        let (analysis, pos) = analysis_and_position(fixuture);
+
+        let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
+        assert_eq!(navs.len(), 1);
+        let nav = navs.pop().unwrap();
+        nav.assert_match(expected);
+    }
 
     #[test]
     fn goto_definition_works_in_items() {
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             struct Foo;
             enum E { X(Foo<|>) }
             ",
-        );
-
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(1), name: "Foo",
-                                   kind: STRUCT_DEF, range: [0; 11),
-                                   ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
-            &symbols,
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
     }
 
     #[test]
     fn goto_definition_resolves_correct_name() {
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             use a::Foo;
@@ -121,47 +122,30 @@ mod tests {
             //- /b.rs
             struct Foo;
             ",
-        );
-
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(2), name: "Foo",
-                                   kind: STRUCT_DEF, range: [0; 11),
-                                   ptr: Some(LocalSyntaxPtr { range: [0; 11), kind: STRUCT_DEF }) }]"#,
-            &symbols,
+            "Foo STRUCT_DEF FileId(2) [0; 11) [7; 10)",
         );
     }
 
     #[test]
     fn goto_definition_works_for_module_declaration() {
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             mod <|>foo;
             //- /foo.rs
             // empty
-        ",
+            ",
+            "foo SOURCE_FILE FileId(2) [0; 10)",
         );
 
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
-            &symbols,
-        );
-
-        let (analysis, pos) = analysis_and_position(
+        check_goto(
             "
             //- /lib.rs
             mod <|>foo;
             //- /foo/mod.rs
             // empty
-        ",
-        );
-
-        let symbols = analysis.goto_definition(pos).unwrap().unwrap();
-        assert_eq_dbg(
-            r#"[NavigationTarget { file_id: FileId(2), name: "foo", kind: MODULE, range: [0; 0), ptr: None }]"#,
-            &symbols,
+            ",
+            "foo SOURCE_FILE FileId(2) [0; 10)",
         );
     }
 }

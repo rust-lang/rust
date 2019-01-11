@@ -17,7 +17,7 @@ pub struct NavigationTarget {
     file_id: FileId,
     name: SmolStr,
     kind: SyntaxKind,
-    range: TextRange,
+    full_range: TextRange,
     focus_range: Option<TextRange>,
     // Should be DefId ideally
     ptr: Option<LocalSyntaxPtr>,
@@ -36,11 +36,11 @@ impl NavigationTarget {
         self.file_id
     }
 
-    pub fn range(&self) -> TextRange {
-        self.range
+    pub fn full_range(&self) -> TextRange {
+        self.full_range
     }
 
-    /// A "most interesting" range withing the `range`.
+    /// A "most interesting" range withing the `range_full`.
     ///
     /// Typically, `range` is the whole syntax node, including doc comments, and
     /// `focus_range` is the range of the identifier.
@@ -53,7 +53,7 @@ impl NavigationTarget {
             file_id: symbol.file_id,
             name: symbol.name.clone(),
             kind: symbol.ptr.kind(),
-            range: symbol.ptr.range(),
+            full_range: symbol.ptr.range(),
             focus_range: None,
             ptr: Some(symbol.ptr.clone()),
         }
@@ -66,7 +66,7 @@ impl NavigationTarget {
         NavigationTarget {
             file_id,
             name: entry.name().to_string().into(),
-            range: entry.ptr().range(),
+            full_range: entry.ptr().range(),
             focus_range: None,
             kind: NAME,
             ptr: None,
@@ -118,6 +118,27 @@ impl NavigationTarget {
         Ok(Some(res))
     }
 
+    #[cfg(test)]
+    pub(crate) fn assert_match(&self, expected: &str) {
+        let actual = self.debug_render();
+        test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn debug_render(&self) -> String {
+        let mut buf = format!(
+            "{} {:?} {:?} {:?}",
+            self.name(),
+            self.kind(),
+            self.file_id(),
+            self.full_range()
+        );
+        if let Some(focus_range) = self.focus_range() {
+            buf.push_str(&format!(" {:?}", focus_range))
+        }
+        buf
+    }
+
     fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range = node.name().map(|it| it.syntax().range());
@@ -134,7 +155,7 @@ impl NavigationTarget {
             file_id,
             name,
             kind: node.kind(),
-            range: node.range(),
+            full_range: node.range(),
             focus_range,
             ptr: Some(LocalSyntaxPtr::new(node)),
         }

@@ -92,7 +92,7 @@ impl NavigationTarget {
         let source_file = source_file.syntax();
         let node = source_file
             .descendants()
-            .find(|node| node.kind() == self.kind() && node.range() == self.range())?
+            .find(|node| node.kind() == self.kind() && node.range() == self.full_range())?
             .to_owned();
         Some(node)
     }

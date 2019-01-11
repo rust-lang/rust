@@ -345,7 +345,8 @@ impl TryConvWith for &NavigationTarget {
     type Output = Location;
     fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id());
-        to_location(self.file_id(), self.range(), &world, &line_index)
+        let range = self.focus_range().unwrap_or(self.full_range());
+        to_location(self.file_id(), range, &world, &line_index)
     }
 }
 
@@ -361,7 +362,7 @@ pub fn to_location_link(
     let res = LocationLink {
         origin_selection_range: Some(target.range.conv_with(line_index)),
         target_uri: url.to_string(),
-        target_range: target.info.range().conv_with(&tgt_line_index),
+        target_range: target.info.full_range().conv_with(&tgt_line_index),
         target_selection_range: target
             .info
             .focus_range()

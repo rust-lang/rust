@@ -15,7 +15,7 @@ use ra_syntax::{
 
 use crate::{
     AnalysisChange,
-    Cancelable, NavigationTarget,
+    Cancelable,
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{LibrarySymbolsQuery, FileSymbol},
@@ -98,19 +98,6 @@ impl db::RootDatabase {
 }
 
 impl db::RootDatabase {
-    /// This returns `Vec` because a module may be included from several places. We
-    /// don't handle this case yet though, so the Vec has length at most one.
-    pub(crate) fn parent_module(
-        &self,
-        position: FilePosition,
-    ) -> Cancelable<Vec<NavigationTarget>> {
-        let module = match source_binder::module_from_position(self, position)? {
-            None => return Ok(Vec::new()),
-            Some(it) => it,
-        };
-        let nav = NavigationTarget::from_module(self, module)?;
-        Ok(vec![nav])
-    }
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         let module = match source_binder::module_from_file_id(self, file_id)? {

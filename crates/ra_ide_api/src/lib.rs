@@ -31,6 +31,7 @@ mod extend_selection;
 mod hover;
 mod call_info;
 mod syntax_highlighting;
+mod parent_module;
 
 use std::{fmt, sync::Arc};
 
@@ -414,7 +415,7 @@ impl Analysis {
 
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        self.with_db(|db| db.parent_module(position))?
+        self.with_db(|db| parent_module::parent_module(db, position))?
     }
 
     /// Returns crates this file belongs too.
