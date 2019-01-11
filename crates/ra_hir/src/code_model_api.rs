@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
-use ra_syntax::{ast, TreeArc, SyntaxNode, AstNode};
+use ra_syntax::{ast, TreeArc, SyntaxNode};
 
 use crate::{
     Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
@@ -12,6 +12,7 @@ use crate::{
     expr::BodySyntaxMapping,
     ty::InferenceResult,
     adt::VariantData,
+    code_model_impl::def_id_to_ast,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -186,13 +187,7 @@ impl Struct {
         &self,
         db: &impl HirDatabase,
     ) -> Cancelable<(HirFileId, TreeArc<ast::StructDef>)> {
-        let (file_id, syntax) = self.def_id.source(db);
-        Ok((
-            file_id,
-            ast::StructDef::cast(&syntax)
-                .expect("struct def should point to StructDef node")
-                .to_owned(),
-        ))
+        Ok(def_id_to_ast(db, self.def_id))
     }
 }
 
@@ -219,13 +214,7 @@ impl Enum {
     }
 
     pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::EnumDef>)> {
-        let (file_id, syntax) = self.def_id.source(db);
-        Ok((
-            file_id,
-            ast::EnumDef::cast(&syntax)
-                .expect("enum def should point to EnumDef node")
-                .to_owned(),
-        ))
+        Ok(def_id_to_ast(db, self.def_id))
     }
 }
 
@@ -259,13 +248,7 @@ impl EnumVariant {
         &self,
         db: &impl HirDatabase,
     ) -> Cancelable<(HirFileId, TreeArc<ast::EnumVariant>)> {
-        let (file_id, syntax) = self.def_id.source(db);
-        Ok((
-            file_id,
-            ast::EnumVariant::cast(&syntax)
-                .expect("variant def should point to EnumVariant node")
-                .to_owned(),
-        ))
+        Ok(def_id_to_ast(db, self.def_id))
     }
 }
 
@@ -304,7 +287,7 @@ impl Function {
     }
 
     pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::FnDef>)> {
-        Ok(self.source_impl(db))
+        Ok(def_id_to_ast(db, self.def_id))
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Cancelable<Arc<BodySyntaxMapping>> {

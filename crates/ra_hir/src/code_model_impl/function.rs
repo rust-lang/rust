@@ -3,16 +3,14 @@ mod scope;
 use std::sync::Arc;
 
 use ra_db::Cancelable;
-use ra_syntax::{
-    TreeArc,
-    ast::{self, AstNode, NameOwner},
-};
+use ra_syntax::{TreeArc, ast::{self, NameOwner}};
 
 use crate::{
-    DefId, DefKind, HirDatabase, Name, AsName, Function, FnSignature, Module, HirFileId,
+    DefId, HirDatabase, Name, AsName, Function, FnSignature, Module,
     type_ref::{TypeRef, Mutability},
     expr::Body,
     impl_block::ImplBlock,
+    code_model_impl::def_id_to_ast,
 };
 
 pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
@@ -20,16 +18,6 @@ pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 impl Function {
     pub(crate) fn new(def_id: DefId) -> Function {
         Function { def_id }
-    }
-
-    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
-        let def_loc = self.def_id.loc(db);
-        assert!(def_loc.kind == DefKind::Function);
-        let syntax = db.file_item(def_loc.source_item_id);
-        (
-            def_loc.source_item_id.file_id,
-            ast::FnDef::cast(&syntax).unwrap().to_owned(),
-        )
     }
 
     pub(crate) fn body(&self, db: &impl HirDatabase) -> Cancelable<Arc<Body>> {
@@ -48,8 +36,8 @@ impl Function {
 
 impl FnSignature {
     pub(crate) fn fn_signature_query(db: &impl HirDatabase, def_id: DefId) -> Arc<FnSignature> {
-        let func = Function::new(def_id);
-        let node = func.source_impl(db).1; // TODO we're using source_impl here to avoid returning Cancelable... this is a bit hacky
+        // FIXME: we're using def_id_to_ast here to avoid returning Cancelable... this is a bit hacky
+        let node: TreeArc<ast::FnDef> = def_id_to_ast(db, def_id).1;
         let name = node
             .name()
             .map(|n| n.as_name())
