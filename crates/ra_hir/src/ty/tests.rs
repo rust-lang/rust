@@ -230,6 +230,18 @@ fn test2(a1: *const A, a2: *mut A) {
     );
 }
 
+#[test]
+fn infer_bug_484() {
+    check_inference(
+        r#"
+fn test() {
+   let x = if true {};
+}
+"#,
+        "bug_484.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

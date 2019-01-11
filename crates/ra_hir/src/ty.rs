@@ -18,6 +18,7 @@ mod primitive;
 #[cfg(test)]
 mod tests;
 
+use std::borrow::Cow;
 use std::ops::Index;
 use std::sync::Arc;
 use std::{fmt, mem};
@@ -671,7 +672,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        match (ty1, ty2) {
+        // try to resolve type vars first
+        let ty1 = self.resolve_ty_shallow(ty1);
+        let ty2 = self.resolve_ty_shallow(ty2);
+        match (&*ty1, &*ty2) {
             (Ty::Unknown, ..) => true,
             (.., Ty::Unknown) => true,
             (Ty::Bool, _)
@@ -698,10 +702,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .zip(ts2.iter())
                 .all(|(t1, t2)| self.unify(t1, t2)),
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2))) => {
+                // both type vars are unknown since we tried to resolve them
                 self.var_unification_table.union(*tv1, *tv2);
                 true
             }
             (Ty::Infer(InferTy::TypeVar(tv)), other) | (other, Ty::Infer(InferTy::TypeVar(tv))) => {
+                // the type var is unknown since we tried to resolve it
                 self.var_unification_table
                     .union_value(*tv, TypeVarValue::Known(other.clone()));
                 true
@@ -744,6 +750,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             _ => ty,
         })
+    }
+
+    /// If `ty` is a type variable with known type, returns that type;
+    /// otherwise, return ty.
+    fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
+        match ty {
+            Ty::Infer(InferTy::TypeVar(tv)) => {
+                match self.var_unification_table.probe_value(*tv).known() {
+                    Some(known_ty) => {
+                        // The known_ty can't be a type var itself
+                        Cow::Owned(known_ty.clone())
+                    }
+                    _ => Cow::Borrowed(ty),
+                }
+            }
+            _ => Cow::Borrowed(ty),
+        }
     }
 
     /// Resolves the type completely; type variables without known type are
@@ -816,12 +839,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // if let is desugared to match, so this is always simple if
                 self.infer_expr(*condition, &Expectation::has_type(Ty::Bool))?;
                 let then_ty = self.infer_expr(*then_branch, expected)?;
-                if let Some(else_branch) = else_branch {
-                    self.infer_expr(*else_branch, expected)?;
-                } else {
-                    // no else branch -> unit
-                    self.unify(&expected.ty, &Ty::unit()); // actually coerce
-                }
+                match else_branch {
+                    Some(else_branch) => {
+                        self.infer_expr(*else_branch, expected)?;
+                    }
+                    None => {
+                        // no else branch -> unit
+                        self.unify(&then_ty, &Ty::unit()); // actually coerce
+                    }
+                };
                 then_ty
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected)?,
