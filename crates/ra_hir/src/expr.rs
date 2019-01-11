@@ -649,10 +649,9 @@ impl ExprCollector {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
-            ast::ExprKind::Literal(e) => {
-                let child = e.syntax().children().next();
-
-                if let Some(c) = child {
+            ast::ExprKind::LiteralExpr(e) => {
+                if let Some(child) = e.literal() {
+                    let c = child.syntax();
                     let lit = match c.kind() {
                         SyntaxKind::INT_NUMBER => {
                             let text = c.text().to_string();

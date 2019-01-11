@@ -215,6 +215,7 @@ Grammar(
         "PATH",
         "PATH_SEGMENT",
         "LITERAL",
+        "LITERAL_EXPR",
         "ALIAS",
         "VISIBILITY",
         "WHERE_CLAUSE",
@@ -426,11 +427,24 @@ Grammar(
         "PrefixExpr": (options: ["Expr"]),
         "RangeExpr": (),
         "BinExpr": (),
+
+        "IntNumber": ( traits: ["AstToken"] ),
+        "FloatNumber": ( traits: ["AstToken"] ),
         "String": ( traits: ["AstToken"] ),
         "Byte": ( traits: ["AstToken"] ),
         "ByteString": ( traits: ["AstToken"] ),
         "Char": ( traits: ["AstToken"] ),
-        "Literal": (),
+        "Literal": (
+            enum: [
+                "String",
+                "ByteString",
+                "Char",
+                "Byte",
+                "IntNumber",
+                "FloatNumber",
+            ]
+        ),
+        "LiteralExpr": (options: ["Literal"]),
 
         "Expr": (
             enum: [
@@ -460,7 +474,7 @@ Grammar(
                 "PrefixExpr",
                 "RangeExpr",
                 "BinExpr",
-                "Literal",
+                "LiteralExpr",
             ],
         ),
 
