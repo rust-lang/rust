@@ -35,7 +35,7 @@ mod parent_module;
 
 use std::{fmt, sync::Arc};
 
-use ra_syntax::{SourceFile, TreePtr, TextRange, TextUnit};
+use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 use ra_db::{SyntaxDatabase, FilesDatabase, BaseDatabase};
 use rayon::prelude::*;
@@ -303,7 +303,7 @@ impl Analysis {
     }
 
     /// Gets the syntax tree of the file.
-    pub fn file_syntax(&self, file_id: FileId) -> TreePtr<SourceFile> {
+    pub fn file_syntax(&self, file_id: FileId) -> TreeArc<SourceFile> {
         self.db.source_file(file_id).clone()
     }
 

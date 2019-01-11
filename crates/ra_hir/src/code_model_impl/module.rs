@@ -1,5 +1,5 @@
 use ra_db::{Cancelable, SourceRootId, FileId};
-use ra_syntax::{ast, SyntaxNode, AstNode, TreePtr};
+use ra_syntax::{ast, SyntaxNode, AstNode, TreeArc};
 
 use crate::{
     Module, ModuleSource, Problem,
@@ -57,7 +57,7 @@ impl Module {
     pub fn declaration_source_impl(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, TreePtr<ast::Module>)>> {
+    ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         let link = ctry!(loc.module_id.parent_link(&module_tree));
@@ -173,7 +173,7 @@ impl Module {
     pub fn problems_impl(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
+    ) -> Cancelable<Vec<(TreeArc<SyntaxNode>, Problem)>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;
         Ok(loc.module_id.problems(&module_tree, db))

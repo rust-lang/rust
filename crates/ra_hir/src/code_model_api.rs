@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, Cancelable, FileId};
-use ra_syntax::{ast, TreePtr, SyntaxNode, AstNode};
+use ra_syntax::{ast, TreeArc, SyntaxNode, AstNode};
 
 use crate::{
     Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
@@ -55,8 +55,8 @@ pub struct Module {
 }
 
 pub enum ModuleSource {
-    SourceFile(TreePtr<ast::SourceFile>),
-    Module(TreePtr<ast::Module>),
+    SourceFile(TreeArc<ast::SourceFile>),
+    Module(TreeArc<ast::Module>),
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -86,7 +86,7 @@ impl Module {
     pub fn declaration_source(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, TreePtr<ast::Module>)>> {
+    ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
         self.declaration_source_impl(db)
     }
 
@@ -134,7 +134,7 @@ impl Module {
     pub fn problems(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Vec<(TreePtr<SyntaxNode>, Problem)>> {
+    ) -> Cancelable<Vec<(TreeArc<SyntaxNode>, Problem)>> {
         self.problems_impl(db)
     }
 }
@@ -185,7 +185,7 @@ impl Struct {
     pub fn source(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<(HirFileId, TreePtr<ast::StructDef>)> {
+    ) -> Cancelable<(HirFileId, TreeArc<ast::StructDef>)> {
         let (file_id, syntax) = self.def_id.source(db);
         Ok((
             file_id,
@@ -218,7 +218,7 @@ impl Enum {
         Ok(db.enum_data(self.def_id)?.variants.clone())
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreePtr<ast::EnumDef>)> {
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::EnumDef>)> {
         let (file_id, syntax) = self.def_id.source(db);
         Ok((
             file_id,
@@ -258,7 +258,7 @@ impl EnumVariant {
     pub fn source(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<(HirFileId, TreePtr<ast::EnumVariant>)> {
+    ) -> Cancelable<(HirFileId, TreeArc<ast::EnumVariant>)> {
         let (file_id, syntax) = self.def_id.source(db);
         Ok((
             file_id,
@@ -303,7 +303,7 @@ impl Function {
         self.def_id
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreePtr<ast::FnDef>)> {
+    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::FnDef>)> {
         Ok(self.source_impl(db))
     }
 

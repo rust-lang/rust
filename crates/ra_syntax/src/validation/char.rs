@@ -175,9 +175,9 @@ fn validate_unicode_escape(text: &str, range: TextRange, errors: &mut Vec<Syntax
 
 #[cfg(test)]
 mod test {
-    use crate::{SourceFile, TreePtr};
+    use crate::{SourceFile, TreeArc};
 
-    fn build_file(literal: &str) -> TreePtr<SourceFile> {
+    fn build_file(literal: &str) -> TreeArc<SourceFile> {
         let src = format!("const C: char = '{}';", literal);
         SourceFile::parse(&src)
     }

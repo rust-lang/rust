@@ -1,5 +1,5 @@
 use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
-use ra_syntax::{TreePtr, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
+use ra_syntax::{TreeArc, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
@@ -61,7 +61,7 @@ impl HirFileId {
     pub(crate) fn hir_source_file(
         db: &impl HirDatabase,
         file_id: HirFileId,
-    ) -> TreePtr<SourceFile> {
+    ) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.source_file(file_id),
             HirFileIdRepr::Macro(m) => {
@@ -179,7 +179,7 @@ impl DefId {
         Ok(res)
     }
 
-    pub(crate) fn source(self, db: &impl HirDatabase) -> (HirFileId, TreePtr<SyntaxNode>) {
+    pub(crate) fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<SyntaxNode>) {
         let loc = self.loc(db);
         let syntax = db.file_item(loc.source_item_id);
         (loc.source_item_id.file_id, syntax)
@@ -244,7 +244,7 @@ pub struct SourceItemId {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
     file_id: HirFileId,
-    arena: Arena<SourceFileItemId, TreePtr<SyntaxNode>>,
+    arena: Arena<SourceFileItemId, TreeArc<SyntaxNode>>,
 }
 
 impl SourceFileItems {
@@ -273,7 +273,7 @@ impl SourceFileItems {
         })
     }
 
-    fn alloc(&mut self, item: TreePtr<SyntaxNode>) -> SourceFileItemId {
+    fn alloc(&mut self, item: TreeArc<SyntaxNode>) -> SourceFileItemId {
         self.arena.alloc(item)
     }
     pub(crate) fn id_of(&self, file_id: HirFileId, item: &SyntaxNode) -> SourceFileItemId {

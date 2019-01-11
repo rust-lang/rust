@@ -3,7 +3,7 @@ use std::{fs, io::Read, path::Path, time::Instant};
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
 use ra_ide_api_light::{extend_selection, file_structure, syntax_tree};
-use ra_syntax::{SourceFile, TextRange, TreePtr, AstNode};
+use ra_syntax::{SourceFile, TextRange, TreeArc, AstNode};
 use tools::collect_tests;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn file() -> Result<TreePtr<SourceFile>> {
+fn file() -> Result<TreeArc<SourceFile>> {
     let text = read_stdin()?;
     Ok(SourceFile::parse(&text))
 }

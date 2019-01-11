@@ -106,9 +106,9 @@ fn validate_byte_code_escape(text: &str, range: TextRange, errors: &mut Vec<Synt
 
 #[cfg(test)]
 mod test {
-    use crate::{SourceFile, TreePtr};
+    use crate::{SourceFile, TreeArc};
 
-    fn build_file(literal: &str) -> TreePtr<SourceFile> {
+    fn build_file(literal: &str) -> TreeArc<SourceFile> {
         let src = format!("const C: u8 = b'{}';", literal);
         SourceFile::parse(&src)
     }

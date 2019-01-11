@@ -43,9 +43,9 @@ pub(crate) fn validate_byte_string_node(node: &ast::ByteString, errors: &mut Vec
 
 #[cfg(test)]
 mod test {
-    use crate::{SourceFile, TreePtr};
+    use crate::{SourceFile, TreeArc};
 
-    fn build_file(literal: &str) -> TreePtr<SourceFile> {
+    fn build_file(literal: &str) -> TreeArc<SourceFile> {
         let src = format!(r#"const S: &'static [u8] = b"{}";"#, literal);
         println!("Source: {}", src);
         SourceFile::parse(&src)

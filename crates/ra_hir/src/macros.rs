@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
-    TextRange, TextUnit, SourceFile, AstNode, SyntaxNode, TreePtr,
+    TextRange, TextUnit, SourceFile, AstNode, SyntaxNode, TreeArc,
     ast::{self, NameOwner},
 };
 
@@ -152,11 +152,11 @@ pub struct MacroExpansion {
 impl MacroExpansion {
     // FIXME: does not really make sense, macro expansion is not neccessary a
     // whole file. See `MacroExpansion::ptr` as well.
-    pub(crate) fn file(&self) -> TreePtr<SourceFile> {
+    pub(crate) fn file(&self) -> TreeArc<SourceFile> {
         SourceFile::parse(&self.text)
     }
 
-    pub fn syntax(&self) -> TreePtr<SyntaxNode> {
+    pub fn syntax(&self) -> TreeArc<SyntaxNode> {
         self.ptr.resolve(&self.file())
     }
     /// Maps range in the source code to the range in the expanded code.

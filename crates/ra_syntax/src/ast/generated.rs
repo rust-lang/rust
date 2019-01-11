@@ -13,7 +13,7 @@ use rowan::TransparentNewType;
 
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    yellow::{RaTypes, TreePtr},
+    yellow::{RaTypes, TreeArc},
     ast::{self, AstNode},
 };
 
@@ -35,7 +35,7 @@ impl AstNode for ArgList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ArgList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ArgList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -63,7 +63,7 @@ impl AstNode for ArrayExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ArrayExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ArrayExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -87,7 +87,7 @@ impl AstNode for ArrayType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ArrayType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ArrayType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -119,7 +119,7 @@ impl AstNode for Attr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Attr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Attr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -147,7 +147,7 @@ impl AstNode for BinExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<BinExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<BinExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -171,7 +171,7 @@ impl AstNode for BindPat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<BindPat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<BindPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -196,7 +196,7 @@ impl AstNode for Block {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Block> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Block> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -228,7 +228,7 @@ impl AstNode for BlockExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<BlockExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<BlockExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -256,7 +256,7 @@ impl AstNode for BreakExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<BreakExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<BreakExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -284,7 +284,7 @@ impl AstNode for Byte {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Byte> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Byte> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -309,7 +309,7 @@ impl AstNode for ByteString {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ByteString> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ByteString> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -334,7 +334,7 @@ impl AstNode for CallExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<CallExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<CallExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -363,7 +363,7 @@ impl AstNode for CastExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<CastExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<CastExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -395,7 +395,7 @@ impl AstNode for Char {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Char> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Char> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -420,7 +420,7 @@ impl AstNode for Comment {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Comment> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Comment> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -445,7 +445,7 @@ impl AstNode for Condition {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Condition> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Condition> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -477,7 +477,7 @@ impl AstNode for ConstDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ConstDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ConstDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -506,7 +506,7 @@ impl AstNode for ContinueExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ContinueExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ContinueExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -530,7 +530,7 @@ impl AstNode for DynTraitType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<DynTraitType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<DynTraitType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -554,7 +554,7 @@ impl AstNode for EnumDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<EnumDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<EnumDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -587,7 +587,7 @@ impl AstNode for EnumVariant {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<EnumVariant> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<EnumVariant> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -616,7 +616,7 @@ impl AstNode for EnumVariantList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<EnumVariantList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<EnumVariantList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -701,7 +701,7 @@ impl AstNode for Expr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Expr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Expr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl Expr {
@@ -759,7 +759,7 @@ impl AstNode for ExprStmt {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ExprStmt> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ExprStmt> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -787,7 +787,7 @@ impl AstNode for ExternCrateItem {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ExternCrateItem> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ExternCrateItem> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -811,7 +811,7 @@ impl AstNode for FieldExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<FieldExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<FieldExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -843,7 +843,7 @@ impl AstNode for FieldPatList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<FieldPatList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<FieldPatList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -867,7 +867,7 @@ impl AstNode for FnDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<FnDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<FnDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -908,7 +908,7 @@ impl AstNode for FnPointerType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<FnPointerType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<FnPointerType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -940,7 +940,7 @@ impl AstNode for ForExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ForExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ForExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -973,7 +973,7 @@ impl AstNode for ForType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ForType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ForType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1001,7 +1001,7 @@ impl AstNode for IfExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<IfExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<IfExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1029,7 +1029,7 @@ impl AstNode for ImplBlock {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ImplBlock> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ImplBlock> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1066,7 +1066,7 @@ impl AstNode for ImplItem {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ImplItem> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ImplItem> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl ImplItem {
@@ -1100,7 +1100,7 @@ impl AstNode for ImplTraitType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ImplTraitType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ImplTraitType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1124,7 +1124,7 @@ impl AstNode for IndexExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<IndexExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<IndexExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1148,7 +1148,7 @@ impl AstNode for ItemList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ItemList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ItemList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1178,7 +1178,7 @@ impl AstNode for Label {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Label> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Label> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1202,7 +1202,7 @@ impl AstNode for LambdaExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<LambdaExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<LambdaExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1234,7 +1234,7 @@ impl AstNode for LetStmt {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<LetStmt> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<LetStmt> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1270,7 +1270,7 @@ impl AstNode for Lifetime {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Lifetime> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Lifetime> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1295,7 +1295,7 @@ impl AstNode for LifetimeParam {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<LifetimeParam> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<LifetimeParam> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1323,7 +1323,7 @@ impl AstNode for Literal {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Literal> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Literal> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1347,7 +1347,7 @@ impl AstNode for LoopExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<LoopExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<LoopExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1372,7 +1372,7 @@ impl AstNode for MacroCall {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<MacroCall> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<MacroCall> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1404,7 +1404,7 @@ impl AstNode for MatchArm {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<MatchArm> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<MatchArm> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1440,7 +1440,7 @@ impl AstNode for MatchArmList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<MatchArmList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<MatchArmList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1468,7 +1468,7 @@ impl AstNode for MatchExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<MatchExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<MatchExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1500,7 +1500,7 @@ impl AstNode for MatchGuard {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<MatchGuard> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<MatchGuard> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1524,7 +1524,7 @@ impl AstNode for MethodCallExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<MethodCallExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<MethodCallExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1557,7 +1557,7 @@ impl AstNode for Module {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Module> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Module> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1614,7 +1614,7 @@ impl AstNode for ModuleItem {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ModuleItem> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ModuleItem> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl ModuleItem {
@@ -1656,7 +1656,7 @@ impl AstNode for Name {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Name> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Name> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1680,7 +1680,7 @@ impl AstNode for NameRef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NameRef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NameRef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1704,7 +1704,7 @@ impl AstNode for NamedField {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NamedField> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NamedField> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1736,7 +1736,7 @@ impl AstNode for NamedFieldDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NamedFieldDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NamedFieldDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1767,7 +1767,7 @@ impl AstNode for NamedFieldDefList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NamedFieldDefList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NamedFieldDefList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1795,7 +1795,7 @@ impl AstNode for NamedFieldList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NamedFieldList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NamedFieldList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1823,7 +1823,7 @@ impl AstNode for NeverType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NeverType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NeverType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1854,7 +1854,7 @@ impl AstNode for NominalDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<NominalDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<NominalDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl NominalDef {
@@ -1890,7 +1890,7 @@ impl AstNode for Param {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Param> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Param> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1922,7 +1922,7 @@ impl AstNode for ParamList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ParamList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ParamList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1954,7 +1954,7 @@ impl AstNode for ParenExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ParenExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ParenExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1982,7 +1982,7 @@ impl AstNode for ParenType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ParenType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ParenType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2033,7 +2033,7 @@ impl AstNode for Pat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Pat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Pat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl Pat {
@@ -2074,7 +2074,7 @@ impl AstNode for Path {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Path> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Path> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2106,7 +2106,7 @@ impl AstNode for PathExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PathExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PathExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2134,7 +2134,7 @@ impl AstNode for PathPat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PathPat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PathPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2158,7 +2158,7 @@ impl AstNode for PathSegment {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PathSegment> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PathSegment> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2186,7 +2186,7 @@ impl AstNode for PathType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PathType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PathType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2214,7 +2214,7 @@ impl AstNode for PlaceholderPat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PlaceholderPat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PlaceholderPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2238,7 +2238,7 @@ impl AstNode for PlaceholderType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PlaceholderType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PlaceholderType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2262,7 +2262,7 @@ impl AstNode for PointerType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PointerType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PointerType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2290,7 +2290,7 @@ impl AstNode for PosField {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PosField> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PosField> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2320,7 +2320,7 @@ impl AstNode for PosFieldList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PosFieldList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PosFieldList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2348,7 +2348,7 @@ impl AstNode for PrefixExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<PrefixExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<PrefixExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2376,7 +2376,7 @@ impl AstNode for RangeExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<RangeExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<RangeExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2400,7 +2400,7 @@ impl AstNode for RangePat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<RangePat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<RangePat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2424,7 +2424,7 @@ impl AstNode for RefExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<RefExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<RefExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2452,7 +2452,7 @@ impl AstNode for RefPat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<RefPat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<RefPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2476,7 +2476,7 @@ impl AstNode for ReferenceType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ReferenceType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ReferenceType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2504,7 +2504,7 @@ impl AstNode for RetType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<RetType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<RetType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2532,7 +2532,7 @@ impl AstNode for ReturnExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<ReturnExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<ReturnExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2560,7 +2560,7 @@ impl AstNode for SelfKw {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<SelfKw> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<SelfKw> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2584,7 +2584,7 @@ impl AstNode for SelfParam {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<SelfParam> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<SelfParam> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2616,7 +2616,7 @@ impl AstNode for SlicePat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<SlicePat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<SlicePat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2640,7 +2640,7 @@ impl AstNode for SliceType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<SliceType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<SliceType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2668,7 +2668,7 @@ impl AstNode for SourceFile {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<SourceFile> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<SourceFile> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2698,7 +2698,7 @@ impl AstNode for StaticDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<StaticDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<StaticDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2734,7 +2734,7 @@ impl AstNode for Stmt {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Stmt> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Stmt> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl Stmt {
@@ -2767,7 +2767,7 @@ impl AstNode for String {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<String> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<String> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2792,7 +2792,7 @@ impl AstNode for StructDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<StructDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<StructDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2821,7 +2821,7 @@ impl AstNode for StructLit {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<StructLit> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<StructLit> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2857,7 +2857,7 @@ impl AstNode for StructPat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<StructPat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<StructPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2881,7 +2881,7 @@ impl AstNode for TokenTree {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TokenTree> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TokenTree> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2905,7 +2905,7 @@ impl AstNode for TraitDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TraitDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TraitDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2933,7 +2933,7 @@ impl AstNode for TryExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TryExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TryExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2961,7 +2961,7 @@ impl AstNode for TupleExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TupleExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TupleExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2985,7 +2985,7 @@ impl AstNode for TuplePat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TuplePat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TuplePat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3009,7 +3009,7 @@ impl AstNode for TupleStructPat {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TupleStructPat> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TupleStructPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3041,7 +3041,7 @@ impl AstNode for TupleType {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TupleType> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TupleType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3069,7 +3069,7 @@ impl AstNode for TypeDef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TypeDef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TypeDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3098,7 +3098,7 @@ impl AstNode for TypeParam {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TypeParam> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TypeParam> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3123,7 +3123,7 @@ impl AstNode for TypeParamList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TypeParamList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TypeParamList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3184,7 +3184,7 @@ impl AstNode for TypeRef {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<TypeRef> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<TypeRef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl TypeRef {
@@ -3228,7 +3228,7 @@ impl AstNode for UseItem {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<UseItem> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<UseItem> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3256,7 +3256,7 @@ impl AstNode for UseTree {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<UseTree> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<UseTree> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3288,7 +3288,7 @@ impl AstNode for UseTreeList {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<UseTreeList> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<UseTreeList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3316,7 +3316,7 @@ impl AstNode for Visibility {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Visibility> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Visibility> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3340,7 +3340,7 @@ impl AstNode for WhereClause {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<WhereClause> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<WhereClause> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3364,7 +3364,7 @@ impl AstNode for WhileExpr {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<WhileExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<WhileExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3393,7 +3393,7 @@ impl AstNode for Whitespace {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<Whitespace> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<Whitespace> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 

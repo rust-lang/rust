@@ -15,7 +15,7 @@ use rowan::TransparentNewType;
 
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    yellow::{RaTypes, TreePtr},
+    yellow::{RaTypes, TreeArc},
     ast::{self, AstNode},
 };
 {% for node, methods in ast %}
@@ -48,7 +48,7 @@ impl AstNode for {{ node }} {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<{{ node }}> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<{{ node }}> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl {{ node }} {
@@ -79,7 +79,7 @@ impl AstNode for {{ node }} {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<{{ node }}> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<{{ node }}> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 {% endif %}

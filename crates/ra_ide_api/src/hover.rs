@@ -1,6 +1,6 @@
 use ra_db::{Cancelable, SyntaxDatabase};
 use ra_syntax::{
-    AstNode, SyntaxNode, TreePtr,
+    AstNode, SyntaxNode, TreeArc,
     ast::{self, NameOwner},
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
@@ -87,7 +87,7 @@ fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Cancelable<Option<S
 }
 
 impl NavigationTarget {
-    fn node(&self, db: &RootDatabase) -> Option<TreePtr<SyntaxNode>> {
+    fn node(&self, db: &RootDatabase) -> Option<TreeArc<SyntaxNode>> {
         let source_file = db.source_file(self.file_id());
         let source_file = source_file.syntax();
         let node = source_file

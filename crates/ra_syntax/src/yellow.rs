@@ -21,23 +21,23 @@ impl Types for RaTypes {
 pub type GreenNode = rowan::GreenNode<RaTypes>;
 
 #[derive(PartialEq, Eq, Hash)]
-pub struct TreePtr<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>>(
-    pub(crate) rowan::TreePtr<RaTypes, T>,
+pub struct TreeArc<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>>(
+    pub(crate) rowan::TreeArc<RaTypes, T>,
 );
 
-impl<T> TreePtr<T>
+impl<T> TreeArc<T>
 where
     T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
 {
-    pub(crate) fn cast<U>(this: TreePtr<T>) -> TreePtr<U>
+    pub(crate) fn cast<U>(this: TreeArc<T>) -> TreeArc<U>
     where
         U: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
     {
-        TreePtr(rowan::TreePtr::cast(this.0))
+        TreeArc(rowan::TreeArc::cast(this.0))
     }
 }
 
-impl<T> std::ops::Deref for TreePtr<T>
+impl<T> std::ops::Deref for TreeArc<T>
 where
     T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
 {
@@ -47,7 +47,7 @@ where
     }
 }
 
-impl<T> PartialEq<T> for TreePtr<T>
+impl<T> PartialEq<T> for TreeArc<T>
 where
     T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
     T: PartialEq<T>,
@@ -58,16 +58,16 @@ where
     }
 }
 
-impl<T> Clone for TreePtr<T>
+impl<T> Clone for TreeArc<T>
 where
     T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
 {
-    fn clone(&self) -> TreePtr<T> {
-        TreePtr(self.0.clone())
+    fn clone(&self) -> TreeArc<T> {
+        TreeArc(self.0.clone())
     }
 }
 
-impl<T> fmt::Debug for TreePtr<T>
+impl<T> fmt::Debug for TreeArc<T>
 where
     T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
     T: fmt::Debug,
@@ -85,9 +85,9 @@ unsafe impl TransparentNewType for SyntaxNode {
 }
 
 impl SyntaxNode {
-    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreePtr<SyntaxNode> {
-        let ptr = TreePtr(rowan::SyntaxNode::new(green, errors));
-        TreePtr::cast(ptr)
+    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SyntaxNode> {
+        let ptr = TreeArc(rowan::SyntaxNode::new(green, errors));
+        TreeArc::cast(ptr)
     }
 }
 
@@ -131,9 +131,9 @@ impl SyntaxNode {
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_self(replacement)
     }
-    pub fn to_owned(&self) -> TreePtr<SyntaxNode> {
-        let ptr = TreePtr(self.0.to_owned());
-        TreePtr::cast(ptr)
+    pub fn to_owned(&self) -> TreeArc<SyntaxNode> {
+        let ptr = TreeArc(self.0.to_owned());
+        TreeArc::cast(ptr)
     }
     pub fn kind(&self) -> SyntaxKind {
         self.0.kind()

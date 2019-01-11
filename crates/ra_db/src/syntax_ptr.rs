@@ -1,4 +1,4 @@
-use ra_syntax::{AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TreePtr};
+use ra_syntax::{AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TreeArc};
 
 /// A pointer to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -15,7 +15,7 @@ impl LocalSyntaxPtr {
         }
     }
 
-    pub fn resolve(self, file: &SourceFile) -> TreePtr<SyntaxNode> {
+    pub fn resolve(self, file: &SourceFile) -> TreeArc<SyntaxNode> {
         let mut curr = file.syntax();
         loop {
             if curr.range() == self.range && curr.kind() == self.kind {

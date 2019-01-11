@@ -5,7 +5,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
-    AstNode, SyntaxNode, TreePtr,
+    AstNode, SyntaxNode, TreeArc,
     ast::{self, ModuleItemOwner}
 };
 use ra_db::{SourceRootId, Cancelable,};
@@ -33,7 +33,7 @@ pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<Sourc
 pub(super) fn file_item(
     db: &impl HirDatabase,
     source_item_id: SourceItemId,
-) -> TreePtr<SyntaxNode> {
+) -> TreeArc<SyntaxNode> {
     match source_item_id.item_id {
         Some(id) => db.file_items(source_item_id.file_id)[id].to_owned(),
         None => db

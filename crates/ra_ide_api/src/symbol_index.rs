@@ -27,7 +27,7 @@ use std::{
 
 use fst::{self, Streamer};
 use ra_syntax::{
-    SyntaxNode, SourceFile, SmolStr, TreePtr, AstNode,
+    SyntaxNode, SourceFile, SmolStr, TreeArc, AstNode,
     algo::{visit::{visitor, Visitor}, find_covering_node},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
@@ -141,7 +141,7 @@ impl SymbolIndex {
     }
 
     pub(crate) fn for_files(
-        files: impl ParallelIterator<Item = (FileId, TreePtr<SourceFile>)>,
+        files: impl ParallelIterator<Item = (FileId, TreeArc<SourceFile>)>,
     ) -> SymbolIndex {
         let symbols = files
             .flat_map(|(file_id, file)| {

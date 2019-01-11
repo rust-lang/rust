@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 pub use self::generated::*;
 use crate::{
-    yellow::{SyntaxNode, SyntaxNodeChildren, TreePtr, RaTypes},
+    yellow::{SyntaxNode, SyntaxNodeChildren, TreeArc, RaTypes},
     SmolStr,
     SyntaxKind::*,
 };
@@ -20,7 +20,7 @@ pub trait AstNode: rowan::TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>> 
     where
         Self: Sized;
     fn syntax(&self) -> &SyntaxNode;
-    fn to_owned(&self) -> TreePtr<Self>;
+    fn to_owned(&self) -> TreeArc<Self>;
 }
 
 pub trait AstToken: AstNode {

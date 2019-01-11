@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use ra_db::Cancelable;
 use ra_syntax::{
-    TreePtr,
+    TreeArc,
     ast::{self, AstNode, NameOwner},
 };
 
@@ -22,7 +22,7 @@ impl Function {
         Function { def_id }
     }
 
-    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, TreePtr<ast::FnDef>) {
+    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
         let def_loc = self.def_id.loc(db);
         assert!(def_loc.kind == DefKind::Function);
         let syntax = db.file_item(def_loc.source_item_id);

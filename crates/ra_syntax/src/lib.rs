@@ -41,7 +41,7 @@ pub use crate::{
     ast::AstNode,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
-    yellow::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreePtr},
+    yellow::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
 };
 
 use ra_text_edit::AtomTextEdit;
@@ -51,29 +51,29 @@ use crate::yellow::GreenNode;
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreePtr<SourceFile> {
+    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SourceFile> {
         let root = SyntaxNode::new(green, errors);
         if cfg!(debug_assertions) {
             utils::validate_block_structure(&root);
         }
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        TreePtr::cast(root)
+        TreeArc::cast(root)
     }
-    pub fn parse(text: &str) -> TreePtr<SourceFile> {
+    pub fn parse(text: &str) -> TreeArc<SourceFile> {
         let tokens = tokenize(&text);
         let (green, errors) =
             parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
         SourceFile::new(green, errors)
     }
-    pub fn reparse(&self, edit: &AtomTextEdit) -> TreePtr<SourceFile> {
+    pub fn reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
         self.incremental_reparse(edit)
             .unwrap_or_else(|| self.full_reparse(edit))
     }
-    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreePtr<SourceFile>> {
+    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {
         reparsing::incremental_reparse(self.syntax(), edit, self.errors())
             .map(|(green_node, errors)| SourceFile::new(green_node, errors))
     }
-    fn full_reparse(&self, edit: &AtomTextEdit) -> TreePtr<SourceFile> {
+    fn full_reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
         let text = edit.apply(self.syntax().text().to_string());
         SourceFile::parse(&text)
     }

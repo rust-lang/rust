@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use relative_path::RelativePathBuf;
 use ra_db::{FileId, SourceRootId, Cancelable, SourceRoot};
 use ra_syntax::{
-    SyntaxNode, TreePtr,
+    SyntaxNode, TreeArc,
     algo::generate,
     ast::{self, AstNode, NameOwner},
 };
@@ -170,7 +170,7 @@ impl ModuleId {
         self,
         tree: &ModuleTree,
         db: &impl HirDatabase,
-    ) -> Vec<(TreePtr<SyntaxNode>, Problem)> {
+    ) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         tree.mods[self]
             .children
             .iter()
@@ -191,7 +191,7 @@ impl LinkId {
     pub(crate) fn name(self, tree: &ModuleTree) -> &Name {
         &tree.links[self].name
     }
-    pub(crate) fn source(self, tree: &ModuleTree, db: &impl HirDatabase) -> TreePtr<ast::Module> {
+    pub(crate) fn source(self, tree: &ModuleTree, db: &impl HirDatabase) -> TreeArc<ast::Module> {
         let syntax_node = db.file_item(tree.links[self].source);
         ast::Module::cast(&syntax_node).unwrap().to_owned()
     }
