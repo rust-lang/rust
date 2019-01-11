@@ -243,7 +243,7 @@ impl Query {
     }
 }
 
-/// `NavigationTarget` represents and element in the editor's UI whihc you can
+/// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
 ///
 /// Typically, a `NavigationTarget` corresponds to some element in the source

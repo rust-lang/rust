@@ -19,19 +19,6 @@ impl NavigationTarget {
         }
     }
 
-    pub(crate) fn from_syntax(
-        name: Option<Name>,
-        file_id: FileId,
-        node: &SyntaxNode,
-    ) -> NavigationTarget {
-        NavigationTarget {
-            file_id,
-            name: name.map(|n| n.to_string().into()).unwrap_or("".into()),
-            kind: node.kind(),
-            range: node.range(),
-            ptr: Some(LocalSyntaxPtr::new(node)),
-        }
-    }
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
     pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Cancelable<Option<NavigationTarget>> {
         Ok(match def {
@@ -82,5 +69,15 @@ impl NavigationTarget {
             }
             Def::Item => None,
         })
+    }
+
+    fn from_syntax(name: Option<Name>, file_id: FileId, node: &SyntaxNode) -> NavigationTarget {
+        NavigationTarget {
+            file_id,
+            name: name.map(|n| n.to_string().into()).unwrap_or("".into()),
+            kind: node.kind(),
+            range: node.range(),
+            ptr: Some(LocalSyntaxPtr::new(node)),
+        }
     }
 }
