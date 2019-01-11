@@ -65,7 +65,7 @@ pub fn main_loop(
     let workspaces = match ws_worker.recv().unwrap() {
         Ok(ws) => vec![ws],
         Err(e) => {
-            log::warn!("loading workspace failed: {}", e);
+            log::error!("loading workspace failed: {}", e);
             Vec::new()
         }
     };

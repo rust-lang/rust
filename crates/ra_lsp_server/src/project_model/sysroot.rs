@@ -44,6 +44,14 @@ impl Sysroot {
         let stdout = String::from_utf8(rustc_output.stdout)?;
         let sysroot_path = Path::new(stdout.trim());
         let src = sysroot_path.join("lib/rustlib/src/rust/src");
+        if !src.exists() {
+            failure::bail!(
+                "can't load standard library from sysroot\n\
+                 {:?}\n\
+                 try running `rustup component add rust-src`",
+                src,
+            );
+        }
 
         let mut sysroot = Sysroot {
             crates: Arena::default(),
