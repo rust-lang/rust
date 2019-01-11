@@ -1,4 +1,4 @@
-//! Check license of third-party deps by inspecting vendor
+//! Checks the licenses of third-party dependencies by inspecting vendors.
 
 use std::collections::{BTreeSet, HashSet, HashMap};
 use std::fs;
@@ -21,7 +21,7 @@ const LICENSES: &[&str] = &[
 /// These are exceptions to Rust's permissive licensing policy, and
 /// should be considered bugs. Exceptions are only allowed in Rust
 /// tooling. It is _crucial_ that no exception crates be dependencies
-/// of the Rust runtime (std / test).
+/// of the Rust runtime (std/test).
 const EXCEPTIONS: &[&str] = &[
     "mdbook",             // MPL2, mdbook
     "openssl",            // BSD+advertising clause, cargo, mdbook
@@ -39,11 +39,11 @@ const EXCEPTIONS: &[&str] = &[
     "colored",            // MPL-2.0, rustfmt
     "ordslice",           // Apache-2.0, rls
     "cloudabi",           // BSD-2-Clause, (rls -> crossbeam-channel 0.2 -> rand 0.5)
-    "ryu",                // Apache-2.0, rls/cargo/... (b/c of serde)
+    "ryu",                // Apache-2.0, rls/cargo/... (because of serde)
     "bytesize",           // Apache-2.0, cargo
     "im-rc",              // MPL-2.0+, cargo
     "adler32",            // BSD-3-Clause AND Zlib, cargo dep that isn't used
-    "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for sgx target
+    "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
 ];
 
 /// Which crates to check against the whitelist?
@@ -156,7 +156,7 @@ const WHITELIST: &[Crate] = &[
     Crate("wincolor"),
 ];
 
-// Some types for Serde to deserialize the output of `cargo metadata` to...
+// Some types for Serde to deserialize the output of `cargo metadata` to.
 
 #[derive(Deserialize)]
 struct Output {
@@ -174,9 +174,9 @@ struct ResolveNode {
     dependencies: Vec<String>,
 }
 
-/// A unique identifier for a crate
+/// A unique identifier for a crate.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
-struct Crate<'a>(&'a str); // (name,)
+struct Crate<'a>(&'a str); // (name)
 
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
 struct CrateVersion<'a>(&'a str, &'a str); // (name, version)
@@ -188,7 +188,7 @@ impl<'a> Crate<'a> {
 }
 
 impl<'a> CrateVersion<'a> {
-    /// Returns the struct and whether or not the dep is in-tree
+    /// Returns the struct and whether or not the dependency is in-tree.
     pub fn from_str(s: &'a str) -> (Self, bool) {
         let mut parts = s.split(' ');
         let name = parts.next().unwrap();
@@ -215,7 +215,7 @@ impl<'a> From<CrateVersion<'a>> for Crate<'a> {
 ///
 /// Specifically, this checks that the license is correct.
 pub fn check(path: &Path, bad: &mut bool) {
-    // Check licences
+    // Check licences.
     let path = path.join("../vendor");
     assert!(path.exists(), "vendor directory missing");
     let mut saw_dir = false;
@@ -223,7 +223,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         saw_dir = true;
         let dir = t!(dir);
 
-        // skip our exceptions
+        // Skip our exceptions.
         let is_exception = EXCEPTIONS.iter().any(|exception| {
             dir.path()
                 .to_str()
@@ -240,18 +240,18 @@ pub fn check(path: &Path, bad: &mut bool) {
     assert!(saw_dir, "no vendored source");
 }
 
-/// Checks the dependency of WHITELIST_CRATES at the given path. Changes `bad` to `true` if a check
-/// failed.
+/// Checks the dependency of `WHITELIST_CRATES` at the given path. Changes `bad` to `true` if a
+/// check failed.
 ///
-/// Specifically, this checks that the dependencies are on the WHITELIST.
+/// Specifically, this checks that the dependencies are on the `WHITELIST`.
 pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
-    // Get dependencies from cargo metadata
+    // Get dependencies from Cargo metadata.
     let resolve = get_deps(path, cargo);
 
-    // Get the whitelist into a convenient form
+    // Get the whitelist in a convenient form.
     let whitelist: HashSet<_> = WHITELIST.iter().cloned().collect();
 
-    // Check dependencies
+    // Check dependencies.
     let mut visited = BTreeSet::new();
     let mut unapproved = BTreeSet::new();
     for &krate in WHITELIST_CRATES.iter() {
@@ -308,9 +308,9 @@ fn extract_license(line: &str) -> String {
     }
 }
 
-/// Get the dependencies of the crate at the given path using `cargo metadata`.
+/// Gets the dependencies of the crate at the given path using `cargo metadata`.
 fn get_deps(path: &Path, cargo: &Path) -> Resolve {
-    // Run `cargo metadata` to get the set of dependencies
+    // Run `cargo metadata` to get the set of dependencies.
     let output = Command::new(cargo)
         .arg("metadata")
         .arg("--format-version")
@@ -335,25 +335,25 @@ fn check_crate_whitelist<'a, 'b>(
     krate: CrateVersion<'a>,
     must_be_on_whitelist: bool,
 ) -> BTreeSet<Crate<'a>> {
-    // Will contain bad deps
+    // This will contain bad deps.
     let mut unapproved = BTreeSet::new();
 
-    // Check if we have already visited this crate
+    // Check if we have already visited this crate.
     if visited.contains(&krate) {
         return unapproved;
     }
 
     visited.insert(krate);
 
-    // If this path is in-tree, we don't require it to be on the whitelist
+    // If this path is in-tree, we don't require it to be on the whitelist.
     if must_be_on_whitelist {
-        // If this dependency is not on the WHITELIST, add to bad set
+        // If this dependency is not on `WHITELIST`, add to bad set.
         if !whitelist.contains(&krate.into()) {
             unapproved.insert(krate.into());
         }
     }
 
-    // Do a DFS in the crate graph (it's a DAG, so we know we have no cycles!)
+    // Do a DFS in the crate graph (it's a DAG, so we know we have no cycles!).
     let to_check = resolve
         .nodes
         .iter()
@@ -372,9 +372,10 @@ fn check_crate_whitelist<'a, 'b>(
 
 fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
     const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
-        // These two crates take quite a long time to build, let's not let two
-        // versions of them accidentally sneak into our dependency graph to
-        // ensure we keep our CI times under control
+        // These two crates take quite a long time to build, so don't allow two versions of them
+        // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
+        // under control.
+
         // "cargo", // FIXME(#53005)
         "rustc-ap-syntax",
     ];

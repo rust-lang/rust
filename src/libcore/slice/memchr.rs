@@ -1,5 +1,4 @@
-//
-// Original implementation taken from rust-memchr
+// Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
 use cmp;
@@ -8,13 +7,13 @@ use mem;
 const LO_U64: u64 = 0x0101010101010101;
 const HI_U64: u64 = 0x8080808080808080;
 
-// use truncation
+// Use truncation.
 const LO_USIZE: usize = LO_U64 as usize;
 const HI_USIZE: usize = HI_U64 as usize;
 
-/// Return `true` if `x` contains any zero byte.
+/// Returns whether `x` contains any zero byte.
 ///
-/// From *Matters Computational*, J. Arndt
+/// From *Matters Computational*, J. Arndt:
 ///
 /// "The idea is to subtract one from each of the bytes and then look for
 /// bytes where the borrow propagated all the way to the most significant
@@ -36,7 +35,7 @@ fn repeat_byte(b: u8) -> usize {
     (b as usize) * (::usize::MAX / 255)
 }
 
-/// Return the first index matching the byte `x` in `text`.
+/// Returns the first index matching the byte `x` in `text`.
 pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
@@ -77,18 +76,18 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
         }
     }
 
-    // find the byte after the point the body loop stopped
+    // Find the byte after the point the body loop stopped.
     text[offset..].iter().position(|elt| *elt == x).map(|i| offset + i)
 }
 
-/// Return the last index matching the byte `x` in `text`.
+/// Returns the last index matching the byte `x` in `text`.
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
-    // Split `text` in three parts
-    // - unaligned tail, after the last word aligned address in text
-    // - body, scan by 2 words at a time
-    // - the first remaining bytes, < 2 word size
+    // Split `text` in three parts:
+    // - unaligned tail, after the last word aligned address in text,
+    // - body, scanned by 2 words at a time,
+    // - the first remaining bytes, < 2 word size.
     let len = text.len();
     let ptr = text.as_ptr();
     type Chunk = usize;
@@ -105,7 +104,7 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
         return Some(offset + index);
     }
 
-    // search the body of the text, make sure we don't cross min_aligned_offset.
+    // Search the body of the text, make sure we don't cross min_aligned_offset.
     // offset is always aligned, so just testing `>` is sufficient and avoids possible
     // overflow.
     let repeated_x = repeat_byte(x);
@@ -116,7 +115,7 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
             let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
             let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
 
-            // break if there is a matching byte
+            // Break if there is a matching byte.
             let zu = contains_zero_byte(u ^ repeated_x);
             let zv = contains_zero_byte(v ^ repeated_x);
             if zu || zv {
@@ -126,6 +125,6 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
         offset -= 2 * chunk_bytes;
     }
 
-    // find the byte before the point the body loop stopped
+    // Find the byte before the point the body loop stopped.
     text[..offset].iter().rposition(|elt| *elt == x)
 }

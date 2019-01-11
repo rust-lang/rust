@@ -1,4 +1,4 @@
-//! Library used by tidy and other tools
+//! Library used by tidy and other tools.
 //!
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.

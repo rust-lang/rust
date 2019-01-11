@@ -2,12 +2,12 @@
 //!
 //! Example checks are:
 //!
-//! * No lines over 100 characters
-//! * No tabs
-//! * No trailing whitespace
-//! * No CR characters
-//! * No `TODO` or `XXX` directives
-//! * No unexplained ` ```ignore ` or ` ```rust,ignore ` doc tests
+//! * No lines over 100 characters.
+//! * No tabs.
+//! * No trailing whitespace.
+//! * No CR characters.
+//! * No `TODO` or `XXX` directives.
+//! * No unexplained ` ```ignore ` or ` ```rust,ignore ` doc tests.
 //!
 //! A number of these checks can be opted-out of with various directives like
 //! `// ignore-tidy-linelength`.
@@ -34,15 +34,17 @@ C++ code used llvm_unreachable, which triggers undefined behavior
 when executed when assertions are disabled.
 Use llvm::report_fatal_error for increased robustness.";
 
-/// Parser states for line_is_url.
+/// Parser states for `line_is_url`.
 #[derive(PartialEq)]
 #[allow(non_camel_case_types)]
-enum LIUState { EXP_COMMENT_START,
-                EXP_LINK_LABEL_OR_URL,
-                EXP_URL,
-                EXP_END }
+enum LIUState {
+    EXP_COMMENT_START,
+    EXP_LINK_LABEL_OR_URL,
+    EXP_URL,
+    EXP_END,
+}
 
-/// True if LINE appears to be a line comment containing an URL,
+/// Returns whether `line` appears to be a line comment containing an URL,
 /// possibly with a Markdown link label in front, and nothing else.
 /// The Markdown link label, if present, may not contain whitespace.
 /// Lines of this form are allowed to be overlength, because Markdown
@@ -77,7 +79,7 @@ fn line_is_url(line: &str) -> bool {
     state == EXP_END
 }
 
-/// True if LINE is allowed to be longer than the normal limit.
+/// Returns whether `line` is allowed to be longer than the normal limit.
 /// Currently there is only one exception, for long URLs, but more
 /// may be added in the future.
 fn long_line_is_ok(line: &str) -> bool {
