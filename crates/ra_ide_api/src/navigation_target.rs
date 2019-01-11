@@ -1,4 +1,4 @@
-use ra_db::{FileId, LocalSyntaxPtr, Cancelable};
+use ra_db::{FileId, Cancelable};
 use ra_syntax::{
     SyntaxNode, AstNode, SmolStr, TextRange, ast,
     SyntaxKind::{self, NAME},
@@ -19,8 +19,6 @@ pub struct NavigationTarget {
     kind: SyntaxKind,
     full_range: TextRange,
     focus_range: Option<TextRange>,
-    // Should be DefId ideally
-    ptr: Option<LocalSyntaxPtr>,
 }
 
 impl NavigationTarget {
@@ -55,7 +53,6 @@ impl NavigationTarget {
             kind: symbol.ptr.kind(),
             full_range: symbol.ptr.range(),
             focus_range: None,
-            ptr: Some(symbol.ptr.clone()),
         }
     }
 
@@ -69,7 +66,6 @@ impl NavigationTarget {
             full_range: entry.ptr().range(),
             focus_range: None,
             kind: NAME,
-            ptr: None,
         }
     }
 
@@ -157,7 +153,7 @@ impl NavigationTarget {
             kind: node.kind(),
             full_range: node.range(),
             focus_range,
-            ptr: Some(LocalSyntaxPtr::new(node)),
+            // ptr: Some(LocalSyntaxPtr::new(node)),
         }
     }
 }
