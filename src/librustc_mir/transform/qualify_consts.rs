@@ -359,7 +359,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::ReturnPointer => {
                 self.not_const();
             }
-            LocalKind::Arg |
             LocalKind::Var if self.mode == Mode::Fn => {
                 self.add(Qualif::NOT_CONST);
             }
