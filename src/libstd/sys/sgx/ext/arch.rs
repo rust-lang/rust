@@ -36,7 +36,7 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
             : "={eax}"(error)
             : "{eax}"(ENCLU_EGETKEY),
               "{rbx}"(request),
-              "{rcx}"(out.get_mut())
+              "{rcx}"(out.as_mut_ptr())
             : "flags"
         );
 
@@ -66,7 +66,7 @@ pub fn ereport(
             : "{eax}"(ENCLU_EREPORT),
               "{rbx}"(targetinfo),
               "{rcx}"(reportdata),
-              "{rdx}"(report.get_mut())
+              "{rdx}"(report.as_mut_ptr())
         );
 
         report.into_inner()
