@@ -46,7 +46,7 @@ impl NavigationTarget {
                 let name = m
                     .name(db)?
                     .map(|it| it.to_string().into())
-                    .unwrap_or_else(|| SmolStr::new(""));
+                    .unwrap_or_default();
                 match source {
                     ModuleSource::SourceFile(node) => {
                         NavigationTarget::from_syntax(file_id, name, node.syntax())
@@ -62,10 +62,7 @@ impl NavigationTarget {
     }
 
     fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
-        let name = node
-            .name()
-            .map(|it| it.text().clone())
-            .unwrap_or_else(|| SmolStr::new(""));
+        let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
         NavigationTarget::from_syntax(file_id, name, node.syntax())
     }
 
