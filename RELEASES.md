@@ -1,3 +1,277 @@
+Version 1.32.0 (2019-01-17)
+==========================
+
+Language
+--------
+#### 2018 edition
+- [You can now use the `?` operator in macro definitions.][56245] The `?`
+  operator allows you to specify zero or one repetitions similar to the `*` and
+  `+` operators.
+- [Module paths with no leading keyword like `super`, `self`, or `crate`, will
+  now always resolve to the item (`enum`, `struct`, etc.) available in the
+  module if present, before resolving to a external crate or an item the prelude.][56759]
+  E.g.
+  ```rust
+  enum Color { Red, Green, Blue }
+
+  use Color::*;
+  ```
+
+#### All editions
+- [You can now match against `PhantomData<T>` types.][55837]
+- [You can now match against literals in macros with the `literal`
+  specifier.][56072] This will match against a literal of any type.
+  E.g. `1`, `'A'`, `"Hello World"`
+- [Self can now be used as a constructor and pattern for unit and tuple structs.][56365] E.g. 
+  ```rust
+  struct Point(i32, i32);
+
+  impl Point {
+      pub fn new(x: i32, y: i32) -> Self {
+          Self(x, y)
+      }
+
+      pub fn is_origin(&self) -> bool {
+          match self {
+              Self(0, 0) => true,
+              _ => false,
+          }
+      }
+  }
+  ```
+- [Self can also now be used in type definitions.][56366] E.g.
+  ```rust
+  enum List<T>
+  where
+      Self: PartialOrd<Self> // can write `Self` instead of `List<T>`
+  {
+      Nil,
+      Cons(T, Box<Self>) // likewise here
+  }
+  ```
+- [You can now mark traits with `#[must_use]`.][55663] This provides a warning if
+  a `impl Trait` or `dyn Trait` is returned and unused in the program.
+
+Compiler
+--------
+- [The default allocator has changed from jemalloc to the default allocator on
+  your system.][55238] The compiler itself on Linux & macOS will still use
+  jemalloc, but programs compiled with it will use the system allocator.
+- [Added the `aarch64-pc-windows-msvc` target.][55702]
+
+Libraries
+---------
+- [`PathBuf` now implements `FromStr`.][55148]
+- [`Box<[T]>` now implements `FromIterator<T>`.][55843]
+- [The `dbg!` macro has been stabilized.][56395] This macro enables you to
+  easily debug expressions in your rust program. E.g.
+  ```rust
+  let a = 2;
+  let b = dbg!(a * 2) + 1;
+  //      ^-- prints: [src/main.rs:4] a * 2 = 4
+  assert_eq!(b, 5);
+  ```
+
+The following APIs are now `const` functions and can be used in a
+`const` context.
+
+- [`Cell::as_ptr`]
+- [`UnsafeCell::get`]
+- [`char::is_ascii`]
+- [`iter::empty`]
+- [`ManuallyDrop::new`]
+- [`ManuallyDrop::into_inner`]
+- [`RangeInclusive::start`]
+- [`RangeInclusive::end`]
+- [`NonNull::as_ptr`]
+- [`slice::as_ptr`]
+- [`str::as_ptr`]
+- [`Duration::as_secs`]
+- [`Duration::subsec_millis`]
+- [`Duration::subsec_micros`]
+- [`Duration::subsec_nanos`]
+- [`CStr::as_ptr`]
+- [`Ipv4Addr::is_unspecified`]
+- [`Ipv6Addr::new`]
+- [`Ipv6Addr::octets`]
+
+Stabilized APIs
+---------------
+- [`i8::to_be_bytes`]
+- [`i8::to_le_bytes`]
+- [`i8::to_ne_bytes`]
+- [`i8::from_be_bytes`]
+- [`i8::from_le_bytes`]
+- [`i8::from_ne_bytes`]
+- [`i16::to_be_bytes`]
+- [`i16::to_le_bytes`]
+- [`i16::to_ne_bytes`]
+- [`i16::from_be_bytes`]
+- [`i16::from_le_bytes`]
+- [`i16::from_ne_bytes`]
+- [`i32::to_be_bytes`]
+- [`i32::to_le_bytes`]
+- [`i32::to_ne_bytes`]
+- [`i32::from_be_bytes`]
+- [`i32::from_le_bytes`]
+- [`i32::from_ne_bytes`]
+- [`i64::to_be_bytes`]
+- [`i64::to_le_bytes`]
+- [`i64::to_ne_bytes`]
+- [`i64::from_be_bytes`]
+- [`i64::from_le_bytes`]
+- [`i64::from_ne_bytes`]
+- [`isize::to_be_bytes`]
+- [`isize::to_le_bytes`]
+- [`isize::to_ne_bytes`]
+- [`isize::from_be_bytes`]
+- [`isize::from_le_bytes`]
+- [`isize::from_ne_bytes`]
+- [`u8::to_be_bytes`]
+- [`u8::to_le_bytes`]
+- [`u8::to_ne_bytes`]
+- [`u8::from_be_bytes`]
+- [`u8::from_le_bytes`]
+- [`u8::from_ne_bytes`]
+- [`u16::to_be_bytes`]
+- [`u16::to_le_bytes`]
+- [`u16::to_ne_bytes`]
+- [`u16::from_be_bytes`]
+- [`u16::from_le_bytes`]
+- [`u16::from_ne_bytes`]
+- [`u32::to_be_bytes`]
+- [`u32::to_le_bytes`]
+- [`u32::to_ne_bytes`]
+- [`u32::from_be_bytes`]
+- [`u32::from_le_bytes`]
+- [`u32::from_ne_bytes`]
+- [`u64::to_be_bytes`]
+- [`u64::to_le_bytes`]
+- [`u64::to_ne_bytes`]
+- [`u64::from_be_bytes`]
+- [`u64::from_le_bytes`]
+- [`u64::from_ne_bytes`]
+- [`usize::to_be_bytes`]
+- [`usize::to_le_bytes`]
+- [`usize::to_ne_bytes`]
+- [`usize::from_be_bytes`]
+- [`usize::from_le_bytes`]
+- [`usize::from_ne_bytes`]
+
+Cargo
+-----
+- [You can now run `cargo c` as an alias for `cargo check`.][cargo/6218]
+- [Usernames are now allowed in alt registry URLs.][cargo/6242]
+
+Misc
+----
+- [`libproc_macro` has been added to the `rust-src` distribution.][55280]
+
+Compatibility Notes
+-------------------
+- [The argument types for AVX's
+  `_mm256_stream_si256`, `_mm256_stream_pd`, `_mm256_stream_ps`][55610] have
+  been changed from `*const` to `*mut` as the previous implementation
+  was unsound.
+
+
+[55148]: https://github.com/rust-lang/rust/pull/55148/
+[55238]: https://github.com/rust-lang/rust/pull/55238/
+[55280]: https://github.com/rust-lang/rust/pull/55280/
+[55610]: https://github.com/rust-lang/rust/pull/55610/
+[55663]: https://github.com/rust-lang/rust/pull/55663/
+[55702]: https://github.com/rust-lang/rust/pull/55702/
+[55837]: https://github.com/rust-lang/rust/pull/55837/
+[55843]: https://github.com/rust-lang/rust/pull/55843/
+[56072]: https://github.com/rust-lang/rust/pull/56072/
+[56245]: https://github.com/rust-lang/rust/pull/56245/
+[56365]: https://github.com/rust-lang/rust/pull/56365/
+[56366]: https://github.com/rust-lang/rust/pull/56366/
+[56395]: https://github.com/rust-lang/rust/pull/56395/
+[56759]: https://github.com/rust-lang/rust/pull/56759/
+[cargo/6218]: https://github.com/rust-lang/cargo/pull/6218/
+[cargo/6242]: https://github.com/rust-lang/cargo/pull/6242/
+[`CStr::as_ptr`]: https://doc.rust-lang.org/std/ffi/struct.CStr.html#method.as_ptr
+[`Cell::as_ptr`]: https://doc.rust-lang.org/std/cell/struct.Cell.html#method.as_ptr
+[`Duration::as_secs`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs
+[`Duration::subsec_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.subsec_micros
+[`Duration::subsec_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.subsec_millis
+[`Duration::subsec_nanos`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.subsec_nanos
+[`Ipv4Addr::is_unspecified`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_unspecified
+[`Ipv6Addr::new`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.new
+[`Ipv6Addr::octets`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.octets
+[`ManuallyDrop::into_inner`]: https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.into_inner
+[`ManuallyDrop::new`]: https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.new
+[`NonNull::as_ptr`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.as_ptr
+[`RangeInclusive::end`]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html#method.end
+[`RangeInclusive::start`]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html#method.start
+[`UnsafeCell::get`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html#method.get
+[`slice::as_ptr`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr
+[`char::is_ascii`]: https://doc.rust-lang.org/std/primitive.char.html#method.is_ascii
+[`i16::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_be_bytes
+[`i16::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_le_bytes
+[`i16::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_ne_bytes
+[`i16::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.to_be_bytes
+[`i16::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.to_le_bytes
+[`i16::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.to_ne_bytes
+[`i32::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.from_be_bytes
+[`i32::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.from_le_bytes
+[`i32::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.from_ne_bytes
+[`i32::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.to_be_bytes
+[`i32::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.to_le_bytes
+[`i32::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.to_ne_bytes
+[`i64::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.from_be_bytes
+[`i64::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.from_le_bytes
+[`i64::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.from_ne_bytes
+[`i64::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.to_be_bytes
+[`i64::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.to_le_bytes
+[`i64::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.to_ne_bytes
+[`i8::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.from_be_bytes
+[`i8::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.from_le_bytes
+[`i8::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.from_ne_bytes
+[`i8::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.to_be_bytes
+[`i8::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.to_le_bytes
+[`i8::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.to_ne_bytes
+[`isize::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.from_be_bytes
+[`isize::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.from_le_bytes
+[`isize::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.from_ne_bytes
+[`isize::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.to_be_bytes
+[`isize::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.to_le_bytes
+[`isize::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.to_ne_bytes
+[`iter::empty`]: https://doc.rust-lang.org/std/iter/fn.empty.html
+[`str::as_ptr`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_ptr
+[`u16::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.from_be_bytes
+[`u16::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.from_le_bytes
+[`u16::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.from_ne_bytes
+[`u16::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.to_be_bytes
+[`u16::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.to_le_bytes
+[`u16::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.to_ne_bytes
+[`u32::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.from_be_bytes
+[`u32::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.from_le_bytes
+[`u32::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.from_ne_bytes
+[`u32::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.to_be_bytes
+[`u32::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.to_le_bytes
+[`u32::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.to_ne_bytes
+[`u64::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.from_be_bytes
+[`u64::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.from_le_bytes
+[`u64::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.from_ne_bytes
+[`u64::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.to_be_bytes
+[`u64::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.to_le_bytes
+[`u64::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.to_ne_bytes
+[`u8::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.from_be_bytes
+[`u8::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.from_le_bytes
+[`u8::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.from_ne_bytes
+[`u8::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_be_bytes
+[`u8::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_le_bytes
+[`u8::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_ne_bytes
+[`usize::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.from_be_bytes
+[`usize::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.from_le_bytes
+[`usize::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.from_ne_bytes
+[`usize::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.to_be_bytes
+[`usize::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.to_le_bytes
+[`usize::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.to_ne_bytes
+
+
 Version 1.31.1 (2018-12-20)
 ===========================
 
