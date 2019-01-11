@@ -88,11 +88,11 @@ fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Cancelable<Option<S
 
 impl NavigationTarget {
     fn node(&self, db: &RootDatabase) -> Option<TreePtr<SyntaxNode>> {
-        let source_file = db.source_file(self.file_id);
+        let source_file = db.source_file(self.file_id());
         let source_file = source_file.syntax();
         let node = source_file
             .descendants()
-            .find(|node| node.kind() == self.kind && node.range() == self.range)?
+            .find(|node| node.kind() == self.kind() && node.range() == self.range())?
             .to_owned();
         Some(node)
     }

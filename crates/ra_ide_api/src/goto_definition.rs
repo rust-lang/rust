@@ -1,6 +1,6 @@
 use ra_db::{FileId, Cancelable, SyntaxDatabase};
 use ra_syntax::{
-    TextRange, AstNode, ast, SyntaxKind::{NAME, MODULE},
+    AstNode, ast,
     algo::find_node_at_offset,
 };
 
@@ -32,13 +32,7 @@ pub(crate) fn reference_definition(
         let scope = fn_descr.scopes(db)?;
         // First try to resolve the symbol locally
         if let Some(entry) = scope.resolve_local_name(name_ref) {
-            let nav = NavigationTarget {
-                file_id,
-                name: entry.name().to_string().into(),
-                range: entry.ptr().range(),
-                kind: NAME,
-                ptr: None,
-            };
+            let nav = NavigationTarget::from_scope_entry(file_id, &entry);
             return Ok(vec![nav]);
         };
     }
@@ -79,18 +73,7 @@ fn name_definition(
             if let Some(child_module) =
                 hir::source_binder::module_from_declaration(db, file_id, module)?
             {
-                let (file_id, _) = child_module.definition_source(db)?;
-                let name = match child_module.name(db)? {
-                    Some(name) => name.to_string().into(),
-                    None => "".into(),
-                };
-                let nav = NavigationTarget {
-                    file_id,
-                    name,
-                    range: TextRange::offset_len(0.into(), 0.into()),
-                    kind: MODULE,
-                    ptr: None,
-                };
+                let nav = NavigationTarget::from_module(db, child_module)?;
                 return Ok(Some(vec![nav]));
             }
         }

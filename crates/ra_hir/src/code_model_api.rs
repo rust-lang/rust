@@ -274,6 +274,8 @@ pub struct Function {
     pub(crate) def_id: DefId,
 }
 
+pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
+
 /// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnSignature {

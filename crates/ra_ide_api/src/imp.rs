@@ -11,7 +11,6 @@ use ra_syntax::{
     TextRange, AstNode, SourceFile,
     ast::{self, NameOwner},
     algo::find_node_at_offset,
-    SyntaxKind::*,
 };
 
 use crate::{
@@ -109,18 +108,8 @@ impl db::RootDatabase {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let (file_id, ast_module) = match module.declaration_source(self)? {
-            None => return Ok(Vec::new()),
-            Some(it) => it,
-        };
-        let name = ast_module.name().unwrap();
-        Ok(vec![NavigationTarget {
-            file_id,
-            name: name.text().clone(),
-            range: name.syntax().range(),
-            kind: MODULE,
-            ptr: None,
-        }])
+        let nav = NavigationTarget::from_module(self, module)?;
+        Ok(vec![nav])
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {

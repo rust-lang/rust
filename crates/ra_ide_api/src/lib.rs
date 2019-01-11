@@ -34,9 +34,9 @@ mod syntax_highlighting;
 
 use std::{fmt, sync::Arc};
 
-use ra_syntax::{SmolStr, SourceFile, TreePtr, SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{SourceFile, TreePtr, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
-use ra_db::{SyntaxDatabase, FilesDatabase, LocalSyntaxPtr, BaseDatabase};
+use ra_db::{SyntaxDatabase, FilesDatabase, BaseDatabase};
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
@@ -50,6 +50,7 @@ use crate::{
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
+    navigation_target::NavigationTarget,
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode,
@@ -240,39 +241,6 @@ impl Query {
 
     pub fn limit(&mut self, limit: usize) {
         self.limit = limit
-    }
-}
-
-/// `NavigationTarget` represents and element in the editor's UI which you can
-/// click on to navigate to a particular piece of code.
-///
-/// Typically, a `NavigationTarget` corresponds to some element in the source
-/// code, like a function or a struct, but this is not strictly required.
-#[derive(Debug, Clone)]
-pub struct NavigationTarget {
-    file_id: FileId,
-    name: SmolStr,
-    kind: SyntaxKind,
-    range: TextRange,
-    // Should be DefId ideally
-    ptr: Option<LocalSyntaxPtr>,
-}
-
-impl NavigationTarget {
-    pub fn name(&self) -> &SmolStr {
-        &self.name
-    }
-
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub fn file_id(&self) -> FileId {
-        self.file_id
-    }
-
-    pub fn range(&self) -> TextRange {
-        self.range
     }
 }
 
