@@ -4,6 +4,12 @@ error[E0010]: allocations are not allowed in statics
 LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
    |                                     ^^^^^^^^^^^^^^^^^^^ allocation not allowed in statics
 
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/issue-7364.rs:6:41
+   |
+LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
+   |                                         ^^^^^^^^^^^^^^^
+
 error[E0277]: `std::cell::RefCell<isize>` cannot be shared between threads safely
   --> $DIR/issue-7364.rs:6:1
    |
@@ -15,7 +21,7 @@ LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
    = note: required because it appears within the type `std::boxed::Box<std::cell::RefCell<isize>>`
    = note: shared static variables must have a type that implements `Sync`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors occurred: E0010, E0277.
+Some errors occurred: E0010, E0019, E0277.
 For more information about an error, try `rustc --explain E0010`.

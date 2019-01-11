@@ -1,5 +1,5 @@
 error[E0019]: static contains unimplemented expression type
-  --> $DIR/assign-to-static-within-other-static-2.rs:17:5
+  --> $DIR/assign-to-static-within-other-static-2.rs:16:5
    |
 LL |     *FOO.0.get() = 5; //~ ERROR contains unimplemented expression type
    |     ^^^^^^^^^^^^^^^^

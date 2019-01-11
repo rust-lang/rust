@@ -1,6 +1,6 @@
 // compile-pass
 
-#![feature(const_let, const_fn)]
+#![feature(const_fn)]
 
 struct Foo<T>(T);
 struct Bar<T> { x: T }
