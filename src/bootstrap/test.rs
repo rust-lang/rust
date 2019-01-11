@@ -1106,13 +1106,13 @@ impl Step for Compiletest {
                     }).to_string()
             })
         };
-        let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
+        let (lldb_exe, clang_exe) =
+            if builder.config.lldb_enabled && !target.contains("emscripten") {
             // Test against the lldb that was just built.
-            builder.llvm_out(target)
-                .join("bin")
-                .join("lldb")
+            (builder.llvm_out(target).join("bin").join("lldb"),
+             builder.llvm_out(target).join("bin").join("clang"))
         } else {
-            PathBuf::from("lldb")
+            (PathBuf::from("lldb"), PathBuf::from("clang"))
         };
         let lldb_version = Command::new(&lldb_exe)
             .arg("--version")
@@ -1124,6 +1124,31 @@ impl Step for Compiletest {
             let lldb_python_dir = run(Command::new(&lldb_exe).arg("-P")).ok();
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
+            }
+        }
+
+        let clang_version = Command::new(&clang_exe)
+            .arg("--version")
+            .output()
+            .map(|output| { String::from_utf8_lossy(&output.stdout).to_string() })
+            .ok();
+        if let Some(ref vers) = clang_version {
+            cmd.arg("--clang-version").arg(vers);
+        }
+
+        if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
+            match &var.to_string_lossy()[..] {
+                "1" | "yes" | "on" => {
+                    cmd.arg("--force-clang-based-tests");
+                }
+                "0" | "no" | "off" => {
+                    // Nothing to do.
+                }
+                other => {
+                    // Let's make sure typos don't get unnoticed
+                    panic!("Unrecognized option '{}' set in \
+                            RUSTBUILD_FORCE_CLANG_BASED_TESTS", other);
+                }
             }
         }
 
