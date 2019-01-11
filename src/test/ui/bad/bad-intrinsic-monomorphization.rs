@@ -14,7 +14,7 @@ use std::intrinsics;
 #[derive(Copy, Clone)]
 pub struct Foo(i64);
 
-pub unsafe fn test_cttz(v: Foo) -> Foo {
+pub fn test_cttz(v: Foo) -> Foo {
     intrinsics::cttz(v)
     //~^ ERROR `cttz` intrinsic: expected basic integer type, found `Foo`
 }

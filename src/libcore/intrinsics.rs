@@ -1348,7 +1348,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::ctlz;
     ///
     /// let x = 0b0001_1100_u8;
-    /// let num_leading = unsafe { ctlz(x) };
+    /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 3);
     /// ```
     ///
@@ -1360,7 +1360,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::ctlz;
     ///
     /// let x = 0u16;
-    /// let num_leading = unsafe { ctlz(x) };
+    /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 16);
     /// ```
     pub fn ctlz<T>(x: T) -> T;
@@ -1391,7 +1391,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::cttz;
     ///
     /// let x = 0b0011_1000_u8;
-    /// let num_trailing = unsafe { cttz(x) };
+    /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 3);
     /// ```
     ///
@@ -1403,7 +1403,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::cttz;
     ///
     /// let x = 0u16;
-    /// let num_trailing = unsafe { cttz(x) };
+    /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 16);
     /// ```
     pub fn cttz<T>(x: T) -> T;
