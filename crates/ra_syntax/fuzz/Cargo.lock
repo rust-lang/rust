@@ -188,6 +188,7 @@ dependencies = [
  "parking_lot 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_text_edit 0.1.0",
  "rowan 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -320,7 +321,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "parking_lot 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -362,6 +363,11 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "serde"
+version = "1.0.84"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "smallvec"
 version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -371,8 +377,11 @@ dependencies = [
 
 [[package]]
 name = "smol_str"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "stable_deref_trait"
@@ -396,6 +405,9 @@ dependencies = [
 name = "text_unit"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "ucd-util"
@@ -492,8 +504,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum scopeguard 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "94258f53601af11e6a49f722422f6e3425c52b06245a5cf9bc09908b174f5e27"
 "checksum semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
 "checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+"checksum serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)" = "0e732ed5a5592c17d961555e3b552985baf98d50ce418b7b655f31f6ba7eb1b7"
 "checksum smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b73ea3738b47563803ef814925e69be00799a8c07420be8b996f8e98fb2336db"
-"checksum smol_str 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "486a74e9b9fc53373808f7a17e10fc728adcb1fbe272292271d8bea61175e181"
+"checksum smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "9af1035bc5d742ab6b7ab16713e41cc2ffe78cb474f6f43cd696b2d16052007e"
 "checksum stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
 "checksum tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "7e91405c14320e5c79b3d148e1c86f40749a36e490642202a31689cb1a3452b2"
 "checksum text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "158bb1c22b638b1da3c95a8ad9f061ea40d4d39fd0301be3a520f92efeeb189e"
