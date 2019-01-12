@@ -27,6 +27,7 @@ warning: irrefutable while-let pattern
    |
 LL | /     while let a = 1 { //~ WARN irrefutable while-let
 LL | |         println!("irrefutable pattern");
+LL | |         break;
 LL | |     }
    | |_____^
 
