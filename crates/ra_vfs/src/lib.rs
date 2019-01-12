@@ -225,7 +225,7 @@ impl Vfs {
                     }
                 }
                 watcher::WatcherChange::Rescan => {
-                    // TODO send Task::AddRoot?
+                    // TODO we should reload all files
                 }
             },
             io::TaskResult::LoadChange(None) => {}
