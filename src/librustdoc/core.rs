@@ -451,7 +451,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         None,
                                                         &name,
                                                         None,
-                                                        resolve::MakeGlobMap::No,
                                                         &resolver_arenas,
                                                         &mut crate_loader,
                                                         |_| Ok(()));
@@ -476,7 +475,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             }).collect(),
         };
         let analysis = ty::CrateAnalysis {
-            glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
+            glob_map: resolver.glob_map.clone(),
         };
 
         let mut arenas = AllArenas::new();

@@ -1122,8 +1122,6 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     mut handler: H,
 ) {
     tcx.dep_graph.with_ignore(|| {
-        assert!(analysis.glob_map.is_some());
-
         info!("Dumping crate {}", cratename);
 
         let save_ctxt = SaveContext {
