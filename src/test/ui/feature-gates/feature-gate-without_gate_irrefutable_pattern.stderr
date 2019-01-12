@@ -1,9 +1,0 @@
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/feature-gate-without_gate_irrefutable_pattern.rs:6:12
-   |
-LL |     if let _ = 5 {}
-   |            ^ irrefutable pattern
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0162`.

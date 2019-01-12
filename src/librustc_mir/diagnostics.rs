@@ -325,11 +325,13 @@ match Some(42) {
 "##,
 
 E0162: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding instead. For instance:
 
-```compile_fail,E0162
+```compile_pass
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -352,11 +354,13 @@ println!("{}", x);
 "##,
 
 E0165: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 A while-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding inside a `loop` instead. For instance:
 
-```compile_fail,E0165
+```compile_pass,no_run
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
