@@ -122,14 +122,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         self.tcx.with_freevars(closure_node_id, |freevars| {
+            let mut freevar_list: Vec<ty::UpvarId> = Vec::with_capacity(freevars.len());
             for freevar in freevars {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
-                        hir_id : self.tcx.hir().node_to_hir_id(freevar.var_id()),
+                        hir_id: self.tcx.hir().node_to_hir_id(freevar.var_id()),
                     },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
+                // Adding the upvar Id to the list of Upvars, which will be added
+                // to the map for the closure at the end of the for loop.
+                freevar_list.push(upvar_id);
 
                 let capture_kind = match capture_clause {
                     hir::CaptureByValue => ty::UpvarCapture::ByValue,
@@ -149,6 +153,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .upvar_capture_map
                     .insert(upvar_id, capture_kind);
             }
+            // Add the vector of freevars to the map keyed with the closure id.
+            // This gives us an easier access to them without having to call
+            // with_freevars again..
+            if !freevar_list.is_empty() {
+                self.tables
+                    .borrow_mut()
+                    .upvar_list
+                    .insert(closure_def_id, freevar_list);
+            }
         });
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
@@ -166,7 +179,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
             region_scope_tree,
             &self.tables.borrow(),
-        ).consume_body(body);
+        )
+        .consume_body(body);
 
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
@@ -240,9 +254,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let var_hir_id = tcx.hir().node_to_hir_id(var_node_id);
                     let freevar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
-                        var_path: ty::UpvarPath {
-                            hir_id: var_hir_id,
-                        },
+                        var_path: ty::UpvarPath { hir_id: var_hir_id },
                         closure_expr_id: LocalDefId::from_def_id(closure_def_index),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
@@ -262,7 +274,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             },
                         ),
                     }
-                }).collect()
+                })
+                .collect()
         })
     }
 }

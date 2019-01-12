@@ -417,6 +417,12 @@ pub struct TypeckTables<'tcx> {
     /// All the existential types that are restricted to concrete types
     /// by this function
     pub concrete_existential_types: FxHashMap<DefId, Ty<'tcx>>,
+
+    /// Given the closure ID this map provides the list of UpvarIDs used by it.
+    /// The upvarID contains the HIR node ID and it also contains the full path
+    /// leading to the member of the struct or tuple that is used instead of the
+    /// entire variable.
+    pub upvar_list: ty::UpvarListMap,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -441,6 +447,7 @@ impl<'tcx> TypeckTables<'tcx> {
             tainted_by_errors: false,
             free_region_map: Default::default(),
             concrete_existential_types: Default::default(),
+            upvar_list: Default::default(),
         }
     }
 
@@ -741,6 +748,8 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             tainted_by_errors,
             ref free_region_map,
             ref concrete_existential_types,
+            ref upvar_list,
+
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -783,6 +792,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
             concrete_existential_types.hash_stable(hcx, hasher);
+            upvar_list.hash_stable(hcx, hasher);
         })
     }
 }

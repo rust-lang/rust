@@ -808,6 +808,7 @@ pub struct UpvarBorrow<'tcx> {
     pub region: ty::Region<'tcx>,
 }
 
+pub type UpvarListMap = FxHashMap<DefId, Vec<UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 #[derive(Copy, Clone)]
