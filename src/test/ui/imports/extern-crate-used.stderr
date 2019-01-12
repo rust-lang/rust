@@ -1,0 +1,38 @@
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/extern-crate-used.rs:8:1
+   |
+LL | extern crate core as iso1; //~ ERROR `extern crate` is not idiomatic in the new edition
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
+   |
+note: lint level defined here
+  --> $DIR/extern-crate-used.rs:6:9
+   |
+LL | #![deny(unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/extern-crate-used.rs:9:1
+   |
+LL | extern crate core as iso2; //~ ERROR `extern crate` is not idiomatic in the new edition
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/extern-crate-used.rs:10:1
+   |
+LL | extern crate core as iso3; //~ ERROR `extern crate` is not idiomatic in the new edition
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/extern-crate-used.rs:11:1
+   |
+LL | extern crate core as iso4; //~ ERROR `extern crate` is not idiomatic in the new edition
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
+
+error: unused extern crate
+  --> $DIR/extern-crate-used.rs:14:1
+   |
+LL | extern crate core; //~ ERROR unused extern crate
+   | ^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: aborting due to 5 previous errors
+
