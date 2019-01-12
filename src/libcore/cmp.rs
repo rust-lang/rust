@@ -142,33 +142,33 @@ use self::Ordering::*;
 ///     Hardback,
 ///     Ebook,
 /// }
-/// 
+///
 /// struct Book {
 ///     isbn: i32,
 ///     format: BookFormat,
 /// }
-/// 
+///
 /// impl PartialEq<BookFormat> for Book {
 ///     fn eq(&self, other: &BookFormat) -> bool {
 ///         self.format == *other
 ///     }
 /// }
-/// 
+///
 /// impl PartialEq<Book> for BookFormat {
 ///     fn eq(&self, other: &Book) -> bool {
 ///         *self == other.format
 ///     }
 /// }
-/// 
+///
 /// impl PartialEq for Book {
 ///     fn eq(&self, other: &Book) -> bool {
 ///         self.isbn == other.isbn
 ///     }
 /// }
-/// 
+///
 /// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
 /// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
-/// 
+///
 /// assert!(b1 == BookFormat::Paperback);
 /// assert!(b1 != BookFormat::Ebook);
 /// assert!(b1 == b2);
