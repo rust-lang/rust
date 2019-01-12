@@ -59,6 +59,7 @@ use std::hash::{Hash, Hasher};
 use std::fmt;
 use std::mem;
 use std::ops::{Deref, Bound};
+use std::ptr;
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -168,7 +169,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
 
                 // Make sure we don't end up with inference
                 // types/regions in the global interner
-                if local as *const _ as usize == global as *const _ as usize {
+                if ptr::eq(local, global) {
                     bug!("Attempted to intern `{:?}` which contains \
                         inference types/regions in the global type context",
                         &ty_struct);
@@ -1135,9 +1136,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns true if self is the same as self.global_tcx().
     fn is_global(self) -> bool {
-        let local = self.interners as *const _;
-        let global = &self.global_interners as *const _;
-        local as usize == global as usize
+        ptr::eq(self.interners, &self.global_interners)
     }
 
     /// Create a type context and call the closure with a `TyCtxt` reference
@@ -1787,6 +1786,7 @@ pub mod tls {
     use std::fmt;
     use std::mem;
     use std::marker::PhantomData;
+    use std::ptr;
     use syntax_pos;
     use ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
@@ -2021,8 +2021,7 @@ pub mod tls {
     {
         with_context(|context| {
             unsafe {
-                let gcx = tcx.gcx as *const _ as usize;
-                assert!(context.tcx.gcx as *const _ as usize == gcx);
+                assert!(ptr::eq(context.tcx.gcx, tcx.gcx));
                 let context: &ImplicitCtxt<'_, '_, '_> = mem::transmute(context);
                 f(context)
             }
@@ -2040,10 +2039,8 @@ pub mod tls {
     {
         with_context(|context| {
             unsafe {
-                let gcx = tcx.gcx as *const _ as usize;
-                let interners = tcx.interners as *const _ as usize;
-                assert!(context.tcx.gcx as *const _ as usize == gcx);
-                assert!(context.tcx.interners as *const _ as usize == interners);
+                assert!(ptr::eq(context.tcx.gcx, tcx.gcx));
+                assert!(ptr::eq(context.tcx.interners, tcx.interners));
                 let context: &ImplicitCtxt<'_, '_, '_> = mem::transmute(context);
                 f(context)
             }
