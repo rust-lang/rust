@@ -1108,7 +1108,7 @@ fn report_assoc_ty_on_inherent_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span:
         tcx.sess,
         span,
         E0202,
-        "associated types are not allowed in inherent impls"
+        "associated types are not yet supported in inherent impls (see #8995)"
     );
 }
 
