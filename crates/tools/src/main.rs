@@ -158,12 +158,12 @@ fn install_code_extension() -> Result<()> {
     }
     if cfg!(windows) {
         run(
-            r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix",
+            r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix --force",
             "./editors/code",
         )?;
     } else {
         run(
-            r"code --install-extension ./ra-lsp-0.0.1.vsix",
+            r"code --install-extension ./ra-lsp-0.0.1.vsix --force",
             "./editors/code",
         )?;
     }
