@@ -4,7 +4,7 @@ use gen_lsp_server::ErrorCode;
 use languageserver_types::{
     CodeActionResponse, Command, Diagnostic, DiagnosticSeverity, DocumentFormattingParams,
     DocumentHighlight, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkedString, MarkupContent, MarkupKind,
+    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind,
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, RenameParams,
     SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
@@ -515,7 +515,10 @@ pub fn handle_hover(
     let line_index = world.analysis.file_line_index(position.file_id);
     let range = info.range.conv_with(&line_index);
     let res = Hover {
-        contents: HoverContents::Scalar(MarkedString::String(info.info)),
+        contents: HoverContents::Markup(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: info.info,
+        }),
         range: Some(range),
     };
     Ok(Some(res))
