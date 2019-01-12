@@ -165,7 +165,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
 
 fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -> DataId {
     module
-        .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
+        .declare_data(&format!("__alloc_{}", alloc_id.0), Linkage::Local, false)
         .unwrap()
 }
 
