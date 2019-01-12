@@ -191,29 +191,8 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, args: Arguments) -> Result {
-        // This Adapter is needed to allow `self` (of type `&mut
-        // Self`) to be cast to a Write (below) without
-        // requiring a `Sized` bound.
-        struct Adapter<'a,T: ?Sized +'a>(&'a mut T);
-
-        impl<T: ?Sized> Write for Adapter<'_, T>
-            where T: Write
-        {
-            fn write_str(&mut self, s: &str) -> Result {
-                self.0.write_str(s)
-            }
-
-            fn write_char(&mut self, c: char) -> Result {
-                self.0.write_char(c)
-            }
-
-            fn write_fmt(&mut self, args: Arguments) -> Result {
-                self.0.write_fmt(args)
-            }
-        }
-
-        write(&mut Adapter(self), args)
+    fn write_fmt(mut self: &mut Self, args: Arguments) -> Result {
+        write(&mut self, args)
     }
 }
 
@@ -268,7 +247,7 @@ struct Void {
 /// family of functions. It contains a function to format the given value. At
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
            issue = "0")]
@@ -276,14 +255,6 @@ struct Void {
 pub struct ArgumentV1<'a> {
     value: &'a Void,
     formatter: fn(&Void, &mut Formatter) -> Result,
-}
-
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-           issue = "0")]
-impl Clone for ArgumentV1<'_> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl<'a> ArgumentV1<'a> {
@@ -1105,7 +1076,7 @@ impl<'a> Formatter<'a> {
                 self.args[i].as_usize()
             }
             rt::v1::Count::NextParam => {
-                self.curarg.next().and_then(|arg| arg.as_usize())
+                self.curarg.next()?.as_usize()
             }
         }
     }
@@ -1171,15 +1142,15 @@ impl<'a> Formatter<'a> {
             sign = Some('+'); width += 1;
         }
 
-        let mut prefixed = false;
-        if self.alternate() {
-            prefixed = true; width += prefix.chars().count();
+        let prefixed = self.alternate();
+        if prefixed {
+            width += prefix.chars().count();
         }
 
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             if let Some(c) = sign {
-                f.buf.write_str(c.encode_utf8(&mut [0; 4]))?;
+                f.buf.write_char(c)?;
             }
             if prefixed { f.buf.write_str(prefix) }
             else { Ok(()) }
@@ -1341,7 +1312,7 @@ impl<'a> Formatter<'a> {
 
                 // remove the sign from the formatted parts
                 formatted.sign = b"";
-                width = if width < sign.len() { 0 } else { width - sign.len() };
+                width = width.saturating_sub(sign.len());
                 align = rt::v1::Alignment::Right;
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
