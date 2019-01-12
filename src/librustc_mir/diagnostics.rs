@@ -2334,7 +2334,7 @@ local variable that already exists, and hence no temporary is created.
 Temporaries are not always dropped at the end of the enclosing
 statement. In simple cases where the `&` expression is immediately
 stored into a variable, the compiler will automatically extend
-the lifetime of the temporary until the end of the enclosinb
+the lifetime of the temporary until the end of the enclosing
 block. Therefore, an alternative way to fix the original
 program is to write `let tmp = &foo()` and not `let tmp = foo()`:
 
