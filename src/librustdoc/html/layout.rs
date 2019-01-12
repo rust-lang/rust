@@ -191,7 +191,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     description = page.description,
     keywords = page.keywords,
     favicon   = if layout.favicon.is_empty() {
-        String::new()
+        format!(r#"<link rel="shortcut icon" href="{static_root_path}favicon{suffix}.ico">"#,
+                static_root_path=static_root_path,
+                suffix=page.resource_suffix)
     } else {
         format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
     },
