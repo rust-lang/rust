@@ -17,6 +17,7 @@ mod autoderef;
 mod primitive;
 #[cfg(test)]
 mod tests;
+pub(crate) mod method_resolution;
 
 use std::borrow::Cow;
 use std::ops::Index;
@@ -431,7 +432,7 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     let impl_block = f.impl_block(db)?;
     // TODO we ignore type parameters for now
     let input = signature
-        .args()
+        .params()
         .iter()
         .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), tr))
         .collect::<Cancelable<Vec<_>>>()?;
@@ -875,7 +876,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none())?;
-                let (arg_tys, ret_ty) = match &callee_ty {
+                let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (&sig.input[..], sig.output.clone()),
                     _ => {
                         // not callable
@@ -886,19 +887,43 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 for (i, arg) in args.iter().enumerate() {
                     self.infer_expr(
                         *arg,
-                        &Expectation::has_type(arg_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
+                        &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
                     )?;
                 }
                 ret_ty
             }
-            Expr::MethodCall { receiver, args, .. } => {
-                let _receiver_ty = self.infer_expr(*receiver, &Expectation::none())?;
-                // TODO resolve method...
-                for (_i, arg) in args.iter().enumerate() {
-                    // TODO unify / expect argument type
-                    self.infer_expr(*arg, &Expectation::none())?;
+            Expr::MethodCall {
+                receiver,
+                args,
+                method_name,
+            } => {
+                let receiver_ty = self.infer_expr(*receiver, &Expectation::none())?;
+                let resolved = receiver_ty.clone().lookup_method(self.db, method_name)?;
+                let method_ty = match resolved {
+                    Some(def_id) => self.db.type_for_def(def_id)?,
+                    None => Ty::Unknown,
+                };
+                let method_ty = self.insert_type_vars(method_ty);
+                let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
+                    Ty::FnPtr(sig) => {
+                        if sig.input.len() > 0 {
+                            (&sig.input[0], &sig.input[1..], sig.output.clone())
+                        } else {
+                            (&Ty::Unknown, &[][..], sig.output.clone())
+                        }
+                    }
+                    _ => (&Ty::Unknown, &[][..], Ty::Unknown),
+                };
+                // TODO we would have to apply the autoderef/autoref steps here
+                // to get the correct receiver type to unify...
+                self.unify(expected_receiver_ty, &receiver_ty);
+                for (i, arg) in args.iter().enumerate() {
+                    self.infer_expr(
+                        *arg,
+                        &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
+                    )?;
                 }
-                Ty::Unknown
+                ret_ty
             }
             Expr::Match { expr, arms } => {
                 let _ty = self.infer_expr(*expr, &Expectation::none())?;
@@ -1068,7 +1093,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn_signature(&mut self, signature: &FnSignature) -> Cancelable<()> {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in signature.args().iter().zip(body.args()) {
+        for (type_ref, pat) in signature.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref)?;
             let ty = self.insert_type_vars(ty);
             self.write_pat_ty(*pat, ty);

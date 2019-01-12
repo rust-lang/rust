@@ -18,13 +18,13 @@ impl_arena_id!(ExprId);
 pub struct Body {
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
-    /// The patterns for the function's arguments. While the argument types are
+    /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
     ///
     /// If this `Body` is for the body of a constant, this will just be
     /// empty.
-    args: Vec<PatId>,
+    params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
     body_expr: ExprId,
 }
@@ -44,8 +44,8 @@ pub struct BodySyntaxMapping {
 }
 
 impl Body {
-    pub fn args(&self) -> &[PatId] {
-        &self.args
+    pub fn params(&self) -> &[PatId] {
+        &self.params
     }
 
     pub fn body_expr(&self) -> ExprId {
@@ -699,11 +699,11 @@ impl ExprCollector {
         }
     }
 
-    fn into_body_syntax_mapping(self, args: Vec<PatId>, body_expr: ExprId) -> BodySyntaxMapping {
+    fn into_body_syntax_mapping(self, params: Vec<PatId>, body_expr: ExprId) -> BodySyntaxMapping {
         let body = Body {
             exprs: self.exprs,
             pats: self.pats,
-            args,
+            params,
             body_expr,
         };
         BodySyntaxMapping {
@@ -719,8 +719,8 @@ impl ExprCollector {
 pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
     let mut collector = ExprCollector::new();
 
-    let args = if let Some(param_list) = node.param_list() {
-        let mut args = Vec::new();
+    let params = if let Some(param_list) = node.param_list() {
+        let mut params = Vec::new();
 
         if let Some(self_param) = param_list.self_param() {
             let self_param = LocalSyntaxPtr::new(
@@ -729,13 +729,13 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
                     .expect("self param without self keyword")
                     .syntax(),
             );
-            let arg = collector.alloc_pat(
+            let param = collector.alloc_pat(
                 Pat::Bind {
                     name: Name::self_param(),
                 },
                 self_param,
             );
-            args.push(arg);
+            params.push(param);
         }
 
         for param in param_list.params() {
@@ -744,15 +744,15 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
             } else {
                 continue;
             };
-            args.push(collector.collect_pat(pat));
+            params.push(collector.collect_pat(pat));
         }
-        args
+        params
     } else {
         Vec::new()
     };
 
     let body = collector.collect_block_opt(node.body());
-    collector.into_body_syntax_mapping(args, body)
+    collector.into_body_syntax_mapping(params, body)
 }
 
 pub(crate) fn body_syntax_mapping(

@@ -124,6 +124,7 @@ salsa::database_storage! {
             fn enum_data() for hir::db::EnumDataQuery;
             fn enum_variant_data() for hir::db::EnumVariantDataQuery;
             fn impls_in_module() for hir::db::ImplsInModuleQuery;
+            fn impls_in_crate() for hir::db::ImplsInCrateQuery;
             fn body_hir() for hir::db::BodyHirQuery;
             fn body_syntax_mapping() for hir::db::BodySyntaxMappingQuery;
             fn fn_signature() for hir::db::FnSignatureQuery;

@@ -95,6 +95,21 @@ impl Module {
         Module::from_module_id(db, loc.source_root_id, child_id).map(Some)
     }
 
+    /// Iterates over all child modules.
+    pub fn children_impl(&self, db: &impl HirDatabase) -> Cancelable<impl Iterator<Item = Module>> {
+        // FIXME this should be implementable without collecting into a vec, but
+        // it's kind of hard since the iterator needs to keep a reference to the
+        // module tree.
+        let loc = self.def_id.loc(db);
+        let module_tree = db.module_tree(loc.source_root_id)?;
+        let children = loc
+            .module_id
+            .children(&module_tree)
+            .map(|(_, module_id)| Module::from_module_id(db, loc.source_root_id, module_id))
+            .collect::<Cancelable<Vec<_>>>()?;
+        Ok(children.into_iter())
+    }
+
     pub fn parent_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id)?;

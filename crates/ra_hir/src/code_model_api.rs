@@ -113,6 +113,11 @@ impl Module {
         self.child_impl(db, name)
     }
 
+    /// Iterates over all child modules.
+    pub fn children(&self, db: &impl HirDatabase) -> Cancelable<impl Iterator<Item = Module>> {
+        self.children_impl(db)
+    }
+
     /// Finds a parent module.
     pub fn parent(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         self.parent_impl(db)
@@ -268,8 +273,11 @@ pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnSignature {
     pub(crate) name: Name,
-    pub(crate) args: Vec<TypeRef>,
+    pub(crate) params: Vec<TypeRef>,
     pub(crate) ret_type: TypeRef,
+    /// True if the first param is `self`. This is relevant to decide whether this
+    /// can be called as a method.
+    pub(crate) has_self_param: bool,
 }
 
 impl FnSignature {
@@ -277,12 +285,18 @@ impl FnSignature {
         &self.name
     }
 
-    pub fn args(&self) -> &[TypeRef] {
-        &self.args
+    pub fn params(&self) -> &[TypeRef] {
+        &self.params
     }
 
     pub fn ret_type(&self) -> &TypeRef {
         &self.ret_type
+    }
+
+    /// True if the first arg is `self`. This is relevant to decide whether this
+    /// can be called as a method.
+    pub fn has_self_param(&self) -> bool {
+        self.has_self_param
     }
 }
 

@@ -43,7 +43,7 @@ impl FnScopes {
             scope_for: FxHashMap::default(),
         };
         let root = scopes.root_scope();
-        scopes.add_params_bindings(root, body.args());
+        scopes.add_params_bindings(root, body.params());
         compute_expr_scopes(body.body_expr(), &body, &mut scopes, root);
         scopes
     }

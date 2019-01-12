@@ -69,6 +69,7 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::TypeAlias => Struct,
             CompletionItemKind::Const => Constant,
             CompletionItemKind::Static => Value,
+            CompletionItemKind::Method => Method,
         }
     }
 }
