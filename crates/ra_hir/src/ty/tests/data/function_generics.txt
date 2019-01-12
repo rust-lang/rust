@@ -1,0 +1,14 @@
+[10; 11) 't': [unknown]
+[21; 26) '{ t }': [unknown]
+[23; 24) 't': [unknown]
+[38; 98) '{     ...(1); }': ()
+[44; 46) 'id': fn([unknown]) -> [unknown]
+[44; 52) 'id(1u32)': [unknown]
+[47; 51) '1u32': [unknown]
+[58; 68) 'id::<i128>': fn([unknown]) -> [unknown]
+[58; 71) 'id::<i128>(1)': [unknown]
+[69; 70) '1': [unknown]
+[81; 82) 'x': u64
+[90; 92) 'id': fn([unknown]) -> u64
+[90; 95) 'id(1)': u64
+[93; 94) '1': [unknown]
