@@ -5360,8 +5360,15 @@ impl<'a> Parser<'a> {
                 // Parse type argument.
                 let ty_param = self.parse_ty()?;
                 if seen_binding {
-                    self.span_err(ty_param.span,
-                        "type parameters must be declared prior to associated type bindings");
+                    self.struct_span_err(
+                        ty_param.span,
+                        "type parameters must be declared prior to associated type bindings"
+                    )
+                        .span_label(
+                            ty_param.span,
+                            "must be declared prior to associated type bindings",
+                        )
+                        .emit();
                 }
                 args.push(GenericArg::Type(ty_param));
                 seen_type = true;
