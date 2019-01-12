@@ -1,9 +1,0 @@
-error[E0165]: irrefutable while-let pattern
-  --> $DIR/E0165.rs:5:15
-   |
-LL |     while let Irrefutable(x) = irr { //~ ERROR E0165
-   |               ^^^^^^^^^^^^^^ irrefutable pattern
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0165`.
