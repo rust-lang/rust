@@ -3814,8 +3814,12 @@ impl<'a> Parser<'a> {
                     ddpos = Some(fields.len());
                 } else {
                     // Emit a friendly error, ignore `..` and continue parsing
-                    self.span_err(self.prev_span,
-                                  "`..` can only be used once per tuple or tuple struct pattern");
+                    self.struct_span_err(
+                        self.prev_span,
+                        "`..` can only be used once per tuple or tuple struct pattern",
+                    )
+                        .span_label(self.prev_span, "can only be used once per pattern")
+                        .emit();
                 }
             } else if !self.check(&token::CloseDelim(token::Paren)) {
                 fields.push(self.parse_pat(None)?);
@@ -3831,7 +3835,10 @@ impl<'a> Parser<'a> {
 
         if ddpos == Some(fields.len()) && trailing_comma {
             // `..` needs to be followed by `)` or `, pat`, `..,)` is disallowed.
-            self.span_err(self.prev_span, "trailing comma is not permitted after `..`");
+            let msg = "trailing comma is not permitted after `..`";
+            self.struct_span_err(self.prev_span, msg)
+                .span_label(self.prev_span, msg)
+                .emit();
         }
 
         Ok((fields, ddpos, trailing_comma))
