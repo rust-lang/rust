@@ -384,9 +384,6 @@ declare_features! (
     // Infer static outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
-    // Multiple patterns with `|` in `if let` and `while let`.
-    (active, if_while_or_patterns, "1.26.0", Some(48215), None),
-
     // Allows macro invocations in `extern {}` blocks.
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
@@ -688,6 +685,8 @@ declare_features! (
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
     // `#[cfg_attr(predicate, multiple, attributes, here)]`
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
+    // Top level or-patterns (`p | q`) in `if let` and `while let`.
+    (accepted, if_while_or_patterns, "1.33.0", Some(48215), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -1700,12 +1699,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
-            }
-            ast::ExprKind::IfLet(ref pats, ..) | ast::ExprKind::WhileLet(ref pats, ..) => {
-                if pats.len() > 1 {
-                    gate_feature_post!(&self, if_while_or_patterns, e.span,
-                                    "multiple patterns in `if let` and `while let` are unstable");
-                }
             }
             ast::ExprKind::Block(_, opt_label) => {
                 if let Some(label) = opt_label {
