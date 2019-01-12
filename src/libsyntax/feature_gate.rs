@@ -683,12 +683,12 @@ declare_features! (
     (accepted, repr_packed, "1.33.0", Some(33158), None),
     // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
-    // `#[cfg_attr(predicate, multiple, attributes, here)]`
-    (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
     // Allows let bindings, assignments and destructuring in `const` functions and constants.
     // As long as control flow is not implemented in const eval, `&&` and `||` may not be used
     // at the same time as let bindings.
     (accepted, const_let, "1.33.0", Some(48821), None),
+    // `#[cfg_attr(predicate, multiple, attributes, here)]`
+    (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
