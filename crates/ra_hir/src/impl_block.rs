@@ -170,10 +170,10 @@ impl ModuleImplBlocks {
         let (file_id, module_source) = module.definition_source(db)?;
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
-            ModuleSource::Module(node) => match node.item_list() {
-                Some(item_list) => item_list.syntax(),
-                None => return Ok(()),
-            },
+            ModuleSource::Module(node) => node
+                .item_list()
+                .expect("inline module should have item list")
+                .syntax(),
         };
 
         let source_file_items = db.file_items(file_id.into());

@@ -81,23 +81,23 @@ impl CrateImplBlocks {
 
         Ok(())
     }
-}
 
-pub(crate) fn impls_in_crate(
-    db: &impl HirDatabase,
-    krate: Crate,
-) -> Cancelable<Arc<CrateImplBlocks>> {
-    let crate_graph = db.crate_graph();
-    let file_id = crate_graph.crate_root(krate.crate_id);
-    let source_root_id = db.file_source_root(file_id);
-    let mut crate_impl_blocks = CrateImplBlocks {
-        source_root_id,
-        impls: FxHashMap::default(),
-    };
-    if let Some(module) = krate.root_module(db)? {
-        crate_impl_blocks.collect_recursive(db, module)?;
+    pub(crate) fn impls_in_crate_query(
+        db: &impl HirDatabase,
+        krate: Crate,
+    ) -> Cancelable<Arc<CrateImplBlocks>> {
+        let crate_graph = db.crate_graph();
+        let file_id = crate_graph.crate_root(krate.crate_id);
+        let source_root_id = db.file_source_root(file_id);
+        let mut crate_impl_blocks = CrateImplBlocks {
+            source_root_id,
+            impls: FxHashMap::default(),
+        };
+        if let Some(module) = krate.root_module(db)? {
+            crate_impl_blocks.collect_recursive(db, module)?;
+        }
+        Ok(Arc::new(crate_impl_blocks))
     }
-    Ok(Arc::new(crate_impl_blocks))
 }
 
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Cancelable<Option<Crate>> {

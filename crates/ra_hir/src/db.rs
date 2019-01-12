@@ -104,7 +104,7 @@ pub trait HirDatabase: SyntaxDatabase
 
     fn impls_in_crate(krate: Crate) -> Cancelable<Arc<CrateImplBlocks>> {
         type ImplsInCrateQuery;
-        use fn crate::ty::method_resolution::impls_in_crate;
+        use fn crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query;
     }
 
     fn body_hir(def_id: DefId) -> Cancelable<Arc<crate::expr::Body>> {
