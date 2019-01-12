@@ -789,6 +789,10 @@ fn write_shared(
         themes.insert(theme.to_owned());
     }
 
+    if (*cx.shared).layout.logo.is_empty() {
+        write(cx.dst.join(&format!("rust-logo{}.png", cx.shared.resource_suffix)),
+              static_files::RUST_LOGO)?;
+    }
     write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           static_files::BRUSH_SVG)?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
