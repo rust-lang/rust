@@ -13,6 +13,7 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use smallvec::SmallVec;
 use std::fmt;
 use std::u32;
 use ty::fold::TypeFoldable;
@@ -190,19 +191,24 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
-                    self.expand_node(a_region, b_vid, b_data)
+                    (self.expand_node(a_region, b_vid, b_data), false)
                 }
                 Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => false,
+                    VarValue::ErrorValue => (false, false),
                     VarValue::Value(a_region) => {
                         let b_node = var_values.value_mut(b_vid);
-                        self.expand_node(a_region, b_vid, b_node)
+                        let changed = self.expand_node(a_region, b_vid, b_node);
+                        let retain = match *b_node {
+                            VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
+                            _ => true
+                        };
+                        (changed, retain)
                     }
                 },
                 Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
-                    false
+                    (false, false)
                 }
             }
         })
@@ -268,6 +274,13 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.tcx();
+
+        // Equal scopes can show up quite often, if the fixed point
+        // iteration converges slowly, skip them
+        if a == b {
+            return a;
+        }
+
         match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
@@ -710,21 +723,23 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
     fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
     where
-        F: FnMut(&Constraint<'tcx>, &SubregionOrigin<'tcx>) -> bool,
+        F: FnMut(&Constraint<'tcx>, &SubregionOrigin<'tcx>) -> (bool, bool),
     {
+        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.iter().collect();
         let mut iteration = 0;
         let mut changed = true;
         while changed {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            for (constraint, origin) in &self.data.constraints {
-                let edge_changed = body(constraint, origin);
+            constraints.retain(|(constraint, origin)| {
+                let (edge_changed, retain) = body(constraint, origin);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
                     changed = true;
                 }
-            }
+                retain
+            });
         }
         debug!("---- {} Complete after {} iteration(s)", tag, iteration);
     }
