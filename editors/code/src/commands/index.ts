@@ -4,7 +4,6 @@ import * as joinLines from './join_lines';
 import * as matchingBrace from './matching_brace';
 import * as onEnter from './on_enter';
 import * as parentModule from './parent_module';
-import * as runSingle from './run_single';
 import * as runnables from './runnables';
 import * as syntaxTree from './syntaxTree';
 
@@ -14,7 +13,6 @@ export {
     joinLines,
     matchingBrace,
     parentModule,
-    runSingle,
     runnables,
     syntaxTree,
     onEnter

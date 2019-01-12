@@ -103,3 +103,19 @@ export async function handle() {
         return await vscode.tasks.executeTask(task);
     }
 }
+
+export async function handleSingle(runnable: Runnable) {
+    const editor = vscode.window.activeTextEditor;
+    if (editor == null || editor.document.languageId !== 'rust') {
+        return;
+    }
+
+    const task = createTask(runnable);
+    task.group = vscode.TaskGroup.Build;
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Always,
+        panel: vscode.TaskPanelKind.Dedicated,
+    };
+    
+    return vscode.tasks.executeTask(task);
+}

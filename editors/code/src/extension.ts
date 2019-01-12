@@ -56,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
     overrideCommand('type', commands.onEnter.handle);
 
     // Unlike the above this does not send requests to the language server
-    registerCommand('ra-lsp.run-single', commands.runSingle.handle);
+    registerCommand('ra-lsp.run-single', commands.runnables.handleSingle);
 
     // Notifications are events triggered by the language server
     const allNotifications: Iterable<
