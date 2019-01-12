@@ -673,7 +673,11 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                 _ => None,
             };
             if let Some(err) = err {
-                err!(diag, |span, diag| diag.span_err(span, err));
+                err!(diag, |span, diag| {
+                    diag.struct_span_err(span, err)
+                        .span_label(span, "not supported")
+                        .emit();
+                });
             }
             return filtered_float_lit(Symbol::intern(s), Some(suf), diag)
         }
