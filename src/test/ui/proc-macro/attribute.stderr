@@ -34,13 +34,13 @@ error: attribute must have either one or two arguments
 LL | #[proc_macro_derive(l, attributes(m), n)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: attribute must be of the form `#[proc_macro_derive(TraitName, attributes(name1, name2, ...))]`
+error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
   --> $DIR/attribute.rs:8:1
    |
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: attribute must be of the form `#[proc_macro_derive(TraitName, attributes(name1, name2, ...))]`
+error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
   --> $DIR/attribute.rs:14:1
    |
 LL | #[proc_macro_derive = "foo"]

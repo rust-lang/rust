@@ -338,7 +338,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(ILL_FORMED_ATTRIBUTE_INPUT),
-            reference: "issue #57321 <https://github.com/rust-lang/rust/issues/57321>",
+            reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
             edition: None,
         },
         ]);

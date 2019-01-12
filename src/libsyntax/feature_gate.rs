@@ -717,6 +717,8 @@ pub enum AttributeGate {
     Ungated,
 }
 
+/// A template that the attribute input must match.
+/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
 #[derive(Clone, Copy)]
 pub struct AttributeTemplate {
     word: bool,
@@ -725,6 +727,7 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
+    /// Check that the given meta-item is compatible with this template.
     fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
         match meta_item_kind {
             ast::MetaItemKind::Word => self.word,
@@ -735,10 +738,10 @@ impl AttributeTemplate {
     }
 }
 
+/// A convenience macro for constructing attribute templates.
+/// E.g. `template!(Word, List: "description")` means that the attribute
+/// supports forms `#[attr]` and `#[attr(description)]`.
 macro_rules! template {
-    (@ $word: expr, $list: expr, $name_value_str: expr) => { AttributeTemplate {
-        word: $word, list: $list, name_value_str: $name_value_str
-    } };
     (Word) => { template!(@ true, None, None) };
     (List: $descr: expr) => { template!(@ false, Some($descr), None) };
     (NameValueStr: $descr: expr) => { template!(@ false, None, Some($descr)) };
@@ -750,6 +753,9 @@ macro_rules! template {
     (Word, List: $descr1: expr, NameValueStr: $descr2: expr) => {
         template!(@ true, Some($descr1), Some($descr2))
     };
+    (@ $word: expr, $list: expr, $name_value_str: expr) => { AttributeTemplate {
+        word: $word, list: $list, name_value_str: $name_value_str
+    } };
 }
 
 impl AttributeGate {
@@ -1084,7 +1090,8 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                         is an experimental feature",
                                        cfg_fn!(fundamental))),
 
-    ("proc_macro_derive", Normal, template!(List: "TraitName, attributes(name1, name2, ...)"),
+    ("proc_macro_derive", Normal, template!(List: "TraitName, \
+                                                   /*opt*/ attributes(name1, name2, ...)"),
                                        Ungated),
 
     ("rustc_copy_clone_marker", Whitelisted, template!(Word), Gated(Stability::Unstable,
