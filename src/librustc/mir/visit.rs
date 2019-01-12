@@ -887,6 +887,7 @@ macro_rules! make_mir_visitor {
                 ty: & $($mutability)* CanonicalUserTypeAnnotation<'tcx>,
             ) {
                 self.visit_span(& $($mutability)* ty.span);
+                self.visit_ty(& $($mutability)* ty.inferred_ty, TyContext::UserTy(ty.span));
             }
 
             fn super_ty(&mut self, _ty: & $($mutability)* Ty<'tcx>) {
@@ -966,6 +967,9 @@ pub enum TyContext {
         /// The source location where this local variable was declared.
         source_info: SourceInfo,
     },
+
+    /// The inferred type of a user type annotation.
+    UserTy(Span),
 
     /// The return type of the function.
     ReturnTy(SourceInfo),

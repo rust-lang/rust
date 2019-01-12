@@ -134,7 +134,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let place = unpack!(block = this.as_place(block, source));
                 if let Some(user_ty) = user_ty {
                     let annotation_index = this.canonical_user_type_annotations.push(
-                        CanonicalUserTypeAnnotation { span: source_info.span, user_ty }
+                        CanonicalUserTypeAnnotation {
+                            span: source_info.span,
+                            user_ty,
+                            inferred_ty: expr.ty,
+                        }
                     );
                     this.cfg.push(
                         block,
@@ -157,7 +161,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 if let Some(user_ty) = user_ty {
                     let annotation_index = this.canonical_user_type_annotations.push(
-                        CanonicalUserTypeAnnotation { span: source_info.span, user_ty }
+                        CanonicalUserTypeAnnotation {
+                            span: source_info.span,
+                            user_ty,
+                            inferred_ty: expr.ty,
+                        }
                     );
                     this.cfg.push(
                         block,

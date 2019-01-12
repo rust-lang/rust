@@ -748,7 +748,7 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     /// annotations. Part of the reason for this setup is that it allows us to enforce basic
     /// WF criteria on the types even if the code that referenced them is dead
     /// code (see #54943).
-    instantiated_type_annotations: FxHashMap<UserTypeAnnotationIndex, UserType<'tcx>>,
+    instantiated_type_annotations: FxHashMap<UserTypeAnnotationIndex, Ty<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -920,17 +920,58 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
              self.mir.user_type_annotations
         );
         for annotation_index in self.mir.user_type_annotations.indices() {
-            let CanonicalUserTypeAnnotation { span, ref user_ty } =
+            let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } =
                 self.mir.user_type_annotations[annotation_index];
-            let (mut annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+            let (annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
                 span, user_ty
             );
             match annotation {
-                UserType::Ty(ref mut ty) =>
-                    *ty = self.normalize(ty, Locations::All(span)),
-                _ => {},
+                UserType::Ty(mut ty) => {
+                    ty = self.normalize(ty, Locations::All(span));
+
+                    if let Err(terr) = self.eq_types(
+                        ty,
+                        inferred_ty,
+                        Locations::All(span),
+                        ConstraintCategory::BoringNoLocation,
+                    ) {
+                        span_mirbug!(
+                            self,
+                            self.mir.user_type_annotations[annotation_index],
+                            "bad user type ({:?} = {:?}): {:?}",
+                            ty,
+                            inferred_ty,
+                            terr
+                        );
+                    }
+
+                    self.prove_predicate(
+                        ty::Predicate::WellFormed(inferred_ty),
+                        Locations::All(span),
+                        ConstraintCategory::TypeAnnotation,
+                    );
+                },
+                UserType::TypeOf(def_id, user_substs) => {
+                    if let Err(terr) = self.fully_perform_op(
+                        Locations::All(span),
+                        ConstraintCategory::BoringNoLocation,
+                        self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                            inferred_ty, def_id, user_substs,
+                        )),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            self.mir.user_type_annotations[annotation_index],
+                            "bad user type AscribeUserType({:?}, {:?} {:?}): {:?}",
+                            inferred_ty,
+                            def_id,
+                            user_substs,
+                            terr
+                        );
+                    }
+                },
             }
-            self.instantiated_type_annotations.insert(annotation_index, annotation);
+            self.instantiated_type_annotations.insert(annotation_index, inferred_ty);
         }
         debug!(
             "instantiate_user_type_annotations: instantiated_type_annotations={:?}",
@@ -1067,58 +1108,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        let type_annotation = self.instantiated_type_annotations[&user_ty.base];
-        match type_annotation {
-            UserType::Ty(ty) => {
-                // The `TypeRelating` code assumes that "unresolved inference
-                // variables" appear in the "a" side, so flip `Contravariant`
-                // ambient variance to get the right relationship.
-                let v1 = ty::Contravariant.xform(v);
-                let tcx = self.infcx.tcx;
+        let annotated_type = self.instantiated_type_annotations[&user_ty.base];
+        let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
-                // We need to follow any provided projetions into the type.
-                //
-                // if we hit a ty var as we descend, then just skip the
-                // attempt to relate the mir local with any type.
-                #[derive(Debug)] struct HitTyVar;
-                let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
+        let tcx = self.infcx.tcx;
 
-                curr_projected_ty = Ok(PlaceTy::from_ty(ty));
-                for proj in &user_ty.projs {
-                    let projected_ty = if let Ok(projected_ty) = curr_projected_ty {
-                        projected_ty
-                    } else {
-                        break;
-                    };
-                    curr_projected_ty = projected_ty.projection_ty_core(
-                        tcx, proj, |this, field, &()| {
-                            if this.to_ty(tcx).is_ty_var() {
-                                Err(HitTyVar)
-                            } else {
-                                let ty = this.field_ty(tcx, field);
-                                Ok(self.normalize(ty, locations))
-                            }
-                        });
-                }
-                debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
-                       user_ty.base, ty, user_ty.projs, curr_projected_ty);
-
-                if let Ok(projected_ty) = curr_projected_ty {
-                    let ty = projected_ty.to_ty(tcx);
-                    self.relate_types(ty, v1, a, locations, category)?;
-                }
-            }
-            UserType::TypeOf(def_id, user_substs) => {
-                let projs = self.infcx.tcx.intern_projs(&user_ty.projs);
-                self.fully_perform_op(
-                    locations,
-                    category,
-                    self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        a, v, def_id, user_substs, projs,
-                    )),
-                )?;
-            }
+        for proj in &user_ty.projs {
+            let projected_ty = curr_projected_ty.projection_ty_core(tcx, proj, |this, field, &()| {
+                let ty = this.field_ty(tcx, field);
+                self.normalize(ty, locations)
+            });
+            curr_projected_ty = projected_ty;
         }
+        debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
+                user_ty.base, annotated_type, user_ty.projs, curr_projected_ty);
+
+        let ty = curr_projected_ty.to_ty(tcx);
+        self.relate_types(a, v, ty, locations, category)?;
 
         Ok(())
     }

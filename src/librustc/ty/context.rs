@@ -813,18 +813,19 @@ pub type CanonicalUserTypeAnnotations<'tcx> =
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
+    pub inferred_ty: Ty<'tcx>,
 }
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for CanonicalUserTypeAnnotation<'tcx> {
-        user_ty, span
+        user_ty, span, inferred_ty
     }
 }
 
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for CanonicalUserTypeAnnotation<'a> {
         type Lifted = CanonicalUserTypeAnnotation<'tcx>;
-        user_ty, span
+        user_ty, span, inferred_ty
     }
 }
 

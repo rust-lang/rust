@@ -1242,7 +1242,7 @@ impl_stable_hash_for!(
 
 impl_stable_hash_for!(
     struct ty::CanonicalUserTypeAnnotation<'tcx> {
-        user_ty, span
+        user_ty, span, inferred_ty
     }
 );
 

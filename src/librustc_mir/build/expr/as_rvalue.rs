@@ -331,10 +331,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .collect()
                 };
 
+                let inferred_ty = expr.ty;
                 let user_ty = user_ty.map(|ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span: source_info.span,
                         user_ty: ty,
+                        inferred_ty,
                     })
                 });
                 let adt = box AggregateKind::Adt(

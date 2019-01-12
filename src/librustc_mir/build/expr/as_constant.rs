@@ -31,10 +31,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 value,
             } => this.as_constant(value),
             ExprKind::Literal { literal, user_ty } => {
-                let user_ty = user_ty.map(|ty| {
+                let user_ty = user_ty.map(|user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span,
-                        user_ty: ty,
+                        user_ty,
+                        inferred_ty: ty,
                     })
                 });
                 Constant {
