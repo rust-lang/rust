@@ -66,6 +66,18 @@ fn equate_intrinsic_type<'a, 'tcx>(
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
 
+/// Returns whether the given intrinsic is unsafe to call or not.
+pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
+    match intrinsic {
+        "size_of" | "min_align_of" | "needs_drop" |
+        "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
+        "rotate_left" | "rotate_right" |
+        "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse"
+        => hir::Unsafety::Normal,
+        _ => hir::Unsafety::Unsafe,
+    }
+}
+
 /// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -117,10 +129,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
-        let unsafety = match &name[..] {
-            "size_of" | "min_align_of" | "needs_drop" => hir::Unsafety::Normal,
-            _ => hir::Unsafety::Unsafe,
-        };
+        let unsafety = intrisic_operation_unsafety(&name[..]);
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
             "size_of" |

@@ -342,15 +342,11 @@ fn check_terminator(
                 // some intrinsics are waved through if called inside the
                 // standard library. Users never need to call them directly
                 match tcx.fn_sig(def_id).abi() {
-                    abi::Abi::RustIntrinsic => match &tcx.item_name(def_id).as_str()[..] {
-                        | "size_of"
-                        | "min_align_of"
-                        | "needs_drop"
-                        => {},
-                        _ => return Err((
+                    abi::Abi::RustIntrinsic => if !is_intrinsic_whitelisted(tcx, def_id) {
+                        return Err((
                             span,
                             "can only call a curated list of intrinsics in `min_const_fn`".into(),
-                        )),
+                        ))
                     },
                     abi::Abi::Rust if tcx.is_min_const_fn(def_id) => {},
                     abi::Abi::Rust => return Err((
@@ -388,5 +384,32 @@ fn check_terminator(
         TerminatorKind::FalseUnwind { .. } => {
             Err((span, "loops are not allowed in const fn".into()))
         },
+    }
+}
+
+/// Returns true if the `def_id` refers to an intrisic which we've whitelisted
+/// for being called from stable `const fn`s (`min_const_fn`).
+///
+/// Adding more intrinsics requires sign-off from @rust-lang/lang.
+fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    match &tcx.item_name(def_id).as_str()[..] {
+        | "size_of"
+        | "min_align_of"
+        | "needs_drop"
+        // Arithmetic:
+        | "overflowing_add" // ~> .wrapping_add
+        | "overflowing_sub" // ~> .wrapping_sub
+        | "overflowing_mul" // ~> .wrapping_mul
+        | "unchecked_shl" // ~> .wrapping_shl
+        | "unchecked_shr" // ~> .wrapping_shr
+        | "rotate_left" // ~> .rotate_left
+        | "rotate_right" // ~> .rotate_right
+        | "ctpop" // ~> .count_ones
+        | "ctlz" // ~> .leading_zeros
+        | "cttz" // ~> .trailing_zeros
+        | "bswap" // ~> .swap_bytes
+        | "bitreverse" // ~> .reverse_bits
+        => true,
+        _ => false,
     }
 }
