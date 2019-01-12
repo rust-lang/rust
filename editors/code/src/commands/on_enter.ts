@@ -6,7 +6,6 @@ import {
     SourceChange
 } from './apply_source_change';
 
-
 export async function handle(event: { text: string }): Promise<boolean> {
     const editor = vscode.window.activeTextEditor;
     if (

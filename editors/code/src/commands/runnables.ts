@@ -48,7 +48,11 @@ function createTask(spec: Runnable): vscode.Task {
         cwd: '.',
         env: definition.env
     };
-    const exec = new vscode.ShellExecution(definition.command, definition.args, execOption);
+    const exec = new vscode.ShellExecution(
+        definition.command,
+        definition.args,
+        execOption
+    );
 
     const f = vscode.workspace.workspaceFolders![0];
     const t = new vscode.Task(
@@ -59,7 +63,7 @@ function createTask(spec: Runnable): vscode.Task {
         exec,
         ['$rustc']
     );
-    t.presentationOptions.clear = true
+    t.presentationOptions.clear = true;
     return t;
 }
 
@@ -114,8 +118,8 @@ export async function handleSingle(runnable: Runnable) {
     task.group = vscode.TaskGroup.Build;
     task.presentationOptions = {
         reveal: vscode.TaskRevealKind.Always,
-        panel: vscode.TaskPanelKind.Dedicated,
+        panel: vscode.TaskPanelKind.Dedicated
     };
-    
+
     return vscode.tasks.executeTask(task);
 }

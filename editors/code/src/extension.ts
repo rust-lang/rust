@@ -37,8 +37,10 @@ export function activate(context: vscode.ExtensionContext) {
                     return await original(...args);
                 }
             });
-        } catch(_) {
-            vscode.window.showWarningMessage('Enhanced typing feature is disabled because of incompatibility with VIM extension');
+        } catch (_) {
+            vscode.window.showWarningMessage(
+                'Enhanced typing feature is disabled because of incompatibility with VIM extension'
+            );
         }
     }
 

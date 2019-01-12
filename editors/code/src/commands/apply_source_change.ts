@@ -10,7 +10,9 @@ export interface SourceChange {
 }
 
 export async function handle(change: SourceChange) {
-    const wsEdit = Server.client.protocol2CodeConverter.asWorkspaceEdit(change.workspaceEdit);
+    const wsEdit = Server.client.protocol2CodeConverter.asWorkspaceEdit(
+        change.workspaceEdit
+    );
     let created;
     let moved;
     if (change.workspaceEdit.documentChanges) {
