@@ -5393,8 +5393,12 @@ impl<'a> Parser<'a> {
         // change we parse those generics now, but report an error.
         if self.choose_generics_over_qpath() {
             let generics = self.parse_generics()?;
-            self.span_err(generics.span,
-                          "generic parameters on `where` clauses are reserved for future use");
+            self.struct_span_err(
+                generics.span,
+                "generic parameters on `where` clauses are reserved for future use",
+            )
+                .span_label(generics.span, "currently unsupported")
+                .emit();
         }
 
         loop {
