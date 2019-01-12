@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/dangling-alloc-id-ice.rs:10:1
+  --> $DIR/dangling-alloc-id-ice.rs:8:1
    |
 LL | / const FOO: &() = { //~ ERROR any use of this value will cause an error
 LL | |     let y = ();

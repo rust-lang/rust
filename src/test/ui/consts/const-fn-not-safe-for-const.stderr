@@ -16,55 +16,7 @@ error[E0013]: constant functions cannot refer to statics, use a constant instead
 LL |     &Y
    |     ^^
 
-error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:30:13
-   |
-LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
-   |             ^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
+error: aborting due to 3 previous errors
 
-error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:30:13
-   |
-LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
-   |             ^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:32:13
-   |
-LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
-   |             ^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:32:13
-   |
-LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
-   |             ^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:34:5
-   |
-LL |     x + y
-   |     ^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:34:9
-   |
-LL |     x + y
-   |         ^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error: aborting due to 9 previous errors
-
-Some errors occurred: E0013, E0015, E0658.
+Some errors occurred: E0013, E0015.
 For more information about an error, try `rustc --explain E0013`.

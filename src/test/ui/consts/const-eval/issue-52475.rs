@@ -1,5 +1,3 @@
-#![feature(const_let)]
-
 fn main() {
     let _ = [(); {
         //~^ WARNING Constant evaluating a complex constant, this might take some time

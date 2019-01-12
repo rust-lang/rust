@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, const_let, const_fn)]
+#![feature(rustc_attrs)]
 
 #[rustc_layout_scalar_valid_range_start(1)]
 #[repr(transparent)]
