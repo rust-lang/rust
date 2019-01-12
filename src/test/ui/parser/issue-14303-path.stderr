@@ -2,7 +2,33 @@ error: lifetime parameters must be declared prior to type parameters
   --> $DIR/issue-14303-path.rs:1:37
    |
 LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
-   |                                     ^^
+   |                                     ^^ must be declared prior to type parameters
 
-error: aborting due to previous error
+error: lifetime parameters must be declared prior to type parameters
+  --> $DIR/issue-14303-path.rs:1:41
+   |
+LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
+   |                                         ^^ must be declared prior to type parameters
 
+error[E0433]: failed to resolve: use of undeclared type or module `mymodule`
+  --> $DIR/issue-14303-path.rs:1:18
+   |
+LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
+   |                  ^^^^^^^^ use of undeclared type or module `mymodule`
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/issue-14303-path.rs:1:37
+   |
+LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
+   |                                     ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'c`
+  --> $DIR/issue-14303-path.rs:1:41
+   |
+LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
+   |                                         ^^ undeclared lifetime
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0261, E0433.
+For more information about an error, try `rustc --explain E0261`.

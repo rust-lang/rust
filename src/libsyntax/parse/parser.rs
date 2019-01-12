@@ -5329,8 +5329,12 @@ impl<'a> Parser<'a> {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
-                    self.span_err(self.prev_span,
-                        "lifetime parameters must be declared prior to type parameters");
+                    self.struct_span_err(
+                        self.prev_span,
+                        "lifetime parameters must be declared prior to type parameters"
+                    )
+                        .span_label(self.prev_span, "must be declared prior to type parameters")
+                        .emit();
                 }
             } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
                 // Parse associated type binding.
