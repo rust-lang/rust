@@ -1012,7 +1012,10 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                self.span_err(sp, &format!("{} with a suffix is invalid", kind));
+                let msg = format!("{} with a suffix is invalid", kind);
+                self.struct_span_err(sp, &msg)
+                    .span_label(sp, msg)
+                    .emit();
             }
         }
     }
@@ -1768,9 +1771,11 @@ impl<'a> Parser<'a> {
             Mutability::Immutable
         } else {
             let span = self.prev_span;
-            self.span_err(span,
-                          "expected mut or const in raw pointer type (use \
-                           `*mut T` or `*const T` as appropriate)");
+            let msg = "expected mut or const in raw pointer type";
+            self.struct_span_err(span, msg)
+                .span_label(span, msg)
+                .help("use `*mut T` or `*const T` as appropriate")
+                .emit();
             Mutability::Immutable
         };
         let t = self.parse_ty_no_plus()?;
@@ -5612,15 +5617,20 @@ impl<'a> Parser<'a> {
                 // *mut self
                 // *not_self
                 // Emit special error for `self` cases.
+                let msg = "cannot pass `self` by raw pointer";
                 (if isolated_self(self, 1) {
                     self.bump();
-                    self.span_err(self.span, "cannot pass `self` by raw pointer");
+                    self.struct_span_err(self.span, msg)
+                        .span_label(self.span, msg)
+                        .emit();
                     SelfKind::Value(Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_mutability()) &&
                           isolated_self(self, 2) {
                     self.bump();
                     self.bump();
-                    self.span_err(self.span, "cannot pass `self` by raw pointer");
+                    self.struct_span_err(self.span, msg)
+                        .span_label(self.span, msg)
+                        .emit();
                     SelfKind::Value(Mutability::Immutable)
                 } else {
                     return Ok(None);
@@ -5957,7 +5967,10 @@ impl<'a> Parser<'a> {
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
             if unsafety != Unsafety::Normal {
-                self.span_err(self.prev_span, "trait aliases cannot be unsafe");
+                let msg = "trait aliases cannot be unsafe";
+                self.struct_span_err(self.prev_span, msg)
+                    .span_label(self.prev_span, msg)
+                    .emit();
             }
             Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
         } else {
