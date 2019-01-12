@@ -18,9 +18,14 @@ import lldb
 import os
 import sys
 import threading
-import thread
 import re
 import time
+
+try:
+    import thread
+except ModuleNotFoundError:
+    # The `thread` module was renamed to `_thread` in Python 3.
+    import _thread as thread
 
 # Set this to True for additional output
 DEBUG_OUTPUT = False
