@@ -2203,6 +2203,8 @@ impl Path {
     ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
     ///   an additional [`CurDir`] component.
     ///
+    /// * A trailing slash is normalized away, `/a/b` and `/a/b/` are equivalent.
+    ///
     /// Note that no other normalization takes place; in particular, `a/c`
     /// and `a/b/../c` are distinct, to account for the possibility that `b`
     /// is a symbolic link (so its parent isn't `a`).
