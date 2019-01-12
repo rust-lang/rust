@@ -5255,8 +5255,12 @@ impl<'a> Parser<'a> {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
                     let param_kind = if seen_ty_param.is_some() { "type" } else { "lifetime" };
-                    self.span_err(attrs[0].span,
-                        &format!("trailing attribute after {} parameters", param_kind));
+                    self.struct_span_err(
+                        attrs[0].span,
+                        &format!("trailing attribute after {} parameters", param_kind),
+                    )
+                    .span_label(attrs[0].span, "attributes must go before parameters")
+                    .emit();
                 }
                 break
             }
