@@ -140,6 +140,16 @@ fn pos_field_list(p: &mut Parser) {
     }
     while !p.at(R_PAREN) && !p.at(EOF) {
         let m = p.start();
+        // test pos_field_attrs
+        // struct S (
+        //     #[serde(with = "url_serde")]
+        //     pub Uri,
+        // );
+        //
+        // enum S {
+        //     Uri(#[serde(with = "url_serde")] Uri),
+        // }
+        attributes::outer_attributes(p);
         opt_visibility(p);
         if !p.at_ts(types::TYPE_FIRST) {
             p.error("expected a type");
