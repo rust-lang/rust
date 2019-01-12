@@ -201,7 +201,7 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-    pub MATCH_WILD,
+    pub WILDCARD_MATCH_ARM,
     restriction,
     "a wildcard match arm using `_`"
 }
@@ -219,7 +219,7 @@ impl LintPass for MatchPass {
             MATCH_OVERLAPPING_ARM,
             MATCH_WILD_ERR_ARM,
             MATCH_AS_REF,
-            MATCH_WILD
+            WILDCARD_MATCH_ARM
         )
     }
 
@@ -469,9 +469,9 @@ fn check_wild_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
         for arm in arms {
             if is_wild(&arm.pats[0]) {
                 span_note_and_lint(cx,
-                    MATCH_WILD,
+                    WILDCARD_MATCH_ARM,
                     arm.pats[0].span,
-                    "Wildcard match will miss any future added variants.",
+                    "wildcard match will miss any future added variants.",
                     arm.pats[0].span,
                     "to resolve, match each variant explicitly");
             }
