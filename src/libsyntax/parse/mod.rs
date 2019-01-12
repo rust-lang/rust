@@ -520,6 +520,7 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
                 } else {
                     let msg = format!("invalid suffix `{}` for float literal", suf);
                     diag.struct_span_err(span, &msg)
+                        .span_label(span, format!("invalid suffix `{}`", suf))
                         .help("valid suffixes are `f32` and `f64`")
                         .emit();
                 }
@@ -716,6 +717,7 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                     } else {
                         let msg = format!("invalid suffix `{}` for numeric literal", suf);
                         diag.struct_span_err(span, &msg)
+                            .span_label(span, format!("invalid suffix `{}`", suf))
                             .help("the suffix must be one of the integral types \
                                    (`u32`, `isize`, etc)")
                             .emit();

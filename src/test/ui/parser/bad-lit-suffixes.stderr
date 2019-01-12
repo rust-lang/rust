@@ -82,7 +82,7 @@ error: invalid suffix `suffix` for numeric literal
   --> $DIR/bad-lit-suffixes.rs:25:5
    |
 LL |     1234suffix; //~ ERROR invalid suffix `suffix` for numeric literal
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ invalid suffix `suffix`
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
@@ -90,7 +90,7 @@ error: invalid suffix `suffix` for numeric literal
   --> $DIR/bad-lit-suffixes.rs:26:5
    |
 LL |     0b101suffix; //~ ERROR invalid suffix `suffix` for numeric literal
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ invalid suffix `suffix`
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
@@ -98,7 +98,7 @@ error: invalid suffix `suffix` for float literal
   --> $DIR/bad-lit-suffixes.rs:27:5
    |
 LL |     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ invalid suffix `suffix`
    |
    = help: valid suffixes are `f32` and `f64`
 
@@ -106,7 +106,7 @@ error: invalid suffix `suffix` for float literal
   --> $DIR/bad-lit-suffixes.rs:28:5
    |
 LL |     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ invalid suffix `suffix`
    |
    = help: valid suffixes are `f32` and `f64`
 

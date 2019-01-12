@@ -8,7 +8,7 @@ error: invalid suffix `f` for float literal
   --> $DIR/no-hex-float-literal.rs:6:18
    |
 LL |     0xDEAD.BEEFp-2f;
-   |                  ^^
+   |                  ^^ invalid suffix `f`
    |
    = help: valid suffixes are `f32` and `f64`
 

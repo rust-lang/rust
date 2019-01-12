@@ -14,7 +14,7 @@ error: invalid suffix `p4f64` for numeric literal
   --> $DIR/no-binary-float-literal.rs:6:5
    |
 LL |     0b101p4f64;
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ invalid suffix `p4f64`
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
