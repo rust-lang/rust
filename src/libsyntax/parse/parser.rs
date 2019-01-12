@@ -6055,7 +6055,13 @@ impl<'a> Parser<'a> {
             Some(ty_second) => {
                 // impl Trait for Type
                 if !has_for {
-                    self.span_err(missing_for_span, "missing `for` in a trait impl");
+                    self.struct_span_err(missing_for_span, "missing `for` in a trait impl")
+                        .span_suggestion_short_with_applicability(
+                            missing_for_span,
+                            "add `for` here",
+                            " for ".to_string(),
+                            Applicability::MachineApplicable,
+                        ).emit();
                 }
 
                 let ty_first = ty_first.into_inner();
