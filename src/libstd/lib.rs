@@ -305,7 +305,7 @@
 #![feature(maybe_uninit)]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
             feature(global_asm, range_contains, slice_index_methods,
-                    decl_macro, coerce_unsized, sgx_platform))]
+                    decl_macro, coerce_unsized, sgx_platform, ptr_wrapping_offset_from))]
 
 #![default_lib_allocator]
 

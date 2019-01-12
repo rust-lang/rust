@@ -1,7 +1,7 @@
-error[E0202]: associated types are not allowed in inherent impls
+error[E0202]: associated types are not yet supported in inherent impls (see #8995)
   --> $DIR/assoc-inherent.rs:6:5
    |
-LL |     type Bar = isize; //~ERROR associated types are not allowed in inherent impls
+LL |     type Bar = isize; //~ERROR associated types are not yet supported in inherent impls (see #8995)
    |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -1,0 +1,22 @@
+error: irrefutable if-let pattern
+  --> $DIR/deny-irrefutable-let-patterns.rs:4:5
+   |
+LL |     if let _ = 5 {} //~ ERROR irrefutable if-let pattern
+   |     ^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/deny-irrefutable-let-patterns.rs:1:9
+   |
+LL | #![deny(irrefutable_let_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: irrefutable while-let pattern
+  --> $DIR/deny-irrefutable-let-patterns.rs:6:5
+   |
+LL | /     while let _ = 5 { //~ ERROR irrefutable while-let pattern
+LL | |         break;
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+

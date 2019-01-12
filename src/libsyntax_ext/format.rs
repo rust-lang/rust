@@ -159,7 +159,7 @@ fn parse_args<'a>(
             };
             let name: &str = &ident.as_str();
 
-            p.expect(&token::Eq).unwrap();
+            p.expect(&token::Eq)?;
             let e = p.parse_expr()?;
             if let Some(prev) = names.get(name) {
                 ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", name))

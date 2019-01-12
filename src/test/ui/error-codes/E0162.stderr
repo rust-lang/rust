@@ -1,9 +1,0 @@
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/E0162.rs:5:12
-   |
-LL |     if let Irrefutable(x) = irr { //~ ERROR E0162
-   |            ^^^^^^^^^^^^^^ irrefutable pattern
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0162`.

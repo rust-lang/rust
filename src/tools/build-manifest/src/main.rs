@@ -131,7 +131,8 @@ struct Manifest {
     manifest_version: String,
     date: String,
     pkg: BTreeMap<String, Package>,
-    renames: BTreeMap<String, Rename>
+    renames: BTreeMap<String, Rename>,
+    profiles: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -340,6 +341,7 @@ impl Builder {
             date: self.date.to_string(),
             pkg: BTreeMap::new(),
             renames: BTreeMap::new(),
+            profiles: BTreeMap::new(),
         };
 
         self.package("rustc", &mut manifest.pkg, HOSTS);
@@ -354,6 +356,20 @@ impl Builder {
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
         self.package("llvm-tools-preview", &mut manifest.pkg, TARGETS);
         self.package("lldb-preview", &mut manifest.pkg, TARGETS);
+
+        self.profile("minimal",
+                     &mut manifest.profiles,
+                     &["rustc", "cargo", "rust-std", "rust-mingw"]);
+        self.profile("default",
+                     &mut manifest.profiles,
+                     &["rustc", "cargo", "rust-std", "rust-mingw",
+                       "rust-docs", "rustfmt-preview", "clippy-preview"]);
+        self.profile("complete",
+                     &mut manifest.profiles,
+                     &["rustc", "cargo", "rust-std", "rust-mingw",
+                       "rust-docs", "rustfmt-preview", "clippy-preview",
+                       "rls-preview", "rust-src", "llvm-tools-preview",
+                       "lldb-preview", "rust-analysis"]);
 
         manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
         manifest.renames.insert("rustfmt".to_owned(), Rename { to: "rustfmt-preview".to_owned() });
@@ -451,6 +467,13 @@ impl Builder {
         manifest.pkg.insert("rust".to_string(), pkg);
 
         return manifest;
+    }
+
+    fn profile(&mut self,
+               profile_name: &str,
+               dst: &mut BTreeMap<String, Vec<String>>,
+               pkgs: &[&str]) {
+        dst.insert(profile_name.to_owned(), pkgs.iter().map(|s| (*s).to_owned()).collect());
     }
 
     fn package(&mut self,

@@ -213,8 +213,14 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                        fcx.ty_to_string(self.expr_ty),
                                        cast_ty));
                 if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr.span) {
-                    err.span_help(self.expr.span,
-                        &format!("did you mean `*{}`?", snippet));
+                    err.span_suggestion_with_applicability(
+                        self.expr.span,
+                        "dereference the expression",
+                        format!("*{}", snippet),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_help(self.expr.span, "dereference the expression with `*`");
                 }
                 err.emit();
             }

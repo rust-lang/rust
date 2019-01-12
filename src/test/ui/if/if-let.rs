@@ -1,3 +1,5 @@
+// compile-pass
+
 fn macros() {
     macro_rules! foo{
         ($p:pat, $e:expr, $b:block) => {{
@@ -10,20 +12,20 @@ fn macros() {
         }}
     }
 
-    foo!(a, 1, { //~ ERROR irrefutable if-let
+    foo!(a, 1, { //~ WARN irrefutable if-let
         println!("irrefutable pattern");
     });
-    bar!(a, 1, { //~ ERROR irrefutable if-let
+    bar!(a, 1, { //~ WARN irrefutable if-let
         println!("irrefutable pattern");
     });
 }
 
 pub fn main() {
-    if let a = 1 { //~ ERROR irrefutable if-let
+    if let a = 1 { //~ WARN irrefutable if-let
         println!("irrefutable pattern");
     }
 
-    if let a = 1 { //~ ERROR irrefutable if-let
+    if let a = 1 { //~ WARN irrefutable if-let
         println!("irrefutable pattern");
     } else if true {
         println!("else-if in irrefutable if-let");
@@ -33,13 +35,13 @@ pub fn main() {
 
     if let 1 = 2 {
         println!("refutable pattern");
-    } else if let a = 1 { //~ ERROR irrefutable if-let
+    } else if let a = 1 { //~ WARN irrefutable if-let
         println!("irrefutable pattern");
     }
 
     if true {
         println!("if");
-    } else if let a = 1 { //~ ERROR irrefutable if-let
+    } else if let a = 1 { //~ WARN irrefutable if-let
         println!("irrefutable pattern");
     }
 }

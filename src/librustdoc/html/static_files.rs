@@ -73,22 +73,17 @@ pub mod fira_sans {
     pub static LICENSE: &'static [u8] = include_bytes!("static/FiraSans-LICENSE.txt");
 }
 
-/// Files related to the Heuristica font.
-pub mod heuristica {
-    /// The file `Heuristica-Italic.woff`, the Italic variant of the Heuristica font.
-    pub static ITALIC: &'static [u8] = include_bytes!("static/Heuristica-Italic.woff");
-
-    /// The file `Heuristica-LICENSE.txt`, the license text for the Heuristica font.
-    pub static LICENSE: &'static [u8] = include_bytes!("static/Heuristica-LICENSE.txt");
-}
-
 /// Files related to the Source Serif Pro font.
 pub mod source_serif_pro {
-    /// The file `SourceSerifPro-Regular.woff`, the Regular variant of the Source Serif Pro font.
-    pub static REGULAR: &'static [u8] = include_bytes!("static/SourceSerifPro-Regular.woff");
+    /// The file `SourceSerifPro-Regular.ttf.woff`, the Regular variant of the Source Serif Pro
+    /// font.
+    pub static REGULAR: &'static [u8] = include_bytes!("static/SourceSerifPro-Regular.ttf.woff");
 
-    /// The file `SourceSerifPro-Bold.woff`, the Bold variant of the Source Serif Pro font.
-    pub static BOLD: &'static [u8] = include_bytes!("static/SourceSerifPro-Bold.woff");
+    /// The file `SourceSerifPro-Bold.ttf.woff`, the Bold variant of the Source Serif Pro font.
+    pub static BOLD: &'static [u8] = include_bytes!("static/SourceSerifPro-Bold.ttf.woff");
+
+    /// The file `SourceSerifPro-It.ttf.woff`, the Italic variant of the Source Serif Pro font.
+    pub static ITALIC: &'static [u8] = include_bytes!("static/SourceSerifPro-It.ttf.woff");
 
     /// The file `SourceSerifPro-LICENSE.txt`, the license text for the Source Serif Pro font.
     pub static LICENSE: &'static [u8] = include_bytes!("static/SourceSerifPro-LICENSE.txt");

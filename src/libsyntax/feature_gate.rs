@@ -193,9 +193,6 @@ declare_features! (
     // Allows the definition of `const` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(24111), None),
 
-    // Allows let bindings and destructuring in `const` functions and constants.
-    (active, const_let, "1.22.1", Some(48821), None),
-
     // Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 
@@ -410,9 +407,6 @@ declare_features! (
 
     // `#[doc(alias = "...")]`
     (active, doc_alias, "1.27.0", Some(50146), None),
-
-    // Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
-    (active, irrefutable_let_patterns, "1.27.0", Some(44495), None),
 
     // inconsistent bounds in where clauses
     (active, trivial_bounds, "1.28.0", Some(48214), None),
@@ -681,8 +675,14 @@ declare_features! (
     (accepted, underscore_imports, "1.33.0", Some(48216), None),
     // Allows `#[repr(packed(N))]` attribute on structs.
     (accepted, repr_packed, "1.33.0", Some(33158), None),
+    // Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
+    (accepted, irrefutable_let_patterns, "1.33.0", Some(44495), None),
     // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
+    // Allows let bindings, assignments and destructuring in `const` functions and constants.
+    // As long as control flow is not implemented in const eval, `&&` and `||` may not be used
+    // at the same time as let bindings.
+    (accepted, const_let, "1.33.0", Some(48821), None),
     // `#[cfg_attr(predicate, multiple, attributes, here)]`
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
     // Top level or-patterns (`p | q`) in `if let` and `while let`.

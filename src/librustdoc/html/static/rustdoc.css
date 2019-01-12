@@ -12,25 +12,24 @@
 	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 
-/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license and
- * Heuristica-LICENSE.txt for the Heuristica license. */
+/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("Heuristica-Italic.woff") format('woff');
+	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
 }
 
 /* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */

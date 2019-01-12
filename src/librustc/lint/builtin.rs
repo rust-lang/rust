@@ -286,7 +286,7 @@ declare_lint! {
 
 declare_lint! {
     pub IRREFUTABLE_LET_PATTERNS,
-    Deny,
+    Warn,
     "detects irrefutable patterns in if-let and while-let statements"
 }
 

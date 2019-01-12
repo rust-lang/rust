@@ -550,7 +550,6 @@ mod prim_array { }
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
-//
 /// A dynamically-sized view into a contiguous sequence, `[T]`.
 ///
 /// *[See also the `std::slice` module](slice/index.html).*
@@ -572,11 +571,11 @@ mod prim_array { }
 /// points to:
 ///
 /// ```
-/// let x = &mut [1, 2, 3];
+/// let mut x = [1, 2, 3];
+/// let x = &mut x[..]; // Take a full slice of `x`.
 /// x[1] = 7;
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice { }
 

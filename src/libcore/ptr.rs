@@ -849,6 +849,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// [valid]: ../ptr/index.html#safety
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`read`]: ./fn.read.html
+/// [read-ownership]: ./fn.read.html#ownership-of-the-returned-value
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile

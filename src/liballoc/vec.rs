@@ -738,53 +738,88 @@ impl<T> Vec<T> {
         self
     }
 
-    /// Sets the length of a vector.
+    /// Forces the length of the vector to `new_len`.
     ///
-    /// This will explicitly set the size of the vector, without actually
-    /// modifying its buffers, so it is up to the caller to ensure that the
-    /// vector is actually the specified size.
+    /// This is a low-level operation that maintains none of the normal
+    /// invariants of the type.  Normally changing the length of a vector
+    /// is done using one of the safe operations instead, such as
+    /// [`truncate`], [`resize`], [`extend`], or [`clear`].
+    ///
+    /// [`truncate`]: #method.truncate
+    /// [`resize`]: #method.resize
+    /// [`extend`]: #method.extend-1
+    /// [`clear`]: #method.clear
+    ///
+    /// # Safety
+    ///
+    /// - `new_len` must be less than or equal to [`capacity()`].
+    /// - The elements at `old_len..new_len` must be initialized.
+    ///
+    /// [`capacity()`]: #method.capacity
     ///
     /// # Examples
     ///
-    /// ```
-    /// use std::ptr;
+    /// This method can be useful for situations in which the vector
+    /// is serving as a buffer for other code, particularly over FFI:
     ///
-    /// let mut vec = vec!['r', 'u', 's', 't'];
-    ///
-    /// unsafe {
-    ///     ptr::drop_in_place(&mut vec[3]);
-    ///     vec.set_len(3);
+    /// ```no_run
+    /// # #![allow(dead_code)]
+    /// # // This is just a minimal skeleton for the doc example;
+    /// # // don't use this as a starting point for a real library.
+    /// # pub struct StreamWrapper { strm: *mut std::ffi::c_void }
+    /// # const Z_OK: i32 = 0;
+    /// # extern "C" {
+    /// #     fn deflateGetDictionary(
+    /// #         strm: *mut std::ffi::c_void,
+    /// #         dictionary: *mut u8,
+    /// #         dictLength: *mut usize,
+    /// #     ) -> i32;
+    /// # }
+    /// # impl StreamWrapper {
+    /// pub fn get_dictionary(&self) -> Option<Vec<u8>> {
+    ///     // Per the FFI method's docs, "32768 bytes is always enough".
+    ///     let mut dict = Vec::with_capacity(32_768);
+    ///     let mut dict_length = 0;
+    ///     // SAFETY: When `deflateGetDictionary` returns `Z_OK`, it holds that:
+    ///     // 1. `dict_length` elements were initialized.
+    ///     // 2. `dict_length` <= the capacity (32_768)
+    ///     // which makes `set_len` safe to call.
+    ///     unsafe {
+    ///         // Make the FFI call...
+    ///         let r = deflateGetDictionary(self.strm, dict.as_mut_ptr(), &mut dict_length);
+    ///         if r == Z_OK {
+    ///             // ...and update the length to what was initialized.
+    ///             dict.set_len(dict_length);
+    ///             Some(dict)
+    ///         } else {
+    ///             None
+    ///         }
+    ///     }
     /// }
-    /// assert_eq!(vec, ['r', 'u', 's']);
+    /// # }
     /// ```
     ///
-    /// In this example, there is a memory leak since the memory locations
-    /// owned by the inner vectors were not freed prior to the `set_len` call:
+    /// While the following example is sound, there is a memory leak since
+    /// the inner vectors were not freed prior to the `set_len` call:
     ///
     /// ```
     /// let mut vec = vec![vec![1, 0, 0],
     ///                    vec![0, 1, 0],
     ///                    vec![0, 0, 1]];
+    /// // SAFETY:
+    /// // 1. `old_len..0` is empty so no elements need to be initialized.
+    /// // 2. `0 <= capacity` always holds whatever `capacity` is.
     /// unsafe {
     ///     vec.set_len(0);
     /// }
     /// ```
     ///
-    /// In this example, the vector gets expanded from zero to four items
-    /// without any memory allocations occurring, resulting in vector
-    /// values of unallocated memory:
-    ///
-    /// ```
-    /// let mut vec: Vec<char> = Vec::new();
-    ///
-    /// unsafe {
-    ///     vec.set_len(4);
-    /// }
-    /// ```
+    /// Normally, here, one would use [`clear`] instead to correctly drop
+    /// the contents and thus not leak memory.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn set_len(&mut self, len: usize) {
-        self.len = len;
+    pub unsafe fn set_len(&mut self, new_len: usize) {
+        self.len = new_len;
     }
 
     /// Removes an element from the vector and returns it.

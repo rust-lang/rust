@@ -893,14 +893,12 @@ themePicker.onblur = handleThemeButtonsBlur;
           static_files::fira_sans::MEDIUM)?;
     write(cx.dst.join("FiraSans-LICENSE.txt"),
           static_files::fira_sans::LICENSE)?;
-    write(cx.dst.join("Heuristica-Italic.woff"),
-          static_files::heuristica::ITALIC)?;
-    write(cx.dst.join("Heuristica-LICENSE.txt"),
-          static_files::heuristica::LICENSE)?;
-    write(cx.dst.join("SourceSerifPro-Regular.woff"),
+    write(cx.dst.join("SourceSerifPro-Regular.ttf.woff"),
           static_files::source_serif_pro::REGULAR)?;
-    write(cx.dst.join("SourceSerifPro-Bold.woff"),
+    write(cx.dst.join("SourceSerifPro-Bold.ttf.woff"),
           static_files::source_serif_pro::BOLD)?;
+    write(cx.dst.join("SourceSerifPro-It.ttf.woff"),
+          static_files::source_serif_pro::ITALIC)?;
     write(cx.dst.join("SourceSerifPro-LICENSE.txt"),
           static_files::source_serif_pro::LICENSE)?;
     write(cx.dst.join("SourceCodePro-Regular.woff"),

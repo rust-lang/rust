@@ -20,8 +20,7 @@ pub mod pattern;
 #[allow(missing_docs)]
 pub mod lossy;
 
-/// A trait to abstract the idea of creating a new instance of a type from a
-/// string.
+/// Parse a value from a string
 ///
 /// `FromStr`'s [`from_str`] method is often used implicitly, through
 /// [`str`]'s [`parse`] method. See [`parse`]'s documentation for examples.
@@ -29,6 +28,11 @@ pub mod lossy;
 /// [`from_str`]: #tymethod.from_str
 /// [`str`]: ../../std/primitive.str.html
 /// [`parse`]: ../../std/primitive.str.html#method.parse
+///
+/// `FromStr` does not have a lifetime parameter, and so you can only parse types
+/// that do not contain a lifetime parameter themselves. In other words, you can
+/// parse an `i32` with `FromStr`, but not a `&i32`. You can parse a struct that
+/// contains an `i32`, but not one that contains an `&i32`.
 ///
 /// # Examples
 ///

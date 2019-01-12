@@ -21,7 +21,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUs
 use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
 use syntax::ast::LitKind;
-use syntax::feature_gate::{UnstableFeatures, feature_err, emit_feature_err, GateIssue};
+use syntax::feature_gate::{UnstableFeatures, emit_feature_err, GateIssue};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -104,7 +104,6 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     local_qualif: IndexVec<Local, Option<Qualif>>,
     qualif: Qualif,
-    const_fn_arg_vars: BitSet<Local>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -139,7 +138,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             param_env,
             local_qualif,
             qualif: Qualif::empty(),
-            const_fn_arg_vars: BitSet::new_empty(mir.local_decls.len()),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -163,26 +161,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                           because the expression's value must be known at compile-time.");
                 err.note("Remember: you can't use a function call inside a const's initialization \
                           expression! However, you can use it anywhere else.");
-            }
-            err.emit();
-        }
-    }
-
-    /// Error about extra statements in a constant.
-    fn statement_like(&mut self) {
-        self.add(Qualif::NOT_CONST);
-        if self.mode != Mode::Fn {
-            let mut err = feature_err(
-                &self.tcx.sess.parse_sess,
-                "const_let",
-                self.span,
-                GateIssue::Language,
-                &format!("statements in {}s are unstable", self.mode),
-            );
-            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("Blocks in constants may only contain items (such as constant, function \
-                          definition, etc...) and a tail expression.");
-                err.help("To avoid it, you have to replace the non-item object.");
             }
             err.emit();
         }
@@ -233,80 +211,46 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        if self.tcx.features().const_let {
-            let mut dest = dest;
-            let index = loop {
-                match dest {
-                    // with `const_let` active, we treat all locals equal
-                    Place::Local(index) => break *index,
-                    // projections are transparent for assignments
-                    // we qualify the entire destination at once, even if just a field would have
-                    // stricter qualification
-                    Place::Projection(proj) => {
-                        // Catch more errors in the destination. `visit_place` also checks various
-                        // projection rules like union field access and raw pointer deref
-                        self.visit_place(
-                            dest,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
-                            location
-                        );
-                        dest = &proj.base;
-                    },
-                    Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
-                    Place::Static(..) => {
-                        // Catch more errors in the destination. `visit_place` also checks that we
-                        // do not try to access statics from constants or try to mutate statics
-                        self.visit_place(
-                            dest,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
-                            location
-                        );
-                        return;
-                    }
+        let mut dest = dest;
+        let index = loop {
+            match dest {
+                // We treat all locals equal in constants
+                Place::Local(index) => break *index,
+                // projections are transparent for assignments
+                // we qualify the entire destination at once, even if just a field would have
+                // stricter qualification
+                Place::Projection(proj) => {
+                    // Catch more errors in the destination. `visit_place` also checks various
+                    // projection rules like union field access and raw pointer deref
+                    self.visit_place(
+                        dest,
+                        PlaceContext::MutatingUse(MutatingUseContext::Store),
+                        location
+                    );
+                    dest = &proj.base;
+                },
+                Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
+                Place::Static(..) => {
+                    // Catch more errors in the destination. `visit_place` also checks that we
+                    // do not try to access statics from constants or try to mutate statics
+                    self.visit_place(
+                        dest,
+                        PlaceContext::MutatingUse(MutatingUseContext::Store),
+                        location
+                    );
+                    return;
                 }
-            };
-            debug!("store to var {:?}", index);
-            match &mut self.local_qualif[index] {
-                // this is overly restrictive, because even full assignments do not clear the qualif
-                // While we could special case full assignments, this would be inconsistent with
-                // aggregates where we overwrite all fields via assignments, which would not get
-                // that feature.
-                Some(ref mut qualif) => *qualif = *qualif | self.qualif,
-                // insert new qualification
-                qualif @ None => *qualif = Some(self.qualif),
             }
-            return;
-        }
-
-        match *dest {
-            Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
-                                   self.mir.local_kind(index) == LocalKind::ReturnPointer => {
-                debug!("store to {:?} (temp or return pointer)", index);
-                store(&mut self.local_qualif[index])
-            }
-
-            Place::Projection(box Projection {
-                base: Place::Local(index),
-                elem: ProjectionElem::Deref
-            }) if self.mir.local_kind(index) == LocalKind::Temp
-               && self.mir.local_decls[index].ty.is_box()
-               && self.local_qualif[index].map_or(false, |qualif| {
-                    qualif.contains(Qualif::NOT_CONST)
-               }) => {
-                // Part of `box expr`, we should've errored
-                // already for the Box allocation Rvalue.
-            }
-
-            // This must be an explicit assignment.
-            _ => {
-                // Catch more errors in the destination.
-                self.visit_place(
-                    dest,
-                    PlaceContext::MutatingUse(MutatingUseContext::Store),
-                    location
-                );
-                self.statement_like();
-            }
+        };
+        debug!("store to var {:?}", index);
+        match &mut self.local_qualif[index] {
+            // this is overly restrictive, because even full assignments do not clear the qualif
+            // While we could special case full assignments, this would be inconsistent with
+            // aggregates where we overwrite all fields via assignments, which would not get
+            // that feature.
+            Some(ref mut qualif) => *qualif = *qualif | self.qualif,
+            // insert new qualification
+            qualif @ None => *qualif = Some(self.qualif),
         }
     }
 
@@ -347,45 +291,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
-                    if !self.tcx.features().const_let {
-                        // Check for unused values. This usually means
-                        // there are extra statements in the AST.
-                        for temp in mir.temps_iter() {
-                            if self.local_qualif[temp].is_none() {
-                                continue;
-                            }
-
-                            let state = self.temp_promotion_state[temp];
-                            if let TempState::Defined { location, uses: 0 } = state {
-                                let data = &mir[location.block];
-                                let stmt_idx = location.statement_index;
-
-                                // Get the span for the initialization.
-                                let source_info = if stmt_idx < data.statements.len() {
-                                    data.statements[stmt_idx].source_info
-                                } else {
-                                    data.terminator().source_info
-                                };
-                                self.span = source_info.span;
-
-                                // Treat this as a statement in the AST.
-                                self.statement_like();
-                            }
-                        }
-
-                        // Make sure there are no extra unassigned variables.
-                        self.qualif = Qualif::NOT_CONST;
-                        for index in mir.vars_iter() {
-                            if !self.const_fn_arg_vars.contains(index) {
-                                debug!("unassigned variable {:?}", index);
-                                self.assign(&Place::Local(index), Location {
-                                    block: bb,
-                                    statement_index: usize::MAX,
-                                });
-                            }
-                        }
-                    }
-
                     break;
                 }
             };
@@ -454,12 +359,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::ReturnPointer => {
                 self.not_const();
             }
-            LocalKind::Var if !self.tcx.features().const_let => {
-                if self.mode != Mode::Fn {
-                    emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
-                                    self.span, GateIssue::Language,
-                                    &format!("let bindings in {}s are unstable",self.mode));
-                }
+            LocalKind::Var if self.mode == Mode::Fn => {
                 self.add(Qualif::NOT_CONST);
             }
             LocalKind::Var |
@@ -569,6 +469,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             }
                         }
 
+                        ProjectionElem::ConstantIndex {..} |
+                        ProjectionElem::Subslice {..} |
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
@@ -598,8 +500,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
-                        ProjectionElem::ConstantIndex {..} |
-                        ProjectionElem::Subslice {..} |
                         ProjectionElem::Downcast(..) => {
                             this.not_const()
                         }
@@ -1167,46 +1067,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     location: Location) {
         debug!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
         self.visit_rvalue(rvalue, location);
-
-        // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
-            if self.mir.local_kind(index) == LocalKind::Var &&
-               self.const_fn_arg_vars.insert(index) &&
-               !self.tcx.features().const_let {
-                // Direct use of an argument is permitted.
-                match *rvalue {
-                    Rvalue::Use(Operand::Copy(Place::Local(local))) |
-                    Rvalue::Use(Operand::Move(Place::Local(local))) => {
-                        if self.mir.local_kind(local) == LocalKind::Arg {
-                            return;
-                        }
-                    }
-                    _ => {}
-                }
-                // Avoid a generic error for other uses of arguments.
-                if self.qualif.contains(Qualif::FN_ARGUMENT) {
-                    let decl = &self.mir.local_decls[index];
-                    let mut err = feature_err(
-                        &self.tcx.sess.parse_sess,
-                        "const_let",
-                        decl.source_info.span,
-                        GateIssue::Language,
-                        "arguments of constant functions can only be immutable by-value bindings"
-                    );
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note("Constant functions are not allowed to mutate anything. Thus, \
-                                  binding to an argument with a mutable pattern is not allowed.");
-                        err.note("Remove any mutable bindings from the argument list to fix this \
-                                  error. In case you need to mutate the argument, try lazily \
-                                  initializing a global variable instead of using a const fn, or \
-                                  refactoring the code to a functional style to avoid mutation if \
-                                  possible.");
-                    }
-                    err.emit();
-                    return;
-                }
-            }
-        }
 
         self.assign(dest, location);
     }

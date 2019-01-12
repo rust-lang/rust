@@ -1842,7 +1842,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 return Ok(None);
             }
         }
-        if let FieldPlacement::Array { .. } = layout.fields {
+        if let FieldPlacement::Array { count: original_64_bit_count, .. } = layout.fields {
+            // rust-lang/rust#57038: avoid ICE within FieldPlacement::count when count too big
+            if original_64_bit_count > usize::max_value() as u64 {
+                return Err(LayoutError::SizeOverflow(layout.ty));
+            }
             if layout.fields.count() > 0 {
                 return self.find_niche(layout.field(self, 0)?);
             } else {
