@@ -2,8 +2,6 @@
 // compile-flags:--extern baz
 // edition:2018
 
-#![feature(uniform_paths)]
-
 mod foo {
     pub type Bar = u32;
 }

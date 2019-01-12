@@ -1,38 +1,14 @@
 error[E0364]: `legacy_macro` is private, and cannot be re-exported
-  --> $DIR/macro-rules.rs:12:9
+  --> $DIR/macro-rules.rs:11:13
    |
-LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
-   |         ^^^^^^^^^^^^^^^^^
-   |
-note: consider marking `legacy_macro` as `pub` in the imported module
-  --> $DIR/macro-rules.rs:12:9
-   |
-LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
-   |         ^^^^^^^^^^^^^^^^^
-
-error[E0364]: `legacy_macro` is private, and cannot be re-exported
-  --> $DIR/macro-rules.rs:31:13
-   |
-LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+LL |     pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
    |             ^^^^^^^^^^^^^^^^^
    |
 note: consider marking `legacy_macro` as `pub` in the imported module
-  --> $DIR/macro-rules.rs:31:13
+  --> $DIR/macro-rules.rs:11:13
    |
-LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+LL |     pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
    |             ^^^^^^^^^^^^^^^^^
-
-error[E0364]: `legacy_macro` is private, and cannot be re-exported
-  --> $DIR/macro-rules.rs:42:9
-   |
-LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
-   |         ^^^^^^^^^^^^^^^^^
-   |
-note: consider marking `legacy_macro` as `pub` in the imported module
-  --> $DIR/macro-rules.rs:42:9
-   |
-LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
-   |         ^^^^^^^^^^^^^^^^^
 
 error[E0659]: `legacy_macro` is ambiguous (name vs any other name during import resolution)
   --> $DIR/macro-rules.rs:31:13
@@ -52,7 +28,7 @@ LL |     macro legacy_macro() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `self::legacy_macro` to refer to this macro unambiguously
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 Some errors occurred: E0364, E0659.
 For more information about an error, try `rustc --explain E0364`.

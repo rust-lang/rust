@@ -67,7 +67,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use std::cell::{Cell, RefCell};
-use std::{cmp, fmt, iter, ptr};
+use std::{cmp, fmt, iter, mem, ptr};
 use std::collections::BTreeSet;
 use std::mem::replace;
 use rustc_data_structures::ptr_key::PtrKey;
@@ -2375,11 +2375,27 @@ impl<'a> Resolver<'a> {
                 ast::UseTreeKind::Simple(..) if segments.len() == 1 => &[TypeNS, ValueNS][..],
                 _ => &[TypeNS],
             };
+            let report_error = |this: &Self, ns| {
+                let what = if ns == TypeNS { "type parameters" } else { "local variables" };
+                this.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
+            };
+
             for &ns in nss {
-                if let Some(LexicalScopeBinding::Def(..)) =
-                        self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span) {
-                    let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                    self.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
+                match self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span) {
+                    Some(LexicalScopeBinding::Def(..)) => {
+                        report_error(self, ns);
+                    }
+                    Some(LexicalScopeBinding::Item(binding)) => {
+                        let orig_blacklisted_binding =
+                            mem::replace(&mut self.blacklisted_binding, Some(binding));
+                        if let Some(LexicalScopeBinding::Def(..)) =
+                                self.resolve_ident_in_lexical_scope(ident, ns, None,
+                                                                    use_tree.prefix.span) {
+                            report_error(self, ns);
+                        }
+                        self.blacklisted_binding = orig_blacklisted_binding;
+                    }
+                    None => {}
                 }
             }
         } else if let ast::UseTreeKind::Nested(use_trees) = &use_tree.kind {
@@ -3874,6 +3890,13 @@ impl<'a> Resolver<'a> {
                         module = Some(ModuleOrUniformRoot::Module(next_module));
                         record_segment_def(self, def);
                     } else if def == Def::ToolMod && i + 1 != path.len() {
+                        if binding.is_import() {
+                            self.session.struct_span_err(
+                                ident.span, "cannot use a tool module through an import"
+                            ).span_note(
+                                binding.span, "the tool module imported here"
+                            ).emit();
+                        }
                         let def = Def::NonMacroAttr(NonMacroAttrKind::Tool);
                         return PathResult::NonModule(PathResolution::new(def));
                     } else if def == Def::Err {

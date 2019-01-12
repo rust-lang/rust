@@ -240,7 +240,7 @@ impl CtorKind {
 }
 
 impl NonMacroAttrKind {
-    fn descr(self) -> &'static str {
+    pub fn descr(self) -> &'static str {
         match self {
             NonMacroAttrKind::Builtin => "built-in attribute",
             NonMacroAttrKind::Tool => "tool attribute",

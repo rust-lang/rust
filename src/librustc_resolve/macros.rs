@@ -376,6 +376,7 @@ impl<'a> Resolver<'a> {
                     .push((path, path_span, kind, parent_scope.clone(), def.ok()));
             }
 
+            self.prohibit_imported_non_macro_attrs(None, def.ok(), path_span);
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
@@ -390,7 +391,9 @@ impl<'a> Resolver<'a> {
                     .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
 
-            binding.map(|binding| binding.def())
+            let def = binding.map(|binding| binding.def());
+            self.prohibit_imported_non_macro_attrs(binding.ok(), def.ok(), path_span);
+            def
         }
     }
 
@@ -828,27 +831,23 @@ impl<'a> Resolver<'a> {
             // but its `Def` should coincide with a crate passed with `--extern`
             // (otherwise there would be ambiguity) and we can skip feature error in this case.
             'ok: {
-                if !is_import || self.session.features_untracked().uniform_paths {
+                if !is_import || !rust_2015 {
                     break 'ok;
                 }
                 if ns == TypeNS && use_prelude && self.extern_prelude_get(ident, true).is_some() {
                     break 'ok;
                 }
-                if rust_2015 {
-                    let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
-                    let root_module = self.resolve_crate_root(root_ident);
-                    if self.resolve_ident_in_module_ext(ModuleOrUniformRoot::Module(root_module),
-                                                        orig_ident, ns, None, false, path_span)
-                                                        .is_ok() {
-                        break 'ok;
-                    }
+                let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
+                let root_module = self.resolve_crate_root(root_ident);
+                if self.resolve_ident_in_module_ext(ModuleOrUniformRoot::Module(root_module),
+                                                    orig_ident, ns, None, false, path_span)
+                                                    .is_ok() {
+                    break 'ok;
                 }
 
-                let msg = "imports can only refer to extern crate names \
-                           passed with `--extern` on stable channel";
-                let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
-                                          ident.span, GateIssue::Language, msg);
-
+                let msg = "imports can only refer to extern crate names passed with \
+                           `--extern` in macros originating from 2015 edition";
+                let mut err = self.session.struct_span_err(ident.span, msg);
                 let what = self.binding_description(binding, ident,
                                                     flags.contains(Flags::MISC_FROM_PRELUDE));
                 let note_msg = format!("this import refers to {what}", what = what);
@@ -977,6 +976,20 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn prohibit_imported_non_macro_attrs(&self, binding: Option<&'a NameBinding<'a>>,
+                                         def: Option<Def>, span: Span) {
+        if let Some(Def::NonMacroAttr(kind)) = def {
+            if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
+                let msg = format!("cannot use a {} through an import", kind.descr());
+                let mut err = self.session.struct_span_err(span, &msg);
+                if let Some(binding) = binding {
+                    err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
+                }
+                err.emit();
+            }
+        }
+    }
+
     fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
                           err: &mut DiagnosticBuilder<'a>, span: Span) {
         // First check if this is a locally-defined bang macro.
@@ -1073,7 +1086,12 @@ impl<'a> Resolver<'a> {
             let ident = ident.modern();
             self.macro_names.insert(ident);
             let def = Def::Macro(def_id, MacroKind::Bang);
-            let vis = ty::Visibility::Invisible; // Doesn't matter for legacy bindings
+            let is_macro_export = attr::contains_name(&item.attrs, "macro_export");
+            let vis = if is_macro_export {
+                ty::Visibility::Public
+            } else {
+                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            };
             let binding = (def, vis, item.span, expansion).to_name_binding(self.arenas);
             self.set_binding_parent_module(binding, self.current_module);
             let legacy_binding = self.arenas.alloc_legacy_binding(LegacyBinding {
@@ -1081,9 +1099,8 @@ impl<'a> Resolver<'a> {
             });
             *current_legacy_scope = LegacyScope::Binding(legacy_binding);
             self.all_macros.insert(ident.name, def);
-            if attr::contains_name(&item.attrs, "macro_export") {
+            if is_macro_export {
                 let module = self.graph_root;
-                let vis = ty::Visibility::Public;
                 self.define(module, ident, MacroNS,
                             (def, vis, item.span, expansion, IsMacroExport));
             } else {

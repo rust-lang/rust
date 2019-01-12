@@ -434,9 +434,6 @@ declare_features! (
     // support for arbitrary delimited token streams in non-macro attributes
     (active, unrestricted_attribute_tokens, "1.30.0", Some(55208), None),
 
-    // Allows `use x::y;` to resolve through `self::x`, not just `::x`.
-    (active, uniform_paths, "1.30.0", Some(53130), None),
-
     // Allows unsized rvalues at arguments and parameters.
     (active, unsized_locals, "1.30.0", Some(48055), None),
 
@@ -687,6 +684,8 @@ declare_features! (
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
     // Top level or-patterns (`p | q`) in `if let` and `while let`.
     (accepted, if_while_or_patterns, "1.33.0", Some(48215), None),
+    // Allows `use x::y;` to search `x` in the current scope.
+    (accepted, uniform_paths, "1.32.0", Some(53130), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must

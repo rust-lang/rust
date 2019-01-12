@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `empty::issue_56125`
-  --> $DIR/issue-56125.rs:19:9
+  --> $DIR/issue-56125.rs:17:9
    |
 LL |     use empty::issue_56125; //~ ERROR unresolved import `empty::issue_56125`
    |         ^^^^^^^^^^^^^^^^^^ no `issue_56125` in `m3::empty`
 
 error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
-  --> $DIR/issue-56125.rs:8:9
+  --> $DIR/issue-56125.rs:6:9
    |
 LL |     use issue_56125::last_segment::*;
    |         ^^^^^^^^^^^ ambiguous name
@@ -13,14 +13,14 @@ LL |     use issue_56125::last_segment::*;
    = note: `issue_56125` could refer to an extern crate passed with `--extern`
    = help: use `::issue_56125` to refer to this extern crate unambiguously
 note: `issue_56125` could also refer to the module imported here
-  --> $DIR/issue-56125.rs:8:9
+  --> $DIR/issue-56125.rs:6:9
    |
 LL |     use issue_56125::last_segment::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `self::issue_56125` to refer to this module unambiguously
 
 error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
-  --> $DIR/issue-56125.rs:13:9
+  --> $DIR/issue-56125.rs:11:9
    |
 LL |     use issue_56125::non_last_segment::non_last_segment::*;
    |         ^^^^^^^^^^^ ambiguous name
@@ -28,14 +28,14 @@ LL |     use issue_56125::non_last_segment::non_last_segment::*;
    = note: `issue_56125` could refer to an extern crate passed with `--extern`
    = help: use `::issue_56125` to refer to this extern crate unambiguously
 note: `issue_56125` could also refer to the module imported here
-  --> $DIR/issue-56125.rs:13:9
+  --> $DIR/issue-56125.rs:11:9
    |
 LL |     use issue_56125::non_last_segment::non_last_segment::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `self::issue_56125` to refer to this module unambiguously
 
 error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
-  --> $DIR/issue-56125.rs:20:9
+  --> $DIR/issue-56125.rs:18:9
    |
 LL |     use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
    |         ^^^^^^^^^^^ ambiguous name
@@ -43,7 +43,7 @@ LL |     use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
    = note: `issue_56125` could refer to an extern crate passed with `--extern`
    = help: use `::issue_56125` to refer to this extern crate unambiguously
 note: `issue_56125` could also refer to the module imported here
-  --> $DIR/issue-56125.rs:20:9
+  --> $DIR/issue-56125.rs:18:9
    |
 LL |     use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
    |         ^^^^^^^^^^^^^^
