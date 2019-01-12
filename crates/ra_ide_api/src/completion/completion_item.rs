@@ -191,7 +191,7 @@ impl Builder {
     ) -> Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
-            if function.signature(ctx.db).args().is_empty() {
+            if function.signature(ctx.db).params().is_empty() {
                 self.snippet = Some(format!("{}()$0", self.label));
             } else {
                 self.snippet = Some(format!("{}($0)", self.label));

@@ -432,7 +432,7 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     let impl_block = f.impl_block(db)?;
     // TODO we ignore type parameters for now
     let input = signature
-        .args()
+        .params()
         .iter()
         .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), tr))
         .collect::<Cancelable<Vec<_>>>()?;
@@ -876,7 +876,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none())?;
-                let (arg_tys, ret_ty) = match &callee_ty {
+                let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (&sig.input[..], sig.output.clone()),
                     _ => {
                         // not callable
@@ -887,7 +887,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 for (i, arg) in args.iter().enumerate() {
                     self.infer_expr(
                         *arg,
-                        &Expectation::has_type(arg_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
+                        &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
                     )?;
                 }
                 ret_ty
@@ -904,7 +904,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     None => Ty::Unknown,
                 };
                 let method_ty = self.insert_type_vars(method_ty);
-                let (expected_receiver_ty, arg_tys, ret_ty) = match &method_ty {
+                let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
                         if sig.input.len() > 0 {
                             (&sig.input[0], &sig.input[1..], sig.output.clone())
@@ -920,7 +920,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 for (i, arg) in args.iter().enumerate() {
                     self.infer_expr(
                         *arg,
-                        &Expectation::has_type(arg_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
+                        &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
                     )?;
                 }
                 ret_ty
@@ -1093,7 +1093,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn_signature(&mut self, signature: &FnSignature) -> Cancelable<()> {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in signature.args().iter().zip(body.args()) {
+        for (type_ref, pat) in signature.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref)?;
             let ty = self.insert_type_vars(ty);
             self.write_pat_ty(*pat, ty);

@@ -63,7 +63,7 @@ fn complete_methods(
 ) -> Cancelable<()> {
     receiver.iterate_methods(ctx.db, |func| {
         let sig = func.signature(ctx.db);
-        if sig.has_self_arg() {
+        if sig.has_self_param() {
             CompletionItem::new(CompletionKind::Reference, sig.name().to_string())
                 .from_function(ctx, func)
                 .kind(CompletionItemKind::Method)

@@ -114,7 +114,7 @@ impl Ty {
     pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<DefId>> {
         self.iterate_methods(db, |f| {
             let sig = f.signature(db);
-            if sig.name() == name && sig.has_self_arg() {
+            if sig.name() == name && sig.has_self_param() {
                 Ok(Some(f.def_id()))
             } else {
                 Ok(None)
