@@ -346,15 +346,13 @@ fn configure_cmake(builder: &Builder,
        if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
            cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
        }
-
-    // If ccache is configured we inform the build a little differently how
-    // to invoke ccache while also invoking our compilers.
-    } else if let Some(ref ccache) = builder.config.ccache {
-       cfg.define("CMAKE_C_COMPILER", ccache)
-          .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
-          .define("CMAKE_CXX_COMPILER", ccache)
-          .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
     } else {
+       // If ccache is configured we inform the build a little differently how
+       // to invoke ccache while also invoking our compilers.
+       if let Some(ref ccache) = builder.config.ccache {
+         cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+            .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+       }
        cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
           .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
     }
