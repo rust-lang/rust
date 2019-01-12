@@ -1,5 +1,5 @@
 use languageserver_types::{
-    CodeActionProviderCapability, CompletionOptions, DocumentOnTypeFormattingOptions,
+    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, DocumentOnTypeFormattingOptions,
     ExecuteCommandOptions, FoldingRangeProviderCapability, RenameOptions, RenameProviderCapability,
     ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions,
@@ -32,7 +32,9 @@ pub fn server_capabilities() -> ServerCapabilities {
         document_symbol_provider: Some(true),
         workspace_symbol_provider: Some(true),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
-        code_lens_provider: None,
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: None,
+        }),
         document_formatting_provider: Some(true),
         document_range_formatting_provider: None,
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
