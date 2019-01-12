@@ -1,14 +1,13 @@
 use std::{
-    fmt,
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
 };
 
-use walkdir::{DirEntry, WalkDir};
-use thread_worker::{WorkerHandle};
 use relative_path::RelativePathBuf;
+use thread_worker::WorkerHandle;
+use walkdir::{DirEntry, WalkDir};
 
-use crate::{VfsRoot, has_rs_extension};
+use crate::{has_rs_extension, watcher::WatcherChange, VfsRoot};
 
 pub(crate) enum Task {
     AddRoot {
@@ -16,7 +15,7 @@ pub(crate) enum Task {
         path: PathBuf,
         filter: Box<Fn(&DirEntry) -> bool + Send>,
     },
-    WatcherChange(crate::watcher::WatcherChange),
+    LoadChange(crate::watcher::WatcherChange),
 }
 
 #[derive(Debug)]
@@ -26,29 +25,16 @@ pub struct AddRootResult {
 }
 
 #[derive(Debug)]
-pub enum WatcherChangeResult {
-    Create {
-        path: PathBuf,
-        text: String,
-    },
-    Write {
-        path: PathBuf,
-        text: String,
-    },
-    Remove {
-        path: PathBuf,
-    },
-    // can this be replaced and use Remove and Create instead?
-    Rename {
-        src: PathBuf,
-        dst: PathBuf,
-        text: String,
-    },
+pub enum WatcherChangeData {
+    Create { path: PathBuf, text: String },
+    Write { path: PathBuf, text: String },
+    Remove { path: PathBuf },
 }
 
 pub enum TaskResult {
     AddRoot(AddRootResult),
-    WatcherChange(WatcherChangeResult),
+    HandleChange(WatcherChange),
+    LoadChange(Option<WatcherChangeData>),
 }
 
 impl fmt::Debug for TaskResult {
@@ -77,9 +63,10 @@ fn handle_task(task: Task) -> TaskResult {
             log::debug!("... loaded {}", path.as_path().display());
             TaskResult::AddRoot(AddRootResult { root, files })
         }
-        Task::WatcherChange(change) => {
-            // TODO
-            unimplemented!()
+        Task::LoadChange(change) => {
+            log::debug!("loading {:?} ...", change);
+            let data = load_change(change);
+            TaskResult::LoadChange(data)
         }
     }
 }
@@ -112,4 +99,35 @@ fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePa
         res.push((path.to_owned(), text))
     }
     res
+}
+
+fn load_change(change: WatcherChange) -> Option<WatcherChangeData> {
+    let data = match change {
+        WatcherChange::Create(path) => {
+            let text = match fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(e) => {
+                    log::warn!("watcher error: {}", e);
+                    return None;
+                }
+            };
+            WatcherChangeData::Create { path, text }
+        }
+        WatcherChange::Write(path) => {
+            let text = match fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(e) => {
+                    log::warn!("watcher error: {}", e);
+                    return None;
+                }
+            };
+            WatcherChangeData::Write { path, text }
+        }
+        WatcherChange::Remove(path) => WatcherChangeData::Remove { path },
+        WatcherChange::Rescan => {
+            // this should be handled by Vfs::handle_task
+            return None;
+        }
+    };
+    Some(data)
 }

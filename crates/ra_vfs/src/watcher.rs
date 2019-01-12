@@ -5,10 +5,10 @@ use std::{
     time::Duration,
 };
 
+use crate::io;
 use crossbeam_channel::Sender;
 use drop_bomb::DropBomb;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
-use crate::{has_rs_extension, io};
 
 pub struct Watcher {
     watcher: RecommendedWatcher,
@@ -21,59 +21,41 @@ pub enum WatcherChange {
     Create(PathBuf),
     Write(PathBuf),
     Remove(PathBuf),
-    // can this be replaced and use Remove and Create instead?
-    Rename(PathBuf, PathBuf),
+    Rescan,
 }
 
-impl WatcherChange {
-    fn try_from_debounced_event(ev: DebouncedEvent) -> Option<WatcherChange> {
-        match ev {
-            DebouncedEvent::NoticeWrite(_)
-            | DebouncedEvent::NoticeRemove(_)
-            | DebouncedEvent::Chmod(_) => {
-                // ignore
-                None
-            }
-            DebouncedEvent::Rescan => {
-                // TODO should we rescan the root?
-                None
-            }
-            DebouncedEvent::Create(path) => {
-                if has_rs_extension(&path) {
-                    Some(WatcherChange::Create(path))
-                } else {
-                    None
-                }
-            }
-            DebouncedEvent::Write(path) => {
-                if has_rs_extension(&path) {
-                    Some(WatcherChange::Write(path))
-                } else {
-                    None
-                }
-            }
-            DebouncedEvent::Remove(path) => {
-                if has_rs_extension(&path) {
-                    Some(WatcherChange::Remove(path))
-                } else {
-                    None
-                }
-            }
-            DebouncedEvent::Rename(src, dst) => {
-                match (has_rs_extension(&src), has_rs_extension(&dst)) {
-                    (true, true) => Some(WatcherChange::Rename(src, dst)),
-                    (true, false) => Some(WatcherChange::Remove(src)),
-                    (false, true) => Some(WatcherChange::Create(dst)),
-                    (false, false) => None,
-                }
-            }
-            DebouncedEvent::Error(err, path) => {
-                // TODO should we reload the file contents?
-                log::warn!("watch error {}, {:?}", err, path);
-                None
-            }
+fn send_change_events(
+    ev: DebouncedEvent,
+    sender: &Sender<io::Task>,
+) -> Result<(), Box<std::error::Error>> {
+    match ev {
+        DebouncedEvent::NoticeWrite(_)
+        | DebouncedEvent::NoticeRemove(_)
+        | DebouncedEvent::Chmod(_) => {
+            // ignore
+        }
+        DebouncedEvent::Rescan => {
+            sender.send(io::Task::LoadChange(WatcherChange::Rescan))?;
+        }
+        DebouncedEvent::Create(path) => {
+            sender.send(io::Task::LoadChange(WatcherChange::Create(path)))?;
+        }
+        DebouncedEvent::Write(path) => {
+            sender.send(io::Task::LoadChange(WatcherChange::Write(path)))?;
+        }
+        DebouncedEvent::Remove(path) => {
+            sender.send(io::Task::LoadChange(WatcherChange::Remove(path)))?;
+        }
+        DebouncedEvent::Rename(src, dst) => {
+            sender.send(io::Task::LoadChange(WatcherChange::Remove(src)))?;
+            sender.send(io::Task::LoadChange(WatcherChange::Create(dst)))?;
+        }
+        DebouncedEvent::Error(err, path) => {
+            // TODO should we reload the file contents?
+            log::warn!("watcher error {}, {:?}", err, path);
         }
     }
+    Ok(())
 }
 
 impl Watcher {
@@ -86,8 +68,7 @@ impl Watcher {
             input_receiver
                 .into_iter()
                 // forward relevant events only
-                .filter_map(WatcherChange::try_from_debounced_event)
-                .try_for_each(|change| output_sender.send(io::Task::WatcherChange(change)))
+                .try_for_each(|change| send_change_events(change, &output_sender))
                 .unwrap()
         });
         Ok(Watcher {

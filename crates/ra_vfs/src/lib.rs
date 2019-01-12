@@ -75,6 +75,7 @@ impl_arena_id!(VfsFile);
 struct VfsFileData {
     root: VfsRoot,
     path: RelativePathBuf,
+    is_overlayed: bool,
     text: Arc<String>,
 }
 
@@ -170,7 +171,7 @@ impl Vfs {
             } else {
                 let text = fs::read_to_string(path).unwrap_or_default();
                 let text = Arc::new(text);
-                let file = self.add_file(root, rel_path.clone(), Arc::clone(&text));
+                let file = self.add_file(root, rel_path.clone(), Arc::clone(&text), false);
                 let change = VfsChange::AddFile {
                     file,
                     text,
@@ -205,7 +206,7 @@ impl Vfs {
                         continue;
                     }
                     let text = Arc::new(text);
-                    let file = self.add_file(task.root, path.clone(), Arc::clone(&text));
+                    let file = self.add_file(task.root, path.clone(), Arc::clone(&text), false);
                     files.push((file, path, text));
                 }
 
@@ -215,63 +216,132 @@ impl Vfs {
                 };
                 self.pending_changes.push(change);
             }
-            io::TaskResult::WatcherChange(change) => {
-                // TODO
-                unimplemented!()
-            }
+            io::TaskResult::HandleChange(change) => match &change {
+                watcher::WatcherChange::Create(path)
+                | watcher::WatcherChange::Remove(path)
+                | watcher::WatcherChange::Write(path) => {
+                    if self.should_handle_change(&path) {
+                        self.worker.inp.send(io::Task::LoadChange(change)).unwrap()
+                    }
+                }
+                watcher::WatcherChange::Rescan => {
+                    // TODO send Task::AddRoot?
+                }
+            },
+            io::TaskResult::LoadChange(None) => {}
+            io::TaskResult::LoadChange(Some(change)) => match change {
+                io::WatcherChangeData::Create { path, text }
+                | io::WatcherChangeData::Write { path, text } => {
+                    if let Some((root, path, file)) = self.find_root(&path) {
+                        if let Some(file) = file {
+                            self.do_change_file(file, text, false);
+                        } else {
+                            self.do_add_file(root, path, text, false);
+                        }
+                    }
+                }
+                io::WatcherChangeData::Remove { path } => {
+                    if let Some((root, path, file)) = self.find_root(&path) {
+                        if let Some(file) = file {
+                            self.do_remove_file(root, path, file, false);
+                        }
+                    }
+                }
+            },
         }
     }
 
-    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
-        let mut res = None;
-        if let Some((root, rel_path, file)) = self.find_root(path) {
-            let text = Arc::new(text);
-            let change = if let Some(file) = file {
-                res = Some(file);
-                self.change_file(file, Arc::clone(&text));
-                VfsChange::ChangeFile { file, text }
-            } else {
-                let file = self.add_file(root, rel_path.clone(), Arc::clone(&text));
-                res = Some(file);
-                VfsChange::AddFile {
-                    file,
-                    text,
-                    root,
-                    path: rel_path,
+    fn should_handle_change(&self, path: &Path) -> bool {
+        if let Some((_root, _rel_path, file)) = self.find_root(&path) {
+            if let Some(file) = file {
+                if self.files[file].is_overlayed {
+                    // file is overlayed
+                    return false;
                 }
-            };
-            self.pending_changes.push(change);
+            }
+            true
+        } else {
+            // file doesn't belong to any root
+            false
         }
-        res
+    }
+
+    fn do_add_file(
+        &mut self,
+        root: VfsRoot,
+        path: RelativePathBuf,
+        text: String,
+        is_overlay: bool,
+    ) -> Option<VfsFile> {
+        let text = Arc::new(text);
+        let file = self.add_file(root, path.clone(), text.clone(), is_overlay);
+        self.pending_changes.push(VfsChange::AddFile {
+            file,
+            root,
+            path,
+            text,
+        });
+        Some(file)
+    }
+
+    fn do_change_file(&mut self, file: VfsFile, text: String, is_overlay: bool) {
+        if !is_overlay && self.files[file].is_overlayed {
+            return;
+        }
+        let text = Arc::new(text);
+        self.change_file(file, text.clone(), is_overlay);
+        self.pending_changes
+            .push(VfsChange::ChangeFile { file, text });
+    }
+
+    fn do_remove_file(
+        &mut self,
+        root: VfsRoot,
+        path: RelativePathBuf,
+        file: VfsFile,
+        is_overlay: bool,
+    ) {
+        if !is_overlay && self.files[file].is_overlayed {
+            return;
+        }
+        self.remove_file(file);
+        self.pending_changes
+            .push(VfsChange::RemoveFile { root, path, file });
+    }
+
+    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
+        if let Some((root, rel_path, file)) = self.find_root(path) {
+            if let Some(file) = file {
+                self.do_change_file(file, text, true);
+                Some(file)
+            } else {
+                self.do_add_file(root, rel_path, text, true)
+            }
+        } else {
+            None
+        }
     }
 
     pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
         if let Some((_root, _path, file)) = self.find_root(path) {
             let file = file.expect("can't change a file which wasn't added");
-            let text = Arc::new(new_text);
-            self.change_file(file, Arc::clone(&text));
-            let change = VfsChange::ChangeFile { file, text };
-            self.pending_changes.push(change);
+            self.do_change_file(file, new_text, true);
         }
     }
 
     pub fn remove_file_overlay(&mut self, path: &Path) -> Option<VfsFile> {
-        let mut res = None;
         if let Some((root, path, file)) = self.find_root(path) {
             let file = file.expect("can't remove a file which wasn't added");
-            res = Some(file);
             let full_path = path.to_path(&self.roots[root].root);
-            let change = if let Ok(text) = fs::read_to_string(&full_path) {
-                let text = Arc::new(text);
-                self.change_file(file, Arc::clone(&text));
-                VfsChange::ChangeFile { file, text }
+            if let Ok(text) = fs::read_to_string(&full_path) {
+                self.do_change_file(file, text, true);
             } else {
-                self.remove_file(file);
-                VfsChange::RemoveFile { root, file, path }
-            };
-            self.pending_changes.push(change);
+                self.do_remove_file(root, path, file, true);
+            }
+            Some(file)
+        } else {
+            None
         }
-        res
     }
 
     pub fn commit_changes(&mut self) -> Vec<VfsChange> {
@@ -285,15 +355,28 @@ impl Vfs {
         self.worker_handle.shutdown()
     }
 
-    fn add_file(&mut self, root: VfsRoot, path: RelativePathBuf, text: Arc<String>) -> VfsFile {
-        let data = VfsFileData { root, path, text };
+    fn add_file(
+        &mut self,
+        root: VfsRoot,
+        path: RelativePathBuf,
+        text: Arc<String>,
+        is_overlayed: bool,
+    ) -> VfsFile {
+        let data = VfsFileData {
+            root,
+            path,
+            text,
+            is_overlayed,
+        };
         let file = self.files.alloc(data);
         self.root2files.get_mut(&root).unwrap().insert(file);
         file
     }
 
-    fn change_file(&mut self, file: VfsFile, new_text: Arc<String>) {
-        self.files[file].text = new_text;
+    fn change_file(&mut self, file: VfsFile, new_text: Arc<String>, is_overlayed: bool) {
+        let mut file_data = &mut self.files[file];
+        file_data.text = new_text;
+        file_data.is_overlayed = is_overlayed;
     }
 
     fn remove_file(&mut self, file: VfsFile) {

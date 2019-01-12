@@ -4,6 +4,13 @@ use flexi_logger::Logger;
 use ra_vfs::{Vfs, VfsChange};
 use tempfile::tempdir;
 
+fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
+    for _ in 0..num_tasks {
+        let task = vfs.task_receiver().recv().unwrap();
+        vfs.handle_task(task);
+    }
+}
+
 #[test]
 fn test_vfs_works() -> std::io::Result<()> {
     Logger::with_str("debug").start().unwrap();
@@ -25,10 +32,7 @@ fn test_vfs_works() -> std::io::Result<()> {
     let b_root = dir.path().join("a/b");
 
     let (mut vfs, _) = Vfs::new(vec![a_root, b_root]);
-    for _ in 0..2 {
-        let task = vfs.task_receiver().recv().unwrap();
-        vfs.handle_task(task);
-    }
+    process_tasks(&mut vfs, 2);
     {
         let files = vfs
             .commit_changes()
@@ -57,30 +61,26 @@ fn test_vfs_works() -> std::io::Result<()> {
         assert_eq!(files, expected_files);
     }
 
-    // on disk change
     fs::write(&dir.path().join("a/b/baz.rs"), "quux").unwrap();
-    let task = vfs.task_receiver().recv().unwrap();
-    vfs.handle_task(task);
+    process_tasks(&mut vfs, 1);
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
         _ => panic!("unexpected changes"),
     }
 
-    // in memory change
     vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "m"),
         _ => panic!("unexpected changes"),
     }
 
-    // in memory remove, restores data on disk
+    // removing overlay restores data on disk
     vfs.remove_file_overlay(&dir.path().join("a/b/baz.rs"));
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
         _ => panic!("unexpected changes"),
     }
 
-    // in memory add
     vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
     match vfs.commit_changes().as_slice() {
         [VfsChange::AddFile { text, path, .. }] => {
@@ -90,17 +90,14 @@ fn test_vfs_works() -> std::io::Result<()> {
         _ => panic!("unexpected changes"),
     }
 
-    // in memory remove
     vfs.remove_file_overlay(&dir.path().join("a/b/spam.rs"));
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "spam.rs"),
         _ => panic!("unexpected changes"),
     }
 
-    // on disk add
     fs::write(&dir.path().join("a/new.rs"), "new hello").unwrap();
-    let task = vfs.task_receiver().recv().unwrap();
-    vfs.handle_task(task);
+    process_tasks(&mut vfs, 1);
     match vfs.commit_changes().as_slice() {
         [VfsChange::AddFile { text, path, .. }] => {
             assert_eq!(text.as_str(), "new hello");
@@ -109,10 +106,8 @@ fn test_vfs_works() -> std::io::Result<()> {
         _ => panic!("unexpected changes"),
     }
 
-    // on disk rename
     fs::rename(&dir.path().join("a/new.rs"), &dir.path().join("a/new1.rs")).unwrap();
-    let task = vfs.task_receiver().recv().unwrap();
-    vfs.handle_task(task);
+    process_tasks(&mut vfs, 2);
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile {
             path: removed_path, ..
@@ -125,13 +120,11 @@ fn test_vfs_works() -> std::io::Result<()> {
             assert_eq!(added_path, "new1.rs");
             assert_eq!(text.as_str(), "new hello");
         }
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
-    // on disk remove
     fs::remove_file(&dir.path().join("a/new1.rs")).unwrap();
-    let task = vfs.task_receiver().recv().unwrap();
-    vfs.handle_task(task);
+    process_tasks(&mut vfs, 1);
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "new1.rs"),
         _ => panic!("unexpected changes"),
