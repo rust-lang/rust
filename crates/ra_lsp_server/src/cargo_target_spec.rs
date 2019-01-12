@@ -32,6 +32,15 @@ pub(crate) fn runnable_args(
             res.push(path.to_string());
             res.push("--nocapture".to_string());
         }
+        RunnableKind::Bench { name } => {
+            res.push("bench".to_string());
+            if let Some(spec) = spec {
+                spec.push_to(&mut res);
+            }
+            res.push("--".to_string());
+            res.push(name.to_string());
+            res.push("--nocapture".to_string());
+        }
         RunnableKind::Bin => {
             res.push("run".to_string());
             if let Some(spec) = spec {

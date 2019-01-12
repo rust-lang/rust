@@ -2,22 +2,23 @@ use std::collections::HashMap;
 
 use gen_lsp_server::ErrorCode;
 use languageserver_types::{
-    CodeActionResponse, Command, CodeLens, Diagnostic, DiagnosticSeverity, DocumentFormattingParams,
-    DocumentHighlight, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind,
-    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, RenameParams,
-    SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
+    CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
+    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, Documentation, FoldingRange,
+    FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
+    MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
+    RenameParams, SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit,
+    WorkspaceEdit,
 };
 use ra_ide_api::{
-    FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity, RangeInfo,
+    FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity,
 };
-use ra_syntax::{TextUnit, AstNode};
+use ra_syntax::{AstNode, TextUnit};
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
 use std::io::Write;
 
 use crate::{
-    cargo_target_spec::{CargoTargetSpec, runnable_args},
+    cargo_target_spec::{runnable_args, CargoTargetSpec},
     conv::{to_location, to_location_link, Conv, ConvWith, MapConvWith, TryConvWith},
     req::{self, Decoration},
     server_world::ServerWorld,
@@ -258,6 +259,7 @@ pub fn handle_runnables(
             label: match &runnable.kind {
                 RunnableKind::Test { name } => format!("test {}", name),
                 RunnableKind::TestMod { path } => format!("test-mod {}", path),
+                RunnableKind::Bench { name } => format!("bench {}", name),
                 RunnableKind::Bin => "run binary".to_string(),
             },
             bin: "cargo".to_string(),
@@ -586,35 +588,37 @@ pub fn handle_code_lens(
     let mut lenses: Vec<CodeLens> = Default::default();
 
     for runnable in world.analysis().runnables(file_id)? {
-        match &runnable.kind {
-            RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => {
-                let args = runnable_args(&world, file_id, &runnable.kind)?;
-
-                let range = runnable.range.conv_with(&line_index);
-
-                // This represents the actual command that will be run.
-                let r: req::Runnable = req::Runnable {
-                    range,
-                    label: Default::default(),
-                    bin: "cargo".into(),
-                    args,
-                    env: Default::default(),
-                };
-
-                let lens = CodeLens {
-                    range,
-                    command: Some(Command {
-                        title: "Run Test".into(),
-                        command: "ra-lsp.run-single".into(),
-                        arguments: Some(vec![to_value(r).unwrap()]),
-                    }),
-                    data: None,
-                };
-
-                lenses.push(lens);
-            }
-            _ => continue,
+        let title = match &runnable.kind {
+            RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => Some("Run Test"),
+            RunnableKind::Bench { name: _ } => Some("Run Bench"),
+            _ => None,
         };
+
+        if let Some(title) = title {
+            let args = runnable_args(&world, file_id, &runnable.kind)?;
+            let range = runnable.range.conv_with(&line_index);
+
+            // This represents the actual command that will be run.
+            let r: req::Runnable = req::Runnable {
+                range,
+                label: Default::default(),
+                bin: "cargo".into(),
+                args,
+                env: Default::default(),
+            };
+
+            let lens = CodeLens {
+                range,
+                command: Some(Command {
+                    title: title.into(),
+                    command: "ra-lsp.run-single".into(),
+                    arguments: Some(vec![to_value(r).unwrap()]),
+                }),
+                data: None,
+            };
+
+            lenses.push(lens);
+        }
     }
 
     return Ok(Some(lenses));
