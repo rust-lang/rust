@@ -147,9 +147,8 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         })
         .collect();
 
-    if let Some(id) = *tcx.sess.proc_macro_decls_static.get() {
-        let def_id = tcx.hir().local_def_id(id);
-        reachable_non_generics.insert(def_id, SymbolExportLevel::C);
+    if let Some(id) = tcx.proc_macro_decls_static(LOCAL_CRATE) {
+        reachable_non_generics.insert(id, SymbolExportLevel::C);
     }
 
     if let Some(id) = *tcx.sess.plugin_registrar_fn.get() {

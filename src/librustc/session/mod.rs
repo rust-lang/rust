@@ -70,7 +70,6 @@ pub struct Session {
     /// For a library crate, this is always none
     pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
     pub plugin_registrar_fn: Once<Option<ast::NodeId>>,
-    pub proc_macro_decls_static: Once<Option<ast::NodeId>>,
     pub sysroot: PathBuf,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
@@ -1175,7 +1174,6 @@ pub fn build_session_(
         // For a library crate, this is always none
         entry_fn: Once::new(),
         plugin_registrar_fn: Once::new(),
-        proc_macro_decls_static: Once::new(),
         sysroot,
         local_crate_source_file,
         working_dir,

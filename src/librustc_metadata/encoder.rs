@@ -487,8 +487,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 .get()
                 .map(|id| tcx.hir().local_def_id(id).index),
             proc_macro_decls_static: if is_proc_macro {
-                let id = tcx.sess.proc_macro_decls_static.get().unwrap();
-                Some(tcx.hir().local_def_id(id).index)
+                let id = tcx.proc_macro_decls_static(LOCAL_CRATE).unwrap();
+                Some(id.index)
             } else {
                 None
             },
