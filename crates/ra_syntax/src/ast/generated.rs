@@ -105,6 +105,38 @@ impl ArrayType {
     }
 }
 
+// AssocTypeArg
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct AssocTypeArg {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for AssocTypeArg {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for AssocTypeArg {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            ASSOC_TYPE_ARG => Some(AssocTypeArg::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<AssocTypeArg> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl AssocTypeArg {
+    pub fn name_ref(&self) -> Option<&NameRef> {
+        super::child_opt(self)
+    }
+
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+}
+
 // Attr
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -1397,6 +1429,34 @@ impl AstNode for Lifetime {
 impl ast::AstToken for Lifetime {}
 impl Lifetime {}
 
+// LifetimeArg
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct LifetimeArg {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for LifetimeArg {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for LifetimeArg {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            LIFETIME_ARG => Some(LifetimeArg::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<LifetimeArg> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl LifetimeArg {
+    pub fn lifetime(&self) -> Option<&Lifetime> {
+        super::child_opt(self)
+    }
+}
+
 // LifetimeParam
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -2353,6 +2413,10 @@ impl AstNode for PathSegment {
 
 impl PathSegment {
     pub fn name_ref(&self) -> Option<&NameRef> {
+        super::child_opt(self)
+    }
+
+    pub fn type_arg_list(&self) -> Option<&TypeArgList> {
         super::child_opt(self)
     }
 }
@@ -3331,6 +3395,70 @@ impl AstNode for TupleType {
 
 impl TupleType {
     pub fn fields(&self) -> impl Iterator<Item = &TypeRef> {
+        super::children(self)
+    }
+}
+
+// TypeArg
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeArg {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TypeArg {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for TypeArg {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TYPE_ARG => Some(TypeArg::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<TypeArg> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl TypeArg {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+}
+
+// TypeArgList
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeArgList {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TypeArgList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for TypeArgList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TYPE_ARG_LIST => Some(TypeArgList::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<TypeArgList> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl TypeArgList {
+    pub fn type_args(&self) -> impl Iterator<Item = &TypeArg> {
+        super::children(self)
+    }
+
+    pub fn lifetime_args(&self) -> impl Iterator<Item = &LifetimeArg> {
+        super::children(self)
+    }
+
+    pub fn assoc_type_args(&self) -> impl Iterator<Item = &AssocTypeArg> {
         super::children(self)
     }
 }

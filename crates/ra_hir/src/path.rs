@@ -1,11 +1,35 @@
+use std::sync::Arc;
+
 use ra_syntax::{ast, AstNode};
 
-use crate::{Name, AsName};
+use crate::{Name, AsName, type_ref::TypeRef};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub kind: PathKind,
-    pub segments: Vec<Name>,
+    pub segments: Vec<PathSegment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathSegment {
+    pub name: Name,
+    pub args_and_bindings: Option<Arc<GenericArgs>>,
+}
+
+/// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
+/// can (in the future) also include bindings of associated types, like in
+/// `Iterator<Item = Foo>`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenericArgs {
+    pub args: Vec<GenericArg>,
+    // someday also bindings
+}
+
+/// A single generic argument.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericArg {
+    Type(TypeRef),
+    // or lifetime...
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -34,7 +58,17 @@ impl Path {
         loop {
             let segment = path.segment()?;
             match segment.kind()? {
-                ast::PathSegmentKind::Name(name) => segments.push(name.as_name()),
+                ast::PathSegmentKind::Name(name) => {
+                    let args = segment
+                        .type_arg_list()
+                        .and_then(GenericArgs::from_ast)
+                        .map(Arc::new);
+                    let segment = PathSegment {
+                        name: name.as_name(),
+                        args_and_bindings: args,
+                    };
+                    segments.push(segment);
+                }
                 ast::PathSegmentKind::CrateKw => {
                     kind = PathKind::Crate;
                     break;
@@ -88,7 +122,23 @@ impl Path {
         if self.kind != PathKind::Plain || self.segments.len() > 1 {
             return None;
         }
-        self.segments.first()
+        self.segments.first().map(|s| &s.name)
+    }
+}
+
+impl GenericArgs {
+    fn from_ast(node: &ast::TypeArgList) -> Option<GenericArgs> {
+        let mut args = Vec::new();
+        for type_arg in node.type_args() {
+            let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
+            args.push(GenericArg::Type(type_ref));
+        }
+        // lifetimes and assoc type args ignored for now
+        if args.len() > 0 {
+            Some(GenericArgs { args })
+        } else {
+            None
+        }
     }
 }
 
@@ -96,7 +146,10 @@ impl From<Name> for Path {
     fn from(name: Name) -> Path {
         Path {
             kind: PathKind::Plain,
-            segments: vec![name],
+            segments: vec![PathSegment {
+                name,
+                args_and_bindings: None,
+            }],
         }
     }
 }
@@ -160,7 +213,10 @@ fn convert_path(prefix: Option<Path>, path: &ast::Path) -> Option<Path> {
                 kind: PathKind::Plain,
                 segments: Vec::with_capacity(1),
             });
-            res.segments.push(name.as_name());
+            res.segments.push(PathSegment {
+                name: name.as_name(),
+                args_and_bindings: None, // no type args in use
+            });
             res
         }
         ast::PathSegmentKind::CrateKw => {

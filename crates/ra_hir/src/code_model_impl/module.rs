@@ -147,7 +147,7 @@ impl Module {
             .def_id,
         );
 
-        for name in path.segments.iter() {
+        for segment in path.segments.iter() {
             let curr = match curr_per_ns.as_ref().take_types() {
                 Some(r) => r,
                 None => {
@@ -163,15 +163,17 @@ impl Module {
             curr_per_ns = match curr.resolve(db) {
                 Def::Module(m) => {
                     let scope = m.scope(db);
-                    match scope.get(&name) {
+                    match scope.get(&segment.name) {
                         Some(r) => r.def_id,
                         None => PerNs::none(),
                     }
                 }
                 Def::Enum(e) => {
                     // enum variant
-                    let matching_variant =
-                        e.variants(db).into_iter().find(|(n, _variant)| n == name);
+                    let matching_variant = e
+                        .variants(db)
+                        .into_iter()
+                        .find(|(n, _variant)| n == &segment.name);
 
                     match matching_variant {
                         Some((_n, variant)) => PerNs::both(variant.def_id(), e.def_id()),
