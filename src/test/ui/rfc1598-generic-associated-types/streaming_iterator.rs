@@ -28,7 +28,7 @@ fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /*
 
 // Full example of enumerate iterator
 
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 struct StreamEnumerate<I> {
     iter: I,
     count: usize,
