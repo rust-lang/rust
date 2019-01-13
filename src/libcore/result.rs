@@ -972,8 +972,6 @@ impl<T, E> Result<Option<T>, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(transpose_result)]
-    ///
     /// #[derive(Debug, Eq, PartialEq)]
     /// struct SomeErr;
     ///
@@ -982,7 +980,7 @@ impl<T, E> Result<Option<T>, E> {
     /// assert_eq!(x.transpose(), y);
     /// ```
     #[inline]
-    #[unstable(feature = "transpose_result", issue = "47338")]
+    #[stable(feature = "transpose_result", since = "1.33.0")]
     pub fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
