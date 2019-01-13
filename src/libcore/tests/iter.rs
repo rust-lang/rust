@@ -1907,6 +1907,23 @@ fn test_once() {
 }
 
 #[test]
+fn test_once_with() {
+    let mut count = 0;
+    let mut it = once_with(|| {
+        count += 1;
+        42
+    });
+
+    assert_eq!(count, 0);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(count, 1);
+    assert_eq!(it.next(), None);
+    assert_eq!(count, 1);
+    assert_eq!(it.next(), None);
+    assert_eq!(count, 1);
+}
+
+#[test]
 fn test_empty() {
     let mut it = empty::<i32>();
     assert_eq!(it.next(), None);
