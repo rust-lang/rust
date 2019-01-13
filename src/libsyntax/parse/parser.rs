@@ -1299,7 +1299,7 @@ impl<'a> Parser<'a> {
     fn token_is_bare_fn_keyword(&mut self) -> bool {
         self.check_keyword(keywords::Fn) ||
             self.check_keyword(keywords::Unsafe) ||
-            self.check_keyword(keywords::Extern) && self.is_extern_non_path()
+            self.check_keyword(keywords::Extern)
     }
 
     /// parse a `TyKind::BareFn` type:
@@ -4605,10 +4605,6 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
-    fn is_extern_non_path(&self) -> bool {
-        self.token.is_keyword(keywords::Extern) && self.look_ahead(1, |t| t != &token::ModSep)
-    }
-
     fn is_existential_type_decl(&self) -> bool {
         self.token.is_keyword(keywords::Existential) &&
         self.look_ahead(1, |t| t.is_keyword(keywords::Type))
@@ -4712,12 +4708,10 @@ impl<'a> Parser<'a> {
         // like a path (1 token), but it fact not a path.
         // `union::b::c` - path, `union U { ... }` - not a path.
         // `crate::b::c` - path, `crate struct S;` - not a path.
-        // `extern::b::c` - path, `extern crate c;` - not a path.
         } else if self.token.is_path_start() &&
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
-                  !self.is_extern_non_path() &&
                   !self.is_existential_type_decl() &&
                   !self.is_auto_trait_item() {
             let pth = self.parse_path(PathStyle::Expr)?;
@@ -7113,8 +7107,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
 
-        if self.check_keyword(keywords::Extern) && self.is_extern_non_path() {
-            self.bump(); // `extern`
+        if self.eat_keyword(keywords::Extern) {
             if self.eat_keyword(keywords::Crate) {
                 return Ok(Some(self.parse_item_extern_crate(lo, visibility, attrs)?));
             }
@@ -7623,7 +7616,7 @@ impl<'a> Parser<'a> {
     fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
                                at_end: &mut bool) -> PResult<'a, Option<Mac>>
     {
-        if self.token.is_path_start() && !self.is_extern_non_path() {
+        if self.token.is_path_start() {
             let prev_span = self.prev_span;
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
