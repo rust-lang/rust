@@ -4,7 +4,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl lib::MyCopy for (MyType,) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
-   = note: the impl does not reference any types defined in this crate
+   = note: the impl does not reference only types defined in this crate
    = note: define and implement a trait or new type instead
 
 error: aborting due to previous error
