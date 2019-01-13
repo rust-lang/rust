@@ -1,6 +1,6 @@
-//! This modules contains various "assits": suggestions for source code edits
+//! This modules contains various "assists": suggestions for source code edits
 //! which are likely to occur at a given cursor positon. For example, if the
-//! cursor is on the `,`, a possible assist is swapping the elments around the
+//! cursor is on the `,`, a possible assist is swapping the elements around the
 //! comma.
 
 mod flip_comma;
