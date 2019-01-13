@@ -35,11 +35,13 @@ use rustc::hir;
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::privacy::AccessLevels;
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
+use rustc_data_structures::sync::Lrc;
 
 use std::cell::Cell;
 use std::default::Default;
@@ -68,6 +70,7 @@ use rls_data::config::Config;
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
+    access_levels: &'l AccessLevels,
     analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
     config: Config,
@@ -622,9 +625,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::Visibility(&Spanned {
                 node: hir::VisibilityKind::Restricted { ref path, .. }, .. }) => path.def,
 
-            Node::PathSegment(seg) => match seg.def {
-                Some(def) => def,
-                None => HirDef::Err,
+            Node::PathSegment(seg) => {
+                match seg.def {
+                    Some(def) if def != HirDef::Err => def,
+                    _ => self.get_path_def(self.tcx.hir().get_parent_node(id)),
+                }
             },
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Struct(ref qpath, ..),
@@ -1126,10 +1131,18 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
 
         info!("Dumping crate {}", cratename);
 
+        // Privacy checking requires and is done after type checking; use a
+        // fallback in case the access levels couldn't have been correctly computed.
+        let access_levels = match tcx.sess.compile_status() {
+            Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
+            Err(..) => Lrc::new(AccessLevels::default()),
+        };
+
         let save_ctxt = SaveContext {
             tcx,
             tables: &ty::TypeckTables::empty(None),
             analysis,
+            access_levels: &access_levels,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),
             impl_counter: Cell::new(0),

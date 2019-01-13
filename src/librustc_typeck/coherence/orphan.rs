@@ -40,7 +40,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                      "only traits defined in the current crate can be \
                                       implemented for arbitrary types")
                         .span_label(sp, "impl doesn't use types inside crate")
-                        .note("the impl does not reference any types defined in this crate")
+                        .note("the impl does not reference only types defined in this crate")
                         .note("define and implement a trait or new type instead")
                         .emit();
                     return;

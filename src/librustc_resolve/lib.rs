@@ -2017,16 +2017,14 @@ impl<'a> Resolver<'a> {
         if ident.name == keywords::Invalid.name() {
             return Some(LexicalScopeBinding::Def(Def::Err));
         }
-        if ns == TypeNS {
-            ident.span = if ident.name == keywords::SelfUpper.name() {
-                // FIXME(jseyfried) improve `Self` hygiene
-                ident.span.with_ctxt(SyntaxContext::empty())
-            } else {
-                ident.span.modern()
-            }
+        ident.span = if ident.name == keywords::SelfUpper.name() {
+            // FIXME(jseyfried) improve `Self` hygiene
+            ident.span.with_ctxt(SyntaxContext::empty())
+        } else if ns == TypeNS {
+            ident.span.modern()
         } else {
-            ident = ident.modern_and_legacy();
-        }
+            ident.span.modern_and_legacy()
+        };
 
         // Walk backwards up the ribs in scope.
         let record_used = record_used_id.is_some();
@@ -5112,6 +5110,9 @@ impl<'a> Resolver<'a> {
         }
         self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
+                if !speculative && entry.introduced_by_item {
+                    self.record_use(ident, TypeNS, binding, false);
+                }
                 Some(binding)
             } else {
                 let crate_id = if !speculative {

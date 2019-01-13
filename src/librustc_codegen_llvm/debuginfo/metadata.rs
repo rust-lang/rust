@@ -47,7 +47,7 @@ use syntax_pos::{self, Span, FileName};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
-        self as *const _ == other as *const _
+        ptr::eq(self, other)
     }
 }
 
