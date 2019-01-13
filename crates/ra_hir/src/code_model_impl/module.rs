@@ -95,7 +95,7 @@ impl Module {
     }
 
     /// Finds a child module with the specified name.
-    pub fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
+    pub(crate) fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
         let child_id = loc.module_id.child(&module_tree, name)?;
@@ -103,7 +103,7 @@ impl Module {
     }
 
     /// Iterates over all child modules.
-    pub fn children_impl(&self, db: &impl HirDatabase) -> impl Iterator<Item = Module> {
+    pub(crate) fn children_impl(&self, db: &impl HirDatabase) -> impl Iterator<Item = Module> {
         // FIXME this should be implementable without collecting into a vec, but
         // it's kind of hard since the iterator needs to keep a reference to the
         // module tree.
@@ -117,7 +117,7 @@ impl Module {
         children.into_iter()
     }
 
-    pub fn parent_impl(&self, db: &impl HirDatabase) -> Option<Module> {
+    pub(crate) fn parent_impl(&self, db: &impl HirDatabase) -> Option<Module> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
         let parent_id = loc.module_id.parent(&module_tree)?;
@@ -125,13 +125,13 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope_impl(&self, db: &impl HirDatabase) -> ModuleScope {
+    pub(crate) fn scope_impl(&self, db: &impl HirDatabase) -> ModuleScope {
         let loc = self.def_id.loc(db);
         let item_map = db.item_map(loc.source_root_id);
         item_map.per_module[&loc.module_id].clone()
     }
 
-    pub fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
+    pub(crate) fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
         let mut curr_per_ns = PerNs::types(
             match path.kind {
                 PathKind::Crate => self.crate_root(db),
@@ -191,7 +191,10 @@ impl Module {
         curr_per_ns
     }
 
-    pub fn problems_impl(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
+    pub(crate) fn problems_impl(
+        &self,
+        db: &impl HirDatabase,
+    ) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
         loc.module_id.problems(&module_tree, db)

@@ -242,7 +242,8 @@ pub enum Ty {
     // Opaque(DefId, Substs),
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param {
-        /// The index of the parameter.
+        /// The index of the parameter (starting with parameters from the
+        /// surrounding impl, then the current function).
         idx: u32,
         /// The name of the parameter, for displaying.
         name: Name,
@@ -440,7 +441,9 @@ impl Ty {
                 if (idx as usize) < substs.0.len() {
                     substs.0[idx as usize].clone()
                 } else {
-                    // TODO it's yet unclear to me whether we need to shift the indices here
+                    // TODO: does this indicate a bug? i.e. should we always
+                    // have substs for all type params? (they might contain the
+                    // params themselves again...)
                     Ty::Param { idx, name }
                 }
             }

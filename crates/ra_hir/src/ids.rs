@@ -151,6 +151,15 @@ pub(crate) enum DefKind {
     Type,
     Item,
 
+    /// The constructor of a struct. E.g. if we have `struct Foo(usize)`, the
+    /// name `Foo` needs to resolve to different types depending on whether we
+    /// are in the types or values namespace: As a type, `Foo` of course refers
+    /// to the struct `Foo`; as a value, `Foo` is a callable type with signature
+    /// `(usize) -> Foo`. The cleanest approach to handle this seems to be to
+    /// have different defs in the two namespaces.
+    ///
+    /// rustc does the same; note that it even creates a struct constructor if
+    /// the struct isn't a tuple struct (see `CtorKind::Fictive` in rustc).
     StructCtor,
 }
 
