@@ -11,7 +11,7 @@ use syntax::ast;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
-use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream};
+use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
@@ -46,13 +46,14 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TokenStream, &'_ ParseSess, &'_ mut Vec<Self>)>
+impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
-    fn from_internal((stream, sess, stack): (TokenStream, &ParseSess, &mut Vec<Self>)) -> Self {
+    fn from_internal(((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>))
+                    -> Self {
         use syntax::parse::token::*;
 
-        let (tree, joint) = stream.as_tree();
+        let joint = is_joint == Joint;
         let (span, token) = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
@@ -450,7 +451,7 @@ impl server::TokenStreamIter for Rustc<'_> {
     ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_as_stream()?;
+                let next = iter.cursor.next_with_joint()?;
                 Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
             // HACK: The condition "dummy span + group with empty delimiter" represents an AST
@@ -461,7 +462,7 @@ impl server::TokenStreamIter for Rustc<'_> {
             // and not doing the roundtrip through AST.
             if let TokenTree::Group(ref group) = tree {
                 if group.delimiter == Delimiter::None && group.span.entire().is_dummy() {
-                    iter.cursor.insert(group.stream.clone());
+                    iter.cursor.append(group.stream.clone());
                     continue;
                 }
             }

@@ -7,7 +7,7 @@ use fold::noop_fold_tt;
 use parse::token::{self, Token, NtTT};
 use smallvec::SmallVec;
 use syntax_pos::DUMMY_SP;
-use tokenstream::{TokenStream, TokenTree, DelimSpan};
+use tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -63,7 +63,7 @@ pub fn transcribe(cx: &ExtCtxt,
     let mut stack: SmallVec<[Frame; 1]> = smallvec![Frame::new(src)];
     let interpolations = interp.unwrap_or_else(FxHashMap::default); /* just a convenience */
     let mut repeats = Vec::new();
-    let mut result: Vec<TokenStream> = Vec::new();
+    let mut result: Vec<TreeAndJoint> = Vec::new();
     let mut result_stack = Vec::new();
 
     loop {
@@ -78,7 +78,7 @@ pub fn transcribe(cx: &ExtCtxt,
                     if let Some(sep) = sep.clone() {
                         // repeat same span, I guess
                         let prev_span = match result.last() {
-                            Some(stream) => stream.trees().next().unwrap().span(),
+                            Some((tt, _)) => tt.span(),
                             None => DUMMY_SP,
                         };
                         result.push(TokenTree::Token(prev_span, sep).into());
