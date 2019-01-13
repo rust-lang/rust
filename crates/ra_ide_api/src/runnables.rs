@@ -17,6 +17,7 @@ pub struct Runnable {
 pub enum RunnableKind {
     Test { name: String },
     TestMod { path: String },
+    Bench { name: String },
     Bin,
 }
 
@@ -46,6 +47,10 @@ fn runnable_fn(fn_def: &ast::FnDef) -> Option<Runnable> {
         RunnableKind::Bin
     } else if fn_def.has_atom_attr("test") {
         RunnableKind::Test {
+            name: name.to_string(),
+        }
+    } else if fn_def.has_atom_attr("bench") {
+        RunnableKind::Bench {
             name: name.to_string(),
         }
     } else {
