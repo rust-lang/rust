@@ -21,7 +21,11 @@ pub(crate) fn hover(
         match ref_result {
             Exact(nav) => res.extend(doc_text_for(db, nav)?),
             Approximate(navs) => {
-                res.push("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.  \nThese methods were found instead:".to_string());
+                let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.");
+                if !navs.is_empty() {
+                    msg.push_str("  \nThese items were found instead:");
+                }
+                res.push(msg);
                 for nav in navs {
                     res.extend(doc_text_for(db, nav)?)
                 }
