@@ -364,14 +364,19 @@ pub fn to_location_link(
     let url = target.info.file_id().try_conv_with(world)?;
     let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
 
+    let target_range = target.info.full_range().conv_with(&tgt_line_index);
+
+    let target_selection_range = target
+        .info
+        .focus_range()
+        .map(|it| it.conv_with(&tgt_line_index))
+        .unwrap_or(target_range);
+
     let res = LocationLink {
         origin_selection_range: Some(target.range.conv_with(line_index)),
         target_uri: url.to_string(),
-        target_range: target.info.full_range().conv_with(&tgt_line_index),
-        target_selection_range: target
-            .info
-            .focus_range()
-            .map(|it| it.conv_with(&tgt_line_index)),
+        target_range,
+        target_selection_range: Some(target_selection_range),
     };
     Ok(res)
 }
