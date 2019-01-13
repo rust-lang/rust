@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/issue-16401.rs:8:9
    |
+LL |     match () {
+   |           -- this match expression has type `()`
 LL |         Slice { data: data, len: len } => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `Slice`
    |

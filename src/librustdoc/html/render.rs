@@ -3059,7 +3059,7 @@ fn item_trait(
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(w, "{extra}<h3 id='{id}' class='method'><code id='{ns_id}'>",
+        write!(w, "<h3 id='{id}' class='method'>{extra}<code id='{ns_id}'>",
                extra = render_spotlight_traits(m)?,
                id = id,
                ns_id = ns_id)?;
@@ -3444,7 +3444,7 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             let id = format!("{}.{}", ItemType::StructField, name);
             write!(w, "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
                            <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <span class='invisible'><code>{name}: {ty}</code></span>\
+                           <code>{name}: {ty}</code>\
                        </span>",
                    id = id,
                    name = name,
@@ -3999,8 +3999,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             None => "impl".to_string(),
         });
         if let Some(use_absolute) = use_absolute {
-            write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
-                       <tbody><tr><td><code>", id)?;
+            write!(w, "<h3 id='{}' class='impl'><code class='in-band'>", id)?;
             fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute)?;
             if show_def_docs {
                 for it in &i.inner_impl().items {
@@ -4014,22 +4013,18 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             }
             write!(w, "</code>")?;
         } else {
-            write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
-                       <tbody><tr><td><code>{}</code>",
-                   id, i.inner_impl())?;
+            write!(w, "<h3 id='{}' class='impl'><code class='in-band'>{}</code>",
+                id, i.inner_impl()
+            )?;
         }
         write!(w, "<a href='#{}' class='anchor'></a>", id)?;
-        write!(w, "</td><td><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
+        render_stability_since_raw(w, since, outer_version)?;
         if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
-            write!(w, "<div class='ghost'></div>")?;
-            render_stability_since_raw(w, since, outer_version)?;
             write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                    l, "goto source code")?;
-        } else {
-            render_stability_since_raw(w, since, outer_version)?;
         }
-        write!(w, "</span></td></tr></tbody></table></span></h3>")?;
+        write!(w, "</h3>")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
@@ -4065,20 +4060,15 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                     write!(w, "{}", spotlight_decl(decl)?)?;
-                    write!(w, "<table id='{}' class='table-display'><tbody><tr><td><code>", ns_id)?;
+                    write!(w, "<code id='{}'>", ns_id)?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
+                    render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     if let Some(l) = (Item { cx, item }).src_href() {
-                        write!(w, "</td><td><span class='out-of-band'>")?;
-                        write!(w, "<div class='ghost'></div>")?;
-                        render_stability_since_raw(w, item.stable_since(), outer_version)?;
-                        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a></span>",
+                        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                                l, "goto source code")?;
-                    } else {
-                        write!(w, "</td><td>")?;
-                        render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     }
-                    write!(w, "</td></tr></tbody></table></h4>")?;
+                    write!(w, "</h4>")?;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
@@ -4090,40 +4080,18 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 write!(w, "</code></h4>")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
-                let mut version = String::new();
-
-                render_stability_since_raw(&mut version, item.stable_since(), outer_version)?;
-
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
-                if !version.is_empty() {
-                    write!(w, "<table id='{}' class='table-display'><tbody><tr><td><code>", ns_id)?;
-                } else {
-                    write!(w, "<code id='{}'>", ns_id)?;
-                }
+                write!(w, "<code id='{}'>", ns_id)?;
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
-                if !version.is_empty() {
-                    write!(w, "</code>")?;
+                write!(w, "</code>")?;
+                render_stability_since_raw(w, item.stable_since(), outer_version)?;
+                if let Some(l) = (Item { cx, item }).src_href() {
+                    write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                            l, "goto source code")?;
                 }
-                let src = if let Some(l) = (Item { cx, item }).src_href() {
-                    if !version.is_empty() {
-                        write!(w, "</td><td><span class='out-of-band'>")?;
-                        write!(w, "<div class='ghost'></div>{}", version)?;
-                    }
-                    format!("<a class='srclink' href='{}' title='{}'>[src]</a>",
-                            l, "goto source code")
-                } else {
-                    if !version.is_empty() {
-                        write!(w, "</td><td>{}", version)?;
-                    }
-                    String::new()
-                };
-                if version.is_empty() {
-                    write!(w, "</code>{}</h4>", src)?;
-                } else {
-                    write!(w, "{}</span></td></tr></tbody></table></h4>", src)?;
-                }
+                write!(w, "</h4>")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));

@@ -9,7 +9,7 @@ where
 }
 
 // @has no_redundancy/struct.Outer.html
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//*/code' "impl<T> Send for \
+// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//code' "impl<T> Send for \
 // Outer<T> where T: Copy + Send"
 pub struct Outer<T> {
     inner_field: Inner<T>,

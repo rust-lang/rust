@@ -89,8 +89,9 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	border-bottom: 1px solid;
 }
 h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
+	flex-basis: 100%;
 	font-weight: 600;
-	margin-top: 10px;
+	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
 }
@@ -356,7 +357,8 @@ nav.sub {
 #main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
 
 #main > h2 + div, #main > h2 + h3, #main > h3 + div {
-	display: none;
+	display: none; /* Changed to flex or block via js once the page is loaded */
+	flex-wrap: wrap;
 }
 
 .docblock h1 { font-size: 1em; }
@@ -390,7 +392,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .in-band, code {
-	z-index: 5;
+	z-index: -5;
 }
 
 .invisible {
@@ -532,6 +534,10 @@ h4 > code, h3 > code, .invisible > code {
 
 .methods > .stability, .content .impl-items > .stability {
 	margin-top: -8px;
+}
+
+.impl-items {
+	flex-basis: 100%;
 }
 
 #main > .stability {
@@ -784,6 +790,33 @@ body.blur > :not(#help) {
 	top: 0;
 }
 
+.impl-items .since, .impl .since {
+	flex-grow: 0;
+	padding-left: 12px;
+	padding-right: 2px;
+	position: initial;
+}
+
+.impl-items .srclink, .impl .srclink {
+	flex-grow: 0;
+	/* Override header settings otherwise it's too bold */
+	font-size: 17px;
+	font-weight: normal;
+}
+
+.impl-items code, .impl code {
+	flex-grow: 1;
+}
+
+.impl-items h4, h4.impl, h3.impl {
+	display: flex;
+	flex-basis: 100%;
+	font-size: 16px;
+	margin-bottom: 12px;
+	/* Push the src link out to the right edge consistently */
+	justify-content: space-between;
+}
+
 .variants_table {
 	width: 100%;
 }
@@ -869,15 +902,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 .collapse-toggle.hidden-default {
 	position: relative;
 	margin-left: 20px;
-}
-
-.ghost {
-	display: none;
-}
-
-.ghost + .since {
-	position: initial;
-	display: table-cell;
 }
 
 .since + .srclink {
@@ -1119,7 +1143,7 @@ span.since {
 	margin-left: 5px;
 	top: -5px;
 	left: 105%;
-	z-index: 1;
+	z-index: 10;
 }
 
 .tooltip:hover .tooltiptext {
@@ -1361,8 +1385,9 @@ h3.important {
 	margin-top: 16px;
 }
 
-.content > .methods > div.important-traits {
+.content > .methods > .method > div.important-traits {
 	position: absolute;
+	font-weight: 400;
 	left: -42px;
 	margin-top: 2px;
 }

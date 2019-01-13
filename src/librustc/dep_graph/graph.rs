@@ -696,7 +696,7 @@ impl DepGraph {
 
                 // Promote the previous diagnostics to the current session.
                 tcx.queries.on_disk_cache
-                   .store_diagnostics(dep_node_index, diagnostics.clone());
+                   .store_diagnostics(dep_node_index, diagnostics.clone().into());
 
                 for diagnostic in diagnostics {
                     DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();
