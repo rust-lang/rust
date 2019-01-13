@@ -411,6 +411,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            LEAKED_PRIVATE_DEPENDENCY,
             PUB_USE_OF_PRIVATE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
