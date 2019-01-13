@@ -85,15 +85,12 @@ declare_clippy_lint! {
 #[derive(Copy, Clone)]
 pub struct Functions {
     threshold: u64,
-    max_lines: u64
+    max_lines: u64,
 }
 
 impl Functions {
     pub fn new(threshold: u64, max_lines: u64) -> Self {
-        Self {
-            threshold,
-            max_lines
-        }
+        Self { threshold, max_lines }
     }
 }
 
@@ -190,11 +187,11 @@ impl<'a, 'tcx> Functions {
         // Skip the surrounding function decl.
         let start_brace_idx = match code_snippet.find("{") {
             Some(i) => i + 1,
-            None => 0
+            None => 0,
         };
         let end_brace_idx = match code_snippet.find("}") {
             Some(i) => i,
-            None => code_snippet.len()
+            None => code_snippet.len(),
         };
         let function_lines = code_snippet[start_brace_idx..end_brace_idx].lines();
 
@@ -202,7 +199,9 @@ impl<'a, 'tcx> Functions {
             code_in_line = false;
             loop {
                 line = line.trim_start();
-                if line.is_empty() { break; }
+                if line.is_empty() {
+                    break;
+                }
                 if in_comment {
                     match line.find("*/") {
                         Some(i) => {
@@ -210,16 +209,16 @@ impl<'a, 'tcx> Functions {
                             in_comment = false;
                             continue;
                         },
-                        None => break
+                        None => break,
                     }
                 } else {
                     let multi_idx = match line.find("/*") {
                         Some(i) => i,
-                        None => line.len()
+                        None => line.len(),
                     };
                     let single_idx = match line.find("//") {
                         Some(i) => i,
-                        None => line.len()
+                        None => line.len(),
                     };
                     code_in_line |= multi_idx > 0 && single_idx > 0;
                     // Implies multi_idx is below line.len()
@@ -231,12 +230,13 @@ impl<'a, 'tcx> Functions {
                     break;
                 }
             }
-            if code_in_line { line_count += 1; }
+            if code_in_line {
+                line_count += 1;
+            }
         }
 
         if line_count > self.max_lines {
-            span_lint(cx, TOO_MANY_LINES, span,
-                      "This function has a large number of lines.")
+            span_lint(cx, TOO_MANY_LINES, span, "This function has a large number of lines.")
         }
     }
 
