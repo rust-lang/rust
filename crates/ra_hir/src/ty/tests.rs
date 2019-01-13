@@ -268,6 +268,18 @@ fn test(a: A) {
     );
 }
 
+#[test]
+fn infer_tuple() {
+    check_inference(
+        r#"
+fn test() {
+    let a: (u32, &str) = (1, "a");
+}
+"#,
+        "tuple.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
