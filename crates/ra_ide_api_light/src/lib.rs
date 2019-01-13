@@ -1,7 +1,7 @@
-//! This crate provides thouse IDE features which use only a single file.
+//! This crate provides those IDE features which use only a single file.
 //!
-//! This usually means functions which take sytnax tree as an input and produce
-//! an edit or some auxilarly info.
+//! This usually means functions which take syntax tree as an input and produce
+//! an edit or some auxiliary info.
 
 pub mod assists;
 mod extend_selection;

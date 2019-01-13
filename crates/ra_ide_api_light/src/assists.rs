@@ -1,5 +1,5 @@
 //! This modules contains various "assists": suggestions for source code edits
-//! which are likely to occur at a given cursor positon. For example, if the
+//! which are likely to occur at a given cursor position. For example, if the
 //! cursor is on the `,`, a possible assist is swapping the elements around the
 //! comma.
 
@@ -62,22 +62,22 @@ fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&Syntax
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
 ///
-/// Assists use a somewhat overengeneered approach, given the current needs. The
+/// Assists use a somewhat overengineered approach, given the current needs. The
 /// assists workflow consists of two phases. In the first phase, a user asks for
 /// the list of available assists. In the second phase, the user picks a
 /// particular assist and it gets applied.
 ///
 /// There are two peculiarities here:
 ///
-/// * first, we ideally avoid computing more things then neccessary to answer
+/// * first, we ideally avoid computing more things then necessary to answer
 ///   "is assist applicable" in the first phase.
-/// * second, when we are appling assist, we don't have a gurantee that there
+/// * second, when we are applying assist, we don't have a guarantee that there
 ///   weren't any changes between the point when user asked for assists and when
 ///   they applied a particular assist. So, when applying assist, we need to do
 ///   all the checks from scratch.
 ///
 /// To avoid repeating the same code twice for both "check" and "apply"
-/// functions, we use an approach remeniscent of that of Django's function based
+/// functions, we use an approach reminiscent of that of Django's function based
 /// views dealing with forms. Each assist receives a runtime parameter,
 /// `should_compute_edit`. It first check if an edit is applicable (potentially
 /// computing info required to compute the actual edit). If it is applicable,
@@ -89,7 +89,7 @@ fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&Syntax
 ///
 /// Note, however, that we don't actually use such two-phase logic at the
 /// moment, because the LSP API is pretty awkward in this place, and it's much
-/// easier to just compute the edit eagarly :-)
+/// easier to just compute the edit eagerly :-)
 #[derive(Debug, Clone)]
 pub struct AssistCtx<'a> {
     source_file: &'a SourceFile,
