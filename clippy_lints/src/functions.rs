@@ -40,6 +40,13 @@ declare_clippy_lint! {
 ///
 /// **Known problems:** None.
 ///
+/// **Example:**
+/// ``` rust
+/// fn im_too_long() {
+/// println!("");
+/// // ... 100 more LoC
+/// println!("");
+/// }
 /// ```
 declare_clippy_lint! {
     pub TOO_MANY_LINES,
@@ -174,46 +181,57 @@ impl<'a, 'tcx> Functions {
         }
     }
 
-    fn check_line_number(self, cx: &LateContext, span: Span) {
+    fn check_line_number(self, cx: &LateContext<'_, '_>, span: Span) {
         let code_snippet = snippet(cx, span, "..");
-        let mut line_count = 0;
+        let mut line_count: u64 = 0;
         let mut in_comment = false;
-        for mut line in code_snippet.lines() {
-            if in_comment {
-                let end_comment_loc = match line.find("*/") {
-                    Some(i) => i,
-                    None => continue
-                };
-                in_comment = false;
-                line = &line[end_comment_loc..];
-            }
-            line = line.trim_left();
-            if line.is_empty() || line.starts_with("//") { continue; }
-            if line.contains("/*") {
-                let mut count_line: bool = !line.starts_with("/*");
-                let close_counts = line.match_indices("*/").count();
-                let open_counts = line.match_indices("/*").count();
+        let mut code_in_line;
 
-                if close_counts > 1 || open_counts > 1 {
-                    line_count += 1;
-                } else if close_counts == 1 {
+        // Skip the surrounding function decl.
+        let start_brace_idx = match code_snippet.find("{") {
+            Some(i) => i + 1,
+            None => 0
+        };
+        let end_brace_idx = match code_snippet.find("}") {
+            Some(i) => i,
+            None => code_snippet.len()
+        };
+        let function_lines = code_snippet[start_brace_idx..end_brace_idx].lines();
+
+        for mut line in function_lines {
+            code_in_line = false;
+            loop {
+                line = line.trim_start();
+                if line.is_empty() { break; }
+                if in_comment {
                     match line.find("*/") {
                         Some(i) => {
-                            line = line[i..].trim_left();
-                            if !line.is_empty() && !line.starts_with("//") {
-                                count_line = true;
-                            }
+                            line = &line[i + 2..];
+                            in_comment = false;
+                            continue;
                         },
-                        None => continue
+                        None => break
                     }
                 } else {
-                    in_comment = true;
+                    let multi_idx = match line.find("/*") {
+                        Some(i) => i,
+                        None => line.len()
+                    };
+                    let single_idx = match line.find("//") {
+                        Some(i) => i,
+                        None => line.len()
+                    };
+                    code_in_line |= multi_idx > 0 && single_idx > 0;
+                    // Implies multi_idx is below line.len()
+                    if multi_idx < single_idx {
+                        line = &line[multi_idx + 2..];
+                        in_comment = true;
+                        continue;
+                    }
+                    break;
                 }
-                if count_line { line_count += 1; }
-            } else {
-                // No multipart comment, no single comment, non-empty string.
-                line_count += 1;
             }
+            if code_in_line { line_count += 1; }
         }
 
         if line_count > self.max_lines {
