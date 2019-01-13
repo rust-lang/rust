@@ -12,18 +12,18 @@ pub const CURSOR_MARKER: &str = "<|>";
 
 #[macro_export]
 macro_rules! assert_eq_text {
-    ($expected:expr, $actual:expr) => {
-        assert_eq_text!($expected, $actual,)
+    ($left:expr, $right:expr) => {
+        assert_eq_text!($left, $right,)
     };
-    ($expected:expr, $actual:expr, $($tt:tt)*) => {{
-        let expected = $expected;
-        let actual = $actual;
-        if expected != actual {
-            if expected.trim() == actual.trim() {
-                eprintln!("Expected:\n{:?}\n\nActual:\n{:?}\n\nWhitespace difference\n", expected, actual);
+    ($left:expr, $right:expr, $($tt:tt)*) => {{
+        let left = $left;
+        let right = $right;
+        if left != right {
+            if left.trim() == right.trim() {
+                eprintln!("Left:\n{:?}\n\nRight:\n{:?}\n\nWhitespace difference\n", left, right);
             } else {
-                let changeset = $crate::__Changeset::new(actual, expected, "\n");
-                eprintln!("Expected:\n{}\n\nActual:\n{}\n\nDiff:\n{}\n", expected, actual, changeset);
+                let changeset = $crate::__Changeset::new(right, left, "\n");
+                eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, changeset);
             }
             eprintln!($($tt)*);
             panic!("text differs");

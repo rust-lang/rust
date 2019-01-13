@@ -2,13 +2,21 @@ use ra_syntax::{
     AstNode,
     SyntaxNode, SyntaxKind::*,
     ast::{self, AstToken},
+    algo::generate,
 };
 
 /// If the node is on the begining of the line, calculate indent.
 pub(crate) fn leading_indent(node: &SyntaxNode) -> Option<&str> {
-    let prev = node.prev_sibling()?;
+    let prev = prev_leaf(node)?;
     let ws_text = ast::Whitespace::cast(prev)?.text();
     ws_text.rfind('\n').map(|pos| &ws_text[pos + 1..])
+}
+
+fn prev_leaf(node: &SyntaxNode) -> Option<&SyntaxNode> {
+    generate(node.ancestors().find_map(SyntaxNode::prev_sibling), |it| {
+        it.last_child()
+    })
+    .last()
 }
 
 pub(crate) fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
