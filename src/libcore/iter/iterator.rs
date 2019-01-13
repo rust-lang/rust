@@ -88,7 +88,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     message="`{Self}` is not an iterator"
 )]
 #[doc(spotlight)]
-#[must_use]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -46,7 +46,7 @@ error[E0502]: cannot borrow `u` (via `u.x`) as immutable because `u` is also bor
 LL |     let a = &mut *u.y;
    |                  ---- mutable borrow occurs here (via `*u.y`)
 LL |     let b = &u.x; //~ ERROR cannot borrow `u` (via `u.x`)
-   |              ^^^ immutable borrow occurs here (via `u.x`)
+   |              ^^^ immutable borrow of `u.x` -- which overlaps with `*u.y` -- occurs here
 LL |     use_borrow(a);
 LL | }
    | - mutable borrow ends here

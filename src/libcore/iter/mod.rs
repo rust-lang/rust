@@ -243,7 +243,7 @@
 //! using it. The compiler will warn us about this kind of behavior:
 //!
 //! ```text
-//! warning: unused result that must be used: iterator adaptors are lazy and
+//! warning: unused result that must be used: iterators are lazy and
 //! do nothing unless consumed
 //! ```
 //!
@@ -404,7 +404,7 @@ impl<R: Try> LoopState<R::Ok, R> {
 /// [`rev`]: trait.Iterator.html#method.rev
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rev<T> {
     iter: T
@@ -505,7 +505,7 @@ unsafe impl<I> TrustedLen for Rev<I>
 /// [`copied`]: trait.Iterator.html#method.copied
 /// [`Iterator`]: trait.Iterator.html
 #[unstable(feature = "iter_copied", issue = "57127")]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 pub struct Copied<I> {
     it: I,
@@ -605,7 +605,7 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
 /// [`cloned`]: trait.Iterator.html#method.cloned
 /// [`Iterator`]: trait.Iterator.html
 #[stable(feature = "iter_cloned", since = "1.1.0")]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 pub struct Cloned<I> {
     it: I,
@@ -717,7 +717,7 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
 /// [`cycle`]: trait.Iterator.html#method.cycle
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cycle<I> {
     orig: I,
@@ -757,7 +757,7 @@ impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 ///
 /// [`step_by`]: trait.Iterator.html#method.step_by
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 #[derive(Clone, Debug)]
 pub struct StepBy<I> {
@@ -849,7 +849,7 @@ impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 /// [`chain`]: trait.Iterator.html#method.chain
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<A, B> {
     a: A,
@@ -1100,7 +1100,7 @@ unsafe impl<A, B> TrustedLen for Chain<A, B>
 /// [`zip`]: trait.Iterator.html#method.zip
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Zip<A, B> {
     a: A,
@@ -1400,7 +1400,7 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 ///     println!("{:?}", pair);
 /// }
 /// ```
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Map<I, F> {
@@ -1511,7 +1511,7 @@ unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
 ///
 /// [`filter`]: trait.Iterator.html#method.filter
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Filter<I, P> {
@@ -1643,7 +1643,7 @@ impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
 ///
 /// [`filter_map`]: trait.Iterator.html#method.filter_map
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct FilterMap<I, F> {
@@ -1754,7 +1754,7 @@ impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F>
 /// [`enumerate`]: trait.Iterator.html#method.enumerate
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Enumerate<I> {
     iter: I,
@@ -1915,7 +1915,7 @@ unsafe impl<I> TrustedLen for Enumerate<I>
 /// [`peekable`]: trait.Iterator.html#method.peekable
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Peekable<I: Iterator> {
     iter: I,
@@ -2066,7 +2066,7 @@ impl<I: Iterator> Peekable<I> {
 ///
 /// [`skip_while`]: trait.Iterator.html#method.skip_while
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct SkipWhile<I, P> {
@@ -2149,7 +2149,7 @@ impl<I, P> FusedIterator for SkipWhile<I, P>
 ///
 /// [`take_while`]: trait.Iterator.html#method.take_while
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct TakeWhile<I, P> {
@@ -2233,7 +2233,7 @@ impl<I, P> FusedIterator for TakeWhile<I, P>
 /// [`skip`]: trait.Iterator.html#method.skip
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Skip<I> {
     iter: I,
@@ -2371,7 +2371,7 @@ impl<I> FusedIterator for Skip<I> where I: FusedIterator {}
 /// [`take`]: trait.Iterator.html#method.take
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Take<I> {
     iter: I,
@@ -2458,7 +2458,7 @@ unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
 ///
 /// [`scan`]: trait.Iterator.html#method.scan
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Scan<I, St, F> {
@@ -2518,7 +2518,7 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 ///
 /// [`flat_map`]: trait.Iterator.html#method.flat_map
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {
     inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>
@@ -2603,7 +2603,7 @@ impl<I, U, F> FusedIterator for FlatMap<I, U, F>
 ///
 /// [`flatten`]: trait.Iterator.html#method.flatten
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub struct Flatten<I: Iterator>
 where I::Item: IntoIterator {
@@ -2832,7 +2832,7 @@ impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
 /// [`fuse`]: trait.Iterator.html#method.fuse
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Fuse<I> {
     iter: I,
@@ -3056,7 +3056,7 @@ impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
 ///
 /// [`inspect`]: trait.Iterator.html#method.inspect
 /// [`Iterator`]: trait.Iterator.html
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Inspect<I, F> {

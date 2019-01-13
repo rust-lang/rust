@@ -233,7 +233,7 @@ pub mod rt {
                     self.span, token::Token::from_ast_ident(segment.ident)
                 ).into());
             }
-            inner.push(self.tokens.clone());
+            self.tokens.clone().append_to_tree_and_joint_vec(&mut inner);
 
             let delim_span = DelimSpan::from_single(self.span);
             r.push(TokenTree::Delimited(

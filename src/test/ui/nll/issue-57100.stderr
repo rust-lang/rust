@@ -1,0 +1,31 @@
+error[E0502]: cannot borrow `r.r2_union.f3_union` (via `r.r2_union.f3_union.s2_leaf.l1_u8`) as immutable because it is also borrowed as mutable (via `r.r2_union.f3_union.s1_leaf.l1_u8`)
+  --> $DIR/issue-57100.rs:44:20
+   |
+LL |         let mref = &mut r.r2_union.f3_union.s1_leaf.l1_u8;
+   |                    -------------------------------------- mutable borrow occurs here (via `r.r2_union.f3_union.s1_leaf.l1_u8`)
+...
+LL |         let nref = &r.r2_union.f3_union.s2_leaf.l1_u8;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ immutable borrow of `r.r2_union.f3_union.s2_leaf.l1_u8` -- which overlaps with `r.r2_union.f3_union.s1_leaf.l1_u8` -- occurs here
+...
+LL |         println!("{} {}", mref, nref)
+   |                           ---- mutable borrow later used here
+   |
+   = note: `r.r2_union.f3_union.s2_leaf.l1_u8` is a field of the union `Second`, so it overlaps the field `r.r2_union.f3_union.s1_leaf.l1_u8`
+
+error[E0502]: cannot borrow `r.r2_union` (via `r.r2_union.f1_leaf.l1_u8`) as immutable because it is also borrowed as mutable (via `r.r2_union.f2_leaf.l1_u8`)
+  --> $DIR/issue-57100.rs:62:20
+   |
+LL |         let mref = &mut r.r2_union.f2_leaf.l1_u8;
+   |                    ----------------------------- mutable borrow occurs here (via `r.r2_union.f2_leaf.l1_u8`)
+...
+LL |         let nref = &r.r2_union.f1_leaf.l1_u8;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ immutable borrow of `r.r2_union.f1_leaf.l1_u8` -- which overlaps with `r.r2_union.f2_leaf.l1_u8` -- occurs here
+...
+LL |         println!("{} {}", mref, nref)
+   |                           ---- mutable borrow later used here
+   |
+   = note: `r.r2_union.f1_leaf.l1_u8` is a field of the union `First`, so it overlaps the field `r.r2_union.f2_leaf.l1_u8`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

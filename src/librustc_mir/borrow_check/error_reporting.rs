@@ -327,10 +327,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure"
         };
 
-        let desc_place = self.describe_place(place).unwrap_or_else(|| "_".to_owned());
-        let tcx = self.infcx.tcx;
-
-        let first_borrow_desc;
+        let (desc_place, msg_place, msg_borrow, union_type_name) =
+            self.describe_place_for_conflicting_borrow(place, &issued_borrow.borrowed_place);
 
         let explanation = self.explain_why_borrow_contains_point(context, issued_borrow, None);
         let second_borrow_desc = if explanation.is_explained() {
@@ -340,6 +338,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         };
 
         // FIXME: supply non-"" `opt_via` when appropriate
+        let tcx = self.infcx.tcx;
+        let first_borrow_desc;
         let mut err = match (
             gen_borrow_kind,
             "immutable",
@@ -353,12 +353,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tcx.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
-                    "",
+                    &msg_place,
                     lft,
                     issued_span,
                     "it",
                     rgt,
-                    "",
+                    &msg_borrow,
                     None,
                     Origin::Mir,
                 )
@@ -368,12 +368,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tcx.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
-                    "",
+                    &msg_place,
                     lft,
                     issued_span,
                     "it",
                     rgt,
-                    "",
+                    &msg_borrow,
                     None,
                     Origin::Mir,
                 )
@@ -384,9 +384,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tcx.cannot_mutably_borrow_multiply(
                     span,
                     &desc_place,
-                    "",
+                    &msg_place,
                     issued_span,
-                    "",
+                    &msg_borrow,
                     None,
                     Origin::Mir,
                 )
@@ -510,10 +510,116 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         }
 
+        if union_type_name != "" {
+            err.note(&format!(
+                "`{}` is a field of the union `{}`, so it overlaps the field `{}`",
+                msg_place, union_type_name, msg_borrow,
+            ));
+        }
+
         explanation
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
 
         err.buffer(&mut self.errors_buffer);
+    }
+
+    /// Returns the description of the root place for a conflicting borrow and the full
+    /// descriptions of the places that caused the conflict.
+    ///
+    /// In the simplest case, where there are no unions involved, if a mutable borrow of `x` is
+    /// attempted while a shared borrow is live, then this function will return:
+    ///
+    ///     ("x", "", "")
+    ///
+    /// In the simple union case, if a mutable borrow of a union field `x.z` is attempted while
+    /// a shared borrow of another field `x.y`, then this function will return:
+    ///
+    ///     ("x", "x.z", "x.y")
+    ///
+    /// In the more complex union case, where the union is a field of a struct, then if a mutable
+    /// borrow of a union field in a struct `x.u.z` is attempted while a shared borrow of
+    /// another field `x.u.y`, then this function will return:
+    ///
+    ///     ("x.u", "x.u.z", "x.u.y")
+    ///
+    /// This is used when creating error messages like below:
+    ///
+    /// >  cannot borrow `a.u` (via `a.u.z.c`) as immutable because it is also borrowed as
+    /// >  mutable (via `a.u.s.b`) [E0502]
+    pub(super) fn describe_place_for_conflicting_borrow(
+        &self,
+        first_borrowed_place: &Place<'tcx>,
+        second_borrowed_place: &Place<'tcx>,
+    ) -> (String, String, String, String) {
+        // Define a small closure that we can use to check if the type of a place
+        // is a union.
+        let is_union = |place: &Place<'tcx>| -> bool {
+            place.ty(self.mir, self.infcx.tcx)
+                .to_ty(self.infcx.tcx)
+                .ty_adt_def()
+                .map(|adt| adt.is_union())
+                .unwrap_or(false)
+        };
+
+        // Start with an empty tuple, so we can use the functions on `Option` to reduce some
+        // code duplication (particularly around returning an empty description in the failure
+        // case).
+        Some(())
+            .filter(|_| {
+                // If we have a conflicting borrow of the same place, then we don't want to add
+                // an extraneous "via x.y" to our diagnostics, so filter out this case.
+                first_borrowed_place != second_borrowed_place
+            })
+            .and_then(|_| {
+                // We're going to want to traverse the first borrowed place to see if we can find
+                // field access to a union. If we find that, then we will keep the place of the
+                // union being accessed and the field that was being accessed so we can check the
+                // second borrowed place for the same union and a access to a different field.
+                let mut current = first_borrowed_place;
+                while let Place::Projection(box PlaceProjection { base, elem }) = current {
+                    match elem {
+                        ProjectionElem::Field(field, _) if is_union(base) => {
+                            return Some((base, field));
+                        },
+                        _ => current = base,
+                    }
+                }
+                None
+            })
+            .and_then(|(target_base, target_field)| {
+                // With the place of a union and a field access into it, we traverse the second
+                // borrowed place and look for a access to a different field of the same union.
+                let mut current = second_borrowed_place;
+                while let Place::Projection(box PlaceProjection { base, elem }) = current {
+                    match elem {
+                        ProjectionElem::Field(field, _) if {
+                            is_union(base) && field != target_field && base == target_base
+                        } => {
+                            let desc_base = self.describe_place(base)
+                                .unwrap_or_else(|| "_".to_owned());
+                            let desc_first = self.describe_place(first_borrowed_place)
+                                .unwrap_or_else(|| "_".to_owned());
+                            let desc_second = self.describe_place(second_borrowed_place)
+                                .unwrap_or_else(|| "_".to_owned());
+
+                            // Also compute the name of the union type, eg. `Foo` so we
+                            // can add a helpful note with it.
+                            let ty = base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+
+                            return Some((desc_base, desc_first, desc_second, ty.to_string()));
+                        },
+                        _ => current = base,
+                    }
+                }
+                None
+            })
+            .unwrap_or_else(|| {
+                // If we didn't find a field access into a union, or both places match, then
+                // only return the description of the first place.
+                let desc_place = self.describe_place(first_borrowed_place)
+                    .unwrap_or_else(|| "_".to_owned());
+                (desc_place, "".to_string(), "".to_string(), "".to_string())
+            })
     }
 
     /// Reports StorageDeadOrDrop of `place` conflicts with `borrow`.
