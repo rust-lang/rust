@@ -14,16 +14,16 @@ fn main() {
     // these should warn
     {
         use std::io::Write;
-        write!(std::io::stdout(), "test").unwrap();
-        write!(std::io::stderr(), "test").unwrap();
-        writeln!(std::io::stdout(), "test").unwrap();
-        writeln!(std::io::stderr(), "test").unwrap();
-        std::io::stdout().write_fmt(format_args!("test")).unwrap();
-        std::io::stderr().write_fmt(format_args!("test")).unwrap();
+        print!("test");
+        eprint!("test");
+        println!("test");
+        eprintln!("test");
+        print!("test");
+        eprint!("test");
 
         // including newlines
-        writeln!(std::io::stdout(), "test\ntest").unwrap();
-        writeln!(std::io::stderr(), "test\ntest").unwrap();
+        println!("test\ntest");
+        eprintln!("test\ntest");
     }
     // these should not warn, different destination
     {
