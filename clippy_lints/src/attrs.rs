@@ -511,18 +511,17 @@ impl EarlyLintPass for CfgAttrPass {
             // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
             if skip_item.name() == "rustfmt_skip" || skip_item.name() == "skip";
+            // Only lint outer attributes, because custom inner attributes are unstable
+            // Tracking issue: https://github.com/rust-lang/rust/issues/54726
+            if let AttrStyle::Outer = attr.style;
             then {
-                let attr_style = match attr.style {
-                    AttrStyle::Outer => "#[",
-                    AttrStyle::Inner => "#![",
-                };
                 span_lint_and_sugg(
                     cx,
                     DEPRECATED_CFG_ATTR,
                     attr.span,
                     "`cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes",
                     "use",
-                    format!("{}rustfmt::skip]", attr_style),
+                    "#[rustfmt::skip]".to_string(),
                     Applicability::MachineApplicable,
                 );
             }

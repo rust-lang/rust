@@ -15,11 +15,11 @@ fn foo(
 }
 
 fn skip_on_statements() {
-    #[cfg_attr(rustfmt, rustfmt::skip)]
+    #[rustfmt::skip]
     5+3;
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn main() {
     foo::f();
 }
