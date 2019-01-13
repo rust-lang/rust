@@ -35,6 +35,16 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
+/// Warning: do not use this function if you expect to start interpreting the given `Mir`.
+/// The `EvalContext` is only meant to be used to query values from constants and statics.
+///
+/// This function is used during const propagation. We cannot use `mk_eval_cx`, because copy
+/// propagation happens *during* the computation of the MIR of the current function. So if we
+/// tried to call the `optimized_mir` query, we'd get a cycle error because we are (transitively)
+/// inside the `optimized_mir` query of the `Instance` given.
+///
+/// Since we are looking at the MIR of the function in an abstract manner, we don't have a
+/// `ParamEnv` available to us. This function creates a `ParamEnv` for the given instance.
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
@@ -43,9 +53,22 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
+    mk_eval_cx_inner(tcx, instance, mir, span, param_env)
+}
+
+/// This is just a helper function to reduce code duplication between `mk_borrowck_eval_cx` and
+/// `mk_eval_cx`. Do not call this function directly.
+fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: Instance<'tcx>,
+    mir: &'mir mir::Mir<'tcx>,
+    span: Span,
+    param_env: ty::ParamEnv<'tcx>,
+) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    // insert a stack frame so any queries have the correct substs
-    // cannot use `push_stack_frame`; if we do `const_prop` explodes
+    // Insert a stack frame so any queries have the correct substs.
+    // We also avoid all the extra work performed by push_stack_frame,
+    // like initializing local variables
     ecx.stack.push(interpret::Frame {
         block: mir::START_BLOCK,
         locals: IndexVec::new(),
@@ -60,24 +83,23 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     Ok(ecx)
 }
 
-pub fn mk_eval_cx<'a, 'tcx>(
+/// Warning: do not use this function if you expect to start interpreting the given `Mir`.
+/// The `EvalContext` is only meant to be used to do field and index projections into constants for
+/// `simd_shuffle` and const patterns in match arms.
+///
+/// The function containing the `match` that is currently being analyzed may have generic bounds
+/// that inform us about the generic bounds of the constant. E.g. using an associated constant
+/// of a function's generic parameter will require knowledge about the bounds on the generic
+/// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
+fn mk_eval_cx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'tcx, 'tcx>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
     let span = tcx.def_span(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    let mir = ecx.load_mir(instance.def)?;
-    // insert a stack frame so any queries have the correct substs
-    ecx.push_stack_frame(
-        instance,
-        mir.span,
-        mir,
-        None,
-        StackPopCleanup::Goto(None), // never pop
-    )?;
-    Ok(ecx)
+    let mir = tcx.optimized_mir(instance.def.def_id());
+    mk_eval_cx_inner(tcx, instance, mir, span, param_env)
 }
 
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
