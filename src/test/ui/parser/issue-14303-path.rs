@@ -9,6 +9,5 @@ mod foo {
 
 fn bar<'a, 'b, 'c, T>(x: foo::X<'a, T, 'b, 'c>) {}
 //~^ ERROR lifetime parameters must be declared prior to type parameters
-//~| ERROR lifetime parameters must be declared prior to type parameters
 
 fn main() {}

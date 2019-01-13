@@ -5330,23 +5330,28 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self)
-                          -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
         let mut args = Vec::new();
         let mut bindings = Vec::new();
         let mut seen_type = false;
         let mut seen_binding = false;
+        let mut first_type_or_binding_span: Option<Span> = None;
+        let mut bad_lifetime_pos = vec![];
+        let mut last_comma_span = None;
+        let mut suggestions = vec![];
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
-                    self.struct_span_err(
-                        self.prev_span,
-                        "lifetime parameters must be declared prior to type parameters"
-                    )
-                        .span_label(self.prev_span, "must be declared prior to type parameters")
-                        .emit();
+                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
+                    bad_lifetime_pos.push(self.prev_span);
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
+                        suggestions.push((remove_sp, String::new()));
+                        suggestions.push((
+                            first_type_or_binding_span.unwrap().shrink_to_lo(),
+                            format!("{}, ", snippet)));
+                    }
                 }
             } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
                 // Parse associated type binding.
@@ -5354,13 +5359,17 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident()?;
                 self.bump();
                 let ty = self.parse_ty()?;
+                let span = lo.to(self.prev_span);
                 bindings.push(TypeBinding {
                     id: ast::DUMMY_NODE_ID,
                     ident,
                     ty,
-                    span: lo.to(self.prev_span),
+                    span,
                 });
                 seen_binding = true;
+                if first_type_or_binding_span.is_none() {
+                    first_type_or_binding_span = Some(span);
+                }
             } else if self.check_type() {
                 // Parse type argument.
                 let ty_param = self.parse_ty()?;
@@ -5375,6 +5384,9 @@ impl<'a> Parser<'a> {
                         )
                         .emit();
                 }
+                if first_type_or_binding_span.is_none() {
+                    first_type_or_binding_span = Some(ty_param.span);
+                }
                 args.push(GenericArg::Type(ty_param));
                 seen_type = true;
             } else {
@@ -5383,7 +5395,29 @@ impl<'a> Parser<'a> {
 
             if !self.eat(&token::Comma) {
                 break
+            } else {
+                last_comma_span = Some(self.prev_span);
             }
+        }
+        if !bad_lifetime_pos.is_empty() {
+            let mut err = self.struct_span_err(
+                bad_lifetime_pos.clone(),
+                "lifetime parameters must be declared prior to type parameters"
+            );
+            for sp in &bad_lifetime_pos {
+                err.span_label(*sp, "must be declared prior to type parameters");
+            }
+            if !suggestions.is_empty() {
+                err.multipart_suggestion_with_applicability(
+                    &format!(
+                        "move the lifetime parameter{} prior to the first type parameter",
+                        if bad_lifetime_pos.len() > 1 { "s" } else { "" },
+                    ),
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
         }
         Ok((args, bindings))
     }
