@@ -1,5 +1,5 @@
 error: casting i32 to i64 may become silently lossy if types change
-  --> $DIR/types.rs:9:22
+  --> $DIR/types.rs:13:22
    |
 LL |     let c_i64: i64 = c as i64;
    |                      ^^^^^^^^ help: try: `i64::from(c)`
