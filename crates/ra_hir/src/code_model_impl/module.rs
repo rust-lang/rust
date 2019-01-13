@@ -147,41 +147,43 @@ impl Module {
             .def_id,
         );
 
-        let segments = &path.segments;
-        for (idx, name) in segments.iter().enumerate() {
-            let curr = if let Some(r) = curr_per_ns.as_ref().take_types() {
-                r
-            } else {
-                return PerNs::none();
+        for name in path.segments.iter() {
+            let curr = match curr_per_ns.as_ref().take_types() {
+                Some(r) => r,
+                None => {
+                    // we still have path segments left, but the path so far
+                    // didn't resolve in the types namespace => no resolution
+                    // (don't break here because curr_per_ns might contain
+                    // something in the value namespace, and it would be wrong
+                    // to return that)
+                    return PerNs::none();
+                }
             };
-            let module = match curr.resolve(db) {
-                Def::Module(it) => it,
-                Def::Enum(e) => {
-                    if segments.len() == idx + 1 {
-                        // enum variant
-                        let matching_variant =
-                            e.variants(db).into_iter().find(|(n, _variant)| n == name);
-
-                        if let Some((_n, variant)) = matching_variant {
-                            return PerNs::both(variant.def_id(), e.def_id());
-                        } else {
-                            return PerNs::none();
-                        }
-                    } else if segments.len() == idx {
-                        // enum
-                        return PerNs::types(e.def_id());
-                    } else {
-                        // malformed enum?
-                        return PerNs::none();
+            // resolve segment in curr
+            curr_per_ns = match curr.resolve(db) {
+                Def::Module(m) => {
+                    let scope = m.scope(db);
+                    match scope.get(&name) {
+                        Some(r) => r.def_id,
+                        None => PerNs::none(),
                     }
                 }
-                _ => return PerNs::none(),
-            };
-            let scope = module.scope(db);
-            curr_per_ns = if let Some(r) = scope.get(&name) {
-                r.def_id
-            } else {
-                return PerNs::none();
+                Def::Enum(e) => {
+                    // enum variant
+                    let matching_variant =
+                        e.variants(db).into_iter().find(|(n, _variant)| n == name);
+
+                    match matching_variant {
+                        Some((_n, variant)) => PerNs::both(variant.def_id(), e.def_id()),
+                        None => PerNs::none(),
+                    }
+                }
+                _ => {
+                    // could be an inherent method call in UFCS form
+                    // (`Struct::method`), or some other kind of associated
+                    // item... Which we currently don't handle (TODO)
+                    PerNs::none()
+                }
             };
         }
         curr_per_ns
