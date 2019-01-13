@@ -38,6 +38,7 @@ use crate::{
     name::KnownName,
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
     generics::Generics,
+    path::GenericArg,
 };
 
 /// The ID of a type variable.
@@ -156,6 +157,12 @@ impl Expectation {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Substs(Arc<[Ty]>);
 
+impl Substs {
+    pub fn empty() -> Substs {
+        Substs(Arc::new([]))
+    }
+}
+
 /// A type. This is based on the `TyKind` enum in rustc (librustc/ty/sty.rs).
 ///
 /// This should be cheap to clone.
@@ -271,6 +278,9 @@ pub struct FnSig {
 impl Ty {
     pub(crate) fn from_hir(
         db: &impl HirDatabase,
+        // TODO: the next three parameters basically describe the scope for name
+        // resolution; this should be refactored into something like a general
+        // resolver architecture
         module: &Module,
         impl_block: Option<&ImplBlock>,
         generics: &Generics,
@@ -371,12 +381,79 @@ impl Ty {
         }
 
         // Resolve in module (in type namespace)
-        let resolved = if let Some(r) = module.resolve_path(db, path).take_types() {
-            r
-        } else {
-            return Ty::Unknown;
+        let resolved = match module.resolve_path(db, path).take_types() {
+            Some(r) => r,
+            None => return Ty::Unknown,
         };
-        db.type_for_def(resolved)
+        let ty = db.type_for_def(resolved);
+        let substs = Ty::substs_from_path(db, module, impl_block, generics, path, resolved);
+        ty.apply_substs(substs)
+    }
+
+    /// Collect generic arguments from a path into a `Substs`. See also
+    /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
+    fn substs_from_path(
+        db: &impl HirDatabase,
+        // the scope of the segment...
+        module: &Module,
+        impl_block: Option<&ImplBlock>,
+        outer_generics: &Generics,
+        path: &Path,
+        resolved: DefId,
+    ) -> Substs {
+        let mut substs = Vec::new();
+        let def = resolved.resolve(db);
+        let last = path
+            .segments
+            .last()
+            .expect("path should have at least one segment");
+        let (def_generics, segment) = match def {
+            Def::Struct(s) => (s.generics(db), last),
+            Def::Enum(e) => (e.generics(db), last),
+            Def::Function(f) => (f.generics(db), last),
+            Def::Trait(t) => (t.generics(db), last),
+            Def::EnumVariant(ev) => {
+                // the generic args for an enum variant may be either specified
+                // on the segment referring to the enum, or on the segment
+                // referring to the variant. So `Option::<T>::None` and
+                // `Option::None::<T>` are both allowed (though the former is
+                // preferred). See also `def_ids_for_path_segments` in rustc.
+                let len = path.segments.len();
+                let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some() {
+                    // Option::<T>::None
+                    &path.segments[len - 2]
+                } else {
+                    // Option::None::<T>
+                    last
+                };
+                (ev.parent_enum(db).generics(db), segment)
+            }
+            _ => return Substs::empty(),
+        };
+        // substs_from_path
+        if let Some(generic_args) = &segment.args_and_bindings {
+            // if args are provided, it should be all of them, but we can't rely on that
+            let param_count = def_generics.params.len();
+            for arg in generic_args.args.iter().take(param_count) {
+                match arg {
+                    GenericArg::Type(type_ref) => {
+                        let ty = Ty::from_hir(db, module, impl_block, outer_generics, type_ref);
+                        substs.push(ty);
+                    }
+                }
+            }
+        }
+        // add placeholders for args that were not provided
+        // TODO: handle defaults
+        for _ in segment
+            .args_and_bindings
+            .as_ref()
+            .map(|ga| ga.args.len())
+            .unwrap_or(0)..def_generics.params.len()
+        {
+            substs.push(Ty::Unknown);
+        }
+        Substs(substs.into())
     }
 
     pub fn unit() -> Self {
@@ -429,6 +506,21 @@ impl Ty {
             Ty::Ref(t, _) => Some(Ty::clone(t)),
             Ty::RawPtr(t, _) => Some(Ty::clone(t)),
             _ => None,
+        }
+    }
+
+    /// If this is a type with type parameters (an ADT or function), replaces
+    /// the `Substs` for these type parameters with the given ones. (So e.g. if
+    /// `self` is `Option<_>` and the substs contain `u32`, we'll have
+    /// `Option<u32>` afterwards.)
+    pub fn apply_substs(self, substs: Substs) -> Ty {
+        match self {
+            Ty::Adt { def_id, name, .. } => Ty::Adt {
+                def_id,
+                name,
+                substs,
+            },
+            _ => self,
         }
     }
 
