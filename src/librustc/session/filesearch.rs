@@ -18,6 +18,7 @@ pub enum FileMatch {
 
 // A module for searching for libraries
 
+#[derive(Clone)]
 pub struct FileSearch<'a> {
     sysroot: &'a Path,
     triple: &'a str,
