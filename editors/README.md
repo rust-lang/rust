@@ -9,7 +9,7 @@ $ cargo install-code
 $ rustup component add rust-src
 ```
 
-This will run `cargo install --packge ra_lsp_server` to install the server
+This will run `cargo install --package ra_lsp_server` to install the server
 binary into `~/.cargo/bin`, and then will build and install plugin from
 `editors/code`. See
 [this](https://github.com/rust-analyzer/rust-analyzer/blob/0199572a3d06ff66eeae85a2d2c9762996f0d2d8/crates/tools/src/main.rs#L150)
@@ -18,9 +18,9 @@ bugs!
 
 It's better to remove existing Rust plugins to avoid interference.
 
-## Rust Analyzer Specifc Features
+## Rust Analyzer Specific Features
 
-These features are implemented as extensions to the langauge server protocol.
+These features are implemented as extensions to the language server protocol.
 They are more experimental in nature and work only with VS Code.
 
 ### Syntax highlighting
@@ -36,7 +36,7 @@ symbols can be used to narrow down the search. Specifically,
 - `#Foo` searches for `Foo` type in the current workspace
 - `#foo#` searches for `foo` function in the current workspace
 - `#Foo*` searches for `Foo` type among dependencies, excluding `stdlib`
-- `#foo#*` seaches for `foo` function among dependencies.
+- `#foo#*` searches for `foo` function among dependencies.
 
 That is, `#` switches from "types" to all symbols, `*` switches from the current
 workspace to dependencies.
@@ -87,7 +87,7 @@ Some features trigger on typing certain characters:
 
 ### Code Actions (Assists)
 
-These are triggered in a particular context via lightbulb. We use custom code on
+These are triggered in a particular context via light bulb. We use custom code on
 the VS Code side to be able to position cursor.
 
 
@@ -196,7 +196,8 @@ use algo::{<|>visitor::{Visitor, visit}};
   falls back to heuristic name matching for other things for the time being.
 
 * **Completion**: completes paths, including dependencies and standard library.
-  Does not handle glob imports and macros. Completes fields and inherent methods
+  Does not handle glob imports and macros. Completes fields and inherent
+  methods.
 
 * **Outline** <kbd>alt+shift+o</kbd>
 
@@ -216,4 +217,14 @@ use algo::{<|>visitor::{Visitor, visit}};
 * **Diagnostics**
   - missing module for `mod foo;` with a fix to create `foo.rs`.
   - struct field shorthand
-  - unnessary braces in use item
+  - unnecessary braces in use item
+
+
+## Performance
+
+Rust Analyzer is expected to be pretty fast. Specifically, the initial analysis
+of the project (i.e, when you first invoke completion or symbols) typically
+takes dozen of seconds at most. After that, everything is supposed to be more or
+less instant. However currently all analysis results are kept in memory, so
+memory usage is pretty high. Working with `rust-lang/rust` repo, for example,
+needs about 5 gigabytes of ram.
