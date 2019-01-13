@@ -5112,6 +5112,9 @@ impl<'a> Resolver<'a> {
         }
         self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
+                if !speculative && entry.introduced_by_item {
+                    self.record_use(ident, TypeNS, binding, false);
+                }
                 Some(binding)
             } else {
                 let crate_id = if !speculative {
