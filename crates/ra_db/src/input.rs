@@ -53,6 +53,9 @@ pub struct CrateGraph {
     arena: FxHashMap<CrateId, CrateData>,
 }
 
+#[derive(Debug)]
+pub struct CyclicDependencies;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
@@ -94,12 +97,16 @@ impl CrateGraph {
         assert!(prev.is_none());
         crate_id
     }
-    pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
-        let mut visited = FxHashSet::default();
-        if self.dfs_find(from, to, &mut visited) {
-            panic!("Cycle dependencies found.")
+    pub fn add_dep(
+        &mut self,
+        from: CrateId,
+        name: SmolStr,
+        to: CrateId,
+    ) -> Result<(), CyclicDependencies> {
+        if self.dfs_find(from, to, &mut FxHashSet::default()) {
+            return Err(CyclicDependencies);
         }
-        self.arena.get_mut(&from).unwrap().add_dep(name, to)
+        Ok(self.arena.get_mut(&from).unwrap().add_dep(name, to))
     }
     pub fn is_empty(&self) -> bool {
         self.arena.is_empty()
@@ -136,35 +143,6 @@ impl CrateGraph {
             }
         }
         return false;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{CrateGraph, FxHashMap, FileId, SmolStr};
-
-    #[test]
-    #[should_panic]
-    fn it_should_painc_because_of_cycle_dependencies() {
-        let mut graph = CrateGraph::default();
-        let crate1 = graph.add_crate_root(FileId(1u32));
-        let crate2 = graph.add_crate_root(FileId(2u32));
-        let crate3 = graph.add_crate_root(FileId(3u32));
-        graph.add_dep(crate1, SmolStr::new("crate2"), crate2);
-        graph.add_dep(crate2, SmolStr::new("crate3"), crate3);
-        graph.add_dep(crate3, SmolStr::new("crate1"), crate1);
-    }
-
-    #[test]
-    fn it_works() {
-        let mut graph = CrateGraph {
-            arena: FxHashMap::default(),
-        };
-        let crate1 = graph.add_crate_root(FileId(1u32));
-        let crate2 = graph.add_crate_root(FileId(2u32));
-        let crate3 = graph.add_crate_root(FileId(3u32));
-        graph.add_dep(crate1, SmolStr::new("crate2"), crate2);
-        graph.add_dep(crate2, SmolStr::new("crate3"), crate3);
     }
 }
 
@@ -207,5 +185,41 @@ salsa::query_group! {
             type CrateGraphQuery;
             storage input;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CrateGraph, FileId, SmolStr};
+
+    #[test]
+    fn it_should_painc_because_of_cycle_dependencies() {
+        let mut graph = CrateGraph::default();
+        let crate1 = graph.add_crate_root(FileId(1u32));
+        let crate2 = graph.add_crate_root(FileId(2u32));
+        let crate3 = graph.add_crate_root(FileId(3u32));
+        assert!(graph
+            .add_dep(crate1, SmolStr::new("crate2"), crate2)
+            .is_ok());
+        assert!(graph
+            .add_dep(crate2, SmolStr::new("crate3"), crate3)
+            .is_ok());
+        assert!(graph
+            .add_dep(crate3, SmolStr::new("crate1"), crate1)
+            .is_err());
+    }
+
+    #[test]
+    fn it_works() {
+        let mut graph = CrateGraph::default();
+        let crate1 = graph.add_crate_root(FileId(1u32));
+        let crate2 = graph.add_crate_root(FileId(2u32));
+        let crate3 = graph.add_crate_root(FileId(3u32));
+        assert!(graph
+            .add_dep(crate1, SmolStr::new("crate2"), crate2)
+            .is_ok());
+        assert!(graph
+            .add_dep(crate2, SmolStr::new("crate3"), crate3)
+            .is_ok());
     }
 }
