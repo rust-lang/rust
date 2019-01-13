@@ -133,12 +133,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Struct(..) => "a struct",
             hir::ItemKind::Trait(..) => "a trait",
             hir::ItemKind::TraitAlias(..) => "a trait alias",
-            hir::ItemKind::GlobalAsm(..) => "an assembly blob",
             hir::ItemKind::Ty(..) => "a type alias",
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::Existential(..) => "an existential type",
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Impl(..)
             | hir::ItemKind::Use(..) => return,
         };
