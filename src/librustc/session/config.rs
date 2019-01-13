@@ -649,14 +649,14 @@ impl Options {
     }
 }
 
-// The type of entry function, so
-// users can have their own entry
-// functions
-#[derive(Copy, Clone, PartialEq)]
+// The type of entry function, so users can have their own entry functions
+#[derive(Copy, Clone, PartialEq, Hash, Debug)]
 pub enum EntryFnType {
     Main,
     Start,
 }
+
+impl_stable_hash_via_hash!(EntryFnType);
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
 pub enum CrateType {

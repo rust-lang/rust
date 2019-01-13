@@ -31,6 +31,7 @@ extern crate syntax_pos;
 #[macro_use] extern crate rustc_data_structures;
 
 use rustc::ty::TyCtxt;
+use rustc::hir::def_id::LOCAL_CRATE;
 
 pub mod link;
 pub mod codegen_backend;
@@ -42,11 +43,9 @@ pub mod symbol_names_test;
 /// that actually test that compilation succeeds without
 /// reporting an error.
 pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
-    if let Some((id, span, _)) = *tcx.sess.entry_fn.borrow() {
-        let main_def_id = tcx.hir().local_def_id(id);
-
-        if tcx.has_attr(main_def_id, "rustc_error") {
-            tcx.sess.span_fatal(span, "compilation successful");
+    if let Some((def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
+        if tcx.has_attr(def_id, "rustc_error") {
+            tcx.sess.span_fatal(tcx.def_span(def_id), "compilation successful");
         }
     }
 }

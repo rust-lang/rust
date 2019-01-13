@@ -1,5 +1,5 @@
 use hir::map as hir_map;
-use hir::def_id::{CRATE_DEF_INDEX};
+use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use session::{config, Session};
 use session::config::EntryFnType;
 use syntax::ast::NodeId;
@@ -8,6 +8,8 @@ use syntax::entry::EntryPointType;
 use syntax_pos::Span;
 use hir::{Item, ItemKind, ImplItem, TraitItem};
 use hir::itemlikevisit::ItemLikeVisitor;
+use ty::TyCtxt;
+use ty::query::Providers;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,
@@ -45,36 +47,34 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-pub fn find_entry_point(session: &Session,
-                        hir_map: &hir_map::Map<'_>,
-                        crate_name: &str) {
-    let any_exe = session.crate_types.borrow().iter().any(|ty| {
+fn entry_fn(tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
+    assert_eq!(cnum, LOCAL_CRATE);
+
+    let any_exe = tcx.sess.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateType::Executable
     });
     if !any_exe {
         // No need to find a main function
-        session.entry_fn.set(None);
-        return
+        return None;
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&hir_map.krate().attrs, "no_main") {
-        session.entry_fn.set(None);
-        return
+    if attr::contains_name(&tcx.hir().krate().attrs, "no_main") {
+        return None;
     }
 
     let mut ctxt = EntryContext {
-        session,
-        map: hir_map,
+        session: tcx.sess,
+        map: tcx.hir(),
         main_fn: None,
         attr_main_fn: None,
         start_fn: None,
         non_main_fns: Vec::new(),
     };
 
-    hir_map.krate().visit_all_item_likes(&mut ctxt);
+    tcx.hir().krate().visit_all_item_likes(&mut ctxt);
 
-    configure_main(&mut ctxt, crate_name);
+    configure_main(tcx, &ctxt)
 }
 
 // Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
@@ -135,43 +135,58 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
             }
-        },
-        EntryPointType::None => ()
+        }
+        EntryPointType::None => (),
     }
 }
 
-fn configure_main(this: &mut EntryContext<'_, '_>, crate_name: &str) {
-    if let Some((node_id, span)) = this.start_fn {
-        this.session.entry_fn.set(Some((node_id, span, EntryFnType::Start)));
-    } else if let Some((node_id, span)) = this.attr_main_fn {
-        this.session.entry_fn.set(Some((node_id, span, EntryFnType::Main)));
-    } else if let Some((node_id, span)) = this.main_fn {
-        this.session.entry_fn.set(Some((node_id, span, EntryFnType::Main)));
+fn configure_main(
+    tcx: TyCtxt<'_, '_, '_>,
+    visitor: &EntryContext<'_, '_>,
+) -> Option<(DefId, EntryFnType)> {
+    if let Some((node_id, _)) = visitor.start_fn {
+        Some((tcx.hir().local_def_id(node_id), EntryFnType::Start))
+    } else if let Some((node_id, _)) = visitor.attr_main_fn {
+        Some((tcx.hir().local_def_id(node_id), EntryFnType::Main))
+    } else if let Some((node_id, _)) = visitor.main_fn {
+        Some((tcx.hir().local_def_id(node_id), EntryFnType::Main))
     } else {
         // No main function
-        this.session.entry_fn.set(None);
-        let mut err = struct_err!(this.session, E0601,
-            "`main` function not found in crate `{}`", crate_name);
-        if !this.non_main_fns.is_empty() {
+        let mut err = struct_err!(tcx.sess, E0601,
+            "`main` function not found in crate `{}`", tcx.crate_name(LOCAL_CRATE));
+        if !visitor.non_main_fns.is_empty() {
             // There were some functions named 'main' though. Try to give the user a hint.
             err.note("the main function must be defined at the crate level \
                       but you have one or more functions named 'main' that are not \
                       defined at the crate level. Either move the definition or \
                       attach the `#[main]` attribute to override this behavior.");
-            for &(_, span) in &this.non_main_fns {
+            for &(_, span) in &visitor.non_main_fns {
                 err.span_note(span, "here is a function named 'main'");
             }
             err.emit();
-            this.session.abort_if_errors();
+            tcx.sess.abort_if_errors();
         } else {
-            if let Some(ref filename) = this.session.local_crate_source_file {
+            if let Some(ref filename) = tcx.sess.local_crate_source_file {
                 err.note(&format!("consider adding a `main` function to `{}`", filename.display()));
             }
-            if this.session.teach(&err.get_code().unwrap()) {
+            if tcx.sess.teach(&err.get_code().unwrap()) {
                 err.note("If you don't know the basics of Rust, you can go look to the Rust Book \
                           to get started: https://doc.rust-lang.org/book/");
             }
             err.emit();
         }
+
+        None
     }
+}
+
+pub fn find_entry_point(tcx: TyCtxt<'_, '_, '_>) -> Option<(DefId, EntryFnType)> {
+    tcx.entry_fn(LOCAL_CRATE)
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers {
+        entry_fn,
+        ..*providers
+    };
 }

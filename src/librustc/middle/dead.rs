@@ -409,7 +409,7 @@ fn create_and_seed_worklist<'a, 'tcx>(
         }
     }).chain(
         // Seed entry point
-        tcx.sess.entry_fn.borrow().map(|(id, _, _)| id)
+        tcx.entry_fn(LOCAL_CRATE).map(|(def_id, _)| tcx.hir().as_local_node_id(def_id).unwrap())
     ).collect::<Vec<_>>();
 
     // Seed implemented trait items

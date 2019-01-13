@@ -14,7 +14,7 @@ use llvm;
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
     DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::def_id::{DefId, CrateNum};
+use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::subst::{Substs, UnpackedKind};
 
 use abi::Abi;
@@ -290,9 +290,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        let local_id = self.tcx().hir().as_local_node_id(def_id);
-        if let Some((id, _, _)) = *self.sess().entry_fn.borrow() {
-            if local_id == Some(id) {
+        if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
+            if id == def_id {
                 flags |= DIFlags::FlagMainSubprogram;
             }
         }

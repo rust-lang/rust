@@ -1,6 +1,6 @@
 use monomorphize::Instance;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::OptLevel;
 use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts, GeneratorSubsts};
 use rustc::ty::subst::Substs;
@@ -75,8 +75,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
-                let entry_def_id =
-                    tcx.sess.entry_fn.borrow().map(|(id, _, _)| tcx.hir().local_def_id(id));
+                let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||

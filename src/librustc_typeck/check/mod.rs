@@ -132,7 +132,8 @@ use std::ops::{self, Deref};
 use std::slice;
 
 use require_c_abi_if_variadic;
-use session::{CompileIncomplete, config, Session};
+use session::{CompileIncomplete, Session};
+use session::config::EntryFnType;
 use TypeAndSubsts;
 use lint;
 use util::captures::Captures;
@@ -1163,19 +1164,18 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = fcx.tcx.lang_items().termination() {
-        if let Some((id, _, entry_type)) = *fcx.tcx.sess.entry_fn.borrow() {
-            if id == fn_id {
-                if let config::EntryFnType::Main = entry_type {
-                    let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
-                    let trait_ref = ty::TraitRef::new(term_id, substs);
-                    let return_ty_span = decl.output.span();
-                    let cause = traits::ObligationCause::new(
-                        return_ty_span, fn_id, ObligationCauseCode::MainFunctionType);
+        if let Some((def_id, EntryFnType::Main)) = fcx.tcx.entry_fn(LOCAL_CRATE) {
+            let main_id = fcx.tcx.hir().as_local_node_id(def_id).unwrap();
+            if main_id == fn_id {
+                let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
+                let trait_ref = ty::TraitRef::new(term_id, substs);
+                let return_ty_span = decl.output.span();
+                let cause = traits::ObligationCause::new(
+                    return_ty_span, fn_id, ObligationCauseCode::MainFunctionType);
 
-                    inherited.register_predicate(
-                        traits::Obligation::new(
-                            cause, param_env, trait_ref.to_predicate()));
-                }
+                inherited.register_predicate(
+                    traits::Obligation::new(
+                        cause, param_env, trait_ref.to_predicate()));
             }
         }
     }
