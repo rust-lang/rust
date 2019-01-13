@@ -109,6 +109,8 @@ LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:54:9
    |
+LL |     match (Point { x: 1, y: 2 }) {
+   |           ---------------------- this match expression has type `Point<{integer}>`
 LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
    |         ^^^^^^^^^^^^^^^^^^^^ expected integer, found f32
    |
@@ -118,6 +120,8 @@ LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:59:9
    |
+LL |     match (Point { x: 1, y: 2 }) {
+   |           ---------------------- this match expression has type `Point<{integer}>`
 LL |         PointF { .. } => {} //~ ERROR mismatched types
    |         ^^^^^^^^^^^^^ expected integer, found f32
    |
@@ -127,6 +131,8 @@ LL |         PointF { .. } => {} //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:67:9
    |
+LL |     match (Pair { x: 1, y: 2 }) {
+   |           --------------------- this match expression has type `Pair<{integer}, {integer}>`
 LL |         PairF::<u32> { .. } => {} //~ ERROR mismatched types
    |         ^^^^^^^^^^^^^^^^^^^ expected integer, found f32
    |

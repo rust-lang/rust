@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/match-tag-unary.rs:4:43
    |
 LL | fn main() { let x: A = A::A(0); match x { B::B(y) => { } } } //~ ERROR mismatched types
-   |                                           ^^^^^^^ expected enum `A`, found enum `B`
+   |                                       -   ^^^^^^^ expected enum `A`, found enum `B`
+   |                                       |
+   |                                       this match expression has type `A`
    |
    = note: expected type `A`
               found type `B`

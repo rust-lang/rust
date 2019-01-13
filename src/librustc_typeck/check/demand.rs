@@ -1,6 +1,6 @@
 use check::FnCtxt;
 use rustc::infer::InferOk;
-use rustc::traits::ObligationCause;
+use rustc::traits::{ObligationCause, ObligationCauseCode};
 
 use syntax::ast;
 use syntax::util::parser::PREC_POSTFIX;
@@ -65,6 +65,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
     }
+
+    pub fn demand_eqtype_pat(
+        &self,
+        cause_span: Span,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        match_expr_span: Option<Span>,
+    ) {
+        let cause = if let Some(span) = match_expr_span {
+            self.cause(
+                cause_span,
+                ObligationCauseCode::MatchExpressionArmPattern { span, ty: expected },
+            )
+        } else {
+            self.misc(cause_span)
+        };
+        self.demand_eqtype_with_origin(&cause, expected, actual).map(|mut err| err.emit());
+    }
+
 
     pub fn demand_coerce(&self,
                          expr: &hir::Expr,
