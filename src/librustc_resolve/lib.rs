@@ -2017,16 +2017,14 @@ impl<'a> Resolver<'a> {
         if ident.name == keywords::Invalid.name() {
             return Some(LexicalScopeBinding::Def(Def::Err));
         }
-        if ns == TypeNS {
-            ident.span = if ident.name == keywords::SelfUpper.name() {
-                // FIXME(jseyfried) improve `Self` hygiene
-                ident.span.with_ctxt(SyntaxContext::empty())
-            } else {
-                ident.span.modern()
-            }
+        ident.span = if ident.name == keywords::SelfUpper.name() {
+            // FIXME(jseyfried) improve `Self` hygiene
+            ident.span.with_ctxt(SyntaxContext::empty())
+        } else if ns == TypeNS {
+            ident.span.modern()
         } else {
-            ident = ident.modern_and_legacy();
-        }
+            ident.span.modern_and_legacy()
+        };
 
         // Walk backwards up the ribs in scope.
         let record_used = record_used_id.is_some();
