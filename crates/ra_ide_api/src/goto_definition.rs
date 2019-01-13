@@ -13,8 +13,11 @@ pub(crate) fn goto_definition(
     let file = db.source_file(position.file_id);
     let syntax = file.syntax();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-        let navs = reference_definition(db, position.file_id, name_ref)?;
-        return Ok(Some(RangeInfo::new(name_ref.syntax().range(), navs)));
+        let navs = reference_definition(db, position.file_id, name_ref)?.to_vec();
+        return Ok(Some(RangeInfo::new(
+            name_ref.syntax().range(),
+            navs.to_vec(),
+        )));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
         let navs = ctry!(name_definition(db, position.file_id, name)?);
@@ -23,11 +26,27 @@ pub(crate) fn goto_definition(
     Ok(None)
 }
 
+pub(crate) enum ReferenceResult {
+    Exact(NavigationTarget),
+    Approximate(Vec<NavigationTarget>),
+}
+
+impl ReferenceResult {
+    fn to_vec(self) -> Vec<NavigationTarget> {
+        use self::ReferenceResult::*;
+        match self {
+            Exact(target) => vec![target],
+            Approximate(vec) => vec,
+        }
+    }
+}
+
 pub(crate) fn reference_definition(
     db: &RootDatabase,
     file_id: FileId,
     name_ref: &ast::NameRef,
-) -> Cancelable<Vec<NavigationTarget>> {
+) -> Cancelable<ReferenceResult> {
+    use self::ReferenceResult::*;
     if let Some(fn_descr) =
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())?
     {
@@ -35,7 +54,7 @@ pub(crate) fn reference_definition(
         // First try to resolve the symbol locally
         if let Some(entry) = scope.resolve_local_name(name_ref) {
             let nav = NavigationTarget::from_scope_entry(file_id, &entry);
-            return Ok(vec![nav]);
+            return Ok(Exact(nav));
         };
     }
     // Then try module name resolution
@@ -51,7 +70,7 @@ pub(crate) fn reference_definition(
             let resolved = module.resolve_path(db, &path)?;
             if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
                 if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)?)? {
-                    return Ok(vec![target]);
+                    return Ok(Exact(target));
                 }
             }
         }
@@ -62,7 +81,7 @@ pub(crate) fn reference_definition(
         .into_iter()
         .map(NavigationTarget::from_symbol)
         .collect();
-    Ok(navs)
+    Ok(Approximate(navs))
 }
 
 fn name_definition(

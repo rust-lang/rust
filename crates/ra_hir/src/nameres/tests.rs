@@ -235,7 +235,9 @@ fn item_map_across_crates() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate);
+    crate_graph
+        .add_dep(main_crate, "test_crate".into(), lib_crate)
+        .unwrap();
 
     db.set_crate_graph(crate_graph);
 
@@ -288,7 +290,9 @@ fn import_across_source_roots() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate);
+    crate_graph
+        .add_dep(main_crate, "test_crate".into(), lib_crate)
+        .unwrap();
 
     db.set_crate_graph(crate_graph);
 
@@ -330,7 +334,9 @@ fn reexport_across_crates() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate);
+    crate_graph
+        .add_dep(main_crate, "test_crate".into(), lib_crate)
+        .unwrap();
 
     db.set_crate_graph(crate_graph);
 

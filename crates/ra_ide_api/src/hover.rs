@@ -16,9 +16,16 @@ pub(crate) fn hover(
 
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        let navs = crate::goto_definition::reference_definition(db, position.file_id, name_ref)?;
-        for nav in navs {
-            res.extend(doc_text_for(db, nav)?)
+        use crate::goto_definition::{ReferenceResult::*, reference_definition};
+        let ref_result = reference_definition(db, position.file_id, name_ref)?;
+        match ref_result {
+            Exact(nav) => res.extend(doc_text_for(db, nav)?),
+            Approximate(navs) => {
+                res.push("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.  \nThese methods were found instead:".to_string());
+                for nav in navs {
+                    res.extend(doc_text_for(db, nav)?)
+                }
+            }
         }
         if !res.is_empty() {
             range = Some(name_ref.syntax().range())
@@ -34,7 +41,7 @@ pub(crate) fn hover(
             file_id: position.file_id,
             range: node.range(),
         };
-        res.extend(type_of(db, frange)?);
+        res.extend(type_of(db, frange)?.map(Into::into));
         range = Some(node.range());
     };
 
