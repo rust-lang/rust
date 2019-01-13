@@ -1555,10 +1555,10 @@ if (!DOMTokenList.prototype.remove) {
                 //              (String) description,
                 //              (Number | null) the parent path index to `paths`]
                 //              (Object | null) the type of the function (if any)
-                var items = rawSearchIndex[crate].items;
+                var items = rawSearchIndex[crate].i;
                 // an array of [(Number) item type,
                 //              (String) name]
-                var paths = rawSearchIndex[crate].paths;
+                var paths = rawSearchIndex[crate].p;
 
                 // convert `paths` into an object form
                 var len = paths.length;
