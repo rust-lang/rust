@@ -1243,8 +1243,6 @@ where
             // tcx available.
             time(sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
 
-            time(sess, "loop checking", || loops::check_crate(tcx));
-
             time(sess, "looking for plugin registrar", || {
                 plugin::build::find_plugin_registrar(tcx)
             });
@@ -1252,6 +1250,8 @@ where
             time(sess, "looking for derive registrar", || {
                 proc_macro_decls::find(tcx)
             });
+
+            time(sess, "loop checking", || loops::check_crate(tcx));
 
             time(sess, "attribute checking", || {
                 hir::check_attr::check_crate(tcx)
