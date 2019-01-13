@@ -4,72 +4,96 @@ To install experimental VS Code plugin:
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
 $ cargo install-code
+
+# for stdlib support
+$ rustup component add rust-src
 ```
 
-This will run `cargo install --packge ra_lsp_server` to install the
-server binary into `~/.cargo/bin`, and then will build and install
-plugin from `editors/code`. See
-[this](https://github.com/matklad/rust-analyzer/blob/cc76b0d31d8ba013c499dd3a4ca69b37004795e6/crates/tools/src/main.rs#L192)
-for details
+This will run `cargo install --packge ra_lsp_server` to install the server
+binary into `~/.cargo/bin`, and then will build and install plugin from
+`editors/code`. See
+[this](https://github.com/rust-analyzer/rust-analyzer/blob/0199572a3d06ff66eeae85a2d2c9762996f0d2d8/crates/tools/src/main.rs#L150)
+for details. The installation is expected to *just work*, if it doesn't, report
+bugs!
 
 It's better to remove existing Rust plugins to avoid interference.
 
-### Features:
+## Rust Analyzer Specifc Features
 
-* syntax highlighting (LSP does not have API for it, so impl is hacky
-  and sometimes fall-backs to the horrible built-in highlighting)
+These features are implemented as extensions to the langauge server protocol.
+They are more experimental in nature and work only with VS Code.
 
-* **Go to symbol in workspace** (`ctrl+t`)
-  - `#Foo` searches for `Foo` type in the current workspace
-  - `#foo#` searches for `foo` function in the current workspace
-  - `#Foo*` searches for `Foo` type among dependencies, excluding `stdlib`
-  - Sorry for a weired UI, neither LSP, not VSCode have any sane API for filtering! :)
+### Syntax highlighting
 
-* **Go to symbol in file** (`alt+shift+o`)
+It overrides built-in highlighting, and works only with a specific theme
+(zenburn). `ra-lsp.highlightingOn` setting can be used to disable it.
 
-* **Go to definition** ("correct" for `mod foo;` decls, approximate for other things).
+### Go to symbol in workspace <kbd>ctrl+t</kbd>
 
-* commands (`ctrl+shift+p` or keybindings)
-  - **Show Rust Syntax Tree** (use it to verify that plugin works)
-  - **Rust Extend Selection**. Extends the current selection to the
-    encompassing syntactic construct (expression, statement, item,
-    module, etc). It works with multiple cursors. Do bind this command
-    to a key, its super-useful!
-  - **Rust Matching Brace**. If the cursor is on any brace
-    (`<>(){}[]`) which is a part of a brace-pair, moves cursor to the
-    matching brace.
-  - **Rust Parent Module**. Navigate to the parent module of the current module
-  - **Rust Join Lines**. Join selected lines into one, smartly fixing
-    up whitespace and trailing commas.
-  - **Run test at caret**. When cursor is inside a function marked
-    `#[test]`, this action runs this specific test. If the cursor is
-    outside of the test function, this re-runs the last test. Do bind
-    this to a shortcut!
-  - **Format document**. Formats the current file with rustfmt.
-    Rustfmt must be installed separately with `rustup component add rustfmt`.
+It mostly works on top of the built-in LSP functionality, however `#` and `*`
+symbols can be used to narrow down the search. Specifically,
 
-* Typing assists
-  - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression.
-  - Enter inside comments continues comment (`<|>` signifies cursor position):
+- `#Foo` searches for `Foo` type in the current workspace
+- `#foo#` searches for `foo` function in the current workspace
+- `#Foo*` searches for `Foo` type among dependencies, excluding `stdlib`
+- `#foo#*` seaches for `foo` function among dependencies.
 
-```
-/// Docs<|>
-fn foo() {}
-```
+That is, `#` switches from "types" to all symbols, `*` switches from the current
+workspace to dependencies.
 
-```
-/// Docs
-/// <|>
-fn foo() {}
-```
+### Commands <kbd>ctrl+shift+p</kbd>
 
-* code actions (use `ctrl+.` to activate).
+#### Show Rust Syntax Tree
 
+Shows the parse tree of the current file. It exists mostly for debugging
+rust-analyzer itself.
+
+#### Extend Selection
+
+Extends the current selection to the encompassing syntactic construct
+(expression, statement, item, module, etc). It works with multiple cursors. Do
+bind this command to a key, its super-useful! Expected to be upstreamed to LSP soonish:
+https://github.com/Microsoft/language-server-protocol/issues/613
+
+#### Matching Brace
+
+If the cursor is on any brace (`<>(){}[]`) which is a part of a brace-pair,
+moves cursor to the matching brace. It uses the actual parser to determine
+braces, so it won't confuse generics with comparisons.
+
+#### Parent Module
+
+Navigates to the parent module of the current module.
+
+#### Join Lines
+
+Join selected lines into one, smartly fixing up whitespace and trailing commas.
+
+#### Run
+
+Shows popup suggesting to run a test/benchmark/binary **at the current cursor
+location**. Super useful for repeatedly running just a single test. Do bind this
+to a shortcut!
+
+
+### On Typing Assists
+
+Some features trigger on typing certain characters:
+
+- typing `let =` tries to smartly add `;` if `=` is followed by an existing expression.
+- Enter inside comments automatically inserts `///`
+- typing `.` in a chain method call auto-indents
+
+
+### Code Actions (Assists)
+
+These are triggered in a particular context via lightbulb. We use custom code on
+the VS Code side to be able to position cursor.
 
 
 - Flip `,`
 
-```
+```rust
 // before:
 fn foo(x: usize,<|> dim: (usize, usize))
 // after:
@@ -78,7 +102,7 @@ fn foo(dim: (usize, usize), x: usize)
 
 - Add `#[derive]`
 
-```
+```rust
 // before:
 struct Foo {
     <|>x: i32
@@ -92,7 +116,7 @@ struct Foo {
 
 - Add `impl`
 
-```
+```rust
 // before:
 struct Foo<'a, T: Debug> {
     <|>t: T
@@ -106,3 +130,90 @@ impl<'a, T: Debug> Foo<'a, T> {
     <|>
 }
 ```
+
+- Change visibility
+
+```rust
+// before:
+fn<|> foo() {}
+
+// after
+pub(crate) fn foo() {}
+```
+
+- Introduce variable:
+
+```rust
+// before:
+fn foo() {
+    foo(<|>1 + 1<|>);
+}
+
+// after:
+fn foo() {
+    let var_name = 1 + 1;
+    foo(var_name);
+}
+```
+
+- Replace if-let with match:
+
+```rust
+// before:
+impl VariantData {
+    pub fn is_struct(&self) -> bool {
+        if <|>let VariantData::Struct(..) = *self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+// after:
+impl VariantData {
+    pub fn is_struct(&self) -> bool {
+        <|>match *self {
+            VariantData::Struct(..) => true,
+            _ => false,
+        }
+    }
+}
+```
+
+- Split import
+
+```rust
+// before:
+use algo:<|>:visitor::{Visitor, visit};
+//after:
+use algo::{<|>visitor::{Visitor, visit}};
+```
+
+## LSP features
+
+* **Go to definition**: works correctly for local variables and some paths,
+  falls back to heuristic name matching for other things for the time being.
+
+* **Completion**: completes paths, including dependencies and standard library.
+  Does not handle glob imports and macros. Completes fields and inherent methods
+
+* **Outline** <kbd>alt+shift+o</kbd>
+
+* **Signature Info**
+
+* **Format document**. Formats the current file with rustfmt. Rustfmt must be
+  installed separately with `rustup component add rustfmt`.
+
+* **Hover** shows types of expressions and docstings
+
+* **Rename** works for local variables
+
+* **Code Lens** for running tests
+
+* **Folding**
+
+* **Diagnostics**
+  - missing module for `mod foo;` with a fix to create `foo.rs`.
+  - struct field shorthand
+  - unnessary braces in use item
