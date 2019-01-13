@@ -191,7 +191,7 @@ declare_features! (
     (active, slice_patterns, "1.0.0", Some(23121), None),
 
     // Allows the definition of `const` functions with some advanced features.
-    (active, const_fn, "1.2.0", Some(24111), None),
+    (active, const_fn, "1.2.0", Some(57563), None),
 
     // Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),

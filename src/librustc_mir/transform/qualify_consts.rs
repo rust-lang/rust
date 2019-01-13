@@ -901,7 +901,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                         err.emit();
                                     }
                                 } else {
-                                    // FIXME(#24111): remove this check when const fn stabilizes.
+                                    // FIXME(#57563): remove this check when const fn stabilizes.
                                     let (msg, note) = if let UnstableFeatures::Disallow =
                                             self.tcx.sess.opts.unstable_features {
                                         (format!("calls in {}s are limited to \

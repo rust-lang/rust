@@ -336,12 +336,11 @@ fn map_lib_features(base_src_path: &Path,
                     level: Status::Unstable,
                     since: "None".to_owned(),
                     has_gate_test: false,
-                    // Whether there is a common tracking issue
-                    // for these feature gates remains an open question
-                    // https://github.com/rust-lang/rust/issues/24111#issuecomment-340283184
-                    // But we take 24111 otherwise they will be shown as
-                    // "internal to the compiler" which they are not.
-                    tracking_issue: Some(24111),
+                    // FIXME(#57563): #57563 is now used as a common tracking issue,
+                    // although we would like to have specific tracking
+                    // issues for each `rustc_const_unstable` in the
+                    // future.
+                    tracking_issue: Some(57563),
                 };
                 mf(Ok((feature_name, feature)), file, i + 1);
                 continue;
