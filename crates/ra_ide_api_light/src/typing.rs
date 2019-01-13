@@ -228,6 +228,38 @@ fn foo() {
     }
 
     #[test]
+    fn indents_new_chain_call_with_semi() {
+        type_dot(
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                <|>;
+            }
+            ",
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .;
+            }
+            ",
+        );
+        type_dot(
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    <|>;
+            }
+            ",
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .;
+            }
+            ",
+        )
+    }
+
+    #[test]
     fn indents_continued_chain_call() {
         type_dot(
             r"
