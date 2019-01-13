@@ -227,6 +227,9 @@ pub enum Ty {
     /// A tuple type.  For example, `(i32, bool)`.
     Tuple(Arc<[Ty]>),
 
+    /// A array type.  For example, `[i32]`.
+    Array(Arc<[Ty]>),
+
     // The projection of an associated type.  For example,
     // `<T as Trait<..>>::N`.pub
     // Projection(ProjectionTy),
@@ -410,6 +413,16 @@ impl fmt::Display for Ty {
                 } else {
                     join(ts.iter())
                         .surround_with("(", ")")
+                        .separator(", ")
+                        .to_fmt(f)
+                }
+            }
+            Ty::Array(ts) => {
+                if ts.len() == 1 {
+                    write!(f, "[{},]", ts[0])
+                } else {
+                    join(ts.iter())
+                        .surround_with("[", "]")
                         .separator(", ")
                         .to_fmt(f)
                 }
@@ -1101,7 +1114,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 Ty::Tuple(Arc::from(ty_vec))
-            }
+            },
+            Expr::Array { exprs } => {
+                let mut ty_vec = Vec::with_capacity(exprs.len());
+                for arg in exprs.iter() {
+                    ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
+                }
+
+                Ty::Array(Arc::from(ty_vec))
+            },
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => Ty::Bool,
                 Literal::String(..) => Ty::Ref(Arc::new(Ty::Str), Mutability::Shared),
