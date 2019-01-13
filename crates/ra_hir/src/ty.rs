@@ -1054,25 +1054,34 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<DefId>) {
-        let path = if let Some(path) = path {
-            path
-        } else {
-            return (Ty::Unknown, None);
+        let path = match path {
+            Some(path) => path,
+            None => return (Ty::Unknown, None),
         };
-        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path).take_types() {
-            def_id
-        } else {
-            return (Ty::Unknown, None);
+        let def_id = match self.module.resolve_path(self.db, &path).take_types() {
+            Some(def_id) => def_id,
+            _ => return (Ty::Unknown, None),
         };
+        // TODO remove the duplication between here and `Ty::from_path`?
+        // TODO provide generics of function
+        let generics = Generics::default();
+        let substs = Ty::substs_from_path(
+            self.db,
+            &self.module,
+            self.impl_block.as_ref(),
+            &generics,
+            path,
+            def_id,
+        );
         match def_id.resolve(self.db) {
             Def::Struct(s) => {
                 let ty = type_for_struct(self.db, s);
-                let ty = self.insert_type_vars(ty);
+                let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(def_id))
             }
             Def::EnumVariant(ev) => {
                 let ty = type_for_enum_variant(self.db, ev);
-                let ty = self.insert_type_vars(ty);
+                let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(def_id))
             }
             _ => (Ty::Unknown, None),
