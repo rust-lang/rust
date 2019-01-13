@@ -2969,7 +2969,11 @@ impl AstNode for TupleExpr {
 }
 
 
-impl TupleExpr {}
+impl TupleExpr {
+    pub fn exprs(&self) -> impl Iterator<Item = &Expr> {
+        super::children(self)
+    }
+}
 
 // TuplePat
 #[derive(Debug, PartialEq, Eq, Hash)]

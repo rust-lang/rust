@@ -1040,6 +1040,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 _ => Ty::Unknown,
             },
+            Expr::Tuple { exprs } => {
+                let mut ty_vec = Vec::with_capacity(exprs.len());
+                for arg in exprs.iter() {
+                    ty_vec.push(self.infer_expr(*arg, &Expectation::none())?);
+                }
+
+                Ty::Tuple(Arc::from(ty_vec))
+            }
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);

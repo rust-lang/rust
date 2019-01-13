@@ -1,0 +1,27 @@
+[9; 10) 'x': &str
+[18; 19) 'y': isize
+[28; 214) '{     ...d"); }': ()
+[38; 39) 'a': (u32, &str)
+[55; 63) '(1, "a")': (u32, &str)
+[56; 57) '1': u32
+[59; 62) '"a"': &str
+[73; 74) 'b': ((u32, &str), &str)
+[77; 83) '(a, x)': ((u32, &str), &str)
+[78; 79) 'a': (u32, &str)
+[81; 82) 'x': &str
+[93; 94) 'c': (isize, &str)
+[97; 103) '(y, x)': (isize, &str)
+[98; 99) 'y': isize
+[101; 102) 'x': &str
+[113; 114) 'd': ((isize, &str), &str)
+[117; 123) '(c, x)': ((isize, &str), &str)
+[118; 119) 'c': (isize, &str)
+[121; 122) 'x': &str
+[177; 178) 'e': ([unknown], [unknown])
+[181; 189) '(1, "e")': ([unknown], [unknown])
+[182; 183) '1': [unknown]
+[185; 188) '"e"': [unknown]
+[199; 200) 'f': (([unknown], [unknown]), [unknown])
+[203; 211) '(e, "d")': (([unknown], [unknown]), [unknown])
+[204; 205) 'e': ([unknown], [unknown])
+[207; 210) '"d"': [unknown]
