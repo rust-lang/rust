@@ -1340,13 +1340,15 @@ assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($Sel
 "::MIN, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
+                #[cfg(stage0)]
                 let (a, b) = unsafe {
-                    intrinsics::add_with_overflow(self as $ActualT,
-                                                  rhs as $ActualT)
+                    intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT)
                 };
+                #[cfg(not(stage0))]
+                let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
                 (a as Self, b)
             }
         }
@@ -1369,13 +1371,15 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($Sel
 "::MAX, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
+                #[cfg(stage0)]
                 let (a, b) = unsafe {
-                    intrinsics::sub_with_overflow(self as $ActualT,
-                                                  rhs as $ActualT)
+                    intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT)
                 };
+                #[cfg(not(stage0))]
+                let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
                 (a as Self, b)
             }
         }
@@ -1396,13 +1400,15 @@ assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
+                #[cfg(stage0)]
                 let (a, b) = unsafe {
-                    intrinsics::mul_with_overflow(self as $ActualT,
-                                                  rhs as $ActualT)
+                    intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT)
                 };
+                #[cfg(not(stage0))]
+                let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
                 (a as Self, b)
             }
         }
@@ -1585,7 +1591,7 @@ assert_eq!(0x1i32.overflowing_shl(36), (0x10, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
@@ -1609,7 +1615,7 @@ assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
@@ -3213,13 +3219,15 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
 assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
+                #[cfg(stage0)]
                 let (a, b) = unsafe {
-                    intrinsics::add_with_overflow(self as $ActualT,
-                                                  rhs as $ActualT)
+                    intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT)
                 };
+                #[cfg(not(stage0))]
+                let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
                 (a as Self, b)
             }
         }
@@ -3243,13 +3251,15 @@ assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT),
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
+                #[cfg(stage0)]
                 let (a, b) = unsafe {
-                    intrinsics::sub_with_overflow(self as $ActualT,
-                                                  rhs as $ActualT)
+                    intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT)
                 };
+                #[cfg(not(stage0))]
+                let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
                 (a as Self, b)
             }
         }
@@ -3272,13 +3282,15 @@ $EndFeature, "
         /// assert_eq!(1_000_000_000u32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_unstable(feature = "const_int_overflowing")]
+        #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
         #[inline]
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
+            #[cfg(stage0)]
             let (a, b) = unsafe {
-                intrinsics::mul_with_overflow(self as $ActualT,
-                                              rhs as $ActualT)
+                intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT)
             };
+            #[cfg(not(stage0))]
+            let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
         }
 
@@ -3436,7 +3448,7 @@ Basic usage
 assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
@@ -3461,7 +3473,7 @@ Basic usage
 assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_overflowing"))]
             #[inline]
             pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))

@@ -374,6 +374,9 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool 
         | "min_align_of"
         | "needs_drop"
         // Arithmetic:
+        | "add_with_overflow" // ~> .overflowing_add
+        | "sub_with_overflow" // ~> .overflowing_sub
+        | "mul_with_overflow" // ~> .overflowing_mul
         | "overflowing_add" // ~> .wrapping_add
         | "overflowing_sub" // ~> .wrapping_sub
         | "overflowing_mul" // ~> .wrapping_mul

@@ -46,25 +46,37 @@ macro_rules! impl_full_ops {
     ($($ty:ty: add($addfn:path), mul/div($bigty:ident);)*) => (
         $(
             impl FullOps for $ty {
+                #[cfg(stage0)]
                 fn full_add(self, other: $ty, carry: bool) -> (bool, $ty) {
-                    // this cannot overflow, the output is between 0 and 2*2^nbits - 1
-                    // FIXME will LLVM optimize this into ADC or similar???
+                    // This cannot overflow; the output is between `0` and `2 * 2^nbits - 1`.
+                    // FIXME: will LLVM optimize this into ADC or similar?
                     let (v, carry1) = unsafe { intrinsics::add_with_overflow(self, other) };
                     let (v, carry2) = unsafe {
                         intrinsics::add_with_overflow(v, if carry {1} else {0})
                     };
                     (carry1 || carry2, v)
                 }
+                #[cfg(not(stage0))]
+                fn full_add(self, other: $ty, carry: bool) -> (bool, $ty) {
+                    // This cannot overflow; the output is between `0` and `2 * 2^nbits - 1`.
+                    // FIXME: will LLVM optimize this into ADC or similar?
+                    let (v, carry1) = intrinsics::add_with_overflow(self, other);
+                    let (v, carry2) = intrinsics::add_with_overflow(v, if carry {1} else {0});
+                    (carry1 || carry2, v)
+                }
 
                 fn full_mul(self, other: $ty, carry: $ty) -> ($ty, $ty) {
-                    // this cannot overflow, the output is between 0 and 2^nbits * (2^nbits - 1)
+                    // This cannot overflow;
+                    // the output is between `0` and `2^nbits * (2^nbits - 1)`.
+                    // FIXME: will LLVM optimize this into ADC or similar?
                     let nbits = mem::size_of::<$ty>() * 8;
                     let v = (self as $bigty) * (other as $bigty) + (carry as $bigty);
                     ((v >> nbits) as $ty, v as $ty)
                 }
 
                 fn full_mul_add(self, other: $ty, other2: $ty, carry: $ty) -> ($ty, $ty) {
-                    // this cannot overflow, the output is between 0 and 2^(2*nbits) - 1
+                    // This cannot overflow;
+                    // the output is between `0` and `2^nbits * (2^nbits - 1)`.
                     let nbits = mem::size_of::<$ty>() * 8;
                     let v = (self as $bigty) * (other as $bigty) + (other2 as $bigty) +
                             (carry as $bigty);
@@ -73,7 +85,7 @@ macro_rules! impl_full_ops {
 
                 fn full_div_rem(self, other: $ty, borrow: $ty) -> ($ty, $ty) {
                     debug_assert!(borrow < other);
-                    // this cannot overflow, the dividend is between 0 and other * 2^nbits - 1
+                    // This cannot overflow; the output is between `0` and `other * (2^nbits - 1)`.
                     let nbits = mem::size_of::<$ty>() * 8;
                     let lhs = ((borrow as $bigty) << nbits) | (self as $bigty);
                     let rhs = other as $bigty;
@@ -88,7 +100,8 @@ impl_full_ops! {
     u8:  add(intrinsics::u8_add_with_overflow),  mul/div(u16);
     u16: add(intrinsics::u16_add_with_overflow), mul/div(u32);
     u32: add(intrinsics::u32_add_with_overflow), mul/div(u64);
-//  u64: add(intrinsics::u64_add_with_overflow), mul/div(u128); // see RFC #521 for enabling this.
+    // See RFC #521 for enabling this.
+    // u64: add(intrinsics::u64_add_with_overflow), mul/div(u128);
 }
 
 /// Table of powers of 5 representable in digits. Specifically, the largest {u8, u16, u32} value
