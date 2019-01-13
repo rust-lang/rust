@@ -1372,7 +1372,14 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
                     let is_visible = adt.is_enum()
                         || field.vis.is_accessible_from(cx.module, cx.tcx);
                     if is_visible {
-                        field.ty(cx.tcx, substs)
+                        let ty = field.ty(cx.tcx, substs);
+                        match ty.sty {
+                            // If the field type returned is an array of an unknown
+                            // size return an TyErr.
+                            ty::Array(_, len) if len.assert_usize(cx.tcx).is_none() =>
+                                cx.tcx.types.err,
+                            _ => ty,
+                        }
                     } else {
                         // Treat all non-visible fields as TyErr. They
                         // can't appear in any other pattern from
