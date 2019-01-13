@@ -1,5 +1,6 @@
 #![warn(clippy::too_many_lines)]
 
+
 fn good_lines() {
     /* println!("This is good."); */
     // println!("This is good.");
@@ -106,6 +107,7 @@ fn bad_lines() {
     println!("This is bad.");
     println!("This is bad.");
     println!("This is bad.");
+<<<<<<< HEAD
     println!("This is bad.");
     println!("This is bad.");
     println!("This is bad.");
