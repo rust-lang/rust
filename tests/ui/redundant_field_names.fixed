@@ -31,8 +31,8 @@ fn main() {
     let name: u8 = 0;
 
     let me = Person {
-        gender: gender,
-        age: age,
+        gender,
+        age,
 
         name,          //should be ok
         buzz: fizz,    //should be ok
@@ -53,11 +53,11 @@ fn main() {
     let _: Vec<_> = (start..end).collect();
 
     // hand-written Range family structs are linted
-    let _ = RangeFrom { start: start };
-    let _ = RangeTo { end: end };
-    let _ = Range { start: start, end: end };
+    let _ = RangeFrom { start };
+    let _ = RangeTo { end };
+    let _ = Range { start, end };
     let _ = RangeInclusive::new(start, end);
-    let _ = RangeToInclusive { end: end };
+    let _ = RangeToInclusive { end };
 }
 
 fn issue_3476() {
