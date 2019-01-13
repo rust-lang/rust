@@ -334,6 +334,29 @@ fn test(x: &str, y: isize) {
     );
 }
 
+#[test]
+fn infer_array() {
+    check_inference(
+        r#"
+fn test(x: &str, y: isize) {
+    let a = [x];
+    let b = [a, a];
+    let c = [b, b];
+
+    let d = [y];
+    let e = [d, d];
+    let f = [e, e];
+
+    // we have not infered these case yet.
+    let g = [1, 2];
+    let h = ["a", "b"];
+    let b = [a, ["b"]];
+}
+"#,
+        "array.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
