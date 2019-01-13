@@ -357,7 +357,9 @@ Grammar(
             enum: ["FnDef", "TypeDef", "ConstDef"]
         ),
 
-        "TupleExpr": (),
+        "TupleExpr": (
+            collections: [["exprs", "Expr"]]
+        ),
         "ArrayExpr": (),
         "ParenExpr": (options: ["Expr"]),
         "PathExpr": (options: ["Path"]),
