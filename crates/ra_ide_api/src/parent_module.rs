@@ -12,7 +12,7 @@ pub(crate) fn parent_module(
         None => return Ok(Vec::new()),
         Some(it) => it,
     };
-    let nav = NavigationTarget::from_module(db, module)?;
+    let nav = NavigationTarget::from_module_to_decl(db, module)?;
     Ok(vec![nav])
 }
 
@@ -31,7 +31,7 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo SOURCE_FILE FileId(2) [0; 10)");
+        nav.assert_match("foo MODULE FileId(1) [0; 8)");
     }
 
     #[test]

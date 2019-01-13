@@ -89,6 +89,25 @@ impl NavigationTarget {
         Ok(res)
     }
 
+    pub(crate) fn from_module_to_decl(
+        db: &RootDatabase,
+        module: hir::Module,
+    ) -> Cancelable<NavigationTarget> {
+        let name = module
+            .name(db)?
+            .map(|it| it.to_string().into())
+            .unwrap_or_default();
+        if let Some((file_id, source)) = module.declaration_source(db)? {
+            return Ok(NavigationTarget::from_syntax(
+                file_id,
+                name,
+                None,
+                source.syntax(),
+            ));
+        }
+        NavigationTarget::from_module(db, module)
+    }
+
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
     pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Cancelable<Option<NavigationTarget>> {
         let res = match def {
