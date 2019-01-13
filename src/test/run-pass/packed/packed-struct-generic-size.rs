@@ -33,12 +33,12 @@ macro_rules! check {
 }
 
 pub fn main() {
-    check!(P1::<u8, u8>, 1, 3);
-    check!(P1::<u64, u16>, 1, 11);
+    check!(P1<u8, u8>, 1, 3);
+    check!(P1<u64, u16>, 1, 11);
 
-    check!(P2::<u8, u8>, 1, 3);
-    check!(P2::<u64, u16>, 2, 12);
+    check!(P2<u8, u8>, 1, 3);
+    check!(P2<u64, u16>, 2, 12);
 
-    check!(P4C::<u8, u8>, 1, 3);
-    check!(P4C::<u16, u64>, 4, 12);
+    check!(P4C<u8, u8>, 1, 3);
+    check!(P4C<u16, u64>, 4, 12);
 }
