@@ -462,7 +462,7 @@ Grammar(
             ],
         ),
 
-        "RefPat": (),
+        "RefPat": ( options: [ "Pat" ]),
         "BindPat": ( traits: ["NameOwner"] ),
         "PlaceholderPat": (),
         "PathPat": (),

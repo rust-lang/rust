@@ -422,6 +422,9 @@ mod tests {
     fn do_check_local_name(code: &str, expected_offset: u32) {
         let (off, code) = extract_offset(code);
         let file = SourceFile::parse(&code);
+        let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
+            .expect("failed to find a name at the target offset");
+
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
@@ -431,11 +434,8 @@ mod tests {
             scopes: Arc::new(scopes),
             syntax_mapping: Arc::new(body_hir),
         };
-
         let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
         let local_name = local_name_entry.ptr();
-        let expected_name =
-            find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into()).unwrap();
         assert_eq!(local_name.range(), expected_name.syntax().range());
     }
 
@@ -470,11 +470,26 @@ mod tests {
     fn test_resolve_local_name_shadow() {
         do_check_local_name(
             r"
-        fn foo(x: String) {
-            let x : &str = &x;
-            x<|>
-        }",
-            46,
+            fn foo(x: String) {
+                let x : &str = &x;
+                x<|>
+            }
+            ",
+            53,
+        );
+    }
+
+    #[test]
+    fn ref_patterns_contribute_bindings() {
+        do_check_local_name(
+            r"
+            fn foo() {
+                if let Some(&from) = bar() {
+                    from<|>;
+                }
+            }
+            ",
+            53,
         );
     }
 }
