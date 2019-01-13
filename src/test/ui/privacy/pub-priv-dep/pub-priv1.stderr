@@ -1,0 +1,25 @@
+error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:17:5
+   |
+LL |     pub field: OtherType,
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/pub-priv1.rs:3:9
+   |
+LL | #![deny(leaked_private_dependency)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
+
+error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:24:5
+   |
+LL |     pub fn pub_fn(param: OtherType) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
+
+error: aborting due to 2 previous errors
+
