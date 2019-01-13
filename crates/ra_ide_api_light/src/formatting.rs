@@ -5,7 +5,7 @@ use ra_syntax::{
     algo::generate,
 };
 
-/// If the node is on the begining of the line, calculate indent.
+/// If the node is on the beginning of the line, calculate indent.
 pub(crate) fn leading_indent(node: &SyntaxNode) -> Option<&str> {
     let prev = prev_leaf(node)?;
     let ws_text = ast::Whitespace::cast(prev)?.text();
