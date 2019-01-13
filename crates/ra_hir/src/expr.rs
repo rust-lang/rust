@@ -315,15 +315,20 @@ pub enum Pat {
         path: Option<Path>,
         args: Vec<PatId>,
     },
+    Ref {
+        pat: PatId,
+        mutability: Mutability,
+    },
 }
 
 impl Pat {
-    pub fn walk_child_pats(&self, f: impl FnMut(PatId)) {
+    pub fn walk_child_pats(&self, mut f: impl FnMut(PatId)) {
         match self {
             Pat::Missing | Pat::Bind { .. } => {}
             Pat::TupleStruct { args, .. } => {
                 args.iter().map(|pat| *pat).for_each(f);
             }
+            Pat::Ref { pat, .. } => f(*pat),
         }
     }
 }
@@ -683,6 +688,11 @@ impl ExprCollector {
                 let path = p.path().and_then(Path::from_ast);
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
                 self.alloc_pat(Pat::TupleStruct { path, args }, syntax_ptr)
+            }
+            ast::PatKind::RefPat(p) => {
+                let pat = self.collect_pat_opt(p.pat());
+                let mutability = Mutability::from_mutable(p.is_mut());
+                self.alloc_pat(Pat::Ref { pat, mutability }, syntax_ptr)
             }
             _ => {
                 // TODO

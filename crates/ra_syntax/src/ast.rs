@@ -348,6 +348,12 @@ impl UseTreeList {
     }
 }
 
+impl RefPat {
+    pub fn is_mut(&self) -> bool {
+        self.syntax().children().any(|n| n.kind() == MUT_KW)
+    }
+}
+
 fn child_opt<P: AstNode, C: AstNode>(parent: &P) -> Option<&C> {
     children(parent).next()
 }

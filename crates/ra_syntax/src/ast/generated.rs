@@ -2456,7 +2456,11 @@ impl AstNode for RefPat {
 }
 
 
-impl RefPat {}
+impl RefPat {
+    pub fn pat(&self) -> Option<&Pat> {
+        super::child_opt(self)
+    }
+}
 
 // ReferenceType
 #[derive(Debug, PartialEq, Eq, Hash)]
