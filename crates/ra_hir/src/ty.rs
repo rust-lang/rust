@@ -28,6 +28,7 @@ use log;
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
 use ra_arena::map::ArenaMap;
 use join_to_string::join;
+use rustc_hash::FxHashMap;
 
 use ra_db::Cancelable;
 
@@ -448,14 +449,14 @@ fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     })
 }
 
-pub fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
+pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
         name: s.name(db)?.unwrap_or_else(Name::missing),
     })
 }
 
-pub fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> Cancelable<Ty> {
+pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> Cancelable<Ty> {
     let enum_parent = ev.parent_enum(db)?;
 
     type_for_enum(db, enum_parent)
@@ -512,8 +513,16 @@ pub(super) fn type_for_field(
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
+    /// For each method call expr, record the function it resolved to.
+    method_resolutions: FxHashMap<ExprId, DefId>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
+}
+
+impl InferenceResult {
+    pub fn method_resolution(&self, expr: ExprId) -> Option<DefId> {
+        self.method_resolutions.get(&expr).map(|it| *it)
+    }
 }
 
 impl Index<ExprId> for InferenceResult {
@@ -541,6 +550,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     module: Module,
     impl_block: Option<ImplBlock>,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
+    method_resolutions: FxHashMap<ExprId, DefId>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
@@ -631,6 +641,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         impl_block: Option<ImplBlock>,
     ) -> Self {
         InferenceContext {
+            method_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
@@ -655,6 +666,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             *ty = resolved;
         }
         InferenceResult {
+            method_resolutions: mem::replace(&mut self.method_resolutions, Default::default()),
             type_of_expr: expr_types,
             type_of_pat: pat_types,
         }
@@ -662,6 +674,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn write_expr_ty(&mut self, expr: ExprId, ty: Ty) {
         self.type_of_expr.insert(expr, ty);
+    }
+
+    fn write_method_resolution(&mut self, expr: ExprId, def_id: DefId) {
+        self.method_resolutions.insert(expr, def_id);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
@@ -900,7 +916,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none())?;
                 let resolved = receiver_ty.clone().lookup_method(self.db, method_name)?;
                 let method_ty = match resolved {
-                    Some(def_id) => self.db.type_for_def(def_id)?,
+                    Some(def_id) => {
+                        self.write_method_resolution(expr, def_id);
+                        self.db.type_for_def(def_id)?
+                    }
                     None => Ty::Unknown,
                 };
                 let method_ty = self.insert_type_vars(method_ty);
