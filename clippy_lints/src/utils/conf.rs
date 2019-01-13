@@ -149,7 +149,7 @@ define_Conf! {
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit, "trivial_copy_size_limit", None => Option<u64>),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
-    (too_many_lines_threshold, "too_many_lines_threshold", 101 => u64),
+    (too_many_lines_threshold, "too_many_lines_threshold", 100 => u64),
 }
 
 impl Default for Conf {
