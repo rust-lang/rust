@@ -286,6 +286,12 @@ pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
 pub const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
 
+pub const PF_FASTFAIL_AVAILABLE: DWORD = 23;
+
+pub const STATUS_FAIL_FAST_EXCEPTION: DWORD = 0xC0000602;
+
+pub const EXCEPTION_NONCONTINUABLE: DWORD = 0x1;
+
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
 pub struct WSADATA {
@@ -625,24 +631,25 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
+pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
+
+#[repr(C)]
+pub struct EXCEPTION_RECORD {
+    pub ExceptionCode: DWORD,
+    pub ExceptionFlags: DWORD,
+    pub ExceptionRecord: *mut EXCEPTION_RECORD,
+    pub ExceptionAddress: LPVOID,
+    pub NumberParameters: DWORD,
+    pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS],
+}
+
+pub enum CONTEXT {}
+
 // Functions forbidden when targeting UWP
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
     pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
     pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
-    pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
-
-    #[repr(C)]
-    pub struct EXCEPTION_RECORD {
-        pub ExceptionCode: DWORD,
-        pub ExceptionFlags: DWORD,
-        pub ExceptionRecord: *mut EXCEPTION_RECORD,
-        pub ExceptionAddress: LPVOID,
-        pub NumberParameters: DWORD,
-        pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
-    }
-
-    pub enum CONTEXT {}
 
     #[repr(C)]
     pub struct EXCEPTION_POINTERS {
@@ -1027,6 +1034,19 @@ extern "system" {
     pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
     pub fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;
     pub fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
+
+    pub fn IsProcessorFeaturePresent(ProcessorFeature: DWORD) -> BOOL;
+    pub fn RaiseException(
+        dwExceptionCode: DWORD,
+        dwExceptionFlags: DWORD,
+        nNumberOfArguments: DWORD,
+        lpArguments: *const ULONG_PTR,
+    );
+    pub fn RaiseFailFastException(
+        pExceptionRecord: *const EXCEPTION_RECORD,
+        pContextRecord: *const CONTEXT,
+        dwFlags: DWORD,
+    );
 }
 
 // Functions that aren't available on every version of Windows that we support,

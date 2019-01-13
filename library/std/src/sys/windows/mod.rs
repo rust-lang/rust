@@ -300,26 +300,42 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .unwrap_or(c::INFINITE)
 }
 
-/// Use `__fastfail` to abort the process
+/// On Windows 8 and later versions, use the processor-specific `__fastfail`
+/// mechanism. This will terminate the process immediately without running any
+/// in-process exception handlers.
+/// On Windows 7, use `RaiseFailFastException` to raise a noncontinuable exception
+/// `STATUS_FAIL_FAST_EXCEPTION`.
+/// On earlier versions of Windows, use `RaiseException` to raise the same
+/// noncontinuable exception.
 ///
-/// This is the same implementation as in libpanic_abort's `__rust_start_panic`. See
-/// that function for more information on `__fastfail`
+/// This is the same implementation as in libpanic_abort's `__rust_start_panic`.
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
-    const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
     unsafe {
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
-                crate::intrinsics::unreachable();
-            } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
-                crate::intrinsics::unreachable();
-            } else if #[cfg(target_arch = "aarch64")] {
-                asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
-                crate::intrinsics::unreachable();
+        if c::IsProcessorFeaturePresent(c::PF_FASTFAIL_AVAILABLE) != c::FALSE {
+            const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+            cfg_if::cfg_if! {
+                if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+                    asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+                    asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                } else if #[cfg(target_arch = "aarch64")] {
+                    asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                } else {
+                    crate::intrinsics::abort();
+                }
             }
+        } else {
+            match compat::lookup("kernel32", "RaiseFailFastException") {
+                Some(..) => c::RaiseFailFastException(ptr::null(), ptr::null(), 0),
+                None => c::RaiseException(
+                    c::STATUS_FAIL_FAST_EXCEPTION,
+                    c::EXCEPTION_NONCONTINUABLE,
+                    0,
+                    ptr::null(),
+                ),
+            };
         }
+        crate::intrinsics::unreachable();
     }
-    crate::intrinsics::abort();
 }
