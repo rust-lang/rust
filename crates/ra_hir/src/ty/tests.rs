@@ -272,8 +272,15 @@ fn test(a: A) {
 fn infer_tuple() {
     check_inference(
         r#"
-fn test() {
+fn test(x: &str, y: isize) {
     let a: (u32, &str) = (1, "a");
+    let b = (a, x);
+    let c = (y, x);
+    let d = (c, x);
+
+    // we have not infered these case yet.
+    let e = (1, "e");
+    let f = (e, "d");
 }
 "#,
         "tuple.txt",
