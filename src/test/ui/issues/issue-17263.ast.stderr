@@ -13,7 +13,7 @@ error[E0502]: cannot borrow `foo` (via `foo.b`) as immutable because `foo` is al
   --> $DIR/issue-17263.rs:21:32
    |
 LL |     let (c, d) = (&mut foo.a, &foo.b);
-   |                        -----   ^^^^^ immutable borrow occurs here (via `foo.b`)
+   |                        -----   ^^^^^ immutable borrow of `foo.b` -- which overlaps with `foo.a` -- occurs here
    |                        |
    |                        mutable borrow occurs here (via `foo.a`)
 ...
