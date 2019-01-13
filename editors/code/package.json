@@ -35,12 +35,12 @@
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
-        "@types/node": "^8.10.38",
+        "@types/node": "^8.10.39",
         "prettier": "^1.15.3",
-        "tslint": "^5.11.0",
+        "tslint": "^5.12.1",
         "tslint-config-prettier": "^1.17.0",
         "typescript": "^2.6.1",
-        "vsce": "^1.53.2",
+        "vsce": "^1.54.0",
         "vscode": "^1.1.26"
     },
     "activationEvents": [
