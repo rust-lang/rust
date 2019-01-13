@@ -47,15 +47,34 @@ pub(crate) fn reference_definition(
     name_ref: &ast::NameRef,
 ) -> Cancelable<ReferenceResult> {
     use self::ReferenceResult::*;
-    if let Some(fn_descr) =
+    if let Some(function) =
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())?
     {
-        let scope = fn_descr.scopes(db)?;
+        let scope = function.scopes(db)?;
         // First try to resolve the symbol locally
         if let Some(entry) = scope.resolve_local_name(name_ref) {
             let nav = NavigationTarget::from_scope_entry(file_id, &entry);
             return Ok(Exact(nav));
         };
+
+        // Next check if it is a method
+        if let Some(method_call) = name_ref
+            .syntax()
+            .parent()
+            .and_then(ast::MethodCallExpr::cast)
+        {
+            let infer_result = function.infer(db)?;
+            let syntax_mapping = function.body_syntax_mapping(db)?;
+            let expr = ast::Expr::cast(method_call.syntax()).unwrap();
+            if let Some(def_id) = syntax_mapping
+                .node_expr(expr)
+                .and_then(|it| infer_result.method_resolution(it))
+            {
+                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)?)? {
+                    return Ok(Exact(target));
+                }
+            };
+        }
     }
     // Then try module name resolution
     if let Some(module) =
@@ -155,6 +174,34 @@ mod tests {
             // empty
             ",
             "foo SOURCE_FILE FileId(2) [0; 10)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            mod <|>foo;
+            //- /foo/mod.rs
+            // empty
+            ",
+            "foo SOURCE_FILE FileId(2) [0; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_methods() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            impl Foo {
+                fn frobnicate(&self) {  }
+            }
+
+            fn bar(foo: &Foo) {
+                foo.frobnicate<|>();
+            }
+            ",
+            "frobnicate FN_DEF FileId(1) [27; 52) [30; 40)",
         );
 
         check_goto(
