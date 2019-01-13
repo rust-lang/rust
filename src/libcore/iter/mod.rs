@@ -243,7 +243,7 @@
 //! using it. The compiler will warn us about this kind of behavior:
 //!
 //! ```text
-//! warning: unused result that must be used: iterator adaptors are lazy and
+//! warning: unused result that must be used: iterators are lazy and
 //! do nothing unless consumed
 //! ```
 //!
