@@ -46,6 +46,7 @@ macro_rules! impl_full_ops {
     ($($ty:ty: add($addfn:path), mul/div($bigty:ident);)*) => (
         $(
             impl FullOps for $ty {
+                #[cfg(stage0)]
                 fn full_add(self, other: $ty, carry: bool) -> (bool, $ty) {
                     // this cannot overflow, the output is between 0 and 2*2^nbits - 1
                     // FIXME will LLVM optimize this into ADC or similar???
@@ -53,6 +54,14 @@ macro_rules! impl_full_ops {
                     let (v, carry2) = unsafe {
                         intrinsics::add_with_overflow(v, if carry {1} else {0})
                     };
+                    (carry1 || carry2, v)
+                }
+                #[cfg(not(stage0))]
+                fn full_add(self, other: $ty, carry: bool) -> (bool, $ty) {
+                    // this cannot overflow, the output is between 0 and 2*2^nbits - 1
+                    // FIXME will LLVM optimize this into ADC or similar???
+                    let (v, carry1) = intrinsics::add_with_overflow(self, other);
+                    let (v, carry2) = intrinsics::add_with_overflow(v, if carry {1} else {0});
                     (carry1 || carry2, v)
                 }
 
