@@ -4,9 +4,14 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use hir;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
+
 use ty::TyCtxt;
+use ty::query::Providers;
+use ty::query::queries;
+
+use hir;
+use hir::def_id::DefId;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use std::fmt::{self, Display};
 use syntax_pos::Span;
 
@@ -364,8 +369,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut checker = CheckAttrVisitor { tcx };
-    tcx.hir().krate().visit_all_item_likes(&mut checker.as_deep_visitor());
+    for &module in tcx.hir().krate().modules.keys() {
+        queries::check_mod_attrs::ensure(tcx, tcx.hir().local_def_id(module));
+    }
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {
@@ -380,4 +386,18 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
     } else {
         false
     }
+}
+
+fn check_mod_attrs<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(
+        module_def_id,
+        &mut CheckAttrVisitor { tcx }.as_deep_visitor()
+    );
+}
+
+pub(crate) fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers {
+        check_mod_attrs,
+        ..*providers
+    };
 }

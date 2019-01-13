@@ -23,6 +23,7 @@ use middle::resolve_lifetime as rl;
 use middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
+use rustc::ty::query::queries;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
@@ -56,10 +57,16 @@ struct OnlySelfBounds(bool);
 // Main entry point
 
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut visitor = CollectItemTypesVisitor { tcx };
-    tcx.hir()
-       .krate()
-       .visit_all_item_likes(&mut visitor.as_deep_visitor());
+    for &module in tcx.hir().krate().modules.keys() {
+        queries::collect_mod_item_types::ensure(tcx, tcx.hir().local_def_id(module));
+    }
+}
+
+fn collect_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(
+        module_def_id,
+        &mut CollectItemTypesVisitor { tcx }.as_deep_visitor()
+    );
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -78,6 +85,7 @@ pub fn provide(providers: &mut Providers) {
         impl_polarity,
         is_foreign_item,
         codegen_fn_attrs,
+        collect_mod_item_types,
         ..*providers
     };
 }

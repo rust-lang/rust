@@ -10,6 +10,17 @@ note: ...which requires processing `DefaultFoo`...
 LL | type DefaultFoo = Foo;
    |                   ^^^
    = note: ...which again requires processing `Foo::T`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/issue-34373.rs:1:1
+   |
+LL | / #![allow(warnings)]
+LL | |
+LL | | trait Trait<T> {
+LL | |     fn foo(_: T) {}
+...  |
+LL | | fn main() {
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

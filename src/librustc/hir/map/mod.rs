@@ -17,6 +17,7 @@ use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 use hir::*;
+use hir::itemlikevisit::ItemLikeVisitor;
 use hir::print::Nested;
 use util::nodemap::FxHashMap;
 
@@ -504,6 +505,32 @@ impl<'hir> Map<'hir> {
 
         self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
         &self.forest.krate.attrs
+    }
+
+    pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
+        where V: ItemLikeVisitor<'hir>
+    {
+        let node_id = self.as_local_node_id(module).unwrap();
+
+        // Read the module so we'll be re-executed if new items
+        // appear immediately under in the module. If some new item appears
+        // in some nested item in the module, we'll be re-executed due to reads
+        // in the expect_* calls the loops below
+        self.read(node_id);
+
+        let module = &self.forest.krate.modules[&node_id];
+
+        for id in &module.items {
+            visitor.visit_item(self.expect_item(*id));
+        }
+
+        for id in &module.trait_items {
+            visitor.visit_trait_item(self.expect_trait_item(id.node_id));
+        }
+
+        for id in &module.impl_items {
+            visitor.visit_impl_item(self.expect_impl_item(id.node_id));
+        }
     }
 
     /// Retrieve the Node corresponding to `id`, panicking if it cannot

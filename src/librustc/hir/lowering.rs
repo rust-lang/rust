@@ -48,7 +48,7 @@ use session::config::nightly_options;
 use util::common::FN_OUTPUT_NAME;
 use util::nodemap::{DefIdMap, NodeMap};
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeSet, BTreeMap};
 use std::fmt::Debug;
 use std::mem;
 use smallvec::SmallVec;
@@ -90,6 +90,8 @@ pub struct LoweringContext<'a> {
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_auto_impl: BTreeMap<DefId, NodeId>,
 
+    modules: BTreeMap<NodeId, hir::ModuleItems>,
+
     is_generator: bool,
 
     catch_scopes: Vec<NodeId>,
@@ -123,6 +125,8 @@ pub struct LoweringContext<'a> {
     // against this list to see if it is already in-scope, or if a definition
     // needs to be created for it.
     in_scope_lifetimes: Vec<Ident>,
+
+    current_module: NodeId,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -228,12 +232,14 @@ pub fn lower_crate(
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         trait_auto_impl: BTreeMap::new(),
+        modules: BTreeMap::new(),
         exported_macros: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
+        current_module: CRATE_NODE_ID,
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
@@ -414,11 +420,24 @@ impl<'a> LoweringContext<'a> {
         }
 
         impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
+            fn visit_mod(&mut self, m: &'lcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
+                self.lctx.modules.insert(n, hir::ModuleItems {
+                    items: BTreeSet::new(),
+                    trait_items: BTreeSet::new(),
+                    impl_items: BTreeSet::new(),
+                });
+
+                let old = self.lctx.current_module;
+                self.lctx.current_module = n;
+                visit::walk_mod(self, m);
+                self.lctx.current_module = old;
+            }
+
             fn visit_item(&mut self, item: &'lcx Item) {
                 let mut item_lowered = true;
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
                     if let Some(hir_item) = lctx.lower_item(item) {
-                        lctx.items.insert(item.id, hir_item);
+                        lctx.insert_item(item.id, hir_item);
                     } else {
                         item_lowered = false;
                     }
@@ -451,6 +470,7 @@ impl<'a> LoweringContext<'a> {
                     let id = hir::TraitItemId { node_id: item.id };
                     let hir_item = lctx.lower_trait_item(item);
                     lctx.trait_items.insert(id, hir_item);
+                    lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
                 });
 
                 visit::walk_trait_item(self, item);
@@ -461,6 +481,7 @@ impl<'a> LoweringContext<'a> {
                     let id = hir::ImplItemId { node_id: item.id };
                     let hir_item = lctx.lower_impl_item(item);
                     lctx.impl_items.insert(id, hir_item);
+                    lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
                 });
                 visit::walk_impl_item(self, item);
             }
@@ -492,7 +513,13 @@ impl<'a> LoweringContext<'a> {
             body_ids,
             trait_impls: self.trait_impls,
             trait_auto_impl: self.trait_auto_impl,
+            modules: self.modules,
         }
+    }
+
+    fn insert_item(&mut self, id: NodeId, item: hir::Item) {
+        self.items.insert(id, item);
+        self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
     }
 
     fn allocate_hir_id_counter<T: Debug>(&mut self, owner: NodeId, debug: &T) -> LoweredNodeId {
@@ -1370,7 +1397,7 @@ impl<'a> LoweringContext<'a> {
             // Insert the item into the global list. This usually happens
             // automatically for all AST items. But this existential type item
             // does not actually exist in the AST.
-            lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
+            lctx.insert_item(exist_ty_id.node_id, exist_ty_item);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
             hir::TyKind::Def(hir::ItemId { id: exist_ty_id.node_id }, lifetimes)
@@ -3026,7 +3053,7 @@ impl<'a> LoweringContext<'a> {
                         };
                         let vis = respan(vis.span, vis_kind);
 
-                        this.items.insert(
+                        this.insert_item(
                             new_id.node_id,
                             hir::Item {
                                 id: new_id.node_id,
@@ -3133,7 +3160,7 @@ impl<'a> LoweringContext<'a> {
                         };
                         let vis = respan(vis.span, vis_kind);
 
-                        this.items.insert(
+                        this.insert_item(
                             new_id,
                             hir::Item {
                                 id: new_id,

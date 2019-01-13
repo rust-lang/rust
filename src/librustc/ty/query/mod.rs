@@ -254,6 +254,18 @@ define_queries! { <'tcx>
     },
 
     Other {
+        /// Checks the attributes in the module
+        [] fn check_mod_attrs: CheckModAttrs(DefId) -> (),
+
+        [] fn check_mod_unstable_api_usage: CheckModUnstableApiUsage(DefId) -> (),
+
+        /// Checks the loops in the module
+        [] fn check_mod_loops: CheckModLoops(DefId) -> (),
+
+        [] fn check_mod_item_types: CheckModItemTypes(DefId) -> (),
+
+        [] fn collect_mod_item_types: CollectModItemTypes(DefId) -> (),
+
         /// Caches CoerceUnsized kinds for impls on custom types.
         [] fn coerce_unsized_info: CoerceUnsizedInfo(DefId)
             -> ty::adjustment::CoerceUnsizedInfo,

@@ -1,4 +1,5 @@
 use ty;
+use ty::TyCtxt;
 use hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize;
@@ -242,6 +243,14 @@ impl DefId {
     #[inline]
     pub fn to_local(self) -> LocalDefId {
         LocalDefId::from_def_id(self)
+    }
+
+    pub fn describe_as_module(&self, tcx: TyCtxt<'_, '_, '_>) -> String {
+        if self.is_local() && self.index == CRATE_DEF_INDEX {
+            format!("top-level module")
+        } else {
+            format!("module `{}`", tcx.item_path_str(*self))
+        }
     }
 }
 

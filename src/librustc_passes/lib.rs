@@ -38,4 +38,5 @@ __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 
 pub fn provide(providers: &mut Providers) {
     rvalue_promotion::provide(providers);
+    loops::provide(providers);
 }
