@@ -573,7 +573,7 @@ const Y: i32 = A;
 ```
 "##,
 
-// FIXME(#24111) Change the language here when const fn stabilizes
+// FIXME(#57563) Change the language here when const fn stabilizes
 E0015: r##"
 The only functions that can be called in static or constant expressions are
 `const` functions, and struct/enum constructors. `const` functions are only

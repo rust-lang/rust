@@ -1,8 +1,8 @@
 # `const_fn`
 
-The tracking issue for this feature is: [#24111]
+The tracking issue for this feature is: [#57563]
 
-[#24111]: https://github.com/rust-lang/rust/issues/24111
+[#57563]: https://github.com/rust-lang/rust/issues/57563
 
 ------------------------
 

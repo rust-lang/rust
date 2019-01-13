@@ -16,7 +16,7 @@ error[E0379]: trait fns cannot be declared const
 LL |     const fn foo() -> u32 { 0 } //~ ERROR trait fns cannot be declared const
    |     ^^^^^ trait fns cannot be const
 
-error[E0658]: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #57563)
   --> $DIR/feature-gate-const_fn.rs:6:5
    |
 LL |     const fn foo() -> u32; //~ ERROR const fn is unstable
@@ -24,7 +24,7 @@ LL |     const fn foo() -> u32; //~ ERROR const fn is unstable
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0658]: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #57563)
   --> $DIR/feature-gate-const_fn.rs:8:5
    |
 LL |     const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
