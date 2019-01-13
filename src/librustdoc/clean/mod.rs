@@ -587,7 +587,7 @@ impl Clean<Item> for doctree::Module {
         let attrs = self.attrs.clean(cx);
 
         let mut items: Vec<Item> = vec![];
-        items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
+        items.extend(self.extern_crates.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.structs.iter().map(|x| x.clean(cx)));
         items.extend(self.unions.iter().map(|x| x.clean(cx)));
@@ -3503,9 +3503,30 @@ fn build_deref_target_impls(cx: &DocContext,
     }
 }
 
-impl Clean<Item> for doctree::ExternCrate {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
+impl Clean<Vec<Item>> for doctree::ExternCrate {
+    fn clean(&self, cx: &DocContext) -> Vec<Item> {
+
+        let please_inline = self.vis.node.is_pub() && self.attrs.iter().any(|a| {
+            a.name() == "doc" && match a.meta_item_list() {
+                Some(l) => attr::list_contains_name(&l, "inline"),
+                None => false,
+            }
+        });
+
+        if please_inline {
+            let mut visited = FxHashSet::default();
+
+            let def = Def::Mod(DefId {
+                krate: self.cnum,
+                index: CRATE_DEF_INDEX,
+            });
+
+            if let Some(items) = inline::try_inline(cx, def, self.name, &mut visited) {
+                return items;
+            }
+        }
+
+        vec![Item {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
@@ -3514,7 +3535,7 @@ impl Clean<Item> for doctree::ExternCrate {
             stability: None,
             deprecation: None,
             inner: ExternCrateItem(self.name.clean(cx), self.path.clone())
-        }
+        }]
     }
 }
 
