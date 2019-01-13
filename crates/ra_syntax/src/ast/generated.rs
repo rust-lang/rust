@@ -67,7 +67,11 @@ impl AstNode for ArrayExpr {
 }
 
 
-impl ArrayExpr {}
+impl ArrayExpr {
+    pub fn exprs(&self) -> impl Iterator<Item = &Expr> {
+        super::children(self)
+    }
+}
 
 // ArrayType
 #[derive(Debug, PartialEq, Eq, Hash)]
