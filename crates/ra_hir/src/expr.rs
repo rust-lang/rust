@@ -183,6 +183,9 @@ pub enum Expr {
         arg_types: Vec<Option<TypeRef>>,
         body: ExprId,
     },
+    Tuple {
+        exprs: Vec<ExprId>,
+    },
 }
 
 pub use ra_syntax::ast::PrefixOp as UnaryOp;
@@ -296,6 +299,11 @@ impl Expr {
             | Expr::Ref { expr, .. }
             | Expr::UnaryOp { expr, .. } => {
                 f(*expr);
+            }
+            Expr::Tuple { exprs } => {
+                for expr in exprs {
+                    f(*expr);
+                }
             }
         }
     }
@@ -621,11 +629,14 @@ impl ExprCollector {
                 let op = e.op();
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
+            ast::ExprKind::TupleExpr(e) => {
+                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
+                self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
+            }
 
             // TODO implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::TupleExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::Literal(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
