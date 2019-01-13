@@ -1,5 +1,3 @@
-#![feature(transpose_result)]
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct BadNumErr;
 
