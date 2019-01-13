@@ -1,15 +1,8 @@
 error: no valid digits found for number
   --> $DIR/issue-1802-2.rs:5:16
    |
-LL |     log(error, 0b_usize);
-   |                ^^^
+LL |     log(error, 0b);
+   |                ^^
 
-error[E0308]: mismatched types
-  --> $DIR/issue-1802-2.rs:5:16
-   |
-LL |     log(error, 0b_usize);
-   |                ^^^^^^^^ expected i32, found usize
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

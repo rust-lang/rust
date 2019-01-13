@@ -4,15 +4,5 @@ error: `..` can only be used once per tuple or tuple struct pattern
 LL |         (.., pat, ..) => {}
    |                   ^^ can only be used once per pattern
 
-error[E0308]: mismatched types
-  --> $DIR/pat-tuple-3.rs:3:9
-   |
-LL |         (.., pat, ..) => {}
-   |         ^^^^^^^^^^^^^ expected integer, found tuple
-   |
-   = note: expected type `{integer}`
-              found type `(_,)`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0308`.
