@@ -202,7 +202,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
     let span = best_fail_spot.substitute_dummy(sp);
     let mut err = cx.struct_span_err(span, &best_fail_msg);
-    err.span_label(span, best_fail_text.unwrap_or(best_fail_msg));
+    err.span_label(span, best_fail_text.unwrap_or(&best_fail_msg));
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
             err.span_label(cx.source_map().def_span(sp), "when calling this macro");
