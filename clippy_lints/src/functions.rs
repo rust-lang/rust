@@ -90,10 +90,7 @@ pub struct Functions {
 
 impl Functions {
     pub fn new(threshold: u64, max_lines: u64) -> Self {
-        Self {
-            threshold,
-            max_lines
-        }
+        Self { threshold, max_lines }
     }
 }
 
