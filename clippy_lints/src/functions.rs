@@ -1,4 +1,4 @@
-use crate::utils::{iter_input_pats, span_lint, type_is_unsafe_function};
+use crate::utils::{iter_input_pats, snippet, span_lint, type_is_unsafe_function};
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
@@ -29,6 +29,22 @@ declare_clippy_lint! {
     pub TOO_MANY_ARGUMENTS,
     complexity,
     "functions with too many arguments"
+}
+
+/// **What it does:** Checks for functions with a large amount of lines.
+///
+/// **Why is this bad?** Functions with a lot of lines are harder to understand
+/// due to having to look at a larger amount of code to understand what the
+/// function is doing. Consider splitting the body of the function into
+/// multiple functions.
+///
+/// **Known problems:** None.
+///
+/// ```
+declare_clippy_lint! {
+    pub TOO_MANY_LINES,
+    pedantic,
+    "functions with too many lines"
 }
 
 /// **What it does:** Checks for public functions that dereferences raw pointer
@@ -62,17 +78,21 @@ declare_clippy_lint! {
 #[derive(Copy, Clone)]
 pub struct Functions {
     threshold: u64,
+    max_lines: u64
 }
 
 impl Functions {
-    pub fn new(threshold: u64) -> Self {
-        Self { threshold }
+    pub fn new(threshold: u64, max_lines: u64) -> Self {
+        Self {
+            threshold,
+            max_lines
+        }
     }
 }
 
 impl LintPass for Functions {
     fn get_lints(&self) -> LintArray {
-        lint_array!(TOO_MANY_ARGUMENTS, NOT_UNSAFE_PTR_ARG_DEREF)
+        lint_array!(TOO_MANY_ARGUMENTS, TOO_MANY_LINES, NOT_UNSAFE_PTR_ARG_DEREF)
     }
 
     fn name(&self) -> &'static str {
@@ -123,6 +143,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         }
 
         self.check_raw_ptr(cx, unsafety, decl, body, nodeid);
+        self.check_line_number(cx, span);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
@@ -150,6 +171,54 @@ impl<'a, 'tcx> Functions {
                 span,
                 &format!("this function has too many arguments ({}/{})", args, self.threshold),
             );
+        }
+    }
+
+    fn check_line_number(self, cx: &LateContext, span: Span) {
+        let code_snippet = snippet(cx, span, "..");
+        let mut line_count = 0;
+        let mut in_comment = false;
+        for mut line in code_snippet.lines() {
+            if in_comment {
+                let end_comment_loc = match line.find("*/") {
+                    Some(i) => i,
+                    None => continue
+                };
+                in_comment = false;
+                line = &line[end_comment_loc..];
+            }
+            line = line.trim_left();
+            if line.is_empty() || line.starts_with("//") { continue; }
+            if line.contains("/*") {
+                let mut count_line: bool = !line.starts_with("/*");
+                let close_counts = line.match_indices("*/").count();
+                let open_counts = line.match_indices("/*").count();
+
+                if close_counts > 1 || open_counts > 1 {
+                    line_count += 1;
+                } else if close_counts == 1 {
+                    match line.find("*/") {
+                        Some(i) => {
+                            line = line[i..].trim_left();
+                            if !line.is_empty() && !line.starts_with("//") {
+                                count_line = true;
+                            }
+                        },
+                        None => continue
+                    }
+                } else {
+                    in_comment = true;
+                }
+                if count_line { line_count += 1; }
+            } else {
+                // No multipart comment, no single comment, non-empty string.
+                line_count += 1;
+            }
+        }
+
+        if line_count > self.max_lines {
+            span_lint(cx, TOO_MANY_LINES, span,
+                      "This function has a large number of lines.")
         }
     }
 

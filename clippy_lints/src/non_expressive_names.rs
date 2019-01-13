@@ -158,6 +158,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             );
         }
     }
+    #[allow(clippy::too_many_lines)]
     fn check_name(&mut self, span: Span, name: Name) {
         let interned_name = name.as_str();
         if interned_name.chars().any(char::is_uppercase) {

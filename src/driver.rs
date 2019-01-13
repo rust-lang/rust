@@ -20,6 +20,7 @@ fn show_version() {
     println!(env!("CARGO_PKG_VERSION"));
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
     exit(
