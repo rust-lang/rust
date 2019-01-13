@@ -68,10 +68,15 @@ Once you have rustup and the latest stable release (at least Rust 1.29) installe
 ```terminal
 rustup component add clippy
 ```
+If it says that it can't find the `clippy` component, please run `rustup self update`.
 
-Now you can run Clippy by invoking `cargo clippy`.
+#### Step 3: Run Clippy
 
-If it says that it can't find the `clippy` subcommand, please run `rustup self update`
+Now you can run Clippy by invoking the following command:
+
+```terminal
+cargo clippy
+```
 
 ### Running Clippy from the command line without installing it
 
