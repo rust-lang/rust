@@ -55,7 +55,6 @@
 /// Using `identity` to do nothing among other interesting functions:
 ///
 /// ```rust
-/// #![feature(convert_id)]
 /// use std::convert::identity;
 ///
 /// fn manipulation(x: u32) -> u32 {
@@ -69,7 +68,6 @@
 /// Using `identity` to get a function that changes nothing in a conditional:
 ///
 /// ```rust
-/// #![feature(convert_id)]
 /// use std::convert::identity;
 ///
 /// # let condition = true;
@@ -86,14 +84,13 @@
 /// Using `identity` to keep the `Some` variants of an iterator of `Option<T>`:
 ///
 /// ```rust
-/// #![feature(convert_id)]
 /// use std::convert::identity;
 ///
 /// let iter = vec![Some(1), None, Some(3)].into_iter();
 /// let filtered = iter.filter_map(identity).collect::<Vec<_>>();
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
-#[unstable(feature = "convert_id", issue = "53500")]
+#[stable(feature = "convert_id", since = "1.33.0")]
 #[inline]
 pub const fn identity<T>(x: T) -> T { x }
 
