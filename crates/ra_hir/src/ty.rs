@@ -1051,7 +1051,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 match op {
-                    Some(UnaryOp::Deref) => {
+                    UnaryOp::Deref => {
                         if let Some(derefed_ty) = inner_ty.builtin_deref() {
                             derefed_ty
                         } else {
@@ -1059,7 +1059,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             Ty::Unknown
                         }
                     }
-                    _ => Ty::Unknown,
+                    UnaryOp::Neg => {
+                        match inner_ty {
+                            Ty::Int(primitive::UncertainIntTy::Unknown)
+                            | Ty::Int(primitive::UncertainIntTy::Signed(..))
+                            | Ty::Infer(InferTy::IntVar(..))
+                            | Ty::Infer(InferTy::FloatVar(..))
+                            | Ty::Float(..) => inner_ty,
+                            // TODO: resolve ops::Neg trait
+                            _ => Ty::Unknown,
+                        }
+                    }
+                    UnaryOp::Not if inner_ty == Ty::Bool => Ty::Bool,
+                    // TODO: resolve ops::Not trait for inner_ty
+                    UnaryOp::Not => Ty::Unknown,
                 }
             }
             Expr::BinaryOp { lhs, rhs, op } => match op {
