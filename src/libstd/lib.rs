@@ -238,7 +238,7 @@
 #![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
-#![feature(cfg_target_vendor)]
+#![cfg_attr(stage0, feature(cfg_target_vendor))]
 #![feature(char_error_internals)]
 #![feature(compiler_builtins_lib)]
 #![feature(concat_idents)]

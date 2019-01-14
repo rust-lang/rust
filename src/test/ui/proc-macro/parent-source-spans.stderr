@@ -128,7 +128,7 @@ error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:30:5
    |
 LL |     parent_source_spans!($($tokens)*);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a tuple variant with a similar name exists: `Ok`
 ...
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
@@ -137,7 +137,7 @@ error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:30:5
    |
 LL |     parent_source_spans!($($tokens)*);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a tuple variant with a similar name exists: `Ok`
 ...
 LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
@@ -146,7 +146,7 @@ error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:30:5
    |
 LL |     parent_source_spans!($($tokens)*);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a tuple variant with a similar name exists: `Ok`
 ...
 LL |     three!("hip", "hop");
    |     --------------------- in this macro invocation

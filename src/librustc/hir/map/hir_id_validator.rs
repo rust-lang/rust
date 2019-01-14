@@ -3,19 +3,24 @@ use hir::{self, intravisit, HirId, ItemLocalId};
 use syntax::ast::NodeId;
 use hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
 
 pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
-    let mut outer_visitor = OuterVisitor {
-        hir_map,
-        errors: vec![],
-    };
-
     hir_map.dep_graph.assert_ignored();
 
-    hir_map.krate().visit_all_item_likes(&mut outer_visitor);
-    if !outer_visitor.errors.is_empty() {
-        let message = outer_visitor
-            .errors
+    let errors = Lock::new(Vec::new());
+
+    par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
+        hir_map.visit_item_likes_in_module(hir_map.local_def_id(*module_id), &mut OuterVisitor {
+            hir_map,
+            errors: &errors,
+        });
+    });
+
+    let errors = errors.into_inner();
+
+    if !errors.is_empty() {
+        let message = errors
             .iter()
             .fold(String::new(), |s1, s2| s1 + "\n" + s2);
         bug!("{}", message);
@@ -26,12 +31,12 @@ struct HirIdValidator<'a, 'hir: 'a> {
     hir_map: &'a hir::map::Map<'hir>,
     owner_def_index: Option<DefIndex>,
     hir_ids_seen: FxHashMap<ItemLocalId, NodeId>,
-    errors: Vec<String>,
+    errors: &'a Lock<Vec<String>>,
 }
 
 struct OuterVisitor<'a, 'hir: 'a> {
     hir_map: &'a hir::map::Map<'hir>,
-    errors: Vec<String>,
+    errors: &'a Lock<Vec<String>>,
 }
 
 impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
@@ -42,7 +47,7 @@ impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
             hir_map,
             owner_def_index: None,
             hir_ids_seen: Default::default(),
-            errors: Vec::new(),
+            errors: self.errors,
         }
     }
 }
@@ -51,23 +56,25 @@ impl<'a, 'hir: 'a> ItemLikeVisitor<'hir> for OuterVisitor<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir hir::Item) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.id, |this| intravisit::walk_item(this, i));
-        self.errors.extend(inner_visitor.errors.drain(..));
     }
 
     fn visit_trait_item(&mut self, i: &'hir hir::TraitItem) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.id, |this| intravisit::walk_trait_item(this, i));
-        self.errors.extend(inner_visitor.errors.drain(..));
     }
 
     fn visit_impl_item(&mut self, i: &'hir hir::ImplItem) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.id, |this| intravisit::walk_impl_item(this, i));
-        self.errors.extend(inner_visitor.errors.drain(..));
     }
 }
 
 impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
+    #[cold]
+    #[inline(never)]
+    fn error(&self, f: impl FnOnce() -> String) {
+        self.errors.lock().push(f());
+    }
 
     fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self,
                                                        node_id: NodeId,
@@ -119,7 +126,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                            local_id,
                                            self.hir_map.node_to_string(node_id)));
             }
-            self.errors.push(format!(
+            self.error(|| format!(
                 "ItemLocalIds not assigned densely in {}. \
                 Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
                 self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
@@ -145,14 +152,14 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         let stable_id = self.hir_map.definitions().node_to_hir_id[node_id];
 
         if stable_id == hir::DUMMY_HIR_ID {
-            self.errors.push(format!("HirIdValidator: No HirId assigned for NodeId {}: {:?}",
+            self.error(|| format!("HirIdValidator: No HirId assigned for NodeId {}: {:?}",
                                      node_id,
                                      self.hir_map.node_to_string(node_id)));
             return;
         }
 
         if owner != stable_id.owner {
-            self.errors.push(format!(
+            self.error(|| format!(
                 "HirIdValidator: The recorded owner of {} is {} instead of {}",
                 self.hir_map.node_to_string(node_id),
                 self.hir_map.def_path(DefId::local(stable_id.owner)).to_string_no_crate(),
@@ -161,7 +168,7 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
 
         if let Some(prev) = self.hir_ids_seen.insert(stable_id.local_id, node_id) {
             if prev != node_id {
-                self.errors.push(format!(
+                self.error(|| format!(
                     "HirIdValidator: Same HirId {}/{} assigned for nodes {} and {}",
                     self.hir_map.def_path(DefId::local(stable_id.owner)).to_string_no_crate(),
                     stable_id.local_id.as_usize(),

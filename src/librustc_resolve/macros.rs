@@ -1015,6 +1015,7 @@ impl<'a> Resolver<'a> {
             };
             let ident = Ident::new(Symbol::intern(name), span);
             self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
+                .map(|suggestion| suggestion.candidate)
         });
 
         if let Some(suggestion) = suggestion {

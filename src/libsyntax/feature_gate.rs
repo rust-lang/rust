@@ -244,9 +244,6 @@ declare_features! (
     // rustc internal
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
 
-    // Allows `cfg(target_vendor = "...")`.
-    (active, cfg_target_vendor, "1.5.0", Some(29718), None),
-
     // Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 
@@ -686,6 +683,8 @@ declare_features! (
     (accepted, if_while_or_patterns, "1.33.0", Some(48215), None),
     // Allows `use x::y;` to search `x` in the current scope.
     (accepted, uniform_paths, "1.32.0", Some(53130), None),
+    // Allows `cfg(target_vendor = "...")`.
+    (accepted, cfg_target_vendor, "1.33.0", Some(29718), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -1181,7 +1180,6 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeGate)] = &[
 // cfg(...)'s that are feature gated
 const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
-    ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
     ("rustdoc", "doc_cfg", cfg_fn!(doc_cfg)),

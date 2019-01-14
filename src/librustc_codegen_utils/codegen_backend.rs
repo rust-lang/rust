@@ -31,7 +31,6 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
-use rustc_mir::monomorphize::collector;
 use link::out_filename;
 
 pub use rustc_data_structures::sync::MetadataRef;
@@ -136,25 +135,15 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         ::symbol_names_test::report_symbol_names(tcx);
         ::rustc_incremental::assert_dep_graph(tcx);
         ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-        ::rustc_mir::monomorphize::assert_symbols_are_distinct(tcx,
-            collector::collect_crate_mono_items(
-                tcx,
-                collector::MonoItemCollectionMode::Eager
-            ).0.iter()
-        );
         // FIXME: Fix this
         // ::rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);
-        for mono_item in
-            collector::collect_crate_mono_items(
-                tcx,
-                collector::MonoItemCollectionMode::Eager
-            ).0 {
+        let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        for (mono_item, _) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if let MonoItem::Fn(inst) = mono_item {
                 let def_id = inst.def_id();
-                if def_id.is_local()  {
-                    let _ = inst.def.is_inline(tcx);
+                if def_id.is_local() {
                     let _ = tcx.codegen_fn_attrs(def_id);
                 }
             }
