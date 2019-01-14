@@ -59,24 +59,29 @@ impl SourceFile {
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         TreeArc::cast(root)
     }
+
     pub fn parse(text: &str) -> TreeArc<SourceFile> {
         let tokens = tokenize(&text);
         let (green, errors) =
             parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
         SourceFile::new(green, errors)
     }
+
     pub fn reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
         self.incremental_reparse(edit)
             .unwrap_or_else(|| self.full_reparse(edit))
     }
+
     pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {
         reparsing::incremental_reparse(self.syntax(), edit, self.errors())
             .map(|(green_node, errors)| SourceFile::new(green_node, errors))
     }
+
     fn full_reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
         let text = edit.apply(self.syntax().text().to_string());
         SourceFile::parse(&text)
     }
+
     pub fn errors(&self) -> Vec<SyntaxError> {
         let mut errors = self.syntax.root_data().clone();
         errors.extend(validation::validate(self));

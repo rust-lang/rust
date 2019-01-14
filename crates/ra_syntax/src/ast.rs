@@ -609,6 +609,52 @@ impl SelfParam {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum LiteralFlavor {
+    String,
+    ByteString,
+    Char,
+    Byte,
+    IntNumber { suffix: Option<SmolStr> },
+    FloatNumber { suffix: Option<SmolStr> },
+    Bool,
+}
+
+impl LiteralExpr {
+    pub fn flavor(&self) -> LiteralFlavor {
+        let syntax = self.syntax();
+        match syntax.kind() {
+            INT_NUMBER => {
+                let allowed_suffix_list = [
+                    "isize", "i128", "i64", "i32", "i16", "i8", "usize", "u128", "u64", "u32",
+                    "u16", "u8",
+                ];
+                let text = syntax.text().to_string();
+                let suffix = allowed_suffix_list
+                    .iter()
+                    .find(|&s| text.ends_with(s))
+                    .map(|&suf| SmolStr::new(suf));
+                LiteralFlavor::IntNumber { suffix: suffix }
+            }
+            FLOAT_NUMBER => {
+                let allowed_suffix_list = ["f64", "f32"];
+                let text = syntax.text().to_string();
+                let suffix = allowed_suffix_list
+                    .iter()
+                    .find(|&s| text.ends_with(s))
+                    .map(|&suf| SmolStr::new(suf));
+                LiteralFlavor::FloatNumber { suffix: suffix }
+            }
+            STRING | RAW_STRING => LiteralFlavor::String,
+            TRUE_KW | FALSE_KW => LiteralFlavor::Bool,
+            BYTE_STRING | RAW_BYTE_STRING => LiteralFlavor::ByteString,
+            CHAR => LiteralFlavor::Char,
+            BYTE => LiteralFlavor::Byte,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[test]
 fn test_doc_comment_of_items() {
     let file = SourceFile::parse(

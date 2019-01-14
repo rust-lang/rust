@@ -5,9 +5,12 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
-use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner};
+use ra_syntax::{
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor}
+};
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
+use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(RawId);
@@ -104,6 +107,16 @@ impl BodySyntaxMapping {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Literal {
+    String(String),
+    ByteString(Vec<u8>),
+    Char(char),
+    Bool(bool),
+    Int(u64, UncertainIntTy),
+    Float(u64, UncertainFloatTy), // FIXME: f64 is not Eq
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if syntax tree does not have a required expression piece.
     Missing,
@@ -186,6 +199,7 @@ pub enum Expr {
     Tuple {
         exprs: Vec<ExprId>,
     },
+    Literal(Literal),
 }
 
 pub use ra_syntax::ast::PrefixOp as UnaryOp;
@@ -305,6 +319,7 @@ impl Expr {
                     f(*expr);
                 }
             }
+            Expr::Literal(_) => {}
         }
     }
 }
@@ -633,13 +648,50 @@ impl ExprCollector {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
+            ast::ExprKind::Literal(e) => {
+                let child = if let Some(child) = e.literal_expr() {
+                    child
+                } else {
+                    return self.alloc_expr(Expr::Missing, syntax_ptr);
+                };
+
+                let lit = match child.flavor() {
+                    LiteralFlavor::IntNumber { suffix } => {
+                        let known_name = suffix
+                            .map(|s| Name::new(s))
+                            .and_then(|name| UncertainIntTy::from_name(&name));
+
+                        Literal::Int(
+                            Default::default(),
+                            known_name.unwrap_or(UncertainIntTy::Unknown),
+                        )
+                    }
+                    LiteralFlavor::FloatNumber { suffix } => {
+                        let known_name = suffix
+                            .map(|s| Name::new(s))
+                            .and_then(|name| UncertainFloatTy::from_name(&name));
+
+                        Literal::Float(
+                            Default::default(),
+                            known_name.unwrap_or(UncertainFloatTy::Unknown),
+                        )
+                    }
+                    LiteralFlavor::ByteString => Literal::ByteString(Default::default()),
+                    LiteralFlavor::String => Literal::String(Default::default()),
+                    LiteralFlavor::Byte => {
+                        Literal::Int(Default::default(), UncertainIntTy::Unsigned(UintTy::U8))
+                    }
+                    LiteralFlavor::Bool => Literal::Bool(Default::default()),
+                    LiteralFlavor::Char => Literal::Char(Default::default()),
+                };
+                self.alloc_expr(Expr::Literal(lit), syntax_ptr)
+            }
 
             // TODO implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::Literal(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 

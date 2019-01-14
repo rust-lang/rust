@@ -133,6 +133,32 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
 }
 
 #[test]
+fn infer_literals() {
+    check_inference(
+        r##"
+fn test() {
+    5i32;
+    "hello";
+    b"bytes";
+    'c';
+    b'b';
+    3.14;
+    5000;
+    false;
+    true;
+    r#"
+        //! doc
+        // non-doc
+        mod foo {}
+        "#;
+    br#"yolo"#;
+}
+"##,
+        "literals.txt",
+    );
+}
+
+#[test]
 fn infer_backwards() {
     check_inference(
         r#"
@@ -180,7 +206,7 @@ fn f(x: bool) -> i32 {
     0i32
 }
 
-fn test() {
+fn test() -> bool {
     let x = a && b;
     let y = true || false;
     let z = x == y;
@@ -277,8 +303,6 @@ fn test(x: &str, y: isize) {
     let b = (a, x);
     let c = (y, x);
     let d = (c, x);
-
-    // we have not infered these case yet.
     let e = (1, "e");
     let f = (e, "d");
 }

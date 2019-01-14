@@ -128,40 +128,52 @@ impl SyntaxNode {
     pub(crate) fn root_data(&self) -> &Vec<SyntaxError> {
         self.0.root_data()
     }
+
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_self(replacement)
     }
+
     pub fn to_owned(&self) -> TreeArc<SyntaxNode> {
         let ptr = TreeArc(self.0.to_owned());
         TreeArc::cast(ptr)
     }
+
     pub fn kind(&self) -> SyntaxKind {
         self.0.kind()
     }
+
     pub fn range(&self) -> TextRange {
         self.0.range()
     }
+
     pub fn text(&self) -> SyntaxText {
         SyntaxText::new(self)
     }
+
     pub fn is_leaf(&self) -> bool {
         self.0.is_leaf()
     }
+
     pub fn parent(&self) -> Option<&SyntaxNode> {
         self.0.parent().map(SyntaxNode::from_repr)
     }
+
     pub fn first_child(&self) -> Option<&SyntaxNode> {
         self.0.first_child().map(SyntaxNode::from_repr)
     }
+
     pub fn last_child(&self) -> Option<&SyntaxNode> {
         self.0.last_child().map(SyntaxNode::from_repr)
     }
+
     pub fn next_sibling(&self) -> Option<&SyntaxNode> {
         self.0.next_sibling().map(SyntaxNode::from_repr)
     }
+
     pub fn prev_sibling(&self) -> Option<&SyntaxNode> {
         self.0.prev_sibling().map(SyntaxNode::from_repr)
     }
+
     pub fn children(&self) -> SyntaxNodeChildren {
         SyntaxNodeChildren(self.0.children())
     }

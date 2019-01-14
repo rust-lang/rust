@@ -2,6 +2,56 @@ use std::fmt;
 
 use crate::{Name, KnownName};
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
+pub enum UncertainIntTy {
+    Unknown,
+    Unsigned(UintTy),
+    Signed(IntTy),
+}
+
+impl UncertainIntTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            UncertainIntTy::Unknown => "{integer}",
+            UncertainIntTy::Signed(ty) => ty.ty_to_string(),
+            UncertainIntTy::Unsigned(ty) => ty.ty_to_string(),
+        }
+    }
+
+    pub fn from_name(name: &Name) -> Option<UncertainIntTy> {
+        if let Some(ty) = IntTy::from_name(name) {
+            Some(UncertainIntTy::Signed(ty))
+        } else if let Some(ty) = UintTy::from_name(name) {
+            Some(UncertainIntTy::Unsigned(ty))
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
+pub enum UncertainFloatTy {
+    Unknown,
+    Known(FloatTy),
+}
+
+impl UncertainFloatTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            UncertainFloatTy::Unknown => "{float}",
+            UncertainFloatTy::Known(ty) => ty.ty_to_string(),
+        }
+    }
+
+    pub fn from_name(name: &Name) -> Option<UncertainFloatTy> {
+        if let Some(ty) = FloatTy::from_name(name) {
+            Some(UncertainFloatTy::Known(ty))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 pub enum IntTy {
     Isize,

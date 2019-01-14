@@ -23,7 +23,7 @@ impl fmt::Debug for Name {
 }
 
 impl Name {
-    fn new(text: SmolStr) -> Name {
+    pub(crate) fn new(text: SmolStr) -> Name {
         Name { text }
     }
 

@@ -426,11 +426,32 @@ Grammar(
         "PrefixExpr": (options: ["Expr"]),
         "RangeExpr": (),
         "BinExpr": (),
+
+        "IntNumber": ( traits: ["AstToken"] ),
+        "FloatNumber": ( traits: ["AstToken"] ),
         "String": ( traits: ["AstToken"] ),
+        "RawString": ( traits: ["AstToken"] ),
         "Byte": ( traits: ["AstToken"] ),
+        "RawByteString": ( traits: ["AstToken"] ),
         "ByteString": ( traits: ["AstToken"] ),
         "Char": ( traits: ["AstToken"] ),
-        "Literal": (),
+        "TrueKw": ( traits: ["AstToken"] ),
+        "FalseKw": ( traits: ["AstToken"] ),
+        "LiteralExpr": (
+            enum: [
+                "String",
+                "ByteString",
+                "RawString",
+                "RawByteString",
+                "Char",
+                "Byte",
+                "IntNumber",
+                "FloatNumber",
+                "TrueKw",
+                "FalseKw",
+            ]
+        ),
+        "Literal": (options: ["LiteralExpr"]),
 
         "Expr": (
             enum: [

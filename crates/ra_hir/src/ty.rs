@@ -14,7 +14,7 @@
 //! rustc.
 
 mod autoderef;
-mod primitive;
+pub(crate) mod primitive;
 #[cfg(test)]
 mod tests;
 pub(crate) mod method_resolution;
@@ -38,7 +38,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, ExprId, PatId, UnaryOp, BinaryOp, Statement},
+    expr::{Body, Expr, Literal, ExprId, PatId, UnaryOp, BinaryOp, Statement},
 };
 
 fn transpose<T>(x: Cancelable<Option<T>>) -> Option<Cancelable<T>> {
@@ -107,13 +107,35 @@ impl UnifyValue for TypeVarValue {
     }
 }
 
-/// The kinds of placeholders we need during type inference. Currently, we only
-/// have type variables; in the future, we will probably also need int and float
-/// variables, for inference of literal values (e.g. `100` could be one of
+/// The kinds of placeholders we need during type inference. There's separate
+/// values for general types, and for integer and float variables. The latter
+/// two are used for inference of literal values (e.g. `100` could be one of
 /// several integer types).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InferTy {
     TypeVar(TypeVarId),
+    IntVar(TypeVarId),
+    FloatVar(TypeVarId),
+}
+
+impl InferTy {
+    fn to_inner(self) -> TypeVarId {
+        match self {
+            InferTy::TypeVar(ty) | InferTy::IntVar(ty) | InferTy::FloatVar(ty) => ty,
+        }
+    }
+
+    fn fallback_value(self) -> Ty {
+        match self {
+            InferTy::TypeVar(..) => Ty::Unknown,
+            InferTy::IntVar(..) => {
+                Ty::Int(primitive::UncertainIntTy::Signed(primitive::IntTy::I32))
+            }
+            InferTy::FloatVar(..) => {
+                Ty::Float(primitive::UncertainFloatTy::Known(primitive::FloatTy::F64))
+            }
+        }
+    }
 }
 
 /// When inferring an expression, we propagate downward whatever type hint we
@@ -151,14 +173,11 @@ pub enum Ty {
     /// (a non-surrogate code point). Written as `char`.
     Char,
 
-    /// A primitive signed integer type. For example, `i32`.
-    Int(primitive::IntTy),
-
-    /// A primitive unsigned integer type. For example, `u32`.
-    Uint(primitive::UintTy),
+    /// A primitive integer type. For example, `i32`.
+    Int(primitive::UncertainIntTy),
 
     /// A primitive floating-point type. For example, `f64`.
-    Float(primitive::FloatTy),
+    Float(primitive::UncertainFloatTy),
 
     /// Structures, enumerations and unions.
     Adt {
@@ -198,8 +217,9 @@ pub enum Ty {
     // above function pointer type. Once we implement generics, we will probably
     // need this as well.
 
-    // A trait, defined with `dyn trait`.
+    // A trait, defined with `dyn Trait`.
     // Dynamic(),
+
     // The anonymous type of a closure. Used to represent the type of
     // `|a| a`.
     // Closure(DefId, ClosureSubsts<'tcx>),
@@ -312,20 +332,19 @@ impl Ty {
         path: &Path,
     ) -> Cancelable<Self> {
         if let Some(name) = path.as_ident() {
-            if let Some(KnownName::Bool) = name.as_known_name() {
-                return Ok(Ty::Bool);
-            } else if let Some(KnownName::Char) = name.as_known_name() {
-                return Ok(Ty::Char);
-            } else if let Some(KnownName::Str) = name.as_known_name() {
-                return Ok(Ty::Str);
-            } else if let Some(int_ty) = primitive::IntTy::from_name(name) {
+            if let Some(int_ty) = primitive::UncertainIntTy::from_name(name) {
                 return Ok(Ty::Int(int_ty));
-            } else if let Some(uint_ty) = primitive::UintTy::from_name(name) {
-                return Ok(Ty::Uint(uint_ty));
-            } else if let Some(float_ty) = primitive::FloatTy::from_name(name) {
+            } else if let Some(float_ty) = primitive::UncertainFloatTy::from_name(name) {
                 return Ok(Ty::Float(float_ty));
             } else if name.as_known_name() == Some(KnownName::SelfType) {
                 return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target_type()));
+            } else if let Some(known) = name.as_known_name() {
+                match known {
+                    KnownName::Bool => return Ok(Ty::Bool),
+                    KnownName::Char => return Ok(Ty::Char),
+                    KnownName::Str => return Ok(Ty::Str),
+                    _ => {}
+                }
             }
         }
 
@@ -392,7 +411,6 @@ impl fmt::Display for Ty {
             Ty::Bool => write!(f, "bool"),
             Ty::Char => write!(f, "char"),
             Ty::Int(t) => write!(f, "{}", t.ty_to_string()),
-            Ty::Uint(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Str => write!(f, "str"),
             Ty::Slice(t) => write!(f, "[{}]", t),
@@ -587,7 +605,7 @@ fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match rhs_ty {
-            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) => rhs_ty,
+            Ty::Int(..) | Ty::Float(..) => rhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::RangeRightOpen | BinaryOp::RangeRightClosed => Ty::Unknown,
@@ -598,7 +616,7 @@ fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
     match op {
         BinaryOp::BooleanAnd | BinaryOp::BooleanOr => Ty::Bool,
         BinaryOp::Assignment | BinaryOp::EqualityTest => match lhs_ty {
-            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) | Ty::Str | Ty::Char | Ty::Bool => lhs_ty,
+            Ty::Int(..) | Ty::Float(..) | Ty::Str | Ty::Char | Ty::Bool => lhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::LesserEqualTest
@@ -625,7 +643,7 @@ fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match lhs_ty {
-            Ty::Uint(..) | Ty::Int(..) | Ty::Float(..) => lhs_ty,
+            Ty::Int(..) | Ty::Float(..) => lhs_ty,
             _ => Ty::Unknown,
         },
         _ => Ty::Unknown,
@@ -695,13 +713,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match (&*ty1, &*ty2) {
             (Ty::Unknown, ..) => true,
             (.., Ty::Unknown) => true,
-            (Ty::Bool, _)
-            | (Ty::Str, _)
-            | (Ty::Never, _)
-            | (Ty::Char, _)
-            | (Ty::Int(..), Ty::Int(..))
-            | (Ty::Uint(..), Ty::Uint(..))
-            | (Ty::Float(..), Ty::Float(..)) => ty1 == ty2,
+            (Ty::Int(t1), Ty::Int(t2)) => match (t1, t2) {
+                (primitive::UncertainIntTy::Unknown, _)
+                | (_, primitive::UncertainIntTy::Unknown) => true,
+                _ => t1 == t2,
+            },
+            (Ty::Float(t1), Ty::Float(t2)) => match (t1, t2) {
+                (primitive::UncertainFloatTy::Unknown, _)
+                | (_, primitive::UncertainFloatTy::Unknown) => true,
+                _ => t1 == t2,
+            },
+            (Ty::Bool, _) | (Ty::Str, _) | (Ty::Never, _) | (Ty::Char, _) => ty1 == ty2,
             (
                 Ty::Adt {
                     def_id: def_id1, ..
@@ -718,12 +740,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .iter()
                 .zip(ts2.iter())
                 .all(|(t1, t2)| self.unify(t1, t2)),
-            (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2))) => {
+            (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
+            | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
+            | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2))) => {
                 // both type vars are unknown since we tried to resolve them
                 self.var_unification_table.union(*tv1, *tv2);
                 true
             }
-            (Ty::Infer(InferTy::TypeVar(tv)), other) | (other, Ty::Infer(InferTy::TypeVar(tv))) => {
+            (Ty::Infer(InferTy::TypeVar(tv)), other)
+            | (other, Ty::Infer(InferTy::TypeVar(tv)))
+            | (Ty::Infer(InferTy::IntVar(tv)), other)
+            | (other, Ty::Infer(InferTy::IntVar(tv)))
+            | (Ty::Infer(InferTy::FloatVar(tv)), other)
+            | (other, Ty::Infer(InferTy::FloatVar(tv))) => {
                 // the type var is unknown since we tried to resolve it
                 self.var_unification_table
                     .union_value(*tv, TypeVarValue::Known(other.clone()));
@@ -739,10 +768,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ))
     }
 
+    fn new_integer_var(&mut self) -> Ty {
+        Ty::Infer(InferTy::IntVar(
+            self.var_unification_table.new_key(TypeVarValue::Unknown),
+        ))
+    }
+
+    fn new_float_var(&mut self) -> Ty {
+        Ty::Infer(InferTy::FloatVar(
+            self.var_unification_table.new_key(TypeVarValue::Unknown),
+        ))
+    }
+
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
             Ty::Unknown => self.new_type_var(),
+            Ty::Int(primitive::UncertainIntTy::Unknown) => self.new_integer_var(),
+            Ty::Float(primitive::UncertainFloatTy::Unknown) => self.new_float_var(),
             _ => ty,
         }
     }
@@ -757,12 +800,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// known type.
     fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
-                if let Some(known_ty) = self.var_unification_table.probe_value(tv).known() {
+            Ty::Infer(tv) => {
+                let inner = tv.to_inner();
+                if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_as_possible(known_ty.clone())
                 } else {
-                    Ty::Infer(InferTy::TypeVar(tv))
+                    ty
                 }
             }
             _ => ty,
@@ -773,8 +817,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// otherwise, return ty.
     fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
         match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
-                match self.var_unification_table.probe_value(*tv).known() {
+            Ty::Infer(tv) => {
+                let inner = tv.to_inner();
+                match self.var_unification_table.probe_value(inner).known() {
                     Some(known_ty) => {
                         // The known_ty can't be a type var itself
                         Cow::Owned(known_ty.clone())
@@ -790,12 +835,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// replaced by Ty::Unknown.
     fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
-                if let Some(known_ty) = self.var_unification_table.probe_value(tv).known() {
+            Ty::Infer(tv) => {
+                let inner = tv.to_inner();
+                if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_completely(known_ty.clone())
                 } else {
-                    Ty::Unknown
+                    tv.fallback_value()
                 }
             }
             _ => ty,
@@ -1067,6 +1113,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 Ty::Tuple(Arc::from(ty_vec))
             }
+            Expr::Literal(lit) => match lit {
+                Literal::Bool(..) => Ty::Bool,
+                Literal::String(..) => Ty::Ref(Arc::new(Ty::Str), Mutability::Shared),
+                Literal::ByteString(..) => {
+                    let byte_type = Arc::new(Ty::Int(primitive::UncertainIntTy::Unsigned(
+                        primitive::UintTy::U8,
+                    )));
+                    let slice_type = Arc::new(Ty::Slice(byte_type));
+                    Ty::Ref(slice_type, Mutability::Shared)
+                }
+                Literal::Char(..) => Ty::Char,
+                Literal::Int(_v, ty) => Ty::Int(*ty),
+                Literal::Float(_v, ty) => Ty::Float(*ty),
+            },
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
