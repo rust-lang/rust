@@ -1,5 +1,6 @@
 fn main() {
-    match 0 {
-        (.., pat, ..) => {} //~ ERROR `..` can only be used once per tuple or tuple struct pattern
+    match (0, 1, 2) {
+        (.., pat, ..) => {}
+        //~^ ERROR `..` can only be used once per tuple or tuple struct pattern
     }
 }

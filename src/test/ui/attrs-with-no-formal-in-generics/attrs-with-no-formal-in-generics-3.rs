@@ -5,12 +5,8 @@
 struct RefIntPair<'a, 'b>(&'a u32, &'b u32);
 
 fn hof_lt<Q>(_: Q)
-    where Q: for <#[rustc_1] 'a, 'b, #[oops]> Fn(RefIntPair<'a,'b>) -> &'b u32
+    where Q: for <#[allow(unused)] 'a, 'b, #[oops]> Fn(RefIntPair<'a,'b>) -> &'b u32
     //~^ ERROR trailing attribute after lifetime parameters
-{
+{}
 
-}
-
-fn main() {
-
-}
+fn main() {}

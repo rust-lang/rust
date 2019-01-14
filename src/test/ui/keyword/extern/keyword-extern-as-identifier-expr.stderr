@@ -1,0 +1,8 @@
+error: expected expression, found keyword `extern`
+  --> $DIR/keyword-extern-as-identifier-expr.rs:2:13
+   |
+LL |     let s = extern::foo::Bar; //~ ERROR expected expression, found keyword `extern`
+   |             ^^^^^^ expected expression
+
+error: aborting due to previous error
+
