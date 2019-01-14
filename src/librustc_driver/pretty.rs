@@ -123,7 +123,8 @@ pub fn parse_pretty(sess: &Session,
                 sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
                                      `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
                                      `identified`, `expanded,identified`, `everybody_loops`, \
-                                     `hir`, `hir,identified`, `hir,typed`, or `mir`; got {}",
+                                     `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
+                                     `mir` or `mir-cfg`; got {}",
                                     name));
             } else {
                 sess.fatal(&format!("argument to `pretty` must be one of `normal`, `expanded`, \
