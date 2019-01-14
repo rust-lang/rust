@@ -1552,32 +1552,6 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     }
 }
 
-
-/*struct LeakedPrivateDependenciesVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    public_crates: FxHashSet<CrateNum>
-}
-
-impl<'a, 'tcx> LeakedPrivateDependenciesVisitor<'a, 'tcx> {
-    fn is_private_dep(&self, item_id: DefId) {
-        !item_id.is_local() && !self.public_crates.contains(item_id.krate)
-    }
-
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for LeakedPrivateDependenciesVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> nestedvisitormap<'this, 'tcx> {
-        nestedvisitormap::onlybodies(&self.tcx.hir())
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-
-    }
-
-}*/
-
-
-
 impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
