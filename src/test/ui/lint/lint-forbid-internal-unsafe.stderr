@@ -1,0 +1,14 @@
+error: cannot use `allow_internal_unsafe` with `forbid(unsafe_code)`
+  --> $DIR/lint-forbid-internal-unsafe.rs:4:1
+   |
+LL | #[allow_internal_unsafe]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-forbid-internal-unsafe.rs:1:11
+   |
+LL | #![forbid(unsafe_code)]
+   |           ^^^^^^^^^^^
+
+error: aborting due to previous error
+
