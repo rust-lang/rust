@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use languageserver_types::{
+use lsp_types::{
     CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range,
 };
 use ra_lsp_server::req::{

@@ -1,4 +1,4 @@
-use languageserver_types::{
+use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, DocumentOnTypeFormattingOptions,
     ExecuteCommandOptions, FoldingRangeProviderCapability, RenameOptions, RenameProviderCapability,
     ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,

@@ -1,9 +1,9 @@
-use languageserver_types::{Location, Position, Range, TextDocumentIdentifier, Url};
+use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use url_serde;
 
-pub use languageserver_types::{
+pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens, CodeLensParams,
     CompletionParams, CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,

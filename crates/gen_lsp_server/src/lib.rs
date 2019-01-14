@@ -6,12 +6,12 @@
 //!
 //! ```no_run
 //! extern crate gen_lsp_server;
-//! extern crate languageserver_types;
+//! extern crate lsp_types;
 //! extern crate failure;
 //! extern crate crossbeam_channel;
 //!
 //! use crossbeam_channel::{Sender, Receiver};
-//! use languageserver_types::{ServerCapabilities, InitializeParams, request::{GotoDefinition, GotoDefinitionResponse}};
+//! use lsp_types::{ServerCapabilities, InitializeParams, request::{GotoDefinition, GotoDefinitionResponse}};
 //! use gen_lsp_server::{run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse};
 //!
 //! fn main() -> Result<(), failure::Error> {
@@ -65,7 +65,7 @@ mod msg;
 mod stdio;
 
 use crossbeam_channel::{Receiver, Sender};
-use languageserver_types::{
+use lsp_types::{
     notification::{Exit, Initialized},
     request::{Initialize, Shutdown},
     InitializeParams, InitializeResult, ServerCapabilities,

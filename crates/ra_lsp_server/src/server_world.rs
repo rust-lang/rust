@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use languageserver_types::Url;
+use lsp_types::Url;
 use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData,
     SourceRootId
