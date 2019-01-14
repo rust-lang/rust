@@ -242,12 +242,12 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let node_id = tcx.hir().as_local_node_id(def_id);
 
-    if let Some(id) = node_id {
-        if *tcx.sess.plugin_registrar_fn.get() == Some(id) {
+    if def_id.is_local() {
+        if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if *tcx.sess.proc_macro_decls_static.get() == Some(id) {
+        if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }

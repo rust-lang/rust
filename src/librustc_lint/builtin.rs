@@ -19,7 +19,7 @@
 //! a `pub fn new()`.
 
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty};
 use hir::Node;
 use util::nodemap::NodeSet;
@@ -860,7 +860,7 @@ impl LintPass for PluginAsLibrary {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        if cx.sess().plugin_registrar_fn.get().is_some() {
+        if cx.tcx.plugin_registrar_fn(LOCAL_CRATE).is_some() {
             // We're compiling a plugin; it's fine to link other plugins.
             return;
         }
