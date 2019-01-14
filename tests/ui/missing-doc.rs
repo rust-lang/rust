@@ -2,7 +2,7 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 #![allow(dead_code)]
-#![feature(associated_type_defaults)]
+#![feature(associated_type_defaults, global_asm)]
 
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
@@ -176,3 +176,6 @@ pub mod public_interface {
 }
 
 fn main() {}
+
+// Ensure global asm doesn't require documentation.
+global_asm! { "" }
