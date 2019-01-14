@@ -1496,7 +1496,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
+            self.tcx.lint_node(lint::builtin::EXTERNAL_PRIVATE_DEPENDENCY,
                                self.item_id,
                                self.span,
                                &format!("{} `{}` from private dependency '{}' in public \

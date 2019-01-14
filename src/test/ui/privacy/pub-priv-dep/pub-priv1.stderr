@@ -7,8 +7,8 @@ LL |     pub field: OtherType,
 note: lint level defined here
   --> $DIR/pub-priv1.rs:5:9
    |
-LL | #![deny(leaked_private_dependency)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(external_private_dependency)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
 
