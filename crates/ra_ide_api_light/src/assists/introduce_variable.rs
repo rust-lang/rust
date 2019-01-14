@@ -153,7 +153,6 @@ fn foo() {
             "
 fn foo() {
     let <|>var_name = { let x = 0; x };
-    var_name
     something_else();
 }",
         );
