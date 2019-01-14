@@ -422,7 +422,18 @@ impl Printer for SymbolPath {
         self: PrintCx<'_, '_, 'tcx, Self>,
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
-        self.pretty_print_type(ty)
+        match ty.sty {
+            // Print all nominal types as paths (unlike `pretty_print_type`).
+            ty::FnDef(def_id, substs) |
+            ty::Opaque(def_id, substs) |
+            ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
+            ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
+            ty::Closure(def_id, ty::ClosureSubsts { substs }) |
+            ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+                self.print_def_path(def_id, Some(substs), iter::empty())
+            }
+            _ => self.pretty_print_type(ty),
+        }
     }
 
     fn path_crate(
@@ -437,7 +448,22 @@ impl Printer for SymbolPath {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.pretty_path_qualified(self_ty, trait_ref)
+        // Similar to `pretty_path_qualified`, but for the other
+        // types that are printed as paths (see `print_type` above).
+        match self_ty.sty {
+            ty::FnDef(..) |
+            ty::Opaque(..) |
+            ty::Projection(_) |
+            ty::UnnormalizedProjection(_) |
+            ty::Closure(..) |
+            ty::Generator(..)
+                if trait_ref.is_none() =>
+            {
+                self.print_type(self_ty)
+            }
+
+            _ => self.pretty_path_qualified(self_ty, trait_ref)
+        }
     }
 
     fn path_append_impl<'gcx, 'tcx>(
