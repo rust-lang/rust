@@ -664,7 +664,7 @@ pub enum ExprKind<'a> {
     PrefixExpr(&'a PrefixExpr),
     RangeExpr(&'a RangeExpr),
     BinExpr(&'a BinExpr),
-    LiteralExpr(&'a LiteralExpr),
+    Literal(&'a Literal),
 }
 
 impl AstNode for Expr {
@@ -696,7 +696,7 @@ impl AstNode for Expr {
             | PREFIX_EXPR
             | RANGE_EXPR
             | BIN_EXPR
-            | LITERAL_EXPR => Some(Expr::from_repr(syntax.into_repr())),
+            | LITERAL => Some(Expr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
@@ -733,7 +733,7 @@ impl Expr {
             PREFIX_EXPR => ExprKind::PrefixExpr(PrefixExpr::cast(&self.syntax).unwrap()),
             RANGE_EXPR => ExprKind::RangeExpr(RangeExpr::cast(&self.syntax).unwrap()),
             BIN_EXPR => ExprKind::BinExpr(BinExpr::cast(&self.syntax).unwrap()),
-            LITERAL_EXPR => ExprKind::LiteralExpr(LiteralExpr::cast(&self.syntax).unwrap()),
+            LITERAL => ExprKind::Literal(Literal::cast(&self.syntax).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -792,6 +792,31 @@ impl AstNode for ExternCrateItem {
 
 
 impl ExternCrateItem {}
+
+// FalseKw
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct FalseKw {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for FalseKw {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for FalseKw {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            FALSE_KW => Some(FalseKw::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<FalseKw> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::AstToken for FalseKw {}
+impl FalseKw {}
 
 // FieldExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -867,7 +892,7 @@ impl AstNode for FloatNumber {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<FloatNumber> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<FloatNumber> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1173,7 +1198,7 @@ impl AstNode for IntNumber {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<IntNumber> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<IntNumber> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1365,25 +1390,10 @@ unsafe impl TransparentNewType for Literal {
     type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LiteralKind<'a> {
-    String(&'a String),
-    ByteString(&'a ByteString),
-    Char(&'a Char),
-    Byte(&'a Byte),
-    IntNumber(&'a IntNumber),
-    FloatNumber(&'a FloatNumber),
-}
-
 impl AstNode for Literal {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            | STRING
-            | BYTE_STRING
-            | CHAR
-            | BYTE
-            | INT_NUMBER
-            | FLOAT_NUMBER => Some(Literal::from_repr(syntax.into_repr())),
+            LITERAL => Some(Literal::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
@@ -1391,21 +1401,12 @@ impl AstNode for Literal {
     fn to_owned(&self) -> TreeArc<Literal> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
+
 impl Literal {
-    pub fn kind(&self) -> LiteralKind {
-        match self.syntax.kind() {
-            STRING => LiteralKind::String(String::cast(&self.syntax).unwrap()),
-            BYTE_STRING => LiteralKind::ByteString(ByteString::cast(&self.syntax).unwrap()),
-            CHAR => LiteralKind::Char(Char::cast(&self.syntax).unwrap()),
-            BYTE => LiteralKind::Byte(Byte::cast(&self.syntax).unwrap()),
-            INT_NUMBER => LiteralKind::IntNumber(IntNumber::cast(&self.syntax).unwrap()),
-            FLOAT_NUMBER => LiteralKind::FloatNumber(FloatNumber::cast(&self.syntax).unwrap()),
-            _ => unreachable!(),
-        }
+    pub fn literal_expr(&self) -> Option<&LiteralExpr> {
+        super::child_opt(self)
     }
 }
-
-impl Literal {}
 
 // LiteralExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1417,23 +1418,53 @@ unsafe impl TransparentNewType for LiteralExpr {
     type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LiteralExprKind<'a> {
+    String(&'a String),
+    ByteString(&'a ByteString),
+    Char(&'a Char),
+    Byte(&'a Byte),
+    IntNumber(&'a IntNumber),
+    FloatNumber(&'a FloatNumber),
+    TrueKw(&'a TrueKw),
+    FalseKw(&'a FalseKw),
+}
+
 impl AstNode for LiteralExpr {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            LITERAL_EXPR => Some(LiteralExpr::from_repr(syntax.into_repr())),
+            | STRING
+            | BYTE_STRING
+            | CHAR
+            | BYTE
+            | INT_NUMBER
+            | FLOAT_NUMBER
+            | TRUE_KW
+            | FALSE_KW => Some(LiteralExpr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-    fn to_owned(&self) -> TreePtr<LiteralExpr> { TreePtr::cast(self.syntax.to_owned()) }
+    fn to_owned(&self) -> TreeArc<LiteralExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
-
 
 impl LiteralExpr {
-    pub fn literal(&self) -> Option<&Literal> {
-        super::child_opt(self)
+    pub fn kind(&self) -> LiteralExprKind {
+        match self.syntax.kind() {
+            STRING => LiteralExprKind::String(String::cast(&self.syntax).unwrap()),
+            BYTE_STRING => LiteralExprKind::ByteString(ByteString::cast(&self.syntax).unwrap()),
+            CHAR => LiteralExprKind::Char(Char::cast(&self.syntax).unwrap()),
+            BYTE => LiteralExprKind::Byte(Byte::cast(&self.syntax).unwrap()),
+            INT_NUMBER => LiteralExprKind::IntNumber(IntNumber::cast(&self.syntax).unwrap()),
+            FLOAT_NUMBER => LiteralExprKind::FloatNumber(FloatNumber::cast(&self.syntax).unwrap()),
+            TRUE_KW => LiteralExprKind::TrueKw(TrueKw::cast(&self.syntax).unwrap()),
+            FALSE_KW => LiteralExprKind::FalseKw(FalseKw::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
+        }
     }
 }
+
+impl LiteralExpr {}
 
 // LoopExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3024,6 +3055,31 @@ impl ast::NameOwner for TraitDef {}
 impl ast::AttrsOwner for TraitDef {}
 impl ast::DocCommentsOwner for TraitDef {}
 impl TraitDef {}
+
+// TrueKw
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TrueKw {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TrueKw {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for TrueKw {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TRUE_KW => Some(TrueKw::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<TrueKw> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::AstToken for TrueKw {}
+impl TrueKw {}
 
 // TryExpr
 #[derive(Debug, PartialEq, Eq, Hash)]

@@ -59,7 +59,7 @@ impl SourceFile {
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         TreeArc::cast(root)
     }
-    
+
     pub fn parse(text: &str) -> TreeArc<SourceFile> {
         let tokens = tokenize(&text);
         let (green, errors) =

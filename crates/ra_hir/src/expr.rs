@@ -6,12 +6,11 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::{
-    SyntaxKind,
-    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner}
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor}
 };
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
-use crate::ty::primitive::{UintTy, IntTy, FloatTy, UncertainIntTy, UncertainFloatTy};
+use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(RawId);
@@ -649,93 +648,59 @@ impl ExprCollector {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
-            ast::ExprKind::LiteralExpr(e) => {
-                if let Some(child) = e.literal() {
-                    let c = child.syntax();
-                    let lit = match c.kind() {
-                        SyntaxKind::INT_NUMBER => {
-                            let text = c.text().to_string();
-
-                            // FIXME: don't do it like this. maybe use something like
-                            // the IntTy::from_name functions
-                            let ty = if text.ends_with("isize") {
-                                UncertainIntTy::Signed(IntTy::Isize)
-                            } else if text.ends_with("i128") {
-                                UncertainIntTy::Signed(IntTy::I128)
-                            } else if text.ends_with("i64") {
-                                UncertainIntTy::Signed(IntTy::I64)
-                            } else if text.ends_with("i32") {
-                                UncertainIntTy::Signed(IntTy::I32)
-                            } else if text.ends_with("i16") {
-                                UncertainIntTy::Signed(IntTy::I16)
-                            } else if text.ends_with("i8") {
-                                UncertainIntTy::Signed(IntTy::I8)
-                            } else if text.ends_with("usize") {
-                                UncertainIntTy::Unsigned(UintTy::Usize)
-                            } else if text.ends_with("u128") {
-                                UncertainIntTy::Unsigned(UintTy::U128)
-                            } else if text.ends_with("u64") {
-                                UncertainIntTy::Unsigned(UintTy::U64)
-                            } else if text.ends_with("u32") {
-                                UncertainIntTy::Unsigned(UintTy::U32)
-                            } else if text.ends_with("u16") {
-                                UncertainIntTy::Unsigned(UintTy::U16)
-                            } else if text.ends_with("u8") {
-                                UncertainIntTy::Unsigned(UintTy::U8)
-                            } else {
-                                UncertainIntTy::Unknown
-                            };
-
-                            // TODO: actually parse integer
-                            Literal::Int(0u64, ty)
-                        }
-                        SyntaxKind::FLOAT_NUMBER => {
-                            let text = c.text().to_string();
-
-                            // FIXME: don't do it like this. maybe use something like
-                            // the IntTy::from_name functions
-                            let ty = if text.ends_with("f64") {
-                                UncertainFloatTy::Known(FloatTy::F64)
-                            } else if text.ends_with("f32") {
-                                UncertainFloatTy::Known(FloatTy::F32)
-                            } else {
-                                UncertainFloatTy::Unknown
-                            };
-
-                            // TODO: actually parse value
-                            Literal::Float(0, ty)
-                        }
-                        SyntaxKind::STRING => {
-                            // FIXME: this likely includes the " characters
-                            let text = c.text().to_string();
-                            Literal::String(text)
-                        }
-                        SyntaxKind::TRUE_KW => Literal::Bool(true),
-                        SyntaxKind::FALSE_KW => Literal::Bool(false),
-                        SyntaxKind::BYTE_STRING => {
-                            // FIXME: this is completely incorrect for a variety
-                            // of reasons, but at least it gives the right type
-                            let bytes = c.text().to_string().into_bytes();
-                            Literal::ByteString(bytes)
-                        }
-                        SyntaxKind::CHAR => {
-                            let character = c.text().char_at(1).unwrap_or('X');
-                            Literal::Char(character)
-                        }
-                        SyntaxKind::BYTE => {
-                            let character = c.text().char_at(1).unwrap_or('X');
-                            Literal::Int(
-                                character as u8 as u64,
-                                UncertainIntTy::Unsigned(UintTy::U8),
-                            )
-                        }
-                        _ => return self.alloc_expr(Expr::Missing, syntax_ptr),
-                    };
-
-                    self.alloc_expr(Expr::Literal(lit), syntax_ptr)
+            ast::ExprKind::Literal(e) => {
+                let child = if let Some(child) = e.literal_expr() {
+                    child
                 } else {
-                    self.alloc_expr(Expr::Missing, syntax_ptr)
-                }
+                    return self.alloc_expr(Expr::Missing, syntax_ptr);
+                };
+                let c = child.syntax();
+
+                let lit = match child.flavor() {
+                    LiteralFlavor::IntNumber { suffix } => {
+                        let known_name = suffix
+                            .map(|s| Name::new(s))
+                            .and_then(|name| UncertainIntTy::from_name(&name));
+
+                        if let Some(kn) = known_name {
+                            Literal::Int(0u64, kn)
+                        } else {
+                            Literal::Int(0u64, UncertainIntTy::Unknown)
+                        }
+                    }
+                    LiteralFlavor::FloatNumber { suffix } => {
+                        let known_name = suffix
+                            .map(|s| Name::new(s))
+                            .and_then(|name| UncertainFloatTy::from_name(&name));
+
+                        if let Some(kn) = known_name {
+                            Literal::Float(0u64, kn)
+                        } else {
+                            Literal::Float(0u64, UncertainFloatTy::Unknown)
+                        }
+                    }
+                    LiteralFlavor::ByteString => {
+                        // FIXME: this is completely incorrect for a variety
+                        // of reasons, but at least it gives the right type
+                        let bytes = c.text().to_string().into_bytes();
+                        Literal::ByteString(bytes)
+                    }
+                    LiteralFlavor::String => {
+                        // FIXME: this likely includes the " characters
+                        let text = c.text().to_string();
+                        Literal::String(text)
+                    }
+                    LiteralFlavor::Byte => {
+                        let character = c.text().char_at(1).unwrap_or('X');
+                        Literal::Int(character as u8 as u64, UncertainIntTy::Unsigned(UintTy::U8))
+                    }
+                    LiteralFlavor::Bool => Literal::Bool(true),
+                    LiteralFlavor::Char => {
+                        let character = c.text().char_at(1).unwrap_or('X');
+                        Literal::Char(character)
+                    }
+                };
+                self.alloc_expr(Expr::Literal(lit), syntax_ptr)
             }
 
             // TODO implement HIR for these:

@@ -145,6 +145,7 @@ fn test() {
     3.14;
     5000;
     false;
+    true;
 }
 "#,
         "literals.txt",
@@ -199,7 +200,7 @@ fn f(x: bool) -> i32 {
     0i32
 }
 
-fn test() {
+fn test() -> bool {
     let x = a && b;
     let y = true || false;
     let z = x == y;
@@ -296,8 +297,6 @@ fn test(x: &str, y: isize) {
     let b = (a, x);
     let c = (y, x);
     let d = (c, x);
-
-    // we have not infered these case yet.
     let e = (1, "e");
     let f = (e, "d");
 }

@@ -111,7 +111,7 @@ impl UnifyValue for TypeVarValue {
 /// values for general types, and for integer and float variables. The latter
 /// two are used for inference of literal values (e.g. `100` could be one of
 /// several integer types).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InferTy {
     TypeVar(TypeVarId),
     IntVar(TypeVarId),
@@ -119,6 +119,12 @@ pub enum InferTy {
 }
 
 impl InferTy {
+    fn to_inner(self) -> TypeVarId {
+        match self {
+            InferTy::TypeVar(ty) | InferTy::IntVar(ty) | InferTy::FloatVar(ty) => ty,
+        }
+    }
+
     fn fallback_value(self) -> Ty {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
@@ -326,18 +332,19 @@ impl Ty {
         path: &Path,
     ) -> Cancelable<Self> {
         if let Some(name) = path.as_ident() {
-            if let Some(KnownName::Bool) = name.as_known_name() {
-                return Ok(Ty::Bool);
-            } else if let Some(KnownName::Char) = name.as_known_name() {
-                return Ok(Ty::Char);
-            } else if let Some(KnownName::Str) = name.as_known_name() {
-                return Ok(Ty::Str);
-            } else if let Some(int_ty) = primitive::UncertainIntTy::from_name(name) {
+            if let Some(int_ty) = primitive::UncertainIntTy::from_name(name) {
                 return Ok(Ty::Int(int_ty));
             } else if let Some(float_ty) = primitive::UncertainFloatTy::from_name(name) {
                 return Ok(Ty::Float(float_ty));
             } else if name.as_known_name() == Some(KnownName::SelfType) {
                 return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target_type()));
+            } else if let Some(known) = name.as_known_name() {
+                match known {
+                    KnownName::Bool => return Ok(Ty::Bool),
+                    KnownName::Char => return Ok(Ty::Char),
+                    KnownName::Str => return Ok(Ty::Str),
+                    _ => {}
+                }
             }
         }
 
@@ -793,10 +800,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// known type.
     fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
-            Ty::Infer(InferTy::TypeVar(tv))
-            | Ty::Infer(InferTy::IntVar(tv))
-            | Ty::Infer(InferTy::FloatVar(tv)) => {
-                if let Some(known_ty) = self.var_unification_table.probe_value(tv).known() {
+            Ty::Infer(tv) => {
+                let inner = tv.to_inner();
+                if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_as_possible(known_ty.clone())
                 } else {
@@ -811,8 +817,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// otherwise, return ty.
     fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
         match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
-                match self.var_unification_table.probe_value(*tv).known() {
+            Ty::Infer(tv) => {
+                let inner = tv.to_inner();
+                match self.var_unification_table.probe_value(inner).known() {
                     Some(known_ty) => {
                         // The known_ty can't be a type var itself
                         Cow::Owned(known_ty.clone())
@@ -828,16 +835,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// replaced by Ty::Unknown.
     fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
-            Ty::Infer(i) => {
-                let tv = match i {
-                    InferTy::TypeVar(tv) | InferTy::IntVar(tv) | InferTy::FloatVar(tv) => tv,
-                };
-
-                if let Some(known_ty) = self.var_unification_table.probe_value(tv).known() {
+            Ty::Infer(tv) => {
+                let inner = tv.to_inner();
+                if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
                     // known_ty may contain other variables that are known by now
                     self.resolve_ty_completely(known_ty.clone())
                 } else {
-                    i.fallback_value()
+                    tv.fallback_value()
                 }
             }
             _ => ty,
