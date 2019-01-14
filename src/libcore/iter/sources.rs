@@ -443,6 +443,8 @@ unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 /// Basic usage:
 ///
 /// ```
+/// #![feature(iter_once_with)]
+///
 /// use std::iter;
 ///
 /// // one is the loneliest number
