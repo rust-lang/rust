@@ -230,20 +230,19 @@ mod tests {
         assert_eq!("[unknown]", &type_name);
     }
 
-    // FIXME: improve type_of to make this work
     #[test]
     fn test_type_of_for_expr_2() {
         let (analysis, range) = single_file_with_range(
             "
             fn main() {
                 let foo: usize = 1;
-                let bar = <|>1 + foo_test<|>;
+                let bar = <|>1 + foo<|>;
             }
             ",
         );
 
         let type_name = analysis.type_of(range).unwrap().unwrap();
-        assert_eq!("[unknown]", &type_name);
+        assert_eq!("usize", &type_name);
     }
 
 }

@@ -49,7 +49,7 @@ pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
             BYTE_STRING
         }
         'r' => {
-            scan_raw_byte_string(ptr);
+            scan_raw_string(ptr);
             RAW_BYTE_STRING
         }
         _ => unreachable!(),
@@ -107,17 +107,4 @@ fn scan_byte(ptr: &mut Ptr) {
 
 fn scan_byte_string(ptr: &mut Ptr) {
     scan_string(ptr)
-}
-
-fn scan_raw_byte_string(ptr: &mut Ptr) {
-    if !ptr.at('"') {
-        return;
-    }
-    ptr.bump();
-
-    while let Some(c) = ptr.bump() {
-        if c == '"' {
-            return;
-        }
-    }
 }

@@ -1422,6 +1422,8 @@ unsafe impl TransparentNewType for LiteralExpr {
 pub enum LiteralExprKind<'a> {
     String(&'a String),
     ByteString(&'a ByteString),
+    RawString(&'a RawString),
+    RawByteString(&'a RawByteString),
     Char(&'a Char),
     Byte(&'a Byte),
     IntNumber(&'a IntNumber),
@@ -1435,6 +1437,8 @@ impl AstNode for LiteralExpr {
         match syntax.kind() {
             | STRING
             | BYTE_STRING
+            | RAW_STRING
+            | RAW_BYTE_STRING
             | CHAR
             | BYTE
             | INT_NUMBER
@@ -1453,6 +1457,8 @@ impl LiteralExpr {
         match self.syntax.kind() {
             STRING => LiteralExprKind::String(String::cast(&self.syntax).unwrap()),
             BYTE_STRING => LiteralExprKind::ByteString(ByteString::cast(&self.syntax).unwrap()),
+            RAW_STRING => LiteralExprKind::RawString(RawString::cast(&self.syntax).unwrap()),
+            RAW_BYTE_STRING => LiteralExprKind::RawByteString(RawByteString::cast(&self.syntax).unwrap()),
             CHAR => LiteralExprKind::Char(Char::cast(&self.syntax).unwrap()),
             BYTE => LiteralExprKind::Byte(Byte::cast(&self.syntax).unwrap()),
             INT_NUMBER => LiteralExprKind::IntNumber(IntNumber::cast(&self.syntax).unwrap()),
@@ -2542,6 +2548,56 @@ impl AstNode for RangePat {
 
 
 impl RangePat {}
+
+// RawByteString
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RawByteString {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for RawByteString {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for RawByteString {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            RAW_BYTE_STRING => Some(RawByteString::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<RawByteString> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::AstToken for RawByteString {}
+impl RawByteString {}
+
+// RawString
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct RawString {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for RawString {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for RawString {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            RAW_STRING => Some(RawString::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<RawString> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::AstToken for RawString {}
+impl RawString {}
 
 // RefExpr
 #[derive(Debug, PartialEq, Eq, Hash)]

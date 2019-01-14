@@ -135,7 +135,7 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
 #[test]
 fn infer_literals() {
     check_inference(
-        r#"
+        r##"
 fn test() {
     5i32;
     "hello";
@@ -146,8 +146,14 @@ fn test() {
     5000;
     false;
     true;
+    r#"
+        //! doc
+        // non-doc
+        mod foo {}
+        "#;
+    br#"yolo"#;
 }
-"#,
+"##,
         "literals.txt",
     );
 }

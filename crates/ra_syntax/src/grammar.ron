@@ -430,7 +430,9 @@ Grammar(
         "IntNumber": ( traits: ["AstToken"] ),
         "FloatNumber": ( traits: ["AstToken"] ),
         "String": ( traits: ["AstToken"] ),
+        "RawString": ( traits: ["AstToken"] ),
         "Byte": ( traits: ["AstToken"] ),
+        "RawByteString": ( traits: ["AstToken"] ),
         "ByteString": ( traits: ["AstToken"] ),
         "Char": ( traits: ["AstToken"] ),
         "TrueKw": ( traits: ["AstToken"] ),
@@ -439,6 +441,8 @@ Grammar(
             enum: [
                 "String",
                 "ByteString",
+                "RawString",
+                "RawByteString",
                 "Char",
                 "Byte",
                 "IntNumber",
