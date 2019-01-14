@@ -1,4 +1,7 @@
-// error-pattern:no valid digits found for number
+fn log(a: i32, b: i32) {}
+
 fn main() {
-    log(error, 0b_usize);
+    let error = 42;
+    log(error, 0b);
+    //~^ ERROR no valid digits found for number
 }

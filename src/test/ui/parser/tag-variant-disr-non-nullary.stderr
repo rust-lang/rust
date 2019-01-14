@@ -1,8 +1,17 @@
 error: discriminator values can only be used with a field-less enum
-  --> $DIR/tag-variant-disr-non-nullary.rs:8:13
+  --> $DIR/tag-variant-disr-non-nullary.rs:2:11
    |
-LL |     white = 0xffffff,
-   |             ^^^^^^^^
+LL |     Red = 0xff0000,
+   |           ^^^^^^^^ only valid in field-less enums
+LL |     //~^ ERROR discriminator values can only be used with a field-less enum
+LL |     Green = 0x00ff00,
+   |             ^^^^^^^^ only valid in field-less enums
+LL |     Blue = 0x0000ff,
+   |            ^^^^^^^^ only valid in field-less enums
+LL |     Black = 0x000000,
+   |             ^^^^^^^^ only valid in field-less enums
+LL |     White = 0xffffff,
+   |             ^^^^^^^^ only valid in field-less enums
 
 error: aborting due to previous error
 

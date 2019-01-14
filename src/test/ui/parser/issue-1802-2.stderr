@@ -1,8 +1,8 @@
 error: no valid digits found for number
-  --> $DIR/issue-1802-2.rs:3:16
+  --> $DIR/issue-1802-2.rs:5:16
    |
-LL |     log(error, 0b_usize);
-   |                ^^^
+LL |     log(error, 0b);
+   |                ^^
 
 error: aborting due to previous error
 
