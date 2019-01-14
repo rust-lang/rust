@@ -1909,7 +1909,7 @@ fn test_once() {
 
 #[test]
 fn test_once_with() {
-    let mut count = Cell::new(0);
+    let count = Cell::new(0);
     let mut it = once_with(|| {
         count.set(count.get() + 1);
         42
