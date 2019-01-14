@@ -87,6 +87,7 @@ pub enum Scalar<Tag=(), Id=AllocId> {
     Ptr(Pointer<Tag, Id>),
 }
 
+#[cfg(target_arch = "x86_64")]
 static_assert!(SCALAR_SIZE: ::std::mem::size_of::<Scalar>() == 24);
 
 impl<Tag> fmt::Display for Scalar<Tag> {
