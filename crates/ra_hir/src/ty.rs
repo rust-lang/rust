@@ -107,7 +107,7 @@ impl UnifyValue for TypeVarValue {
     }
 }
 
-/// The kinds of placeholders we need during type inference. There's seperate
+/// The kinds of placeholders we need during type inference. There's separate
 /// values for general types, and for integer and float variables. The latter
 /// two are used for inference of literal values (e.g. `100` could be one of
 /// several integer types).

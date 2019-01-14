@@ -661,22 +661,20 @@ impl ExprCollector {
                             .map(|s| Name::new(s))
                             .and_then(|name| UncertainIntTy::from_name(&name));
 
-                        if let Some(kn) = known_name {
-                            Literal::Int(Default::default(), kn)
-                        } else {
-                            Literal::Int(Default::default(), UncertainIntTy::Unknown)
-                        }
+                        Literal::Int(
+                            Default::default(),
+                            known_name.unwrap_or(UncertainIntTy::Unknown),
+                        )
                     }
                     LiteralFlavor::FloatNumber { suffix } => {
                         let known_name = suffix
                             .map(|s| Name::new(s))
                             .and_then(|name| UncertainFloatTy::from_name(&name));
 
-                        if let Some(kn) = known_name {
-                            Literal::Float(Default::default(), kn)
-                        } else {
-                            Literal::Float(Default::default(), UncertainFloatTy::Unknown)
-                        }
+                        Literal::Float(
+                            Default::default(),
+                            known_name.unwrap_or(UncertainFloatTy::Unknown),
+                        )
                     }
                     LiteralFlavor::ByteString => Literal::ByteString(Default::default()),
                     LiteralFlavor::String => Literal::String(Default::default()),
