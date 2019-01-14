@@ -1,6 +1,5 @@
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
-use crate::middle::region;
 use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
 use crate::ty::{Bool, Char, Adt};
 use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
@@ -487,72 +486,7 @@ impl fmt::Debug for ty::BoundRegion {
 define_print! {
     () ty::RegionKind, (self, cx) {
         display {
-            // Watch out for region highlights.
-            let highlight = cx.printer.region_highlight_mode();
-            if let Some(n) = highlight.region_highlighted(self) {
-                p!(write("'{}", n));
-                return Ok(cx.printer);
-            }
-
-            if cx.config.is_verbose {
-                return self.print_debug(cx);
-            }
-
-            // These printouts are concise.  They do not contain all the information
-            // the user might want to diagnose an error, but there is basically no way
-            // to fit that into a short string.  Hence the recommendation to use
-            // `explain_region()` or `note_and_explain_region()`.
-            match *self {
-                ty::ReEarlyBound(ref data) => {
-                    if data.name != "'_" {
-                        p!(write("{}", data.name))
-                    }
-                }
-                ty::ReLateBound(_, br) |
-                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                    if let ty::BrNamed(_, name) = br {
-                        if name != "" && name != "'_" {
-                            p!(write("{}", name));
-                            return Ok(cx.printer);
-                        }
-                    }
-
-                    if let Some((region, counter)) = highlight.highlight_bound_region {
-                        if br == region {
-                            p!(write("'{}", counter));
-                        }
-                    }
-                }
-                ty::ReScope(scope) if cx.config.identify_regions => {
-                    match scope.data {
-                        region::ScopeData::Node =>
-                            p!(write("'{}s", scope.item_local_id().as_usize())),
-                        region::ScopeData::CallSite =>
-                            p!(write("'{}cs", scope.item_local_id().as_usize())),
-                        region::ScopeData::Arguments =>
-                            p!(write("'{}as", scope.item_local_id().as_usize())),
-                        region::ScopeData::Destruction =>
-                            p!(write("'{}ds", scope.item_local_id().as_usize())),
-                        region::ScopeData::Remainder(first_statement_index) => p!(write(
-                            "'{}_{}rs",
-                            scope.item_local_id().as_usize(),
-                            first_statement_index.index()
-                        )),
-                    }
-                }
-                ty::ReVar(region_vid) if cx.config.identify_regions => {
-                    p!(write("{:?}", region_vid));
-                }
-                ty::ReVar(_) => {}
-                ty::ReScope(_) |
-                ty::ReErased => {}
-                ty::ReStatic => p!(write("'static")),
-                ty::ReEmpty => p!(write("'<empty>")),
-
-                // The user should never encounter these in unsubstituted form.
-                ty::ReClosureBound(vid) => p!(write("{:?}", vid)),
-            }
+            return cx.print_region(self);
         }
         debug {
             match *self {
@@ -590,63 +524,6 @@ define_print! {
 
                 ty::ReErased => p!(write("ReErased"))
             }
-        }
-    }
-}
-
-// HACK(eddyb) Trying to print a lifetime might not print anything, which
-// may need special handling in the caller (of `ty::RegionKind::print`).
-// To avoid printing to a temporary string, the `display_outputs_anything`
-// method can instead be used to determine this, ahead of time.
-//
-// NB: this must be kept in sync with the printing logic above.
-impl ty::RegionKind {
-    // HACK(eddyb) `pub(crate)` only for `ty::print`.
-    pub(crate) fn display_outputs_anything<P>(&self, cx: &PrintCx<'_, '_, '_, P>) -> bool
-        where P: PrettyPrinter
-    {
-        let highlight = cx.printer.region_highlight_mode();
-        if highlight.region_highlighted(self).is_some() {
-            return true;
-        }
-
-        if cx.config.is_verbose {
-            return true;
-        }
-
-        match *self {
-            ty::ReEarlyBound(ref data) => {
-                data.name != "" && data.name != "'_"
-            }
-
-            ty::ReLateBound(_, br) |
-            ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-            ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                if let ty::BrNamed(_, name) = br {
-                    if name != "" && name != "'_" {
-                        return true;
-                    }
-                }
-
-                if let Some((region, _)) = highlight.highlight_bound_region {
-                    if br == region {
-                        return true;
-                    }
-                }
-
-                false
-            }
-
-            ty::ReScope(_) |
-            ty::ReVar(_) if cx.config.identify_regions => true,
-
-            ty::ReVar(_) |
-            ty::ReScope(_) |
-            ty::ReErased => false,
-
-            ty::ReStatic |
-            ty::ReEmpty |
-            ty::ReClosureBound(_) => true,
         }
     }
 }
@@ -830,7 +707,7 @@ define_print! {
                 }
                 Ref(r, ty, mutbl) => {
                     p!(write("&"));
-                    if r.display_outputs_anything(&cx) {
+                    if cx.print_region_outputs_anything(r) {
                         p!(print_display(r), write(" "));
                     }
                     p!(print(ty::TypeAndMut { ty, mutbl }))
@@ -889,7 +766,7 @@ define_print! {
                     ));
                 }
                 Dynamic(data, r) => {
-                    let print_r = r.display_outputs_anything(&cx);
+                    let print_r = cx.print_region_outputs_anything(r);
                     if print_r {
                         p!(write("("));
                     }

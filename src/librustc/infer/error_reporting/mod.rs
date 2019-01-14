@@ -457,6 +457,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type Error = NonTrivialPath;
 
             type Path = Vec<String>;
+            type Region = !;
+
+            fn print_region(
+                self: PrintCx<'_, '_, '_, Self>,
+                _region: ty::Region<'_>,
+            ) -> Result<Self::Region, Self::Error> {
+                Err(NonTrivialPath)
+            }
 
             fn path_crate(
                 self: PrintCx<'_, '_, '_, Self>,

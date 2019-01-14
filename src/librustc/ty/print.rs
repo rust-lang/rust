@@ -1,6 +1,7 @@
 use crate::hir::def::Namespace;
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::middle::region;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
@@ -67,7 +68,7 @@ pub struct RegionHighlightMode {
     /// This is used when you have a signature like `fn foo(x: &u32,
     /// y: &'a u32)` and we want to give a name to the region of the
     /// reference `x`.
-    pub(crate) highlight_bound_region: Option<(ty::BoundRegion, usize)>,
+    highlight_bound_region: Option<(ty::BoundRegion, usize)>,
 }
 
 impl RegionHighlightMode {
@@ -114,7 +115,7 @@ impl RegionHighlightMode {
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
-    pub(crate) fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
+    fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
         self
             .highlight_regions
             .iter()
@@ -250,6 +251,7 @@ pub trait Printer: Sized {
     type Error;
 
     type Path;
+    type Region;
 
     fn print_def_path(
         self: PrintCx<'_, '_, 'tcx, Self>,
@@ -270,6 +272,11 @@ pub trait Printer: Sized {
     ) -> Result<Self::Path, Self::Error> {
         self.default_print_impl_path(impl_def_id, substs, ns, self_ty, trait_ref)
     }
+
+    fn print_region(
+        self: PrintCx<'_, '_, '_, Self>,
+        region: ty::Region<'_>,
+    ) -> Result<Self::Region, Self::Error>;
 
     fn path_crate(
         self: PrintCx<'_, '_, '_, Self>,
@@ -310,7 +317,7 @@ pub trait Printer: Sized {
 }
 
 /// Trait for printers that pretty-print using `fmt::Write` to the printer.
-pub trait PrettyPrinter: Printer<Error = fmt::Error, Path = Self> + fmt::Write {
+pub trait PrettyPrinter: Printer<Error = fmt::Error, Path = Self, Region = Self> + fmt::Write {
     /// Enter a nested print context, for pretty-printing
     /// nested components in some larger context.
     fn nest<'a, 'gcx, 'tcx, E>(
@@ -329,9 +336,26 @@ pub trait PrettyPrinter: Printer<Error = fmt::Error, Path = Self> + fmt::Write {
         })
     }
 
-    fn region_highlight_mode(&self) -> RegionHighlightMode {
-        RegionHighlightMode::default()
+    /// Return `true` if the region should be printed in path generic args
+    /// even when it's `'_`, such as in e.g. `Foo<'_, '_, '_>`.
+    fn always_print_region_in_paths(
+        self: &PrintCx<'_, '_, '_, Self>,
+        _region: ty::Region<'_>,
+    ) -> bool {
+        false
     }
+
+    // HACK(eddyb) Trying to print a lifetime might not print anything, which
+    // may need special handling in the caller (of `ty::RegionKind::print`).
+    // To avoid printing to a temporary string (which isn't even supported),
+    // the `print_region_outputs_anything` method can instead be used to
+    // determine this, ahead of time.
+    //
+    // NB: this must be kept in sync with the implementation of `print_region`.
+    fn print_region_outputs_anything(
+        self: &PrintCx<'_, '_, '_, Self>,
+        region: ty::Region<'_>,
+    ) -> bool;
 }
 
 macro_rules! nest {
@@ -795,10 +819,13 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
 
         let start = if ns == Namespace::ValueNS { "::<" } else { "<" };
 
-        // Don't print any regions if they're all erased.
+        // Don't print `'_` if there's no printed region.
         let print_regions = params.iter().any(|param| {
             match substs[param.index as usize].unpack() {
-                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                UnpackedKind::Lifetime(r) => {
+                    self.always_print_region_in_paths(r) ||
+                    self.print_region_outputs_anything(r)
+                }
                 _ => false,
             }
         });
@@ -827,7 +854,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                         continue;
                     }
                     start_or_continue(&mut self, start, ", ")?;
-                    if !region.display_outputs_anything(&self) {
+                    if !self.print_region_outputs_anything(region) {
                         // This happens when the value of the region
                         // parameter is not easily serialized. This may be
                         // because the user omitted it in the first place,
@@ -873,6 +900,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
     type Error = fmt::Error;
 
     type Path = Self;
+    type Region = Self;
 
     fn print_def_path(
         mut self: PrintCx<'_, '_, 'tcx, Self>,
@@ -927,6 +955,80 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         }
 
         self.default_print_def_path(def_id, substs, ns, projections)
+    }
+
+    fn print_region(
+        mut self: PrintCx<'_, '_, '_, Self>,
+        region: ty::Region<'_>,
+    ) -> Result<Self::Region, Self::Error> {
+        // Watch out for region highlights.
+        let highlight = self.printer.region_highlight_mode;
+        if let Some(n) = highlight.region_highlighted(region) {
+            write!(self.printer, "'{}", n)?;
+            return Ok(self.printer);
+        }
+
+        if self.config.is_verbose {
+            return region.print_debug(self);
+        }
+
+        // These printouts are concise.  They do not contain all the information
+        // the user might want to diagnose an error, but there is basically no way
+        // to fit that into a short string.  Hence the recommendation to use
+        // `explain_region()` or `note_and_explain_region()`.
+        match *region {
+            ty::ReEarlyBound(ref data) => {
+                if data.name != "'_" {
+                    write!(self.printer, "{}", data.name)?;
+                }
+            }
+            ty::ReLateBound(_, br) |
+            ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
+            ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+                if let ty::BrNamed(_, name) = br {
+                    if name != "" && name != "'_" {
+                        write!(self.printer, "{}", name)?;
+                        return Ok(self.printer);
+                    }
+                }
+
+                if let Some((region, counter)) = highlight.highlight_bound_region {
+                    if br == region {
+                        write!(self.printer, "'{}", counter)?;
+                    }
+                }
+            }
+            ty::ReScope(scope) if self.config.identify_regions => {
+                match scope.data {
+                    region::ScopeData::Node =>
+                        write!(self.printer, "'{}s", scope.item_local_id().as_usize())?,
+                    region::ScopeData::CallSite =>
+                        write!(self.printer, "'{}cs", scope.item_local_id().as_usize())?,
+                    region::ScopeData::Arguments =>
+                        write!(self.printer, "'{}as", scope.item_local_id().as_usize())?,
+                    region::ScopeData::Destruction =>
+                        write!(self.printer, "'{}ds", scope.item_local_id().as_usize())?,
+                    region::ScopeData::Remainder(first_statement_index) => write!(self.printer,
+                        "'{}_{}rs",
+                        scope.item_local_id().as_usize(),
+                        first_statement_index.index()
+                    )?,
+                }
+            }
+            ty::ReVar(region_vid) if self.config.identify_regions => {
+                write!(self.printer, "{:?}", region_vid)?;
+            }
+            ty::ReVar(_) => {}
+            ty::ReScope(_) |
+            ty::ReErased => {}
+            ty::ReStatic => write!(self.printer, "'static")?,
+            ty::ReEmpty => write!(self.printer, "'<empty>")?,
+
+            // The user should never encounter these in unsubstituted form.
+            ty::ReClosureBound(vid) => write!(self.printer, "{:?}", vid)?,
+        }
+
+        Ok(self.printer)
     }
 
     fn path_crate(
@@ -1018,7 +1120,59 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
         })
     }
 
-    fn region_highlight_mode(&self) -> RegionHighlightMode {
-        self.region_highlight_mode
+    fn always_print_region_in_paths(
+        self: &PrintCx<'_, '_, '_, Self>,
+        region: ty::Region<'_>,
+    ) -> bool {
+        *region != ty::ReErased
+    }
+
+    fn print_region_outputs_anything(
+        self: &PrintCx<'_, '_, '_, Self>,
+        region: ty::Region<'_>,
+    ) -> bool {
+        let highlight = self.printer.region_highlight_mode;
+        if highlight.region_highlighted(region).is_some() {
+            return true;
+        }
+
+        if self.config.is_verbose {
+            return true;
+        }
+
+        match *region {
+            ty::ReEarlyBound(ref data) => {
+                data.name != "" && data.name != "'_"
+            }
+
+            ty::ReLateBound(_, br) |
+            ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
+            ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+                if let ty::BrNamed(_, name) = br {
+                    if name != "" && name != "'_" {
+                        return true;
+                    }
+                }
+
+                if let Some((region, _)) = highlight.highlight_bound_region {
+                    if br == region {
+                        return true;
+                    }
+                }
+
+                false
+            }
+
+            ty::ReScope(_) |
+            ty::ReVar(_) if self.config.identify_regions => true,
+
+            ty::ReVar(_) |
+            ty::ReScope(_) |
+            ty::ReErased => false,
+
+            ty::ReStatic |
+            ty::ReEmpty |
+            ty::ReClosureBound(_) => true,
+        }
     }
 }

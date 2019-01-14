@@ -409,6 +409,14 @@ impl Printer for SymbolPath {
     type Error = fmt::Error;
 
     type Path = Self;
+    type Region = Self;
+
+    fn print_region(
+        self: PrintCx<'_, '_, '_, Self>,
+        _region: ty::Region<'_>,
+    ) -> Result<Self::Region, Self::Error> {
+        Ok(self.printer)
+    }
 
     fn path_crate(
         mut self: PrintCx<'_, '_, '_, Self>,
@@ -511,7 +519,14 @@ impl Printer for SymbolPath {
     }
 }
 
-impl PrettyPrinter for SymbolPath {}
+impl PrettyPrinter for SymbolPath {
+    fn print_region_outputs_anything(
+        self: &PrintCx<'_, '_, '_, Self>,
+        _region: ty::Region<'_>,
+    ) -> bool {
+        false
+    }
+}
 
 impl fmt::Write for SymbolPath {
     fn write_str(&mut self, s: &str) -> fmt::Result {

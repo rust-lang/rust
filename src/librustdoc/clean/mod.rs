@@ -4233,6 +4233,14 @@ where F: Fn(DefId) -> Def {
         type Error = !;
 
         type Path = Vec<String>;
+        type Region = ();
+
+        fn print_region(
+            self: PrintCx<'_, '_, '_, Self>,
+            _region: ty::Region<'_>,
+        ) -> Result<Self::Region, Self::Error> {
+            Ok(())
+        }
 
         fn path_crate(
             self: PrintCx<'_, '_, '_, Self>,
