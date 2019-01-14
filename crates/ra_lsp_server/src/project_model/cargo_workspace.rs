@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use cargo_metadata::{metadata_run, CargoOpt};
+use cargo_metadata::{MetadataCommand, CargoOpt};
 use ra_syntax::SmolStr;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use rustc_hash::FxHashMap;
@@ -117,7 +117,10 @@ impl Target {
 
 impl CargoWorkspace {
     pub fn from_cargo_metadata(cargo_toml: &Path) -> Result<CargoWorkspace> {
-        let meta = metadata_run(Some(cargo_toml), true, Some(CargoOpt::AllFeatures))
+        let meta = MetadataCommand::new()
+            .manifest_path(cargo_toml)
+            .features(CargoOpt::AllFeatures)
+            .exec()
             .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
