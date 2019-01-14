@@ -421,6 +421,8 @@ impl CodeBlockAttribute {
 /// An item starts with either a star `*` or a dash `-`. Different level of indentation are
 /// handled by shrinking the shape accordingly.
 struct ItemizedBlock {
+    /// the lines that are identified as part of an itemized block
+    lines: Vec<String>,
     /// the number of whitespaces up to the item sigil
     indent: usize,
     /// the string that marks the start of an item
@@ -442,6 +444,7 @@ impl ItemizedBlock {
         let space_to_sigil = line.chars().take_while(|c| c.is_whitespace()).count();
         let indent = space_to_sigil + 2;
         ItemizedBlock {
+            lines: vec![line[indent..].to_string()],
             indent,
             opener: line[..indent].to_string(),
             line_start: " ".repeat(indent),
@@ -461,10 +464,29 @@ impl ItemizedBlock {
         }
     }
 
-    /// Returns true if the line is part of the current itemized block
-    fn in_block(&self, line: &str) -> bool {
-        !ItemizedBlock::is_itemized_line(line)
+    /// Returns true if the line is part of the current itemized block.
+    /// If it is, then it is added to the internal lines vec.
+    fn add_line(&mut self, line: &str) -> bool {
+        if !ItemizedBlock::is_itemized_line(line)
             && self.indent <= line.chars().take_while(|c| c.is_whitespace()).count()
+        {
+            self.lines.push(line.to_string());
+            return true;
+        }
+        false
+    }
+
+    /// Returns the block as a string, with each line trimmed at the start.
+    fn trimmed_block_as_string(&self) -> String {
+        self.lines
+            .iter()
+            .map(|line| format!("{} ", line.trim_start()))
+            .collect::<String>()
+    }
+
+    /// Returns the block as a string under its original form
+    fn original_block_as_string(&self) -> String {
+        self.lines.join("\n")
     }
 }
 
@@ -473,7 +495,6 @@ struct CommentRewrite<'a> {
     code_block_buffer: String,
     is_prev_line_multi_line: bool,
     code_block_attr: Option<CodeBlockAttribute>,
-    item_block_buffer: String,
     item_block: Option<ItemizedBlock>,
     comment_line_separator: String,
     indent_str: String,
@@ -511,7 +532,6 @@ impl<'a> CommentRewrite<'a> {
             code_block_buffer: String::with_capacity(128),
             is_prev_line_multi_line: false,
             code_block_attr: None,
-            item_block_buffer: String::with_capacity(128),
             item_block: None,
             comment_line_separator: format!("{}{}", indent_str, line_start),
             max_chars,
@@ -561,17 +581,14 @@ impl<'a> CommentRewrite<'a> {
             ));
         }
 
-        if !self.item_block_buffer.is_empty() {
+        if let Some(ref ib) = self.item_block {
             // the last few lines are part of an itemized block
             self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
-            let mut ib = None;
-            ::std::mem::swap(&mut ib, &mut self.item_block);
-            let ib = ib.unwrap();
             let item_fmt = ib.create_string_format(&self.fmt);
             self.result.push_str(&self.comment_line_separator);
             self.result.push_str(&ib.opener);
             match rewrite_string(
-                &self.item_block_buffer.replace("\n", " "),
+                &ib.trimmed_block_as_string(),
                 &item_fmt,
                 self.max_chars.saturating_sub(ib.indent),
             ) {
@@ -580,7 +597,7 @@ impl<'a> CommentRewrite<'a> {
                     &format!("{}{}", &self.comment_line_separator, ib.line_start),
                 )),
                 None => self.result.push_str(&Self::join_block(
-                    &self.item_block_buffer,
+                    &ib.original_block_as_string(),
                     &self.comment_line_separator,
                 )),
             };
@@ -604,10 +621,8 @@ impl<'a> CommentRewrite<'a> {
     ) -> bool {
         let is_last = i == count_newlines(orig);
 
-        if let Some(ref ib) = self.item_block {
-            if ib.in_block(&line) {
-                self.item_block_buffer.push_str(line.trim_start());
-                self.item_block_buffer.push('\n');
+        if let Some(ref mut ib) = self.item_block {
+            if ib.add_line(&line) {
                 return false;
             }
             self.is_prev_line_multi_line = false;
@@ -616,7 +631,7 @@ impl<'a> CommentRewrite<'a> {
             self.result.push_str(&self.comment_line_separator);
             self.result.push_str(&ib.opener);
             match rewrite_string(
-                &self.item_block_buffer.replace("\n", " "),
+                &ib.trimmed_block_as_string(),
                 &item_fmt,
                 self.max_chars.saturating_sub(ib.indent),
             ) {
@@ -625,11 +640,10 @@ impl<'a> CommentRewrite<'a> {
                     &format!("{}{}", &self.comment_line_separator, ib.line_start),
                 )),
                 None => self.result.push_str(&Self::join_block(
-                    &self.item_block_buffer,
+                    &ib.original_block_as_string(),
                     &self.comment_line_separator,
                 )),
             };
-            self.item_block_buffer.clear();
         } else if self.code_block_attr.is_some() {
             if line.starts_with("```") {
                 let code_block = match self.code_block_attr.as_ref().unwrap() {
@@ -669,8 +683,6 @@ impl<'a> CommentRewrite<'a> {
             self.code_block_attr = Some(CodeBlockAttribute::new(&line[3..]))
         } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(&line) {
             let ib = ItemizedBlock::new(&line);
-            self.item_block_buffer.push_str(&line[ib.indent..]);
-            self.item_block_buffer.push('\n');
             self.item_block = Some(ib);
             return false;
         }
