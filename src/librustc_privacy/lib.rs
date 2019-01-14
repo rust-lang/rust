@@ -783,7 +783,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
-        // Don't visit modules inside
+        // Don't visit nested modules, since we run a separate visitor walk
+        // for each module in `privacy_access_levels`
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
@@ -922,7 +923,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
-        // Don't visit modules inside
+        // Don't visit nested modules, since we run a separate visitor walk
+        // for each module in `privacy_access_levels`
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
@@ -1710,7 +1712,7 @@ fn privacy_access_levels<'tcx>(
 
     let krate = tcx.hir().krate();
 
-    for &module in tcx.hir().krate().modules.keys() {
+    for &module in krate.modules.keys() {
         queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
     }
 
