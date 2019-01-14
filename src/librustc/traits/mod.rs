@@ -229,7 +229,11 @@ pub enum ObligationCauseCode<'tcx> {
     MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
 
     /// Computing common supertype in an if expression
-    IfExpression,
+    IfExpression {
+        then: Span,
+        outer: Option<Span>,
+        semicolon: Option<Span>,
+    },
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,

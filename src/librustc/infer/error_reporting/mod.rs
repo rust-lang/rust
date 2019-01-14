@@ -511,6 +511,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             },
+            ObligationCauseCode::IfExpression { then, outer, semicolon } => {
+                err.span_label(then, "expected because of this");
+                outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
+                if let Some(sp) = semicolon {
+                    err.span_suggestion_short_with_applicability(
+                        sp,
+                        "consider removing this semicolon",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
             _ => (),
         }
     }
@@ -1460,7 +1472,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 }
                 _ => "match arms have incompatible types",
             }),
-            IfExpression => Error0308("if and else have incompatible types"),
+            IfExpression { .. } => Error0308("if and else have incompatible types"),
             IfExpressionWithNoElse => Error0317("if may be missing an else clause"),
             MainFunctionType => Error0580("main function has wrong type"),
             StartFunctionType => Error0308("start function has wrong type"),
@@ -1488,7 +1500,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
                 _ => "match arms have compatible types",
             },
-            IfExpression => "if and else have compatible types",
+            IfExpression { .. } => "if and else have compatible types",
             IfExpressionWithNoElse => "if missing an else returns ()",
             MainFunctionType => "`main` function has the correct type",
             StartFunctionType => "`start` function has the correct type",

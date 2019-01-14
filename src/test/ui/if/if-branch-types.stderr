@@ -1,8 +1,10 @@
 error[E0308]: if and else have incompatible types
-  --> $DIR/if-branch-types.rs:2:13
+  --> $DIR/if-branch-types.rs:2:38
    |
 LL |     let x = if true { 10i32 } else { 10u32 };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected i32, found u32
+   |                       -----          ^^^^^ expected i32, found u32
+   |                       |
+   |                       expected because of this
    |
    = note: expected type `i32`
               found type `u32`

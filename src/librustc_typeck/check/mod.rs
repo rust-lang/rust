@@ -3366,12 +3366,102 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let coerce_to_ty = expected.coercion_target_type(self, sp);
         let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
 
-        let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
-        coerce.coerce(self, &if_cause, then_expr, then_ty);
+        coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
+
+            let mut outer_sp = if self.tcx.sess.source_map().is_multiline(sp) {
+                // The `if`/`else` isn't in one line in the output, include some context to make it
+                // clear it is an if/else expression:
+                // ```
+                // LL |      let x = if true {
+                //    | _____________-
+                // LL ||         10i32
+                //    ||         ----- expected because of this
+                // LL ||     } else {
+                // LL ||         10u32
+                //    ||         ^^^^^ expected i32, found u32
+                // LL ||     };
+                //    ||_____- if and else have incompatible types
+                // ```
+                Some(sp)
+            } else {
+                // The entire expression is in one line, only point at the arms
+                // ```
+                // LL |     let x = if true { 10i32 } else { 10u32 };
+                //    |                       -----          ^^^^^ expected i32, found u32
+                //    |                       |
+                //    |                       expected because of this
+                // ```
+                None
+            };
+            let mut remove_semicolon = None;
+            let error_sp = if let ExprKind::Block(block, _) = &else_expr.node {
+                if let Some(expr) = &block.expr {
+                    expr.span
+                } else if let Some(stmt) = block.stmts.last() {
+                    // possibly incorrect trailing `;` in the else arm
+                    remove_semicolon = self.could_remove_semicolon(block, then_ty);
+                    stmt.span
+                } else {  // empty block, point at its entirety
+                    // Avoid overlapping spans that aren't as readable:
+                    // ```
+                    // 2 |        let x = if true {
+                    //   |   _____________-
+                    // 3 |  |         3
+                    //   |  |         - expected because of this
+                    // 4 |  |     } else {
+                    //   |  |____________^
+                    // 5 | ||
+                    // 6 | ||     };
+                    //   | ||     ^
+                    //   | ||_____|
+                    //   | |______if and else have incompatible types
+                    //   |        expected integer, found ()
+                    // ```
+                    // by not pointing at the entire expression:
+                    // ```
+                    // 2 |       let x = if true {
+                    //   |               ------- if and else have incompatible types
+                    // 3 |           3
+                    //   |           - expected because of this
+                    // 4 |       } else {
+                    //   |  ____________^
+                    // 5 | |
+                    // 6 | |     };
+                    //   | |_____^ expected integer, found ()
+                    // ```
+                    if outer_sp.is_some() {
+                        outer_sp = Some(self.tcx.sess.source_map().def_span(sp));
+                    }
+                    else_expr.span
+                }
+            } else { // shouldn't happen unless the parser has done something weird
+                else_expr.span
+            };
+            let then_sp = if let ExprKind::Block(block, _) = &then_expr.node {
+                if let Some(expr) = &block.expr {
+                    expr.span
+                } else if let Some(stmt) = block.stmts.last() {
+                    // possibly incorrect trailing `;` in the else arm
+                    remove_semicolon = remove_semicolon.or(
+                        self.could_remove_semicolon(block, else_ty));
+                    stmt.span
+                } else {  // empty block, point at its entirety
+                    outer_sp = None;  // same as in `error_sp`, cleanup output
+                    then_expr.span
+                }
+            } else {  // shouldn't happen unless the parser has done something weird
+                then_expr.span
+            };
+
+            let if_cause = self.cause(error_sp, ObligationCauseCode::IfExpression {
+                then: then_sp,
+                outer: outer_sp,
+                semicolon: remove_semicolon,
+            });
 
             coerce.coerce(self, &if_cause, else_expr, else_ty);
 
@@ -5144,7 +5234,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-
     /// A common error is to add an extra semicolon:
     ///
     /// ```
@@ -5156,31 +5245,43 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// This routine checks if the final statement in a block is an
     /// expression with an explicit semicolon whose type is compatible
     /// with `expected_ty`. If so, it suggests removing the semicolon.
-    fn consider_hint_about_removing_semicolon(&self,
-                                              blk: &'gcx hir::Block,
-                                              expected_ty: Ty<'tcx>,
-                                              err: &mut DiagnosticBuilder) {
+    fn consider_hint_about_removing_semicolon(
+        &self,
+        blk: &'gcx hir::Block,
+        expected_ty: Ty<'tcx>,
+        err: &mut DiagnosticBuilder,
+    ) {
+        if let Some(span_semi) = self.could_remove_semicolon(blk, expected_ty) {
+            err.span_suggestion_with_applicability(
+                span_semi,
+                "consider removing this semicolon",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+
+    fn could_remove_semicolon(
+        &self,
+        blk: &'gcx hir::Block,
+        expected_ty: Ty<'tcx>,
+    ) -> Option<Span> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
         let last_stmt = match blk.stmts.last() {
             Some(s) => s,
-            None => return,
+            None => return None,
         };
         let last_expr = match last_stmt.node {
             hir::StmtKind::Semi(ref e, _) => e,
-            _ => return,
+            _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
         if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
-            return;
+            return None;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
-        let span_semi = original_span.with_lo(original_span.hi() - BytePos(1));
-        err.span_suggestion_with_applicability(
-            span_semi,
-            "consider removing this semicolon",
-            String::new(),
-            Applicability::MachineApplicable);
+        Some(original_span.with_lo(original_span.hi() - BytePos(1)))
     }
 
     // Instantiates the given path, which must refer to an item with the given
