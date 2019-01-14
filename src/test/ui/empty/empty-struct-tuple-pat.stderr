@@ -28,7 +28,7 @@ error[E0532]: expected unit struct/variant or constant, found tuple variant `XE:
 LL |         XE::XEmpty5 => (),
    |         ^^^^-------
    |             |
-   |             did you mean `XEmpty4`?
+   |             help: a unit variant with a similar name exists: `XEmpty4`
 
 error: aborting due to 4 previous errors
 

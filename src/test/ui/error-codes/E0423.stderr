@@ -22,8 +22,8 @@ error[E0423]: expected function, found struct `Foo`
 LL |     let f = Foo(); //~ ERROR E0423
    |             ^^^
    |             |
-   |             did you mean `foo`?
    |             did you mean `Foo { /* fields */ }`?
+   |             help: a function with a similar name exists: `foo`
 
 error[E0423]: expected value, found struct `S`
   --> $DIR/E0423.rs:12:32

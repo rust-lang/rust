@@ -14,7 +14,7 @@ error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:19:24
    |
 LL |     let _: <u8 as Tr>::N; //~ ERROR cannot find associated type `N` in trait `Tr`
-   |                        ^ did you mean `Y`?
+   |                        ^ help: an associated type with a similar name exists: `Y`
 
 error[E0576]: cannot find associated type `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:20:23
@@ -32,7 +32,7 @@ error[E0576]: cannot find method or associated constant `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:22:17
    |
 LL |     <u8 as Tr>::N; //~ ERROR cannot find method or associated constant `N` in trait `Tr`
-   |                 ^ did you mean `Y`?
+   |                 ^ help: a method with a similar name exists: `Y`
 
 error[E0576]: cannot find method or associated constant `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:23:16
@@ -62,7 +62,7 @@ error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:30:24
    |
 LL |     let _: <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
-   |                        ^ did you mean `Y`?
+   |                        ^ help: an associated type with a similar name exists: `Y`
 
 error[E0576]: cannot find associated type `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:31:23
@@ -80,7 +80,7 @@ error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:33:17
    |
 LL |     <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
-   |                 ^ did you mean `Y`?
+   |                 ^ help: an associated type with a similar name exists: `Y`
 
 error[E0576]: cannot find associated type `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:34:16
@@ -160,7 +160,7 @@ error[E0575]: expected associated type, found method `Dr::Z`
 LL |     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
    |            ^^^^^^^^^^^^-
    |                        |
-   |                        did you mean `X`?
+   |                        help: an associated type with a similar name exists: `X`
 
 error[E0575]: expected method or associated constant, found associated type `Dr::X`
   --> $DIR/ufcs-partially-resolved.rs:53:5
@@ -168,7 +168,7 @@ error[E0575]: expected method or associated constant, found associated type `Dr:
 LL |     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 did you mean `Z`?
+   |                 help: a method with a similar name exists: `Z`
    |
    = note: can't use a type alias as a constructor
 
@@ -178,7 +178,7 @@ error[E0575]: expected associated type, found method `Dr::Z`
 LL |     let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found method `Dr::Z`
    |            ^^^^^^^^^^^^-^^^
    |                        |
-   |                        did you mean `X`?
+   |                        help: an associated type with a similar name exists: `X`
 
 error[E0223]: ambiguous associated type
   --> $DIR/ufcs-partially-resolved.rs:36:12

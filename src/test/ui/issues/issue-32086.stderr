@@ -2,13 +2,13 @@ error[E0532]: expected tuple struct/variant, found constant `C`
   --> $DIR/issue-32086.rs:5:9
    |
 LL |     let C(a) = S(11); //~ ERROR expected tuple struct/variant, found constant `C`
-   |         ^ did you mean `S`?
+   |         ^ help: a tuple struct with a similar name exists: `S`
 
 error[E0532]: expected tuple struct/variant, found constant `C`
   --> $DIR/issue-32086.rs:6:9
    |
 LL |     let C(..) = S(11); //~ ERROR expected tuple struct/variant, found constant `C`
-   |         ^ did you mean `S`?
+   |         ^ help: a tuple struct with a similar name exists: `S`
 
 error: aborting due to 2 previous errors
 
