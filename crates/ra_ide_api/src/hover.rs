@@ -1,7 +1,7 @@
 use ra_db::{Cancelable, SyntaxDatabase};
 use ra_syntax::{
     AstNode, SyntaxNode, TreeArc,
-    ast::{self, NameOwner, VisibilityOwner},
+    ast::self,
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
@@ -137,80 +137,29 @@ impl NavigationTarget {
     fn description(&self, db: &RootDatabase) -> Option<String> {
         // TODO: After type inference is done, add type information to improve the output
         let node = self.node(db)?;
-        // TODO: Refactor to be have less repetition
+
+        fn visit_node<T>(node: &T, label: &str) -> Option<String>
+        where
+            T: ast::NameOwner + ast::VisibilityOwner,
+        {
+            let mut string = node
+                .visibility()
+                .map(|v| format!("{} ", v.syntax().text()))
+                .unwrap_or_default();
+            string.push_str(label);
+            node.name()?.syntax().text().push_to(&mut string);
+            Some(string)
+        }
+
         visitor()
-            .visit(|node: &ast::FnDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("fn ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::StructDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("struct ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::EnumDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("enum ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::TraitDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("trait ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::Module| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("mod ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::TypeDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("type ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::ConstDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("const ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
-            .visit(|node: &ast::StaticDef| {
-                let mut string = node
-                    .visibility()
-                    .map(|v| format!("{} ", v.syntax().text()))
-                    .unwrap_or_default();
-                string.push_str("static ");
-                node.name()?.syntax().text().push_to(&mut string);
-                Some(string)
-            })
+            .visit(|node: &ast::FnDef| visit_node(node, "fn "))
+            .visit(|node: &ast::StructDef| visit_node(node, "struct "))
+            .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
+            .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
+            .visit(|node: &ast::Module| visit_node(node, "mod "))
+            .visit(|node: &ast::TypeDef| visit_node(node, "type "))
+            .visit(|node: &ast::ConstDef| visit_node(node, "const "))
+            .visit(|node: &ast::StaticDef| visit_node(node, "static "))
             .accept(&node)?
     }
 }
