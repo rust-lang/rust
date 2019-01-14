@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use self::Entry::*;
 
 use core::borrow::Borrow;
@@ -101,6 +91,9 @@ pub use fx::FxHashBuilder as DefaultHashBuilder;
 ///     }
 /// }
 ///
+/// // Look up the value for a key (will panic if the key is not found).
+/// println!("Review for Jane: {}", book_reviews["Pride and Prejudice"]);
+///
 /// // Iterate over everything.
 /// for (book, review) in &book_reviews {
 ///     println!("{}: \"{}\"", book, review);
@@ -136,7 +129,7 @@ pub use fx::FxHashBuilder as DefaultHashBuilder;
 /// *stat += random_stat_buff();
 /// ```
 ///
-/// The easiest way to use `HashMap` with a custom type as key is to derive [`Eq`] and [`Hash`].
+/// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
 ///
 /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
@@ -2788,7 +2781,7 @@ mod test_map {
             for i in 1..1001 {
                 assert!(m.insert(i, i).is_none());
 
-                for j in 1..i + 1 {
+                for j in 1..=i {
                     let r = m.get(&j);
                     assert_eq!(r, Some(&j));
                 }
@@ -2807,7 +2800,7 @@ mod test_map {
             for i in 1..1001 {
                 assert!(m.remove(&i).is_some());
 
-                for j in 1..i + 1 {
+                for j in 1..=i {
                     assert!(!m.contains_key(&j));
                 }
 

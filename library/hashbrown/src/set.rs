@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
@@ -197,7 +187,7 @@ where
         }
     }
 
-    /// Creates an empty `HashSet` with with the specified capacity, using
+    /// Creates an empty `HashSet` with the specified capacity, using
     /// `hasher` to hash the keys.
     ///
     /// The hash set will be able to hold at least `capacity` elements without
@@ -371,7 +361,7 @@ where
     }
 
     /// Visits the values representing the difference,
-    /// i.e. the values that are in `self` but not in `other`.
+    /// i.e., the values that are in `self` but not in `other`.
     ///
     /// # Examples
     ///
@@ -402,7 +392,7 @@ where
     }
 
     /// Visits the values representing the symmetric difference,
-    /// i.e. the values that are in `self` or in `other` but not in both.
+    /// i.e., the values that are in `self` or in `other` but not in both.
     ///
     /// # Examples
     ///
@@ -433,7 +423,7 @@ where
     }
 
     /// Visits the values representing the intersection,
-    /// i.e. the values that are both in `self` and `other`.
+    /// i.e., the values that are both in `self` and `other`.
     ///
     /// # Examples
     ///
@@ -459,7 +449,7 @@ where
     }
 
     /// Visits the values representing the union,
-    /// i.e. all the values in `self` or `other`, without duplicates.
+    /// i.e., all the values in `self` or `other`, without duplicates.
     ///
     /// # Examples
     ///
@@ -634,7 +624,7 @@ where
     }
 
     /// Returns `true` if the set is a subset of another,
-    /// i.e. `other` contains at least all the values in `self`.
+    /// i.e., `other` contains at least all the values in `self`.
     ///
     /// # Examples
     ///
@@ -655,7 +645,7 @@ where
     }
 
     /// Returns `true` if the set is a superset of another,
-    /// i.e. `self` contains at least all the values in `other`.
+    /// i.e., `self` contains at least all the values in `other`.
     ///
     /// # Examples
     ///
