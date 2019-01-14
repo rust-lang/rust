@@ -2358,7 +2358,7 @@ pub trait Iterator {
     ///
     /// ```
     /// fn factorial(n: u32) -> u32 {
-    ///     (1..).take_while(|&i| i <= n).product()
+    ///     (1..=n).product()
     /// }
     /// assert_eq!(factorial(0), 1);
     /// assert_eq!(factorial(1), 1);
