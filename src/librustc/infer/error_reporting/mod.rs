@@ -223,7 +223,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     self.hir().span_by_hir_id(node),
                 ),
                 _ => (
-                    format!("the lifetime {} as defined on", fr.bound_region),
+                    format!("the lifetime {} as defined on", region),
                     cm.def_span(self.hir().span_by_hir_id(node)),
                 ),
             },
@@ -1497,7 +1497,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         var_origin: RegionVariableOrigin,
     ) -> DiagnosticBuilder<'tcx> {
         let br_string = |br: ty::BoundRegion| {
-            let mut s = br.to_string();
+            let mut s = match br {
+                ty::BrNamed(_, name) => name.to_string(),
+                _ => String::new(),
+            };
             if !s.is_empty() {
                 s.push_str(" ");
             }

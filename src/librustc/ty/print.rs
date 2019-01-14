@@ -136,11 +136,6 @@ impl RegionHighlightMode {
         assert!(self.highlight_bound_region.is_none());
         self.highlight_bound_region = Some((br, number));
     }
-
-    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as "`'N`".
-    pub(crate) fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
-        self.region_highlighted(&ty::RePlaceholder(p))
-    }
 }
 
 struct LateBoundRegionNameCollector(FxHashSet<InternedString>);

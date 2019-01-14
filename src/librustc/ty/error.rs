@@ -71,6 +71,13 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         }
 
+        let br_string = |br: ty::BoundRegion| {
+            match br {
+                ty::BrNamed(_, name) => format!(" {}", name),
+                _ => String::new(),
+            }
+        };
+
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
@@ -105,15 +112,13 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             RegionsInsufficientlyPolymorphic(br, _) => {
                 write!(f,
-                       "expected bound lifetime parameter{}{}, found concrete lifetime",
-                       if br.is_named() { " " } else { "" },
-                       br)
+                       "expected bound lifetime parameter{}, found concrete lifetime",
+                       br_string(br))
             }
             RegionsOverlyPolymorphic(br, _) => {
                 write!(f,
-                       "expected concrete lifetime, found bound lifetime parameter{}{}",
-                       if br.is_named() { " " } else { "" },
-                       br)
+                       "expected concrete lifetime, found bound lifetime parameter{}",
+                       br_string(br))
             }
             RegionsPlaceholderMismatch => {
                 write!(f, "one type is more general than the other")
