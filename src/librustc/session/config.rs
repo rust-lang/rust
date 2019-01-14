@@ -414,7 +414,7 @@ top_level_options!(
 
         // The list of crates to consider public for
         // checking leaked private dependency types in public interfaces
-        extern_public: FxHashSet<String> [UNTRACKED],
+        extern_public: Vec<String> [TRACKED],
     }
 );
 
@@ -610,7 +610,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            extern_public: FxHashSet::default()
+            extern_public: vec![]
         }
     }
 }
@@ -1925,12 +1925,12 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    let mut extern_public: FxHashSet<String> = matches.opt_strs("extern-public").
+    let mut extern_public: Vec<String> = matches.opt_strs("extern-public").
         iter().cloned().collect();
 
     // FIXME - come up with a better way of handling this
-    extern_public.insert("core".to_string());
-    extern_public.insert("std".to_string());
+    extern_public.push("core".to_string());
+    extern_public.push("std".to_string());
 
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
