@@ -18,7 +18,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::ErrorReported;
 
 use syntax::ast::Mutability;
-use syntax::source_map::DUMMY_SP;
+use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, RawConst, ConstValue, Pointer,
@@ -43,10 +43,11 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    span: Span,
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'a, 'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    EvalContext::new(tcx.at(DUMMY_SP), param_env, CompileTimeInterpreter::new())
+    EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
 }
 
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
@@ -55,7 +56,8 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
-    let mut ecx = mk_eval_cx(tcx, param_env);
+    let span = tcx.def_span(cid.instance.def_id());
+    let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
@@ -481,7 +483,7 @@ pub fn const_field<'a, 'tcx>(
     value: ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
-    let ecx = mk_eval_cx(tcx, param_env);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
         // get the operand again
         let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
@@ -509,7 +511,7 @@ pub fn const_variant_index<'a, 'tcx>(
     val: ty::Const<'tcx>,
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}", val);
-    let ecx = mk_eval_cx(tcx, param_env);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
@@ -529,7 +531,7 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let ecx = mk_eval_cx(tcx, key.param_env);
+    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
         let op = ecx.raw_const_to_mplace(constant)?.into();
         // FIXME: Once the visitor infrastructure landed, change validation to

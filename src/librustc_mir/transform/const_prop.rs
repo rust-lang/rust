@@ -110,7 +110,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source: MirSource,
     ) -> ConstPropagator<'a, 'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id);
-        let ecx = mk_eval_cx(tcx, param_env);
+        let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id), param_env);
         ConstPropagator {
             ecx,
             mir,
