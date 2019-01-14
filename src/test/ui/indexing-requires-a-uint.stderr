@@ -1,7 +1,7 @@
-error[E0277]: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not satisfied
+error[E0277]: the type `[{integer}]` cannot be indexed by `u8`
   --> $DIR/indexing-requires-a-uint.rs:6:5
    |
-LL |     [0][0u8]; //~ ERROR: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not satisfied
+LL |     [0][0u8]; //~ ERROR: the type `[{integer}]` cannot be indexed by `u8`
    |     ^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[{integer}]>` is not implemented for `u8`
