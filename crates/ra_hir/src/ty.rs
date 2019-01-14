@@ -181,10 +181,11 @@ pub enum Ty {
     /// The pointee of a string slice. Written as `str`.
     Str,
 
-    // An array with the given length. Written as `[T; n]`.
-    // Array(Ty, ty::Const),
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(Arc<Ty>),
+
+    // An array with the given length. Written as `[T; n]`.
+    Array(Arc<Ty>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
     RawPtr(Arc<Ty>, Mutability),
@@ -226,9 +227,6 @@ pub enum Ty {
 
     /// A tuple type.  For example, `(i32, bool)`.
     Tuple(Arc<[Ty]>),
-
-    /// A array type.  For example, `[i32]`.
-    Array(Arc<[Ty]>),
 
     // The projection of an associated type.  For example,
     // `<T as Trait<..>>::N`.pub
@@ -279,7 +277,10 @@ impl Ty {
                 let inner_ty = Ty::from_hir(db, module, impl_block, inner);
                 Ty::RawPtr(Arc::new(inner_ty), *mutability)
             }
-            TypeRef::Array(_inner) => Ty::Unknown, // TODO
+            TypeRef::Array(inner) => {
+                let inner_ty = Ty::from_hir(db, module, impl_block, inner);
+                Ty::Array(Arc::new(inner_ty))
+            }
             TypeRef::Slice(inner) => {
                 let inner_ty = Ty::from_hir(db, module, impl_block, inner);
                 Ty::Slice(Arc::new(inner_ty))
@@ -403,7 +404,7 @@ impl fmt::Display for Ty {
             Ty::Int(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Str => write!(f, "str"),
-            Ty::Slice(t) => write!(f, "[{}]", t),
+            Ty::Slice(t) | Ty::Array(t) => write!(f, "[{}]", t),
             Ty::RawPtr(t, m) => write!(f, "*{}{}", m.as_keyword_for_ptr(), t),
             Ty::Ref(t, m) => write!(f, "&{}{}", m.as_keyword_for_ref(), t),
             Ty::Never => write!(f, "!"),
@@ -413,16 +414,6 @@ impl fmt::Display for Ty {
                 } else {
                     join(ts.iter())
                         .surround_with("(", ")")
-                        .separator(", ")
-                        .to_fmt(f)
-                }
-            }
-            Ty::Array(ts) => {
-                if ts.len() == 1 {
-                    write!(f, "[{},]", ts[0])
-                } else {
-                    join(ts.iter())
-                        .surround_with("[", "]")
                         .separator(", ")
                         .to_fmt(f)
                 }
@@ -1116,12 +1107,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Tuple(Arc::from(ty_vec))
             },
             Expr::Array { exprs } => {
-                let mut ty_vec = Vec::with_capacity(exprs.len());
-                for arg in exprs.iter() {
-                    ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
+                let mut elem_ty = match &expected.ty {
+                    Ty::Slice(inner) | Ty::Array(inner) => Ty::clone(&inner),
+                    _ => self.new_type_var(),
+                };
+
+                for expr in exprs.iter() {
+                    elem_ty = self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
                 }
 
-                Ty::Array(Arc::from(ty_vec))
+                Ty::Array(Arc::new(elem_ty))
             },
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => Ty::Bool,
