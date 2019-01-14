@@ -20,7 +20,7 @@ url_serde = "0.2.0"
 lsp-types = "0.54.0"
 walkdir = "2.2.7"
 im = "12.0.0"
-cargo_metadata = "0.6.0"
+cargo_metadata = "0.7.0"
 rustc-hash = "1.0"
 parking_lot = "0.7.0"
 
