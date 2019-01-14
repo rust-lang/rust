@@ -5,12 +5,6 @@ environment:
   # server goes down presumably. See #43333 for more info
   CARGO_HTTP_CHECK_REVOKE: false
 
-  # Recommended by AppVeyor this moves our builds to GCE which incurs a 3-4
-  # minute startup overhead, but that's paltry compared to our overall build
-  # times so we're will to eat the cost. This is intended to give us better
-  # performance I believe!
-  appveyor_build_worker_cloud: gce
-
   matrix:
   # 32/64 bit MSVC tests
   - MSYS_BITS: 64
