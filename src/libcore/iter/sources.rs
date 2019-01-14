@@ -461,6 +461,8 @@ unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 /// `.foorc`:
 ///
 /// ```no_run
+/// #![feature(iter_once_with)]
+///
 /// use std::iter;
 /// use std::fs;
 /// use std::path::PathBuf;
