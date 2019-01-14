@@ -1,8 +1,6 @@
 // A few contrived examples where lifetime should (or should not) be parsed as an object type.
 // Lifetimes parsed as types are still rejected later by semantic checks.
 
-// compile-flags: -Z continue-parse-after-error
-
 struct S<'a, T>(&'a u8, T);
 
 fn main() {

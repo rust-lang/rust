@@ -1,8 +1,14 @@
 error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-path.rs:1:37
+  --> $DIR/issue-14303-path.rs:10:40
    |
-LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
-   |                                     ^^
+LL | fn bar<'a, 'b, 'c, T>(x: foo::X<'a, T, 'b, 'c>) {}
+   |                                        ^^  ^^ must be declared prior to type parameters
+   |                                        |
+   |                                        must be declared prior to type parameters
+help: move the lifetime parameters prior to the first type parameter
+   |
+LL | fn bar<'a, 'b, 'c, T>(x: foo::X<'a, 'b, 'c, T>) {}
+   |                                     ^^^ ^^^ --
 
 error: aborting due to previous error
 

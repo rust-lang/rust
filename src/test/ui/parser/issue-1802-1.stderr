@@ -1,5 +1,5 @@
 error: no valid digits found for number
-  --> $DIR/issue-1802-1.rs:3:16
+  --> $DIR/issue-1802-1.rs:5:16
    |
 LL |     log(error, 0b);
    |                ^^
