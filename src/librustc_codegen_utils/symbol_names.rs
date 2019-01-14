@@ -410,12 +410,20 @@ impl Printer for SymbolPath {
 
     type Path = Self;
     type Region = Self;
+    type Type = Self;
 
     fn print_region(
         self: PrintCx<'_, '_, '_, Self>,
         _region: ty::Region<'_>,
     ) -> Result<Self::Region, Self::Error> {
         Ok(self.printer)
+    }
+
+    fn print_type(
+        self: PrintCx<'_, '_, 'tcx, Self>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Type, Self::Error> {
+        self.pretty_print_type(ty)
     }
 
     fn path_crate(

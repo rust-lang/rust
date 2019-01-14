@@ -1,11 +1,6 @@
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
 use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
-use crate::ty::{Bool, Char, Adt};
-use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
-use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
-use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
-use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
 use crate::ty::{self, ParamConst, Ty, TypeFoldable};
 use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print, Printer};
 use crate::mir::interpret::ConstValue;
@@ -689,269 +684,283 @@ define_print! {
     }
 }
 
-define_print! {
-    ('tcx) ty::Ty<'tcx>, (self, cx) {
-        display {
-            match self.sty {
-                Bool => p!(write("bool")),
-                Char => p!(write("char")),
-                Int(t) => p!(write("{}", t.ty_to_string())),
-                Uint(t) => p!(write("{}", t.ty_to_string())),
-                Float(t) => p!(write("{}", t.ty_to_string())),
-                RawPtr(ref tm) => {
-                    p!(write("*{} ", match tm.mutbl {
-                        hir::MutMutable => "mut",
-                        hir::MutImmutable => "const",
-                    }));
-                    p!(print(tm.ty))
+// FIXME(eddyb) move this to `ty::print`.
+impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
+    pub fn pretty_print_type(
+        mut self,
+        ty: Ty<'tcx>,
+    ) -> Result<P::Type, P::Error> {
+        define_scoped_cx!(self);
+
+        match ty.sty {
+            ty::Bool => p!(write("bool")),
+            ty::Char => p!(write("char")),
+            ty::Int(t) => p!(write("{}", t.ty_to_string())),
+            ty::Uint(t) => p!(write("{}", t.ty_to_string())),
+            ty::Float(t) => p!(write("{}", t.ty_to_string())),
+            ty::RawPtr(ref tm) => {
+                p!(write("*{} ", match tm.mutbl {
+                    hir::MutMutable => "mut",
+                    hir::MutImmutable => "const",
+                }));
+                p!(print(tm.ty))
+            }
+            ty::Ref(r, ty, mutbl) => {
+                p!(write("&"));
+                if self.print_region_outputs_anything(r) {
+                    p!(print_display(r), write(" "));
                 }
-                Ref(r, ty, mutbl) => {
-                    p!(write("&"));
-                    if cx.print_region_outputs_anything(r) {
-                        p!(print_display(r), write(" "));
-                    }
-                    p!(print(ty::TypeAndMut { ty, mutbl }))
-                }
-                Never => p!(write("!")),
-                Tuple(ref tys) => {
-                    p!(write("("));
-                    let mut tys = tys.iter();
+                p!(print(ty::TypeAndMut { ty, mutbl }))
+            }
+            ty::Never => p!(write("!")),
+            ty::Tuple(ref tys) => {
+                p!(write("("));
+                let mut tys = tys.iter();
+                if let Some(&ty) = tys.next() {
+                    p!(print(ty), write(","));
                     if let Some(&ty) = tys.next() {
-                        p!(print(ty), write(","));
-                        if let Some(&ty) = tys.next() {
-                            p!(write(" "), print(ty));
-                            for &ty in tys {
-                                p!(write(", "), print(ty));
-                            }
+                        p!(write(" "), print(ty));
+                        for &ty in tys {
+                            p!(write(", "), print(ty));
                         }
                     }
-                    p!(write(")"))
                 }
-                FnDef(def_id, substs) => {
-                    let sig = cx.tcx.fn_sig(def_id).subst(cx.tcx, substs);
-                    p!(print(sig), write(" {{"));
-                    nest!(|cx| cx.print_def_path(
-                        def_id,
-                        Some(substs),
-                        Namespace::ValueNS,
-                        iter::empty(),
-                    ));
-                    p!(write("}}"))
-                }
-                FnPtr(ref bare_fn) => {
-                    p!(print(bare_fn))
-                }
-                Infer(infer_ty) => p!(write("{}", infer_ty)),
-                Error => p!(write("[type error]")),
-                Param(ref param_ty) => p!(write("{}", param_ty)),
-                Bound(debruijn, bound_ty) => {
-                    match bound_ty.kind {
-                        ty::BoundTyKind::Anon => {
-                            if debruijn == ty::INNERMOST {
-                                p!(write("^{}", bound_ty.var.index()))
-                            } else {
-                                p!(write("^{}_{}", debruijn.index(), bound_ty.var.index()))
-                            }
-                        }
-
-                        ty::BoundTyKind::Param(p) => p!(write("{}", p)),
-                    }
-                }
-                Adt(def, substs) => {
-                    nest!(|cx| cx.print_def_path(
-                        def.did,
-                        Some(substs),
-                        Namespace::TypeNS,
-                        iter::empty(),
-                    ));
-                }
-                Dynamic(data, r) => {
-                    let print_r = cx.print_region_outputs_anything(r);
-                    if print_r {
-                        p!(write("("));
-                    }
-                    p!(write("dyn "), print(data));
-                    if print_r {
-                        p!(write(" + "), print_display(r), write(")"));
-                    }
-                }
-                Foreign(def_id) => {
-                    nest!(|cx| cx.print_def_path(
-                        def_id,
-                        None,
-                        Namespace::TypeNS,
-                        iter::empty(),
-                    ));
-                }
-                Projection(ref data) => p!(print(data)),
-                UnnormalizedProjection(ref data) => {
-                    p!(write("Unnormalized("), print(data), write(")"))
-                }
-                Placeholder(placeholder) => {
-                    p!(write("Placeholder({:?})", placeholder))
-                }
-                Opaque(def_id, substs) => {
-                    if cx.config.is_verbose {
-                        p!(write("Opaque({:?}, {:?})", def_id, substs));
-                        return Ok(cx.printer);
-                    }
-
-                    let def_key = cx.tcx.def_key(def_id);
-                    if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
-                        p!(write("{}", name));
-                        let mut substs = substs.iter();
-                        // FIXME(eddyb) print this with `print_def_path`.
-                        if let Some(first) = substs.next() {
-                            p!(write("::<"));
-                            p!(print_display(first));
-                            for subst in substs {
-                                p!(write(", "), print_display(subst));
-                            }
-                            p!(write(">"));
-                        }
-                        return Ok(cx.printer);
-                    }
-                    // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                    // by looking up the projections associated with the def_id.
-                    let bounds = cx.tcx.predicates_of(def_id).instantiate(cx.tcx, substs);
-
-                    let mut first = true;
-                    let mut is_sized = false;
-                    p!(write("impl"));
-                    for predicate in bounds.predicates {
-                        if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                            // Don't print +Sized, but rather +?Sized if absent.
-                            if Some(trait_ref.def_id()) == cx.tcx.lang_items().sized_trait() {
-                                is_sized = true;
-                                continue;
-                            }
-
-                            p!(
-                                    write("{}", if first { " " } else { "+" }),
-                                    print(trait_ref));
-                            first = false;
-                        }
-                    }
-                    if !is_sized {
-                        p!(write("{}?Sized", if first { " " } else { "+" }));
-                    } else if first {
-                        p!(write(" Sized"));
-                    }
-                }
-                Str => p!(write("str")),
-                Generator(did, substs, movability) => {
-                    let upvar_tys = substs.upvar_tys(did, cx.tcx);
-                    let witness = substs.witness(did, cx.tcx);
-                    if movability == hir::GeneratorMovability::Movable {
-                        p!(write("[generator"));
-                    } else {
-                        p!(write("[static generator"));
-                    }
-
-                    // FIXME(eddyb) should use `def_span`.
-                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
-                        p!(write("@{:?}", cx.tcx.hir().span_by_hir_id(hir_id)));
-                        let mut sep = " ";
-                        for (freevar, upvar_ty) in cx.tcx.freevars(did)
-                            .as_ref()
-                            .map_or(&[][..], |fv| &fv[..])
-                            .iter()
-                            .zip(upvar_tys)
-                        {
-                            p!(
-                                write("{}{}:",
-                                        sep,
-                                        cx.tcx.hir().name(freevar.var_id())),
-                                print(upvar_ty));
-                            sep = ", ";
-                        }
-                    } else {
-                        // cross-crate closure types should only be
-                        // visible in codegen bug reports, I imagine.
-                        p!(write("@{:?}", did));
-                        let mut sep = " ";
-                        for (index, upvar_ty) in upvar_tys.enumerate() {
-                            p!(
-                                   write("{}{}:", sep, index),
-                                   print(upvar_ty));
-                            sep = ", ";
-                        }
-                    }
-
-                    p!(write(" "), print(witness), write("]"))
-                },
-                GeneratorWitness(types) => {
-                    nest!(|cx| cx.in_binder(&types))
-                }
-                Closure(did, substs) => {
-                    let upvar_tys = substs.upvar_tys(did, cx.tcx);
-                    p!(write("[closure"));
-
-                    // FIXME(eddyb) should use `def_span`.
-                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
-                        if cx.tcx.sess.opts.debugging_opts.span_free_formats {
-                            p!(write("@{:?}", hir_id));
+                p!(write(")"))
+            }
+            ty::FnDef(def_id, substs) => {
+                let sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
+                p!(print(sig), write(" {{"));
+                nest!(|cx| cx.print_def_path(
+                    def_id,
+                    Some(substs),
+                    Namespace::ValueNS,
+                    iter::empty(),
+                ));
+                p!(write("}}"))
+            }
+            ty::FnPtr(ref bare_fn) => {
+                p!(print(bare_fn))
+            }
+            ty::Infer(infer_ty) => p!(write("{}", infer_ty)),
+            ty::Error => p!(write("[type error]")),
+            ty::Param(ref param_ty) => p!(write("{}", param_ty)),
+            ty::Bound(debruijn, bound_ty) => {
+                match bound_ty.kind {
+                    ty::BoundTyKind::Anon => {
+                        if debruijn == ty::INNERMOST {
+                            p!(write("^{}", bound_ty.var.index()))
                         } else {
-                            p!(write("@{:?}", cx.tcx.hir().span_by_hir_id(hir_id)));
-                        }
-                        let mut sep = " ";
-                        for (freevar, upvar_ty) in cx.tcx.freevars(did)
-                            .as_ref()
-                            .map_or(&[][..], |fv| &fv[..])
-                            .iter()
-                            .zip(upvar_tys)
-                        {
-                            p!(
-                                write("{}{}:",
-                                        sep,
-                                        cx.tcx.hir().name(freevar.var_id())),
-                                print(upvar_ty));
-                            sep = ", ";
-                        }
-                    } else {
-                        // cross-crate closure types should only be
-                        // visible in codegen bug reports, I imagine.
-                        p!(write("@{:?}", did));
-                        let mut sep = " ";
-                        for (index, upvar_ty) in upvar_tys.enumerate() {
-                            p!(
-                                   write("{}{}:", sep, index),
-                                   print(upvar_ty));
-                            sep = ", ";
+                            p!(write("^{}_{}", debruijn.index(), bound_ty.var.index()))
                         }
                     }
 
-                    if cx.config.is_verbose {
-                        p!(write(
-                            " closure_kind_ty={:?} closure_sig_ty={:?}",
-                            substs.closure_kind_ty(did, cx.tcx),
-                            substs.closure_sig_ty(did, cx.tcx)
-                        ));
-                    }
-
-                    p!(write("]"))
-                },
-                Array(ty, sz) => {
-                    p!(write("["), print(ty), write("; "));
-                    match sz {
-                        ty::LazyConst::Unevaluated(_def_id, _substs) => {
-                            p!(write("_"));
-                        }
-                        ty::LazyConst::Evaluated(c) => {
-                            match c.val {
-                                ConstValue::Infer(..) => p!(write("_")),
-                                ConstValue::Param(ParamConst { name, .. }) =>
-                                    p!(write("{}", name)),
-                                _ => p!(write("{}", c.unwrap_usize(cx.tcx))),
-                            }
-                        }
-                    }
-                    p!(write("]"))
-                }
-                Slice(ty) => {
-                    p!(write("["), print(ty), write("]"))
+                    ty::BoundTyKind::Param(p) => p!(write("{}", p)),
                 }
             }
+            ty::Adt(def, substs) => {
+                nest!(|cx| cx.print_def_path(
+                    def.did,
+                    Some(substs),
+                    Namespace::TypeNS,
+                    iter::empty(),
+                ));
+            }
+            ty::Dynamic(data, r) => {
+                let print_r = self.print_region_outputs_anything(r);
+                if print_r {
+                    p!(write("("));
+                }
+                p!(write("dyn "), print(data));
+                if print_r {
+                    p!(write(" + "), print_display(r), write(")"));
+                }
+            }
+            ty::Foreign(def_id) => {
+                nest!(|cx| cx.print_def_path(
+                    def_id,
+                    None,
+                    Namespace::TypeNS,
+                    iter::empty(),
+                ));
+            }
+            ty::Projection(ref data) => p!(print(data)),
+            ty::UnnormalizedProjection(ref data) => {
+                p!(write("Unnormalized("), print(data), write(")"))
+            }
+            ty::Placeholder(placeholder) => {
+                p!(write("Placeholder({:?})", placeholder))
+            }
+            ty::Opaque(def_id, substs) => {
+                if self.config.is_verbose {
+                    p!(write("Opaque({:?}, {:?})", def_id, substs));
+                    return Ok(self.printer);
+                }
+
+                let def_key = self.tcx.def_key(def_id);
+                if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
+                    p!(write("{}", name));
+                    let mut substs = substs.iter();
+                    // FIXME(eddyb) print this with `print_def_path`.
+                    if let Some(first) = substs.next() {
+                        p!(write("::<"));
+                        p!(print_display(first));
+                        for subst in substs {
+                            p!(write(", "), print_display(subst));
+                        }
+                        p!(write(">"));
+                    }
+                    return Ok(self.printer);
+                }
+                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+                // by looking up the projections associated with the def_id.
+                let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
+
+                let mut first = true;
+                let mut is_sized = false;
+                p!(write("impl"));
+                for predicate in bounds.predicates {
+                    if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                        // Don't print +Sized, but rather +?Sized if absent.
+                        if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
+                            is_sized = true;
+                            continue;
+                        }
+
+                        p!(
+                                write("{}", if first { " " } else { "+" }),
+                                print(trait_ref));
+                        first = false;
+                    }
+                }
+                if !is_sized {
+                    p!(write("{}?Sized", if first { " " } else { "+" }));
+                } else if first {
+                    p!(write(" Sized"));
+                }
+            }
+            ty::Str => p!(write("str")),
+            ty::Generator(did, substs, movability) => {
+                let upvar_tys = substs.upvar_tys(did, self.tcx);
+                let witness = substs.witness(did, self.tcx);
+                if movability == hir::GeneratorMovability::Movable {
+                    p!(write("[generator"));
+                } else {
+                    p!(write("[static generator"));
+                }
+
+                // FIXME(eddyb) should use `def_span`.
+                if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
+                    p!(write("@{:?}", self.tcx.hir().span_by_hir_id(hir_id)));
+                    let mut sep = " ";
+                    for (freevar, upvar_ty) in self.tcx.freevars(did)
+                        .as_ref()
+                        .map_or(&[][..], |fv| &fv[..])
+                        .iter()
+                        .zip(upvar_tys)
+                    {
+                        p!(
+                            write("{}{}:",
+                                    sep,
+                                    self.tcx.hir().name(freevar.var_id())),
+                            print(upvar_ty));
+                        sep = ", ";
+                    }
+                } else {
+                    // cross-crate closure types should only be
+                    // visible in codegen bug reports, I imagine.
+                    p!(write("@{:?}", did));
+                    let mut sep = " ";
+                    for (index, upvar_ty) in upvar_tys.enumerate() {
+                        p!(
+                                write("{}{}:", sep, index),
+                                print(upvar_ty));
+                        sep = ", ";
+                    }
+                }
+
+                p!(write(" "), print(witness), write("]"))
+            },
+            ty::GeneratorWitness(types) => {
+                nest!(|cx| cx.in_binder(&types))
+            }
+            ty::Closure(did, substs) => {
+                let upvar_tys = substs.upvar_tys(did, self.tcx);
+                p!(write("[closure"));
+
+                // FIXME(eddyb) should use `def_span`.
+                if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
+                    if self.tcx.sess.opts.debugging_opts.span_free_formats {
+                        p!(write("@{:?}", hir_id));
+                    } else {
+                        p!(write("@{:?}", self.tcx.hir().span_by_hir_id(hir_id)));
+                    }
+                    let mut sep = " ";
+                    for (freevar, upvar_ty) in self.tcx.freevars(did)
+                        .as_ref()
+                        .map_or(&[][..], |fv| &fv[..])
+                        .iter()
+                        .zip(upvar_tys)
+                    {
+                        p!(
+                            write("{}{}:",
+                                    sep,
+                                    self.tcx.hir().name(freevar.var_id())),
+                            print(upvar_ty));
+                        sep = ", ";
+                    }
+                } else {
+                    // cross-crate closure types should only be
+                    // visible in codegen bug reports, I imagine.
+                    p!(write("@{:?}", did));
+                    let mut sep = " ";
+                    for (index, upvar_ty) in upvar_tys.enumerate() {
+                        p!(
+                                write("{}{}:", sep, index),
+                                print(upvar_ty));
+                        sep = ", ";
+                    }
+                }
+
+                if self.config.is_verbose {
+                    p!(write(
+                        " closure_kind_ty={:?} closure_sig_ty={:?}",
+                        substs.closure_kind_ty(did, self.tcx),
+                        substs.closure_sig_ty(did, self.tcx)
+                    ));
+                }
+
+                p!(write("]"))
+            },
+            ty::Array(ty, sz) => {
+                p!(write("["), print(ty), write("; "));
+                match sz {
+                    ty::LazyConst::Unevaluated(_def_id, _substs) => {
+                        p!(write("_"));
+                    }
+                    ty::LazyConst::Evaluated(c) => {
+                        match c.val {
+                            ConstValue::Infer(..) => p!(write("_")),
+                            ConstValue::Param(ParamConst { name, .. }) =>
+                                p!(write("{}", name)),
+                            _ => p!(write("{}", c.unwrap_usize(self.tcx))),
+                        }
+                    }
+                }
+                p!(write("]"))
+            }
+            ty::Slice(ty) => {
+                p!(write("["), print(ty), write("]"))
+            }
+        }
+
+        Ok(self.printer)
+    }
+}
+
+define_print! {
+    ('tcx) Ty<'tcx>, (self, cx) {
+        display {
+            return cx.print_type(self);
         }
         debug {
             p!(print_display(self))

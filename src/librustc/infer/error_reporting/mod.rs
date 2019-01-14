@@ -458,11 +458,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             type Path = Vec<String>;
             type Region = !;
+            type Type = !;
 
             fn print_region(
                 self: PrintCx<'_, '_, '_, Self>,
                 _region: ty::Region<'_>,
             ) -> Result<Self::Region, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn print_type<'tcx>(
+                self: PrintCx<'_, '_, 'tcx, Self>,
+                _ty: Ty<'tcx>,
+            ) -> Result<Self::Type, Self::Error> {
                 Err(NonTrivialPath)
             }
 
