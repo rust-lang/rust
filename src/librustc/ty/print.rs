@@ -336,7 +336,7 @@ pub trait PrettyPrinter:
     /// nested components in some larger context.
     fn nest<'a, 'gcx, 'tcx, E>(
         self: PrintCx<'a, 'gcx, 'tcx, Self>,
-        f: impl for<'b> FnOnce(PrintCx<'b, 'gcx, 'tcx, Self>) -> Result<Self, E>,
+        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, E>,
     ) -> Result<PrintCx<'a, 'gcx, 'tcx, Self>, E> {
         let printer = f(PrintCx {
             tcx: self.tcx,
@@ -348,6 +348,17 @@ pub trait PrettyPrinter:
             printer,
             config: self.config,
         })
+    }
+
+    /// Print `<...>` around what `f` prints.
+    fn generic_delimiters<'gcx, 'tcx>(
+        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
+    ) -> Result<Self, Self::Error> {
+        write!(self.printer, "<")?;
+        let mut printer = f(self)?;
+        write!(printer, ">")?;
+        Ok(printer)
     }
 
     /// Return `true` if the region should be printed in path generic args
@@ -746,7 +757,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
     }
 
     pub fn pretty_path_qualified(
-        mut self,
+        self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
@@ -772,20 +783,19 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             }
         }
 
-        write!(self.printer, "<")?;
-        nest!(self, |cx| self_ty.print_display(cx));
-        if let Some(trait_ref) = trait_ref {
-            write!(self.printer, " as ")?;
-            nest!(self, |cx| cx.print_def_path(
-                trait_ref.def_id,
-                Some(trait_ref.substs),
-                Namespace::TypeNS,
-                iter::empty(),
-            ));
-        }
-        write!(self.printer, ">")?;
-
-        Ok(self.printer)
+        self.generic_delimiters(|mut cx| {
+            nest!(cx, |cx| self_ty.print_display(cx));
+            if let Some(trait_ref) = trait_ref {
+                write!(cx.printer, " as ")?;
+                nest!(cx, |cx| cx.print_def_path(
+                    trait_ref.def_id,
+                    Some(trait_ref.substs),
+                    Namespace::TypeNS,
+                    iter::empty(),
+                ));
+            }
+            Ok(cx.printer)
+        })
     }
 
     pub fn pretty_path_append_impl(
@@ -796,17 +806,18 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<P::Path, P::Error> {
-        // HACK(eddyb) going through `path_append` means symbol name
-        // computation gets to handle its equivalent of `::` correctly.
-        nest!(self, |cx| cx.path_append(print_prefix, "<impl "));
-        if let Some(trait_ref) = trait_ref {
-            nest!(self, |cx| trait_ref.print_display(cx));
-            write!(self.printer, " for ")?;
-        }
-        nest!(self, |cx| self_ty.print_display(cx));
-        write!(self.printer, ">")?;
+        nest!(self, print_prefix);
 
-        Ok(self.printer)
+        self.generic_delimiters(|mut cx| {
+            write!(cx.printer, "impl ")?;
+            if let Some(trait_ref) = trait_ref {
+                nest!(cx, |cx| trait_ref.print_display(cx));
+                write!(cx.printer, " for ")?;
+            }
+            nest!(cx, |cx| self_ty.print_display(cx));
+
+            Ok(cx.printer)
+        })
     }
 
     pub fn pretty_path_generic_args(
@@ -820,18 +831,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<P::Path, P::Error> {
         nest!(self, |cx| print_prefix(cx));
-
-        let mut empty = true;
-        let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
-            write!(cx.printer, "{}", if empty {
-                empty = false;
-                start
-            } else {
-                cont
-            })
-        };
-
-        let start = if ns == Namespace::ValueNS { "::<" } else { "<" };
 
         // Don't print `'_` if there's no printed region.
         let print_regions = params.iter().any(|param| {
@@ -861,45 +860,75 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             }).count()
         };
 
-        for param in &params[..params.len() - num_supplied_defaults] {
-            match substs[param.index as usize].unpack() {
-                UnpackedKind::Lifetime(region) => {
-                    if !print_regions {
-                        continue;
-                    }
-                    start_or_continue(&mut self, start, ", ")?;
-                    if !self.print_region_outputs_anything(region) {
-                        // This happens when the value of the region
-                        // parameter is not easily serialized. This may be
-                        // because the user omitted it in the first place,
-                        // or because it refers to some block in the code,
-                        // etc. I'm not sure how best to serialize this.
-                        write!(self.printer, "'_")?;
-                    } else {
-                        nest!(self, |cx| region.print_display(cx));
-                    }
+        let params = &params[..params.len() - num_supplied_defaults];
+        let mut args = params.iter().map(|param| {
+            substs[param.index as usize].unpack()
+        }).filter(|arg| {
+            match arg {
+                UnpackedKind::Lifetime(_) => print_regions,
+                _ => true,
+            }
+        });
+        let arg0 = args.next();
+
+        let mut projections = projections;
+        let projection0 = projections.next();
+
+        if arg0.is_none() && projection0.is_none() {
+            return Ok(self.printer);
+        }
+
+        // FIXME(eddyb) move this into `generic_delimiters`.
+        if ns == Namespace::ValueNS {
+            write!(self.printer, "::")?;
+        }
+
+        self.generic_delimiters(|mut cx| {
+            let mut empty = true;
+            let mut maybe_comma = |cx: &mut Self| {
+                if empty {
+                    empty = false;
+                    Ok(())
+                } else {
+                    write!(cx.printer, ", ")
                 }
-                UnpackedKind::Type(ty) => {
-                    start_or_continue(&mut self, start, ", ")?;
-                    nest!(self, |cx| ty.print_display(cx));
-                }
-                UnpackedKind::Const(ct) => {
-                    start_or_continue(&mut self, start, ", ")?;
-                    nest!(self, |cx| ct.print_display(cx));
+            };
+
+            for arg in arg0.into_iter().chain(args) {
+                maybe_comma(&mut cx)?;
+
+                match arg {
+                    UnpackedKind::Lifetime(region) => {
+                        if !cx.print_region_outputs_anything(region) {
+                            // This happens when the value of the region
+                            // parameter is not easily serialized. This may be
+                            // because the user omitted it in the first place,
+                            // or because it refers to some block in the code,
+                            // etc. I'm not sure how best to serialize this.
+                            write!(cx.printer, "'_")?;
+                        } else {
+                            nest!(cx, |cx| region.print_display(cx));
+                        }
+                    }
+                    UnpackedKind::Type(ty) => {
+                        nest!(cx, |cx| ty.print_display(cx));
+                    }
+                    UnpackedKind::Const(ct) => {
+                        nest!(cx, |cx| ct.print_display(cx));
+                    }
                 }
             }
-        }
 
-        for projection in projections {
-            start_or_continue(&mut self, start, ", ")?;
-            write!(self.printer, "{}=",
-                   self.tcx.associated_item(projection.item_def_id).ident)?;
-            nest!(self, |cx| projection.ty.print_display(cx));
-        }
+            for projection in projection0.into_iter().chain(projections) {
+                maybe_comma(&mut cx)?;
 
-        start_or_continue(&mut self, "", ">")?;
+                write!(cx.printer, "{}=",
+                    cx.tcx.associated_item(projection.item_def_id).ident)?;
+                nest!(cx, |cx| projection.ty.print_display(cx));
+            }
 
-        Ok(self.printer)
+            Ok(cx.printer)
+        })
     }
 }
 
@@ -1087,7 +1116,15 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.pretty_path_append_impl(print_prefix, self_ty, trait_ref)
+        self.pretty_path_append_impl(|cx| {
+            let mut printer = print_prefix(cx)?;
+
+            if !printer.empty {
+                write!(printer, "::")?;
+            }
+
+            Ok(printer)
+        }, self_ty, trait_ref)
     }
     fn path_append<'gcx, 'tcx>(
         self: PrintCx<'_, 'gcx, 'tcx, Self>,
@@ -1126,7 +1163,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
 impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
     fn nest<'a, 'gcx, 'tcx, E>(
         mut self: PrintCx<'a, 'gcx, 'tcx, Self>,
-        f: impl for<'b> FnOnce(PrintCx<'b, 'gcx, 'tcx, Self>) -> Result<Self, E>,
+        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, E>,
     ) -> Result<PrintCx<'a, 'gcx, 'tcx, Self>, E> {
         let was_empty = std::mem::replace(&mut self.printer.empty, true);
         let mut printer = f(PrintCx {
