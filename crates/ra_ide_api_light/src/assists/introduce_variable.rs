@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::WHITESPACE,
+    SyntaxKind::{WHITESPACE, BLOCK_EXPR},
     SyntaxNode, TextUnit,
 };
 
@@ -26,6 +26,9 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
             false
         };
         if is_full_stmt {
+            if expr.syntax().kind() == BLOCK_EXPR {
+                buf.push_str(";");
+            }
             edit.replace(expr.syntax().range(), buf);
         } else {
             buf.push_str(";");
