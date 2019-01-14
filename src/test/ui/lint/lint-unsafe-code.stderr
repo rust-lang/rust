@@ -28,56 +28,74 @@ error: declaration of an `unsafe` method
 LL |     unsafe fn baz(&self); //~ ERROR: declaration of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: implementation of an `unsafe` method
+error: declaration of an `unsafe` method
   --> $DIR/lint-unsafe-code.rs:29:5
    |
 LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:30:5
+  --> $DIR/lint-unsafe-code.rs:29:5
+   |
+LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: declaration of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:31:5
    |
 LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:34:5
+  --> $DIR/lint-unsafe-code.rs:31:5
+   |
+LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:36:5
    |
 LL |     unsafe fn baz(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:35:5
+  --> $DIR/lint-unsafe-code.rs:37:5
    |
 LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:54:5
+  --> $DIR/lint-unsafe-code.rs:56:5
    |
 LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:65:5
+error: declaration of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:67:5
    |
 LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:71:5
+  --> $DIR/lint-unsafe-code.rs:67:5
    |
 LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:75:5
+  --> $DIR/lint-unsafe-code.rs:74:5
+   |
+LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:78:5
    |
 LL |     unsafe fn baz(&self) {} //~ ERROR: implementation of an `unsafe` method
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:86:5
+  --> $DIR/lint-unsafe-code.rs:89:5
    |
 LL |     unsafe {} //~ ERROR: usage of an `unsafe` block
    |     ^^^^^^^^^
@@ -91,5 +109,5 @@ LL |         unsafe {} //~ ERROR: usage of an `unsafe` block
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
 
-error: aborting due to 14 previous errors
+error: aborting due to 17 previous errors
 
