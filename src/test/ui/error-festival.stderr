@@ -52,9 +52,7 @@ error[E0054]: cannot cast as `bool`
   --> $DIR/error-festival.rs:33:24
    |
 LL |     let x_is_nonzero = x as bool;
-   |                        ^^^^^^^^^ unsupported cast
-   |
-   = help: compare with zero instead
+   |                        ^^^^^^^^^ help: compare with zero instead: `x != 0`
 
 error[E0606]: casting `&u8` as `u32` is invalid
   --> $DIR/error-festival.rs:37:18

@@ -25,9 +25,9 @@ use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
-use symbol::{keywords, Symbol};
+use symbol::Symbol;
 
-use std::{env};
+use std::env;
 
 macro_rules! set {
     ($field: ident) => {{
@@ -372,9 +372,6 @@ declare_features! (
     // Generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265), None),
 
-    // `extern` in paths
-    (active, extern_in_paths, "1.23.0", Some(55600), None),
-
     // Infer static outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
@@ -503,6 +500,9 @@ declare_features! (
     // Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
     (removed, custom_derive, "1.0.0", Some(29644), None,
      Some("subsumed by `#[proc_macro_derive]`")),
+    // Paths of the form: `extern::foo::bar`
+    (removed, extern_in_paths, "1.33.0", Some(55600), None,
+     Some("subsumed by `::foo::bar` paths")),
 );
 
 declare_features! (
@@ -1825,25 +1825,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
-    }
-
-    fn visit_path(&mut self, path: &'a ast::Path, _id: NodeId) {
-        for segment in &path.segments {
-            // Identifiers we are going to check could come from a legacy macro (e.g., `#[test]`).
-            // For such macros identifiers must have empty context, because this context is
-            // used during name resolution and produced names must be unhygienic for compatibility.
-            // On the other hand, we need the actual non-empty context for feature gate checking
-            // because it's hygienic even for legacy macros. As previously stated, such context
-            // cannot be kept in identifiers, so it's kept in paths instead and we take it from
-            // there while keeping location info from the ident span.
-            let span = segment.ident.span.with_ctxt(path.span.ctxt());
-            if segment.ident.name == keywords::Extern.name() {
-                gate_feature_post!(&self, extern_in_paths, span,
-                                   "`extern` in paths is experimental");
-            }
-        }
-
-        visit::walk_path(self, path);
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {

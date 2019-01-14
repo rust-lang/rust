@@ -1,8 +1,12 @@
 error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-fncall.rs:4:31
+  --> $DIR/issue-14303-fncall.rs:13:29
    |
-LL |     .collect::<Vec<'a, usize, 'b>>()
-   |                               ^^
+LL |         .collect::<Vec<S<_, 'a>>>();
+   |                             ^^ must be declared prior to type parameters
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL |         .collect::<Vec<S<'a, _>>>();
+   |                          ^^^ --
 
 error: aborting due to previous error
 

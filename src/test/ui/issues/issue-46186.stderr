@@ -1,8 +1,8 @@
 error: expected item, found `;`
   --> $DIR/issue-46186.rs:3:2
    |
-LL | }; //~ ERROR expected item, found `;`
-   |  ^ help: consider removing this semicolon
+LL | };
+   |  ^ help: remove this semicolon
    |
    = help: braced struct declarations are not followed by a semicolon
 

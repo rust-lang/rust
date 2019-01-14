@@ -1012,7 +1012,10 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                self.span_err(sp, &format!("{} with a suffix is invalid", kind));
+                let msg = format!("{} with a suffix is invalid", kind);
+                self.struct_span_err(sp, &msg)
+                    .span_label(sp, msg)
+                    .emit();
             }
         }
     }
@@ -1299,7 +1302,7 @@ impl<'a> Parser<'a> {
     fn token_is_bare_fn_keyword(&mut self) -> bool {
         self.check_keyword(keywords::Fn) ||
             self.check_keyword(keywords::Unsafe) ||
-            self.check_keyword(keywords::Extern) && self.is_extern_non_path()
+            self.check_keyword(keywords::Extern)
     }
 
     /// parse a `TyKind::BareFn` type:
@@ -1768,9 +1771,11 @@ impl<'a> Parser<'a> {
             Mutability::Immutable
         } else {
             let span = self.prev_span;
-            self.span_err(span,
-                          "expected mut or const in raw pointer type (use \
-                           `*mut T` or `*const T` as appropriate)");
+            let msg = "expected mut or const in raw pointer type";
+            self.struct_span_err(span, msg)
+                .span_label(span, msg)
+                .help("use `*mut T` or `*const T` as appropriate")
+                .emit();
             Mutability::Immutable
         };
         let t = self.parse_ty_no_plus()?;
@@ -3815,8 +3820,12 @@ impl<'a> Parser<'a> {
                     ddpos = Some(fields.len());
                 } else {
                     // Emit a friendly error, ignore `..` and continue parsing
-                    self.span_err(self.prev_span,
-                                  "`..` can only be used once per tuple or tuple struct pattern");
+                    self.struct_span_err(
+                        self.prev_span,
+                        "`..` can only be used once per tuple or tuple struct pattern",
+                    )
+                        .span_label(self.prev_span, "can only be used once per pattern")
+                        .emit();
                 }
             } else if !self.check(&token::CloseDelim(token::Paren)) {
                 fields.push(self.parse_pat(None)?);
@@ -3832,7 +3841,10 @@ impl<'a> Parser<'a> {
 
         if ddpos == Some(fields.len()) && trailing_comma {
             // `..` needs to be followed by `)` or `, pat`, `..,)` is disallowed.
-            self.span_err(self.prev_span, "trailing comma is not permitted after `..`");
+            let msg = "trailing comma is not permitted after `..`";
+            self.struct_span_err(self.prev_span, msg)
+                .span_label(self.prev_span, msg)
+                .emit();
         }
 
         Ok((fields, ddpos, trailing_comma))
@@ -4605,10 +4617,6 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
-    fn is_extern_non_path(&self) -> bool {
-        self.token.is_keyword(keywords::Extern) && self.look_ahead(1, |t| t != &token::ModSep)
-    }
-
     fn is_existential_type_decl(&self) -> bool {
         self.token.is_keyword(keywords::Existential) &&
         self.look_ahead(1, |t| t.is_keyword(keywords::Type))
@@ -4712,12 +4720,10 @@ impl<'a> Parser<'a> {
         // like a path (1 token), but it fact not a path.
         // `union::b::c` - path, `union U { ... }` - not a path.
         // `crate::b::c` - path, `crate struct S;` - not a path.
-        // `extern::b::c` - path, `extern crate c;` - not a path.
         } else if self.token.is_path_start() &&
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
-                  !self.is_extern_non_path() &&
                   !self.is_existential_type_decl() &&
                   !self.is_auto_trait_item() {
             let pth = self.parse_path(PathStyle::Expr)?;
@@ -5256,8 +5262,12 @@ impl<'a> Parser<'a> {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
                     let param_kind = if seen_ty_param.is_some() { "type" } else { "lifetime" };
-                    self.span_err(attrs[0].span,
-                        &format!("trailing attribute after {} parameters", param_kind));
+                    self.struct_span_err(
+                        attrs[0].span,
+                        &format!("trailing attribute after {} parameters", param_kind),
+                    )
+                    .span_label(attrs[0].span, "attributes must go before parameters")
+                    .emit();
                 }
                 break
             }
@@ -5315,19 +5325,28 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self)
-                          -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
         let mut args = Vec::new();
         let mut bindings = Vec::new();
         let mut seen_type = false;
         let mut seen_binding = false;
+        let mut first_type_or_binding_span: Option<Span> = None;
+        let mut bad_lifetime_pos = vec![];
+        let mut last_comma_span = None;
+        let mut suggestions = vec![];
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
-                    self.span_err(self.prev_span,
-                        "lifetime parameters must be declared prior to type parameters");
+                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
+                    bad_lifetime_pos.push(self.prev_span);
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
+                        suggestions.push((remove_sp, String::new()));
+                        suggestions.push((
+                            first_type_or_binding_span.unwrap().shrink_to_lo(),
+                            format!("{}, ", snippet)));
+                    }
                 }
             } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
                 // Parse associated type binding.
@@ -5335,19 +5354,33 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident()?;
                 self.bump();
                 let ty = self.parse_ty()?;
+                let span = lo.to(self.prev_span);
                 bindings.push(TypeBinding {
                     id: ast::DUMMY_NODE_ID,
                     ident,
                     ty,
-                    span: lo.to(self.prev_span),
+                    span,
                 });
                 seen_binding = true;
+                if first_type_or_binding_span.is_none() {
+                    first_type_or_binding_span = Some(span);
+                }
             } else if self.check_type() {
                 // Parse type argument.
                 let ty_param = self.parse_ty()?;
                 if seen_binding {
-                    self.span_err(ty_param.span,
-                        "type parameters must be declared prior to associated type bindings");
+                    self.struct_span_err(
+                        ty_param.span,
+                        "type parameters must be declared prior to associated type bindings"
+                    )
+                        .span_label(
+                            ty_param.span,
+                            "must be declared prior to associated type bindings",
+                        )
+                        .emit();
+                }
+                if first_type_or_binding_span.is_none() {
+                    first_type_or_binding_span = Some(ty_param.span);
                 }
                 args.push(GenericArg::Type(ty_param));
                 seen_type = true;
@@ -5357,7 +5390,29 @@ impl<'a> Parser<'a> {
 
             if !self.eat(&token::Comma) {
                 break
+            } else {
+                last_comma_span = Some(self.prev_span);
             }
+        }
+        if !bad_lifetime_pos.is_empty() {
+            let mut err = self.struct_span_err(
+                bad_lifetime_pos.clone(),
+                "lifetime parameters must be declared prior to type parameters"
+            );
+            for sp in &bad_lifetime_pos {
+                err.span_label(*sp, "must be declared prior to type parameters");
+            }
+            if !suggestions.is_empty() {
+                err.multipart_suggestion_with_applicability(
+                    &format!(
+                        "move the lifetime parameter{} prior to the first type parameter",
+                        if bad_lifetime_pos.len() > 1 { "s" } else { "" },
+                    ),
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
         }
         Ok((args, bindings))
     }
@@ -5386,8 +5441,12 @@ impl<'a> Parser<'a> {
         // change we parse those generics now, but report an error.
         if self.choose_generics_over_qpath() {
             let generics = self.parse_generics()?;
-            self.span_err(generics.span,
-                          "generic parameters on `where` clauses are reserved for future use");
+            self.struct_span_err(
+                generics.span,
+                "generic parameters on `where` clauses are reserved for future use",
+            )
+                .span_label(generics.span, "currently unsupported")
+                .emit();
         }
 
         loop {
@@ -5587,15 +5646,20 @@ impl<'a> Parser<'a> {
                 // *mut self
                 // *not_self
                 // Emit special error for `self` cases.
+                let msg = "cannot pass `self` by raw pointer";
                 (if isolated_self(self, 1) {
                     self.bump();
-                    self.span_err(self.span, "cannot pass `self` by raw pointer");
+                    self.struct_span_err(self.span, msg)
+                        .span_label(self.span, msg)
+                        .emit();
                     SelfKind::Value(Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_mutability()) &&
                           isolated_self(self, 2) {
                     self.bump();
                     self.bump();
-                    self.span_err(self.span, "cannot pass `self` by raw pointer");
+                    self.struct_span_err(self.span, msg)
+                        .span_label(self.span, msg)
+                        .emit();
                     SelfKind::Value(Mutability::Immutable)
                 } else {
                     return Ok(None);
@@ -5932,7 +5996,10 @@ impl<'a> Parser<'a> {
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
             if unsafety != Unsafety::Normal {
-                self.span_err(self.prev_span, "trait aliases cannot be unsafe");
+                let msg = "trait aliases cannot be unsafe";
+                self.struct_span_err(self.prev_span, msg)
+                    .span_label(self.prev_span, msg)
+                    .emit();
             }
             Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
         } else {
@@ -6048,7 +6115,13 @@ impl<'a> Parser<'a> {
             Some(ty_second) => {
                 // impl Trait for Type
                 if !has_for {
-                    self.span_err(missing_for_span, "missing `for` in a trait impl");
+                    self.struct_span_err(missing_for_span, "missing `for` in a trait impl")
+                        .span_suggestion_short_with_applicability(
+                            missing_for_span,
+                            "add `for` here",
+                            " for ".to_string(),
+                            Applicability::MachineApplicable,
+                        ).emit();
                 }
 
                 let ty_first = ty_first.into_inner();
@@ -6409,41 +6482,52 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
+        if self.eat(&token::Semi) {
+            let mut err = self.struct_span_err(self.prev_span, "expected item, found `;`");
+            err.span_suggestion_short_with_applicability(
+                self.prev_span,
+                "remove this semicolon",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+            if !items.is_empty() {
+                let previous_item = &items[items.len()-1];
+                let previous_item_kind_name = match previous_item.node {
+                    // say "braced struct" because tuple-structs and
+                    // braceless-empty-struct declarations do take a semicolon
+                    ItemKind::Struct(..) => Some("braced struct"),
+                    ItemKind::Enum(..) => Some("enum"),
+                    ItemKind::Trait(..) => Some("trait"),
+                    ItemKind::Union(..) => Some("union"),
+                    _ => None,
+                };
+                if let Some(name) = previous_item_kind_name {
+                    err.help(&format!("{} declarations are not followed by a semicolon", name));
+                }
+            }
+            err.emit();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Given a termination token, parse all of the items in a module
     fn parse_mod_items(&mut self, term: &token::Token, inner_lo: Span) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item()? {
             items.push(item);
+            self.maybe_consume_incorrect_semicolon(&items);
         }
 
         if !self.eat(term) {
             let token_str = self.this_token_descr();
-            let mut err = self.fatal(&format!("expected item, found {}", token_str));
-            if self.token == token::Semi {
-                let msg = "consider removing this semicolon";
-                err.span_suggestion_short_with_applicability(
-                    self.span, msg, String::new(), Applicability::MachineApplicable
-                );
-                if !items.is_empty() {  // Issue #51603
-                    let previous_item = &items[items.len()-1];
-                    let previous_item_kind_name = match previous_item.node {
-                        // say "braced struct" because tuple-structs and
-                        // braceless-empty-struct declarations do take a semicolon
-                        ItemKind::Struct(..) => Some("braced struct"),
-                        ItemKind::Enum(..) => Some("enum"),
-                        ItemKind::Trait(..) => Some("trait"),
-                        ItemKind::Union(..) => Some("union"),
-                        _ => None,
-                    };
-                    if let Some(name) = previous_item_kind_name {
-                        err.help(&format!("{} declarations are not followed by a semicolon",
-                                          name));
-                    }
-                }
-            } else {
+            if !self.maybe_consume_incorrect_semicolon(&items) {
+                let mut err = self.fatal(&format!("expected item, found {}", token_str));
                 err.span_label(self.span, "expected item");
+                return Err(err);
             }
-            return Err(err);
         }
 
         let hi = if self.span.is_dummy() {
@@ -6939,7 +7023,7 @@ impl<'a> Parser<'a> {
     fn parse_enum_def(&mut self, _generics: &ast::Generics) -> PResult<'a, EnumDef> {
         let mut variants = Vec::new();
         let mut all_nullary = true;
-        let mut any_disr = None;
+        let mut any_disr = vec![];
         while self.token != token::CloseDelim(token::Brace) {
             let variant_attrs = self.parse_outer_attributes()?;
             let vlo = self.span;
@@ -6961,7 +7045,9 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                     value: self.parse_expr()?,
                 });
-                any_disr = disr_expr.as_ref().map(|c| c.value.span);
+                if let Some(sp) = disr_expr.as_ref().map(|c| c.value.span) {
+                    any_disr.push(sp);
+                }
                 struct_def = VariantData::Unit(ast::DUMMY_NODE_ID);
             } else {
                 struct_def = VariantData::Unit(ast::DUMMY_NODE_ID);
@@ -6978,11 +7064,15 @@ impl<'a> Parser<'a> {
             if !self.eat(&token::Comma) { break; }
         }
         self.expect(&token::CloseDelim(token::Brace))?;
-        match any_disr {
-            Some(disr_span) if !all_nullary =>
-                self.span_err(disr_span,
-                    "discriminator values can only be used with a field-less enum"),
-            _ => ()
+        if !any_disr.is_empty() && !all_nullary {
+            let mut err =self.struct_span_err(
+                any_disr.clone(),
+                "discriminator values can only be used with a field-less enum",
+            );
+            for sp in any_disr {
+                err.span_label(sp, "only valid in field-less enums");
+            }
+            err.emit();
         }
 
         Ok(ast::EnumDef { variants })
@@ -7113,8 +7203,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
 
-        if self.check_keyword(keywords::Extern) && self.is_extern_non_path() {
-            self.bump(); // `extern`
+        if self.eat_keyword(keywords::Extern) {
             if self.eat_keyword(keywords::Crate) {
                 return Ok(Some(self.parse_item_extern_crate(lo, visibility, attrs)?));
             }
@@ -7623,7 +7712,7 @@ impl<'a> Parser<'a> {
     fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
                                at_end: &mut bool) -> PResult<'a, Option<Mac>>
     {
-        if self.token.is_path_start() && !self.is_extern_non_path() {
+        if self.token.is_path_start() {
             let prev_span = self.prev_span;
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;

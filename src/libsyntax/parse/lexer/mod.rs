@@ -299,7 +299,7 @@ impl<'a> StringReader<'a> {
 
     /// Report a lexical error with a given span.
     fn err_span(&self, sp: Span, m: &str) {
-        self.sess.span_diagnostic.span_err(sp, m)
+        self.sess.span_diagnostic.struct_span_err(sp, m).emit();
     }
 
 

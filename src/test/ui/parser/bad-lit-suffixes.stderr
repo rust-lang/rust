@@ -2,49 +2,49 @@ error: ABI spec with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:5:5
    |
 LL |     "C"suffix //~ ERROR ABI spec with a suffix is invalid
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ ABI spec with a suffix is invalid
 
 error: ABI spec with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:9:5
    |
 LL |     "C"suffix //~ ERROR ABI spec with a suffix is invalid
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ ABI spec with a suffix is invalid
 
 error: string literal with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:13:5
    |
 LL |     ""suffix; //~ ERROR string literal with a suffix is invalid
-   |     ^^^^^^^^
+   |     ^^^^^^^^ string literal with a suffix is invalid
 
 error: byte string literal with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:14:5
    |
 LL |     b""suffix; //~ ERROR byte string literal with a suffix is invalid
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ byte string literal with a suffix is invalid
 
 error: string literal with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:15:5
    |
 LL |     r#""#suffix; //~ ERROR string literal with a suffix is invalid
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ string literal with a suffix is invalid
 
 error: byte string literal with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:16:5
    |
 LL |     br#""#suffix; //~ ERROR byte string literal with a suffix is invalid
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ byte string literal with a suffix is invalid
 
 error: char literal with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:17:5
    |
 LL |     'a'suffix; //~ ERROR char literal with a suffix is invalid
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ char literal with a suffix is invalid
 
 error: byte literal with a suffix is invalid
   --> $DIR/bad-lit-suffixes.rs:18:5
    |
 LL |     b'a'suffix; //~ ERROR byte literal with a suffix is invalid
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ byte literal with a suffix is invalid
 
 error: invalid width `1024` for integer literal
   --> $DIR/bad-lit-suffixes.rs:20:5
@@ -82,7 +82,7 @@ error: invalid suffix `suffix` for numeric literal
   --> $DIR/bad-lit-suffixes.rs:25:5
    |
 LL |     1234suffix; //~ ERROR invalid suffix `suffix` for numeric literal
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ invalid suffix `suffix`
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
@@ -90,7 +90,7 @@ error: invalid suffix `suffix` for numeric literal
   --> $DIR/bad-lit-suffixes.rs:26:5
    |
 LL |     0b101suffix; //~ ERROR invalid suffix `suffix` for numeric literal
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ invalid suffix `suffix`
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
@@ -98,7 +98,7 @@ error: invalid suffix `suffix` for float literal
   --> $DIR/bad-lit-suffixes.rs:27:5
    |
 LL |     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ invalid suffix `suffix`
    |
    = help: valid suffixes are `f32` and `f64`
 
@@ -106,7 +106,7 @@ error: invalid suffix `suffix` for float literal
   --> $DIR/bad-lit-suffixes.rs:28:5
    |
 LL |     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ invalid suffix `suffix`
    |
    = help: valid suffixes are `f32` and `f64`
 

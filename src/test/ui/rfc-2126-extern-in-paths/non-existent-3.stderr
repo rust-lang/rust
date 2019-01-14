@@ -1,9 +1,0 @@
-error[E0432]: unresolved import `extern::ycrate`
-  --> $DIR/non-existent-3.rs:3:5
-   |
-LL | use extern::ycrate; //~ ERROR unresolved import `extern::ycrate`
-   |     ^^^^^^^^^^^^^^ no `ycrate` external crate
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0432`.

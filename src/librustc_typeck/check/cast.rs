@@ -257,10 +257,28 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     .emit();
             }
             CastError::CastToBool => {
-                struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`")
-                    .span_label(self.span, "unsupported cast")
-                    .help("compare with zero instead")
-                    .emit();
+                let mut err =
+                    struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`");
+
+                if self.expr_ty.is_numeric() {
+                    match fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                        Ok(snippet) => {
+                            err.span_suggestion_with_applicability(
+                                self.span,
+                                "compare with zero instead",
+                                format!("{} != 0", snippet),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        Err(_) => {
+                            err.span_help(self.span, "compare with zero instead");
+                        }
+                    }
+                } else {
+                    err.span_label(self.span, "unsupported cast");
+                }
+
+                err.emit();
             }
             CastError::CastToChar => {
                 type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0604,
