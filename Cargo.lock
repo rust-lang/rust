@@ -152,7 +152,7 @@ source = "git+https://github.com/CraneStation/cranelift.git#4b698c2b3b5ec4702a54
 dependencies = [
  "cranelift-codegen 0.26.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.26.0 (git+https://github.com/CraneStation/cranelift.git)",
- "faerie 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "faerie 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "faerie"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -820,7 +820,7 @@ dependencies = [
 "checksum env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "afb070faf94c85d17d50ca44f6ad076bce18ae92f0037d350947240a36e9d42e"
 "checksum errno 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2a071601ed01b988f896ab14b95e67335d1eeb50190932a1320f7fe3cadc84e"
 "checksum errno-dragonfly 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "14ca354e36190500e1e1fb267c647932382b54053c50b14970856c0b00a35067"
-"checksum faerie 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0a95b10aca344ac134ebcd5e664ed7a904fed6852916006c66964fece6795cd8"
+"checksum faerie 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "142ee8f6d2864117a92855815e710b03087763df41ab3c6a97ca25e00e178b98"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
 "checksum failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "ea1063915fd7ef4309e222a5a07cf9c319fb9c7836b1f89b85458672dbb127e1"
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"
