@@ -478,7 +478,6 @@ impl Ident {
         self.name == keywords::Super.name() ||
         self.name == keywords::SelfLower.name() ||
         self.name == keywords::SelfUpper.name() ||
-        self.name == keywords::Extern.name() ||
         self.name == keywords::Crate.name() ||
         self.name == keywords::PathRoot.name() ||
         self.name == keywords::DollarCrate.name()

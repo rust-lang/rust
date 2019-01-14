@@ -1015,7 +1015,7 @@ enum ModuleOrUniformRoot<'a> {
     CrateRootAndExternPrelude,
 
     /// Virtual module that denotes resolution in extern prelude.
-    /// Used for paths starting with `::` on 2018 edition or `extern::`.
+    /// Used for paths starting with `::` on 2018 edition.
     ExternPrelude,
 
     /// Virtual module that denotes resolution in current scope.
@@ -3836,8 +3836,7 @@ impl<'a> Resolver<'a> {
                             self.resolve_self(&mut ctxt, self.current_module)));
                         continue;
                     }
-                    if name == keywords::Extern.name() ||
-                       name == keywords::PathRoot.name() && ident.span.rust_2018() {
+                    if name == keywords::PathRoot.name() && ident.span.rust_2018() {
                         module = Some(ModuleOrUniformRoot::ExternPrelude);
                         continue;
                     }
@@ -4004,8 +4003,8 @@ impl<'a> Resolver<'a> {
         };
 
         // We're only interested in `use` paths which should start with
-        // `{{root}}` or `extern` currently.
-        if first_name != keywords::Extern.name() && first_name != keywords::PathRoot.name() {
+        // `{{root}}` currently.
+        if first_name != keywords::PathRoot.name() {
             return
         }
 
