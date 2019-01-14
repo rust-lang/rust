@@ -1,0 +1,26 @@
+error: constant in pattern `a` should have an upper case name
+  --> $DIR/lint-lowercase-static-const-pattern.rs:11:13
+   |
+LL |         (0, a) => 0,
+   |             ^ help: convert the identifier to upper case: `A`
+   |
+note: lint level defined here
+  --> $DIR/lint-lowercase-static-const-pattern.rs:4:9
+   |
+LL | #![deny(non_upper_case_globals)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: constant in pattern `aha` should have an upper case name
+  --> $DIR/lint-lowercase-static-const-pattern.rs:26:13
+   |
+LL |         (0, aha) => 0,
+   |             ^^^ help: convert the identifier to upper case: `AHA`
+
+error: constant in pattern `not_okay` should have an upper case name
+  --> $DIR/lint-lowercase-static-const-pattern.rs:40:13
+   |
+LL |         (0, not_okay) => 0,
+   |             ^^^^^^^^ help: convert the identifier to upper case: `NOT_OKAY`
+
+error: aborting due to 3 previous errors
+

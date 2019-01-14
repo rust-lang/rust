@@ -1,12 +1,11 @@
-// run-pass
+// compile-pass
 // Issue #7526: lowercase static constants in patterns look like bindings
 
-// This is similar to compile-fail/match-static-const-lc, except it
+// This is similar to lint-lowercase-static-const-pattern.rs, except it
 // shows the expected usual workaround (choosing a different name for
 // the static definition) and also demonstrates that one can work
 // around this problem locally by renaming the constant in the `use`
 // form to an uppercase identifier that placates the lint.
-
 
 #![deny(non_upper_case_globals)]
 

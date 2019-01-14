@@ -1,8 +1,8 @@
-error: method `Foo_Method` should have a snake case name such as `foo_method`
-  --> $DIR/lint-non-snake-case-functions.rs:7:5
+error: method `Foo_Method` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:7:8
    |
 LL |     fn Foo_Method() {}
-   |     ^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^ help: convert the identifier to snake case: `foo_method`
    |
 note: lint level defined here
   --> $DIR/lint-non-snake-case-functions.rs:1:9
@@ -10,53 +10,53 @@ note: lint level defined here
 LL | #![deny(non_snake_case)]
    |         ^^^^^^^^^^^^^^
 
-error: method `foo__method` should have a snake case name such as `foo_method`
-  --> $DIR/lint-non-snake-case-functions.rs:11:5
+error: method `foo__method` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:11:8
    |
 LL |     fn foo__method(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^ help: convert the identifier to snake case: `foo_method`
 
-error: method `xyZ` should have a snake case name such as `xy_z`
-  --> $DIR/lint-non-snake-case-functions.rs:14:5
+error: method `xyZ` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:14:12
    |
 LL |     pub fn xyZ(&mut self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^ help: convert the identifier to snake case: `xy_z`
 
-error: method `render_HTML` should have a snake case name such as `render_html`
-  --> $DIR/lint-non-snake-case-functions.rs:17:5
+error: method `render_HTML` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:17:8
    |
 LL |     fn render_HTML() {}
-   |     ^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^ help: convert the identifier to snake case: `render_html`
 
-error: trait method `ABC` should have a snake case name such as `abc`
-  --> $DIR/lint-non-snake-case-functions.rs:22:5
+error: trait method `ABC` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:22:8
    |
 LL |     fn ABC();
-   |     ^^^^^^^^^
+   |        ^^^ help: convert the identifier to snake case: `abc`
 
-error: trait method `a_b_C` should have a snake case name such as `a_b_c`
-  --> $DIR/lint-non-snake-case-functions.rs:25:5
+error: trait method `a_b_C` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:25:8
    |
 LL |     fn a_b_C(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^
+   |        ^^^^^ help: convert the identifier to snake case: `a_b_c`
 
-error: trait method `something__else` should have a snake case name such as `something_else`
-  --> $DIR/lint-non-snake-case-functions.rs:28:5
+error: trait method `something__else` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:28:8
    |
 LL |     fn something__else(&mut self);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `something_else`
 
-error: function `Cookie` should have a snake case name such as `cookie`
-  --> $DIR/lint-non-snake-case-functions.rs:38:1
+error: function `Cookie` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:38:4
    |
 LL | fn Cookie() {}
-   | ^^^^^^^^^^^^^^
+   |    ^^^^^^ help: convert the identifier to snake case: `cookie`
 
-error: function `bi_S_Cuit` should have a snake case name such as `bi_s_cuit`
-  --> $DIR/lint-non-snake-case-functions.rs:41:1
+error: function `bi_S_Cuit` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:41:8
    |
 LL | pub fn bi_S_Cuit() {}
-   | ^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^ help: convert the identifier to snake case: `bi_s_cuit`
 
 error: aborting due to 9 previous errors
 

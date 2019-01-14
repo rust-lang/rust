@@ -30,11 +30,11 @@ LL |     let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
-warning: type parameter `γ` should have a camel case name such as `Γ`
+warning: type parameter `γ` should have a camel case name
   --> $DIR/utf8_idents.rs:5:5
    |
 LL |     γ  //~ ERROR non-ascii idents are not fully supported
-   |     ^
+   |     ^ help: convert the identifier to camel case: `Γ`
    |
    = note: #[warn(non_camel_case_types)] on by default
 
