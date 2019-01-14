@@ -21,20 +21,13 @@ impl Bar {
 }
 
 fn bad() {
-    foo({});
-    foo({
-        1;
-    });
-    foo(foo(1));
-    foo({
-        foo(1);
-        foo(2);
-    });
-    foo3({}, 2, 2);
+    foo(());
+    foo(());
+    foo(());
+    foo(());
+    foo3((), 2, 2);
     let b = Bar;
-    b.bar({
-        1;
-    });
+    b.bar(());
 }
 
 fn ok() {

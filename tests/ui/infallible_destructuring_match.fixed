@@ -15,9 +15,7 @@ fn infallible_destructuring_match_enum() {
     let wrapper = SingleVariantEnum::Variant(0);
 
     // This should lint!
-    let data = match wrapper {
-        SingleVariantEnum::Variant(i) => i,
-    };
+    let SingleVariantEnum::Variant(data) = wrapper;
 
     // This shouldn't!
     let data = match wrapper {
@@ -36,9 +34,7 @@ fn infallible_destructuring_match_struct() {
     let wrapper = TupleStruct(0);
 
     // This should lint!
-    let data = match wrapper {
-        TupleStruct(i) => i,
-    };
+    let TupleStruct(data) = wrapper;
 
     // This shouldn't!
     let data = match wrapper {
@@ -57,9 +53,7 @@ fn never_enum() {
     let wrapper: Result<i32, !> = Ok(23);
 
     // This should lint!
-    let data = match wrapper {
-        Ok(i) => i,
-    };
+    let Ok(data) = wrapper;
 
     // This shouldn't!
     let data = match wrapper {

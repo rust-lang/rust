@@ -1,5 +1,5 @@
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:6:5
+  --> $DIR/collapsible_if.rs:9:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" {
@@ -17,7 +17,7 @@ LL | }
    |
 
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:12:5
+  --> $DIR/collapsible_if.rs:15:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -33,7 +33,7 @@ LL | }
    |
 
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:18:5
+  --> $DIR/collapsible_if.rs:21:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -49,7 +49,7 @@ LL | }
    |
 
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:24:5
+  --> $DIR/collapsible_if.rs:27:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -65,7 +65,7 @@ LL | }
    |
 
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:30:5
+  --> $DIR/collapsible_if.rs:33:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -81,7 +81,7 @@ LL | }
    |
 
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:36:5
+  --> $DIR/collapsible_if.rs:39:5
    |
 LL | /     if 42 == 1337 {
 LL | |         if 'a' != 'A' {
@@ -97,7 +97,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:45:12
+  --> $DIR/collapsible_if.rs:48:12
    |
 LL |       } else {
    |  ____________^
@@ -114,7 +114,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:53:12
+  --> $DIR/collapsible_if.rs:56:12
    |
 LL |       } else {
    |  ____________^
@@ -131,7 +131,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:61:12
+  --> $DIR/collapsible_if.rs:64:12
    |
 LL |       } else {
    |  ____________^
@@ -153,7 +153,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:72:12
+  --> $DIR/collapsible_if.rs:75:12
    |
 LL |       } else {
    |  ____________^
@@ -175,7 +175,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:83:12
+  --> $DIR/collapsible_if.rs:86:12
    |
 LL |       } else {
    |  ____________^
@@ -197,7 +197,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:94:12
+  --> $DIR/collapsible_if.rs:97:12
    |
 LL |       } else {
    |  ____________^
@@ -219,7 +219,7 @@ LL | }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_if.rs:105:12
+  --> $DIR/collapsible_if.rs:108:12
    |
 LL |       } else {
    |  ____________^
@@ -241,7 +241,7 @@ LL | }
    |
 
 error: this if statement can be collapsed
-  --> $DIR/collapsible_if.rs:164:5
+  --> $DIR/collapsible_if.rs:167:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" { // Collapsible

@@ -5,33 +5,33 @@ fn main() {}
 
 #[allow(clippy::unnecessary_operation)]
 fn starts_with() {
-    "".chars().next() == Some(' ');
-    Some(' ') != "".chars().next();
+    "".starts_with(' ');
+    !"".starts_with(' ');
 }
 
 fn chars_cmp_with_unwrap() {
     let s = String::from("foo");
-    if s.chars().next().unwrap() == 'f' {
+    if s.starts_with('f') {
         // s.starts_with('f')
         // Nothing here
     }
-    if s.chars().next_back().unwrap() == 'o' {
+    if s.ends_with('o') {
         // s.ends_with('o')
         // Nothing here
     }
-    if s.chars().last().unwrap() == 'o' {
+    if s.ends_with('o') {
         // s.ends_with('o')
         // Nothing here
     }
-    if s.chars().next().unwrap() != 'f' {
+    if !s.starts_with('f') {
         // !s.starts_with('f')
         // Nothing here
     }
-    if s.chars().next_back().unwrap() != 'o' {
+    if !s.ends_with('o') {
         // !s.ends_with('o')
         // Nothing here
     }
-    if s.chars().last().unwrap() != 'o' {
+    if !s.ends_with('o') {
         // !s.ends_with('o')
         // Nothing here
     }
@@ -39,8 +39,8 @@ fn chars_cmp_with_unwrap() {
 
 #[allow(clippy::unnecessary_operation)]
 fn ends_with() {
-    "".chars().last() == Some(' ');
-    Some(' ') != "".chars().last();
-    "".chars().next_back() == Some(' ');
-    Some(' ') != "".chars().next_back();
+    "".ends_with(' ');
+    !"".ends_with(' ');
+    "".ends_with(' ');
+    !"".ends_with(' ');
 }
