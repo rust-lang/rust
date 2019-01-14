@@ -141,4 +141,21 @@ fn foo() {
         );
     }
 
+    #[test]
+    fn test_introduce_var_block_expr_second_to_last() {
+        check_assist_range(
+            introduce_variable,
+            "
+fn foo() {
+    <|>{ let x = 0; x }<|>
+    something_else();
+}",
+            "
+fn foo() {
+    let <|>var_name = { let x = 0; x };
+    var_name
+    something_else();
+}",
+        );
+    }
 }
