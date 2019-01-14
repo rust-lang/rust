@@ -1,11 +1,13 @@
+use ra_ide_api::{
+    AnalysisChange,
+    CrateGraph, FileId, mock_analysis::{MockAnalysis, single_file, single_file_with_position}, Query,
+};
+use ra_ide_api::mock_analysis::analysis_and_position;
 use ra_syntax::TextRange;
 use test_utils::assert_eq_text;
 use insta::assert_debug_snapshot_matches;
 
-use ra_ide_api::{
-    mock_analysis::{single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, FileId, Query
-};
+mod runnables;
 
 #[test]
 fn test_unresolved_module_diagnostic() {
@@ -91,6 +93,7 @@ fn test_find_all_refs_for_fn_param() {
     let refs = get_all_refs(code);
     assert_eq!(refs.len(), 2);
 }
+
 #[test]
 fn test_rename_for_local() {
     test_rename(
@@ -167,15 +170,35 @@ fn test_rename_for_mut_param() {
     );
 }
 
+#[test]
+fn test_rename_mod() {
+    let (analysis, position) = analysis_and_position(
+        "
+        //- /bar.rs
+        mod fo<|>o;
+        //- /bar/foo.rs
+        // emtpy
+    ",
+    );
+    let new_name = "foo2";
+    let source_change = analysis.rename(position, new_name).unwrap();
+    assert_eq_dbg(
+        r#"Some(SourceChange { label: "rename", source_file_edits: [SourceFileEdit { file_id: FileId(1), edit: TextEdit { atoms: [AtomTextEdit { delete: [4; 7), insert: "foo2" }] } }], file_system_edits: [MoveFile { src: FileId(2), dst_source_root: SourceRootId(0), dst_path: "bar/foo2.rs" }], cursor_position: None })"#,
+        &source_change,
+    );
+}
+
 fn test_rename(text: &str, new_name: &str, expected: &str) {
     let (analysis, position) = single_file_with_position(text);
-    let edits = analysis.rename(position, new_name).unwrap();
+    let source_change = analysis.rename(position, new_name).unwrap();
     let mut text_edit_bulder = ra_text_edit::TextEditBuilder::default();
     let mut file_id: Option<FileId> = None;
-    for edit in edits {
-        file_id = Some(edit.file_id);
-        for atom in edit.edit.as_atoms() {
-            text_edit_bulder.replace(atom.delete, atom.insert.clone());
+    if let Some(change) = source_change {
+        for edit in change.source_file_edits {
+            file_id = Some(edit.file_id);
+            for atom in edit.edit.as_atoms() {
+                text_edit_bulder.replace(atom.delete, atom.insert.clone());
+            }
         }
     }
     let result = text_edit_bulder

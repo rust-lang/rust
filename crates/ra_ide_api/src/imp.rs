@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use hir::{
-    self, Problem, source_binder,
+    self, Problem, source_binder::{
+        self,
+        module_from_declaration
+    }, ModuleSource,
 };
 use ra_db::{
     FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase,
@@ -9,16 +12,16 @@ use ra_db::{
 };
 use ra_ide_api_light::{self, assists, LocalEdit, Severity};
 use ra_syntax::{
-    TextRange, AstNode, SourceFile,
-    ast::{self, NameOwner},
-    algo::find_node_at_offset,
+    algo::find_node_at_offset, ast::{self, NameOwner}, AstNode,
+    SourceFile,
+    TextRange,
 };
 
 use crate::{
     AnalysisChange,
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
-    symbol_index::{LibrarySymbolsQuery, FileSymbol},
+    symbol_index::{FileSymbol, LibrarySymbolsQuery},
 };
 
 impl db::RootDatabase {
@@ -110,6 +113,7 @@ impl db::RootDatabase {
         };
         vec![krate.crate_id()]
     }
+
     pub(crate) fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
         let file = self.source_file(position.file_id);
         // Find the binding associated with the offset
@@ -230,20 +234,94 @@ impl db::RootDatabase {
             .collect()
     }
 
+<<<<<<< HEAD
     pub(crate) fn rename(&self, position: FilePosition, new_name: &str) -> Vec<SourceFileEdit> {
         self.find_all_refs(position)
             .iter()
             .map(|(file_id, text_range)| SourceFileEdit {
                 file_id: *file_id,
+=======
+    pub(crate) fn rename(
+        &self,
+        position: FilePosition,
+        new_name: &str,
+    ) -> Cancelable<Option<SourceChange>> {
+        let mut source_file_edits = Vec::new();
+        let mut file_system_edits = Vec::new();
+
+        let source_file = self.source_file(position.file_id);
+        let syntax = source_file.syntax();
+        // We are rename a mod
+        if let (Some(ast_module), Some(name)) = (
+            find_node_at_offset::<ast::Module>(syntax, position.offset),
+            find_node_at_offset::<ast::Name>(syntax, position.offset),
+        ) {
+            if let Some(module) = module_from_declaration(self, position.file_id, &ast_module)? {
+                let (file_id, module_source) = module.definition_source(self)?;
+                match module_source {
+                    ModuleSource::SourceFile(..) => {
+                        let move_file = FileSystemEdit::MoveFile {
+                            src: file_id,
+                            dst_source_root: self.file_source_root(position.file_id),
+                            dst_path: self
+                                .file_relative_path(file_id)
+                                .with_file_name(new_name)
+                                .with_extension("rs"),
+                        };
+                        file_system_edits.push(move_file);
+                    }
+                    ModuleSource::Module(..) => {}
+                }
+            }
+
+            let edit = SourceFileEdit {
+                file_id: position.file_id,
+>>>>>>> rename mod
                 edit: {
                     let mut builder = ra_text_edit::TextEditBuilder::default();
-                    builder.replace(*text_range, new_name.into());
+                    builder.replace(name.syntax().range(), new_name.into());
                     builder.finish()
                 },
+<<<<<<< HEAD
             })
             .collect::<Vec<_>>()
     }
     pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
+=======
+            };
+            source_file_edits.push(edit);
+        }
+        // rename references
+        else {
+            let edit = self
+                .find_all_refs(position)?
+                .iter()
+                .map(|(file_id, text_range)| SourceFileEdit {
+                    file_id: *file_id,
+                    edit: {
+                        let mut builder = ra_text_edit::TextEditBuilder::default();
+                        builder.replace(*text_range, new_name.into());
+                        builder.finish()
+                    },
+                })
+                .collect::<Vec<_>>();
+            if edit.is_empty() {
+                return Ok(None);
+            }
+
+            source_file_edits = edit;
+        }
+
+        return Ok(Some(SourceChange {
+            label: "rename".to_string(),
+            source_file_edits,
+            file_system_edits,
+            cursor_position: None,
+        }));
+    }
+
+    pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Cancelable<Vec<FileSymbol>> {
+>>>>>>> rename mod
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();

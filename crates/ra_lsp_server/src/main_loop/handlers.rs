@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
     CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
@@ -7,7 +5,7 @@ use lsp_types::{
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
     MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
     RenameParams, SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit,
+    WorkspaceEdit, DocumentChanges, TextDocumentEdit, DocumentChangeOperation, ResourceOp
 };
 use ra_ide_api::{
     FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity,
@@ -467,26 +465,43 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
         .into());
     }
 
-    let renames = world
+    let change = world
         .analysis()
         .rename(FilePosition { file_id, offset }, &*params.new_name)?;
-    if renames.is_empty() {
+    if change.is_none() {
         return Ok(None);
     }
 
-    let mut changes = HashMap::new();
-    for edit in renames {
-        changes
-            .entry(file_id.try_conv_with(&world)?)
-            .or_insert_with(Vec::new)
-            .extend(edit.edit.conv_with(&line_index));
-    }
+    let mut source_change = change.unwrap();
+    let text_document_edits = source_change
+        .source_file_edits
+        .drain(..)
+        .into_iter()
+        .map(|e| e.try_conv_with(&world))
+        .collect::<Result<Vec<TextDocumentEdit>>>();
+
+    let text_document_ops = source_change
+        .file_system_edits
+        .drain(..)
+        .into_iter()
+        .map(|e| e.try_conv_with(&world))
+        .collect::<Result<Vec<ResourceOp>>>();
+
+    let mut document_changes = Vec::new();
+    document_changes.extend(
+        text_document_edits?
+            .into_iter()
+            .map(DocumentChangeOperation::Edit),
+    );
+    document_changes.extend(
+        text_document_ops?
+            .into_iter()
+            .map(DocumentChangeOperation::Op),
+    );
 
     Ok(Some(WorkspaceEdit {
-        changes: Some(changes),
-
-        // TODO: return this instead if client/server support it. See #144
-        document_changes: None,
+        changes: None,
+        document_changes: Some(DocumentChanges::Operations(document_changes)),
     }))
 }
 
