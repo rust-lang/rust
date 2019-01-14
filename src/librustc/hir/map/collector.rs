@@ -6,6 +6,7 @@ use rustc_data_structures::svh::Svh;
 use ich::Fingerprint;
 use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
+use session::Session;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax::source_map::SourceMap;
@@ -92,11 +93,11 @@ where
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
-    pub(super) fn root(krate: &'hir Crate,
+    pub(super) fn root(sess: &'a Session,
+                       krate: &'hir Crate,
                        dep_graph: &'a DepGraph,
                        definitions: &'a definitions::Definitions,
-                       mut hcx: StableHashingContext<'a>,
-                       source_map: &'a SourceMap)
+                       mut hcx: StableHashingContext<'a>)
                 -> NodeCollector<'a, 'hir> {
         let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
 
@@ -141,8 +142,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let mut collector = NodeCollector {
             krate,
-            source_map,
-            map: vec![],
+            source_map: sess.source_map(),
+            map: repeat(None).take(sess.current_node_id_count()).collect(),
             parent_node: CRATE_NODE_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
@@ -219,10 +220,6 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: NodeId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let len = self.map.len();
-        if id.as_usize() >= len {
-            self.map.extend(repeat(None).take(id.as_usize() - len + 1));
-        }
         self.map[id.as_usize()] = Some(entry);
     }
 
