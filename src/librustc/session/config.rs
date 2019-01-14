@@ -1925,8 +1925,12 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    let extern_public: FxHashSet<String> = matches.opt_strs("extern-public").
+    let mut extern_public: FxHashSet<String> = matches.opt_strs("extern-public").
         iter().cloned().collect();
+
+    // TODO - come up with a better way of handling this
+    extern_public.insert("core".to_string());
+    extern_public.insert("std".to_string());
 
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
