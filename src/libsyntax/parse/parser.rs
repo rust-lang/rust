@@ -6408,41 +6408,52 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
+        if self.eat(&token::Semi) {
+            let mut err = self.struct_span_err(self.prev_span, "expected item, found `;`");
+            err.span_suggestion_short_with_applicability(
+                self.prev_span,
+                "remove this semicolon",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+            if !items.is_empty() {
+                let previous_item = &items[items.len()-1];
+                let previous_item_kind_name = match previous_item.node {
+                    // say "braced struct" because tuple-structs and
+                    // braceless-empty-struct declarations do take a semicolon
+                    ItemKind::Struct(..) => Some("braced struct"),
+                    ItemKind::Enum(..) => Some("enum"),
+                    ItemKind::Trait(..) => Some("trait"),
+                    ItemKind::Union(..) => Some("union"),
+                    _ => None,
+                };
+                if let Some(name) = previous_item_kind_name {
+                    err.help(&format!("{} declarations are not followed by a semicolon", name));
+                }
+            }
+            err.emit();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Given a termination token, parse all of the items in a module
     fn parse_mod_items(&mut self, term: &token::Token, inner_lo: Span) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item()? {
             items.push(item);
+            self.maybe_consume_incorrect_semicolon(&items);
         }
 
         if !self.eat(term) {
             let token_str = self.this_token_descr();
-            let mut err = self.fatal(&format!("expected item, found {}", token_str));
-            if self.token == token::Semi {
-                let msg = "consider removing this semicolon";
-                err.span_suggestion_short_with_applicability(
-                    self.span, msg, String::new(), Applicability::MachineApplicable
-                );
-                if !items.is_empty() {  // Issue #51603
-                    let previous_item = &items[items.len()-1];
-                    let previous_item_kind_name = match previous_item.node {
-                        // say "braced struct" because tuple-structs and
-                        // braceless-empty-struct declarations do take a semicolon
-                        ItemKind::Struct(..) => Some("braced struct"),
-                        ItemKind::Enum(..) => Some("enum"),
-                        ItemKind::Trait(..) => Some("trait"),
-                        ItemKind::Union(..) => Some("union"),
-                        _ => None,
-                    };
-                    if let Some(name) = previous_item_kind_name {
-                        err.help(&format!("{} declarations are not followed by a semicolon",
-                                          name));
-                    }
-                }
-            } else {
+            if !self.maybe_consume_incorrect_semicolon(&items) {
+                let mut err = self.fatal(&format!("expected item, found {}", token_str));
                 err.span_label(self.span, "expected item");
+                return Err(err);
             }
-            return Err(err);
         }
 
         let hi = if self.span.is_dummy() {
