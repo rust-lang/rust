@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.8] - 2019-01-14
+
+### Added
+- Rayon parallel iterator support (#37)
+- `raw_entry` support (#31)
+- `#[may_dangle]` on nightly (#31)
+- `try_reserve` support (#31)
+
+### Fixed
+- Fixed variance on `IterMut`. (#31)
+
 ## [v0.1.7] - 2018-12-05
 
 ### Fixed
@@ -52,7 +63,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.8...HEAD
+[v0.1.8]: https://github.com/Amanieu/hashbrown/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/Amanieu/hashbrown/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/Amanieu/hashbrown/compare/v0.1.4...v0.1.5
