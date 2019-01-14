@@ -1,4 +1,4 @@
-use languageserver_types::{
+use lsp_types::{
     self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location, LocationLink,
     Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
@@ -51,10 +51,10 @@ impl Conv for SyntaxKind {
 }
 
 impl Conv for CompletionItemKind {
-    type Output = ::languageserver_types::CompletionItemKind;
+    type Output = ::lsp_types::CompletionItemKind;
 
     fn conv(self) -> <Self as Conv>::Output {
-        use languageserver_types::CompletionItemKind::*;
+        use lsp_types::CompletionItemKind::*;
         match self {
             CompletionItemKind::Keyword => Keyword,
             CompletionItemKind::Snippet => Snippet,
@@ -75,10 +75,10 @@ impl Conv for CompletionItemKind {
 }
 
 impl Conv for CompletionItem {
-    type Output = ::languageserver_types::CompletionItem;
+    type Output = ::lsp_types::CompletionItem;
 
     fn conv(self) -> <Self as Conv>::Output {
-        let mut res = ::languageserver_types::CompletionItem {
+        let mut res = ::lsp_types::CompletionItem {
             label: self.label().to_string(),
             detail: self.detail().map(|it| it.to_string()),
             filter_text: Some(self.lookup().to_string()),
@@ -148,9 +148,9 @@ impl ConvWith for Range {
 
 impl ConvWith for TextEdit {
     type Ctx = LineIndex;
-    type Output = Vec<languageserver_types::TextEdit>;
+    type Output = Vec<lsp_types::TextEdit>;
 
-    fn conv_with(self, line_index: &LineIndex) -> Vec<languageserver_types::TextEdit> {
+    fn conv_with(self, line_index: &LineIndex) -> Vec<lsp_types::TextEdit> {
         self.as_atoms()
             .into_iter()
             .map_conv_with(line_index)
@@ -160,10 +160,10 @@ impl ConvWith for TextEdit {
 
 impl<'a> ConvWith for &'a AtomTextEdit {
     type Ctx = LineIndex;
-    type Output = languageserver_types::TextEdit;
+    type Output = lsp_types::TextEdit;
 
-    fn conv_with(self, line_index: &LineIndex) -> languageserver_types::TextEdit {
-        languageserver_types::TextEdit {
+    fn conv_with(self, line_index: &LineIndex) -> lsp_types::TextEdit {
+        lsp_types::TextEdit {
             range: self.delete.conv_with(line_index),
             new_text: self.insert.clone(),
         }
@@ -324,7 +324,7 @@ impl TryConvWith for FileSystemEdit {
     fn try_conv_with(self, world: &ServerWorld) -> Result<ResourceOp> {
         let res = match self {
             FileSystemEdit::CreateFile { source_root, path } => {
-                let uri = world.path_to_uri(source_root, &path)?.to_string();
+                let uri = world.path_to_uri(source_root, &path)?;
                 ResourceOp::Create(CreateFile { uri, options: None })
             }
             FileSystemEdit::MoveFile {
@@ -332,8 +332,8 @@ impl TryConvWith for FileSystemEdit {
                 dst_source_root,
                 dst_path,
             } => {
-                let old_uri = world.file_id_to_uri(src)?.to_string();
-                let new_uri = world.path_to_uri(dst_source_root, &dst_path)?.to_string();
+                let old_uri = world.file_id_to_uri(src)?;
+                let new_uri = world.path_to_uri(dst_source_root, &dst_path)?;
                 ResourceOp::Rename(RenameFile {
                     old_uri,
                     new_uri,
@@ -361,7 +361,7 @@ pub fn to_location_link(
     // line index for original range file
     line_index: &LineIndex,
 ) -> Result<LocationLink> {
-    let url = target.info.file_id().try_conv_with(world)?;
+    let target_uri = target.info.file_id().try_conv_with(world)?;
     let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
 
     let target_range = target.info.full_range().conv_with(&tgt_line_index);
@@ -374,7 +374,7 @@ pub fn to_location_link(
 
     let res = LocationLink {
         origin_selection_range: Some(target.range.conv_with(line_index)),
-        target_uri: url.to_string(),
+        target_uri,
         target_range,
         target_selection_range: Some(target_selection_range),
     };

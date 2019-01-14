@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use gen_lsp_server::ErrorCode;
-use languageserver_types::{
+use lsp_types::{
     CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, Documentation, FoldingRange,
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,

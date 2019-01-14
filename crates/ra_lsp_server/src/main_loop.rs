@@ -9,7 +9,7 @@ use failure_derive::Fail;
 use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
-use languageserver_types::NumberOrString;
+use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_vfs::VfsTask;
 use rayon;
