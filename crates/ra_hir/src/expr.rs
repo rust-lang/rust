@@ -654,7 +654,6 @@ impl ExprCollector {
                 } else {
                     return self.alloc_expr(Expr::Missing, syntax_ptr);
                 };
-                let c = child.syntax();
 
                 let lit = match child.flavor() {
                     LiteralFlavor::IntNumber { suffix } => {
@@ -663,9 +662,9 @@ impl ExprCollector {
                             .and_then(|name| UncertainIntTy::from_name(&name));
 
                         if let Some(kn) = known_name {
-                            Literal::Int(0u64, kn)
+                            Literal::Int(Default::default(), kn)
                         } else {
-                            Literal::Int(0u64, UncertainIntTy::Unknown)
+                            Literal::Int(Default::default(), UncertainIntTy::Unknown)
                         }
                     }
                     LiteralFlavor::FloatNumber { suffix } => {
@@ -674,31 +673,18 @@ impl ExprCollector {
                             .and_then(|name| UncertainFloatTy::from_name(&name));
 
                         if let Some(kn) = known_name {
-                            Literal::Float(0u64, kn)
+                            Literal::Float(Default::default(), kn)
                         } else {
-                            Literal::Float(0u64, UncertainFloatTy::Unknown)
+                            Literal::Float(Default::default(), UncertainFloatTy::Unknown)
                         }
                     }
-                    LiteralFlavor::ByteString => {
-                        // FIXME: this is completely incorrect for a variety
-                        // of reasons, but at least it gives the right type
-                        let bytes = c.text().to_string().into_bytes();
-                        Literal::ByteString(bytes)
-                    }
-                    LiteralFlavor::String => {
-                        // FIXME: this likely includes the " characters
-                        let text = c.text().to_string();
-                        Literal::String(text)
-                    }
+                    LiteralFlavor::ByteString => Literal::ByteString(Default::default()),
+                    LiteralFlavor::String => Literal::String(Default::default()),
                     LiteralFlavor::Byte => {
-                        let character = c.text().char_at(1).unwrap_or('X');
-                        Literal::Int(character as u8 as u64, UncertainIntTy::Unsigned(UintTy::U8))
+                        Literal::Int(Default::default(), UncertainIntTy::Unsigned(UintTy::U8))
                     }
-                    LiteralFlavor::Bool => Literal::Bool(true),
-                    LiteralFlavor::Char => {
-                        let character = c.text().char_at(1).unwrap_or('X');
-                        Literal::Char(character)
-                    }
+                    LiteralFlavor::Bool => Literal::Bool(Default::default()),
+                    LiteralFlavor::Char => Literal::Char(Default::default()),
                 };
                 self.alloc_expr(Expr::Literal(lit), syntax_ptr)
             }
