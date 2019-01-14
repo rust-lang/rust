@@ -11,11 +11,12 @@
 // Format string literals.
 
 use regex::Regex;
+use unicode_categories::UnicodeCategories;
 use unicode_segmentation::UnicodeSegmentation;
 
 use config::Config;
 use shape::Shape;
-use utils::wrap_str;
+use utils::{unicode_str_width, wrap_str};
 
 const MIN_STRING: usize = 10;
 
@@ -53,7 +54,7 @@ impl<'a> StringFormat<'a> {
     /// indentation into account.
     ///
     /// If we cannot put at least a single character per line, the rewrite won't succeed.
-    fn max_chars_with_indent(&self) -> Option<usize> {
+    fn max_width_with_indent(&self) -> Option<usize> {
         Some(
             self.shape
                 .width
@@ -62,10 +63,10 @@ impl<'a> StringFormat<'a> {
         )
     }
 
-    /// Like max_chars_with_indent but the indentation is not subtracted.
+    /// Like max_width_with_indent but the indentation is not subtracted.
     /// This allows to fit more graphemes from the string on a line when
     /// SnippetState::EndWithLineFeed.
-    fn max_chars_without_indent(&self) -> Option<usize> {
+    fn max_width_without_indent(&self) -> Option<usize> {
         Some(self.config.max_width().checked_sub(self.line_end.len())?)
     }
 }
@@ -75,8 +76,8 @@ pub fn rewrite_string<'a>(
     fmt: &StringFormat<'a>,
     newline_max_chars: usize,
 ) -> Option<String> {
-    let max_chars_with_indent = fmt.max_chars_with_indent()?;
-    let max_chars_without_indent = fmt.max_chars_without_indent()?;
+    let max_width_with_indent = fmt.max_width_with_indent()?;
+    let max_width_without_indent = fmt.max_width_without_indent()?;
     let indent_with_newline = fmt.shape.indent.to_string_with_newline(fmt.config);
     let indent_without_newline = fmt.shape.indent.to_string(fmt.config);
 
@@ -99,11 +100,11 @@ pub fn rewrite_string<'a>(
 
     // Snip a line at a time from `stripped_str` until it is used up. Push the snippet
     // onto result.
-    let mut cur_max_chars = max_chars_with_indent;
+    let mut cur_max_width = max_width_with_indent;
     let is_bareline_ok = fmt.line_start.is_empty() || is_whitespace(fmt.line_start);
     loop {
         // All the input starting at cur_start fits on the current line
-        if graphemes.len() - cur_start <= cur_max_chars {
+        if graphemes_width(&graphemes[cur_start..]) <= cur_max_width {
             for (i, grapheme) in graphemes[cur_start..].iter().enumerate() {
                 if is_new_line(grapheme) {
                     // take care of blank lines
@@ -123,7 +124,7 @@ pub fn rewrite_string<'a>(
 
         // The input starting at cur_start needs to be broken
         match break_string(
-            cur_max_chars,
+            cur_max_width,
             fmt.trim_end,
             fmt.line_end,
             &graphemes[cur_start..],
@@ -133,7 +134,7 @@ pub fn rewrite_string<'a>(
                 result.push_str(fmt.line_end);
                 result.push_str(&indent_with_newline);
                 result.push_str(fmt.line_start);
-                cur_max_chars = newline_max_chars;
+                cur_max_width = newline_max_chars;
                 cur_start += len;
             }
             SnippetState::EndWithLineFeed(line, len) => {
@@ -143,11 +144,11 @@ pub fn rewrite_string<'a>(
                 result.push_str(&line);
                 if is_bareline_ok {
                     // the next line can benefit from the full width
-                    cur_max_chars = max_chars_without_indent;
+                    cur_max_width = max_width_without_indent;
                 } else {
                     result.push_str(&indent_without_newline);
                     result.push_str(fmt.line_start);
-                    cur_max_chars = max_chars_with_indent;
+                    cur_max_width = max_width_with_indent;
                 }
                 cur_start += len;
             }
@@ -226,9 +227,10 @@ fn not_whitespace_except_line_feed(g: &str) -> bool {
     is_new_line(g) || !is_whitespace(g)
 }
 
-/// Break the input string at a boundary character around the offset `max_chars`. A boundary
+/// Break the input string at a boundary character around the offset `max_width`. A boundary
 /// character is either a punctuation or a whitespace.
-fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]) -> SnippetState {
+/// FIXME(issue#3281): We must follow UAX#14 algorithm instead of this.
+fn break_string(max_width: usize, trim_end: bool, line_end: &str, input: &[&str]) -> SnippetState {
     let break_at = |index /* grapheme at index is included */| {
         // Take in any whitespaces to the left/right of `input[index]` while
         // preserving line feeds
@@ -272,19 +274,33 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         }
     };
 
+    // find a first index where the unicode width of input[0..x] become > max_width
+    let max_width_index_in_input = {
+        let mut cur_width = 0;
+        let mut cur_index = 0;
+        for (i, grapheme) in input.iter().enumerate() {
+            cur_width += unicode_str_width(grapheme);
+            cur_index = i;
+            if cur_width > max_width {
+                break;
+            }
+        }
+        cur_index
+    };
+
     // Find the position in input for breaking the string
     if line_end.is_empty()
         && trim_end
-        && !is_whitespace(input[max_chars - 1])
-        && is_whitespace(input[max_chars])
+        && !is_whitespace(input[max_width_index_in_input - 1])
+        && is_whitespace(input[max_width_index_in_input])
     {
         // At a breaking point already
         // The line won't invalidate the rewriting because:
         // - no extra space needed for the line_end character
         // - extra whitespaces to the right can be trimmed
-        return break_at(max_chars - 1);
+        return break_at(max_width_index_in_input - 1);
     }
-    if let Some(url_index_end) = detect_url(input, max_chars) {
+    if let Some(url_index_end) = detect_url(input, max_width_index_in_input) {
         let index_plus_ws = url_index_end
             + input[url_index_end..]
                 .iter()
@@ -297,14 +313,15 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
             return SnippetState::LineEnd(input[..=index_plus_ws].concat(), index_plus_ws + 1);
         };
     }
-    match input[0..max_chars]
+
+    match input[0..max_width_index_in_input]
         .iter()
         .rposition(|grapheme| is_whitespace(grapheme))
     {
         // Found a whitespace and what is on its left side is big enough.
         Some(index) if index >= MIN_STRING => break_at(index),
         // No whitespace found, try looking for a punctuation instead
-        _ => match input[0..max_chars]
+        _ => match input[0..max_width_index_in_input]
             .iter()
             .rposition(|grapheme| is_punctuation(grapheme))
         {
@@ -312,12 +329,12 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
             Some(index) if index >= MIN_STRING => break_at(index),
             // Either no boundary character was found to the left of `input[max_chars]`, or the line
             // got too small. We try searching for a boundary character to the right.
-            _ => match input[max_chars..]
+            _ => match input[max_width_index_in_input..]
                 .iter()
                 .position(|grapheme| is_whitespace(grapheme) || is_punctuation(grapheme))
             {
                 // A boundary was found after the line limit
-                Some(index) => break_at(max_chars + index),
+                Some(index) => break_at(max_width_index_in_input + index),
                 // No boundary to the right, the input cannot be broken
                 None => SnippetState::EndOfInput(input.concat()),
             },
@@ -335,10 +352,11 @@ fn is_whitespace(grapheme: &str) -> bool {
 }
 
 fn is_punctuation(grapheme: &str) -> bool {
-    match grapheme.as_bytes()[0] {
-        b':' | b',' | b';' | b'.' => true,
-        _ => false,
-    }
+    grapheme.chars().all(|c| c.is_punctuation_other())
+}
+
+fn graphemes_width(graphemes: &[&str]) -> usize {
+    graphemes.iter().map(|s| unicode_str_width(s)).sum()
 }
 
 #[cfg(test)]

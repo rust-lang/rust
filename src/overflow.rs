@@ -431,7 +431,8 @@ impl<'a> Context<'a> {
         };
 
         if let Some(rewrite) = rewrite {
-            let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
+            // splitn(2, *).next().unwrap() is always safe.
+            let rewrite_first_line = Some(rewrite.splitn(2, '\n').next().unwrap().to_owned());
             last_list_item.item = rewrite_first_line;
             Some(rewrite)
         } else {

@@ -29,7 +29,9 @@ extern crate serde_json;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate toml;
+extern crate unicode_categories;
 extern crate unicode_segmentation;
+extern crate unicode_width;
 
 use std::cell::RefCell;
 use std::collections::HashMap;

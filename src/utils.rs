@@ -26,6 +26,8 @@ use config::Config;
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 
+use unicode_width::UnicodeWidthStr;
+
 pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
 pub const SKIP_ANNOTATION: &str = "rustfmt::skip";
 
@@ -193,19 +195,13 @@ pub fn is_attributes_extendable(attrs_str: &str) -> bool {
 // The width of the first line in s.
 #[inline]
 pub fn first_line_width(s: &str) -> usize {
-    match s.find('\n') {
-        Some(n) => n,
-        None => s.len(),
-    }
+    unicode_str_width(s.splitn(2, '\n').next().unwrap_or(""))
 }
 
 // The width of the last line in s.
 #[inline]
 pub fn last_line_width(s: &str) -> usize {
-    match s.rfind('\n') {
-        Some(n) => s.len() - n - 1,
-        None => s.len(),
-    }
+    unicode_str_width(s.rsplitn(2, '\n').next().unwrap_or(""))
 }
 
 // The total used width of the last line.
@@ -214,16 +210,16 @@ pub fn last_line_used_width(s: &str, offset: usize) -> usize {
     if s.contains('\n') {
         last_line_width(s)
     } else {
-        offset + s.len()
+        offset + unicode_str_width(s)
     }
 }
 
 #[inline]
 pub fn trimmed_last_line_width(s: &str) -> usize {
-    match s.rfind('\n') {
-        Some(n) => s[(n + 1)..].trim().len(),
-        None => s.trim().len(),
-    }
+    unicode_str_width(match s.rfind('\n') {
+        Some(n) => s[(n + 1)..].trim(),
+        None => s.trim(),
+    })
 }
 
 #[inline]
@@ -370,11 +366,15 @@ fn is_valid_str(snippet: &str, max_width: usize, shape: Shape) -> bool {
             return false;
         }
         // If the snippet does not include newline, we are done.
-        if first_line_width(snippet) == snippet.len() {
+        if is_single_line(snippet) {
             return true;
         }
         // The other lines must fit within the maximum width.
-        if snippet.lines().skip(1).any(|line| line.len() > max_width) {
+        if snippet
+            .lines()
+            .skip(1)
+            .any(|line| unicode_str_width(line) > max_width)
+        {
             return false;
         }
         // A special check for the last line, since the caller may
@@ -591,6 +591,10 @@ impl NodeIdExt for NodeId {
     fn root() -> NodeId {
         NodeId::placeholder_from_mark(Mark::root())
     }
+}
+
+pub(crate) fn unicode_str_width(s: &str) -> usize {
+    s.width()
 }
 
 #[cfg(test)]

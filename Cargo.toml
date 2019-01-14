@@ -53,6 +53,8 @@ rustc-ap-syntax = "306.0.0"
 rustc-ap-syntax_pos = "306.0.0"
 failure = "0.1.1"
 bytecount = "0.4"
+unicode-width = "0.1.5"
+unicode_categories = "0.1.1"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`

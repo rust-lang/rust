@@ -19,7 +19,9 @@ use config::Config;
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
-use utils::{count_newlines, first_line_width, last_line_width, trim_left_preserve_layout};
+use utils::{
+    count_newlines, first_line_width, last_line_width, trim_left_preserve_layout, unicode_str_width,
+};
 use {ErrorKind, FormattingError};
 
 fn is_custom_comment(comment: &str) -> bool {
@@ -264,7 +266,8 @@ fn identify_comment(
 ) -> Option<String> {
     let style = comment_style(orig, false);
 
-    // Computes the len of line taking into account a newline if the line is part of a paragraph.
+    // Computes the byte length of line taking into account a newline if the line is part of a
+    // paragraph.
     fn compute_len(orig: &str, line: &str) -> usize {
         if orig.len() > line.len() {
             if orig.as_bytes()[line.len()] == b'\r' {
@@ -498,7 +501,7 @@ struct CommentRewrite<'a> {
     item_block: Option<ItemizedBlock>,
     comment_line_separator: String,
     indent_str: String,
-    max_chars: usize,
+    max_width: usize,
     fmt_indent: Indent,
     fmt: StringFormat<'a>,
 
@@ -520,7 +523,7 @@ impl<'a> CommentRewrite<'a> {
             comment_style(orig, config.normalize_comments()).to_str_tuplet()
         };
 
-        let max_chars = shape
+        let max_width = shape
             .width
             .checked_sub(closer.len() + opener.len())
             .unwrap_or(1);
@@ -534,7 +537,7 @@ impl<'a> CommentRewrite<'a> {
             code_block_attr: None,
             item_block: None,
             comment_line_separator: format!("{}{}", indent_str, line_start),
-            max_chars,
+            max_width,
             indent_str,
             fmt_indent,
 
@@ -543,7 +546,7 @@ impl<'a> CommentRewrite<'a> {
                 closer: "",
                 line_start,
                 line_end: "",
-                shape: Shape::legacy(max_chars, fmt_indent),
+                shape: Shape::legacy(max_width, fmt_indent),
                 trim_end: true,
                 config,
             },
@@ -583,14 +586,14 @@ impl<'a> CommentRewrite<'a> {
 
         if let Some(ref ib) = self.item_block {
             // the last few lines are part of an itemized block
-            self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+            self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             let item_fmt = ib.create_string_format(&self.fmt);
             self.result.push_str(&self.comment_line_separator);
             self.result.push_str(&ib.opener);
             match rewrite_string(
                 &ib.trimmed_block_as_string(),
                 &item_fmt,
-                self.max_chars.saturating_sub(ib.indent),
+                self.max_width.saturating_sub(ib.indent),
             ) {
                 Some(s) => self.result.push_str(&Self::join_block(
                     &s,
@@ -626,14 +629,14 @@ impl<'a> CommentRewrite<'a> {
                 return false;
             }
             self.is_prev_line_multi_line = false;
-            self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+            self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             let item_fmt = ib.create_string_format(&self.fmt);
             self.result.push_str(&self.comment_line_separator);
             self.result.push_str(&ib.opener);
             match rewrite_string(
                 &ib.trimmed_block_as_string(),
                 &item_fmt,
-                self.max_chars.saturating_sub(ib.indent),
+                self.max_width.saturating_sub(ib.indent),
             ) {
                 Some(s) => self.result.push_str(&Self::join_block(
                     &s,
@@ -710,8 +713,11 @@ impl<'a> CommentRewrite<'a> {
             }
         }
 
-        if self.fmt.config.wrap_comments() && line.len() > self.fmt.shape.width && !has_url(line) {
-            match rewrite_string(line, &self.fmt, self.max_chars) {
+        if self.fmt.config.wrap_comments()
+            && unicode_str_width(line) > self.fmt.shape.width
+            && !has_url(line)
+        {
+            match rewrite_string(line, &self.fmt, self.max_width) {
                 Some(ref s) => {
                     self.is_prev_line_multi_line = s.contains('\n');
                     self.result.push_str(s);
@@ -721,8 +727,8 @@ impl<'a> CommentRewrite<'a> {
                     // Remove the trailing space, then start rewrite on the next line.
                     self.result.pop();
                     self.result.push_str(&self.comment_line_separator);
-                    self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
-                    match rewrite_string(line, &self.fmt, self.max_chars) {
+                    self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
+                    match rewrite_string(line, &self.fmt, self.max_width) {
                         Some(ref s) => {
                             self.is_prev_line_multi_line = s.contains('\n');
                             self.result.push_str(s);
@@ -743,12 +749,12 @@ impl<'a> CommentRewrite<'a> {
                 // 1 = " "
                 let offset = 1 + last_line_width(&self.result) - self.line_start.len();
                 Shape {
-                    width: self.max_chars.saturating_sub(offset),
+                    width: self.max_width.saturating_sub(offset),
                     indent: self.fmt_indent,
                     offset: self.fmt.shape.offset + offset,
                 }
             } else {
-                Shape::legacy(self.max_chars, self.fmt_indent)
+                Shape::legacy(self.max_width, self.fmt_indent)
             };
         } else {
             if line.is_empty() && self.result.ends_with(' ') && !is_last {
@@ -756,7 +762,7 @@ impl<'a> CommentRewrite<'a> {
                 self.result.pop();
             }
             self.result.push_str(line);
-            self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+            self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             self.is_prev_line_multi_line = false;
         }
 
