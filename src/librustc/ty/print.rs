@@ -258,20 +258,18 @@ pub trait Printer: Sized {
         self: PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.default_print_def_path(def_id, substs, ns, projections)
+        self.default_print_def_path(def_id, substs, projections)
     }
     fn print_impl_path(
         self: PrintCx<'_, '_, 'tcx, Self>,
         impl_def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.default_print_impl_path(impl_def_id, substs, ns, self_ty, trait_ref)
+        self.default_print_impl_path(impl_def_id, substs, self_ty, trait_ref)
     }
 
     fn print_region(
@@ -292,7 +290,6 @@ pub trait Printer: Sized {
         self: PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-        ns: Namespace,
     ) -> Result<Self::Path, Self::Error>;
 
     fn path_append_impl<'gcx, 'tcx>(
@@ -317,7 +314,6 @@ pub trait Printer: Sized {
         ) -> Result<Self::Path, Self::Error>,
         params: &[ty::GenericParamDef],
         substs: SubstsRef<'tcx>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error>;
 }
@@ -350,16 +346,20 @@ pub trait PrettyPrinter:
         })
     }
 
+    /// Like `print_def_path` but for value paths.
+    fn print_value_path(
+        self: PrintCx<'_, '_, 'tcx, Self>,
+        def_id: DefId,
+        substs: Option<SubstsRef<'tcx>>,
+    ) -> Result<Self::Path, Self::Error> {
+        self.print_def_path(def_id, substs, iter::empty())
+    }
+
     /// Print `<...>` around what `f` prints.
     fn generic_delimiters<'gcx, 'tcx>(
-        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        self: PrintCx<'_, 'gcx, 'tcx, Self>,
         f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
-    ) -> Result<Self, Self::Error> {
-        write!(self.printer, "<")?;
-        let mut printer = f(self)?;
-        write!(printer, ">")?;
-        Ok(printer)
-    }
+    ) -> Result<Self, Self::Error>;
 
     /// Return `true` if the region should be printed in path generic args
     /// even when it's `'_`, such as in e.g. `Foo<'_, '_, '_>`.
@@ -414,8 +414,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let ns = self.guess_def_namespace(def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         let mut s = String::new();
-        let _ = PrintCx::with(self, FmtPrinter::new(&mut s), |cx| {
-            cx.print_def_path(def_id, None, ns, iter::empty())
+        let _ = PrintCx::with(self, FmtPrinter::new(&mut s, ns), |cx| {
+            cx.print_def_path(def_id, None, iter::empty())
         });
         s
     }
@@ -426,10 +426,9 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
         self,
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<P::Path, P::Error> {
-        debug!("default_print_def_path: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
+        debug!("default_print_def_path: def_id={:?}, substs={:?}", def_id, substs);
         let key = self.tcx.def_key(def_id);
         debug!("default_print_def_path: key={:?}", key);
 
@@ -449,7 +448,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                 if let Some(substs) = substs {
                     impl_trait_ref = impl_trait_ref.subst(self.tcx, substs);
                 }
-                self.print_impl_path(def_id, substs, ns, self_ty, impl_trait_ref)
+                self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
             }
 
             _ => {
@@ -467,12 +466,12 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                             parent_generics.has_self && parent_generics.parent_count == 0;
                         if let (Some(substs), true) = (substs, parent_has_own_self) {
                             let trait_ref = ty::TraitRef::new(parent_def_id, substs);
-                            cx.path_qualified(trait_ref.self_ty(), Some(trait_ref), ns)
+                            cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
-                            cx.print_def_path(parent_def_id, substs, ns, iter::empty())
+                            cx.print_def_path(parent_def_id, substs, iter::empty())
                         }
                     } else {
-                        cx.print_def_path(parent_def_id, None, ns, iter::empty())
+                        cx.print_def_path(parent_def_id, None, iter::empty())
                     }
                 };
                 let print_path = |cx: PrintCx<'_, 'gcx, 'tcx, P>| {
@@ -492,7 +491,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                 if let (Some(generics), Some(substs)) = (generics, substs) {
                     let has_own_self = generics.has_self && generics.parent_count == 0;
                     let params = &generics.params[has_own_self as usize..];
-                    self.path_generic_args(print_path, params, substs, ns, projections)
+                    self.path_generic_args(print_path, params, substs, projections)
                 } else {
                     print_path(self)
                 }
@@ -504,7 +503,6 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
         self,
         impl_def_id: DefId,
         _substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<P::Path, P::Error> {
@@ -531,14 +529,14 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
             self.path_append_impl(
-                |cx| cx.print_def_path(parent_def_id, None, ns, iter::empty()),
+                |cx| cx.print_def_path(parent_def_id, None, iter::empty()),
                 self_ty,
                 impl_trait_ref,
             )
         } else {
             // Otherwise, try to give a good form that would be valid language
             // syntax. Preferably using associated item notation.
-            self.path_qualified(self_ty, impl_trait_ref, ns)
+            self.path_qualified(self_ty, impl_trait_ref)
         }
     }
 }
@@ -594,14 +592,16 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 pub struct FmtPrinter<F: fmt::Write> {
     pub(crate) fmt: F,
     empty: bool,
+    in_value: bool,
     pub region_highlight_mode: RegionHighlightMode,
 }
 
 impl<F: fmt::Write> FmtPrinter<F> {
-    pub fn new(fmt: F) -> Self {
+    pub fn new(fmt: F, ns: Namespace) -> Self {
         FmtPrinter {
             fmt,
             empty: true,
+            in_value: ns == Namespace::ValueNS,
             region_highlight_mode: RegionHighlightMode::default(),
         }
     }
@@ -645,7 +645,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }) => {
                     debug!("try_print_visible_def_path: def_id={:?}", def_id);
                     return Ok((if !span.is_dummy() {
-                        self.print_def_path(def_id, None, Namespace::TypeNS, iter::empty())?
+                        self.print_def_path(def_id, None, iter::empty())?
                     } else {
                         self.path_crate(cnum)?
                     }, true));
@@ -760,20 +760,13 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-        ns: Namespace,
     ) -> Result<P::Path, P::Error> {
         if trait_ref.is_none() {
             // Inherent impls. Try to print `Foo::bar` for an inherent
             // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
             // anything other than a simple path.
             match self_ty.sty {
-                ty::Adt(adt_def, substs) => {
-                    return self.print_def_path(adt_def.did, Some(substs), ns, iter::empty());
-                }
-                ty::Foreign(did) => {
-                    return self.print_def_path(did, None, ns, iter::empty());
-                }
-
+                ty::Adt(..) | ty::Foreign(_) |
                 ty::Bool | ty::Char | ty::Str |
                 ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
                     return self_ty.print_display(self);
@@ -787,12 +780,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             nest!(cx, |cx| self_ty.print_display(cx));
             if let Some(trait_ref) = trait_ref {
                 write!(cx.printer, " as ")?;
-                nest!(cx, |cx| cx.print_def_path(
-                    trait_ref.def_id,
-                    Some(trait_ref.substs),
-                    Namespace::TypeNS,
-                    iter::empty(),
-                ));
+                nest!(cx, |cx| trait_ref.print_display(cx));
             }
             Ok(cx.printer)
         })
@@ -827,7 +815,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         ) -> Result<P::Path, P::Error>,
         params: &[ty::GenericParamDef],
         substs: SubstsRef<'tcx>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<P::Path, P::Error> {
         nest!(self, |cx| print_prefix(cx));
@@ -876,11 +863,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
 
         if arg0.is_none() && projection0.is_none() {
             return Ok(self.printer);
-        }
-
-        // FIXME(eddyb) move this into `generic_delimiters`.
-        if ns == Namespace::ValueNS {
-            write!(self.printer, "::")?;
         }
 
         self.generic_delimiters(|mut cx| {
@@ -950,7 +932,6 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         mut self: PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
         // FIXME(eddyb) avoid querying `tcx.generics_of` and `tcx.def_key`
@@ -967,7 +948,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
                 return if let (Some(generics), Some(substs)) = (generics, substs) {
                     let has_own_self = generics.has_self && generics.parent_count == 0;
                     let params = &generics.params[has_own_self as usize..];
-                    self.path_generic_args(|cx| Ok(cx.printer), params, substs, ns, projections)
+                    self.path_generic_args(|cx| Ok(cx.printer), params, substs, projections)
                 } else {
                     Ok(self.printer)
                 };
@@ -992,13 +973,13 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
                 let span = self.tcx.def_span(def_id);
                 return self.path_append(
-                    |cx| cx.print_def_path(parent_def_id, None, ns, iter::empty()),
+                    |cx| cx.print_def_path(parent_def_id, None, iter::empty()),
                     &format!("<impl at {:?}>", span),
                 );
             }
         }
 
-        self.default_print_def_path(def_id, substs, ns, projections)
+        self.default_print_def_path(def_id, substs, projections)
     }
 
     fn print_region(
@@ -1103,9 +1084,8 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         self: PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-        ns: Namespace,
     ) -> Result<Self::Path, Self::Error> {
-        self.pretty_path_qualified(self_ty, trait_ref, ns)
+        self.pretty_path_qualified(self_ty, trait_ref)
     }
 
     fn path_append_impl<'gcx, 'tcx>(
@@ -1119,7 +1099,9 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         self.pretty_path_append_impl(|cx| {
             let mut printer = print_prefix(cx)?;
 
-            if !printer.empty {
+            // HACK(eddyb) this accounts for `generic_delimiters`
+            // printing `::<` instead of `<` if `in_value` is set.
+            if !printer.empty && !printer.in_value {
                 write!(printer, "::")?;
             }
 
@@ -1153,10 +1135,9 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         ) -> Result<Self::Path, Self::Error>,
         params: &[ty::GenericParamDef],
         substs: SubstsRef<'tcx>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.pretty_path_generic_args(print_prefix, params, substs, ns, projections)
+        self.pretty_path_generic_args(print_prefix, params, substs, projections)
     }
 }
 
@@ -1177,6 +1158,36 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
             printer,
             config: self.config,
         })
+    }
+
+    fn print_value_path(
+        mut self: PrintCx<'_, '_, 'tcx, Self>,
+        def_id: DefId,
+        substs: Option<SubstsRef<'tcx>>,
+    ) -> Result<Self::Path, Self::Error> {
+        let was_in_value = std::mem::replace(&mut self.printer.in_value, true);
+        let mut printer = self.print_def_path(def_id, substs, iter::empty())?;
+        printer.in_value = was_in_value;
+
+        Ok(printer)
+    }
+
+    fn generic_delimiters<'gcx, 'tcx>(
+        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
+    ) -> Result<Self, Self::Error> {
+        if !self.printer.empty && self.printer.in_value {
+            write!(self.printer, "::<")?;
+        } else {
+            write!(self.printer, "<")?;
+        }
+
+        let was_in_value = std::mem::replace(&mut self.printer.in_value, false);
+        let mut printer = f(self)?;
+        printer.in_value = was_in_value;
+
+        write!(printer, ">")?;
+        Ok(printer)
     }
 
     fn always_print_region_in_paths(

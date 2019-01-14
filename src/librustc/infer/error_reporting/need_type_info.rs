@@ -1,9 +1,10 @@
+use crate::hir::def::Namespace;
 use crate::hir::{self, Local, Pat, Body, HirId};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::infer::InferCtxt;
 use crate::infer::type_variable::TypeVariableOrigin;
 use crate::ty::{self, Ty, Infer, TyVar};
-use ty::print::Print;
+use crate::ty::print::Print;
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
@@ -79,7 +80,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let mut s = String::new();
-        let mut printer = ty::print::FmtPrinter::new(&mut s);
+        let mut printer = ty::print::FmtPrinter::new(&mut s, Namespace::TypeNS);
         if let Some(highlight) = highlight {
             printer.region_highlight_mode = highlight;
         }

@@ -17,7 +17,7 @@ use crate::hir;
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            PrintCx::with_tls_tcx(FmtPrinter::new(f), |cx| {
+            PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
                 $with(&cx.tcx.lift(self).expect("could not lift for printing"), cx)?;
                 Ok(())
             })
@@ -262,9 +262,9 @@ pub fn parameterized<F: fmt::Write>(
     substs: SubstsRef<'_>,
     ns: Namespace,
 ) -> fmt::Result {
-    PrintCx::with_tls_tcx(FmtPrinter::new(f), |cx| {
+    PrintCx::with_tls_tcx(FmtPrinter::new(f, ns), |cx| {
         let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
-        cx.print_def_path(did, Some(substs), ns, iter::empty())?;
+        cx.print_def_path(did, Some(substs), iter::empty())?;
         Ok(())
     })
 }
@@ -284,12 +284,7 @@ define_print! {
                     if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
                         let mut projections = self.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
-                            nest!(|cx| cx.print_def_path(
-                                principal.def_id,
-                                None,
-                                Namespace::TypeNS,
-                                iter::empty(),
-                            ));
+                            nest!(|cx| cx.print_def_path(principal.def_id, None, iter::empty()));
                             nest!(|cx| cx.fn_sig(args, false, proj.ty));
                             resugared_principal = true;
                         }
@@ -303,7 +298,6 @@ define_print! {
                     nest!(|cx| cx.print_def_path(
                         principal.def_id,
                         Some(principal.substs),
-                        Namespace::TypeNS,
                         self.projection_bounds(),
                     ));
                 }
@@ -332,12 +326,7 @@ define_print! {
                 }
                 first = false;
 
-                nest!(|cx| cx.print_def_path(
-                    def_id,
-                    None,
-                    Namespace::TypeNS,
-                    iter::empty(),
-                ));
+                nest!(|cx| cx.print_def_path(def_id, None, iter::empty()));
             }
         }
     }
@@ -360,13 +349,8 @@ impl fmt::Debug for ty::GenericParamDef {
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(FmtPrinter::new(f), |cx| {
-            cx.print_def_path(
-                self.def_id,
-                None,
-                Namespace::TypeNS,
-                iter::empty(),
-            )?;
+        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
+            cx.print_def_path(self.def_id, None, iter::empty())?;
             Ok(())
         })
     }
@@ -374,13 +358,8 @@ impl fmt::Debug for ty::TraitDef {
 
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(FmtPrinter::new(f), |cx| {
-            cx.print_def_path(
-                self.did,
-                None,
-                Namespace::TypeNS,
-                iter::empty(),
-            )?;
+        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
+            cx.print_def_path(self.did, None, iter::empty())?;
             Ok(())
         })
     }
@@ -396,7 +375,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(FmtPrinter::new(f), |mut cx| {
+        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::ValueNS), |mut cx| {
             define_scoped_cx!(cx);
             p!(write("UpvarId({:?};`{}`;{:?})",
                 self.var_path.hir_id,
@@ -671,15 +650,10 @@ define_print_multi! {
 define_print! {
     ('tcx) ty::TraitRef<'tcx>, (self, cx) {
         display {
-            nest!(|cx| cx.print_def_path(
-                self.def_id,
-                Some(self.substs),
-                Namespace::TypeNS,
-                iter::empty(),
-            ));
+            nest!(|cx| cx.print_def_path(self.def_id, Some(self.substs), iter::empty()));
         }
         debug {
-            nest!(|cx| cx.path_qualified(self.self_ty(), Some(*self), Namespace::TypeNS));
+            nest!(|cx| cx.path_qualified(self.self_ty(), Some(*self)));
         }
     }
 }
@@ -730,12 +704,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             ty::FnDef(def_id, substs) => {
                 let sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
                 p!(print(sig), write(" {{"));
-                nest!(|cx| cx.print_def_path(
-                    def_id,
-                    Some(substs),
-                    Namespace::ValueNS,
-                    iter::empty(),
-                ));
+                nest!(|cx| cx.print_value_path(def_id, Some(substs)));
                 p!(write("}}"))
             }
             ty::FnPtr(ref bare_fn) => {
@@ -758,12 +727,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }
             }
             ty::Adt(def, substs) => {
-                nest!(|cx| cx.print_def_path(
-                    def.did,
-                    Some(substs),
-                    Namespace::TypeNS,
-                    iter::empty(),
-                ));
+                nest!(|cx| cx.print_def_path(def.did, Some(substs), iter::empty()));
             }
             ty::Dynamic(data, r) => {
                 let print_r = self.print_region_outputs_anything(r);
@@ -776,12 +740,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }
             }
             ty::Foreign(def_id) => {
-                nest!(|cx| cx.print_def_path(
-                    def_id,
-                    None,
-                    Namespace::TypeNS,
-                    iter::empty(),
-                ));
+                nest!(|cx| cx.print_def_path(def_id, None, iter::empty()));
             }
             ty::Projection(ref data) => p!(print(data)),
             ty::UnnormalizedProjection(ref data) => {
@@ -1074,12 +1033,7 @@ define_print! {
 define_print! {
     ('tcx) ty::ProjectionTy<'tcx>, (self, cx) {
         display {
-            nest!(|cx| cx.print_def_path(
-                self.item_def_id,
-                Some(self.substs),
-                Namespace::TypeNS,
-                iter::empty(),
-            ));
+            nest!(|cx| cx.print_def_path(self.item_def_id, Some(self.substs), iter::empty()));
         }
     }
 }
@@ -1108,32 +1062,17 @@ define_print! {
                 ty::Predicate::WellFormed(ty) => p!(print(ty), write(" well-formed")),
                 ty::Predicate::ObjectSafe(trait_def_id) => {
                     p!(write("the trait `"));
-                    nest!(|cx| cx.print_def_path(
-                        trait_def_id,
-                        None,
-                        Namespace::TypeNS,
-                        iter::empty(),
-                    ));
+                    nest!(|cx| cx.print_def_path(trait_def_id, None, iter::empty()));
                     p!(write("` is object-safe"))
                 }
                 ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
                     p!(write("the closure `"));
-                    nest!(|cx| cx.print_def_path(
-                        closure_def_id,
-                        None,
-                        Namespace::ValueNS,
-                        iter::empty(),
-                    ));
+                    nest!(|cx| cx.print_value_path(closure_def_id, None));
                     p!(write("` implements the trait `{}`", kind))
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     p!(write("the constant `"));
-                    nest!(|cx| cx.print_def_path(
-                        def_id,
-                        Some(substs),
-                        Namespace::ValueNS,
-                        iter::empty(),
-                    ));
+                    nest!(|cx| cx.print_value_path(def_id, Some(substs)));
                     p!(write("` can be evaluated"))
                 }
             }

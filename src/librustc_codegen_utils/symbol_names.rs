@@ -87,7 +87,6 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use rustc::hir::def::Namespace;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
@@ -226,7 +225,7 @@ fn get_symbol_hash<'a, 'tcx>(
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     PrintCx::with(tcx, SymbolPath::new(tcx), |cx| {
-        cx.print_def_path(def_id, None, Namespace::ValueNS, iter::empty())
+        cx.print_def_path(def_id, None, iter::empty())
             .unwrap()
             .into_interned()
     })
@@ -437,9 +436,8 @@ impl Printer for SymbolPath {
         self: PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-        ns: Namespace,
     ) -> Result<Self::Path, Self::Error> {
-        self.pretty_path_qualified(self_ty, trait_ref, ns)
+        self.pretty_path_qualified(self_ty, trait_ref)
     }
 
     fn path_append_impl<'gcx, 'tcx>(
@@ -482,10 +480,9 @@ impl Printer for SymbolPath {
         ) -> Result<Self::Path, Self::Error>,
         params: &[ty::GenericParamDef],
         substs: SubstsRef<'tcx>,
-        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     )  -> Result<Self::Path, Self::Error> {
-        self.pretty_path_generic_args(print_prefix, params, substs, ns, projections)
+        self.pretty_path_generic_args(print_prefix, params, substs, projections)
     }
 }
 

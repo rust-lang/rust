@@ -18,7 +18,7 @@ use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::mir::interpret::GlobalId;
 use rustc::hir::{self, GenericArg, HirVec};
-use rustc::hir::def::{self, Def, CtorKind, Namespace};
+use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
@@ -4260,7 +4260,6 @@ where F: Fn(DefId) -> Def {
             self: PrintCx<'_, '_, 'tcx, Self>,
             self_ty: Ty<'tcx>,
             trait_ref: Option<ty::TraitRef<'tcx>>,
-            _ns: Namespace,
         ) -> Result<Self::Path, Self::Error> {
             // This shouldn't ever be needed, but just in case:
             Ok(vec![match trait_ref {
@@ -4307,7 +4306,6 @@ where F: Fn(DefId) -> Def {
             ) -> Result<Self::Path, Self::Error>,
             _params: &[ty::GenericParamDef],
             _substs: SubstsRef<'tcx>,
-            _ns: Namespace,
             _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
         ) -> Result<Self::Path, Self::Error> {
             print_prefix(self)
@@ -4315,7 +4313,7 @@ where F: Fn(DefId) -> Def {
     }
 
     let names = PrintCx::with(tcx, AbsolutePathPrinter, |cx| {
-        cx.print_def_path(def_id, None, Namespace::TypeNS, iter::empty()).unwrap()
+        cx.print_def_path(def_id, None, iter::empty()).unwrap()
     });
 
     hir::Path {

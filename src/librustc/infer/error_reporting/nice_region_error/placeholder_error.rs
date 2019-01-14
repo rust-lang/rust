@@ -1,4 +1,5 @@
 use errors::DiagnosticBuilder;
+use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
@@ -343,7 +344,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             >,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let mut printer = ty::print::FmtPrinter::new(f);
+                let mut printer = ty::print::FmtPrinter::new(f, Namespace::TypeNS);
                 printer.region_highlight_mode = self.highlight;
 
                 ty::print::PrintCx::with(self.tcx, printer, |cx| {
