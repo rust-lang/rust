@@ -343,14 +343,17 @@ fn test(x: &str, y: isize) {
     let b = [a, a];
     let c = [b, b];
 
-    let d = [y];
-    let e = [d, d];
-    let f = [e, e];
+    let d = [y, 1, 2, 3]
+    let d = [1, y, 2, 3]
+    let e = [y];
+    let f = [d, d];
+    let g = [e, e];
 
-    // we have not infered these case yet.
-    let g = [1, 2];
-    let h = ["a", "b"];
+    let h = [1, 2];
+    let i = ["a", "b"];
+
     let b = [a, ["b"]];
+    let x: [u8; 0] = [];
 }
 "#,
         "array.txt",
