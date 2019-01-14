@@ -1,18 +1,9 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
+use CollectionAllocErr;
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 
@@ -53,14 +44,14 @@ use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 /// ```
 /// use hashbrown::HashSet;
 /// // Type inference lets us omit an explicit type signature (which
-/// // would be `HashSet<&str>` in this example).
+/// // would be `HashSet<String>` in this example).
 /// let mut books = HashSet::new();
 ///
 /// // Add some books.
-/// books.insert("A Dance With Dragons");
-/// books.insert("To Kill a Mockingbird");
-/// books.insert("The Odyssey");
-/// books.insert("The Great Gatsby");
+/// books.insert("A Dance With Dragons".to_string());
+/// books.insert("To Kill a Mockingbird".to_string());
+/// books.insert("The Odyssey".to_string());
+/// books.insert("The Great Gatsby".to_string());
 ///
 /// // Check for a specific one.
 /// if !books.contains("The Winds of Winter") {
@@ -84,17 +75,17 @@ use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 /// ```
 /// use hashbrown::HashSet;
 /// #[derive(Hash, Eq, PartialEq, Debug)]
-/// struct Viking<'a> {
-///     name: &'a str,
+/// struct Viking {
+///     name: String,
 ///     power: usize,
 /// }
 ///
 /// let mut vikings = HashSet::new();
 ///
-/// vikings.insert(Viking { name: "Einar", power: 9 });
-/// vikings.insert(Viking { name: "Einar", power: 9 });
-/// vikings.insert(Viking { name: "Olaf", power: 4 });
-/// vikings.insert(Viking { name: "Harald", power: 8 });
+/// vikings.insert(Viking { name: "Einar".to_string(), power: 9 });
+/// vikings.insert(Viking { name: "Einar".to_string(), power: 9 });
+/// vikings.insert(Viking { name: "Olaf".to_string(), power: 4 });
+/// vikings.insert(Viking { name: "Harald".to_string(), power: 8 });
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in &vikings {
@@ -108,18 +99,18 @@ use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 /// use hashbrown::HashSet;
 ///
 /// fn main() {
-///     let viking_names: HashSet<&str> =
+///     let viking_names: HashSet<&'static str> =
 ///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
 ///     // use the values stored in the set
 /// }
 /// ```
 ///
-/// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`Eq`]: ../../std/cmp/trait.Eq.html
-/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`Cell`]: https://doc.rust-lang.org/std/cell/struct.Cell.html
+/// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+/// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
 /// [`HashMap`]: struct.HashMap.html
-/// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
+/// [`PartialEq`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
+/// [`RefCell`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html
 #[derive(Clone)]
 pub struct HashSet<T, S = DefaultHashBuilder> {
     pub(crate) map: HashMap<T, (), S>,
@@ -196,7 +187,7 @@ where
         }
     }
 
-    /// Creates an empty `HashSet` with with the specified capacity, using
+    /// Creates an empty `HashSet` with the specified capacity, using
     /// `hasher` to hash the keys.
     ///
     /// The hash set will be able to hold at least `capacity` elements without
@@ -226,7 +217,7 @@ where
 
     /// Returns a reference to the set's [`BuildHasher`].
     ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -276,6 +267,27 @@ where
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.map.reserve(additional)
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `HashSet<K,V>`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// let mut set: HashSet<i32> = HashSet::new();
+    /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// ```
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        self.map.try_reserve(additional)
     }
 
     /// Shrinks the capacity of the set as much as possible. It will drop
@@ -349,7 +361,7 @@ where
     }
 
     /// Visits the values representing the difference,
-    /// i.e. the values that are in `self` but not in `other`.
+    /// i.e., the values that are in `self` but not in `other`.
     ///
     /// # Examples
     ///
@@ -380,7 +392,7 @@ where
     }
 
     /// Visits the values representing the symmetric difference,
-    /// i.e. the values that are in `self` or in `other` but not in both.
+    /// i.e., the values that are in `self` or in `other` but not in both.
     ///
     /// # Examples
     ///
@@ -411,7 +423,7 @@ where
     }
 
     /// Visits the values representing the intersection,
-    /// i.e. the values that are both in `self` and `other`.
+    /// i.e., the values that are both in `self` and `other`.
     ///
     /// # Examples
     ///
@@ -437,7 +449,7 @@ where
     }
 
     /// Visits the values representing the union,
-    /// i.e. all the values in `self` or `other`, without duplicates.
+    /// i.e., all the values in `self` or `other`, without duplicates.
     ///
     /// # Examples
     ///
@@ -552,8 +564,8 @@ where
     /// assert_eq!(set.contains(&4), false);
     /// ```
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[inline]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
@@ -579,8 +591,8 @@ where
     /// assert_eq!(set.get(&4), None);
     /// ```
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[inline]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
@@ -612,7 +624,7 @@ where
     }
 
     /// Returns `true` if the set is a subset of another,
-    /// i.e. `other` contains at least all the values in `self`.
+    /// i.e., `other` contains at least all the values in `self`.
     ///
     /// # Examples
     ///
@@ -633,7 +645,7 @@ where
     }
 
     /// Returns `true` if the set is a superset of another,
-    /// i.e. `self` contains at least all the values in `other`.
+    /// i.e., `self` contains at least all the values in `other`.
     ///
     /// # Examples
     ///
@@ -724,8 +736,8 @@ where
     /// assert_eq!(set.remove(&2), false);
     /// ```
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[inline]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
@@ -751,8 +763,8 @@ where
     /// assert_eq!(set.take(&2), None);
     /// ```
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[inline]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
@@ -820,6 +832,7 @@ where
     T: Eq + Hash,
     S: BuildHasher + Default,
 {
+    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> HashSet<T, S> {
         let mut set = HashSet::with_hasher(Default::default());
         set.extend(iter);
@@ -1433,5 +1446,389 @@ fn assert_covariance() {
     }
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
         d
+    }
+}
+
+#[cfg(test)]
+mod test_set {
+    use super::super::map::DefaultHashBuilder;
+    use super::HashSet;
+    use std::vec::Vec;
+
+    #[test]
+    fn test_zero_capacities() {
+        type HS = HashSet<i32>;
+
+        let s = HS::new();
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::default();
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::with_hasher(DefaultHashBuilder::default());
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::with_capacity(0);
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::with_capacity_and_hasher(0, DefaultHashBuilder::default());
+        assert_eq!(s.capacity(), 0);
+
+        let mut s = HS::new();
+        s.insert(1);
+        s.insert(2);
+        s.remove(&1);
+        s.remove(&2);
+        s.shrink_to_fit();
+        assert_eq!(s.capacity(), 0);
+
+        let mut s = HS::new();
+        s.reserve(0);
+        assert_eq!(s.capacity(), 0);
+    }
+
+    #[test]
+    fn test_disjoint() {
+        let mut xs = HashSet::new();
+        let mut ys = HashSet::new();
+        assert!(xs.is_disjoint(&ys));
+        assert!(ys.is_disjoint(&xs));
+        assert!(xs.insert(5));
+        assert!(ys.insert(11));
+        assert!(xs.is_disjoint(&ys));
+        assert!(ys.is_disjoint(&xs));
+        assert!(xs.insert(7));
+        assert!(xs.insert(19));
+        assert!(xs.insert(4));
+        assert!(ys.insert(2));
+        assert!(ys.insert(-11));
+        assert!(xs.is_disjoint(&ys));
+        assert!(ys.is_disjoint(&xs));
+        assert!(ys.insert(7));
+        assert!(!xs.is_disjoint(&ys));
+        assert!(!ys.is_disjoint(&xs));
+    }
+
+    #[test]
+    fn test_subset_and_superset() {
+        let mut a = HashSet::new();
+        assert!(a.insert(0));
+        assert!(a.insert(5));
+        assert!(a.insert(11));
+        assert!(a.insert(7));
+
+        let mut b = HashSet::new();
+        assert!(b.insert(0));
+        assert!(b.insert(7));
+        assert!(b.insert(19));
+        assert!(b.insert(250));
+        assert!(b.insert(11));
+        assert!(b.insert(200));
+
+        assert!(!a.is_subset(&b));
+        assert!(!a.is_superset(&b));
+        assert!(!b.is_subset(&a));
+        assert!(!b.is_superset(&a));
+
+        assert!(b.insert(5));
+
+        assert!(a.is_subset(&b));
+        assert!(!a.is_superset(&b));
+        assert!(!b.is_subset(&a));
+        assert!(b.is_superset(&a));
+    }
+
+    #[test]
+    fn test_iterate() {
+        let mut a = HashSet::new();
+        for i in 0..32 {
+            assert!(a.insert(i));
+        }
+        let mut observed: u32 = 0;
+        for k in &a {
+            observed |= 1 << *k;
+        }
+        assert_eq!(observed, 0xFFFF_FFFF);
+    }
+
+    #[test]
+    fn test_intersection() {
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
+
+        assert!(a.insert(11));
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(77));
+        assert!(a.insert(103));
+        assert!(a.insert(5));
+        assert!(a.insert(-5));
+
+        assert!(b.insert(2));
+        assert!(b.insert(11));
+        assert!(b.insert(77));
+        assert!(b.insert(-9));
+        assert!(b.insert(-42));
+        assert!(b.insert(5));
+        assert!(b.insert(3));
+
+        let mut i = 0;
+        let expected = [3, 5, 11, 77];
+        for x in a.intersection(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_difference() {
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        assert!(a.insert(9));
+        assert!(a.insert(11));
+
+        assert!(b.insert(3));
+        assert!(b.insert(9));
+
+        let mut i = 0;
+        let expected = [1, 5, 11];
+        for x in a.difference(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_symmetric_difference() {
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        assert!(a.insert(9));
+        assert!(a.insert(11));
+
+        assert!(b.insert(-2));
+        assert!(b.insert(3));
+        assert!(b.insert(9));
+        assert!(b.insert(14));
+        assert!(b.insert(22));
+
+        let mut i = 0;
+        let expected = [-2, 1, 5, 11, 14, 22];
+        for x in a.symmetric_difference(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_union() {
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        assert!(a.insert(9));
+        assert!(a.insert(11));
+        assert!(a.insert(16));
+        assert!(a.insert(19));
+        assert!(a.insert(24));
+
+        assert!(b.insert(-2));
+        assert!(b.insert(1));
+        assert!(b.insert(5));
+        assert!(b.insert(9));
+        assert!(b.insert(13));
+        assert!(b.insert(19));
+
+        let mut i = 0;
+        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
+        for x in a.union(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        let set: HashSet<_> = xs.iter().cloned().collect();
+
+        for x in &xs {
+            assert!(set.contains(x));
+        }
+    }
+
+    #[test]
+    fn test_move_iter() {
+        let hs = {
+            let mut hs = HashSet::new();
+
+            hs.insert('a');
+            hs.insert('b');
+
+            hs
+        };
+
+        let v = hs.into_iter().collect::<Vec<char>>();
+        assert!(v == ['a', 'b'] || v == ['b', 'a']);
+    }
+
+    #[test]
+    fn test_eq() {
+        // These constants once happened to expose a bug in insert().
+        // I'm keeping them around to prevent a regression.
+        let mut s1 = HashSet::new();
+
+        s1.insert(1);
+        s1.insert(2);
+        s1.insert(3);
+
+        let mut s2 = HashSet::new();
+
+        s2.insert(1);
+        s2.insert(2);
+
+        assert!(s1 != s2);
+
+        s2.insert(3);
+
+        assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn test_show() {
+        let mut set = HashSet::new();
+        let empty = HashSet::<i32>::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = format!("{:?}", set);
+
+        assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
+        assert_eq!(format!("{:?}", empty), "{}");
+    }
+
+    #[test]
+    fn test_trivial_drain() {
+        let mut s = HashSet::<i32>::new();
+        for _ in s.drain() {}
+        assert!(s.is_empty());
+        drop(s);
+
+        let mut s = HashSet::<i32>::new();
+        drop(s.drain());
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn test_drain() {
+        let mut s: HashSet<_> = (1..100).collect();
+
+        // try this a bunch of times to make sure we don't screw up internal state.
+        for _ in 0..20 {
+            assert_eq!(s.len(), 99);
+
+            {
+                let mut last_i = 0;
+                let mut d = s.drain();
+                for (i, x) in d.by_ref().take(50).enumerate() {
+                    last_i = i;
+                    assert!(x != 0);
+                }
+                assert_eq!(last_i, 49);
+            }
+
+            for _ in &s {
+                panic!("s should be empty!");
+            }
+
+            // reset to try again.
+            s.extend(1..100);
+        }
+    }
+
+    #[test]
+    fn test_replace() {
+        use core::hash;
+
+        #[derive(Debug)]
+        struct Foo(&'static str, i32);
+
+        impl PartialEq for Foo {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        impl Eq for Foo {}
+
+        impl hash::Hash for Foo {
+            fn hash<H: hash::Hasher>(&self, h: &mut H) {
+                self.0.hash(h);
+            }
+        }
+
+        let mut s = HashSet::new();
+        assert_eq!(s.replace(Foo("a", 1)), None);
+        assert_eq!(s.len(), 1);
+        assert_eq!(s.replace(Foo("a", 2)), Some(Foo("a", 1)));
+        assert_eq!(s.len(), 1);
+
+        let mut it = s.iter();
+        assert_eq!(it.next(), Some(&Foo("a", 2)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_extend_ref() {
+        let mut a = HashSet::new();
+        a.insert(1);
+
+        a.extend(&[2, 3, 4]);
+
+        assert_eq!(a.len(), 4);
+        assert!(a.contains(&1));
+        assert!(a.contains(&2));
+        assert!(a.contains(&3));
+        assert!(a.contains(&4));
+
+        let mut b = HashSet::new();
+        b.insert(5);
+        b.insert(6);
+
+        a.extend(&b);
+
+        assert_eq!(a.len(), 6);
+        assert!(a.contains(&1));
+        assert!(a.contains(&2));
+        assert!(a.contains(&3));
+        assert!(a.contains(&4));
+        assert!(a.contains(&5));
+        assert!(a.contains(&6));
+    }
+
+    #[test]
+    fn test_retain() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut set: HashSet<i32> = xs.iter().cloned().collect();
+        set.retain(|&k| k % 2 == 0);
+        assert_eq!(set.len(), 3);
+        assert!(set.contains(&2));
+        assert!(set.contains(&4));
+        assert!(set.contains(&6));
     }
 }

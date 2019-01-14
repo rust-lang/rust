@@ -8,6 +8,7 @@ use core::mem::ManuallyDrop;
 use core::ops::Range;
 use core::ptr::NonNull;
 use scopeguard::guard;
+use CollectionAllocErr;
 
 // Branch prediction hint. This is currently only available on nightly but it
 // consistently improves performance by 10-15%.
@@ -36,7 +37,13 @@ unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
 }
 
 // Use the SSE2 implementation if possible: it allows us to scan 16 buckets at
-// once instead of 8.
+// once instead of 8. We don't bother with AVX since it would require runtime
+// dispatch and wouldn't gain us much anyways: the probability of finding a
+// match drops off drastically after the first few buckets.
+//
+// I attempted an implementation on ARM using NEON instructions, but it turns
+// out that most NEON instructions have multi-cycle latency, which in the end
+// outweighs any gains over the generic implementation.
 #[cfg(all(
     target_feature = "sse2",
     any(target_arch = "x86", target_arch = "x86_64")
@@ -52,8 +59,34 @@ mod imp;
 
 mod bitmask;
 
-use raw::bitmask::BitMask;
-use raw::imp::Group;
+use self::bitmask::BitMask;
+use self::imp::Group;
+
+/// Whether memory allocation errors should return an error or abort.
+enum Fallibility {
+    Fallible,
+    Infallible,
+}
+
+impl Fallibility {
+    /// Error to return on capacity overflow.
+    #[inline]
+    fn capacity_overflow(&self) -> CollectionAllocErr {
+        match *self {
+            Fallibility::Fallible => CollectionAllocErr::CapacityOverflow,
+            Fallibility::Infallible => panic!("Hash table capacity overflow"),
+        }
+    }
+
+    /// Error to return on allocation error.
+    #[inline]
+    fn alloc_err(&self, layout: Layout) -> CollectionAllocErr {
+        match *self {
+            Fallibility::Fallible => CollectionAllocErr::AllocErr,
+            Fallibility::Infallible => handle_alloc_error(layout),
+        }
+    }
+}
 
 /// Control byte value for an empty bucket.
 const EMPTY: u8 = 0b11111111;
@@ -123,18 +156,23 @@ impl Iterator for ProbeSeq {
 
 /// Returns the number of buckets needed to hold the given number of items,
 /// taking the maximum load factor into account.
+///
+/// Returns `None` if an overflow occurs.
 #[inline]
-fn capacity_to_buckets(cap: usize) -> usize {
+fn capacity_to_buckets(cap: usize) -> Option<usize> {
     let adjusted_cap = if cap < 8 {
         // Need at least 1 free bucket on small tables
         cap + 1
     } else {
         // Otherwise require 1/8 buckets to be empty (87.5% load)
-        cap.checked_mul(8).expect("Hash table capacity overflow") / 7
+        //
+        // Be careful when modifying this, calculate_layout relies on the
+        // overflow check here.
+        cap.checked_mul(8)? / 7
     };
 
     // Any overflows will have been caught by the checked_mul.
-    adjusted_cap.next_power_of_two()
+    Some(adjusted_cap.next_power_of_two())
 }
 
 /// Returns the maximum effective capacity for the given bucket mask, taking
@@ -150,6 +188,8 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
 
 // Returns a Layout which describes the allocation required for a hash table,
 // and the offset of the buckets in the allocation.
+///
+/// Returns `None` if an overflow occurs.
 #[inline]
 #[cfg(feature = "nightly")]
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
@@ -163,10 +203,10 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     // We add `Group::WIDTH` control bytes at the end of the array which
     // replicate the bytes at the start of the array and thus avoids the need to
     // perform bounds-checking while probing.
-    let ctrl = Layout::array::<u8>(buckets + Group::WIDTH)
-        .ok()?
-        .align_to(Group::WIDTH)
-        .ok()?;
+    //
+    // There is no possible overflow here since buckets is a power of two and
+    // Group::WIDTH is a small number.
+    let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
 
     ctrl.extend(data).ok()
 }
@@ -182,12 +222,11 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     let data_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
     let data_offset = (buckets + Group::WIDTH).checked_add(data_align - 1)? & !(data_align - 1);
     let len = data_offset.checked_add(mem::size_of::<T>().checked_mul(buckets)?)?;
-    unsafe {
-        Some((
-            Layout::from_size_align_unchecked(len, data_align),
-            data_offset,
-        ))
-    }
+
+    Some((
+        unsafe { Layout::from_size_align_unchecked(len, data_align) },
+        data_offset,
+    ))
 }
 
 /// A reference to a hash table bucket containing a `T`.
@@ -265,28 +304,36 @@ impl<T> RawTable<T> {
     ///
     /// The control bytes are left uninitialized.
     #[inline]
-    unsafe fn new_uninitialized(buckets: usize) -> RawTable<T> {
+    unsafe fn new_uninitialized(
+        buckets: usize,
+        fallability: Fallibility,
+    ) -> Result<RawTable<T>, CollectionAllocErr> {
         let (layout, data_offset) =
-            calculate_layout::<T>(buckets).expect("Hash table capacity overflow");
-        let ctrl = NonNull::new(alloc(layout)).unwrap_or_else(|| handle_alloc_error(layout));
+            calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
+        let ctrl = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
         let data = NonNull::new_unchecked(ctrl.as_ptr().add(data_offset) as *mut T);
-        RawTable {
+        Ok(RawTable {
             data,
             ctrl,
             bucket_mask: buckets - 1,
             items: 0,
             growth_left: bucket_mask_to_capacity(buckets - 1),
-        }
+        })
     }
 
-    /// Allocates a new hash table with at least enough capacity for inserting
-    /// the given number of elements without reallocating.
-    pub fn with_capacity(capacity: usize) -> RawTable<T> {
+    /// Attempts to allocate a new hash table with at least enough capacity
+    /// for inserting the given number of elements without reallocating.
+    fn try_with_capacity(
+        capacity: usize,
+        fallability: Fallibility,
+    ) -> Result<RawTable<T>, CollectionAllocErr> {
         if capacity == 0 {
-            RawTable::new()
+            Ok(RawTable::new())
         } else {
             unsafe {
-                let result = RawTable::new_uninitialized(capacity_to_buckets(capacity));
+                let buckets =
+                    capacity_to_buckets(capacity).ok_or_else(|| fallability.capacity_overflow())?;
+                let result = RawTable::new_uninitialized(buckets, fallability)?;
                 result
                     .ctrl(0)
                     .write_bytes(EMPTY, result.buckets() + Group::WIDTH);
@@ -300,9 +347,16 @@ impl<T> RawTable<T> {
                         .write_bytes(DELETED, Group::WIDTH - result.buckets());
                 }
 
-                result
+                Ok(result)
             }
         }
+    }
+
+    /// Allocates a new hash table with at least enough capacity for inserting
+    /// the given number of elements without reallocating.
+    pub fn with_capacity(capacity: usize) -> RawTable<T> {
+        RawTable::try_with_capacity(capacity, Fallibility::Infallible)
+            .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() })
     }
 
     /// Deallocates the table without dropping any entries.
@@ -467,8 +521,9 @@ impl<T> RawTable<T> {
     #[inline]
     pub fn shrink_to(&mut self, min_size: usize, hasher: impl Fn(&T) -> u64) {
         let min_size = usize::max(self.items, min_size);
-        if bucket_mask_to_capacity(self.bucket_mask) / 2 > min_size {
-            self.resize(min_size, hasher);
+        if self.bucket_mask != 0 && bucket_mask_to_capacity(self.bucket_mask) >= min_size * 2 {
+            self.resize(min_size, hasher, Fallibility::Infallible)
+                .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
         }
     }
 
@@ -477,25 +532,47 @@ impl<T> RawTable<T> {
     #[inline]
     pub fn reserve(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
         if additional > self.growth_left {
-            self.reserve_rehash(additional, hasher);
+            self.reserve_rehash(additional, hasher, Fallibility::Infallible)
+                .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
         }
     }
 
-    /// Out-of-line slow path for `reserve`.
+    /// Tries to ensure that at least `additional` items can be inserted into
+    /// the table without reallocation.
+    #[inline]
+    pub fn try_reserve(
+        &mut self,
+        additional: usize,
+        hasher: impl Fn(&T) -> u64,
+    ) -> Result<(), CollectionAllocErr> {
+        if additional > self.growth_left {
+            self.reserve_rehash(additional, hasher, Fallibility::Fallible)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Out-of-line slow path for `reserve` and `try_reserve`.
     #[cold]
     #[inline(never)]
-    fn reserve_rehash(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
+    fn reserve_rehash(
+        &mut self,
+        additional: usize,
+        hasher: impl Fn(&T) -> u64,
+        fallability: Fallibility,
+    ) -> Result<(), CollectionAllocErr> {
         let new_items = self
             .items
             .checked_add(additional)
-            .expect("Hash table capacity overflow");
+            .ok_or_else(|| fallability.capacity_overflow())?;
 
         // Rehash in-place without re-allocating if we have plenty of spare
         // capacity that is locked up due to DELETED entries.
         if new_items < bucket_mask_to_capacity(self.bucket_mask) / 2 {
             self.rehash_in_place(hasher);
+            Ok(())
         } else {
-            self.resize(new_items, hasher);
+            self.resize(new_items, hasher, fallability)
         }
     }
 
@@ -601,12 +678,17 @@ impl<T> RawTable<T> {
 
     /// Allocates a new table of a different size and moves the contents of the
     /// current table into it.
-    fn resize(&mut self, capacity: usize, hasher: impl Fn(&T) -> u64) {
+    fn resize(
+        &mut self,
+        capacity: usize,
+        hasher: impl Fn(&T) -> u64,
+        fallability: Fallibility,
+    ) -> Result<(), CollectionAllocErr> {
         unsafe {
             debug_assert!(self.items <= capacity);
 
             // Allocate and initialize the new table.
-            let mut new_table = RawTable::with_capacity(capacity);
+            let mut new_table = RawTable::try_with_capacity(capacity, fallability)?;
             new_table.growth_left -= self.items;
             new_table.items = self.items;
 
@@ -636,6 +718,8 @@ impl<T> RawTable<T> {
             // the items will not be dropped (since they have been moved into the
             // new table).
             mem::swap(self, &mut new_table);
+
+            Ok(())
         }
     }
 
@@ -664,7 +748,7 @@ impl<T> RawTable<T> {
 
     /// Searches for an element in the table.
     #[inline]
-    pub fn find(&self, hash: u64, eq: impl Fn(&T) -> bool) -> Option<Bucket<T>> {
+    pub fn find(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<Bucket<T>> {
         unsafe {
             for pos in self.probe_seq(hash) {
                 let group = Group::load(self.ctrl(pos));
@@ -702,7 +786,7 @@ impl<T> RawTable<T> {
 
     /// Returns the number of buckets in the table.
     #[inline]
-    fn buckets(&self) -> usize {
+    pub fn buckets(&self) -> usize {
         self.bucket_mask + 1
     }
 
@@ -756,7 +840,10 @@ impl<T: Clone> Clone for RawTable<T> {
             Self::new()
         } else {
             unsafe {
-                let mut new_table = ManuallyDrop::new(Self::new_uninitialized(self.buckets()));
+                let mut new_table = ManuallyDrop::new(
+                    Self::new_uninitialized(self.buckets(), Fallibility::Infallible)
+                        .unwrap_or_else(|_| hint::unreachable_unchecked()),
+                );
 
                 // Copy the control bytes unchanged. We do this in a single pass
                 self.ctrl(0)
@@ -799,6 +886,23 @@ impl<T: Clone> Clone for RawTable<T> {
     }
 }
 
+#[cfg(feature = "nightly")]
+unsafe impl<#[may_dangle] T> Drop for RawTable<T> {
+    #[inline]
+    fn drop(&mut self) {
+        if self.bucket_mask != 0 {
+            unsafe {
+                if mem::needs_drop::<T>() {
+                    for item in self.iter() {
+                        item.drop();
+                    }
+                }
+                self.free_buckets();
+            }
+        }
+    }
+}
+#[cfg(not(feature = "nightly"))]
 impl<T> Drop for RawTable<T> {
     #[inline]
     fn drop(&mut self) {

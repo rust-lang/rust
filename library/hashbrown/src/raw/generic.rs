@@ -1,6 +1,6 @@
+use super::bitmask::BitMask;
+use super::EMPTY;
 use core::{mem, ptr};
-use raw::bitmask::BitMask;
-use raw::EMPTY;
 
 // Use the native word size as the group size. Using a 64-bit group size on
 // a 32-bit architecture will just end up being more expensive because
@@ -19,8 +19,9 @@ type GroupWord = u64;
 type GroupWord = u32;
 
 pub type BitMaskWord = GroupWord;
-pub const BITMASK_SHIFT: u32 = 3;
-pub const BITMASK_MASK: GroupWord = 0x8080808080808080u64 as GroupWord;
+pub const BITMASK_STRIDE: usize = 8;
+// We only care about the highest bit of each byte for the mask.
+pub const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080u64 as GroupWord;
 
 /// Helper function to replicate a byte across a `GroupWord`.
 #[inline]
@@ -36,6 +37,7 @@ fn repeat(byte: u8) -> GroupWord {
 /// parallel.
 ///
 /// This implementation uses a word-sized integer.
+#[derive(Copy, Clone)]
 pub struct Group(GroupWord);
 
 // We perform all operations in the native endianess, and convert to
@@ -52,16 +54,14 @@ impl Group {
     /// This is guaranteed to be aligned to the group size.
     #[inline]
     pub fn static_empty() -> &'static [u8] {
-        #[repr(C)]
-        struct Dummy {
-            _align: [GroupWord; 0],
+        union AlignedBytes {
+            _align: Group,
             bytes: [u8; Group::WIDTH],
         };
-        const DUMMY: Dummy = Dummy {
-            _align: [],
+        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
             bytes: [EMPTY; Group::WIDTH],
         };
-        &DUMMY.bytes
+        unsafe { &ALIGNED_BYTES.bytes }
     }
 
     /// Loads a group of bytes starting at the given address.
@@ -71,16 +71,18 @@ impl Group {
     }
 
     /// Loads a group of bytes starting at the given address, which must be
-    /// aligned to `WIDTH`.
+    /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     pub unsafe fn load_aligned(ptr: *const u8) -> Group {
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
         Group(ptr::read(ptr as *const _))
     }
 
     /// Stores the group of bytes to the given address, which must be
-    /// aligned to `WIDTH`.
+    /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     pub unsafe fn store_aligned(&self, ptr: *mut u8) {
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
         ptr::write(ptr as *mut _, self.0);
     }
 
@@ -106,13 +108,17 @@ impl Group {
     /// `EMPTY`.
     #[inline]
     pub fn match_empty(&self) -> BitMask {
+        // If the high bit is set, then the byte must be either:
+        // 1111_1111 (EMPTY) or 1000_0000 (DELETED).
+        // So we can just check if the top two bits are 1 by ANDing them.
         BitMask((self.0 & (self.0 << 1) & repeat(0x80)).to_le())
     }
 
     /// Returns a `BitMask` indicating all bytes in the group which are
-    /// `EMPTY` pr `DELETED`.
+    /// `EMPTY` or `DELETED`.
     #[inline]
     pub fn match_empty_or_deleted(&self) -> BitMask {
+        // A byte is EMPTY or DELETED iff the high bit is set
         BitMask((self.0 & repeat(0x80)).to_le())
     }
 
@@ -122,6 +128,13 @@ impl Group {
     /// - `FULL => DELETED`
     #[inline]
     pub fn convert_special_to_empty_and_full_to_deleted(&self) -> Group {
+        // Map high_bit = 1 (EMPTY or DELETED) to 1111_1111
+        // and high_bit = 0 (FULL) to 1000_0000
+        //
+        // Here's this logic expanded to concrete values:
+        //   let full = 1000_0000 (true) or 0000_0000 (false)
+        //   !1000_0000 + 1 = 0111_1111 + 1 = 1000_0000 (no carry)
+        //   !0000_0000 + 0 = 1111_1111 + 0 = 1111_1111 (no carry)
         let full = !self.0 & repeat(0x80);
         Group(!full + (full >> 7))
     }

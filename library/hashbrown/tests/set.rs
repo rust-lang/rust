@@ -2,7 +2,7 @@ extern crate hashbrown;
 extern crate rand;
 
 use hashbrown::HashSet;
-use rand::{Rng, SeedableRng, XorShiftRng};
+use rand::{distributions::Alphanumeric, Rng, SeedableRng, XorShiftRng};
 
 #[test]
 fn test_hashset_insert_remove() {
@@ -16,7 +16,7 @@ fn test_hashset_insert_remove() {
     let mut rng: XorShiftRng = SeedableRng::from_seed(seed);
     //let mut rng: XorShiftRng = XorShiftRng::new_unseeded();
     let tx: Vec<Vec<char>> = (0..4096)
-        .map(|_| (rng.gen_ascii_chars().take(32).collect()))
+        .map(|_| (rng.sample_iter(&Alphanumeric).take(32).collect()))
         .collect();
 
     for _ in 0..32 {

@@ -1,6 +1,6 @@
+use super::bitmask::BitMask;
+use super::EMPTY;
 use core::mem;
-use raw::bitmask::BitMask;
-use raw::EMPTY;
 
 #[cfg(target_arch = "x86")]
 use core::arch::x86;
@@ -8,13 +8,14 @@ use core::arch::x86;
 use core::arch::x86_64 as x86;
 
 pub type BitMaskWord = u16;
-pub const BITMASK_SHIFT: u32 = 0;
-pub const BITMASK_MASK: u16 = 0xffff;
+pub const BITMASK_STRIDE: usize = 1;
+pub const BITMASK_MASK: BitMaskWord = 0xffff;
 
 /// Abstraction over a group of control bytes which can be scanned in
 /// parallel.
 ///
 /// This implementation uses a 128-bit SSE value.
+#[derive(Copy, Clone)]
 pub struct Group(x86::__m128i);
 
 impl Group {
@@ -27,16 +28,14 @@ impl Group {
     /// This is guaranteed to be aligned to the group size.
     #[inline]
     pub fn static_empty() -> &'static [u8] {
-        #[repr(C)]
-        struct Dummy {
-            _align: [x86::__m128i; 0],
+        union AlignedBytes {
+            _align: Group,
             bytes: [u8; Group::WIDTH],
         };
-        const DUMMY: Dummy = Dummy {
-            _align: [],
+        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
             bytes: [EMPTY; Group::WIDTH],
         };
-        &DUMMY.bytes
+        unsafe { &ALIGNED_BYTES.bytes }
     }
 
     /// Loads a group of bytes starting at the given address.
@@ -46,16 +45,18 @@ impl Group {
     }
 
     /// Loads a group of bytes starting at the given address, which must be
-    /// aligned to `WIDTH`.
+    /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     pub unsafe fn load_aligned(ptr: *const u8) -> Group {
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
         Group(x86::_mm_load_si128(ptr as *const _))
     }
 
     /// Stores the group of bytes to the given address, which must be
-    /// aligned to `WIDTH`.
+    /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     pub unsafe fn store_aligned(&self, ptr: *mut u8) {
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
         x86::_mm_store_si128(ptr as *mut _, self.0);
     }
 
@@ -77,9 +78,10 @@ impl Group {
     }
 
     /// Returns a `BitMask` indicating all bytes in the group which are
-    /// `EMPTY` pr `DELETED`.
+    /// `EMPTY` or `DELETED`.
     #[inline]
     pub fn match_empty_or_deleted(&self) -> BitMask {
+        // A byte is EMPTY or DELETED iff the high bit is set
         unsafe { BitMask(x86::_mm_movemask_epi8(self.0) as u16) }
     }
 
@@ -89,6 +91,13 @@ impl Group {
     /// - `FULL => DELETED`
     #[inline]
     pub fn convert_special_to_empty_and_full_to_deleted(&self) -> Group {
+        // Map high_bit = 1 (EMPTY or DELETED) to 1111_1111
+        // and high_bit = 0 (FULL) to 1000_0000
+        //
+        // Here's this logic expanded to concrete values:
+        //   let special = 0 > byte = 1111_1111 (true) or 0000_0000 (false)
+        //   1111_1111 | 1000_0000 = 1111_1111
+        //   0000_0000 | 1000_0000 = 1000_0000
         unsafe {
             let zero = x86::_mm_setzero_si128();
             let special = x86::_mm_cmpgt_epi8(zero, self.0);

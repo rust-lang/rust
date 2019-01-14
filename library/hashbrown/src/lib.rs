@@ -18,10 +18,17 @@
         allocator_api,
         ptr_offset_from,
         test,
-        core_intrinsics
+        core_intrinsics,
+        dropck_eyepatch
     )
 )]
 #![warn(missing_docs)]
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+#[cfg(test)]
+extern crate rand;
 
 #[cfg(feature = "nightly")]
 #[cfg_attr(test, macro_use)]
@@ -73,3 +80,13 @@ pub mod hash_set {
 
 pub use map::HashMap;
 pub use set::HashSet;
+
+/// Augments `AllocErr` with a CapacityOverflow variant.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum CollectionAllocErr {
+    /// Error due to the computed capacity exceeding the collection's maximum
+    /// (usually `isize::MAX` bytes).
+    CapacityOverflow,
+    /// Error due to the allocator (see the `AllocErr` type's docs).
+    AllocErr,
+}
