@@ -370,6 +370,7 @@ impl<'a> fmt::Display for Html<'a> {
                         "pc" => "PC",
                         "rumprun" => "Rumprun",
                         "sun" => "Sun",
+                        "fortanix" => "Fortanix",
                         _ => ""
                     },
                     ("target_env", Some(env)) => match &*env.as_str() {
@@ -378,6 +379,7 @@ impl<'a> fmt::Display for Html<'a> {
                         "musl" => "musl",
                         "newlib" => "Newlib",
                         "uclibc" => "uClibc",
+                        "sgx" => "SGX",
                         _ => "",
                     },
                     ("target_endian", Some(endian)) => return write!(fmt, "{}-endian", endian),
