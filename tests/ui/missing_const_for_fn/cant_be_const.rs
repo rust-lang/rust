@@ -41,8 +41,13 @@ fn main() {
 
 trait Foo {
     // This should not be suggested to be made const
-    // (rustc restriction)
+    // (rustc doesn't allow const trait methods)
     fn f() -> u32;
+
+    // This should not be suggested to be made const either
+    fn g() -> u32 {
+        33
+    }
 }
 
 // Don't lint custom entrypoints either

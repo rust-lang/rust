@@ -82,26 +82,32 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         span: Span,
         node_id: NodeId
     ) {
+        // Perform some preliminary checks that rule out constness on the Clippy side. This way we
+        // can skip the actual const check and return early.
+        match kind {
+            FnKind::ItemFn(name, _generics, header, _vis, attrs) => {
+                if !can_be_const_fn(&name.as_str(), header, attrs) {
+                    return;
+                }
+            },
+            FnKind::Method(ident, sig, _vis, attrs) => {
+                let header = sig.header;
+                let name = ident.name.as_str();
+                if !can_be_const_fn(&name, header, attrs) {
+                    return;
+                }
+            },
+            _ => return
+        }
+
         let def_id = cx.tcx.hir().local_def_id(node_id);
         let mir = cx.tcx.optimized_mir(def_id);
-        if let Err((span, err) = is_min_const_fn(cx.tcx, def_id, &mir) {
-            cx.tcx.sess.span_err(span, &err);
-        } else {
-            match kind {
-                FnKind::ItemFn(name, _generics, header, _vis, attrs) => {
-                    if !can_be_const_fn(&name.as_str(), header, attrs) {
-                        return;
-                    }
-                },
-                FnKind::Method(ident, sig, _vis, attrs) => {
-                    let header = sig.header;
-                    let name = ident.name.as_str();
-                    if !can_be_const_fn(&name, header, attrs) {
-                        return;
-                    }
-                },
-                _ => return
+
+        if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id, &mir) {
+            if cx.tcx.is_min_const_fn(def_id) {
+                cx.tcx.sess.span_err(span, &err);
             }
+        } else {
             span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a const_fn");
         }
     }
