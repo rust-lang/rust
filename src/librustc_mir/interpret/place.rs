@@ -9,6 +9,7 @@ use rustc::hir;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
+use rustc::ty::TypeFoldable;
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
@@ -583,8 +584,8 @@ where
             }
 
             Static(ref static_) => {
-                let ty = self.monomorphize(static_.ty, self.substs());
-                let layout = self.layout_of(ty)?;
+                assert!(!static_.ty.needs_subst());
+                let layout = self.layout_of(static_.ty)?;
                 let instance = ty::Instance::mono(*self.tcx, static_.def_id);
                 let cid = GlobalId {
                     instance,

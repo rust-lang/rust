@@ -216,11 +216,21 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         self.frame().mir
     }
 
-    pub fn substs(&self) -> &'tcx Substs<'tcx> {
-        if let Some(frame) = self.stack.last() {
-            frame.instance.substs
-        } else {
-            Substs::empty()
+    pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+        &self,
+        substs: T,
+    ) -> EvalResult<'tcx, T> {
+        match self.stack.last() {
+            Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
+                frame.instance.substs,
+                self.param_env,
+                &substs,
+            )),
+            None => if substs.needs_subst() {
+                err!(TooGeneric).into()
+            } else {
+                Ok(substs)
+            },
         }
     }
 
@@ -230,13 +240,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         substs: &'tcx Substs<'tcx>
     ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
-        trace!("substs: {:#?}", self.substs());
         trace!("param_env: {:#?}", self.param_env);
-        let substs = self.tcx.subst_and_normalize_erasing_regions(
-            self.substs(),
-            self.param_env,
-            &substs,
-        );
+        let substs = self.subst_and_normalize_erasing_regions(substs)?;
+        trace!("substs: {:#?}", substs);
         ty::Instance::resolve(
             *self.tcx,
             self.param_env,
@@ -273,6 +279,20 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 )
             }
             _ => Ok(self.tcx.instance_mir(instance)),
+        }
+    }
+
+    pub fn monomorphize_in_frame<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+        &self,
+        t: T,
+    ) -> EvalResult<'tcx, T> {
+        match self.stack.last() {
+            Some(frame) => Ok(self.monomorphize(t, frame.instance.substs)),
+            None => if t.needs_subst() {
+                err!(TooGeneric).into()
+            } else {
+                Ok(t)
+            },
         }
     }
 
