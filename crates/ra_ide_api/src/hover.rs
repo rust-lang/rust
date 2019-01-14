@@ -1,7 +1,7 @@
 use ra_db::{Cancelable, SyntaxDatabase};
 use ra_syntax::{
     AstNode, SyntaxNode, TreeArc,
-    ast::{self, NameOwner},
+    ast::{self, NameOwner, VisibilityOwner},
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
@@ -140,42 +140,74 @@ impl NavigationTarget {
         // TODO: Refactor to be have less repetition
         visitor()
             .visit(|node: &ast::FnDef| {
-                let mut string = "fn ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("fn ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::StructDef| {
-                let mut string = "struct ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("struct ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::EnumDef| {
-                let mut string = "enum ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("enum ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::TraitDef| {
-                let mut string = "trait ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("trait ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::Module| {
-                let mut string = "mod ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("mod ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::TypeDef| {
-                let mut string = "type ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("type ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::ConstDef| {
-                let mut string = "const ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("const ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
             .visit(|node: &ast::StaticDef| {
-                let mut string = "static ".to_string();
+                let mut string = node
+                    .visibility()
+                    .map(|v| format!("{} ", v.syntax().text()))
+                    .unwrap_or_default();
+                string.push_str("static ");
                 node.name()?.syntax().text().push_to(&mut string);
                 Some(string)
             })
