@@ -48,7 +48,7 @@ mod diagnostics;
 /// Default type visitor (`TypeVisitor`) does most of the job, but it has some shortcomings.
 /// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait def-ids
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
-/// in `impl Trait`, see individual commits in `DefIdVisitorSkeleton::visit_ty`.
+/// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'a, 'tcx: 'a> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn shallow(&self) -> bool { false }
@@ -1579,9 +1579,14 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // No subitems.
             hir::ItemKind::GlobalAsm(..) => {}
             // Subitems of these items have inherited publicity.
-            hir::ItemKind::Const(..) | hir::ItemKind::Static(..) | hir::ItemKind::Fn(..) |
-            hir::ItemKind::Existential(..) | hir::ItemKind::Ty(..) => {
+            hir::ItemKind::Const(..) | hir::ItemKind::Static(..) |
+            hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
                 self.check(item.id, item_visibility).generics().predicates().ty();
+            }
+            hir::ItemKind::Existential(..) => {
+                // `ty()` for existential types is the underlying type,
+                // it's not a part of interface, so we skip it.
+                self.check(item.id, item_visibility).generics().predicates();
             }
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 self.check(item.id, item_visibility).generics().predicates();
