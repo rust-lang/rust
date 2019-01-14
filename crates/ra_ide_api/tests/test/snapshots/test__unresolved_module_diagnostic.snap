@@ -1,0 +1,26 @@
+Created: 2019-01-15T11:15:20.891129945+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/tests/test/main.rs
+
+[
+    Diagnostic {
+        message: "unresolved module",
+        range: [4; 7),
+        fix: Some(
+            SourceChange {
+                label: "create module",
+                source_file_edits: [],
+                file_system_edits: [
+                    CreateFile {
+                        source_root: SourceRootId(
+                            0
+                        ),
+                        path: "foo.rs"
+                    }
+                ],
+                cursor_position: None
+            }
+        ),
+        severity: Error
+    }
+]
