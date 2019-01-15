@@ -87,7 +87,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::input_module_items;
     }
 
-    fn item_map(source_root_id: SourceRootId) -> Cancelable<Arc<ItemMap>> {
+    fn item_map(source_root_id: SourceRootId) -> Arc<ItemMap> {
         type ItemMapQuery;
         use fn query_definitions::item_map;
     }

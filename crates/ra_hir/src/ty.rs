@@ -349,7 +349,7 @@ impl Ty {
         }
 
         // Resolve in module (in type namespace)
-        let resolved = if let Some(r) = module.resolve_path(db, path)?.take_types() {
+        let resolved = if let Some(r) = module.resolve_path(db, path).take_types() {
             r
         } else {
             return Ok(Ty::Unknown);
@@ -860,7 +860,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let resolved = ctry!(self.module.resolve_path(self.db, &path)?.take_values());
+        let resolved = ctry!(self.module.resolve_path(self.db, &path).take_values());
         let ty = self.db.type_for_def(resolved)?;
         let ty = self.insert_type_vars(ty);
         Ok(Some(ty))
@@ -872,7 +872,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         } else {
             return Ok((Ty::Unknown, None));
         };
-        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path)?.take_types() {
+        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path).take_types() {
             def_id
         } else {
             return Ok((Ty::Unknown, None));

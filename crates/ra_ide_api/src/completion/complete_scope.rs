@@ -19,7 +19,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
         complete_fn(acc, &scopes, ctx.offset);
     }
 
-    let module_scope = module.scope(ctx.db)?;
+    let module_scope = module.scope(ctx.db);
     let (file_id, _) = module.definition_source(ctx.db);
     module_scope
         .entries()

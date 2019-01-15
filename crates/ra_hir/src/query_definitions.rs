@@ -8,7 +8,7 @@ use ra_syntax::{
     AstNode, SyntaxNode, TreeArc,
     ast::{self, ModuleItemOwner}
 };
-use ra_db::{SourceRootId, Cancelable,};
+use ra_db::SourceRootId;
 
 use crate::{
     SourceFileItems, SourceItemId, DefId, HirFileId, ModuleSource,
@@ -93,10 +93,7 @@ pub(super) fn input_module_items(
     Arc::new(res)
 }
 
-pub(super) fn item_map(
-    db: &impl HirDatabase,
-    source_root: SourceRootId,
-) -> Cancelable<Arc<ItemMap>> {
+pub(super) fn item_map(db: &impl HirDatabase, source_root: SourceRootId) -> Arc<ItemMap> {
     let start = Instant::now();
     let module_tree = db.module_tree(source_root);
     let input = module_tree
@@ -105,8 +102,8 @@ pub(super) fn item_map(
         .collect::<FxHashMap<_, _>>();
 
     let resolver = Resolver::new(db, &input, source_root, module_tree);
-    let res = resolver.resolve()?;
+    let res = resolver.resolve();
     let elapsed = start.elapsed();
     log::info!("item_map: {:?}", elapsed);
-    Ok(Arc::new(res))
+    Arc::new(res)
 }

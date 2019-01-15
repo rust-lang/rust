@@ -85,7 +85,7 @@ pub(crate) fn reference_definition(
             .find_map(ast::Path::cast)
             .and_then(hir::Path::from_ast)
         {
-            let resolved = module.resolve_path(db, &path)?;
+            let resolved = module.resolve_path(db, &path);
             if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
                 if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)) {
                     return Ok(Exact(target));
