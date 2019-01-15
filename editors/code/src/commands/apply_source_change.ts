@@ -46,6 +46,9 @@ export async function handle(change: SourceChange) {
             return;
         }
         editor.selection = new vscode.Selection(position, position);
-        editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.Default);
+        editor.revealRange(
+            new vscode.Range(position, position),
+            vscode.TextEditorRevealType.Default
+        );
     }
 }
