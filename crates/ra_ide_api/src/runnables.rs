@@ -80,11 +80,9 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Opt
     // FIXME: thread cancellation instead of `.ok`ing
     let path = module
         .path_to_root(db)
-        .ok()?
         .into_iter()
         .rev()
-        .filter_map(|it| it.name(db).ok())
-        .filter_map(|it| it)
+        .filter_map(|it| it.name(db))
         .join("::");
     Some(Runnable {
         range,

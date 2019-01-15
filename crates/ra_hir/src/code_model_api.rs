@@ -33,10 +33,10 @@ impl Crate {
     pub fn crate_id(&self) -> CrateId {
         self.crate_id
     }
-    pub fn dependencies(&self, db: &impl HirDatabase) -> Cancelable<Vec<CrateDependency>> {
-        Ok(self.dependencies_impl(db))
+    pub fn dependencies(&self, db: &impl HirDatabase) -> Vec<CrateDependency> {
+        self.dependencies_impl(db)
     }
-    pub fn root_module(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+    pub fn root_module(&self, db: &impl HirDatabase) -> Option<Module> {
         self.root_module_impl(db)
     }
 }
@@ -78,12 +78,12 @@ pub enum Problem {
 
 impl Module {
     /// Name of this module.
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
         self.name_impl(db)
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, ModuleSource)> {
+    pub fn definition_source(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
         self.definition_source_impl(db)
     }
 
@@ -92,19 +92,19 @@ impl Module {
     pub fn declaration_source(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
+    ) -> Option<(FileId, TreeArc<ast::Module>)> {
         self.declaration_source_impl(db)
     }
 
     /// Returns the crate this module is part of.
-    pub fn krate(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
+    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
         self.krate_impl(db)
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in Cargo.toml.
-    pub fn crate_root(&self, db: &impl HirDatabase) -> Cancelable<Module> {
+    pub fn crate_root(&self, db: &impl HirDatabase) -> Module {
         self.crate_root_impl(db)
     }
 
@@ -114,23 +114,23 @@ impl Module {
     }
 
     /// Iterates over all child modules.
-    pub fn children(&self, db: &impl HirDatabase) -> Cancelable<impl Iterator<Item = Module>> {
+    pub fn children(&self, db: &impl HirDatabase) -> impl Iterator<Item = Module> {
         self.children_impl(db)
     }
 
     /// Finds a parent module.
-    pub fn parent(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+    pub fn parent(&self, db: &impl HirDatabase) -> Option<Module> {
         self.parent_impl(db)
     }
 
-    pub fn path_to_root(&self, db: &impl HirDatabase) -> Cancelable<Vec<Module>> {
+    pub fn path_to_root(&self, db: &impl HirDatabase) -> Vec<Module> {
         let mut res = vec![self.clone()];
         let mut curr = self.clone();
-        while let Some(next) = curr.parent(db)? {
+        while let Some(next) = curr.parent(db) {
             res.push(next.clone());
             curr = next
         }
-        Ok(res)
+        res
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.

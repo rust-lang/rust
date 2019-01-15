@@ -73,9 +73,9 @@ impl NavigationTarget {
         db: &RootDatabase,
         module: hir::Module,
     ) -> Cancelable<NavigationTarget> {
-        let (file_id, source) = module.definition_source(db)?;
+        let (file_id, source) = module.definition_source(db);
         let name = module
-            .name(db)?
+            .name(db)
             .map(|it| it.to_string().into())
             .unwrap_or_default();
         let res = match source {
@@ -94,10 +94,10 @@ impl NavigationTarget {
         module: hir::Module,
     ) -> Cancelable<NavigationTarget> {
         let name = module
-            .name(db)?
+            .name(db)
             .map(|it| it.to_string().into())
             .unwrap_or_default();
-        if let Some((file_id, source)) = module.declaration_source(db)? {
+        if let Some((file_id, source)) = module.declaration_source(db) {
             return Ok(NavigationTarget::from_syntax(
                 file_id,
                 name,

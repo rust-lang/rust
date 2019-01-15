@@ -217,7 +217,7 @@ impl DefId {
 
     /// Returns the containing crate.
     pub fn krate(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
-        Ok(self.module(db)?.krate(db)?)
+        Ok(self.module(db)?.krate(db))
     }
 
     /// Returns the containing impl block, if this is an impl item.

@@ -30,17 +30,14 @@ impl Module {
         Module::new(def_id)
     }
 
-    pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+    pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Option<Name> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        let link = ctry!(loc.module_id.parent_link(&module_tree));
-        Ok(Some(link.name(&module_tree).clone()))
+        let link = loc.module_id.parent_link(&module_tree)?;
+        Some(link.name(&module_tree).clone())
     }
 
-    pub fn definition_source_impl(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<(FileId, ModuleSource)> {
+    pub fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
         let loc = self.def_id.loc(db);
         let file_id = loc.source_item_id.file_id.as_original_file();
         let syntax_node = db.file_item(loc.source_item_id);
@@ -50,40 +47,40 @@ impl Module {
             let module = ast::Module::cast(&syntax_node).unwrap();
             ModuleSource::Module(module.to_owned())
         };
-        Ok((file_id, module_source))
+        (file_id, module_source)
     }
 
     pub fn declaration_source_impl(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
+    ) -> Option<(FileId, TreeArc<ast::Module>)> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        let link = ctry!(loc.module_id.parent_link(&module_tree));
+        let link = loc.module_id.parent_link(&module_tree)?;
         let file_id = link
             .owner(&module_tree)
             .source(&module_tree)
             .file_id
             .as_original_file();
         let src = link.source(&module_tree, db);
-        Ok(Some((file_id, src)))
+        Some((file_id, src))
     }
 
-    pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
-        let root = self.crate_root(db)?;
+    pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Option<Crate> {
+        let root = self.crate_root(db);
         let loc = root.def_id.loc(db);
         let file_id = loc.source_item_id.file_id.as_original_file();
 
         let crate_graph = db.crate_graph();
-        let crate_id = ctry!(crate_graph.crate_id_for_crate_root(file_id));
-        Ok(Some(Crate::new(crate_id)))
+        let crate_id = crate_graph.crate_id_for_crate_root(file_id)?;
+        Some(Crate::new(crate_id))
     }
 
-    pub(crate) fn crate_root_impl(&self, db: &impl HirDatabase) -> Cancelable<Module> {
+    pub(crate) fn crate_root_impl(&self, db: &impl HirDatabase) -> Module {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
         let module_id = loc.module_id.crate_root(&module_tree);
-        Ok(Module::from_module_id(db, loc.source_root_id, module_id))
+        Module::from_module_id(db, loc.source_root_id, module_id)
     }
 
     /// Finds a child module with the specified name.
@@ -95,7 +92,7 @@ impl Module {
     }
 
     /// Iterates over all child modules.
-    pub fn children_impl(&self, db: &impl HirDatabase) -> Cancelable<impl Iterator<Item = Module>> {
+    pub fn children_impl(&self, db: &impl HirDatabase) -> impl Iterator<Item = Module> {
         // FIXME this should be implementable without collecting into a vec, but
         // it's kind of hard since the iterator needs to keep a reference to the
         // module tree.
@@ -106,18 +103,14 @@ impl Module {
             .children(&module_tree)
             .map(|(_, module_id)| Module::from_module_id(db, loc.source_root_id, module_id))
             .collect::<Vec<_>>();
-        Ok(children.into_iter())
+        children.into_iter()
     }
 
-    pub fn parent_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+    pub fn parent_impl(&self, db: &impl HirDatabase) -> Option<Module> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        let parent_id = ctry!(loc.module_id.parent(&module_tree));
-        Ok(Some(Module::from_module_id(
-            db,
-            loc.source_root_id,
-            parent_id,
-        )))
+        let parent_id = loc.module_id.parent(&module_tree)?;
+        Some(Module::from_module_id(db, loc.source_root_id, parent_id))
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
@@ -135,10 +128,10 @@ impl Module {
     ) -> Cancelable<PerNs<DefId>> {
         let mut curr_per_ns = PerNs::types(
             match path.kind {
-                PathKind::Crate => self.crate_root(db)?,
+                PathKind::Crate => self.crate_root(db),
                 PathKind::Self_ | PathKind::Plain => self.clone(),
                 PathKind::Super => {
-                    if let Some(p) = self.parent(db)? {
+                    if let Some(p) = self.parent(db) {
                         p
                     } else {
                         return Ok(PerNs::none());
