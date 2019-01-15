@@ -21,11 +21,23 @@ pub use crate::{
 };
 
 pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
-    fn check_canceled(&self) -> Cancelable<()> {
+    /// Aborts current query if there are pending changes.
+    ///
+    /// rust-analyzer needs to be able to answer semantic questions about the
+    /// code while the code is being modified. A common problem is that a
+    /// long-running query is being calculated when a new change arrives.
+    ///
+    /// We can't just apply the change immediately: this will cause the pending
+    /// query to see inconsistent state (it will observe an absence of
+    /// repeatable read). So what we do is we **cancel** all pending queries
+    /// before applying the change.
+    ///
+    /// We implement cancellation by panicking with a special value and catching
+    /// it on the API boundary. Salsa explicitly supports this use-case.
+    fn check_canceled(&self) {
         if self.salsa_runtime().is_current_revision_canceled() {
             Canceled::throw()
         }
-        Ok(())
     }
 
     fn catch_canceled<F: FnOnce(&Self) -> T + panic::UnwindSafe, T>(
