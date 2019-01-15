@@ -11,3 +11,4 @@ mod iter;
 mod num;
 mod ops;
 mod slice;
+mod fmt;

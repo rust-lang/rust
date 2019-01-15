@@ -493,7 +493,10 @@ impl<'a, 'b> Context<'a, 'b> {
 
                 let fill = arg.format.fill.unwrap_or(' ');
 
-                if *arg != simple_arg || fill != ' ' {
+                let pos_simple =
+                    arg.position.index() == simple_arg.position.index();
+
+                if !pos_simple || arg.format != simple_arg.format || fill != ' ' {
                     self.all_pieces_simple = false;
                 }
 
