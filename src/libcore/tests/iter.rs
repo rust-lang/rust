@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::iter::*;
 use core::{i8, i16, isize};
 use core::usize;
@@ -1904,6 +1905,23 @@ fn test_once() {
     let mut it = once(42);
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_once_with() {
+    let count = Cell::new(0);
+    let mut it = once_with(|| {
+        count.set(count.get() + 1);
+        42
+    });
+
+    assert_eq!(count.get(), 0);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(count.get(), 1);
+    assert_eq!(it.next(), None);
+    assert_eq!(count.get(), 1);
+    assert_eq!(it.next(), None);
+    assert_eq!(count.get(), 1);
 }
 
 #[test]
