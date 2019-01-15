@@ -92,7 +92,7 @@ pub fn module_from_child_node(
 
 fn module_from_source(db: &impl HirDatabase, source: SourceItemId) -> Cancelable<Option<Module>> {
     let source_root_id = db.file_source_root(source.file_id.as_original_file());
-    let module_tree = db.module_tree(source_root_id)?;
+    let module_tree = db.module_tree(source_root_id);
     let module_id = ctry!(module_tree.find_module_by_source(source));
     Ok(Some(Module::from_module_id(db, source_root_id, module_id)?))
 }

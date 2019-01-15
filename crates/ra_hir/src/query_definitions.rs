@@ -48,7 +48,7 @@ pub(super) fn input_module_items(
     source_root_id: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<InputModuleItems>> {
-    let module_tree = db.module_tree(source_root_id)?;
+    let module_tree = db.module_tree(source_root_id);
     let source = module_id.source(&module_tree);
     let file_id = source.file_id;
     let source = ModuleSource::from_source_item_id(db, source);
@@ -98,7 +98,7 @@ pub(super) fn item_map(
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ItemMap>> {
     let start = Instant::now();
-    let module_tree = db.module_tree(source_root)?;
+    let module_tree = db.module_tree(source_root);
     let input = module_tree
         .modules()
         .map(|id| {
