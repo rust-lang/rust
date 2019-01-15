@@ -182,7 +182,7 @@ pub enum Expr {
     },
     UnaryOp {
         expr: ExprId,
-        op: Option<UnaryOp>,
+        op: UnaryOp,
     },
     BinaryOp {
         lhs: ExprId,
@@ -612,8 +612,11 @@ impl ExprCollector {
             }
             ast::ExprKind::PrefixExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let op = e.op();
-                self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr)
+                if let Some(op) = e.op() {
+                    self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr)
+                } else {
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
+                }
             }
             ast::ExprKind::LambdaExpr(e) => {
                 let mut args = Vec::new();

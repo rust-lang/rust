@@ -159,6 +159,29 @@ fn test() {
 }
 
 #[test]
+fn infer_unary_op() {
+    check_inference(
+        r#"
+enum SomeType {}
+
+fn test(x: SomeType) {
+    let b = false;
+    let c = !b;
+    let a = 100;
+    let d: i128 = -a;
+    let e = -100;
+    let f = !!!true;
+    -3.14;
+    -x;
+    !x;
+    -"hello";
+}
+"#,
+        "unary_op.txt",
+    );
+}
+
+#[test]
 fn infer_backwards() {
     check_inference(
         r#"
