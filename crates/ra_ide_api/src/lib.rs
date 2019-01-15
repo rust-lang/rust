@@ -58,8 +58,10 @@ pub use ra_ide_api_light::{
     LineIndex, LineCol, translate_offset_with_edit,
 };
 pub use ra_db::{
-    Cancelable, Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
+    Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
 };
+
+pub type Cancelable<T> = Result<T, Canceled>;
 
 #[derive(Default)]
 pub struct AnalysisChange {
@@ -393,7 +395,7 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.db
-            .catch_canceled(|db| goto_definition::goto_definition(db, position))?
+            .catch_canceled(|db| goto_definition::goto_definition(db, position))
     }
 
     /// Finds all usages of the reference at point.
@@ -403,18 +405,18 @@ impl Analysis {
 
     /// Returns a short text descrbing element at position.
     pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
-        self.with_db(|db| hover::hover(db, position))?
+        self.with_db(|db| hover::hover(db, position))
     }
 
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
         self.db
-            .catch_canceled(|db| call_info::call_info(db, position))?
+            .catch_canceled(|db| call_info::call_info(db, position))
     }
 
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        self.with_db(|db| parent_module::parent_module(db, position))?
+        self.with_db(|db| parent_module::parent_module(db, position))
     }
 
     /// Returns crates this file belongs too.
@@ -430,7 +432,7 @@ impl Analysis {
     /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
         self.db
-            .catch_canceled(|db| runnables::runnables(db, file_id))?
+            .catch_canceled(|db| runnables::runnables(db, file_id))
     }
 
     /// Computes syntax highlighting for the given file.
@@ -460,7 +462,7 @@ impl Analysis {
 
     /// Computes the type of the expression at the given position.
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        self.with_db(|db| hover::type_of(db, frange))?
+        self.with_db(|db| hover::type_of(db, frange))
     }
 
     /// Returns the edit required to rename reference at the position to the new

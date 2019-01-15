@@ -21,8 +21,6 @@ pub struct Canceled {
     _private: (),
 }
 
-pub type Cancelable<T> = Result<T, Canceled>;
-
 impl Canceled {
     pub(crate) fn new() -> Canceled {
         Canceled { _private: () }

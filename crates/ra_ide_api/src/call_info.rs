@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-use ra_db::{SyntaxDatabase, Cancelable};
+use ra_db::SyntaxDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TextUnit, TextRange,
     SyntaxKind::FN_DEF,
@@ -11,21 +11,23 @@ use ra_syntax::{
 use crate::{FilePosition, CallInfo, db::RootDatabase};
 
 /// Computes parameter information for the given call expression.
-pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable<Option<CallInfo>> {
+pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
     let file = db.source_file(position.file_id);
     let syntax = file.syntax();
 
     // Find the calling expression and it's NameRef
-    let calling_node = ctry!(FnCallNode::with_node(syntax, position.offset));
-    let name_ref = ctry!(calling_node.name_ref());
+    let calling_node = FnCallNode::with_node(syntax, position.offset)?;
+    let name_ref = calling_node.name_ref()?;
 
     // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
     let file_symbols = db.index_resolve(name_ref);
-    let symbol = ctry!(file_symbols.into_iter().find(|it| it.ptr.kind() == FN_DEF));
+    let symbol = file_symbols
+        .into_iter()
+        .find(|it| it.ptr.kind() == FN_DEF)?;
     let fn_file = db.source_file(symbol.file_id);
     let fn_def = symbol.ptr.resolve(&fn_file);
     let fn_def = ast::FnDef::cast(&fn_def).unwrap();
-    let mut call_info = ctry!(CallInfo::new(fn_def));
+    let mut call_info = CallInfo::new(fn_def)?;
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters.len();
     let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
@@ -61,7 +63,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable
         }
     }
 
-    Ok(Some(call_info))
+    Some(call_info)
 }
 
 enum FnCallNode<'a> {
