@@ -110,14 +110,11 @@ impl db::RootDatabase {
         };
         vec![krate.crate_id()]
     }
-    pub(crate) fn find_all_refs(
-        &self,
-        position: FilePosition,
-    ) -> Cancelable<Vec<(FileId, TextRange)>> {
+    pub(crate) fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
         let file = self.source_file(position.file_id);
         // Find the binding associated with the offset
-        let (binding, descr) = match find_binding(self, &file, position)? {
-            None => return Ok(Vec::new()),
+        let (binding, descr) = match find_binding(self, &file, position) {
+            None => return Vec::new(),
             Some(it) => it,
         };
 
@@ -134,36 +131,30 @@ impl db::RootDatabase {
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
         );
 
-        return Ok(ret);
+        return ret;
 
         fn find_binding<'a>(
             db: &db::RootDatabase,
             source_file: &'a SourceFile,
             position: FilePosition,
-        ) -> Cancelable<Option<(&'a ast::BindPat, hir::Function)>> {
+        ) -> Option<(&'a ast::BindPat, hir::Function)> {
             let syntax = source_file.syntax();
             if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
-                let descr = ctry!(source_binder::function_from_child_node(
+                let descr = source_binder::function_from_child_node(
                     db,
                     position.file_id,
                     binding.syntax(),
-                ));
-                return Ok(Some((binding, descr)));
+                )?;
+                return Some((binding, descr));
             };
-            let name_ref = ctry!(find_node_at_offset::<ast::NameRef>(syntax, position.offset));
-            let descr = ctry!(source_binder::function_from_child_node(
-                db,
-                position.file_id,
-                name_ref.syntax(),
-            ));
+            let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+            let descr =
+                source_binder::function_from_child_node(db, position.file_id, name_ref.syntax())?;
             let scope = descr.scopes(db);
-            let resolved = ctry!(scope.resolve_local_name(name_ref));
+            let resolved = scope.resolve_local_name(name_ref)?;
             let resolved = resolved.ptr().resolve(source_file);
-            let binding = ctry!(find_node_at_offset::<ast::BindPat>(
-                syntax,
-                resolved.range().end()
-            ));
-            Ok(Some((binding, descr)))
+            let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
+            Some((binding, descr))
         }
     }
 
@@ -180,7 +171,7 @@ impl db::RootDatabase {
             })
             .collect::<Vec<_>>();
         if let Some(m) = source_binder::module_from_file_id(self, file_id) {
-            for (name_node, problem) in m.problems(self)? {
+            for (name_node, problem) in m.problems(self) {
                 let source_root = self.file_source_root(file_id);
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
@@ -239,13 +230,8 @@ impl db::RootDatabase {
             .collect()
     }
 
-    pub(crate) fn rename(
-        &self,
-        position: FilePosition,
-        new_name: &str,
-    ) -> Cancelable<Vec<SourceFileEdit>> {
-        let res = self
-            .find_all_refs(position)?
+    pub(crate) fn rename(&self, position: FilePosition, new_name: &str) -> Vec<SourceFileEdit> {
+        self.find_all_refs(position)
             .iter()
             .map(|(file_id, text_range)| SourceFileEdit {
                 file_id: *file_id,
@@ -255,8 +241,7 @@ impl db::RootDatabase {
                     builder.finish()
                 },
             })
-            .collect::<Vec<_>>();
-        Ok(res)
+            .collect::<Vec<_>>()
     }
     pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
         let name = name_ref.text();

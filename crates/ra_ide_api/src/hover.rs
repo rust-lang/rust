@@ -1,4 +1,4 @@
-use ra_db::{Cancelable, SyntaxDatabase};
+use ra_db::{SyntaxDatabase};
 use ra_syntax::{
     AstNode, SyntaxNode, TreeArc,
     ast::self,
@@ -7,19 +7,16 @@ use ra_syntax::{
 
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};
 
-pub(crate) fn hover(
-    db: &RootDatabase,
-    position: FilePosition,
-) -> Cancelable<Option<RangeInfo<String>>> {
+pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<String>> {
     let file = db.source_file(position.file_id);
     let mut res = Vec::new();
 
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         use crate::goto_definition::{ReferenceResult::*, reference_definition};
-        let ref_result = reference_definition(db, position.file_id, name_ref)?;
+        let ref_result = reference_definition(db, position.file_id, name_ref);
         match ref_result {
-            Exact(nav) => res.extend(doc_text_for(db, nav)?),
+            Exact(nav) => res.extend(doc_text_for(db, nav)),
             Approximate(navs) => {
                 let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.");
                 if !navs.is_empty() {
@@ -27,7 +24,7 @@ pub(crate) fn hover(
                 }
                 res.push(msg);
                 for nav in navs {
-                    res.extend(doc_text_for(db, nav)?)
+                    res.extend(doc_text_for(db, nav))
                 }
             }
         }
@@ -39,25 +36,24 @@ pub(crate) fn hover(
         let node = find_leaf_at_offset(file.syntax(), position.offset).find_map(|leaf| {
             leaf.ancestors()
                 .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
-        });
-        let node = ctry!(node);
+        })?;
         let frange = FileRange {
             file_id: position.file_id,
             range: node.range(),
         };
-        res.extend(type_of(db, frange)?.map(Into::into));
+        res.extend(type_of(db, frange).map(Into::into));
         range = Some(node.range());
     };
 
-    let range = ctry!(range);
+    let range = range?;
     if res.is_empty() {
-        return Ok(None);
+        return None;
     }
     let res = RangeInfo::new(range, res.join("\n\n---\n"));
-    Ok(Some(res))
+    Some(res)
 }
 
-pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Cancelable<Option<String>> {
+pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     let file = db.source_file(frange.file_id);
     let syntax = file.syntax();
     let leaf_node = find_covering_node(syntax, frange.range);
@@ -67,34 +63,28 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Cancelable<Option
         .take_while(|it| it.range() == leaf_node.range())
         .find(|&it| ast::Expr::cast(it).is_some() || ast::Pat::cast(it).is_some())
         .unwrap_or(leaf_node);
-    let parent_fn = ctry!(node.ancestors().find_map(ast::FnDef::cast));
-    let function = ctry!(hir::source_binder::function_from_source(
-        db,
-        frange.file_id,
-        parent_fn
-    ));
-    let infer = function.infer(db)?;
+    let parent_fn = node.ancestors().find_map(ast::FnDef::cast)?;
+    let function = hir::source_binder::function_from_source(db, frange.file_id, parent_fn)?;
+    let infer = function.infer(db);
     let syntax_mapping = function.body_syntax_mapping(db);
     if let Some(expr) = ast::Expr::cast(node).and_then(|e| syntax_mapping.node_expr(e)) {
-        Ok(Some(infer[expr].to_string()))
+        Some(infer[expr].to_string())
     } else if let Some(pat) = ast::Pat::cast(node).and_then(|p| syntax_mapping.node_pat(p)) {
-        Ok(Some(infer[pat].to_string()))
+        Some(infer[pat].to_string())
     } else {
-        Ok(None)
+        None
     }
 }
 
 // FIXME: this should not really use navigation target. Rather, approximatelly
 // resovled symbol should return a `DefId`.
-fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Cancelable<Option<String>> {
-    let result = match (nav.description(db), nav.docs(db)) {
+fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Option<String> {
+    match (nav.description(db), nav.docs(db)) {
         (Some(desc), Some(docs)) => Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs),
         (Some(desc), None) => Some("```rust\n".to_string() + &*desc + "\n```"),
         (None, Some(docs)) => Some(docs),
         _ => None,
-    };
-
-    Ok(result)
+    }
 }
 
 impl NavigationTarget {

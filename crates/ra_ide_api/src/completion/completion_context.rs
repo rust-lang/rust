@@ -7,7 +7,7 @@ use ra_syntax::{
 };
 use hir::source_binder;
 
-use crate::{db, FilePosition, Cancelable};
+use crate::{db, FilePosition};
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
@@ -41,10 +41,9 @@ impl<'a> CompletionContext<'a> {
         db: &'a db::RootDatabase,
         original_file: &'a SourceFile,
         position: FilePosition,
-    ) -> Cancelable<Option<CompletionContext<'a>>> {
+    ) -> Option<CompletionContext<'a>> {
         let module = source_binder::module_from_position(db, position);
-        let leaf =
-            ctry!(find_leaf_at_offset(original_file.syntax(), position.offset).left_biased());
+        let leaf = find_leaf_at_offset(original_file.syntax(), position.offset).left_biased()?;
         let mut ctx = CompletionContext {
             db,
             leaf,
@@ -63,7 +62,7 @@ impl<'a> CompletionContext<'a> {
             is_call: false,
         };
         ctx.fill(original_file, position.offset);
-        Ok(Some(ctx))
+        Some(ctx)
     }
 
     fn fill(&mut self, original_file: &'a SourceFile, offset: TextUnit) {

@@ -1,29 +1,27 @@
 use hir::{Ty, Def};
 
-use crate::Cancelable;
 use crate::completion::{CompletionContext, Completions, CompletionKind, CompletionItem, CompletionItemKind};
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
-pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
+pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     let (function, receiver) = match (&ctx.function, ctx.dot_receiver) {
         (Some(function), Some(receiver)) => (function, receiver),
-        _ => return Ok(()),
+        _ => return,
     };
-    let infer_result = function.infer(ctx.db)?;
+    let infer_result = function.infer(ctx.db);
     let syntax_mapping = function.body_syntax_mapping(ctx.db);
     let expr = match syntax_mapping.node_expr(receiver) {
         Some(expr) => expr,
-        None => return Ok(()),
+        None => return,
     };
     let receiver_ty = infer_result[expr].clone();
     if !ctx.is_call {
-        complete_fields(acc, ctx, receiver_ty.clone())?;
+        complete_fields(acc, ctx, receiver_ty.clone());
     }
-    complete_methods(acc, ctx, receiver_ty)?;
-    Ok(())
+    complete_methods(acc, ctx, receiver_ty);
 }
 
-fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) -> Cancelable<()> {
+fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     for receiver in receiver.autoderef(ctx.db) {
         match receiver {
             Ty::Adt { def_id, .. } => {
@@ -35,7 +33,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                                 field.name().to_string(),
                             )
                             .kind(CompletionItemKind::Field)
-                            .set_detail(field.ty(ctx.db)?.map(|ty| ty.to_string()))
+                            .set_detail(field.ty(ctx.db).map(|ty| ty.to_string()))
                             .add_to(acc);
                         }
                     }
@@ -53,14 +51,9 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             _ => {}
         };
     }
-    Ok(())
 }
 
-fn complete_methods(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    receiver: Ty,
-) -> Cancelable<()> {
+fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     receiver.iterate_methods(ctx.db, |func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
@@ -69,9 +62,8 @@ fn complete_methods(
                 .kind(CompletionItemKind::Method)
                 .add_to(acc);
         }
-        Ok(None::<()>)
-    })?;
-    Ok(())
+        None::<()>
+    });
 }
 
 #[cfg(test)]

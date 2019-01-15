@@ -1,4 +1,4 @@
-use ra_db::{Cancelable, SourceRootId, FileId};
+use ra_db::{SourceRootId, FileId};
 use ra_syntax::{ast, SyntaxNode, AstNode, TreeArc};
 
 use crate::{
@@ -176,12 +176,9 @@ impl Module {
         curr_per_ns
     }
 
-    pub fn problems_impl(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<Vec<(TreeArc<SyntaxNode>, Problem)>> {
+    pub fn problems_impl(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        Ok(loc.module_id.problems(&module_tree, db))
+        loc.module_id.problems(&module_tree, db)
     }
 }

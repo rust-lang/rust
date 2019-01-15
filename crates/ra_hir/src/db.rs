@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
-use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
+use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase};
 
 use crate::{
     DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
@@ -52,17 +52,17 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::adt::EnumVariantData::enum_variant_data_query;
     }
 
-    fn infer(def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
+    fn infer(def_id: DefId) -> Arc<InferenceResult> {
         type InferQuery;
         use fn crate::ty::infer;
     }
 
-    fn type_for_def(def_id: DefId) -> Cancelable<Ty> {
+    fn type_for_def(def_id: DefId) -> Ty {
         type TypeForDefQuery;
         use fn crate::ty::type_for_def;
     }
 
-    fn type_for_field(def_id: DefId, field: Name) -> Cancelable<Option<Ty>> {
+    fn type_for_field(def_id: DefId, field: Name) -> Option<Ty> {
         type TypeForFieldQuery;
         use fn crate::ty::type_for_field;
     }
@@ -102,7 +102,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::impl_block::impls_in_module;
     }
 
-    fn impls_in_crate(krate: Crate) -> Cancelable<Arc<CrateImplBlocks>> {
+    fn impls_in_crate(krate: Crate) -> Arc<CrateImplBlocks> {
         type ImplsInCrateQuery;
         use fn crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query;
     }

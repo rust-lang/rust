@@ -3,7 +3,7 @@ use ra_syntax::{
     TextRange, SyntaxNode,
     ast::{self, AstNode, NameOwner, ModuleItemOwner},
 };
-use ra_db::{Cancelable, SyntaxDatabase};
+use ra_db::SyntaxDatabase;
 
 use crate::{db::RootDatabase, FileId};
 
@@ -21,14 +21,13 @@ pub enum RunnableKind {
     Bin,
 }
 
-pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Runnable>> {
+pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let source_file = db.source_file(file_id);
-    let res = source_file
+    source_file
         .syntax()
         .descendants()
         .filter_map(|i| runnable(db, file_id, i))
-        .collect();
-    Ok(res)
+        .collect()
 }
 
 fn runnable(db: &RootDatabase, file_id: FileId, item: &SyntaxNode) -> Option<Runnable> {

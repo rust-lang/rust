@@ -1,19 +1,16 @@
-use ra_db::{Cancelable, FilePosition};
+use ra_db::FilePosition;
 
 use crate::{NavigationTarget, db::RootDatabase};
 
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.
-pub(crate) fn parent_module(
-    db: &RootDatabase,
-    position: FilePosition,
-) -> Cancelable<Vec<NavigationTarget>> {
+pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
     let module = match hir::source_binder::module_from_position(db, position) {
-        None => return Ok(Vec::new()),
+        None => return Vec::new(),
         Some(it) => it,
     };
     let nav = NavigationTarget::from_module_to_decl(db, module);
-    Ok(vec![nav])
+    vec![nav]
 }
 
 #[cfg(test)]

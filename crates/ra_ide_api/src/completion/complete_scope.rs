@@ -1,18 +1,15 @@
 use rustc_hash::FxHashSet;
 use ra_syntax::TextUnit;
 
-use crate::{
-    Cancelable,
-    completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
-};
+use crate::completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext};
 
-pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
+pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
-        return Ok(());
+        return;
     }
     let module = match &ctx.module {
         Some(it) => it,
-        None => return Ok(()),
+        None => return,
     };
     if let Some(function) = &ctx.function {
         let scopes = function.scopes(ctx.db);
@@ -40,7 +37,6 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
                 .from_resolution(ctx, res)
                 .add_to(acc)
         });
-    Ok(())
 }
 
 fn complete_fn(acc: &mut Completions, scopes: &hir::ScopesWithSyntaxMapping, offset: TextUnit) {

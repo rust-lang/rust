@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use ra_db::Cancelable;
 use ra_syntax::{
     SyntaxNode,
     ast::{self, NameOwner, StructFlavor, AstNode}
@@ -18,8 +17,8 @@ impl Struct {
         Struct { def_id }
     }
 
-    pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.struct_data(self.def_id).variant_data.clone())
+    pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
+        db.struct_data(self.def_id).variant_data.clone()
     }
 }
 

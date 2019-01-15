@@ -10,7 +10,7 @@ use std::panic;
 use ra_syntax::{TextUnit, TextRange, SourceFile, TreeArc};
 
 pub use crate::{
-    cancellation::{Canceled, Cancelable},
+    cancellation::Canceled,
     syntax_ptr::LocalSyntaxPtr,
     input::{
         FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency,

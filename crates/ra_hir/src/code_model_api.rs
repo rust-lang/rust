@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
-use ra_db::{CrateId, Cancelable, FileId};
+use ra_db::{CrateId, FileId};
 use ra_syntax::{ast, TreeArc, SyntaxNode};
 
 use crate::{
@@ -142,10 +142,7 @@ impl Module {
         self.resolve_path_impl(db, path)
     }
 
-    pub fn problems(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<Vec<(TreeArc<SyntaxNode>, Problem)>> {
+    pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         self.problems_impl(db)
     }
 }
@@ -160,7 +157,7 @@ impl StructField {
     pub fn name(&self) -> &Name {
         &self.name
     }
-    pub fn ty(&self, db: &impl HirDatabase) -> Cancelable<Option<Ty>> {
+    pub fn ty(&self, db: &impl HirDatabase) -> Option<Ty> {
         db.type_for_field(self.struct_.def_id, self.name.clone())
     }
 }
@@ -318,7 +315,7 @@ impl Function {
         db.fn_signature(self.def_id)
     }
 
-    pub fn infer(&self, db: &impl HirDatabase) -> Cancelable<Arc<InferenceResult>> {
+    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer(self.def_id)
     }
 }
