@@ -9,15 +9,6 @@
 //!
 //! The sibling `ra_ide_api_light` handles thouse bits of IDE functionality
 //! which are restricted to a single file and need only syntax.
-macro_rules! ctry {
-    ($expr:expr) => {
-        match $expr {
-            None => return Ok(None),
-            Some(it) => it,
-        }
-    };
-}
-
 mod db;
 mod imp;
 pub mod mock_analysis;
@@ -400,7 +391,7 @@ impl Analysis {
 
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        self.with_db(|db| db.find_all_refs(position))?
+        self.with_db(|db| db.find_all_refs(position))
     }
 
     /// Returns a short text descrbing element at position.
@@ -445,7 +436,7 @@ impl Analysis {
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         let completions = self
             .db
-            .catch_canceled(|db| completion::completions(db, position))??;
+            .catch_canceled(|db| completion::completions(db, position))?;
         Ok(completions.map(|it| it.into()))
     }
 
@@ -472,7 +463,7 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Vec<SourceFileEdit>> {
-        self.with_db(|db| db.rename(position, new_name))?
+        self.with_db(|db| db.rename(position, new_name))
     }
 
     fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(

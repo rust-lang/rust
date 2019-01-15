@@ -12,7 +12,7 @@ use ra_db::SyntaxDatabase;
 
 use crate::{
     db,
-    Cancelable, FilePosition,
+    FilePosition,
     completion::{
         completion_item::{Completions, CompletionKind},
         completion_context::CompletionContext,
@@ -43,12 +43,9 @@ pub use crate::completion::completion_item::{CompletionItem, InsertText, Complet
 /// `foo` *should* be present among the completion variants. Filtering by
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
-pub(crate) fn completions(
-    db: &db::RootDatabase,
-    position: FilePosition,
-) -> Cancelable<Option<Completions>> {
+pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Option<Completions> {
     let original_file = db.source_file(position.file_id);
-    let ctx = ctry!(CompletionContext::new(db, &original_file, position)?);
+    let ctx = CompletionContext::new(db, &original_file, position)?;
 
     let mut acc = Completions::default();
 
@@ -57,11 +54,11 @@ pub(crate) fn completions(
     complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
     complete_snippet::complete_expr_snippet(&mut acc, &ctx);
     complete_snippet::complete_item_snippet(&mut acc, &ctx);
-    complete_path::complete_path(&mut acc, &ctx)?;
-    complete_scope::complete_scope(&mut acc, &ctx)?;
-    complete_dot::complete_dot(&mut acc, &ctx)?;
+    complete_path::complete_path(&mut acc, &ctx);
+    complete_scope::complete_scope(&mut acc, &ctx);
+    complete_dot::complete_dot(&mut acc, &ctx);
 
-    Ok(Some(acc))
+    Some(acc)
 }
 
 #[cfg(test)]
@@ -72,6 +69,6 @@ fn check_completion(code: &str, expected_completions: &str, kind: CompletionKind
     } else {
         single_file_with_position(code)
     };
-    let completions = completions(&analysis.db, position).unwrap().unwrap();
+    let completions = completions(&analysis.db, position).unwrap();
     completions.assert_match(expected_completions, kind);
 }

@@ -1,16 +1,15 @@
 use crate::{
-    Cancelable,
     completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
 
-pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
+pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let (path, module) = match (&ctx.path_prefix, &ctx.module) {
         (Some(path), Some(module)) => (path.clone(), module),
-        _ => return Ok(()),
+        _ => return,
     };
     let def_id = match module.resolve_path(ctx.db, &path).take_types() {
         Some(it) => it,
-        None => return Ok(()),
+        None => return,
     };
     match def_id.resolve(ctx.db) {
         hir::Def::Module(module) => {
@@ -30,9 +29,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
                         .add_to(acc)
                 });
         }
-        _ => return Ok(()),
+        _ => return,
     };
-    Ok(())
 }
 
 #[cfg(test)]
