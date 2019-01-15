@@ -15,7 +15,6 @@ use std::rc::Rc;
 use std::usize;
 use syntax_pos::Span;
 use rustc::hir;
-use rustc::hir::intravisit::IdRange;
 
 #[derive(Default)]
 pub struct MoveData<'tcx> {
@@ -559,7 +558,6 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     pub fn new(move_data: MoveData<'tcx>,
                bccx: &BorrowckCtxt<'a, 'tcx>,
                cfg: &cfg::CFG,
-               id_range: IdRange,
                body: &hir::Body)
                -> FlowedMoveData<'a, 'tcx> {
         let tcx = bccx.tcx;
@@ -570,7 +568,6 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                                  Some(body),
                                  cfg,
                                  MoveDataFlowOperator,
-                                 id_range,
                                  move_data.moves.borrow().len());
         let mut dfcx_assign =
             DataFlowContext::new(tcx,
@@ -578,7 +575,6 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                                  Some(body),
                                  cfg,
                                  AssignDataFlowOperator,
-                                 id_range,
                                  move_data.var_assignments.borrow().len());
 
         move_data.add_gen_kills(bccx,
