@@ -363,30 +363,11 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                         fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
                         fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
                     }
-                    CValue::ByRef(from, _src_layout) => {
-                        let size = dst_layout.size.bytes() as i32;
-                        // FIXME emit_small_memcpy has a bug as of commit CraneStation/cranelift@b2281ed
-                        // fx.bcx.emit_small_memcpy(fx.module.target_config(), addr, from, size, layout.align.abi() as u8, src_layout.align.abi() as u8);
-
-                        let mut offset = 0;
-                        while size - offset >= 8 {
-                            let byte =
-                                fx.bcx
-                                    .ins()
-                                    .load(fx.pointer_type, MemFlags::new(), from, offset);
-                            fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
-                            offset += 8;
-                        }
-                        while size - offset >= 4 {
-                            let byte = fx.bcx.ins().load(types::I32, MemFlags::new(), from, offset);
-                            fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
-                            offset += 4;
-                        }
-                        while offset < size {
-                            let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from, offset);
-                            fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
-                            offset += 1;
-                        }
+                    CValue::ByRef(from, src_layout) => {
+                        let size = dst_layout.size.bytes();
+                        let src_align = src_layout.align.abi.bytes() as u8;
+                        let dst_align = dst_layout.align.abi.bytes() as u8;
+                        fx.bcx.emit_small_memcpy(fx.module.target_config(), addr, from, size, dst_align, src_align);
                     }
                 }
             }
