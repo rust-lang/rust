@@ -19,9 +19,7 @@ pub struct Pass;
 ///
 /// **Why is this bad?** Readability, this can be written more concisely
 ///
-/// **Known problems:** Sometimes `.cloned()` requires stricter trait
-/// bound than `.map(|e| e.clone())` (which works because of the coercion).
-/// See [#498](https://github.com/rust-lang-nursery/rust-clippy/issues/498).
+/// **Known problems:** None
 ///
 /// **Example:**
 ///
