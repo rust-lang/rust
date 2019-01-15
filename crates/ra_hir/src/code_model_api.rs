@@ -333,8 +333,8 @@ impl Const {
         Const { def_id }
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::ConstDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -348,11 +348,8 @@ impl Static {
         Static { def_id }
     }
 
-    pub fn source(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<(HirFileId, TreeArc<ast::StaticDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -366,8 +363,8 @@ impl Trait {
         Trait { def_id }
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::TraitDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -381,7 +378,7 @@ impl Type {
         Type { def_id }
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::TypeDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
