@@ -1,6 +1,5 @@
-#![warn(clippy::all, clippy::pedantic)]
+#![warn(clippy::too_many_lines)]
 
-// TOO_MANY_LINES
 fn good_lines() {
     /* println!("This is good."); */
     // println!("This is good.");
