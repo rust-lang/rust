@@ -229,8 +229,9 @@ impl UnsafeCode {
 impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
         if attr.check_name("allow_internal_unsafe") {
-            self.report_unsafe(cx, attr.span, "cannot use `allow_internal_unsafe` \
-                                               with `forbid(unsafe_code)`");
+            self.report_unsafe(cx, attr.span, "`allow_internal_unsafe` allows defining \
+                                               macros using unsafe without triggering \
+                                               the `unsafe_code` lint at their call site");
         }
     }
 
