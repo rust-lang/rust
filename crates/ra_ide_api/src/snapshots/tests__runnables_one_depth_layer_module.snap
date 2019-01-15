@@ -1,0 +1,18 @@
+Created: 2019-01-15T11:15:20.732480089+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/runnables.rs
+
+[
+    Runnable {
+        range: [23; 85),
+        kind: TestMod {
+            path: "foo::test_mod"
+        }
+    },
+    Runnable {
+        range: [46; 79),
+        kind: Test {
+            name: "test_foo1"
+        }
+    }
+]

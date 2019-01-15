@@ -38,8 +38,9 @@ fn find_macro_call(node: &SyntaxNode, range: TextRange) -> Option<&ast::MacroCal
 
 #[cfg(test)]
 mod tests {
+    use ra_syntax::TextRange;
+
     use crate::mock_analysis::single_file_with_range;
-    use test_utils::assert_eq_dbg;
 
     #[test]
     fn extend_selection_inside_macros() {
@@ -51,6 +52,6 @@ mod tests {
         ",
         );
         let r = analysis.extend_selection(frange);
-        assert_eq_dbg("[51; 56)", &r);
+        assert_eq!(r, TextRange::from_to(51.into(), 56.into()));
     }
 }

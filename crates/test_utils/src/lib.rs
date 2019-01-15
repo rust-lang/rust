@@ -1,8 +1,6 @@
-use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use itertools::Itertools;
 use text_unit::{TextRange, TextUnit};
 use serde_json::Value;
 
@@ -29,12 +27,6 @@ macro_rules! assert_eq_text {
             panic!("text differs");
         }
     }};
-}
-
-pub fn assert_eq_dbg(expected: &str, actual: &impl fmt::Debug) {
-    let actual = format!("{:?}", actual);
-    let expected = expected.lines().map(|l| l.trim()).join(" ");
-    assert_eq!(expected, actual);
 }
 
 pub fn extract_offset(text: &str) -> (TextUnit, String) {

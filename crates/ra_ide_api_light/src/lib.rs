@@ -132,8 +132,9 @@ pub fn syntax_tree(file: &SourceFile) -> String {
 #[cfg(test)]
 mod tests {
     use ra_syntax::AstNode;
+    use insta::assert_debug_snapshot_matches;
 
-    use crate::test_utils::{add_cursor, assert_eq_dbg, assert_eq_text, extract_offset};
+    use crate::test_utils::{add_cursor, assert_eq_text, extract_offset};
 
     use super::*;
 
@@ -147,15 +148,7 @@ fn main() {}
 "#,
         );
         let hls = highlight(file.syntax());
-        assert_eq_dbg(
-            r#"[HighlightedRange { range: [1; 11), tag: "comment" },
-                HighlightedRange { range: [12; 14), tag: "keyword" },
-                HighlightedRange { range: [15; 19), tag: "function" },
-                HighlightedRange { range: [29; 37), tag: "macro" },
-                HighlightedRange { range: [38; 50), tag: "string" },
-                HighlightedRange { range: [52; 54), tag: "literal" }]"#,
-            &hls,
-        );
+        assert_debug_snapshot_matches!("highlighting", hls);
     }
 
     #[test]

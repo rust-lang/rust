@@ -92,3 +92,100 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Opt
         kind: RunnableKind::TestMod { path },
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_debug_snapshot_matches;
+
+    use crate::mock_analysis::analysis_and_position;
+
+    #[test]
+    fn test_runnables() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        fn main() {}
+
+        #[test]
+        fn test_foo() {}
+
+        #[test]
+        #[ignore]
+        fn test_foo() {}
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot_matches!("runnables", &runnables)
+    }
+
+    #[test]
+    fn test_runnables_module() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        mod test_mod {
+            #[test]
+            fn test_foo1() {}
+        }
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot_matches!("runnables_module", &runnables)
+    }
+
+    #[test]
+    fn test_runnables_one_depth_layer_module() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        mod foo {
+            mod test_mod {
+                #[test]
+                fn test_foo1() {}
+            }
+        }
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot_matches!("runnables_one_depth_layer_module", &runnables)
+    }
+
+    #[test]
+    fn test_runnables_multiple_depth_module() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        mod foo {
+            mod bar {
+                mod test_mod {
+                    #[test]
+                    fn test_foo1() {}
+                }
+            }
+        }
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot_matches!("runnables_multiple_depth_module", &runnables)
+    }
+
+    #[test]
+    fn test_runnables_no_test_function_in_module() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        mod test_mod {
+            fn foo1() {}
+        }
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert!(runnables.is_empty())
+    }
+
+}

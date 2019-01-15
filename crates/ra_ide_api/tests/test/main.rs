@@ -1,7 +1,6 @@
-mod runnables;
-
 use ra_syntax::TextRange;
-use test_utils::{assert_eq_dbg, assert_eq_text};
+use test_utils::assert_eq_text;
+use insta::assert_debug_snapshot_matches;
 
 use ra_ide_api::{
     mock_analysis::{single_file, single_file_with_position, MockAnalysis},
@@ -12,18 +11,7 @@ use ra_ide_api::{
 fn test_unresolved_module_diagnostic() {
     let (analysis, file_id) = single_file("mod foo;");
     let diagnostics = analysis.diagnostics(file_id).unwrap();
-    assert_eq_dbg(
-        r#"[Diagnostic {
-            message: "unresolved module",
-            range: [4; 7),
-            fix: Some(SourceChange {
-                label: "create module",
-                source_file_edits: [],
-                file_system_edits: [CreateFile { source_root: SourceRootId(0), path: "foo.rs" }],
-                cursor_position: None }),
-                severity: Error }]"#,
-        &diagnostics,
-    );
+    assert_debug_snapshot_matches!("unresolved_module_diagnostic", &diagnostics);
 }
 
 // FIXME: move this test to hir
@@ -31,7 +19,7 @@ fn test_unresolved_module_diagnostic() {
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
     let (analysis, file_id) = single_file("mod foo {}");
     let diagnostics = analysis.diagnostics(file_id).unwrap();
-    assert_eq_dbg(r#"[]"#, &diagnostics);
+    assert!(diagnostics.is_empty());
 }
 
 #[test]
