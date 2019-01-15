@@ -463,25 +463,25 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s.name(db)?.unwrap_or_else(Name::missing),
+        name: s.name(db).unwrap_or_else(Name::missing),
     })
 }
 
 pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s.name(db)?.unwrap_or_else(Name::missing),
+        name: s.name(db).unwrap_or_else(Name::missing),
     })
 }
 
 pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> Cancelable<Ty> {
-    let enum_parent = ev.parent_enum(db)?;
+    let enum_parent = ev.parent_enum(db);
 
     type_for_enum(db, enum_parent)
 }
 
 pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
-    let def = def_id.resolve(db)?;
+    let def = def_id.resolve(db);
     match def {
         Def::Module(..) => {
             log::debug!("trying to get type for module {:?}", def_id);
@@ -507,10 +507,10 @@ pub(super) fn type_for_field(
     def_id: DefId,
     field: Name,
 ) -> Cancelable<Option<Ty>> {
-    let def = def_id.resolve(db)?;
+    let def = def_id.resolve(db);
     let variant_data = match def {
         Def::Struct(s) => s.variant_data(db)?,
-        Def::EnumVariant(ev) => ev.variant_data(db)?,
+        Def::EnumVariant(ev) => ev.variant_data(db),
         // TODO: unions
         _ => panic!(
             "trying to get type for field in non-struct/variant {:?}",
@@ -877,7 +877,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         } else {
             return Ok((Ty::Unknown, None));
         };
-        Ok(match def_id.resolve(self.db)? {
+        Ok(match def_id.resolve(self.db) {
             Def::Struct(s) => {
                 let ty = type_for_struct(self.db, s)?;
                 (ty, Some(def_id))

@@ -175,13 +175,12 @@ impl Struct {
         self.def_id
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.struct_data(self.def_id)?.name.clone())
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+        db.struct_data(self.def_id).name.clone()
     }
 
-    pub fn fields(&self, db: &impl HirDatabase) -> Cancelable<Vec<StructField>> {
-        let res = db
-            .struct_data(self.def_id)?
+    pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
+        db.struct_data(self.def_id)
             .variant_data
             .fields()
             .iter()
@@ -189,15 +188,11 @@ impl Struct {
                 struct_: self.clone(),
                 name: it.name.clone(),
             })
-            .collect();
-        Ok(res)
+            .collect()
     }
 
-    pub fn source(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<(HirFileId, TreeArc<ast::StructDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -215,16 +210,16 @@ impl Enum {
         self.def_id
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.enum_data(self.def_id)?.name.clone())
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+        db.enum_data(self.def_id).name.clone()
     }
 
-    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, EnumVariant)>> {
-        Ok(db.enum_data(self.def_id)?.variants.clone())
+    pub fn variants(&self, db: &impl HirDatabase) -> Vec<(Name, EnumVariant)> {
+        db.enum_data(self.def_id).variants.clone()
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::EnumDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -242,23 +237,20 @@ impl EnumVariant {
         self.def_id
     }
 
-    pub fn parent_enum(&self, db: &impl HirDatabase) -> Cancelable<Enum> {
-        Ok(db.enum_variant_data(self.def_id)?.parent_enum.clone())
+    pub fn parent_enum(&self, db: &impl HirDatabase) -> Enum {
+        db.enum_variant_data(self.def_id).parent_enum.clone()
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
-        Ok(db.enum_variant_data(self.def_id)?.name.clone())
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+        db.enum_variant_data(self.def_id).name.clone()
     }
 
-    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.enum_variant_data(self.def_id)?.variant_data.clone())
+    pub fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
+        db.enum_variant_data(self.def_id).variant_data.clone()
     }
 
-    pub fn source(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<(HirFileId, TreeArc<ast::EnumVariant>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -305,8 +297,8 @@ impl Function {
         self.def_id
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::FnDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Cancelable<Arc<BodySyntaxMapping>> {
@@ -341,8 +333,8 @@ impl Const {
         Const { def_id }
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::ConstDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -356,11 +348,8 @@ impl Static {
         Static { def_id }
     }
 
-    pub fn source(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<(HirFileId, TreeArc<ast::StaticDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -374,8 +363,8 @@ impl Trait {
         Trait { def_id }
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::TraitDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -389,7 +378,7 @@ impl Type {
         Type { def_id }
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::TypeDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 }

@@ -12,7 +12,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         Some(it) => it,
         None => return Ok(()),
     };
-    match def_id.resolve(ctx.db)? {
+    match def_id.resolve(ctx.db) {
         hir::Def::Module(module) => {
             let module_scope = module.scope(ctx.db)?;
             for (name, res) in module_scope.entries() {
@@ -22,7 +22,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
             }
         }
         hir::Def::Enum(e) => {
-            e.variants(ctx.db)?
+            e.variants(ctx.db)
                 .into_iter()
                 .for_each(|(variant_name, _variant)| {
                     CompletionItem::new(CompletionKind::Reference, variant_name.to_string())

@@ -1,4 +1,4 @@
-use ra_db::{FileId, Cancelable};
+use ra_db::FileId;
 use ra_syntax::{
     SyntaxNode, AstNode, SmolStr, TextRange, ast,
     SyntaxKind::{self, NAME},
@@ -69,84 +69,72 @@ impl NavigationTarget {
         }
     }
 
-    pub(crate) fn from_module(
-        db: &RootDatabase,
-        module: hir::Module,
-    ) -> Cancelable<NavigationTarget> {
+    pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let (file_id, source) = module.definition_source(db);
         let name = module
             .name(db)
             .map(|it| it.to_string().into())
             .unwrap_or_default();
-        let res = match source {
+        match source {
             ModuleSource::SourceFile(node) => {
                 NavigationTarget::from_syntax(file_id, name, None, node.syntax())
             }
             ModuleSource::Module(node) => {
                 NavigationTarget::from_syntax(file_id, name, None, node.syntax())
             }
-        };
-        Ok(res)
+        }
     }
 
-    pub(crate) fn from_module_to_decl(
-        db: &RootDatabase,
-        module: hir::Module,
-    ) -> Cancelable<NavigationTarget> {
+    pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module
             .name(db)
             .map(|it| it.to_string().into())
             .unwrap_or_default();
         if let Some((file_id, source)) = module.declaration_source(db) {
-            return Ok(NavigationTarget::from_syntax(
-                file_id,
-                name,
-                None,
-                source.syntax(),
-            ));
+            return NavigationTarget::from_syntax(file_id, name, None, source.syntax());
         }
         NavigationTarget::from_module(db, module)
     }
 
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
-    pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Cancelable<Option<NavigationTarget>> {
+    pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Option<NavigationTarget> {
         let res = match def {
             Def::Struct(s) => {
-                let (file_id, node) = s.source(db)?;
+                let (file_id, node) = s.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Enum(e) => {
-                let (file_id, node) = e.source(db)?;
+                let (file_id, node) = e.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::EnumVariant(ev) => {
-                let (file_id, node) = ev.source(db)?;
+                let (file_id, node) = ev.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Function(f) => {
-                let (file_id, node) = f.source(db)?;
+                let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Trait(f) => {
-                let (file_id, node) = f.source(db)?;
+                let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Type(f) => {
-                let (file_id, node) = f.source(db)?;
+                let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Static(f) => {
-                let (file_id, node) = f.source(db)?;
+                let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Const(f) => {
-                let (file_id, node) = f.source(db)?;
+                let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
-            Def::Module(m) => NavigationTarget::from_module(db, m)?,
-            Def::Item => return Ok(None),
+            Def::Module(m) => NavigationTarget::from_module(db, m),
+            Def::Item => return None,
         };
-        Ok(Some(res))
+        Some(res)
     }
 
     #[cfg(test)]

@@ -148,13 +148,13 @@ impl Module {
             } else {
                 return Ok(PerNs::none());
             };
-            let module = match curr.resolve(db)? {
+            let module = match curr.resolve(db) {
                 Def::Module(it) => it,
                 Def::Enum(e) => {
                     if segments.len() == idx + 1 {
                         // enum variant
                         let matching_variant =
-                            e.variants(db)?.into_iter().find(|(n, _variant)| n == name);
+                            e.variants(db).into_iter().find(|(n, _variant)| n == name);
 
                         if let Some((_n, variant)) = matching_variant {
                             return Ok(PerNs::both(variant.def_id(), e.def_id()));
