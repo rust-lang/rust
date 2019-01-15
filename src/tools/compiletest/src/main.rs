@@ -50,30 +50,10 @@ pub mod util;
 fn main() {
     env_logger::init();
 
-    let mut config = parse_config(env::args().collect());
+    let config = parse_config(env::args().collect());
 
     if config.valgrind_path.is_none() && config.force_valgrind {
         panic!("Can't find Valgrind to run Valgrind tests");
-    }
-
-    // Some run-make tests need a version of Clang available that matches
-    // rustc's LLVM version. Since this isn't always the case, these tests are
-    // opt-in.
-    let clang_based_tests_possible = check_clang_based_tests_possible(&config);
-    match (clang_based_tests_possible, config.force_clang_based_tests) {
-        (Ok(_), true) |
-        (Err(_), false) => {
-            // Nothing to do
-        }
-        (Ok(_), false) => {
-            // If a valid clang version is available, run the tests even if
-            // they are not forced.
-            config.force_clang_based_tests = true;
-        }
-        (Err(msg), true) => {
-            // Tests are forced but we don't have a valid version of Clang.
-            panic!("{}", msg)
-        }
     }
 
     log_config(&config);
@@ -128,10 +108,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "force-valgrind",
             "fail if Valgrind tests cannot be run under Valgrind",
         )
-        .optflag(
+        .optopt(
             "",
-            "force-clang-based-tests",
-            "fail if Clang-based run-make tests can't be run for some reason",
+            "run-clang-based-tests-with",
+            "path to Clang executable",
+            "PATH",
         )
         .optopt(
             "",
@@ -214,12 +195,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "VERSION STRING",
         )
         .optflag("", "system-llvm", "is LLVM the system LLVM")
-        .optopt(
-            "",
-            "clang-version",
-            "the version of Clang available to run-make tests",
-            "VERSION STRING",
-        )
         .optopt(
             "",
             "android-cross-path",
@@ -329,7 +304,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         docck_python: matches.opt_str("docck-python").unwrap(),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
-        force_clang_based_tests: matches.opt_present("force-clang-based-tests"),
+        run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
         src_base,
         build_base: opt_path(matches, "build-base"),
@@ -355,7 +330,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         lldb_native_rust,
         llvm_version: matches.opt_str("llvm-version"),
         system_llvm: matches.opt_present("system-llvm"),
-        clang_version: matches.opt_str("clang-version"),
         android_cross_path: android_cross_path,
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
@@ -1062,56 +1036,5 @@ fn test_extract_gdb_version() {
         7012000: "GNU gdb (GDB) 7.12",
         7012000: "GNU gdb (GDB) 7.12.20161027-git",
         7012050: "GNU gdb (GDB) 7.12.50.20161027-git",
-    }
-}
-
-
-fn check_clang_based_tests_possible(config: &Config) -> Result<(), String> {
-
-    let llvm_version = if let Some(llvm_version) = config.llvm_version.as_ref() {
-        llvm_version
-    } else {
-        return Err(format!("Running `compiletest` with `--force-clang-based-tests` \
-                            requires `--llvm-version` to be specified."));
-    };
-
-    let clang_major_version = if let Some(ref version_string) = config.clang_version {
-        major_version_from_clang_version_string(version_string)?
-    } else {
-        return Err(format!("Clang is required for running tests \
-                            (because of --force-clang-based-tests) \
-                            but it does not seem to be available."));
-    };
-
-    let rustc_llvm_major_version = major_version_from_llvm_version_string(&llvm_version)?;
-
-    return if clang_major_version != rustc_llvm_major_version {
-        Err(format!("`--force-clang-based-tests` needs the major version of Clang \
-                     and rustc's LLVM to be the same. Clang version is: {}, \
-                     Rustc LLVM is: {}",
-                     config.clang_version.clone().unwrap(),
-                     llvm_version))
-    } else {
-        Ok(())
-    };
-
-    fn major_version_from_clang_version_string(clang_version: &str) -> Result<&str, String> {
-        let re = regex::Regex::new(r"clang version (\d)\.\d").unwrap();
-        if let Some(captures) = re.captures(clang_version) {
-            Ok(captures.get(1).unwrap().as_str())
-        } else {
-            Err(format!("Failed to parse major version from Clang version \
-                         string '{}'.", clang_version))
-        }
-    }
-
-    fn major_version_from_llvm_version_string(llvm_version: &str) -> Result<&str, String> {
-        let re = regex::Regex::new(r"(\d)\.\d").unwrap();
-        if let Some(captures) = re.captures(llvm_version) {
-            Ok(captures.get(1).unwrap().as_str())
-        } else {
-            Err(format!("Failed to parse major version from LLVM version \
-                         string '{}'.", llvm_version))
-        }
     }
 }

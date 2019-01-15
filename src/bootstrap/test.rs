@@ -1106,13 +1106,11 @@ impl Step for Compiletest {
                     }).to_string()
             })
         };
-        let (lldb_exe, clang_exe) =
-            if builder.config.lldb_enabled && !target.contains("emscripten") {
+        let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
             // Test against the lldb that was just built.
-            (builder.llvm_out(target).join("bin").join("lldb"),
-             builder.llvm_out(target).join("bin").join("clang"))
+            builder.llvm_out(target).join("bin").join("lldb")
         } else {
-            (PathBuf::from("lldb"), PathBuf::from("clang"))
+            PathBuf::from("lldb")
         };
         let lldb_version = Command::new(&lldb_exe)
             .arg("--version")
@@ -1127,19 +1125,14 @@ impl Step for Compiletest {
             }
         }
 
-        let clang_version = Command::new(&clang_exe)
-            .arg("--version")
-            .output()
-            .map(|output| { String::from_utf8_lossy(&output.stdout).to_string() })
-            .ok();
-        if let Some(ref vers) = clang_version {
-            cmd.arg("--clang-version").arg(vers);
-        }
-
         if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
-            match &var.to_string_lossy()[..] {
+            match &var.to_string_lossy().to_lowercase()[..] {
                 "1" | "yes" | "on" => {
-                    cmd.arg("--force-clang-based-tests");
+                    assert!(builder.config.lldb_enabled,
+                        "RUSTBUILD_FORCE_CLANG_BASED_TESTS needs Clang/LLDB to \
+                         be built.");
+                    let clang_exe = builder.llvm_out(target).join("bin").join("clang");
+                    cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
                 }
                 "0" | "no" | "off" => {
                     // Nothing to do.

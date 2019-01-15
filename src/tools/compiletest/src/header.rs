@@ -112,7 +112,7 @@ impl EarlyProps {
                     props.ignore = Ignore::Ignore;
                 }
 
-                if !config.force_clang_based_tests &&
+                if config.run_clang_based_tests_with.is_none() &&
                    config.parse_needs_matching_clang(ln) {
                     props.ignore = Ignore::Ignore;
                 }
