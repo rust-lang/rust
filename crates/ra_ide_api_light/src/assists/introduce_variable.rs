@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::{WHITESPACE, BLOCK_EXPR},
+    SyntaxKind::{WHITESPACE, SEMI},
     SyntaxNode, TextUnit,
 };
 
@@ -26,8 +26,10 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
             false
         };
         if is_full_stmt {
-            if expr.syntax().kind() == BLOCK_EXPR {
-                buf.push_str(";");
+            if let Some(last_child) = expr.syntax().last_child() {
+                if last_child.kind() != SEMI && !is_semi_right_after(expr.syntax()) {
+                    buf.push_str(";");
+                }
             }
             edit.replace(expr.syntax().range(), buf);
         } else {
@@ -58,6 +60,20 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<&SyntaxNode> {
         }
         false
     })
+}
+
+fn is_semi_right_after(node: &SyntaxNode) -> bool {
+    let mut node = node;
+    loop {
+        if let Some(next) = node.next_sibling() {
+            if next.kind() == WHITESPACE {
+                node = next;
+                continue;
+            }
+            return next.kind() == SEMI;
+        }
+        return false;
+    }
 }
 
 #[cfg(test)]
