@@ -36,6 +36,7 @@ use syntax_pos::*;
 
 use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
 use json_dumper::{Access, DumpOutput, JsonDumper};
+use smallvec::smallvec;
 use span_utils::SpanUtils;
 use sig;
 
@@ -1338,7 +1339,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         match item.node {
             Use(ref use_tree) => {
                 let prefix = ast::Path {
-                    segments: vec![],
+                    segments: smallvec![],
                     span: DUMMY_SP,
                 };
                 self.process_use_tree(use_tree, item.id, item, &prefix);

@@ -5,6 +5,7 @@ use syntax_pos::{Pos, Span, DUMMY_SP};
 use source_map::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
+use smallvec::SmallVec;
 use symbol::{Symbol, keywords};
 use ThinVec;
 
@@ -310,7 +311,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
-        let mut segments = Vec::with_capacity(idents.len() + add_root as usize);
+        let mut segments = SmallVec::with_capacity(idents.len() + add_root as usize);
         if add_root {
             segments.push(ast::PathSegment::path_root(span));
         }

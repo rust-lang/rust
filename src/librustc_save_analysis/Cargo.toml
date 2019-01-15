@@ -15,6 +15,7 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_target = { path = "../librustc_target" }
 rustc_typeck = { path = "../librustc_typeck" }
+smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rls-data = "0.18.1"

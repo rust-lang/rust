@@ -16,7 +16,7 @@ use rustc_data_structures::fx::FxHashMap;
 pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
-            path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
+            path: ast::Path { span: DUMMY_SP, segments: smallvec![] },
             tts: TokenStream::empty().into(),
             delim: ast::MacDelimiter::Brace,
         })

@@ -17,6 +17,7 @@ extern crate rustc_codegen_utils;
 extern crate rustc_serialize;
 extern crate rustc_target;
 extern crate rustc_typeck;
+extern crate smallvec;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;

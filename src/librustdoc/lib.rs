@@ -32,6 +32,7 @@ extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate serialize;
+extern crate smallvec;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate test as testing;

@@ -22,6 +22,7 @@ use parse::parser::Parser;
 use parse::{self, ParseSess, PResult};
 use parse::token::{self, Token};
 use ptr::P;
+use smallvec::{SmallVec, smallvec};
 use symbol::Symbol;
 use ThinVec;
 use tokenstream::{TokenStream, TokenTree, DelimSpan};
@@ -483,7 +484,8 @@ impl MetaItem {
         let ident = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
                 if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
-                    let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
+                    let mut segments: SmallVec<[_; 1]> =
+                        smallvec![PathSegment::from_ident(ident.with_span_pos(span))];
                     tokens.next();
                     loop {
                         if let Some(TokenTree::Token(span,

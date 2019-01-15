@@ -2774,7 +2774,7 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix
                 let prefix = Path {
-                    segments: vec![],
+                    segments: smallvec![],
                     span: use_tree.span,
                 };
 

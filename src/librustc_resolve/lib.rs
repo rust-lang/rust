@@ -14,6 +14,7 @@
 extern crate bitflags;
 #[macro_use]
 extern crate log;
+extern crate smallvec;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
@@ -66,6 +67,7 @@ use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
+use smallvec::SmallVec;
 use std::cell::{Cell, RefCell};
 use std::{cmp, fmt, iter, mem, ptr};
 use std::collections::BTreeSet;
@@ -1677,7 +1679,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
                     .map(Ident::from_str)
-            ).map(|i| self.new_ast_path_segment(i)).collect::<Vec<_>>();
+            ).map(|i| self.new_ast_path_segment(i)).collect::<SmallVec<[_; 1]>>();
 
 
         let path = ast::Path {
@@ -4621,7 +4623,8 @@ impl<'a> Resolver<'a> {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
         let not_local_module = crate_name != keywords::Crate.ident();
-        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
+        let mut worklist =
+            vec![(start_module, SmallVec::<[ast::PathSegment; 1]>::new(), not_local_module)];
 
         while let Some((in_module,
                         path_segments,
@@ -4737,7 +4740,7 @@ impl<'a> Resolver<'a> {
     {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(self.graph_root, Vec::new())];
+        let mut worklist = vec![(self.graph_root, SmallVec::new())];
 
         while let Some((in_module, path_segments)) = worklist.pop() {
             // abort if the module is already found
@@ -5214,9 +5217,10 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let variant_path_string = path_names_to_string(variant_path);
 
     let path_len = suggestion.path.segments.len();
+    let segments = suggestion.path.segments[0..path_len - 1].iter().cloned().collect();
     let enum_path = ast::Path {
         span: suggestion.path.span,
-        segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+        segments,
     };
     let enum_path_string = path_names_to_string(&enum_path);
 

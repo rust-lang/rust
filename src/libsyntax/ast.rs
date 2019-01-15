@@ -21,6 +21,7 @@ use ThinVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use serialize::{self, Decoder, Encoder};
+use smallvec::SmallVec;
 use std::fmt;
 
 pub use rustc_target::abi::FloatTy;
@@ -64,7 +65,7 @@ pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `keywords::PathRoot`.
-    pub segments: Vec<PathSegment>,
+    pub segments: SmallVec<[PathSegment; 1]>,
 }
 
 impl<'a> PartialEq<&'a str> for Path {
@@ -90,7 +91,7 @@ impl Path {
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
         Path {
-            segments: vec![PathSegment::from_ident(ident)],
+            segments: smallvec![PathSegment::from_ident(ident)],
             span: ident.span,
         }
     }
@@ -887,7 +888,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 88);
+static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 96);
 
 impl Expr {
     /// Whether this expression would be valid somewhere that expects a value; for example, an `if`

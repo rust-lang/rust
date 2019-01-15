@@ -47,6 +47,7 @@ use ptr::P;
 use parse::PResult;
 use ThinVec;
 use tokenstream::{self, DelimSpan, ThinTokenStream, TokenTree, TokenStream};
+use smallvec::SmallVec;
 use symbol::{Symbol, keywords};
 
 use std::borrow::Cow;
@@ -1738,7 +1739,7 @@ impl<'a> Parser<'a> {
         };
 
         self.bump(); // `::`
-        let mut segments = Vec::new();
+        let mut segments = smallvec![];
         self.parse_path_segments(&mut segments, T::PATH_STYLE, true)?;
 
         let span = ty.span.to(self.prev_span);
@@ -2075,7 +2076,7 @@ impl<'a> Parser<'a> {
             path = self.parse_path(PathStyle::Type)?;
             path_span = path_lo.to(self.prev_span);
         } else {
-            path = ast::Path { segments: Vec::new(), span: syntax_pos::DUMMY_SP };
+            path = ast::Path { segments: smallvec![], span: syntax_pos::DUMMY_SP };
             path_span = self.span.to(self.span);
         }
 
@@ -2113,7 +2114,7 @@ impl<'a> Parser<'a> {
         });
 
         let lo = self.meta_var_span.unwrap_or(self.span);
-        let mut segments = Vec::new();
+        let mut segments = smallvec![];
         let mod_sep_ctxt = self.span.ctxt();
         if self.eat(&token::ModSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
@@ -2144,7 +2145,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_path_segments(&mut self,
-                           segments: &mut Vec<PathSegment>,
+                           segments: &mut SmallVec<[PathSegment; 1]>,
                            style: PathStyle,
                            enable_warning: bool)
                            -> PResult<'a, ()> {
@@ -7822,7 +7823,7 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.span;
 
-        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo() };
+        let mut prefix = ast::Path { segments: smallvec![], span: lo.shrink_to_lo() };
         let kind = if self.check(&token::OpenDelim(token::Brace)) ||
                       self.check(&token::BinOp(token::Star)) ||
                       self.is_import_coupler() {

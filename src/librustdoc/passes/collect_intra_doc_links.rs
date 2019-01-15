@@ -2,6 +2,7 @@ use rustc::lint as lint;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::ty;
+use smallvec::smallvec;
 use syntax;
 use syntax::ast::{self, Ident, NodeId};
 use syntax::feature_gate::UnstableFeatures;
@@ -425,7 +426,7 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
-    let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
+    let path = ast::Path { segments: smallvec![segment], span: DUMMY_SP };
     let mut resolver = cx.resolver.borrow_mut();
     let parent_scope = resolver.dummy_parent_scope();
     if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
