@@ -329,6 +329,8 @@ pub use self::sources::{RepeatWith, repeat_with};
 pub use self::sources::{Empty, empty};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{Once, once};
+#[unstable(feature = "iter_once_with", issue = "57581")]
+pub use self::sources::{OnceWith, once_with};
 #[unstable(feature = "iter_unfold", issue = "55977")]
 pub use self::sources::{Unfold, unfold, Successors, successors};
 
