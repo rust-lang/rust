@@ -358,6 +358,21 @@ fn test(x: &str, y: isize) {
     );
 }
 
+#[test]
+fn infer_pattern() {
+    check_inference(
+        r#"
+fn test(x: &i32) {
+    let y = x;
+    let &z = x;
+    let a = z;
+    let (c, d) = (1, "hello");
+}
+"#,
+        "pattern.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

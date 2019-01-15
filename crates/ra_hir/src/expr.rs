@@ -329,9 +329,25 @@ impl Expr {
 pub struct PatId(RawId);
 impl_arena_id!(PatId);
 
+/// Close relative to rustc's hir::PatKind
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Pat {
-    Missing,
+    Missing, // do we need this?
+    Wild,
+    Tuple(Vec<PatId>),
+    Struct, // TODO
+    Range {
+        start: ExprId,
+        end: ExprId,
+    },
+    Box(PatId),
+    Slice {
+        prefix: Vec<PatId>,
+        rest: Option<PatId>,
+        suffix: Vec<PatId>,
+    },
+    Path(Path),
+    Lit(ExprId),
     Bind {
         name: Name,
     },
@@ -348,11 +364,25 @@ pub enum Pat {
 impl Pat {
     pub fn walk_child_pats(&self, mut f: impl FnMut(PatId)) {
         match self {
-            Pat::Missing | Pat::Bind { .. } => {}
-            Pat::TupleStruct { args, .. } => {
+            Pat::Range { .. }
+            | Pat::Lit(..)
+            | Pat::Path(..)
+            | Pat::Wild
+            | Pat::Missing
+            | Pat::Bind { .. } => {}
+            Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
                 args.iter().map(|pat| *pat).for_each(f);
             }
-            Pat::Ref { pat, .. } => f(*pat),
+            Pat::Ref { pat, .. } | Pat::Box(pat) => f(*pat),
+            Pat::Slice {
+                prefix,
+                rest,
+                suffix,
+            } => {
+                let total_iter = prefix.iter().chain(rest.iter()).chain(suffix.iter());
+                total_iter.map(|pat| *pat).for_each(f);
+            }
+            Pat::Struct { .. } => {} // TODO
         }
     }
 }
@@ -745,30 +775,41 @@ impl ExprCollector {
     }
 
     fn collect_pat(&mut self, pat: &ast::Pat) -> PatId {
-        let syntax_ptr = LocalSyntaxPtr::new(pat.syntax());
-        match pat.kind() {
+        let pattern = match pat.kind() {
             ast::PatKind::BindPat(bp) => {
                 let name = bp
                     .name()
                     .map(|nr| nr.as_name())
                     .unwrap_or_else(Name::missing);
-                self.alloc_pat(Pat::Bind { name }, syntax_ptr)
+                Pat::Bind { name }
             }
             ast::PatKind::TupleStructPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
-                self.alloc_pat(Pat::TupleStruct { path, args }, syntax_ptr)
+                Pat::TupleStruct { path, args }
             }
             ast::PatKind::RefPat(p) => {
                 let pat = self.collect_pat_opt(p.pat());
                 let mutability = Mutability::from_mutable(p.is_mut());
-                self.alloc_pat(Pat::Ref { pat, mutability }, syntax_ptr)
+                Pat::Ref { pat, mutability }
             }
-            _ => {
-                // TODO
-                self.alloc_pat(Pat::Missing, syntax_ptr)
+            ast::PatKind::PathPat(p) => {
+                let path = p.path().and_then(Path::from_ast);
+                path.map(|path| Pat::Path(path)).unwrap_or(Pat::Missing)
             }
-        }
+            ast::PatKind::TuplePat(p) => {
+                let args = p.args().map(|p| self.collect_pat(p)).collect();
+                Pat::Tuple(args)
+            }
+            ast::PatKind::PlaceholderPat(_) => Pat::Wild,
+            // TODO: implement
+            ast::PatKind::FieldPatList(_)
+            | ast::PatKind::SlicePat(_)
+            | ast::PatKind::StructPat(_)
+            | ast::PatKind::RangePat(_) => Pat::Missing,
+        };
+        let syntax_ptr = LocalSyntaxPtr::new(pat.syntax());
+        self.alloc_pat(pattern, syntax_ptr)
     }
 
     fn collect_pat_opt(&mut self, pat: Option<&ast::Pat>) -> PatId {

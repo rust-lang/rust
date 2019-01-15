@@ -47,9 +47,11 @@ impl FnScopes {
         compute_expr_scopes(body.body_expr(), &body, &mut scopes, root);
         scopes
     }
+
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries
     }
+
     pub fn scope_chain_for<'a>(&'a self, expr: ExprId) -> impl Iterator<Item = ScopeId> + 'a {
         generate(self.scope_for(expr), move |&scope| {
             self.scopes[scope].parent
@@ -76,12 +78,14 @@ impl FnScopes {
             entries: vec![],
         })
     }
+
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: Some(parent),
             entries: vec![],
         })
     }
+
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         match &body[pat] {
             Pat::Bind { name } => self.scopes[scope].entries.push(ScopeEntry {
@@ -91,15 +95,18 @@ impl FnScopes {
             p => p.walk_child_pats(|pat| self.add_bindings(body, scope, pat)),
         }
     }
+
     fn add_params_bindings(&mut self, scope: ScopeId, params: &[PatId]) {
         let body = Arc::clone(&self.body);
         params
             .into_iter()
             .for_each(|pat| self.add_bindings(&body, scope, *pat));
     }
+
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
         self.scope_for.insert(node, scope);
     }
+
     fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
         self.scope_for.get(&expr).map(|&scope| scope)
     }
@@ -121,6 +128,7 @@ impl ScopeEntryWithSyntax {
     pub fn name(&self) -> &Name {
         &self.name
     }
+
     pub fn ptr(&self) -> LocalSyntaxPtr {
         self.ptr
     }
@@ -132,6 +140,7 @@ impl ScopesWithSyntaxMapping {
             self.scopes.scopes[scope].parent
         })
     }
+
     pub fn scope_chain_for_offset<'a>(
         &'a self,
         offset: TextUnit,
@@ -152,6 +161,7 @@ impl ScopesWithSyntaxMapping {
 
         generate(scope, move |&scope| self.scopes.scopes[scope].parent)
     }
+
     // XXX: during completion, cursor might be outside of any particular
     // expression. Try to figure out the correct scope...
     fn adjust(&self, ptr: LocalSyntaxPtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
@@ -225,6 +235,7 @@ impl ScopeEntry {
     pub fn name(&self) -> &Name {
         &self.name
     }
+
     pub fn pat(&self) -> PatId {
         self.pat
     }

@@ -490,14 +490,14 @@ Grammar(
         "RefPat": ( options: [ "Pat" ]),
         "BindPat": ( traits: ["NameOwner"] ),
         "PlaceholderPat": (),
-        "PathPat": (),
+        "PathPat": ( options: ["Path"] ),
         "StructPat": (),
         "FieldPatList": (),
         "TupleStructPat": (
             options: ["Path"],
             collections: [["args", "Pat"]],
         ),
-        "TuplePat": (),
+        "TuplePat": ( collections: [["args", "Pat"]] ),
         "SlicePat": (),
         "RangePat": (),
 

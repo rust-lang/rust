@@ -1168,6 +1168,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         decl_ty
                     };
 
+                    // TODO: walk the pattern here?
+
                     self.write_pat_ty(*pat, ty);
                 }
                 Statement::Expr(expr) => {
@@ -1188,6 +1190,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for (type_ref, pat) in signature.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
             let ty = self.insert_type_vars(ty);
+
+            // TODO: walk pattern?
+
             self.write_pat_ty(*pat, ty);
         }
         self.return_ty = {

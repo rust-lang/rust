@@ -2285,7 +2285,11 @@ impl AstNode for PathPat {
 }
 
 
-impl PathPat {}
+impl PathPat {
+    pub fn path(&self) -> Option<&Path> {
+        super::child_opt(self)
+    }
+}
 
 // PathSegment
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3219,7 +3223,11 @@ impl AstNode for TuplePat {
 }
 
 
-impl TuplePat {}
+impl TuplePat {
+    pub fn args(&self) -> impl Iterator<Item = &Pat> {
+        super::children(self)
+    }
+}
 
 // TupleStructPat
 #[derive(Debug, PartialEq, Eq, Hash)]
