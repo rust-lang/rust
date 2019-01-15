@@ -16,7 +16,7 @@ rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to
 # This fix went in 8.1, so check for that.
 # See https://github.com/rust-lang/rust/issues/56730
 gdb_81 = False
-_match = re.match('([0-9]+)\\.([0-9]+)', gdb.VERSION)
+_match = re.search('([0-9]+)\\.([0-9]+)', gdb.VERSION)
 if _match:
     if int(_match.group(1)) > 8 or (int(_match.group(1)) == 8 and int(_match.group(2)) >= 1):
         gdb_81 = True
