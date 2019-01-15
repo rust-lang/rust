@@ -84,7 +84,6 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(rw_exact_all_at)]
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::unix::prelude::FileExt;
@@ -99,7 +98,7 @@ pub trait FileExt {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "rw_exact_all_at", issue = "51984")]
+    #[stable(feature = "rw_exact_all_at", since = "1.33.0")]
     fn read_exact_at(&self, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
             match self.read_at(buf, offset) {
@@ -181,7 +180,6 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(rw_exact_all_at)]
     /// use std::fs::File;
     /// use std::io;
     /// use std::os::unix::prelude::FileExt;
@@ -194,7 +192,7 @@ pub trait FileExt {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "rw_exact_all_at", issue = "51984")]
+    #[stable(feature = "rw_exact_all_at", since = "1.33.0")]
     fn write_all_at(&self, mut buf: &[u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
