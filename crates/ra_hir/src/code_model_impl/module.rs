@@ -30,17 +30,14 @@ impl Module {
         Module::new(def_id)
     }
 
-    pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+    pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Option<Name> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        let link = ctry!(loc.module_id.parent_link(&module_tree));
-        Ok(Some(link.name(&module_tree).clone()))
+        let link = loc.module_id.parent_link(&module_tree)?;
+        Some(link.name(&module_tree).clone())
     }
 
-    pub fn definition_source_impl(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Cancelable<(FileId, ModuleSource)> {
+    pub fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
         let loc = self.def_id.loc(db);
         let file_id = loc.source_item_id.file_id.as_original_file();
         let syntax_node = db.file_item(loc.source_item_id);
@@ -50,23 +47,23 @@ impl Module {
             let module = ast::Module::cast(&syntax_node).unwrap();
             ModuleSource::Module(module.to_owned())
         };
-        Ok((file_id, module_source))
+        (file_id, module_source)
     }
 
     pub fn declaration_source_impl(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
+    ) -> Option<(FileId, TreeArc<ast::Module>)> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        let link = ctry!(loc.module_id.parent_link(&module_tree));
+        let link = loc.module_id.parent_link(&module_tree)?;
         let file_id = link
             .owner(&module_tree)
             .source(&module_tree)
             .file_id
             .as_original_file();
         let src = link.source(&module_tree, db);
-        Ok(Some((file_id, src)))
+        Some((file_id, src))
     }
 
     pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {

@@ -78,12 +78,12 @@ pub enum Problem {
 
 impl Module {
     /// Name of this module.
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
         self.name_impl(db)
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &impl HirDatabase) -> Cancelable<(FileId, ModuleSource)> {
+    pub fn definition_source(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
         self.definition_source_impl(db)
     }
 
@@ -92,7 +92,7 @@ impl Module {
     pub fn declaration_source(
         &self,
         db: &impl HirDatabase,
-    ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
+    ) -> Option<(FileId, TreeArc<ast::Module>)> {
         self.declaration_source_impl(db)
     }
 
