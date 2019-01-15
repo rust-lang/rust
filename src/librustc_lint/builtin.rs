@@ -280,7 +280,7 @@ impl EarlyLintPass for UnsafeCode {
     }
 
     fn check_trait_item(&mut self, cx: &EarlyContext, item: &ast::TraitItem) {
-        if let ast::TraitItemKind::Method(ref sig, _) = item.node {
+        if let ast::TraitItemKind::Method(ref sig, None) = item.node {
             if sig.header.unsafety == ast::Unsafety::Unsafe {
                 self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
             }
