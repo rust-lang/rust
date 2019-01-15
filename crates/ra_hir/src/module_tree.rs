@@ -42,7 +42,7 @@ impl Submodule {
         db: &impl HirDatabase,
         source: SourceItemId,
     ) -> Cancelable<Arc<Vec<Submodule>>> {
-        db.check_canceled()?;
+        db.check_canceled();
         let file_id = source.file_id;
         let file_items = db.file_items(file_id);
         let module_source = ModuleSource::from_source_item_id(db, source);
@@ -117,7 +117,7 @@ impl ModuleTree {
         db: &impl HirDatabase,
         source_root: SourceRootId,
     ) -> Cancelable<Arc<ModuleTree>> {
-        db.check_canceled()?;
+        db.check_canceled();
         let res = create_module_tree(db, source_root);
         Ok(Arc::new(res?))
     }

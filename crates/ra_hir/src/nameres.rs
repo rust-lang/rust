@@ -327,7 +327,7 @@ where
         loop {
             let processed_imports_count = self.processed_imports.len();
             for &module_id in self.input.keys() {
-                self.db.check_canceled()?;
+                self.db.check_canceled();
                 self.resolve_imports(module_id)?;
             }
             if processed_imports_count == self.processed_imports.len() {

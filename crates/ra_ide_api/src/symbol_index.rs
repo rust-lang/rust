@@ -54,7 +54,7 @@ salsa::query_group! {
 }
 
 fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
-    db.check_canceled()?;
+    db.check_canceled();
     let source_file = db.source_file(file_id);
     let mut symbols = source_file
         .syntax()
