@@ -343,8 +343,8 @@ fn test(x: &str, y: isize) {
     let b = [a, a];
     let c = [b, b];
 
-    let d = [y, 1, 2, 3]
-    let d = [1, y, 2, 3]
+    let d = [y, 1, 2, 3];
+    let d = [1, y, 2, 3];
     let e = [y];
     let f = [d, d];
     let g = [e, e];
