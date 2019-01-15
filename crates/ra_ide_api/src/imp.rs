@@ -15,7 +15,6 @@ use ra_syntax::{
 
 use crate::{
     AnalysisChange,
-    Cancelable,
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{LibrarySymbolsQuery, FileSymbol},
@@ -158,7 +157,7 @@ impl db::RootDatabase {
         }
     }
 
-    pub(crate) fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
+    pub(crate) fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         let syntax = self.source_file(file_id);
 
         let mut res = ra_ide_api_light::diagnostics(&syntax)
@@ -219,7 +218,7 @@ impl db::RootDatabase {
                 res.push(diag)
             }
         };
-        Ok(res)
+        res
     }
 
     pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {

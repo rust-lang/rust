@@ -429,7 +429,7 @@ impl Analysis {
     /// Computes syntax highlighting for the given file.
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
         self.db
-            .catch_canceled(|db| syntax_highlighting::highlight(db, file_id))?
+            .catch_canceled(|db| syntax_highlighting::highlight(db, file_id))
     }
 
     /// Computes completions at the given position.
@@ -448,7 +448,7 @@ impl Analysis {
 
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| db.diagnostics(file_id))?
+        self.with_db(|db| db.diagnostics(file_id))
     }
 
     /// Computes the type of the expression at the given position.
