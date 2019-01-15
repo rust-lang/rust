@@ -93,7 +93,7 @@ impl CrateImplBlocks {
             source_root_id,
             impls: FxHashMap::default(),
         };
-        if let Some(module) = krate.root_module(db)? {
+        if let Some(module) = krate.root_module(db) {
             crate_impl_blocks.collect_recursive(db, module)?;
         }
         Ok(Arc::new(crate_impl_blocks))

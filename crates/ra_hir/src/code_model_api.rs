@@ -33,10 +33,10 @@ impl Crate {
     pub fn crate_id(&self) -> CrateId {
         self.crate_id
     }
-    pub fn dependencies(&self, db: &impl HirDatabase) -> Cancelable<Vec<CrateDependency>> {
-        Ok(self.dependencies_impl(db))
+    pub fn dependencies(&self, db: &impl HirDatabase) -> Vec<CrateDependency> {
+        self.dependencies_impl(db)
     }
-    pub fn root_module(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
+    pub fn root_module(&self, db: &impl HirDatabase) -> Option<Module> {
         self.root_module_impl(db)
     }
 }
