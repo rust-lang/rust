@@ -36,7 +36,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, Literal, ExprId, PatId, UnaryOp, BinaryOp, Statement},
+    expr::{Body, Expr, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement},
 };
 
 /// The ID of a type variable.
@@ -872,6 +872,35 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
+    // FIXME: Expectation should probably contain a reference to a Ty instead of
+    // a Ty itself
+    fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
+        let body = Arc::clone(&self.body); // avoid borrow checker problem
+        match (&body[pat], &expected.ty) {
+            (Pat::Tuple(ref args), &Ty::Tuple(ref tuple_args))
+                if args.len() == tuple_args.len() =>
+            {
+                for (&pat, ty) in args.iter().zip(tuple_args.iter()) {
+                    // FIXME: can we do w/o cloning?
+                    self.infer_pat(pat, &Expectation::has_type(ty.clone()));
+                }
+            }
+            (&Pat::Ref { pat, mutability }, &Ty::Ref(ref sub_ty, ty_mut))
+                if mutability == ty_mut =>
+            {
+                self.infer_pat(pat, &Expectation::has_type((&**sub_ty).clone()));
+            }
+            // TODO: implement more
+            (_, ref _expected_ty) => {}
+        };
+        // use a new type variable if we got Ty::Unknown here
+        let ty = self.insert_type_vars_shallow(expected.ty.clone());
+        self.unify(&ty, &expected.ty);
+        let ty = self.resolve_ty_as_possible(ty);
+        self.write_pat_ty(pat, ty.clone());
+        ty
+    }
+
     fn infer_expr(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ty = match &body[expr] {
@@ -1168,9 +1197,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         decl_ty
                     };
 
-                    // TODO: walk the pattern here?
-
-                    self.write_pat_ty(*pat, ty);
+                    self.infer_pat(*pat, &Expectation::has_type(ty))?;
                 }
                 Statement::Expr(expr) => {
                     self.infer_expr(*expr, &Expectation::none());
@@ -1191,9 +1218,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = self.make_ty(type_ref);
             let ty = self.insert_type_vars(ty);
 
-            // TODO: walk pattern?
-
-            self.write_pat_ty(*pat, ty);
+            self.infer_pat(*pat, &Expectation::has_type(ty))?;
         }
         self.return_ty = {
             let ty = self.make_ty(signature.ret_type());

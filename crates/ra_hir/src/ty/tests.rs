@@ -362,11 +362,22 @@ fn test(x: &str, y: isize) {
 fn infer_pattern() {
     check_inference(
         r#"
+enum E { A { x: usize }, B }
+
 fn test(x: &i32) {
     let y = x;
     let &z = x;
     let a = z;
     let (c, d) = (1, "hello");
+
+    let e = E::A { x: 3 };
+    if let E::A { x: x } = e {
+        x
+    };
+    match e {
+        E::A { x } => x,
+        E::B => 1,
+    };
 }
 "#,
         "pattern.txt",
