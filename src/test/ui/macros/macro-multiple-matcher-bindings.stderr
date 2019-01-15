@@ -1,0 +1,50 @@
+error: duplicate matcher binding
+  --> $DIR/macro-multiple-matcher-bindings.rs:5:16
+   |
+LL |     ($a:ident, $a:ident) => {}; //~ERROR duplicate matcher binding
+   |                ^^^^^^^^
+   |
+note: previous declaration was here
+  --> $DIR/macro-multiple-matcher-bindings.rs:5:6
+   |
+LL |     ($a:ident, $a:ident) => {}; //~ERROR duplicate matcher binding
+   |      ^^^^^^^^
+
+error: duplicate matcher binding
+  --> $DIR/macro-multiple-matcher-bindings.rs:6:16
+   |
+LL |     ($a:ident, $a:path) => {};  //~ERROR duplicate matcher binding
+   |                ^^^^^^^
+   |
+note: previous declaration was here
+  --> $DIR/macro-multiple-matcher-bindings.rs:6:6
+   |
+LL |     ($a:ident, $a:path) => {};  //~ERROR duplicate matcher binding
+   |      ^^^^^^^^
+
+error: duplicate matcher binding
+  --> $DIR/macro-multiple-matcher-bindings.rs:15:18
+   |
+LL |     ($a:ident, $($a:ident),*) => {}; //~ERROR duplicate matcher binding
+   |                  ^^^^^^^^
+   |
+note: previous declaration was here
+  --> $DIR/macro-multiple-matcher-bindings.rs:15:6
+   |
+LL |     ($a:ident, $($a:ident),*) => {}; //~ERROR duplicate matcher binding
+   |      ^^^^^^^^
+
+error: duplicate matcher binding
+  --> $DIR/macro-multiple-matcher-bindings.rs:16:25
+   |
+LL |     ($($a:ident)+ # $($($a:path),+);*) => {}; //~ERROR duplicate matcher binding
+   |                         ^^^^^^^
+   |
+note: previous declaration was here
+  --> $DIR/macro-multiple-matcher-bindings.rs:16:8
+   |
+LL |     ($($a:ident)+ # $($($a:path),+);*) => {}; //~ERROR duplicate matcher binding
+   |        ^^^^^^^^
+
+error: aborting due to 4 previous errors
+
