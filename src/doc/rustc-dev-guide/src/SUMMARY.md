@@ -6,6 +6,7 @@
     - [Build and Install distribution artifacts](./build-install-distribution-artifacts.md)
     - [Documenting Compiler](./compiler-documenting.md)
 - [Coding conventions](./conventions.md)
+- [Stabilizing Features](./stabilization_guide.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [The compiler testing framework](./tests/intro.md)
     - [Running tests](./tests/running.md)
