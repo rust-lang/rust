@@ -5,6 +5,7 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::Ident;
@@ -18,9 +19,7 @@ pub struct Pass;
 ///
 /// **Why is this bad?** Readability, this can be written more concisely
 ///
-/// **Known problems:** Sometimes `.cloned()` requires stricter trait
-/// bound than `.map(|e| e.clone())` (which works because of the coercion).
-/// See [#498](https://github.com/rust-lang-nursery/rust-clippy/issues/498).
+/// **Known problems:** None
 ///
 /// **Example:**
 ///
@@ -69,19 +68,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated, _, name, None
                     ) = inner.node {
-                        lint(cx, e.span, args[0].span, name, closure_expr);
+                        if ident_eq(name, closure_expr) {
+                            lint(cx, e.span, args[0].span);
+                        }
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
                         match closure_expr.node {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
-                                if !cx.tables.expr_ty(inner).is_box() {
-                                    lint(cx, e.span, args[0].span, name, inner);
+                                if ident_eq(name, inner) && !cx.tables.expr_ty(inner).is_box() {
+                                    lint(cx, e.span, args[0].span);
                                 }
                             },
                             hir::ExprKind::MethodCall(ref method, _, ref obj) => {
-                                if method.ident.as_str() == "clone"
+                                if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
-                                    lint(cx, e.span, args[0].span, name, &obj[0]);
+
+                                    let obj_ty = cx.tables.expr_ty(&obj[0]);
+                                    if let ty::Ref(..) = obj_ty.sty {
+                                        lint(cx, e.span, args[0].span);
+                                    } else {
+                                        lint_needless_cloning(cx, e.span, args[0].span);
+                                    }
                                 }
                             },
                             _ => {},
@@ -94,22 +101,38 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, name: Ident, path: &hir::Expr) {
+fn ident_eq(name: Ident, path: &hir::Expr) -> bool {
     if let hir::ExprKind::Path(hir::QPath::Resolved(None, ref path)) = path.node {
-        if path.segments.len() == 1 && path.segments[0].ident == name {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                MAP_CLONE,
-                replace,
-                "You are using an explicit closure for cloning elements",
-                "Consider calling the dedicated `cloned` method",
-                format!(
-                    "{}.cloned()",
-                    snippet_with_applicability(cx, root, "..", &mut applicability)
-                ),
-                applicability,
-            )
-        }
+        path.segments.len() == 1 && path.segments[0].ident == name
+    } else {
+        false
     }
+}
+
+fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
+    span_lint_and_sugg(
+        cx,
+        MAP_CLONE,
+        root.trim_start(receiver).unwrap(),
+        "You are needlessly cloning iterator elements",
+        "Remove the map call",
+        String::new(),
+        Applicability::MachineApplicable,
+    )
+}
+
+fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span) {
+    let mut applicability = Applicability::MachineApplicable;
+    span_lint_and_sugg(
+        cx,
+        MAP_CLONE,
+        replace,
+        "You are using an explicit closure for cloning elements",
+        "Consider calling the dedicated `cloned` method",
+        format!(
+            "{}.cloned()",
+            snippet_with_applicability(cx, root, "..", &mut applicability)
+        ),
+        applicability,
+    )
 }
