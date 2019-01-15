@@ -40,9 +40,9 @@ use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
+use syntax::visit::FnKind;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
-use rustc::hir::intravisit::FnKind;
 
 use nonstandard_style::{MethodLateContext, method_context};
 
@@ -216,7 +216,7 @@ impl LintPass for UnsafeCode {
 }
 
 impl UnsafeCode {
-    fn report_unsafe(&self, cx: &LateContext, span: Span, desc: &'static str) {
+    fn report_unsafe(&self, cx: &EarlyContext, span: Span, desc: &'static str) {
         // This comes from a macro that has #[allow_internal_unsafe].
         if span.allows_unsafe() {
             return;
@@ -226,23 +226,31 @@ impl UnsafeCode {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprKind::Block(ref blk, _) = e.node {
+impl EarlyLintPass for UnsafeCode {
+    fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
+        if attr.check_name("allow_internal_unsafe") {
+            self.report_unsafe(cx, attr.span, "`allow_internal_unsafe` allows defining \
+                                               macros using unsafe without triggering \
+                                               the `unsafe_code` lint at their call site");
+        }
+    }
+
+    fn check_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
+        if let ast::ExprKind::Block(ref blk, _) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
-            if blk.rules == hir::UnsafeBlock(hir::UserProvided) {
+            if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
                 self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
             }
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
         match it.node {
-            hir::ItemKind::Trait(_, hir::Unsafety::Unsafe, ..) => {
+            ast::ItemKind::Trait(_, ast::Unsafety::Unsafe, ..) => {
                 self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
-            hir::ItemKind::Impl(hir::Unsafety::Unsafe, ..) => {
+            ast::ItemKind::Impl(ast::Unsafety::Unsafe, ..) => {
                 self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 
@@ -251,19 +259,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     }
 
     fn check_fn(&mut self,
-                cx: &LateContext,
-                fk: FnKind<'tcx>,
-                _: &hir::FnDecl,
-                _: &hir::Body,
+                cx: &EarlyContext,
+                fk: FnKind,
+                _: &ast::FnDecl,
                 span: Span,
                 _: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, _, hir::FnHeader { unsafety: hir::Unsafety::Unsafe, .. }, ..) => {
+            FnKind::ItemFn(_, ast::FnHeader { unsafety: ast::Unsafety::Unsafe, .. }, ..) => {
                 self.report_unsafe(cx, span, "declaration of an `unsafe` function")
             }
 
             FnKind::Method(_, sig, ..) => {
-                if sig.header.unsafety == hir::Unsafety::Unsafe {
+                if sig.header.unsafety == ast::Unsafety::Unsafe {
                     self.report_unsafe(cx, span, "implementation of an `unsafe` method")
                 }
             }
@@ -272,9 +279,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) = item.node {
-            if sig.header.unsafety == hir::Unsafety::Unsafe {
+    fn check_trait_item(&mut self, cx: &EarlyContext, item: &ast::TraitItem) {
+        if let ast::TraitItemKind::Method(ref sig, None) = item.node {
+            if sig.header.unsafety == ast::Unsafety::Unsafe {
                 self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
             }
         }
