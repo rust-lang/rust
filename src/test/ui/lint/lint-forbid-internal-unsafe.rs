@@ -2,7 +2,7 @@
 #![feature(allow_internal_unsafe)]
 
 #[allow_internal_unsafe]
-//~^ ERROR: cannot use `allow_internal_unsafe` with `forbid(unsafe_code)`
+//~^ ERROR: `allow_internal_unsafe` allows defining
 macro_rules! evil {
     ($e:expr) => {
         unsafe {

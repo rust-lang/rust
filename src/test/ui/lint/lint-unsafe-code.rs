@@ -27,9 +27,7 @@ unsafe impl Foo for Bar {} //~ ERROR: implementation of an `unsafe` trait
 trait Baz {
     unsafe fn baz(&self); //~ ERROR: declaration of an `unsafe` method
     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
-    //~^ ERROR: declaration of an `unsafe` method
     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
-    //~^ ERROR: declaration of an `unsafe` method
 }
 
 impl Baz for Bar {
@@ -65,7 +63,6 @@ trait C {
     #[allow(unsafe_code)]
     unsafe fn baz(&self);
     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
-    //~^ ERROR: declaration of an `unsafe` method
 }
 
 impl C for Bar {
