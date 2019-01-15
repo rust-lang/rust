@@ -463,19 +463,19 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s.name(db)?.unwrap_or_else(Name::missing),
+        name: s.name(db).unwrap_or_else(Name::missing),
     })
 }
 
 pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s.name(db)?.unwrap_or_else(Name::missing),
+        name: s.name(db).unwrap_or_else(Name::missing),
     })
 }
 
 pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> Cancelable<Ty> {
-    let enum_parent = ev.parent_enum(db)?;
+    let enum_parent = ev.parent_enum(db);
 
     type_for_enum(db, enum_parent)
 }
@@ -510,7 +510,7 @@ pub(super) fn type_for_field(
     let def = def_id.resolve(db)?;
     let variant_data = match def {
         Def::Struct(s) => s.variant_data(db)?,
-        Def::EnumVariant(ev) => ev.variant_data(db)?,
+        Def::EnumVariant(ev) => ev.variant_data(db),
         // TODO: unions
         _ => panic!(
             "trying to get type for field in non-struct/variant {:?}",

@@ -19,7 +19,7 @@ impl Struct {
     }
 
     pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
-        Ok(db.struct_data(self.def_id)?.variant_data.clone())
+        Ok(db.struct_data(self.def_id).variant_data.clone())
     }
 }
 
@@ -37,16 +37,13 @@ impl StructData {
         StructData { name, variant_data }
     }
 
-    pub(crate) fn struct_data_query(
-        db: &impl HirDatabase,
-        def_id: DefId,
-    ) -> Cancelable<Arc<StructData>> {
+    pub(crate) fn struct_data_query(db: &impl HirDatabase, def_id: DefId) -> Arc<StructData> {
         let def_loc = def_id.loc(db);
         assert!(def_loc.kind == DefKind::Struct);
         let syntax = db.file_item(def_loc.source_item_id);
         let struct_def =
             ast::StructDef::cast(&syntax).expect("struct def should point to StructDef node");
-        Ok(Arc::new(StructData::new(struct_def)))
+        Arc::new(StructData::new(struct_def))
     }
 }
 
@@ -84,10 +81,7 @@ impl EnumData {
         EnumData { name, variants }
     }
 
-    pub(crate) fn enum_data_query(
-        db: &impl HirDatabase,
-        def_id: DefId,
-    ) -> Cancelable<Arc<EnumData>> {
+    pub(crate) fn enum_data_query(db: &impl HirDatabase, def_id: DefId) -> Arc<EnumData> {
         let def_loc = def_id.loc(db);
         assert!(def_loc.kind == DefKind::Enum);
         let syntax = db.file_item(def_loc.source_item_id);
@@ -107,7 +101,7 @@ impl EnumData {
         } else {
             Vec::new()
         };
-        Ok(Arc::new(EnumData::new(enum_def, variants)))
+        Arc::new(EnumData::new(enum_def, variants))
     }
 }
 
@@ -133,7 +127,7 @@ impl EnumVariantData {
     pub(crate) fn enum_variant_data_query(
         db: &impl HirDatabase,
         def_id: DefId,
-    ) -> Cancelable<Arc<EnumVariantData>> {
+    ) -> Arc<EnumVariantData> {
         let def_loc = def_id.loc(db);
         assert!(def_loc.kind == DefKind::EnumVariant);
         let syntax = db.file_item(def_loc.source_item_id);
@@ -146,10 +140,7 @@ impl EnumVariantData {
             .expect("enum variant list should have enum ancestor");
         let enum_def_id = get_def_id(db, &def_loc, enum_node, DefKind::Enum);
 
-        Ok(Arc::new(EnumVariantData::new(
-            variant_def,
-            Enum::new(enum_def_id),
-        )))
+        Arc::new(EnumVariantData::new(variant_def, Enum::new(enum_def_id)))
     }
 }
 

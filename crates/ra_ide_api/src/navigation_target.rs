@@ -112,15 +112,15 @@ impl NavigationTarget {
     pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Cancelable<Option<NavigationTarget>> {
         let res = match def {
             Def::Struct(s) => {
-                let (file_id, node) = s.source(db)?;
+                let (file_id, node) = s.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Enum(e) => {
-                let (file_id, node) = e.source(db)?;
+                let (file_id, node) = e.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::EnumVariant(ev) => {
-                let (file_id, node) = ev.source(db)?;
+                let (file_id, node) = ev.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Function(f) => {

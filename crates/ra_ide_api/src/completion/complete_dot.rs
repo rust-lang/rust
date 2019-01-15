@@ -29,7 +29,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             Ty::Adt { def_id, .. } => {
                 match def_id.resolve(ctx.db)? {
                     Def::Struct(s) => {
-                        for field in s.fields(ctx.db)? {
+                        for field in s.fields(ctx.db) {
                             CompletionItem::new(
                                 CompletionKind::Reference,
                                 field.name().to_string(),

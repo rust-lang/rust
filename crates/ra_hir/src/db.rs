@@ -37,17 +37,17 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::fn_scopes;
     }
 
-    fn struct_data(def_id: DefId) -> Cancelable<Arc<StructData>> {
+    fn struct_data(def_id: DefId) -> Arc<StructData> {
         type StructDataQuery;
         use fn crate::adt::StructData::struct_data_query;
     }
 
-    fn enum_data(def_id: DefId) -> Cancelable<Arc<EnumData>> {
+    fn enum_data(def_id: DefId) -> Arc<EnumData> {
         type EnumDataQuery;
         use fn crate::adt::EnumData::enum_data_query;
     }
 
-    fn enum_variant_data(def_id: DefId) -> Cancelable<Arc<EnumVariantData>> {
+    fn enum_variant_data(def_id: DefId) -> Arc<EnumVariantData> {
         type EnumVariantDataQuery;
         use fn crate::adt::EnumVariantData::enum_variant_data_query;
     }
