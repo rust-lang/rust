@@ -180,7 +180,7 @@ impl db::RootDatabase {
             })
             .collect::<Vec<_>>();
         if let Some(m) = source_binder::module_from_file_id(self, file_id) {
-            for (name_node, problem) in m.problems(self)? {
+            for (name_node, problem) in m.problems(self) {
                 let source_root = self.file_source_root(file_id);
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
