@@ -22,8 +22,9 @@ pub use crate::{
 
 pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
     fn check_canceled(&self) -> Cancelable<()> {
-        self.salsa_runtime()
-            .if_current_revision_is_canceled(Canceled::throw);
+        if self.salsa_runtime().is_current_revision_canceled() {
+            Canceled::throw()
+        }
         Ok(())
     }
 
