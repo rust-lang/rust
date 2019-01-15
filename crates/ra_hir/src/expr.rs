@@ -4,10 +4,8 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
-use ra_db::{LocalSyntaxPtr, Cancelable};
-use ra_syntax::{
-    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor}
-};
+use ra_db::LocalSyntaxPtr;
+use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor};
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
 use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
@@ -358,8 +356,8 @@ impl Pat {
 
 // Queries
 
-pub(crate) fn body_hir(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<Body>> {
-    Ok(Arc::clone(&body_syntax_mapping(db, def_id)?.body))
+pub(crate) fn body_hir(db: &impl HirDatabase, def_id: DefId) -> Arc<Body> {
+    Arc::clone(&body_syntax_mapping(db, def_id).body)
 }
 
 struct ExprCollector {
@@ -828,10 +826,7 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
     collector.into_body_syntax_mapping(params, body)
 }
 
-pub(crate) fn body_syntax_mapping(
-    db: &impl HirDatabase,
-    def_id: DefId,
-) -> Cancelable<Arc<BodySyntaxMapping>> {
+pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, def_id: DefId) -> Arc<BodySyntaxMapping> {
     let def = def_id.resolve(db);
 
     let body_syntax_mapping = match def {
@@ -840,5 +835,5 @@ pub(crate) fn body_syntax_mapping(
         _ => panic!("Trying to get body for item type without body"),
     };
 
-    Ok(Arc::new(body_syntax_mapping))
+    Arc::new(body_syntax_mapping)
 }

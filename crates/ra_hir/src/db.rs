@@ -32,7 +32,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::macros::expand_macro_invocation;
     }
 
-    fn fn_scopes(def_id: DefId) -> Cancelable<Arc<FnScopes>> {
+    fn fn_scopes(def_id: DefId) -> Arc<FnScopes> {
         type FnScopesQuery;
         use fn query_definitions::fn_scopes;
     }
@@ -107,12 +107,12 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query;
     }
 
-    fn body_hir(def_id: DefId) -> Cancelable<Arc<crate::expr::Body>> {
+    fn body_hir(def_id: DefId) -> Arc<crate::expr::Body> {
         type BodyHirQuery;
         use fn crate::expr::body_hir;
     }
 
-    fn body_syntax_mapping(def_id: DefId) -> Cancelable<Arc<crate::expr::BodySyntaxMapping>> {
+    fn body_syntax_mapping(def_id: DefId) -> Arc<crate::expr::BodySyntaxMapping> {
         type BodySyntaxMappingQuery;
         use fn crate::expr::body_syntax_mapping;
     }

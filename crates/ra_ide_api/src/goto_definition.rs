@@ -50,7 +50,7 @@ pub(crate) fn reference_definition(
     if let Some(function) =
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())
     {
-        let scope = function.scopes(db)?;
+        let scope = function.scopes(db);
         // First try to resolve the symbol locally
         if let Some(entry) = scope.resolve_local_name(name_ref) {
             let nav = NavigationTarget::from_scope_entry(file_id, &entry);
@@ -64,7 +64,7 @@ pub(crate) fn reference_definition(
             .and_then(ast::MethodCallExpr::cast)
         {
             let infer_result = function.infer(db)?;
-            let syntax_mapping = function.body_syntax_mapping(db)?;
+            let syntax_mapping = function.body_syntax_mapping(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
             if let Some(def_id) = syntax_mapping
                 .node_expr(expr)

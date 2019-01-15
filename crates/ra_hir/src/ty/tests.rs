@@ -322,7 +322,7 @@ fn infer(content: &str) -> String {
     {
         let func = source_binder::function_from_source(&db, file_id, fn_def).unwrap();
         let inference_result = func.infer(&db).unwrap();
-        let body_syntax_mapping = func.body_syntax_mapping(&db).unwrap();
+        let body_syntax_mapping = func.body_syntax_mapping(&db);
         let mut types = Vec::new();
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_syntax_mapping.pat_syntax(pat) {

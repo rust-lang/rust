@@ -15,7 +15,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
         None => return Ok(()),
     };
     if let Some(function) = &ctx.function {
-        let scopes = function.scopes(ctx.db)?;
+        let scopes = function.scopes(ctx.db);
         complete_fn(acc, &scopes, ctx.offset);
     }
 
