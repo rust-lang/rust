@@ -63,7 +63,7 @@ pub(crate) fn reference_definition(
             .parent()
             .and_then(ast::MethodCallExpr::cast)
         {
-            let infer_result = function.infer(db)?;
+            let infer_result = function.infer(db);
             let syntax_mapping = function.body_syntax_mapping(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
             if let Some(def_id) = syntax_mapping

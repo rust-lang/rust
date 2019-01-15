@@ -30,8 +30,6 @@ use ra_arena::map::ArenaMap;
 use join_to_string::join;
 use rustc_hash::FxHashMap;
 
-use ra_db::Cancelable;
-
 use crate::{
     Def, DefId, Module, Function, Struct, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes,
@@ -40,14 +38,6 @@ use crate::{
     name::KnownName,
     expr::{Body, Expr, Literal, ExprId, PatId, UnaryOp, BinaryOp, Statement},
 };
-
-fn transpose<T>(x: Cancelable<Option<T>>) -> Option<Cancelable<T>> {
-    match x {
-        Ok(Some(t)) => Some(Ok(t)),
-        Ok(None) => None,
-        Err(e) => Some(Err(e)),
-    }
-}
 
 /// The ID of a type variable.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -836,36 +826,36 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn infer_path_expr(&mut self, expr: ExprId, path: &Path) -> Cancelable<Option<Ty>> {
+    fn infer_path_expr(&mut self, expr: ExprId, path: &Path) -> Option<Ty> {
         if path.is_ident() || path.is_self() {
             // resolve locally
             let name = path.as_ident().cloned().unwrap_or_else(Name::self_param);
             if let Some(scope_entry) = self.scopes.resolve_local_name(expr, name) {
-                let ty = ctry!(self.type_of_pat.get(scope_entry.pat()));
+                let ty = self.type_of_pat.get(scope_entry.pat())?;
                 let ty = self.resolve_ty_as_possible(ty.clone());
-                return Ok(Some(ty));
+                return Some(ty);
             };
         };
 
         // resolve in module
-        let resolved = ctry!(self.module.resolve_path(self.db, &path).take_values());
+        let resolved = self.module.resolve_path(self.db, &path).take_values()?;
         let ty = self.db.type_for_def(resolved);
         let ty = self.insert_type_vars(ty);
-        Ok(Some(ty))
+        Some(ty)
     }
 
-    fn resolve_variant(&self, path: Option<&Path>) -> Cancelable<(Ty, Option<DefId>)> {
+    fn resolve_variant(&self, path: Option<&Path>) -> (Ty, Option<DefId>) {
         let path = if let Some(path) = path {
             path
         } else {
-            return Ok((Ty::Unknown, None));
+            return (Ty::Unknown, None);
         };
         let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path).take_types() {
             def_id
         } else {
-            return Ok((Ty::Unknown, None));
+            return (Ty::Unknown, None);
         };
-        Ok(match def_id.resolve(self.db) {
+        match def_id.resolve(self.db) {
             Def::Struct(s) => {
                 let ty = type_for_struct(self.db, s);
                 (ty, Some(def_id))
@@ -875,10 +865,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 (ty, Some(def_id))
             }
             _ => (Ty::Unknown, None),
-        })
+        }
     }
 
-    fn infer_expr(&mut self, expr: ExprId, expected: &Expectation) -> Cancelable<Ty> {
+    fn infer_expr(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ty = match &body[expr] {
             Expr::Missing => Ty::Unknown,
@@ -888,11 +878,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 else_branch,
             } => {
                 // if let is desugared to match, so this is always simple if
-                self.infer_expr(*condition, &Expectation::has_type(Ty::Bool))?;
-                let then_ty = self.infer_expr(*then_branch, expected)?;
+                self.infer_expr(*condition, &Expectation::has_type(Ty::Bool));
+                let then_ty = self.infer_expr(*then_branch, expected);
                 match else_branch {
                     Some(else_branch) => {
-                        self.infer_expr(*else_branch, expected)?;
+                        self.infer_expr(*else_branch, expected);
                     }
                     None => {
                         // no else branch -> unit
@@ -901,31 +891,31 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 then_ty
             }
-            Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected)?,
+            Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::Loop { body } => {
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()))?;
+                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 // TODO handle break with value
                 Ty::Never
             }
             Expr::While { condition, body } => {
                 // while let is desugared to a match loop, so this is always simple while
-                self.infer_expr(*condition, &Expectation::has_type(Ty::Bool))?;
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()))?;
+                self.infer_expr(*condition, &Expectation::has_type(Ty::Bool));
+                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
             Expr::For { iterable, body, .. } => {
                 let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
                 // TODO write type for pat
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()))?;
+                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
             Expr::Lambda { body, .. } => {
                 // TODO write types for args, infer lambda type etc.
-                let _body_ty = self.infer_expr(*body, &Expectation::none())?;
+                let _body_ty = self.infer_expr(*body, &Expectation::none());
                 Ty::Unknown
             }
             Expr::Call { callee, args } => {
-                let callee_ty = self.infer_expr(*callee, &Expectation::none())?;
+                let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (&sig.input[..], sig.output.clone()),
                     _ => {
@@ -938,7 +928,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.infer_expr(
                         *arg,
                         &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
-                    )?;
+                    );
                 }
                 ret_ty
             }
@@ -947,8 +937,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 args,
                 method_name,
             } => {
-                let receiver_ty = self.infer_expr(*receiver, &Expectation::none())?;
-                let resolved = receiver_ty.clone().lookup_method(self.db, method_name)?;
+                let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
+                let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
                 let method_ty = match resolved {
                     Some(def_id) => {
                         self.write_method_resolution(expr, def_id);
@@ -974,32 +964,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.infer_expr(
                         *arg,
                         &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
-                    )?;
+                    );
                 }
                 ret_ty
             }
             Expr::Match { expr, arms } => {
-                let _ty = self.infer_expr(*expr, &Expectation::none())?;
+                let _ty = self.infer_expr(*expr, &Expectation::none());
                 for arm in arms {
                     // TODO type the bindings in pats
                     // TODO type the guard
-                    let _ty = self.infer_expr(arm.expr, &Expectation::none())?;
+                    let _ty = self.infer_expr(arm.expr, &Expectation::none());
                 }
                 // TODO unify all the match arm types
                 Ty::Unknown
             }
-            Expr::Path(p) => self.infer_path_expr(expr, p)?.unwrap_or(Ty::Unknown),
+            Expr::Path(p) => self.infer_path_expr(expr, p).unwrap_or(Ty::Unknown),
             Expr::Continue => Ty::Never,
             Expr::Break { expr } => {
                 if let Some(expr) = expr {
                     // TODO handle break with value
-                    self.infer_expr(*expr, &Expectation::none())?;
+                    self.infer_expr(*expr, &Expectation::none());
                 }
                 Ty::Never
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::has_type(self.return_ty.clone()))?;
+                    self.infer_expr(*expr, &Expectation::has_type(self.return_ty.clone()));
                 }
                 Ty::Never
             }
@@ -1008,7 +998,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 fields,
                 spread,
             } => {
-                let (ty, def_id) = self.resolve_variant(path.as_ref())?;
+                let (ty, def_id) = self.resolve_variant(path.as_ref());
                 for field in fields {
                     let field_ty = if let Some(def_id) = def_id {
                         self.db
@@ -1017,37 +1007,35 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     } else {
                         Ty::Unknown
                     };
-                    self.infer_expr(field.expr, &Expectation::has_type(field_ty))?;
+                    self.infer_expr(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
-                    self.infer_expr(*expr, &Expectation::has_type(ty.clone()))?;
+                    self.infer_expr(*expr, &Expectation::has_type(ty.clone()));
                 }
                 ty
             }
             Expr::Field { expr, name } => {
-                let receiver_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let receiver_ty = self.infer_expr(*expr, &Expectation::none());
                 let ty = receiver_ty
                     .autoderef(self.db)
                     .find_map(|derefed_ty| match derefed_ty {
                         // this is more complicated than necessary because type_for_field is cancelable
                         Ty::Tuple(fields) => {
                             let i = name.to_string().parse::<usize>().ok();
-                            i.and_then(|i| fields.get(i).cloned()).map(Ok)
+                            i.and_then(|i| fields.get(i).cloned())
                         }
-                        Ty::Adt { def_id, .. } => {
-                            transpose(Ok(self.db.type_for_field(def_id, name.clone())))
-                        }
+                        Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, name.clone()),
                         _ => None,
                     })
-                    .unwrap_or(Ok(Ty::Unknown))?;
+                    .unwrap_or(Ty::Unknown);
                 self.insert_type_vars(ty)
             }
             Expr::Try { expr } => {
-                let _inner_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let _inner_ty = self.infer_expr(*expr, &Expectation::none());
                 Ty::Unknown
             }
             Expr::Cast { expr, type_ref } => {
-                let _inner_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let _inner_ty = self.infer_expr(*expr, &Expectation::none());
                 let cast_ty =
                     Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), type_ref);
                 let cast_ty = self.insert_type_vars(cast_ty);
@@ -1056,12 +1044,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Ref { expr, mutability } => {
                 // TODO pass the expectation down
-                let inner_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 // TODO reference coercions etc.
                 Ty::Ref(Arc::new(inner_ty), *mutability)
             }
             Expr::UnaryOp { expr, op } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none())?;
+                let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 match op {
                     Some(UnaryOp::Deref) => {
                         if let Some(derefed_ty) = inner_ty.builtin_deref() {
@@ -1082,11 +1070,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }
                         _ => Expectation::none(),
                     };
-                    let lhs_ty = self.infer_expr(*lhs, &lhs_expectation)?;
+                    let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
                     // TODO: find implementation of trait corresponding to operation
                     // symbol and resolve associated `Output` type
                     let rhs_expectation = binary_op_rhs_expectation(*op, lhs_ty);
-                    let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation))?;
+                    let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
 
                     // TODO: similar as above, return ty is often associated trait type
                     binary_op_return_ty(*op, rhs_ty)
@@ -1096,7 +1084,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Tuple { exprs } => {
                 let mut ty_vec = Vec::with_capacity(exprs.len());
                 for arg in exprs.iter() {
-                    ty_vec.push(self.infer_expr(*arg, &Expectation::none())?);
+                    ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
                 }
 
                 Ty::Tuple(Arc::from(ty_vec))
@@ -1121,7 +1109,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.unify(&ty, &expected.ty);
         let ty = self.resolve_ty_as_possible(ty);
         self.write_expr_ty(expr, ty.clone());
-        Ok(ty)
+        ty
     }
 
     fn infer_block(
@@ -1129,7 +1117,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         statements: &[Statement],
         tail: Option<ExprId>,
         expected: &Expectation,
-    ) -> Cancelable<Ty> {
+    ) -> Ty {
         for stmt in statements {
             match stmt {
                 Statement::Let {
@@ -1145,7 +1133,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     );
                     let decl_ty = self.insert_type_vars(decl_ty);
                     let ty = if let Some(expr) = initializer {
-                        let expr_ty = self.infer_expr(*expr, &Expectation::has_type(decl_ty))?;
+                        let expr_ty = self.infer_expr(*expr, &Expectation::has_type(decl_ty));
                         expr_ty
                     } else {
                         decl_ty
@@ -1154,19 +1142,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.write_pat_ty(*pat, ty);
                 }
                 Statement::Expr(expr) => {
-                    self.infer_expr(*expr, &Expectation::none())?;
+                    self.infer_expr(*expr, &Expectation::none());
                 }
             }
         }
         let ty = if let Some(expr) = tail {
-            self.infer_expr(expr, expected)?
+            self.infer_expr(expr, expected)
         } else {
             Ty::unit()
         };
-        Ok(ty)
+        ty
     }
 
-    fn collect_fn_signature(&mut self, signature: &FnSignature) -> Cancelable<()> {
+    fn collect_fn_signature(&mut self, signature: &FnSignature) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         for (type_ref, pat) in signature.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
@@ -1178,19 +1166,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = self.insert_type_vars(ty);
             ty
         };
-        Ok(())
     }
 
-    fn infer_body(&mut self) -> Cancelable<()> {
+    fn infer_body(&mut self) {
         self.infer_expr(
             self.body.body_expr(),
             &Expectation::has_type(self.return_ty.clone()),
-        )?;
-        Ok(())
+        );
     }
 }
 
-pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
+pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Arc<InferenceResult> {
     db.check_canceled();
     let function = Function::new(def_id); // TODO: consts also need inference
     let body = function.body(db);
@@ -1200,9 +1186,9 @@ pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceRe
     let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);
 
     let signature = function.signature(db);
-    ctx.collect_fn_signature(&signature)?;
+    ctx.collect_fn_signature(&signature);
 
-    ctx.infer_body()?;
+    ctx.infer_body();
 
-    Ok(Arc::new(ctx.resolve_all()))
+    Arc::new(ctx.resolve_all())
 }

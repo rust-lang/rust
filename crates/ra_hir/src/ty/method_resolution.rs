@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 
-use ra_db::{Cancelable, SourceRootId};
+use ra_db::SourceRootId;
 
 use crate::{HirDatabase, DefId, module_tree::ModuleId, Module, Crate, Name, Function, impl_block::{ImplId, ImplBlock, ImplItem}};
 use super::Ty;
@@ -42,7 +42,7 @@ impl CrateImplBlocks {
         &'a self,
         db: &'a impl HirDatabase,
         ty: &Ty,
-    ) -> impl Iterator<Item = Cancelable<ImplBlock>> + 'a {
+    ) -> impl Iterator<Item = ImplBlock> + 'a {
         let fingerprint = TyFingerprint::for_impl(ty);
         fingerprint
             .and_then(|f| self.impls.get(&f))
@@ -50,11 +50,11 @@ impl CrateImplBlocks {
             .flat_map(|i| i.iter())
             .map(move |(module_id, impl_id)| {
                 let module_impl_blocks = db.impls_in_module(self.source_root_id, *module_id);
-                Ok(ImplBlock::from_id(module_impl_blocks, *impl_id))
+                ImplBlock::from_id(module_impl_blocks, *impl_id)
             })
     }
 
-    fn collect_recursive(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
+    fn collect_recursive(&mut self, db: &impl HirDatabase, module: Module) {
         let module_id = module.def_id.loc(db).module_id;
         let module_impl_blocks = db.impls_in_module(self.source_root_id, module_id);
 
@@ -76,16 +76,14 @@ impl CrateImplBlocks {
         }
 
         for child in module.children(db) {
-            self.collect_recursive(db, child)?;
+            self.collect_recursive(db, child);
         }
-
-        Ok(())
     }
 
     pub(crate) fn impls_in_crate_query(
         db: &impl HirDatabase,
         krate: Crate,
-    ) -> Cancelable<Arc<CrateImplBlocks>> {
+    ) -> Arc<CrateImplBlocks> {
         let crate_graph = db.crate_graph();
         let file_id = crate_graph.crate_root(krate.crate_id);
         let source_root_id = db.file_source_root(file_id);
@@ -94,9 +92,9 @@ impl CrateImplBlocks {
             impls: FxHashMap::default(),
         };
         if let Some(module) = krate.root_module(db) {
-            crate_impl_blocks.collect_recursive(db, module)?;
+            crate_impl_blocks.collect_recursive(db, module);
         }
-        Ok(Arc::new(crate_impl_blocks))
+        Arc::new(crate_impl_blocks)
     }
 }
 
@@ -111,13 +109,13 @@ impl Ty {
     // TODO: cache this as a query?
     // - if so, what signature? (TyFingerprint, Name)?
     // - or maybe cache all names and def_ids of methods per fingerprint?
-    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<DefId>> {
+    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<DefId> {
         self.iterate_methods(db, |f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
-                Ok(Some(f.def_id()))
+                Some(f.def_id())
             } else {
-                Ok(None)
+                None
             }
         })
     }
@@ -127,8 +125,8 @@ impl Ty {
     pub fn iterate_methods<T>(
         self,
         db: &impl HirDatabase,
-        mut callback: impl FnMut(Function) -> Cancelable<Option<T>>,
-    ) -> Cancelable<Option<T>> {
+        mut callback: impl FnMut(Function) -> Option<T>,
+    ) -> Option<T> {
         // For method calls, rust first does any number of autoderef, and then one
         // autoref (i.e. when the method takes &self or &mut self). We just ignore
         // the autoref currently -- when we find a method matching the given name,
@@ -143,15 +141,14 @@ impl Ty {
                 Some(krate) => krate,
                 None => continue,
             };
-            let impls = db.impls_in_crate(krate)?;
+            let impls = db.impls_in_crate(krate);
 
             for impl_block in impls.lookup_impl_blocks(db, &derefed_ty) {
-                let impl_block = impl_block?;
                 for item in impl_block.items() {
                     match item {
                         ImplItem::Method(f) => {
-                            if let Some(result) = callback(f.clone())? {
-                                return Ok(Some(result));
+                            if let Some(result) = callback(f.clone()) {
+                                return Some(result);
                             }
                         }
                         _ => {}
@@ -159,6 +156,6 @@ impl Ty {
                 }
             }
         }
-        Ok(None)
+        None
     }
 }

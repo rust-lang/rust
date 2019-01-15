@@ -321,7 +321,7 @@ fn infer(content: &str) -> String {
         .filter_map(ast::FnDef::cast)
     {
         let func = source_binder::function_from_source(&db, file_id, fn_def).unwrap();
-        let inference_result = func.infer(&db).unwrap();
+        let inference_result = func.infer(&db);
         let body_syntax_mapping = func.body_syntax_mapping(&db);
         let mut types = Vec::new();
         for (pat, ty) in inference_result.type_of_pat.iter() {
@@ -405,7 +405,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     let func = source_binder::function_from_position(&db, pos).unwrap();
     {
         let events = db.log_executed(|| {
-            func.infer(&db).unwrap();
+            func.infer(&db);
         });
         assert!(format!("{:?}", events).contains("infer"))
     }
@@ -424,7 +424,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
 
     {
         let events = db.log_executed(|| {
-            func.infer(&db).unwrap();
+            func.infer(&db);
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }

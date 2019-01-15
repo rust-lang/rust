@@ -5,15 +5,6 @@
 //! to a particular crate instance. That is, it has cfg flags and features
 //! applied. So, the relation between syntax and HIR is many-to-one.
 
-macro_rules! ctry {
-    ($expr:expr) => {
-        match $expr {
-            None => return Ok(None),
-            Some(it) => it,
-        }
-    };
-}
-
 pub mod db;
 #[cfg(test)]
 mod mock;

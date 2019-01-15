@@ -318,7 +318,7 @@ impl Function {
         db.fn_signature(self.def_id)
     }
 
-    pub fn infer(&self, db: &impl HirDatabase) -> Cancelable<Arc<InferenceResult>> {
+    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer(self.def_id)
     }
 }

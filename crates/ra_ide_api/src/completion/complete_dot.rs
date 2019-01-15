@@ -9,7 +9,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
         (Some(function), Some(receiver)) => (function, receiver),
         _ => return Ok(()),
     };
-    let infer_result = function.infer(ctx.db)?;
+    let infer_result = function.infer(ctx.db);
     let syntax_mapping = function.body_syntax_mapping(ctx.db);
     let expr = match syntax_mapping.node_expr(receiver) {
         Some(expr) => expr,
@@ -19,7 +19,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
     if !ctx.is_call {
         complete_fields(acc, ctx, receiver_ty.clone());
     }
-    complete_methods(acc, ctx, receiver_ty)?;
+    complete_methods(acc, ctx, receiver_ty);
     Ok(())
 }
 
@@ -55,11 +55,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
     }
 }
 
-fn complete_methods(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    receiver: Ty,
-) -> Cancelable<()> {
+fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     receiver.iterate_methods(ctx.db, |func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
@@ -68,9 +64,8 @@ fn complete_methods(
                 .kind(CompletionItemKind::Method)
                 .add_to(acc);
         }
-        Ok(None::<()>)
-    })?;
-    Ok(())
+        None::<()>
+    });
 }
 
 #[cfg(test)]
