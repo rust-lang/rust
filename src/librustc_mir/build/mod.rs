@@ -910,6 +910,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let place = Place::Local(local);
             let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
 
+            // Make sure we drop (parts of) the argument even when not matched on.
+            self.schedule_drop(
+                pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
+                argument_scope, &place, ty,
+                DropKind::Value { cached_block: CachedBlock::default() },
+            );
+
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
                 let span = pattern.span;
@@ -941,13 +948,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-
-            // Make sure we drop (parts of) the argument even when not matched on.
-            self.schedule_drop(
-                pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                argument_scope, &place, ty,
-                DropKind::Value { cached_block: CachedBlock::default() },
-            );
         }
 
         // Enter the argument pattern bindings source scope, if it exists.

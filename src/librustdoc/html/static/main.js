@@ -2431,7 +2431,7 @@ if (!DOMTokenList.prototype.remove) {
             return;
         }
         var crates_text = [];
-        if (crates.length > 1) {
+        if (Object.keys(crates).length > 1) {
             for (var crate in crates) {
                 if (crates.hasOwnProperty(crate)) {
                     crates_text.push(crate);

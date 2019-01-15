@@ -171,13 +171,23 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
         // This is something like impl Trait1 for Trait2. Illegal
         // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 
-        if let Some(principal_def_id) = data.principal_def_id() {
-            if !tcx.is_object_safe(principal_def_id) {
+        let component_def_ids = data.iter().flat_map(|predicate| {
+            match predicate.skip_binder() {
+                ty::ExistentialPredicate::Trait(tr) => Some(tr.def_id),
+                ty::ExistentialPredicate::AutoTrait(def_id) => Some(*def_id),
+                // An associated type projection necessarily comes with
+                // an additional `Trait` requirement.
+                ty::ExistentialPredicate::Projection(..) => None,
+            }
+        });
+
+        for component_def_id in component_def_ids {
+            if !tcx.is_object_safe(component_def_id) {
                 // This is an error, but it will be reported by wfcheck.  Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
             } else {
                 let mut supertrait_def_ids =
-                    traits::supertrait_def_ids(tcx, principal_def_id);
+                    traits::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
                     let sp = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
                     struct_span_err!(tcx.sess,
@@ -193,6 +203,5 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
                 }
             }
         }
-        // FIXME: also check auto-trait def-ids? (e.g. `impl Sync for Foo+Sync`)?
     }
 }
