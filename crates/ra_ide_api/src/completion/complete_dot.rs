@@ -17,13 +17,13 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
     };
     let receiver_ty = infer_result[expr].clone();
     if !ctx.is_call {
-        complete_fields(acc, ctx, receiver_ty.clone())?;
+        complete_fields(acc, ctx, receiver_ty.clone());
     }
     complete_methods(acc, ctx, receiver_ty)?;
     Ok(())
 }
 
-fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) -> Cancelable<()> {
+fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     for receiver in receiver.autoderef(ctx.db) {
         match receiver {
             Ty::Adt { def_id, .. } => {
@@ -35,7 +35,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                                 field.name().to_string(),
                             )
                             .kind(CompletionItemKind::Field)
-                            .set_detail(field.ty(ctx.db)?.map(|ty| ty.to_string()))
+                            .set_detail(field.ty(ctx.db).map(|ty| ty.to_string()))
                             .add_to(acc);
                         }
                     }
@@ -53,7 +53,6 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             _ => {}
         };
     }
-    Ok(())
 }
 
 fn complete_methods(

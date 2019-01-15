@@ -160,7 +160,7 @@ impl StructField {
     pub fn name(&self) -> &Name {
         &self.name
     }
-    pub fn ty(&self, db: &impl HirDatabase) -> Cancelable<Option<Ty>> {
+    pub fn ty(&self, db: &impl HirDatabase) -> Option<Ty> {
         db.type_for_field(self.struct_.def_id, self.name.clone())
     }
 }

@@ -57,12 +57,12 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::ty::infer;
     }
 
-    fn type_for_def(def_id: DefId) -> Cancelable<Ty> {
+    fn type_for_def(def_id: DefId) -> Ty {
         type TypeForDefQuery;
         use fn crate::ty::type_for_def;
     }
 
-    fn type_for_field(def_id: DefId, field: Name) -> Cancelable<Option<Ty>> {
+    fn type_for_field(def_id: DefId, field: Name) -> Option<Ty> {
         type TypeForFieldQuery;
         use fn crate::ty::type_for_field;
     }

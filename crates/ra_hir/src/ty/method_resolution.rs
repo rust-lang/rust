@@ -65,7 +65,7 @@ impl CrateImplBlocks {
                 // ignore for now
             } else {
                 let target_ty =
-                    Ty::from_hir(db, &module, Some(&impl_block), impl_data.target_type())?;
+                    Ty::from_hir(db, &module, Some(&impl_block), impl_data.target_type());
                 if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
                     self.impls
                         .entry(target_ty_fp)
