@@ -456,6 +456,7 @@ mod spin_mutex {
         }
     }
 
+    /// Lock the Mutex or return false.
     pub macro try_lock_or_false {
         ($e:expr) => {
             if let Some(v) = $e.try_lock() {

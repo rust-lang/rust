@@ -29,6 +29,10 @@ RUN /tmp/build-fuchsia-toolchain.sh
 COPY dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
+COPY dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
+# We pass the commit id of the port of LLVM's libunwind to the build script.
+# Any update to the commit id here, should cause the container image to be re-built from this point on.
+RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "bbe23902411be88d7388f381becefadd6e3ef819"
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -65,6 +69,9 @@ ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
+ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
+
+ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS

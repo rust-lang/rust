@@ -13,3 +13,21 @@ exit 1
   kill $PING_LOOP_PID
   set -x
 }
+
+function retry {
+  echo "Attempting with retry:" "$@"
+  local n=1
+  local max=5
+  while true; do
+    "$@" && break || {
+      if [[ $n -lt $max ]]; then
+        sleep $n  # don't retry immediately
+        ((n++))
+        echo "Command failed. Attempt $n/$max:"
+      else
+        echo "The command has failed after $n attempts."
+        return 1
+      fi
+    }
+  done
+}
