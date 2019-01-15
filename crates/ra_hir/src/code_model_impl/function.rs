@@ -20,7 +20,7 @@ impl Function {
         Function { def_id }
     }
 
-    pub(crate) fn body(&self, db: &impl HirDatabase) -> Cancelable<Arc<Body>> {
+    pub(crate) fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
         db.body_hir(self.def_id)
     }
 
