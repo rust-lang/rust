@@ -12,7 +12,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         Some(it) => it,
         None => return Ok(()),
     };
-    match def_id.resolve(ctx.db)? {
+    match def_id.resolve(ctx.db) {
         hir::Def::Module(module) => {
             let module_scope = module.scope(ctx.db)?;
             for (name, res) in module_scope.entries() {

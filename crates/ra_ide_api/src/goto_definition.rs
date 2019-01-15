@@ -70,7 +70,7 @@ pub(crate) fn reference_definition(
                 .node_expr(expr)
                 .and_then(|it| infer_result.method_resolution(it))
             {
-                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)?)? {
+                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)) {
                     return Ok(Exact(target));
                 }
             };
@@ -87,7 +87,7 @@ pub(crate) fn reference_definition(
         {
             let resolved = module.resolve_path(db, &path)?;
             if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
-                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)?)? {
+                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)) {
                     return Ok(Exact(target));
                 }
             }
@@ -112,7 +112,7 @@ fn name_definition(
             if let Some(child_module) =
                 hir::source_binder::module_from_declaration(db, file_id, module)
             {
-                let nav = NavigationTarget::from_module(db, child_module)?;
+                let nav = NavigationTarget::from_module(db, child_module);
                 return Ok(Some(vec![nav]));
             }
         }

@@ -832,10 +832,10 @@ pub(crate) fn body_syntax_mapping(
     db: &impl HirDatabase,
     def_id: DefId,
 ) -> Cancelable<Arc<BodySyntaxMapping>> {
-    let def = def_id.resolve(db)?;
+    let def = def_id.resolve(db);
 
     let body_syntax_mapping = match def {
-        Def::Function(f) => collect_fn_body_syntax(&f.source(db)?.1),
+        Def::Function(f) => collect_fn_body_syntax(&f.source(db).1),
         // TODO: consts, etc.
         _ => panic!("Trying to get body for item type without body"),
     };

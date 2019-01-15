@@ -148,7 +148,7 @@ impl Module {
             } else {
                 return Ok(PerNs::none());
             };
-            let module = match curr.resolve(db)? {
+            let module = match curr.resolve(db) {
                 Def::Module(it) => it,
                 Def::Enum(e) => {
                     if segments.len() == idx + 1 {

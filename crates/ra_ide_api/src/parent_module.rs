@@ -12,7 +12,7 @@ pub(crate) fn parent_module(
         None => return Ok(Vec::new()),
         Some(it) => it,
     };
-    let nav = NavigationTarget::from_module_to_decl(db, module)?;
+    let nav = NavigationTarget::from_module_to_decl(db, module);
     Ok(vec![nav])
 }
 

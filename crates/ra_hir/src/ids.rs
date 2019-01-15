@@ -159,9 +159,9 @@ impl DefId {
         db.as_ref().id2loc(self)
     }
 
-    pub fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
+    pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
-        let res = match loc.kind {
+        match loc.kind {
             DefKind::Module => {
                 let module = Module::from_module_id(db, loc.source_root_id, loc.module_id);
                 Def::Module(module)
@@ -195,8 +195,7 @@ impl DefId {
 
             DefKind::StructCtor => Def::Item,
             DefKind::Item => Def::Item,
-        };
-        Ok(res)
+        }
     }
 
     pub(crate) fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<SyntaxNode>) {

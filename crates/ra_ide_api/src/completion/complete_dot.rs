@@ -27,7 +27,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
     for receiver in receiver.autoderef(ctx.db) {
         match receiver {
             Ty::Adt { def_id, .. } => {
-                match def_id.resolve(ctx.db)? {
+                match def_id.resolve(ctx.db) {
                     Def::Struct(s) => {
                         for field in s.fields(ctx.db) {
                             CompletionItem::new(

@@ -144,7 +144,7 @@ impl Builder {
         ctx: &CompletionContext,
         resolution: &hir::Resolution,
     ) -> Builder {
-        let resolved = resolution.def_id.and_then(|d| d.resolve(ctx.db).ok());
+        let resolved = resolution.def_id.map(|d| d.resolve(ctx.db));
         let kind = match resolved {
             PerNs {
                 types: Some(hir::Def::Module(..)),

@@ -297,8 +297,8 @@ impl Function {
         self.def_id
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Cancelable<(HirFileId, TreeArc<ast::FnDef>)> {
-        Ok(def_id_to_ast(db, self.def_id))
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
+        def_id_to_ast(db, self.def_id)
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Cancelable<Arc<BodySyntaxMapping>> {

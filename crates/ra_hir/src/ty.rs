@@ -481,7 +481,7 @@ pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> C
 }
 
 pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
-    let def = def_id.resolve(db)?;
+    let def = def_id.resolve(db);
     match def {
         Def::Module(..) => {
             log::debug!("trying to get type for module {:?}", def_id);
@@ -507,7 +507,7 @@ pub(super) fn type_for_field(
     def_id: DefId,
     field: Name,
 ) -> Cancelable<Option<Ty>> {
-    let def = def_id.resolve(db)?;
+    let def = def_id.resolve(db);
     let variant_data = match def {
         Def::Struct(s) => s.variant_data(db)?,
         Def::EnumVariant(ev) => ev.variant_data(db),
@@ -877,7 +877,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         } else {
             return Ok((Ty::Unknown, None));
         };
-        Ok(match def_id.resolve(self.db)? {
+        Ok(match def_id.resolve(self.db) {
             Def::Struct(s) => {
                 let ty = type_for_struct(self.db, s)?;
                 (ty, Some(def_id))
