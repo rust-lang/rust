@@ -114,18 +114,13 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope_impl(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
+    pub fn scope_impl(&self, db: &impl HirDatabase) -> ModuleScope {
         let loc = self.def_id.loc(db);
-        let item_map = db.item_map(loc.source_root_id)?;
-        let res = item_map.per_module[&loc.module_id].clone();
-        Ok(res)
+        let item_map = db.item_map(loc.source_root_id);
+        item_map.per_module[&loc.module_id].clone()
     }
 
-    pub fn resolve_path_impl(
-        &self,
-        db: &impl HirDatabase,
-        path: &Path,
-    ) -> Cancelable<PerNs<DefId>> {
+    pub fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
         let mut curr_per_ns = PerNs::types(
             match path.kind {
                 PathKind::Crate => self.crate_root(db),
@@ -134,7 +129,7 @@ impl Module {
                     if let Some(p) = self.parent(db) {
                         p
                     } else {
-                        return Ok(PerNs::none());
+                        return PerNs::none();
                     }
                 }
             }
@@ -146,7 +141,7 @@ impl Module {
             let curr = if let Some(r) = curr_per_ns.as_ref().take_types() {
                 r
             } else {
-                return Ok(PerNs::none());
+                return PerNs::none();
             };
             let module = match curr.resolve(db) {
                 Def::Module(it) => it,
@@ -157,28 +152,28 @@ impl Module {
                             e.variants(db).into_iter().find(|(n, _variant)| n == name);
 
                         if let Some((_n, variant)) = matching_variant {
-                            return Ok(PerNs::both(variant.def_id(), e.def_id()));
+                            return PerNs::both(variant.def_id(), e.def_id());
                         } else {
-                            return Ok(PerNs::none());
+                            return PerNs::none();
                         }
                     } else if segments.len() == idx {
                         // enum
-                        return Ok(PerNs::types(e.def_id()));
+                        return PerNs::types(e.def_id());
                     } else {
                         // malformed enum?
-                        return Ok(PerNs::none());
+                        return PerNs::none();
                     }
                 }
-                _ => return Ok(PerNs::none()),
+                _ => return PerNs::none(),
             };
-            let scope = module.scope(db)?;
+            let scope = module.scope(db);
             curr_per_ns = if let Some(r) = scope.get(&name) {
                 r.def_id
             } else {
-                return Ok(PerNs::none());
+                return PerNs::none();
             };
         }
-        Ok(curr_per_ns)
+        curr_per_ns
     }
 
     pub fn problems_impl(

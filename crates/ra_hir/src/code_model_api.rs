@@ -134,11 +134,11 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
+    pub fn scope(&self, db: &impl HirDatabase) -> ModuleScope {
         self.scope_impl(db)
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
         self.resolve_path_impl(db, path)
     }
 

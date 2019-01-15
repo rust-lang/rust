@@ -8,13 +8,13 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         (Some(path), Some(module)) => (path.clone(), module),
         _ => return Ok(()),
     };
-    let def_id = match module.resolve_path(ctx.db, &path)?.take_types() {
+    let def_id = match module.resolve_path(ctx.db, &path).take_types() {
         Some(it) => it,
         None => return Ok(()),
     };
     match def_id.resolve(ctx.db) {
         hir::Def::Module(module) => {
-            let module_scope = module.scope(ctx.db)?;
+            let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {
                 CompletionItem::new(CompletionKind::Reference, name.to_string())
                     .from_resolution(ctx, res)

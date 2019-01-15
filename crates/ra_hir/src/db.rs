@@ -87,7 +87,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::input_module_items;
     }
 
-    fn item_map(source_root_id: SourceRootId) -> Cancelable<Arc<ItemMap>> {
+    fn item_map(source_root_id: SourceRootId) -> Arc<ItemMap> {
         type ItemMapQuery;
         use fn query_definitions::item_map;
     }
@@ -97,7 +97,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::module_tree::ModuleTree::module_tree_query;
     }
 
-    fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleImplBlocks>> {
+    fn impls_in_module(source_root_id: SourceRootId, module_id: ModuleId) -> Arc<ModuleImplBlocks> {
         type ImplsInModuleQuery;
         use fn crate::impl_block::impls_in_module;
     }

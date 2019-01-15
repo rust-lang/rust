@@ -349,7 +349,7 @@ impl Ty {
         }
 
         // Resolve in module (in type namespace)
-        let resolved = if let Some(r) = module.resolve_path(db, path)?.take_types() {
+        let resolved = if let Some(r) = module.resolve_path(db, path).take_types() {
             r
         } else {
             return Ok(Ty::Unknown);
@@ -447,8 +447,8 @@ impl fmt::Display for Ty {
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     let signature = f.signature(db);
-    let module = f.module(db)?;
-    let impl_block = f.impl_block(db)?;
+    let module = f.module(db);
+    let impl_block = f.impl_block(db);
     // TODO we ignore type parameters for now
     let input = signature
         .params()
@@ -517,8 +517,8 @@ pub(super) fn type_for_field(
             def_id
         ),
     };
-    let module = def_id.module(db)?;
-    let impl_block = def_id.impl_block(db)?;
+    let module = def_id.module(db);
+    let impl_block = def_id.impl_block(db);
     let type_ref = ctry!(variant_data.get_field_type_ref(&field));
     Ok(Some(Ty::from_hir(
         db,
@@ -860,7 +860,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let resolved = ctry!(self.module.resolve_path(self.db, &path)?.take_values());
+        let resolved = ctry!(self.module.resolve_path(self.db, &path).take_values());
         let ty = self.db.type_for_def(resolved)?;
         let ty = self.insert_type_vars(ty);
         Ok(Some(ty))
@@ -872,7 +872,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         } else {
             return Ok((Ty::Unknown, None));
         };
-        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path)?.take_types() {
+        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path).take_types() {
             def_id
         } else {
             return Ok((Ty::Unknown, None));
@@ -1207,8 +1207,8 @@ pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceRe
     let function = Function::new(def_id); // TODO: consts also need inference
     let body = function.body(db);
     let scopes = db.fn_scopes(def_id);
-    let module = function.module(db)?;
-    let impl_block = function.impl_block(db)?;
+    let module = function.module(db);
+    let impl_block = function.impl_block(db);
     let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);
 
     let signature = function.signature(db);

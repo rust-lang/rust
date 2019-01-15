@@ -22,7 +22,7 @@ use ra_syntax::{
     SyntaxKind::{self, *},
     ast::{self, AstNode}
 };
-use ra_db::{SourceRootId, Cancelable, FileId};
+use ra_db::{SourceRootId, FileId};
 
 use crate::{
     HirFileId,
@@ -319,30 +319,26 @@ where
         }
     }
 
-    pub(crate) fn resolve(mut self) -> Cancelable<ItemMap> {
+    pub(crate) fn resolve(mut self) -> ItemMap {
         for (&module_id, items) in self.input.iter() {
-            self.populate_module(module_id, Arc::clone(items))?;
+            self.populate_module(module_id, Arc::clone(items));
         }
 
         loop {
             let processed_imports_count = self.processed_imports.len();
             for &module_id in self.input.keys() {
                 self.db.check_canceled();
-                self.resolve_imports(module_id)?;
+                self.resolve_imports(module_id);
             }
             if processed_imports_count == self.processed_imports.len() {
                 // no new imports resolved
                 break;
             }
         }
-        Ok(self.result)
+        self.result
     }
 
-    fn populate_module(
-        &mut self,
-        module_id: ModuleId,
-        input: Arc<InputModuleItems>,
-    ) -> Cancelable<()> {
+    fn populate_module(&mut self, module_id: ModuleId, input: Arc<InputModuleItems>) {
         let mut module_items = ModuleScope::default();
 
         // Populate extern crates prelude
@@ -415,7 +411,6 @@ where
         }
 
         self.result.per_module.insert(module_id, module_items);
-        Ok(())
     }
 
     fn add_module_item(&self, module_items: &mut ModuleScope, name: Name, def_id: PerNs<DefId>) {
@@ -426,24 +421,23 @@ where
         module_items.items.insert(name, resolution);
     }
 
-    fn resolve_imports(&mut self, module_id: ModuleId) -> Cancelable<()> {
+    fn resolve_imports(&mut self, module_id: ModuleId) {
         for (i, import) in self.input[&module_id].imports.iter().enumerate() {
             if self.processed_imports.contains(&(module_id, i)) {
                 // already done
                 continue;
             }
-            if self.resolve_import(module_id, import)? {
+            if self.resolve_import(module_id, import) {
                 log::debug!("import {:?} resolved (or definite error)", import);
                 self.processed_imports.insert((module_id, i));
             }
         }
-        Ok(())
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> Cancelable<bool> {
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> bool {
         log::debug!("resolving import: {:?}", import);
         let ptr = match import.kind {
-            ImportKind::Glob => return Ok(false),
+            ImportKind::Glob => return false,
             ImportKind::Named(ptr) => ptr,
         };
 
@@ -455,7 +449,7 @@ where
                     None => {
                         // TODO: error
                         log::debug!("super path in root module");
-                        return Ok(true); // this can't suddenly resolve if we just resolve some other imports
+                        return true; // this can't suddenly resolve if we just resolve some other imports
                     }
                 }
             }
@@ -469,7 +463,7 @@ where
                 Some(res) if !res.def_id.is_none() => res.def_id,
                 _ => {
                     log::debug!("path segment {:?} not found", name);
-                    return Ok(false);
+                    return false;
                 }
             };
 
@@ -481,7 +475,7 @@ where
                         "path segment {:?} resolved to value only, but is not last",
                         name
                     );
-                    return Ok(false);
+                    return false;
                 };
                 curr = match type_def_id.loc(self.db) {
                     DefLoc {
@@ -499,7 +493,7 @@ where
                                 kind: PathKind::Crate,
                             };
                             log::debug!("resolving {:?} in other source root", path);
-                            let def_id = module.resolve_path(self.db, &path)?;
+                            let def_id = module.resolve_path(self.db, &path);
                             if !def_id.is_none() {
                                 let name = path.segments.last().unwrap();
                                 self.update(module_id, |items| {
@@ -515,10 +509,10 @@ where
                                     import,
                                     def_id.map(|did| did.loc(self.db))
                                 );
-                                return Ok(true);
+                                return true;
                             } else {
                                 log::debug!("rest of path did not resolve in other source root");
-                                return Ok(true);
+                                return true;
                             }
                         }
                     }
@@ -528,7 +522,7 @@ where
                             name,
                             type_def_id.loc(self.db)
                         );
-                        return Ok(true); // this resolved to a non-module, so the path won't ever resolve
+                        return true; // this resolved to a non-module, so the path won't ever resolve
                     }
                 }
             } else {
@@ -547,7 +541,7 @@ where
                 })
             }
         }
-        Ok(true)
+        true
     }
 
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {

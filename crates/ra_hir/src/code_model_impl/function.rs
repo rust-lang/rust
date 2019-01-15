@@ -2,7 +2,6 @@ mod scope;
 
 use std::sync::Arc;
 
-use ra_db::Cancelable;
 use ra_syntax::{TreeArc, ast::{self, NameOwner}};
 
 use crate::{
@@ -24,12 +23,12 @@ impl Function {
         db.body_hir(self.def_id)
     }
 
-    pub(crate) fn module(&self, db: &impl HirDatabase) -> Cancelable<Module> {
+    pub(crate) fn module(&self, db: &impl HirDatabase) -> Module {
         self.def_id.module(db)
     }
 
     /// The containing impl block, if this is a method.
-    pub(crate) fn impl_block(&self, db: &impl HirDatabase) -> Cancelable<Option<ImplBlock>> {
+    pub(crate) fn impl_block(&self, db: &impl HirDatabase) -> Option<ImplBlock> {
         self.def_id.impl_block(db)
     }
 }

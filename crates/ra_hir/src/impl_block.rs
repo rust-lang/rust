@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::ast::{self, AstNode};
-use ra_db::{LocationIntener, Cancelable, SourceRootId};
+use ra_db::{LocationIntener, SourceRootId};
 
 use crate::{
     DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
@@ -166,7 +166,7 @@ impl ModuleImplBlocks {
         }
     }
 
-    fn collect(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
+    fn collect(&mut self, db: &impl HirDatabase, module: Module) {
         let (file_id, module_source) = module.definition_source(db);
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
@@ -185,8 +185,6 @@ impl ModuleImplBlocks {
                 self.impls_by_def.insert(impl_item.def_id(), id);
             }
         }
-
-        Ok(())
     }
 }
 
@@ -194,9 +192,9 @@ pub(crate) fn impls_in_module(
     db: &impl HirDatabase,
     source_root_id: SourceRootId,
     module_id: ModuleId,
-) -> Cancelable<Arc<ModuleImplBlocks>> {
+) -> Arc<ModuleImplBlocks> {
     let mut result = ModuleImplBlocks::new();
     let module = Module::from_module_id(db, source_root_id, module_id);
-    result.collect(db, module)?;
-    Ok(Arc::new(result))
+    result.collect(db, module);
+    Arc::new(result)
 }
