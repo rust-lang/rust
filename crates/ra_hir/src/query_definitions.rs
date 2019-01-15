@@ -47,7 +47,7 @@ pub(super) fn input_module_items(
     db: &impl HirDatabase,
     source_root_id: SourceRootId,
     module_id: ModuleId,
-) -> Cancelable<Arc<InputModuleItems>> {
+) -> Arc<InputModuleItems> {
     let module_tree = db.module_tree(source_root_id);
     let source = module_id.source(&module_tree);
     let file_id = source.file_id;
@@ -90,7 +90,7 @@ pub(super) fn input_module_items(
             }
         }
     };
-    Ok(Arc::new(res))
+    Arc::new(res)
 }
 
 pub(super) fn item_map(
@@ -101,11 +101,8 @@ pub(super) fn item_map(
     let module_tree = db.module_tree(source_root);
     let input = module_tree
         .modules()
-        .map(|id| {
-            let items = db.input_module_items(source_root, id)?;
-            Ok((id, items))
-        })
-        .collect::<Cancelable<FxHashMap<_, _>>>()?;
+        .map(|id| (id, db.input_module_items(source_root, id)))
+        .collect::<FxHashMap<_, _>>();
 
     let resolver = Resolver::new(db, &input, source_root, module_tree);
     let res = resolver.resolve()?;

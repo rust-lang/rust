@@ -18,7 +18,7 @@ impl Module {
         db: &impl HirDatabase,
         source_root_id: SourceRootId,
         module_id: ModuleId,
-    ) -> Cancelable<Self> {
+    ) -> Self {
         let module_tree = db.module_tree(source_root_id);
         let def_loc = DefLoc {
             kind: DefKind::Module,
@@ -27,8 +27,7 @@ impl Module {
             source_item_id: module_id.source(&module_tree),
         };
         let def_id = def_loc.id(db);
-        let module = Module::new(def_id);
-        Ok(module)
+        Module::new(def_id)
     }
 
     pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
@@ -84,15 +83,15 @@ impl Module {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
         let module_id = loc.module_id.crate_root(&module_tree);
-        Module::from_module_id(db, loc.source_root_id, module_id)
+        Ok(Module::from_module_id(db, loc.source_root_id, module_id))
     }
 
     /// Finds a child module with the specified name.
-    pub fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+    pub fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
-        let child_id = ctry!(loc.module_id.child(&module_tree, name));
-        Module::from_module_id(db, loc.source_root_id, child_id).map(Some)
+        let child_id = loc.module_id.child(&module_tree, name)?;
+        Some(Module::from_module_id(db, loc.source_root_id, child_id))
     }
 
     /// Iterates over all child modules.
@@ -106,7 +105,7 @@ impl Module {
             .module_id
             .children(&module_tree)
             .map(|(_, module_id)| Module::from_module_id(db, loc.source_root_id, module_id))
-            .collect::<Cancelable<Vec<_>>>()?;
+            .collect::<Vec<_>>();
         Ok(children.into_iter())
     }
 
@@ -114,7 +113,11 @@ impl Module {
         let loc = self.def_id.loc(db);
         let module_tree = db.module_tree(loc.source_root_id);
         let parent_id = ctry!(loc.module_id.parent(&module_tree));
-        Module::from_module_id(db, loc.source_root_id, parent_id).map(Some)
+        Ok(Some(Module::from_module_id(
+            db,
+            loc.source_root_id,
+            parent_id,
+        )))
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.

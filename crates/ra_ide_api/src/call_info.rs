@@ -20,7 +20,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Cancelable
     let name_ref = ctry!(calling_node.name_ref());
 
     // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
-    let file_symbols = db.index_resolve(name_ref)?;
+    let file_symbols = db.index_resolve(name_ref);
     let symbol = ctry!(file_symbols.into_iter().find(|it| it.ptr.kind() == FN_DEF));
     let fn_file = db.source_file(symbol.file_id);
     let fn_def = symbol.ptr.resolve(&fn_file);

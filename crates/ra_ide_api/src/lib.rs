@@ -381,12 +381,11 @@ impl Analysis {
     /// Fuzzy searches for a symbol.
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
         self.with_db(|db| {
-            let res = symbol_index::world_symbols(db, query)?
+            symbol_index::world_symbols(db, query)
                 .into_iter()
                 .map(NavigationTarget::from_symbol)
-                .collect::<Vec<_>>();
-            Ok(res)
-        })?
+                .collect::<Vec<_>>()
+        })
     }
 
     pub fn goto_definition(

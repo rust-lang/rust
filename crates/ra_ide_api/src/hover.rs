@@ -72,7 +72,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Cancelable<Option
         db,
         frange.file_id,
         parent_fn
-    )?);
+    ));
     let infer = function.infer(db)?;
     let syntax_mapping = function.body_syntax_mapping(db)?;
     if let Some(expr) = ast::Expr::cast(node).and_then(|e| syntax_mapping.node_expr(e)) {

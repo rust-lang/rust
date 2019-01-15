@@ -82,7 +82,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::module_tree::Submodule::submodules_query;
     }
 
-    fn input_module_items(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<InputModuleItems>> {
+    fn input_module_items(source_root_id: SourceRootId, module_id: ModuleId) -> Arc<InputModuleItems> {
         type InputModuleItemsQuery;
         use fn query_definitions::input_module_items;
     }

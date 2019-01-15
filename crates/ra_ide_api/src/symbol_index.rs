@@ -37,13 +37,13 @@ use salsa::ParallelDatabase;
 use rayon::prelude::*;
 
 use crate::{
-    Cancelable, FileId, Query,
+    FileId, Query,
     db::RootDatabase,
 };
 
 salsa::query_group! {
     pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
-        fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+        fn file_symbols(file_id: FileId) -> Arc<SymbolIndex> {
             type FileSymbolsQuery;
         }
         fn library_symbols(id: SourceRootId) -> Arc<SymbolIndex> {
@@ -53,7 +53,7 @@ salsa::query_group! {
     }
 }
 
-fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
     db.check_canceled();
     let source_file = db.source_file(file_id);
     let mut symbols = source_file
@@ -63,16 +63,16 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Cancelable<Arc<Sy
         .map(move |(name, ptr)| FileSymbol { name, ptr, file_id })
         .collect::<Vec<_>>();
 
-    for (name, text_range) in hir::source_binder::macro_symbols(db, file_id)? {
+    for (name, text_range) in hir::source_binder::macro_symbols(db, file_id) {
         let node = find_covering_node(source_file.syntax(), text_range);
         let ptr = LocalSyntaxPtr::new(node);
         symbols.push(FileSymbol { file_id, name, ptr })
     }
 
-    Ok(Arc::new(SymbolIndex::new(symbols)))
+    Arc::new(SymbolIndex::new(symbols))
 }
 
-pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Cancelable<Vec<FileSymbol>> {
+pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
     struct Snap(salsa::Snapshot<RootDatabase>);
     impl Clone for Snap {
@@ -98,10 +98,9 @@ pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Cancelable<Vec<F
         files
             .par_iter()
             .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
-            .filter_map(|it| it.ok())
             .collect()
     };
-    Ok(query.search(&buf))
+    query.search(&buf)
 }
 
 #[derive(Default, Debug)]
