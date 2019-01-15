@@ -2,11 +2,11 @@ use ra_syntax::{ast, AstNode,};
 use ra_db::SyntaxDatabase;
 
 use crate::{
-    FileId, Cancelable, HighlightedRange,
+    FileId, HighlightedRange,
     db::RootDatabase,
 };
 
-pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
+pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let source_file = db.source_file(file_id);
     let mut res = ra_ide_api_light::highlight(source_file.syntax());
     for macro_call in source_file
@@ -28,7 +28,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Hi
             res.extend(mapped_ranges);
         }
     }
-    Ok(res)
+    res
 }
 
 #[cfg(test)]
