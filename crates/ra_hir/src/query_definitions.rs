@@ -18,10 +18,10 @@ use crate::{
     nameres::{InputModuleItems, ItemMap, Resolver},
 };
 
-pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<FnScopes>> {
+pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Arc<FnScopes> {
     let body = db.body_hir(def_id);
     let res = FnScopes::new(body);
-    Ok(Arc::new(res))
+    Arc::new(res)
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {

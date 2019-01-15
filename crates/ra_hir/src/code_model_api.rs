@@ -305,13 +305,13 @@ impl Function {
         db.body_syntax_mapping(self.def_id)
     }
 
-    pub fn scopes(&self, db: &impl HirDatabase) -> Cancelable<ScopesWithSyntaxMapping> {
-        let scopes = db.fn_scopes(self.def_id)?;
+    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
+        let scopes = db.fn_scopes(self.def_id);
         let syntax_mapping = db.body_syntax_mapping(self.def_id);
-        Ok(ScopesWithSyntaxMapping {
+        ScopesWithSyntaxMapping {
             scopes,
             syntax_mapping,
-        })
+        }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
