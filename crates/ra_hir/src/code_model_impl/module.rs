@@ -19,7 +19,7 @@ impl Module {
         source_root_id: SourceRootId,
         module_id: ModuleId,
     ) -> Cancelable<Self> {
-        let module_tree = db.module_tree(source_root_id)?;
+        let module_tree = db.module_tree(source_root_id);
         let def_loc = DefLoc {
             kind: DefKind::Module,
             source_root_id,
@@ -33,7 +33,7 @@ impl Module {
 
     pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         let link = ctry!(loc.module_id.parent_link(&module_tree));
         Ok(Some(link.name(&module_tree).clone()))
     }
@@ -59,7 +59,7 @@ impl Module {
         db: &impl HirDatabase,
     ) -> Cancelable<Option<(FileId, TreeArc<ast::Module>)>> {
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         let link = ctry!(loc.module_id.parent_link(&module_tree));
         let file_id = link
             .owner(&module_tree)
@@ -82,7 +82,7 @@ impl Module {
 
     pub(crate) fn crate_root_impl(&self, db: &impl HirDatabase) -> Cancelable<Module> {
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         let module_id = loc.module_id.crate_root(&module_tree);
         Module::from_module_id(db, loc.source_root_id, module_id)
     }
@@ -90,7 +90,7 @@ impl Module {
     /// Finds a child module with the specified name.
     pub fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         let child_id = ctry!(loc.module_id.child(&module_tree, name));
         Module::from_module_id(db, loc.source_root_id, child_id).map(Some)
     }
@@ -101,7 +101,7 @@ impl Module {
         // it's kind of hard since the iterator needs to keep a reference to the
         // module tree.
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         let children = loc
             .module_id
             .children(&module_tree)
@@ -112,7 +112,7 @@ impl Module {
 
     pub fn parent_impl(&self, db: &impl HirDatabase) -> Cancelable<Option<Module>> {
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         let parent_id = ctry!(loc.module_id.parent(&module_tree));
         Module::from_module_id(db, loc.source_root_id, parent_id).map(Some)
     }
@@ -190,7 +190,7 @@ impl Module {
         db: &impl HirDatabase,
     ) -> Cancelable<Vec<(TreeArc<SyntaxNode>, Problem)>> {
         let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id)?;
+        let module_tree = db.module_tree(loc.source_root_id);
         Ok(loc.module_id.problems(&module_tree, db))
     }
 }

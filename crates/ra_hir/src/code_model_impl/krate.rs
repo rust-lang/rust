@@ -25,7 +25,7 @@ impl Crate {
         let file_id = crate_graph.crate_root(self.crate_id);
         let source_root_id = db.file_source_root(file_id);
         let file_id = HirFileId::from(file_id);
-        let module_tree = db.module_tree(source_root_id)?;
+        let module_tree = db.module_tree(source_root_id);
         // FIXME: teach module tree about crate roots instead of guessing
         let source = SourceItemId {
             file_id,

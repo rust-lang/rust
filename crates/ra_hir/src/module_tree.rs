@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHashSet};
 use arrayvec::ArrayVec;
 use relative_path::RelativePathBuf;
-use ra_db::{FileId, SourceRootId, Cancelable, SourceRoot};
+use ra_db::{FileId, SourceRootId, SourceRoot};
 use ra_syntax::{
     SyntaxNode, TreeArc,
     algo::generate,
@@ -41,7 +41,7 @@ impl Submodule {
     pub(crate) fn submodules_query(
         db: &impl HirDatabase,
         source: SourceItemId,
-    ) -> Cancelable<Arc<Vec<Submodule>>> {
+    ) -> Arc<Vec<Submodule>> {
         db.check_canceled();
         let file_id = source.file_id;
         let file_items = db.file_items(file_id);
@@ -54,7 +54,7 @@ impl Submodule {
                 collect_submodules(file_id, &file_items, module.item_list().unwrap())
             }
         };
-        return Ok(Arc::new(submodules));
+        return Arc::new(submodules);
 
         fn collect_submodules(
             file_id: HirFileId,
@@ -116,10 +116,10 @@ impl ModuleTree {
     pub(crate) fn module_tree_query(
         db: &impl HirDatabase,
         source_root: SourceRootId,
-    ) -> Cancelable<Arc<ModuleTree>> {
+    ) -> Arc<ModuleTree> {
         db.check_canceled();
         let res = create_module_tree(db, source_root);
-        Ok(Arc::new(res?))
+        Arc::new(res)
     }
 
     pub(crate) fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
@@ -225,10 +225,7 @@ fn modules(root: &impl ast::ModuleItemOwner) -> impl Iterator<Item = (Name, &ast
         })
 }
 
-fn create_module_tree<'a>(
-    db: &impl HirDatabase,
-    source_root: SourceRootId,
-) -> Cancelable<ModuleTree> {
+fn create_module_tree<'a>(db: &impl HirDatabase, source_root: SourceRootId) -> ModuleTree {
     let mut tree = ModuleTree::default();
 
     let mut roots = FxHashMap::default();
@@ -252,10 +249,10 @@ fn create_module_tree<'a>(
             &mut roots,
             None,
             source,
-        )?;
+        );
         roots.insert(file_id, module_id);
     }
-    Ok(tree)
+    tree
 }
 
 fn build_subtree(
@@ -266,14 +263,14 @@ fn build_subtree(
     roots: &mut FxHashMap<FileId, ModuleId>,
     parent: Option<LinkId>,
     source: SourceItemId,
-) -> Cancelable<ModuleId> {
+) -> ModuleId {
     visited.insert(source);
     let id = tree.push_mod(ModuleData {
         source,
         parent,
         children: Vec::new(),
     });
-    for sub in db.submodules(source)?.iter() {
+    for sub in db.submodules(source).iter() {
         let link = tree.push_link(LinkData {
             source: sub.source,
             name: sub.name.clone(),
@@ -289,7 +286,7 @@ fn build_subtree(
                 .map(|file_id| match roots.remove(&file_id) {
                     Some(module_id) => {
                         tree.mods[module_id].parent = Some(link);
-                        Ok(module_id)
+                        module_id
                     }
                     None => build_subtree(
                         db,
@@ -304,7 +301,7 @@ fn build_subtree(
                         },
                     ),
                 })
-                .collect::<Cancelable<Vec<_>>>()?;
+                .collect::<Vec<_>>();
             (points_to, problem)
         } else {
             let points_to = build_subtree(
@@ -315,14 +312,14 @@ fn build_subtree(
                 roots,
                 Some(link),
                 sub.source,
-            )?;
+            );
             (vec![points_to], None)
         };
 
         tree.links[link].points_to = points_to;
         tree.links[link].problem = problem;
     }
-    Ok(id)
+    id
 }
 
 fn resolve_submodule(

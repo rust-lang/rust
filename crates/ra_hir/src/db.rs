@@ -77,7 +77,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::file_item;
     }
 
-    fn submodules(source: SourceItemId) -> Cancelable<Arc<Vec<crate::module_tree::Submodule>>> {
+    fn submodules(source: SourceItemId) -> Arc<Vec<crate::module_tree::Submodule>> {
         type SubmodulesQuery;
         use fn crate::module_tree::Submodule::submodules_query;
     }
@@ -92,7 +92,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::item_map;
     }
 
-    fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
+    fn module_tree(source_root_id: SourceRootId) -> Arc<ModuleTree> {
         type ModuleTreeQuery;
         use fn crate::module_tree::ModuleTree::module_tree_query;
     }
