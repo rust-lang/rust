@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs};
 
-use flexi_logger::Logger;
+// use flexi_logger::Logger;
 use ra_vfs::{Vfs, VfsChange};
 use tempfile::tempdir;
 
@@ -13,7 +13,7 @@ fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
 
 #[test]
 fn test_vfs_works() -> std::io::Result<()> {
-    Logger::with_str("debug").start().unwrap();
+    // Logger::with_str("debug").start().unwrap();
 
     let files = [
         ("a/foo.rs", "hello"),

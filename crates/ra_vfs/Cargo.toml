@@ -10,7 +10,8 @@ relative-path = "0.4.0"
 rustc-hash = "1.0"
 crossbeam-channel = "0.3.5"
 log = "0.4.6"
-notify = "4"
+# until https://github.com/passcod/notify/issues/169 is fixed
+notify = { git = "https://github.com/vemoo/notify/", branch = "v4-legacy" }
 drop_bomb = "0.1.0"
 
 thread_worker = { path = "../thread_worker" }

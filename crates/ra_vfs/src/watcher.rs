@@ -86,14 +86,11 @@ impl Watcher {
     pub fn shutdown(mut self) -> thread::Result<()> {
         self.bomb.defuse();
         drop(self.watcher);
-        // TODO this doesn't terminate because of a buf in `notify`
-        // uncomment when https://github.com/passcod/notify/pull/170 is released
-        // let res = self.thread.join();
-        // match &res {
-        //     Ok(()) => log::info!("... Watcher terminated with ok"),
-        //     Err(_) => log::error!("... Watcher terminated with err"),
-        // }
-        // res
-        Ok(())
+        let res = self.thread.join();
+        match &res {
+            Ok(()) => log::info!("... Watcher terminated with ok"),
+            Err(_) => log::error!("... Watcher terminated with err"),
+        }
+        res
     }
 }

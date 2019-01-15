@@ -702,8 +702,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "notify"
-version = "4.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "4.0.6"
+source = "git+https://github.com/vemoo/notify/?branch=v4-legacy#8114796fb7b133ba8898ba5d08fda20856f666d4"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1009,9 +1009,9 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "flexi_logger 0.10.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.10.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "notify 4.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "notify 4.0.6 (git+https://github.com/vemoo/notify/?branch=v4-legacy)",
  "ra_arena 0.1.0",
  "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1898,7 +1898,7 @@ dependencies = [
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
 "checksum net2 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "42550d9fb7b6684a6d404d9fa7250c2eb2646df731d1c06afc06dcee9e1bcf88"
 "checksum nodrop 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "2f9667ddcc6cc8a43afc9b7917599d7216aa09c463919ea32c59ed6cac8bc945"
-"checksum notify 4.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c968cf37cf949114b00d51b0b23536d1c3a4a3963767cf4c969c65a6af78dc7d"
+"checksum notify 4.0.6 (git+https://github.com/vemoo/notify/?branch=v4-legacy)" = "<none>"
 "checksum num-derive 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "d9fe8fcafd1b86a37ce8a1cfa15ae504817e0c8c2e7ad42767371461ac1d316d"
 "checksum num-integer 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "e83d528d2677f0518c570baf2b7abdcf0cd2d248860b68507bdcb3e91d4c0cea"
 "checksum num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0b3a5d7cc97d6d30d8b9bc8fa19bf45349ffe46241e8816f50f62f6d6aaabee1"
