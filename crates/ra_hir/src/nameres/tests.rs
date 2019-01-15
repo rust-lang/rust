@@ -15,9 +15,7 @@ use crate::{
 fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let (db, pos) = MockDatabase::with_position(fixture);
     let source_root = db.file_source_root(pos.file_id);
-    let module = crate::source_binder::module_from_position(&db, pos)
-        .unwrap()
-        .unwrap();
+    let module = crate::source_binder::module_from_position(&db, pos).unwrap();
     let module_id = module.def_id.loc(&db).module_id;
     (db.item_map(source_root).unwrap(), module_id)
 }
@@ -242,9 +240,7 @@ fn item_map_across_crates() {
     db.set_crate_graph(crate_graph);
 
     let source_root = db.file_source_root(main_id);
-    let module = crate::source_binder::module_from_file_id(&db, main_id)
-        .unwrap()
-        .unwrap();
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let module_id = module.def_id.loc(&db).module_id;
     let item_map = db.item_map(source_root).unwrap();
 
@@ -296,9 +292,7 @@ fn import_across_source_roots() {
 
     db.set_crate_graph(crate_graph);
 
-    let module = crate::source_binder::module_from_file_id(&db, main_id)
-        .unwrap()
-        .unwrap();
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let module_id = module.def_id.loc(&db).module_id;
     let item_map = db.item_map(source_root).unwrap();
 
@@ -341,9 +335,7 @@ fn reexport_across_crates() {
     db.set_crate_graph(crate_graph);
 
     let source_root = db.file_source_root(main_id);
-    let module = crate::source_binder::module_from_file_id(&db, main_id)
-        .unwrap()
-        .unwrap();
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let module_id = module.def_id.loc(&db).module_id;
     let item_map = db.item_map(source_root).unwrap();
 

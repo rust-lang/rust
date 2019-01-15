@@ -100,7 +100,7 @@ impl db::RootDatabase {
 impl db::RootDatabase {
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let module = match source_binder::module_from_file_id(self, file_id)? {
+        let module = match source_binder::module_from_file_id(self, file_id) {
             Some(it) => it,
             None => return Ok(Vec::new()),
         };
@@ -147,7 +147,7 @@ impl db::RootDatabase {
                     db,
                     position.file_id,
                     binding.syntax(),
-                )?);
+                ));
                 return Ok(Some((binding, descr)));
             };
             let name_ref = ctry!(find_node_at_offset::<ast::NameRef>(syntax, position.offset));
@@ -155,7 +155,7 @@ impl db::RootDatabase {
                 db,
                 position.file_id,
                 name_ref.syntax(),
-            )?);
+            ));
             let scope = descr.scopes(db)?;
             let resolved = ctry!(scope.resolve_local_name(name_ref));
             let resolved = resolved.ptr().resolve(source_file);
@@ -179,7 +179,7 @@ impl db::RootDatabase {
                 fix: d.fix.map(|fix| SourceChange::from_local_edit(file_id, fix)),
             })
             .collect::<Vec<_>>();
-        if let Some(m) = source_binder::module_from_file_id(self, file_id)? {
+        if let Some(m) = source_binder::module_from_file_id(self, file_id) {
             for (name_node, problem) in m.problems(self)? {
                 let source_root = self.file_source_root(file_id);
                 let diag = match problem {

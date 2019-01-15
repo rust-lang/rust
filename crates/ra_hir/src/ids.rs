@@ -163,7 +163,7 @@ impl DefId {
         let loc = self.loc(db);
         let res = match loc.kind {
             DefKind::Module => {
-                let module = Module::from_module_id(db, loc.source_root_id, loc.module_id)?;
+                let module = Module::from_module_id(db, loc.source_root_id, loc.module_id);
                 Def::Module(module)
             }
             DefKind::Function => {
@@ -208,7 +208,11 @@ impl DefId {
     /// For a module, returns that module; for any other def, returns the containing module.
     pub fn module(self, db: &impl HirDatabase) -> Cancelable<Module> {
         let loc = self.loc(db);
-        Module::from_module_id(db, loc.source_root_id, loc.module_id)
+        Ok(Module::from_module_id(
+            db,
+            loc.source_root_id,
+            loc.module_id,
+        ))
     }
 
     /// Returns the containing crate.

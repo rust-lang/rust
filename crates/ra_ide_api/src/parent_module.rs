@@ -8,7 +8,7 @@ pub(crate) fn parent_module(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Vec<NavigationTarget>> {
-    let module = match hir::source_binder::module_from_position(db, position)? {
+    let module = match hir::source_binder::module_from_position(db, position) {
         None => return Ok(Vec::new()),
         Some(it) => it,
     };

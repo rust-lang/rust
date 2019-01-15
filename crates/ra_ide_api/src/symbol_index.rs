@@ -63,7 +63,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Cancelable<Arc<Sy
         .map(move |(name, ptr)| FileSymbol { name, ptr, file_id })
         .collect::<Vec<_>>();
 
-    for (name, text_range) in hir::source_binder::macro_symbols(db, file_id)? {
+    for (name, text_range) in hir::source_binder::macro_symbols(db, file_id) {
         let node = find_covering_node(source_file.syntax(), text_range);
         let ptr = LocalSyntaxPtr::new(node);
         symbols.push(FileSymbol { file_id, name, ptr })

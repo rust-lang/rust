@@ -75,8 +75,7 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Opt
         return None;
     }
     let range = module.syntax().range();
-    let module =
-        hir::source_binder::module_from_child_node(db, file_id, module.syntax()).ok()??;
+    let module = hir::source_binder::module_from_child_node(db, file_id, module.syntax())?;
 
     // FIXME: thread cancellation instead of `.ok`ing
     let path = module

@@ -109,7 +109,7 @@ impl Module {
     }
 
     /// Finds a child module with the specified name.
-    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+    pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
         self.child_impl(db, name)
     }
 

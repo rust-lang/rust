@@ -42,7 +42,7 @@ impl<'a> CompletionContext<'a> {
         original_file: &'a SourceFile,
         position: FilePosition,
     ) -> Cancelable<Option<CompletionContext<'a>>> {
-        let module = source_binder::module_from_position(db, position)?;
+        let module = source_binder::module_from_position(db, position);
         let leaf =
             ctry!(find_leaf_at_offset(original_file.syntax(), position.offset).left_biased());
         let mut ctx = CompletionContext {

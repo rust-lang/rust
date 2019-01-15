@@ -196,7 +196,7 @@ pub(crate) fn impls_in_module(
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleImplBlocks>> {
     let mut result = ModuleImplBlocks::new();
-    let module = Module::from_module_id(db, source_root_id, module_id)?;
+    let module = Module::from_module_id(db, source_root_id, module_id);
     result.collect(db, module)?;
     Ok(Arc::new(result))
 }

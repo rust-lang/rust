@@ -48,7 +48,7 @@ pub(crate) fn reference_definition(
 ) -> Cancelable<ReferenceResult> {
     use self::ReferenceResult::*;
     if let Some(function) =
-        hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())?
+        hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())
     {
         let scope = function.scopes(db)?;
         // First try to resolve the symbol locally
@@ -77,8 +77,7 @@ pub(crate) fn reference_definition(
         }
     }
     // Then try module name resolution
-    if let Some(module) =
-        hir::source_binder::module_from_child_node(db, file_id, name_ref.syntax())?
+    if let Some(module) = hir::source_binder::module_from_child_node(db, file_id, name_ref.syntax())
     {
         if let Some(path) = name_ref
             .syntax()
@@ -111,7 +110,7 @@ fn name_definition(
     if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
         if module.has_semi() {
             if let Some(child_module) =
-                hir::source_binder::module_from_declaration(db, file_id, module)?
+                hir::source_binder::module_from_declaration(db, file_id, module)
             {
                 let nav = NavigationTarget::from_module(db, child_module)?;
                 return Ok(Some(vec![nav]));
