@@ -545,6 +545,10 @@ impl DepGraph {
             Some(DepNodeColor::Green(dep_node_index)) => Some((prev_index, dep_node_index)),
             Some(DepNodeColor::Red) => None,
             None => {
+                // This DepNode and the corresponding query invocation existed
+                // in the previous compilation session too, so we can try to
+                // mark it as green by recursively marking all of its
+                // dependencies green.
                 self.try_mark_previous_green(
                     tcx.global_tcx(),
                     data,
@@ -557,6 +561,7 @@ impl DepGraph {
         }
     }
 
+    /// Try to mark a dep-node which existed in the previous compilation session as green
     fn try_mark_previous_green<'tcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'tcx>,
@@ -572,12 +577,10 @@ impl DepGraph {
             debug_assert!(data.colors.get(prev_dep_node_index).is_none());
         }
 
-        debug_assert!(!dep_node.kind.is_input());
-        debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
-
         // We never try to mark inputs as green
-        // FIXME: Make an debug_assert!
-        assert!(!dep_node.kind.is_input());
+        debug_assert!(!dep_node.kind.is_input());
+
+        debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
 
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
 
