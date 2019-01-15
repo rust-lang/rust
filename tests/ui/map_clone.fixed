@@ -18,6 +18,6 @@ fn main() {
     let _ = v.iter().map(|_x| a.clone());
     let _ = v.iter().map(|&_x| a);
 
-    // Issue #496
+    // Issue #498
     let _ = std::env::args();
 }
