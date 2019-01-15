@@ -49,14 +49,14 @@ impl CrateImplBlocks {
             .into_iter()
             .flat_map(|i| i.iter())
             .map(move |(module_id, impl_id)| {
-                let module_impl_blocks = db.impls_in_module(self.source_root_id, *module_id)?;
+                let module_impl_blocks = db.impls_in_module(self.source_root_id, *module_id);
                 Ok(ImplBlock::from_id(module_impl_blocks, *impl_id))
             })
     }
 
     fn collect_recursive(&mut self, db: &impl HirDatabase, module: Module) -> Cancelable<()> {
         let module_id = module.def_id.loc(db).module_id;
-        let module_impl_blocks = db.impls_in_module(self.source_root_id, module_id)?;
+        let module_impl_blocks = db.impls_in_module(self.source_root_id, module_id);
 
         for (impl_id, impl_data) in module_impl_blocks.impls.iter() {
             let impl_block = ImplBlock::from_id(Arc::clone(&module_impl_blocks), impl_id);
@@ -100,10 +100,10 @@ impl CrateImplBlocks {
     }
 }
 
-fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Cancelable<Option<Crate>> {
+fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Adt { def_id, .. } => def_id.krate(db),
-        _ => Ok(None),
+        _ => None,
     }
 }
 
@@ -139,7 +139,7 @@ impl Ty {
         // rustc does an autoderef and then autoref again).
 
         for derefed_ty in self.autoderef(db) {
-            let krate = match def_crate(db, &derefed_ty)? {
+            let krate = match def_crate(db, &derefed_ty) {
                 Some(krate) => krate,
                 None => continue,
             };

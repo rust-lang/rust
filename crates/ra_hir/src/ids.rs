@@ -1,4 +1,4 @@
-use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
+use ra_db::{SourceRootId, LocationIntener, FileId};
 use ra_syntax::{TreeArc, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
@@ -205,25 +205,21 @@ impl DefId {
     }
 
     /// For a module, returns that module; for any other def, returns the containing module.
-    pub fn module(self, db: &impl HirDatabase) -> Cancelable<Module> {
+    pub fn module(self, db: &impl HirDatabase) -> Module {
         let loc = self.loc(db);
-        Ok(Module::from_module_id(
-            db,
-            loc.source_root_id,
-            loc.module_id,
-        ))
+        Module::from_module_id(db, loc.source_root_id, loc.module_id)
     }
 
     /// Returns the containing crate.
-    pub fn krate(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
-        Ok(self.module(db)?.krate(db))
+    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
     }
 
     /// Returns the containing impl block, if this is an impl item.
-    pub fn impl_block(self, db: &impl HirDatabase) -> Cancelable<Option<ImplBlock>> {
+    pub fn impl_block(self, db: &impl HirDatabase) -> Option<ImplBlock> {
         let loc = self.loc(db);
-        let module_impls = db.impls_in_module(loc.source_root_id, loc.module_id)?;
-        Ok(ImplBlock::containing(module_impls, self))
+        let module_impls = db.impls_in_module(loc.source_root_id, loc.module_id);
+        ImplBlock::containing(module_impls, self)
     }
 }
 
