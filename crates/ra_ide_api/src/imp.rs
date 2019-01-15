@@ -258,7 +258,7 @@ impl db::RootDatabase {
             .collect::<Vec<_>>();
         Ok(res)
     }
-    pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Cancelable<Vec<FileSymbol>> {
+    pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();

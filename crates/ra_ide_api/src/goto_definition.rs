@@ -95,7 +95,7 @@ pub(crate) fn reference_definition(
     }
     // If that fails try the index based approach.
     let navs = db
-        .index_resolve(name_ref)?
+        .index_resolve(name_ref)
         .into_iter()
         .map(NavigationTarget::from_symbol)
         .collect();
