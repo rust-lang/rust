@@ -99,16 +99,16 @@ impl db::RootDatabase {
 
 impl db::RootDatabase {
     /// Returns `Vec` for the same reason as `parent_module`
-    pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+    pub(crate) fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
         let module = match source_binder::module_from_file_id(self, file_id) {
             Some(it) => it,
-            None => return Ok(Vec::new()),
+            None => return Vec::new(),
         };
-        let krate = match module.krate(self)? {
+        let krate = match module.krate(self) {
             Some(it) => it,
-            None => return Ok(Vec::new()),
+            None => return Vec::new(),
         };
-        Ok(vec![krate.crate_id()])
+        vec![krate.crate_id()]
     }
     pub(crate) fn find_all_refs(
         &self,

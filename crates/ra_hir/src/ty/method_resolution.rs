@@ -75,7 +75,7 @@ impl CrateImplBlocks {
             }
         }
 
-        for child in module.children(db)? {
+        for child in module.children(db) {
             self.collect_recursive(db, child)?;
         }
 
