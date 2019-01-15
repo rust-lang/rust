@@ -1107,13 +1107,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Tuple(Arc::from(ty_vec))
             },
             Expr::Array { exprs } => {
-                let mut elem_ty = match &expected.ty {
+                let elem_ty = match &expected.ty {
                     Ty::Slice(inner) | Ty::Array(inner) => Ty::clone(&inner),
                     _ => self.new_type_var(),
                 };
 
                 for expr in exprs.iter() {
-                    elem_ty = self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
+                    self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
                 }
 
                 Ty::Array(Arc::new(elem_ty))
