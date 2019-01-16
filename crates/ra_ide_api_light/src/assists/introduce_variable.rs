@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::{WHITESPACE, SEMI},
+    SyntaxKind::WHITESPACE,
     SyntaxNode, TextUnit,
 };
 
