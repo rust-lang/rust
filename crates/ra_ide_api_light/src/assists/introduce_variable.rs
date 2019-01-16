@@ -61,20 +61,6 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<&SyntaxNode> {
     })
 }
 
-fn is_semi_right_after(node: &SyntaxNode) -> bool {
-    let mut node = node;
-    loop {
-        if let Some(next) = node.next_sibling() {
-            if next.kind() == WHITESPACE {
-                node = next;
-                continue;
-            }
-            return next.kind() == SEMI;
-        }
-        return false;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
