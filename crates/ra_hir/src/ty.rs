@@ -877,7 +877,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
-        match (&body[pat], &expected.ty) {
+        let ty = match (&body[pat], &expected.ty) {
             (Pat::Tuple(ref args), &Ty::Tuple(ref tuple_args))
                 if args.len() == tuple_args.len() =>
             {
@@ -885,42 +885,71 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // FIXME: can we do w/o cloning?
                     self.infer_pat(pat, &Expectation::has_type(ty.clone()));
                 }
+                expected.ty.clone()
             }
             (&Pat::Ref { pat, mutability }, &Ty::Ref(ref sub_ty, ty_mut))
                 if mutability == ty_mut =>
             {
                 self.infer_pat(pat, &Expectation::has_type((&**sub_ty).clone()));
+                expected.ty.clone()
             }
-            (pattern, &Ty::Adt { def_id, .. }) => {
-                let adt_def = def_id.resolve(self.db);
-                match (pattern, adt_def) {
-                    (&Pat::Struct, Def::Struct(s)) => {}
-                    (
-                        &Pat::TupleStruct {
-                            path: ref p,
-                            args: ref sub_pats,
-                        },
-                        Def::Enum(ref e),
-                    ) => {
-                        // TODO: resolve enum
+            (
+                &Pat::TupleStruct {
+                    path: ref p,
+                    args: ref sub_pats,
+                },
+                _expected,
+            ) => {
+                let def = p
+                    .as_ref()
+                    .and_then(|path| self.module.resolve_path(self.db, &path).take_types())
+                    .map(|def_id| def_id.resolve(self.db));
+
+                if let Some(def) = def {
+                    let (ty, fields) = match def {
+                        Def::Struct(s) => {
+                            let fields: Vec<_> = self
+                                .db
+                                .struct_data(s.def_id())
+                                .variant_data
+                                .fields()
+                                .iter()
+                                .cloned()
+                                .collect();
+                            (type_for_struct(self.db, s), fields)
+                        }
+                        Def::EnumVariant(ev) => {
+                            let fields: Vec<_> =
+                                ev.variant_data(self.db).fields().iter().cloned().collect();
+                            (type_for_enum_variant(self.db, ev), fields)
+                        }
+                        _ => unreachable!(),
+                    };
+                    // walk subpats
+                    if fields.len() == sub_pats.len() {
+                        for (&sub_pat, field) in sub_pats.iter().zip(fields.iter()) {
+                            let sub_ty = Ty::from_hir(
+                                self.db,
+                                &self.module,
+                                self.impl_block.as_ref(),
+                                &field.type_ref,
+                            );
+
+                            self.infer_pat(sub_pat, &Expectation::has_type(sub_ty));
+                        }
+
+                        ty
+                    } else {
+                        expected.ty.clone()
                     }
-                    (
-                        &Pat::TupleStruct {
-                            path: ref p,
-                            args: ref sub_pats,
-                        },
-                        Def::EnumVariant(ref e),
-                    ) => {
-                        let variant_data = self.db.enum_variant_data(e.def_id);
-                    }
-                    _ => {}
+                } else {
+                    expected.ty.clone()
                 }
             }
-            // TODO: implement more
-            (_, ref _expected_ty) => {}
+            (_, ref _expected_ty) => expected.ty.clone(),
         };
         // use a new type variable if we got Ty::Unknown here
-        let ty = self.insert_type_vars_shallow(expected.ty.clone());
+        let ty = self.insert_type_vars_shallow(ty);
         self.unify(&ty, &expected.ty);
         let ty = self.resolve_ty_as_possible(ty);
         self.write_pat_ty(pat, ty.clone());

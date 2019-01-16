@@ -359,7 +359,22 @@ fn test(x: &str, y: isize) {
 }
 
 #[test]
-fn infer_pattern() {
+fn infer_simple_pattern() {
+    check_inference(
+        r#"
+fn test(x: &i32) {
+    let y = x;
+    let &z = x;
+    let a = z;
+    let (c, d) = (1, "hello");
+}
+"#,
+        "pattern.txt",
+    );
+}
+
+#[test]
+fn infer_adt_pattern() {
     check_inference(
         r#"
 enum E {
@@ -367,23 +382,16 @@ enum E {
     B
 }
 
-fn test(x: &i32) {
-    let y = x;
-    let &z = x;
-    let a = z;
-    let (c, d) = (1, "hello");
+struct S(u32, E);
 
+fn test() {
     let e = E::A { x: 3 };
-    if let E::A { x: x } = e {
-        x
-    };
-    match e {
-        E::A { x } => x,
-        E::B => 1,
-    };
+
+    let S(y, z) = foo;
+    let E::A { x: new_var } = e;
 }
 "#,
-        "pattern.txt",
+        "adt_pattern.txt",
     );
 }
 
