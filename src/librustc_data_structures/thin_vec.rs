@@ -39,6 +39,16 @@ impl<T> ::std::ops::Deref for ThinVec<T> {
     }
 }
 
+impl<T> ::std::ops::DerefMut for ThinVec<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [T] {
+        match *self {
+            ThinVec(None) => &mut [],
+            ThinVec(Some(ref mut vec)) => vec,
+        }
+    }
+}
+
 impl<T> Extend<T> for ThinVec<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         match *self {

@@ -160,7 +160,9 @@ pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod test;
 pub mod tokenstream;
+#[macro_use]
 pub mod visit;
+pub mod visit_mut;
 
 pub mod print {
     pub mod pp;

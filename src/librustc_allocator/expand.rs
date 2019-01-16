@@ -1,10 +1,9 @@
 use rustc::middle::allocator::AllocatorKind;
 use rustc_errors;
-use smallvec::SmallVec;
 use syntax::{
     ast::{
         self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
-        Mac, Mod, Mutability, Ty, TyKind, Unsafety, VisibilityKind,
+        Mod, Mutability, Ty, TyKind, Unsafety, VisibilityKind, NodeId,
     },
     attr,
     source_map::{
@@ -16,7 +15,8 @@ use syntax::{
         expand::ExpansionConfig,
         hygiene::{self, Mark, SyntaxContext},
     },
-    fold::{self, Folder},
+    fold::Folder,
+    visit_mut::{self, MutVisitor},
     parse::ParseSess,
     ptr::P,
     symbol::Symbol
@@ -28,7 +28,7 @@ use {AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 pub fn modify(
     sess: &ParseSess,
     resolver: &mut dyn Resolver,
-    krate: Crate,
+    mut krate: Crate,
     crate_name: String,
     handler: &rustc_errors::Handler,
 ) -> ast::Crate {
@@ -39,7 +39,8 @@ pub fn modify(
         found: false,
         crate_name: Some(crate_name),
         in_submod: -1, // -1 to account for the "root" module
-    }.fold_crate(krate)
+    }.visit_crate(&mut krate);
+    krate
 }
 
 struct ExpandAllocatorDirectives<'a> {
@@ -54,34 +55,35 @@ struct ExpandAllocatorDirectives<'a> {
     in_submod: isize,
 }
 
-impl<'a> Folder for ExpandAllocatorDirectives<'a> {
-    fn fold_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
+impl<'a> MutVisitor for ExpandAllocatorDirectives<'a> {
+    fn visit_item(&mut self, item: &mut P<Item>) -> Option<Vec<P<Item>>> {
         debug!("in submodule {}", self.in_submod);
 
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
             "global_allocator"
         } else {
-            return fold::noop_fold_item(item, self);
+            visit_mut::walk_item(self, item);
+            return None;
         };
         match item.node {
             ItemKind::Static(..) => {}
             _ => {
                 self.handler
                     .span_err(item.span, "allocators must be statics");
-                return smallvec![item];
+                return None;
             }
         }
 
         if self.in_submod > 0 {
             self.handler
                 .span_err(item.span, "`global_allocator` cannot be used in submodules");
-            return smallvec![item];
+            return None;
         }
 
         if self.found {
             self.handler
                 .span_err(item.span, "cannot define more than one #[global_allocator]");
-            return smallvec![item];
+            return None;
         }
         self.found = true;
 
@@ -142,22 +144,17 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
 
         // Return the item and new submodule
-        smallvec![item, module]
+        Some(vec![item.clone(), module])
     }
 
     // If we enter a submodule, take note.
-    fn fold_mod(&mut self, m: Mod) -> Mod {
+    fn visit_mod(&mut self, m: &mut Mod, _s: Span, _attrs: &[Attribute], _n: NodeId) {
         debug!("enter submodule");
         self.in_submod += 1;
-        let ret = fold::noop_fold_mod(m, self);
+        let ret = visit_mut::walk_mod(self, m);
         self.in_submod -= 1;
         debug!("exit submodule");
         ret
-    }
-
-    // `fold_mac` is disabled by default. Enable it here.
-    fn fold_mac(&mut self, mac: Mac) -> Mac {
-        fold::noop_fold_mac(mac, self)
     }
 }
 
