@@ -356,7 +356,7 @@ impl Ty {
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         f(self);
         match self {
-            Ty::Slice(t) => Arc::make_mut(t).walk_mut(f),
+            Ty::Slice(t) | Ty::Array(t) => Arc::make_mut(t).walk_mut(f),
             Ty::RawPtr(t, _) => Arc::make_mut(t).walk_mut(f),
             Ty::Ref(t, _) => Arc::make_mut(t).walk_mut(f),
             Ty::Tuple(ts) => {
@@ -1105,7 +1105,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 Ty::Tuple(Arc::from(ty_vec))
-            },
+            }
             Expr::Array { exprs } => {
                 let elem_ty = match &expected.ty {
                     Ty::Slice(inner) | Ty::Array(inner) => Ty::clone(&inner),
@@ -1117,7 +1117,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 Ty::Array(Arc::new(elem_ty))
-            },
+            }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => Ty::Bool,
                 Literal::String(..) => Ty::Ref(Arc::new(Ty::Str), Mutability::Shared),
