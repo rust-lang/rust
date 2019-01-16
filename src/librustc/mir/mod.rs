@@ -1919,20 +1919,20 @@ pub struct NeoPlace<'tcx> {
 impl NeoPlace<'tcx> {
     /// Return `Some` if this place has no projections -- else return `None`.
     /// So for `a` would return `Some`, but for `a.b.c` would return `None`.
-    pub fn as_base(&self) -> Option<&PlaceBase<'tcx>> {
-        if !self.elems.is_empty() {
+    pub fn as_place_base(&self) -> Option<&PlaceBase<'tcx>>{
+        if self.elems.is_empty() {
+            Some(&self.base)
+        } else {
             // this is something like `a.b.c`
-            return None;
+            None
         }
-
-        Some(&self.base)
     }
 
     /// Return `Some` if this is just a reference to a local variable
     /// (e.g., `a`) and `None` if it is something else (e.g.,
     /// `a.b.c`).
     pub fn as_local(&self) -> Option<Local> {
-        match self.as_base()? {
+        match self.as_place_base()? {
             PlaceBase::Local(l) => Some(*l),
             _ => None,
         }

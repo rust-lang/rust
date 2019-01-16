@@ -9,8 +9,9 @@ use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant,
     ConstraintCategory, Field, Local, LocalDecl, LocalKind, Location, Operand,
     Place, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
-    TerminatorKind, VarBindingForm,
+    TerminatorKind, VarBindingForm, NeoPlace, NeoPlaceTree, PlaceBase,
 };
+use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::ppaux::RegionHighlightMode;
 use rustc_data_structures::fx::FxHashSet;
@@ -1570,37 +1571,39 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place: &Place<'tcx>,
         including_downcast: IncludingDowncast,
     ) -> Option<String> {
+        let neo_place = self.infcx.tcx.as_new_place(place);
         let mut buf = String::new();
-        match self.append_place_to_string(place, &mut buf, false, &including_downcast) {
-            Ok(()) => Some(buf),
-            Err(()) => None,
-        }
+        self.append_place_to_string(
+            &neo_place,
+            &mut buf,
+            false,
+            &including_downcast
+        ).and(Ok(buf)).ok()
     }
 
     /// Appends end-user visible description of `place` to `buf`.
     fn append_place_to_string(
         &self,
-        place: &Place<'tcx>,
+        place: &NeoPlace<'tcx>,
         buf: &mut String,
         mut autoderef: bool,
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
-        match *place {
-            Place::Promoted(_) => {
+        match place.clone().into_tree() {
+            NeoPlaceTree::Base(PlaceBase::Promoted(_)) => {
                 buf.push_str("promoted");
             }
-            Place::Local(local) => {
+            NeoPlaceTree::Base(PlaceBase::Local(local)) => {
                 self.append_local_to_string(local, buf)?;
             }
-            Place::Static(ref static_) => {
+            NeoPlaceTree::Base(PlaceBase::Static(ref static_)) => {
                 buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
             }
-            Place::Projection(ref proj) => {
+            NeoPlaceTree::Projected(proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
-                        let neo_place = self.infcx.tcx.as_new_place(place);
                         let upvar_field_projection =
-                            neo_place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
+                            place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
                             let name = self.mir.upvar_decls[var_index].debug_name.to_string();
@@ -1617,7 +1620,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     autoderef,
                                     &including_downcast,
                                 )?;
-                            } else if let Place::Local(local) = proj.base {
+                            } else if let Some(local) = proj.base.as_local() {
                                 if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
                                     self.mir.local_decls[local].is_user_variable
                                 {
@@ -1660,9 +1663,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
-                        let neo_place = self.infcx.tcx.as_new_place(place);
                         let upvar_field_projection =
-                            neo_place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
+                            place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
                             let name = self.mir.upvar_decls[var_index].debug_name.to_string();
@@ -1727,15 +1729,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, base: &Place, field: Field) -> String {
-        match *base {
-            Place::Local(local) => {
+    fn describe_field(&self, base: &NeoPlace<'tcx>, field: Field) -> String {
+        match base.clone().into_tree() {
+            NeoPlaceTree::Base(PlaceBase::Local(local)) => {
                 let local = &self.mir.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field)
             }
-            Place::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
-            Place::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
-            Place::Projection(ref proj) => match proj.elem {
+            NeoPlaceTree::Base(PlaceBase::Promoted(ref prom)) =>
+                self.describe_field_from_ty(&prom.1, field),
+            NeoPlaceTree::Base(PlaceBase::Static(ref static_)) =>
+                self.describe_field_from_ty(&static_.ty, field),
+            NeoPlaceTree::Projected(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
                 ProjectionElem::Downcast(def, variant_index) =>
                     def.variants[variant_index].fields[field.index()].ident.to_string(),
@@ -1796,7 +1800,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Check if a place is a thread-local static.
     pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
-        if let Place::Static(statik) = place {
+        let neo_place = self.infcx.tcx.as_new_place(place);
+        if let Some(PlaceBase::Static(statik)) = neo_place.as_place_base() {
             let attrs = self.infcx.tcx.get_attrs(statik.def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
 
@@ -1813,47 +1818,45 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn classify_drop_access_kind(&self, place: &Place<'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
-        match place {
-            Place::Local(_) | Place::Static(_) | Place::Promoted(_) => {
-                StorageDeadOrDrop::LocalStorageDead
-            }
-            Place::Projection(box PlaceProjection { base, elem }) => {
-                let base_access = self.classify_drop_access_kind(base);
-                match elem {
-                    ProjectionElem::Deref => match base_access {
-                        StorageDeadOrDrop::LocalStorageDead
-                        | StorageDeadOrDrop::BoxedStorageDead => {
-                            assert!(
-                                base.ty(self.mir, tcx).to_ty(tcx).is_box(),
-                                "Drop of value behind a reference or raw pointer"
-                            );
-                            StorageDeadOrDrop::BoxedStorageDead
-                        }
-                        StorageDeadOrDrop::Destructor(_) => base_access,
-                    },
-                    ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
-                        match base_ty.sty {
-                            ty::Adt(def, _) if def.has_dtor(tcx) => {
-                                // Report the outermost adt with a destructor
-                                match base_access {
-                                    StorageDeadOrDrop::Destructor(_) => base_access,
-                                    StorageDeadOrDrop::LocalStorageDead
-                                    | StorageDeadOrDrop::BoxedStorageDead => {
-                                        StorageDeadOrDrop::Destructor(base_ty)
-                                    }
+        let place = tcx.as_new_place(place);
+        let mut access = StorageDeadOrDrop::LocalStorageDead;
+        let mut base_ty = place.base.ty(self.mir);
+        for elem in place.elems.iter() {
+            match elem {
+                ProjectionElem::Deref => match access {
+                    StorageDeadOrDrop::LocalStorageDead
+                    | StorageDeadOrDrop::BoxedStorageDead => {
+                        assert!(
+                            base_ty.is_box(),
+                            "Drop of value behind a reference or raw pointer"
+                        );
+                        access = StorageDeadOrDrop::BoxedStorageDead;
+                    }
+                    StorageDeadOrDrop::Destructor(_) => {},
+                },
+                ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
+                    match base_ty.sty {
+                        ty::Adt(def, _) if def.has_dtor(tcx) => {
+                            // Report the outermost adt with a destructor
+                            match access {
+                                StorageDeadOrDrop::Destructor(_) => {},
+                                StorageDeadOrDrop::LocalStorageDead
+                                | StorageDeadOrDrop::BoxedStorageDead => {
+                                    access = StorageDeadOrDrop::Destructor(base_ty);
                                 }
                             }
-                            _ => base_access,
                         }
+                        _ => {},
                     }
-
-                    ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Index(_) => base_access,
                 }
+
+                ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Index(_) => {},
             }
+            base_ty = PlaceTy::from(base_ty).projection_ty(tcx, elem).to_ty(tcx);
         }
+        access
     }
 
     /// Annotate argument and return type of function and closure with (synthesized) lifetime for
@@ -1897,9 +1900,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 "annotate_argument_and_return_for_borrow: reservation={:?}",
                 reservation
             );
+            let reservation = self.infcx.tcx.as_new_place(reservation);
             // Check that the initial assignment of the reserve location is into a temporary.
-            let mut target = *match reservation {
-                Place::Local(local) if self.mir.local_kind(*local) == LocalKind::Temp => local,
+            let mut target = match reservation.as_local() {
+                Some(local) if self.mir.local_kind(local) == LocalKind::Temp => local,
                 _ => return None,
             };
 

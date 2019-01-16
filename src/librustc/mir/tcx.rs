@@ -299,15 +299,6 @@ impl<'tcx> NeoPlace<'tcx> {
         }
     }
 
-    // Return the base of place without projections
-    pub fn as_place_base(&self) -> Option<&PlaceBase<'tcx>>{
-        if self.elems.is_empty() {
-            Some(&self.base)
-        } else {
-            None
-        }
-    }
-
     // for a place_elem returns it's prefix path
     // Base.[a, b, c]
     //          ^-- place_elem
