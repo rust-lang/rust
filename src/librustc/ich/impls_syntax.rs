@@ -329,6 +329,7 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
             match *lit {
                 token::Lit::Byte(val) |
                 token::Lit::Char(val) |
+                token::Lit::Err(val) |
                 token::Lit::Integer(val) |
                 token::Lit::Float(val) |
                 token::Lit::Str_(val) |

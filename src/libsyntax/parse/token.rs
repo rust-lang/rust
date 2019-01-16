@@ -60,6 +60,7 @@ impl DelimToken {
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
+    Err(ast::Name),
     Integer(ast::Name),
     Float(ast::Name),
     Str_(ast::Name),
@@ -73,6 +74,7 @@ impl Lit {
         match *self {
             Byte(_) => "byte literal",
             Char(_) => "char literal",
+            Err(_) => "error literal",
             Integer(_) => "integer literal",
             Float(_) => "float literal",
             Str_(_) | StrRaw(..) => "string literal",
