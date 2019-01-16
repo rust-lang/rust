@@ -47,6 +47,7 @@ pub mod libcoretest;
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
         "src/llvm",
+        "src/llvm-project",
         "src/llvm-emscripten",
         "src/libbacktrace",
         "src/librustc_data_structures/owning_ref",

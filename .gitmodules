@@ -1,7 +1,3 @@
-[submodule "src/llvm"]
-	path = src/llvm
-	url = https://github.com/rust-lang/llvm.git
-	branch = master
 [submodule "src/rust-installer"]
 	path = src/tools/rust-installer
 	url = https://github.com/rust-lang/rust-installer.git
@@ -38,20 +34,13 @@
 [submodule "src/stdsimd"]
 	path = src/stdsimd
 	url = https://github.com/rust-lang-nursery/stdsimd.git
-[submodule "src/tools/lld"]
-	path = src/tools/lld
-	url = https://github.com/rust-lang/lld.git
-[submodule "src/tools/lldb"]
-	path = src/tools/lldb
-	url = https://github.com/rust-lang-nursery/lldb.git
-	branch = rust-release-80-v2
-[submodule "src/tools/clang"]
-	path = src/tools/clang
-	url = https://github.com/rust-lang-nursery/clang.git
-	branch = rust-release-80-v2
 [submodule "src/doc/rustc-guide"]
 	path = src/doc/rustc-guide
 	url = https://github.com/rust-lang/rustc-guide.git
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
-	url = https://github.com/rust-lang-nursery/edition-guide
+	url = https://github.com/rust-lang-nursery/edition-guide.git
+[submodule "src/llvm-project"]
+	path = src/llvm-project
+	url = https://github.com/rust-lang/llvm-project.git
+	branch = rustc/8.0-2019-01-16
