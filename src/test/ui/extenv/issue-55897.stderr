@@ -8,7 +8,10 @@ error[E0432]: unresolved import `prelude`
   --> $DIR/issue-55897.rs:1:5
    |
 LL | use prelude::*; //~ ERROR unresolved import `prelude`
-   |     ^^^^^^^ did you mean `std::prelude`?
+   |     ^^^^^^^
+   |     |
+   |     unresolved import
+   |     help: a similar path exists: `std::prelude`
 
 error: cannot determine resolution for the macro `env`
   --> $DIR/issue-55897.rs:6:22

@@ -2,16 +2,19 @@ error[E0432]: unresolved import `zed::baz`
   --> $DIR/import.rs:2:5
    |
 LL | use zed::baz; //~ ERROR unresolved import `zed::baz` [E0432]
-   |     ^^^^^^^^ no `baz` in `zed`. Did you mean to use `bar`?
+   |     ^^^^^---
+   |     |    |
+   |     |    help: a similar name exists in the module: `bar`
+   |     no `baz` in `zed`
 
 error[E0432]: unresolved import `foo`
-  --> $DIR/import.rs:8:9
+  --> $DIR/import.rs:10:9
    |
 LL |     use foo; //~ ERROR unresolved import `foo` [E0432]
    |         ^^^ no `foo` in the root
 
 error[E0603]: unresolved item `foo` is private
-  --> $DIR/import.rs:13:10
+  --> $DIR/import.rs:15:10
    |
 LL |     zed::foo(); //~ ERROR `foo` is private
    |          ^^^

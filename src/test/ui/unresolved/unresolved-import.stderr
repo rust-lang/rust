@@ -1,38 +1,47 @@
 error[E0432]: unresolved import `foo`
-  --> $DIR/unresolved-import.rs:3:5
+  --> $DIR/unresolved-import.rs:1:5
    |
 LL | use foo::bar; //~ ERROR unresolved import `foo` [E0432]
    |     ^^^ maybe a missing `extern crate foo;`?
 
 error[E0432]: unresolved import `bar::Baz`
-  --> $DIR/unresolved-import.rs:6:5
+  --> $DIR/unresolved-import.rs:4:5
    |
 LL | use bar::Baz as x; //~ ERROR unresolved import `bar::Baz` [E0432]
-   |     ^^^^^^^^^^^^^ no `Baz` in `bar`. Did you mean to use `Bar`?
+   |     ^^^^^---^^^^^
+   |     |    |
+   |     |    help: a similar name exists in the module: `Bar`
+   |     no `Baz` in `bar`
 
 error[E0432]: unresolved import `food::baz`
   --> $DIR/unresolved-import.rs:9:5
    |
 LL | use food::baz; //~ ERROR unresolved import `food::baz`
-   |     ^^^^^^^^^ no `baz` in `food`. Did you mean to use `bag`?
+   |     ^^^^^^---
+   |     |     |
+   |     |     help: a similar name exists in the module: `bag`
+   |     no `baz` in `food`
 
 error[E0432]: unresolved import `food::beens`
-  --> $DIR/unresolved-import.rs:12:12
+  --> $DIR/unresolved-import.rs:14:12
    |
 LL | use food::{beens as Foo}; //~ ERROR unresolved import `food::beens` [E0432]
-   |            ^^^^^^^^^^^^ no `beens` in `food`. Did you mean to use `beans`?
+   |            -----^^^^^^^
+   |            |
+   |            no `beens` in `food`
+   |            help: a similar name exists in the module: `beans`
 
 error[E0432]: unresolved import `MyEnum`
-  --> $DIR/unresolved-import.rs:34:9
+  --> $DIR/unresolved-import.rs:38:9
    |
 LL |     use MyEnum::*; //~ ERROR unresolved import `MyEnum` [E0432]
-   |         ^^^^^^ did you mean `self::MyEnum`?
+   |         ^^^^^^ help: a similar path exists: `self::MyEnum`
 
 error[E0432]: unresolved import `Enum`
-  --> $DIR/unresolved-import.rs:43:9
+  --> $DIR/unresolved-import.rs:48:9
    |
 LL |     use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
-   |         ^^^^ did you mean `self::Enum`?
+   |         ^^^^ help: a similar path exists: `self::Enum`
 
 error: aborting due to 6 previous errors
 
