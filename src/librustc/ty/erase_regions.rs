@@ -1,4 +1,4 @@
-use ty::{self, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt, TypeFlags};
 use ty::fold::{TypeFolder, TypeFoldable};
 
 pub(super) fn provide(providers: &mut ty::query::Providers<'_>) {
@@ -21,6 +21,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn erase_regions<T>(self, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
+        // If there's nothing to erase avoid performing the query at all
+        if !value.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
+            return value.clone();
+        }
+
         let value1 = value.fold_with(&mut RegionEraserVisitor { tcx: self });
         debug!("erase_regions({:?}) = {:?}", value, value1);
         value1
