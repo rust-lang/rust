@@ -91,7 +91,7 @@ When it is done, it should look like:
 
 Note that, the version number is updated to be the version number
 of the stable release where this feature will appear. This can be
-found by consulting https://forge.rust-lang.org/, which will guide
+found by consulting [the forge](https://forge.rust-lang.org/), which will guide
 you the next stable release number. You want to add 1 to that,
 because the code that lands today will become go into beta on that
 date, and then become stable after that. So, at the time of this
