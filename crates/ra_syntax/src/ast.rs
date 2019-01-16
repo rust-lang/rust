@@ -296,6 +296,15 @@ impl IfExpr {
     }
 }
 
+impl ExprStmt {
+    pub fn has_semi(&self) -> bool {
+        match self.syntax().last_child() {
+            None => false,
+            Some(node) => node.kind() == SEMI,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathSegmentKind<'a> {
     Name(&'a NameRef),

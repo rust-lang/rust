@@ -20,12 +20,16 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
 
         buf.push_str("let var_name = ");
         expr.syntax().text().push_to(&mut buf);
-        let is_full_stmt = if let Some(expr_stmt) = ast::ExprStmt::cast(anchor_stmt) {
+        let full_stmt = ast::ExprStmt::cast(anchor_stmt);
+        let is_full_stmt = if let Some(expr_stmt) = full_stmt {
             Some(expr.syntax()) == expr_stmt.expr().map(|e| e.syntax())
         } else {
             false
         };
         if is_full_stmt {
+            if !full_stmt.unwrap().has_semi() {
+                buf.push_str(";");
+            }
             edit.replace(expr.syntax().range(), buf);
         } else {
             buf.push_str(";");
@@ -141,4 +145,20 @@ fn foo() {
         );
     }
 
+    #[test]
+    fn test_introduce_var_block_expr_second_to_last() {
+        check_assist_range(
+            introduce_variable,
+            "
+fn foo() {
+    <|>{ let x = 0; x }<|>
+    something_else();
+}",
+            "
+fn foo() {
+    let <|>var_name = { let x = 0; x };
+    something_else();
+}",
+        );
+    }
 }
