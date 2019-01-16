@@ -2718,6 +2718,8 @@ impl<T: ?Sized> PartialOrd for *mut T {
                      (if you also use #[may_dangle]), Send, and/or Sync")]
 #[doc(hidden)]
 #[repr(transparent)]
+// FIXME: the rustc_layout_scalar_valid_range_start attr is marked as unused
+#[cfg_attr(stage0, allow(unused_attributes))]
 #[rustc_layout_scalar_valid_range_start(1)]
 pub struct Unique<T: ?Sized> {
     pointer: *const T,
@@ -2783,6 +2785,8 @@ impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
+            // FIXME: this unsafe block is actually needed
+            #[cfg_attr(stage0, allow(unused_unsafe))]
             Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
         } else {
             None
@@ -2839,6 +2843,8 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
     fn from(reference: &'a mut T) -> Self {
+        // FIXME: this unsafe block is actually needed
+        #[cfg_attr(stage0, allow(unused_unsafe))]
         unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
     }
 }
@@ -2846,6 +2852,8 @@ impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     fn from(reference: &'a T) -> Self {
+        // FIXME: this unsafe block is actually needed
+        #[cfg_attr(stage0, allow(unused_unsafe))]
         unsafe { Unique { pointer: reference as *const T, _marker: PhantomData } }
     }
 }
@@ -2853,6 +2861,8 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
     fn from(p: NonNull<T>) -> Self {
+        // FIXME: this unsafe block is actually needed
+        #[cfg_attr(stage0, allow(unused_unsafe))]
         unsafe { Unique { pointer: p.pointer, _marker: PhantomData } }
     }
 }
@@ -3042,6 +3052,8 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
+        // FIXME: this unsafe block is actually needed
+        #[cfg_attr(stage0, allow(unused_unsafe))]
         unsafe { NonNull { pointer: unique.pointer } }
     }
 }
@@ -3050,6 +3062,8 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &'a mut T) -> Self {
+        // FIXME: this unsafe block is actually needed
+        #[cfg_attr(stage0, allow(unused_unsafe))]
         unsafe { NonNull { pointer: reference as *mut T } }
     }
 }
@@ -3058,6 +3072,8 @@ impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
 impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
     #[inline]
     fn from(reference: &'a T) -> Self {
+        // FIXME: this unsafe block is actually needed
+        #[cfg_attr(stage0, allow(unused_unsafe))]
         unsafe { NonNull { pointer: reference as *const T } }
     }
 }
