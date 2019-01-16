@@ -332,7 +332,7 @@ impl_arena_id!(PatId);
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FieldPat {
     pub(crate) name: Name,
-    pub(crate) pat: Option<PatId>,
+    pub(crate) pat: PatId,
 }
 
 /// Close relative to rustc's hir::PatKind
@@ -393,7 +393,7 @@ impl Pat {
                 total_iter.map(|pat| *pat).for_each(f);
             }
             Pat::Struct { args, .. } => {
-                args.iter().filter_map(|a| a.pat).for_each(f);
+                args.iter().map(|f| f.pat).for_each(f);
             }
         }
     }
@@ -821,9 +821,10 @@ impl ExprCollector {
                     .expect("every struct should have a field list")
                     .field_pats()
                     .into_iter()
-                    .map(|f| FieldPat {
-                        name: Name::new(f.ident),
-                        pat: f.pat.as_ref().map(|p| self.collect_pat(p)),
+                    .map(|f| {
+                        let name = Name::new(f.ident);
+                        let pat = self.collect_pat(&*f.pat);
+                        FieldPat { name, pat }
                     })
                     .collect();
 

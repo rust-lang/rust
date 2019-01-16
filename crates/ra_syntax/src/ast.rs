@@ -664,36 +664,11 @@ impl LiteralExpr {
     }
 }
 
-// STRUCT_PAT@[20; 42)
-//   PATH@[20; 26)
-//     PATH_SEGMENT@[20; 26)
-//       NAME_REF@[20; 26)
-//         IDENT@[20; 26) "Strukt"
-//   WHITESPACE@[26; 27)
-//   FIELD_PAT_LIST@[27; 42)
-//     L_CURLY@[27; 28)
-//     WHITESPACE@[28; 29)
-//     IDENT@[29; 30) "x"
-//     COLON@[30; 31)
-//     WHITESPACE@[31; 32)
-//     BIND_PAT@[32; 33)
-//       NAME@[32; 33)
-//         IDENT@[32; 33) "x"
-//     COMMA@[33; 34)
-//     WHITESPACE@[34; 35)
-//     BIND_PAT@[35; 36)
-//       NAME@[35; 36)
-//         IDENT@[35; 36) "y"
-//     COMMA@[36; 37)
-//     WHITESPACE@[37; 38)
-//     DOTDOT@[38; 40)
-//     WHITESPACE@[40; 41)
-//     R_CURLY@[41; 42)
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FieldPat {
     pub ident: SmolStr,
-    pub pat: Option<TreeArc<Pat>>,
+    // FIXME: could we use a regular reference?
+    pub pat: TreeArc<Pat>,
 }
 
 impl FieldPatList {
@@ -704,12 +679,17 @@ impl FieldPatList {
         let mut pats = Vec::new();
 
         while let Some(node) = child_iter.next() {
-            if node.kind() != IDENT {
+            let kind = node.kind();
+            if kind != IDENT && kind != BIND_PAT {
                 continue;
             }
 
-            let ident = node.leaf_text().unwrap().clone();
-            let mut pat = None;
+            let ident = if let Some(text) = node.leaf_text() {
+                text.clone()
+            } else {
+                SmolStr::new(node.text().to_string())
+            };
+            let mut pat = Pat::cast(node).map(AstNode::to_owned);
 
             // get pat
             while let Some(node) = child_iter.next() {
@@ -724,7 +704,7 @@ impl FieldPatList {
 
             let field_pat = FieldPat {
                 ident: ident,
-                pat: pat,
+                pat: pat.unwrap(),
             };
             pats.push(field_pat);
         }

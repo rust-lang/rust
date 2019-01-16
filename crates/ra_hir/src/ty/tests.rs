@@ -389,6 +389,11 @@ fn test() {
 
     let S(y, z) = foo;
     let E::A { x: new_var } = e;
+
+    match e {
+        E::A { x } => x,
+        E::B => 1,
+    };
 }
 "#,
         "adt_pattern.txt",

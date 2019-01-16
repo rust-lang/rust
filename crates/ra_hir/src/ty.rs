@@ -937,19 +937,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         for sub_pat in sub_pats {
-            let tyref = fields
-                .iter()
-                .find(|field| field.name == sub_pat.name)
-                .map(|field| &field.type_ref);
+            let matching_field = fields.iter().find(|field| field.name == sub_pat.name);
 
-            if let Some(typeref) = tyref {
+            if let Some(field) = matching_field {
+                let typeref = &field.type_ref;
                 let sub_ty = Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), typeref);
-
-                if let Some(pat) = sub_pat.pat {
-                    self.infer_pat(pat, &Expectation::has_type(sub_ty));
-                } else {
-                    // TODO: deal with this case: S { x, y }
-                }
+                self.infer_pat(sub_pat.pat, &Expectation::has_type(sub_ty));
             }
         }
 
