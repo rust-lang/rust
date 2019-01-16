@@ -4840,12 +4840,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.node {
-            hir::StmtKind::Decl(ref decl) => {
-                if let hir::DeclKind::Item(_) = decl.node {
-                    return
-                }
-            }
-            hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+            hir::StmtKind::Item(..) => return,
+            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
         self.warn_if_unreachable(stmt.id, stmt.span, "statement");
@@ -4857,15 +4853,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.has_errors.set(false);
 
         match stmt.node {
-            hir::StmtKind::Decl(ref decl) => {
-                match decl.node {
-                    hir::DeclKind::Local(ref l) => {
-                        self.check_decl_local(&l);
-                    }
-                    // Ignore for now.
-                    hir::DeclKind::Item(_) => ()
-                }
+            hir::StmtKind::Local(ref l) => {
+                self.check_decl_local(&l);
             }
+            // Ignore for now.
+            hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());

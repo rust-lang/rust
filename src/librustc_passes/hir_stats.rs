@@ -158,11 +158,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_pat(self, p)
     }
 
-    fn visit_decl(&mut self, d: &'v hir::Decl) {
-        self.record("Decl", Id::None, d);
-        hir_visit::walk_decl(self, d)
-    }
-
     fn visit_expr(&mut self, ex: &'v hir::Expr) {
         self.record("Expr", Id::Node(ex.id), ex);
         hir_visit::walk_expr(self, ex)

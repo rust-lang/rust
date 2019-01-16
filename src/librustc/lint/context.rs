@@ -941,11 +941,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_arm(self, a);
     }
 
-    fn visit_decl(&mut self, d: &'tcx hir::Decl) {
-        run_lints!(self, check_decl, d);
-        hir_visit::walk_decl(self, d);
-    }
-
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam) {
         run_lints!(self, check_generic_param, p);
         hir_visit::walk_generic_param(self, p);

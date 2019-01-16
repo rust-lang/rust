@@ -501,12 +501,6 @@ impl_stable_hash_for!(struct hir::Local {
     source
 });
 
-impl_stable_hash_for_spanned!(hir::DeclKind);
-impl_stable_hash_for!(enum hir::DeclKind {
-    Local(local),
-    Item(item_id)
-});
-
 impl_stable_hash_for!(struct hir::Arm {
     attrs,
     pats,
@@ -946,7 +940,8 @@ impl_stable_hash_for!(enum hir::ForeignItemKind {
 });
 
 impl_stable_hash_for!(enum hir::StmtKind {
-    Decl(decl),
+    Local(local),
+    Item(item_id),
     Expr(expr),
     Semi(expr)
 });
