@@ -20,16 +20,15 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
 
         buf.push_str("let var_name = ");
         expr.syntax().text().push_to(&mut buf);
-        let is_full_stmt = if let Some(expr_stmt) = ast::ExprStmt::cast(anchor_stmt) {
+        let full_stmt = ast::ExprStmt::cast(anchor_stmt);
+        let is_full_stmt = if let Some(expr_stmt) = full_stmt {
             Some(expr.syntax()) == expr_stmt.expr().map(|e| e.syntax())
         } else {
             false
         };
         if is_full_stmt {
-            if let Some(last_child) = expr.syntax().last_child() {
-                if last_child.kind() != SEMI && !is_semi_right_after(expr.syntax()) {
-                    buf.push_str(";");
-                }
+            if !full_stmt.unwrap().has_semi() {
+                buf.push_str(";");
             }
             edit.replace(expr.syntax().range(), buf);
         } else {
