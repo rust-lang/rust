@@ -105,12 +105,7 @@ impl<'a> CollectProcMacros<'a> {
         // `#[proc_macro_derive(Foo, attributes(A, ..))]`
         let list = match attr.meta_item_list() {
             Some(list) => list,
-            None => {
-                self.handler.span_err(attr.span(),
-                                      "attribute must be of form: \
-                                       #[proc_macro_derive(TraitName)]");
-                return
-            }
+            None => return,
         };
         if list.len() != 1 && list.len() != 2 {
             self.handler.span_err(attr.span(),
@@ -182,13 +177,7 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if !attr.is_word() {
-            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute \
-                does not take any arguments");
-            return;
-        }
-
+    fn collect_attr_proc_macro(&mut self, item: &'a ast::Item) {
         if self.in_root && item.vis.node.is_pub() {
             self.attr_macros.push(ProcMacroDef {
                 span: item.span,
@@ -205,13 +194,7 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if !attr.is_word() {
-            self.handler.span_err(attr.span, "`#[proc_macro]` attribute \
-                does not take any arguments");
-            return;
-        }
-
+    fn collect_bang_proc_macro(&mut self, item: &'a ast::Item) {
         if self.in_root && item.vis.node.is_pub() {
             self.bang_macros.push(ProcMacroDef {
                 span: item.span,
@@ -308,9 +291,9 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         if attr.check_name("proc_macro_derive") {
             self.collect_custom_derive(item, attr);
         } else if attr.check_name("proc_macro_attribute") {
-            self.collect_attr_proc_macro(item, attr);
+            self.collect_attr_proc_macro(item);
         } else if attr.check_name("proc_macro") {
-            self.collect_bang_proc_macro(item, attr);
+            self.collect_bang_proc_macro(item);
         };
 
         let prev_in_root = mem::replace(&mut self.in_root, false);

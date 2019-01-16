@@ -1,9 +1,8 @@
-error[E0498]: malformed plugin attribute
+error: attribute must be of the form `#[plugin(name|name(args))]`
   --> $DIR/malformed-plugin-1.rs:2:1
    |
-LL | #![plugin] //~ ERROR malformed plugin attribute
+LL | #![plugin] //~ ERROR attribute must be of the form
    | ^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0498`.

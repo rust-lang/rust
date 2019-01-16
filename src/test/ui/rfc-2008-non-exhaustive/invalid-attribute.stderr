@@ -1,11 +1,8 @@
-error[E0702]: attribute should be empty
+error: attribute must be of the form `#[non_exhaustive]`
   --> $DIR/invalid-attribute.rs:3:1
    |
 LL | #[non_exhaustive(anything)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL | //~^ ERROR attribute should be empty [E0702]
-LL | struct Foo;
-   | ----------- not empty
 
 error[E0701]: attribute can only be applied to a struct or enum
   --> $DIR/invalid-attribute.rs:7:1
@@ -30,5 +27,4 @@ LL | | }
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0701, E0702.
-For more information about an error, try `rustc --explain E0701`.
+For more information about this error, try `rustc --explain E0701`.

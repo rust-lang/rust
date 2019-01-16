@@ -8,7 +8,7 @@ extern {
     fn extern_fn();
 // CHECK-NOT: Function Attrs: nounwind
 // CHECK: declare void @unwinding_extern_fn
-    #[unwind] //~ ERROR #[unwind] is experimental
+    #[unwind(allowed)] //~ ERROR #[unwind] is experimental
     fn unwinding_extern_fn();
 }
 

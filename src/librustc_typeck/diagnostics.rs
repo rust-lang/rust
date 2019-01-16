@@ -3611,29 +3611,6 @@ For more information about the inline attribute, https:
 read://doc.rust-lang.org/reference.html#inline-attributes
 "##,
 
-E0558: r##"
-The `export_name` attribute was malformed.
-
-Erroneous code example:
-
-```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
-#[export_name] // error: `export_name` attribute has invalid format
-pub fn something() {}
-
-fn main() {}
-```
-
-The `export_name` attribute expects a string in order to determine the name of
-the exported symbol. Example:
-
-```
-#[export_name = "some_function"] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-"##,
-
 E0559: r##"
 An unknown field was specified into an enum's structure variant.
 
@@ -4722,6 +4699,7 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
+//  E0558, // replaced with a generic attribute input check
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 //  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,

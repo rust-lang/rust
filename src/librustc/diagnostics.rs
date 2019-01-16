@@ -1180,27 +1180,6 @@ fn main() {
 ```
 "##,
 
-E0296: r##"
-This error indicates that the given recursion limit could not be parsed. Ensure
-that the value provided is a positive integer between quotes.
-
-Erroneous code example:
-
-```compile_fail,E0296
-#![recursion_limit]
-
-fn main() {}
-```
-
-And a working example:
-
-```
-#![recursion_limit="1000"]
-
-fn main() {}
-```
-"##,
-
 E0308: r##"
 This error occurs when the compiler was unable to infer the concrete type of a
 variable. It can occur for several cases, the most common of which is a
@@ -2093,20 +2072,6 @@ trait Foo { }
 ```
 "##,
 
-E0702: r##"
-This error indicates that a `#[non_exhaustive]` attribute had a value. The
-`#[non_exhaustive]` should be empty.
-
-Examples of erroneous code:
-
-```compile_fail,E0702
-# #![feature(non_exhaustive)]
-
-#[non_exhaustive(anything)]
-struct Foo;
-```
-"##,
-
 E0718: r##"
 This error indicates that a `#[lang = ".."]` attribute was placed
 on the wrong type of item.
@@ -2138,6 +2103,7 @@ register_diagnostics! {
     E0280, // requirement is not satisfied
     E0284, // cannot resolve type
 //  E0285, // overflow evaluation builtin bounds
+//  E0296, // replaced with a generic attribute input check
 //  E0300, // unexpanded macro
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
@@ -2180,4 +2146,5 @@ register_diagnostics! {
     E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
+//  E0702, // replaced with a generic attribute input check
 }

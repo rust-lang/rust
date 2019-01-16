@@ -1070,15 +1070,6 @@ where
         )
     });
 
-    // Add all buffered lints from the `ParseSess` to the `Session`.
-    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
-        info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
-            let lint = lint::Lint::from_parser_lint_id(lint_id);
-            sess.buffer_lint(lint, id, span, &msg);
-        }
-    });
-
     // Done with macro expansion!
 
     after_expand(&krate)?;
@@ -1112,6 +1103,15 @@ where
             &attributes,
             sess.opts.unstable_features,
         );
+    });
+
+    // Add all buffered lints from the `ParseSess` to the `Session`.
+    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+        info!("{} parse sess buffered_lints", buffered_lints.len());
+        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
+            let lint = lint::Lint::from_parser_lint_id(lint_id);
+            sess.buffer_lint(lint, id, span, &msg);
+        }
     });
 
     // Lower ast -> hir.
@@ -1530,13 +1530,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                         }
                         None
                     }
-                    None => {
-                        session
-                            .struct_span_err(a.span, "`crate_type` requires a value")
-                            .note("for example: `#![crate_type=\"lib\"]`")
-                            .emit();
-                        None
-                    }
+                    None => None
                 }
             } else {
                 None

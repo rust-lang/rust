@@ -1,44 +1,44 @@
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:7:1
    |
-LL | #![stable                     = "1300"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![stable()]
+   | ^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:10:1
    |
-LL | #[stable = "1300"]
-   | ^^^^^^^^^^^^^^^^^^
+LL | #[stable()]
+   | ^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:13:17
    |
-LL |     mod inner { #![stable="1300"] }
-   |                 ^^^^^^^^^^^^^^^^^
+LL |     mod inner { #![stable()] }
+   |                 ^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:16:5
    |
-LL |     #[stable = "1300"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     #[stable()] fn f() { }
+   |     ^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:19:5
    |
-LL |     #[stable = "1300"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     #[stable()] struct S;
+   |     ^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:22:5
    |
-LL |     #[stable = "1300"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     #[stable()] type T = S;
+   |     ^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:25:5
    |
-LL |     #[stable = "1300"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     #[stable()] impl S { }
+   |     ^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

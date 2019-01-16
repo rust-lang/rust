@@ -48,7 +48,8 @@ use rustc::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE,
     MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
-    parser::QUESTION_MARK_MACRO_SEP
+    parser::QUESTION_MARK_MACRO_SEP,
+    parser::ILL_FORMED_ATTRIBUTE_INPUT,
 };
 use rustc::session;
 use rustc::util;
@@ -114,7 +115,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnsafeCode,
                        AnonymousParameters,
                        UnusedDocComment,
-                       BadRepr,
                        EllipsisInclusiveRangePatterns,
                        NonCamelCaseTypes,
                        );
@@ -336,6 +336,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
             edition: None,
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(ILL_FORMED_ATTRIBUTE_INPUT),
+            reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
+            edition: None,
+        },
         ]);
 
     // Register renamed and removed lints.
@@ -385,4 +390,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "no longer a warning, #[no_mangle] functions always exported");
     store.register_removed("private_no_mangle_statics",
         "no longer a warning, #[no_mangle] statics always exported");
+    store.register_removed("bad_repr",
+        "replaced with a generic attribute input check");
 }

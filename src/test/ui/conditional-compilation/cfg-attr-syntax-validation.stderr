@@ -52,11 +52,11 @@ error[E0565]: literal in `cfg` predicate value must be a string
 LL | #[cfg(a = b"hi")]  //~ ERROR literal in `cfg` predicate value must be a string
    |           ^^^^^ help: consider removing the prefix: `"hi"`
 
-error: `cfg` is not a well-formed meta-item
-  --> $DIR/cfg-attr-syntax-validation.rs:30:9
+error: expected unsuffixed literal or identifier, found concat!("nonexistent")
+  --> $DIR/cfg-attr-syntax-validation.rs:30:15
    |
-LL |         #[cfg(feature = $expr)] //~ ERROR `cfg` is not a well-formed meta-item
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: expected syntax is: `#[cfg(/* predicate */)]`
+LL |         #[cfg(feature = $expr)]
+   |               ^^^^^^^
 ...
 LL | generate_s10!(concat!("nonexistent"));
    | -------------------------------------- in this macro invocation

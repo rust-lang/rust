@@ -4,25 +4,25 @@
 // this test incompatible with the "warnings only" nature of
 // issue-43106-gating-of-builtin-attrs.rs
 
-#![rustc_deprecated           = "1500"]
+#![rustc_deprecated()]
 //~^ ERROR stability attributes may not be used outside of the standard library
 
-#[rustc_deprecated = "1500"]
+#[rustc_deprecated()]
 //~^ ERROR stability attributes may not be used outside of the standard library
 mod rustc_deprecated {
-    mod inner { #![rustc_deprecated="1500"] }
+    mod inner { #![rustc_deprecated()] }
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[rustc_deprecated = "1500"] fn f() { }
+    #[rustc_deprecated()] fn f() { }
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[rustc_deprecated = "1500"] struct S;
+    #[rustc_deprecated()] struct S;
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[rustc_deprecated = "1500"] type T = S;
+    #[rustc_deprecated()] type T = S;
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[rustc_deprecated = "1500"] impl S { }
+    #[rustc_deprecated()] impl S { }
     //~^ ERROR stability attributes may not be used outside of the standard library
 }
 

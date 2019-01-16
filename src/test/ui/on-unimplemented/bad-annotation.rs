@@ -14,7 +14,8 @@ trait MyFromIterator<A> {
     fn my_from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 
-#[rustc_on_unimplemented] //~ ERROR `#[rustc_on_unimplemented]` requires a value
+#[rustc_on_unimplemented]
+//~^ ERROR attribute must be of the form
 trait BadAnnotation1
 {}
 

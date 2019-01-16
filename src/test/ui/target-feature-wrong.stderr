@@ -1,4 +1,4 @@
-error: #[target_feature] attribute must be of the form #[target_feature(..)]
+error: attribute must be of the form `#[target_feature(enable = "name")]`
   --> $DIR/target-feature-wrong.rs:16:1
    |
 LL | #[target_feature = "+sse2"]

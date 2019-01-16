@@ -1,10 +1,8 @@
-error: `crate_type` requires a value
+error: attribute must be of the form `#[crate_type = "bin|lib|..."]`
   --> $DIR/no_crate_type.rs:2:1
    |
-LL | #![crate_type]  //~ ERROR `crate_type` requires a value
+LL | #![crate_type]  //~ ERROR attribute must be of the form
    | ^^^^^^^^^^^^^^
-   |
-   = note: for example: `#![crate_type="lib"]`
 
 error: aborting due to previous error
 

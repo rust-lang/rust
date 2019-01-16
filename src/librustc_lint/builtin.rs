@@ -35,7 +35,8 @@ use syntax::ast::Expr;
 use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
-use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
+use syntax::feature_gate::{AttributeGate, AttributeTemplate, AttributeType};
+use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
 use syntax::errors::{Applicability, DiagnosticBuilder};
@@ -689,86 +690,12 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-/// Checks for incorrect use of `repr` attributes.
-#[derive(Clone)]
-pub struct BadRepr;
-
-impl LintPass for BadRepr {
-    fn get_lints(&self) -> LintArray {
-        lint_array!()
-    }
-}
-
-impl EarlyLintPass for BadRepr {
-    fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
-        if attr.name() == "repr" {
-            let list = attr.meta_item_list();
-
-            let repr_str = |lit: &str| { format!("#[repr({})]", lit) };
-
-            // Emit warnings with `repr` either has a literal assignment (`#[repr = "C"]`) or
-            // no hints (``#[repr]`)
-            let has_hints = list.as_ref().map(|ref list| !list.is_empty()).unwrap_or(false);
-            if !has_hints {
-                let mut suggested = false;
-                let mut warn = if let Some(ref lit) = attr.value_str() {
-                    // avoid warning about empty `repr` on `#[repr = "foo"]`
-                    let mut warn = cx.struct_span_lint(
-                        BAD_REPR,
-                        attr.span,
-                        "`repr` attribute isn't configurable with a literal",
-                    );
-                    match lit.to_string().as_ref() {
-                        | "C" | "packed" | "rust" | "transparent"
-                        | "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
-                        | "i8" | "i16" | "i32" | "i64" | "i128" | "isize" => {
-                            // if the literal could have been a valid `repr` arg,
-                            // suggest the correct syntax
-                            warn.span_suggestion_with_applicability(
-                                attr.span,
-                                "give `repr` a hint",
-                                repr_str(&lit.as_str()),
-                                Applicability::MachineApplicable
-                            );
-                            suggested = true;
-                        }
-                        _ => {  // the literal wasn't a valid `repr` arg
-                            warn.span_label(attr.span, "needs a hint");
-                        }
-                    };
-                    warn
-                } else {
-                    let mut warn = cx.struct_span_lint(
-                        BAD_REPR,
-                        attr.span,
-                        "`repr` attribute must have a hint",
-                    );
-                    warn.span_label(attr.span, "needs a hint");
-                    warn
-                };
-                if !suggested {
-                    warn.help(&format!(
-                        "valid hints include `{}`, `{}`, `{}` and `{}`",
-                        repr_str("C"),
-                        repr_str("packed"),
-                        repr_str("rust"),
-                        repr_str("transparent"),
-                    ));
-                    warn.note("for more information, visit \
-                               <https://doc.rust-lang.org/reference/type-layout.html>");
-                }
-                warn.emit();
-            }
-        }
-    }
-}
-
 /// Checks for use of attributes which have been deprecated.
 #[derive(Clone)]
 pub struct DeprecatedAttr {
     // This is not free to compute, so we want to keep it around, rather than
     // compute it for every attribute.
-    depr_attrs: Vec<&'static (&'static str, AttributeType, AttributeGate)>,
+    depr_attrs: Vec<&'static (&'static str, AttributeType, AttributeTemplate, AttributeGate)>,
 }
 
 impl DeprecatedAttr {
@@ -787,7 +714,7 @@ impl LintPass for DeprecatedAttr {
 
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
-        for &&(n, _, ref g) in &self.depr_attrs {
+        for &&(n, _, _, ref g) in &self.depr_attrs {
             if attr.name() == n {
                 if let &AttributeGate::Gated(Stability::Deprecated(link, suggestion),
                                              ref name,

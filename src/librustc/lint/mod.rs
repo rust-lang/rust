@@ -28,7 +28,7 @@ use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit;
 use hir;
 use lint::builtin::BuiltinLintDiagnostics;
-use lint::builtin::parser::QUESTION_MARK_MACRO_SEP;
+use lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
 use session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
@@ -82,6 +82,7 @@ impl Lint {
     pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
         match lint_id {
             BufferedEarlyLintId::QuestionMarkMacroSep => QUESTION_MARK_MACRO_SEP,
+            BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
         }
     }
 

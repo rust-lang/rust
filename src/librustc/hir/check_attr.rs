@@ -142,15 +142,6 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 return;
             }
         }
-
-        if attr.meta_item_list().is_some() || attr.value_str().is_some() {
-            struct_span_err!(self.tcx.sess,
-                             attr.span,
-                             E0702,
-                             "attribute should be empty")
-                .span_label(item.span, "not empty")
-                .emit();
-        }
     }
 
     /// Check if the `#[marker]` attribute on an `item` is valid.
@@ -164,12 +155,6 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     .emit();
                 return;
             }
-        }
-
-        if !attr.is_word() {
-            self.tcx.sess
-                .struct_span_err(attr.span, "attribute should be empty")
-                .emit();
         }
     }
 

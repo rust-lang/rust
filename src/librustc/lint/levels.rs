@@ -204,8 +204,6 @@ impl<'a> LintLevelsBuilder<'a> {
             let mut metas = if let Some(metas) = meta.meta_item_list() {
                 metas
             } else {
-                let mut err = bad_attr(meta.span);
-                err.emit();
                 continue;
             };
 

@@ -1,9 +1,8 @@
-// run-pass
+// compile-pass
 // compile-flags: --test
 
 #[test]
 #[should_panic = "foo"]
-//~^ WARN: attribute must be of the form:
 fn test1() {
     panic!();
 }

@@ -2144,12 +2144,7 @@ fn from_target_feature(
 ) {
     let list = match attr.meta_item_list() {
         Some(list) => list,
-        None => {
-            let msg = "#[target_feature] attribute must be of the form \
-                       #[target_feature(..)]";
-            tcx.sess.span_err(attr.span, &msg);
-            return;
-        }
+        None => return,
     };
     let rust_features = tcx.features();
     for item in list {
@@ -2347,14 +2342,6 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     ).emit();
                 }
                 codegen_fn_attrs.export_name = Some(s);
-            } else {
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0558,
-                    "`export_name` attribute has invalid format"
-                ).span_label(attr.span, "did you mean #[export_name=\"*\"]?")
-                 .emit();
             }
         } else if attr.check_name("target_feature") {
             if tcx.fn_sig(id).unsafety() == Unsafety::Normal {

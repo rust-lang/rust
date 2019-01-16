@@ -1,44 +1,44 @@
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:7:1
    |
-LL | #![rustc_deprecated           = "1500"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![rustc_deprecated()]
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:10:1
    |
-LL | #[rustc_deprecated = "1500"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_deprecated()]
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:13:17
    |
-LL |     mod inner { #![rustc_deprecated="1500"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     mod inner { #![rustc_deprecated()] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:16:5
    |
-LL |     #[rustc_deprecated = "1500"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_deprecated()] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:19:5
    |
-LL |     #[rustc_deprecated = "1500"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_deprecated()] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:22:5
    |
-LL |     #[rustc_deprecated = "1500"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_deprecated()] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:25:5
    |
-LL |     #[rustc_deprecated = "1500"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_deprecated()] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

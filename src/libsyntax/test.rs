@@ -428,14 +428,11 @@ fn is_test_case(i: &ast::Item) -> bool {
 
 fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, "test_runner")?;
-    if let Some(meta_list) = test_attr.meta_item_list() {
+    test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {
             sd.span_fatal(test_attr.span(),
                 "#![test_runner(..)] accepts exactly 1 argument").raise()
         }
-        Some(meta_list[0].word().as_ref().unwrap().ident.clone())
-    } else {
-        sd.span_fatal(test_attr.span(),
-            "test_runner must be of the form #[test_runner(..)]").raise()
-    }
+        meta_list[0].word().as_ref().unwrap().ident.clone()
+    })
 }
