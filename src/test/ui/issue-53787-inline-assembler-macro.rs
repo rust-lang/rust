@@ -5,7 +5,6 @@
 macro_rules! fake_jump {
     ($id:expr) => {
         unsafe {
-            
             asm!(
             "
             jmp $0
