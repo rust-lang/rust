@@ -223,7 +223,7 @@ dependencies = [
  "serde_ignored 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "shell-escape 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "tar 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tar 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1007,7 +1007,7 @@ dependencies = [
  "flate2 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tar 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tar 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "xz2 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2939,7 +2939,7 @@ dependencies = [
 
 [[package]]
 name = "tar"
-version = "0.4.19"
+version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "filetime 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3506,7 +3506,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum syn 0.15.21 (registry+https://github.com/rust-lang/crates.io-index)" = "816b7af21405b011a23554ea2dc3f6576dc86ca557047c34098c1d741f10f823"
 "checksum synom 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a393066ed9010ebaed60b9eafa373d4b1baac186dd7e008555b0f702b51945b6"
 "checksum synstructure 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "85bb9b7550d063ea184027c9b8c20ac167cd36d3e06b3a40bceb9d746dc1a7b7"
-"checksum tar 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)" = "69e16840a1e0a1f1a880b739ef1cc6a4b85496c99b8aa786ccffce6e0c15624c"
+"checksum tar 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)" = "a303ba60a099fcd2aaa646b14d2724591a96a75283e4b7ed3d1a1658909d9ae2"
 "checksum tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c4b103c6d08d323b92ff42c8ce62abcd83ca8efa7fd5bf7927efefec75f58c76"
 "checksum tendril 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9de21546595a0873061940d994bbbc5c35f024ae4fd61ec5c5b159115684f508"
 "checksum term 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5e6b677dd1e8214ea1ef4297f85dbcbed8e8cdddb561040cc998ca2551c37561"
