@@ -660,6 +660,15 @@ impl<'a> Builder<'a> {
         }
     }
 
+    /// Get the paths to all of the compiler's codegen backends.
+    fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
+        fs::read_dir(self.sysroot_codegen_backends(compiler))
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+    }
+
     pub fn rustdoc(&self, host: Interned<String>) -> PathBuf {
         self.ensure(tool::Rustdoc { host })
     }
@@ -750,6 +759,9 @@ impl<'a> Builder<'a> {
             match mode {
                 Mode::Std => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
+                    for backend in self.codegen_backends(compiler) {
+                        self.clear_if_dirty(&my_out, &backend);
+                    }
                 },
                 Mode::Test => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
