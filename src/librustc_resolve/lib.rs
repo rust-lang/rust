@@ -1273,7 +1273,6 @@ struct UseError<'a> {
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum AmbiguityKind {
     Import,
-    AbsolutePath,
     BuiltinAttr,
     DeriveHelper,
     LegacyHelperVsPrelude,
@@ -1289,8 +1288,6 @@ impl AmbiguityKind {
         match self {
             AmbiguityKind::Import =>
                 "name vs any other name during import resolution",
-            AmbiguityKind::AbsolutePath =>
-                "name in the crate root vs extern crate during absolute path resolution",
             AmbiguityKind::BuiltinAttr =>
                 "built-in attribute vs any other name",
             AmbiguityKind::DeriveHelper =>

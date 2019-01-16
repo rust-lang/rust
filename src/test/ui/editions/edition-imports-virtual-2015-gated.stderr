@@ -1,20 +1,11 @@
-error: imports can only refer to extern crate names passed with `--extern` in macros originating from 2015 edition
-  --> <::edition_imports_2015::gen_gated macros>:1:50
-   |
-LL | (  ) => { fn check_gated (  ) { enum E { A } use E :: * ; } }
-   |                                                  ^
-   | 
-  ::: $DIR/edition-imports-virtual-2015-gated.rs:9:5
+error[E0432]: unresolved import `E`
+  --> $DIR/edition-imports-virtual-2015-gated.rs:8:5
    |
 LL |     gen_gated!();
-   |     ------------- not an extern crate passed with `--extern`
+   |     ^^^^^^^^^^^^^ could not find `E` in `{{root}}`
    |
-note: this import refers to the enum defined here
-  --> $DIR/edition-imports-virtual-2015-gated.rs:9:5
-   |
-LL |     gen_gated!();
-   |     ^^^^^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0432`.
