@@ -4331,10 +4331,11 @@ impl<'a> LoweringContext<'a> {
                         ThinVec::new(),
                     ))
                 };
-                let match_stmt = respan(
-                    head_sp,
-                    hir::StmtKind::Expr(match_expr, self.next_id().node_id)
-                );
+                let match_stmt = hir::Stmt {
+                    id: self.next_id().node_id,
+                    node: hir::StmtKind::Expr(match_expr),
+                    span: head_sp,
+                };
 
                 let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat.id));
 
@@ -4357,10 +4358,11 @@ impl<'a> LoweringContext<'a> {
 
                 let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
-                let body_stmt = respan(
-                    body.span,
-                    hir::StmtKind::Expr(body_expr, self.next_id().node_id)
-                );
+                let body_stmt = hir::Stmt {
+                    id: self.next_id().node_id,
+                    node: hir::StmtKind::Expr(body_expr),
+                    span: body.span,
+                };
 
                 let loop_block = P(self.block_all(
                     e.span,
@@ -4533,24 +4535,24 @@ impl<'a> LoweringContext<'a> {
                 let (l, item_ids) = self.lower_local(l);
                 let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
                     .into_iter()
-                    .map(|item_id| Spanned {
+                    .map(|item_id| hir::Stmt {
+                        id: self.next_id().node_id,
                         node: hir::StmtKind::Decl(
                             P(Spanned {
                                 node: hir::DeclKind::Item(item_id),
                                 span: s.span,
                             }),
-                            self.next_id().node_id,
                         ),
                         span: s.span,
                     })
                     .collect();
-                ids.push(Spanned {
+                ids.push(hir::Stmt {
+                    id: self.lower_node_id(s.id).node_id,
                     node: hir::StmtKind::Decl(
                         P(Spanned {
                             node: hir::DeclKind::Local(l),
                             span: s.span,
                         }),
-                        self.lower_node_id(s.id).node_id,
                     ),
                     span: s.span,
                 });
@@ -4561,26 +4563,28 @@ impl<'a> LoweringContext<'a> {
                 let mut id = Some(s.id);
                 return self.lower_item_id(it)
                     .into_iter()
-                    .map(|item_id| Spanned {
+                    .map(|item_id| hir::Stmt {
+                        id: id.take()
+                              .map(|id| self.lower_node_id(id).node_id)
+                              .unwrap_or_else(|| self.next_id().node_id),
                         node: hir::StmtKind::Decl(
                             P(Spanned {
                                 node: hir::DeclKind::Item(item_id),
                                 span: s.span,
                             }),
-                            id.take()
-                              .map(|id| self.lower_node_id(id).node_id)
-                              .unwrap_or_else(|| self.next_id().node_id),
                         ),
                         span: s.span,
                     })
                     .collect();
             }
-            StmtKind::Expr(ref e) => Spanned {
-                node: hir::StmtKind::Expr(P(self.lower_expr(e)), self.lower_node_id(s.id).node_id),
+            StmtKind::Expr(ref e) => hir::Stmt {
+                id: self.lower_node_id(s.id).node_id,
+                node: hir::StmtKind::Expr(P(self.lower_expr(e))),
                 span: s.span,
             },
-            StmtKind::Semi(ref e) => Spanned {
-                node: hir::StmtKind::Semi(P(self.lower_expr(e)), self.lower_node_id(s.id).node_id),
+            StmtKind::Semi(ref e) => hir::Stmt {
+                id: self.lower_node_id(s.id).node_id,
+                node: hir::StmtKind::Semi(P(self.lower_expr(e))),
                 span: s.span,
             },
             StmtKind::Mac(..) => panic!("Shouldn't exist here"),
@@ -4806,7 +4810,11 @@ impl<'a> LoweringContext<'a> {
             source,
         });
         let decl = respan(sp, hir::DeclKind::Local(local));
-        respan(sp, hir::StmtKind::Decl(P(decl), self.next_id().node_id))
+        hir::Stmt {
+            id: self.next_id().node_id,
+            node: hir::StmtKind::Decl(P(decl)),
+            span: sp
+        }
     }
 
     fn stmt_let(

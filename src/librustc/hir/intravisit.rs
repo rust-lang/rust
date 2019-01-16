@@ -953,14 +953,13 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 }
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
+    visitor.visit_id(statement.id);
     match statement.node {
-        StmtKind::Decl(ref declaration, id) => {
-            visitor.visit_id(id);
+        StmtKind::Decl(ref declaration) => {
             visitor.visit_decl(declaration)
         }
-        StmtKind::Expr(ref expression, id) |
-        StmtKind::Semi(ref expression, id) => {
-            visitor.visit_id(id);
+        StmtKind::Expr(ref expression) |
+        StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
         }
     }

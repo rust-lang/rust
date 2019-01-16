@@ -992,14 +992,14 @@ impl<'a> State<'a> {
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
         self.maybe_print_comment(st.span.lo())?;
         match st.node {
-            hir::StmtKind::Decl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl) => {
                 self.print_decl(&decl)?;
             }
-            hir::StmtKind::Expr(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
             }
-            hir::StmtKind::Semi(ref expr, _) => {
+            hir::StmtKind::Semi(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
                 self.s.word(";")?;
@@ -2401,13 +2401,13 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
 /// seen the semicolon, and thus don't need another.
 fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
     match *stmt {
-        hir::StmtKind::Decl(ref d, _) => {
+        hir::StmtKind::Decl(ref d) => {
             match d.node {
                 hir::DeclKind::Local(_) => true,
                 hir::DeclKind::Item(_) => false,
             }
         }
-        hir::StmtKind::Expr(ref e, _) => {
+        hir::StmtKind::Expr(ref e) => {
             expr_requires_semi_to_be_stmt(&e)
         }
         hir::StmtKind::Semi(..) => {

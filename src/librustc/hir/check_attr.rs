@@ -298,7 +298,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
         // When checking statements ignore expressions, they will be checked later
-        if let hir::StmtKind::Decl(_, _) = stmt.node {
+        if let hir::StmtKind::Decl(..) = stmt.node {
             for attr in stmt.node.attrs() {
                 if attr.check_name("inline") {
                     self.check_inline(attr, &stmt.span, Target::Statement);
