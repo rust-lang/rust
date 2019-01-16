@@ -1,43 +1,61 @@
-
 # Request for stabilization
 
-    Once an unstable feature has been well-tested with no outstanding
-    concern, anyone may push for its stabilization. It involves the
-    following steps.
+Once an unstable feature has been well-tested with no outstanding
+concern, anyone may push for its stabilization. It involves the
+following steps.
 
-    - Documentation PRs
-    - Write a stabilization report
-    - FCP
-    - Stabilization PR
+- Documentation PRs
+- Write a stabilization report
+- FCP
+- Stabilization PR
 
 ## Documentation PRs
 
-    Prepare PRs to update documentations involing this new feature.
-    You need to submit PRs for  repositories The Reference, The Book
-    and Rust by Example.
-    Maintainers of these repositories will keep these PRs open until
-    the whole stabilization process has completed. Meanwhile, we can
-    proceed to the next step.
+If any documentation for this feature exists, it should be
+in the `Unstable Book`, located at `src/doc/unstable-book`.
+If it exists, the page for the feature gate should be removed.
+
+If there was documentation there, integrating it into the
+existing documentation is needed.
+
+If there wasn't documentation there, it needs to be added.
+
+Places that may need updated documentation:
+
+    [The Reference]: This must be updated, in full detail.
+    [The Book]: This may or may not need updating, depends.
+    If you're not sure, please open an issue on this repository
+    and it can be discussed.
+    standard library documentation: As needed. Language features
+    often don't need this, but if it's a feature that changes
+    how good examples are written, such as when `?` was added
+    to the language, updating examples is important.
+    [Rust by Example]: As needed.
+
+Prepare PRs to update documentations invovling this new feature
+for  repositories mentioned above.Maintainers of these repositories
+will keep these PRs open until the whole stabilization process
+has completed. Meanwhile, we can proceed to the next step.
 
 ## Write a stabilization report
 
-    Find the tracking issue of the feature, and create a short
-    stabilization report. Essentially this would be a brief summary
-    of the feature plus some links to test cases showing it works
-    as expected, along with a list of edge cases that came up and
-    and were considered. This is a minimal "due diligence" that
-    we do before stabilizing.
+Find the tracking issue of the feature, and create a short
+stabilization report. Essentially this would be a brief summary
+of the feature plus some links to test cases showing it works
+as expected, along with a list of edge cases that came up and
+and were considered. This is a minimal "due diligence" that
+we do before stabilizing.
 
-    The report should contain:
+The report should contain:
 
-        - A summary, showing examples (e.g. code snippets) what is
-          enabled by this feature.
-        - Links to test cases in our test suite regarding this feature
-          and describe the feature's behavior on encountering edge cases.
-        - Links to the documentations (the PRs we have made in the
-          previous steps).
-        - Any other relevant information(Examples of such reports can
-          be found in rust-lang/rust#44494 and rust-lang/rust#28237).
+- A summary, showing examples (e.g. code snippets) what is
+  enabled by this feature.
+- Links to test cases in our test suite regarding this feature
+  and describe the feature's behavior on encountering edge cases.
+- Links to the documentations (the PRs we have made in the
+  previous steps).
+- Any other relevant information(Examples of such reports can
+  be found in rust-lang/rust#44494 and rust-lang/rust#28237).
 
 ## FCP
 
@@ -46,9 +64,9 @@ feature agrees with stabilizing this feature, they will
 start the FCP (final-comment-period) process by
 commenting
 
-    ```bash
-    @rfcbot fcp merge
-    ```
+```bash
+@rfcbot fcp merge
+```
 
 The rest of the team members will review the proposal. If the final
 decision is to stabilize, we proceed to do the actual code modification.
@@ -75,19 +93,20 @@ macro. There should be an entry for the feature you are aiming to
 stabilize, something like (this example is taken from
 [rust-lang/rust#32409]:
 
-    ```
-        // pub(restricted) visibilities (RFC 1422)
-        (active, pub_restricted, "1.9.0", Some(32409)),
-    ```
+```rust,ignore
+// pub(restricted) visibilities (RFC 1422)
+(active, pub_restricted, "1.9.0", Some(32409)),
+```
+
 The above line should be moved down to the area for "accepted"
 features, declared below in a separate call to `declare_features!`.
 When it is done, it should look like:
 
-    ```
-    // pub(restricted) visibilities (RFC 1422)
-    (accepted, pub_restricted, "1.31.0", Some(32409)),
-    // ^^^^^^ note that we changed this
-    ```
+```rust,ignore
+// pub(restricted) visibilities (RFC 1422)
+(accepted, pub_restricted, "1.31.0", Some(32409)),
+// note that we changed this
+```
 
 Note that, the version number is updated to be the version number
 of the stable release where this feature will appear. This can be
@@ -120,10 +139,10 @@ stable). If the feature can be detected because it employs some
 new syntax, then a common place for that code to be is in the
 same `feature_gate.rs`. For example, you might see code like this:
 
-    ```
-    gate_feature_post!(&self, pub_restricted, span,
-     "`pub(restricted)` syntax is experimental");
-    ```
+```rust,ignore
+gate_feature_post!(&self, pub_restricted, span,
+ "`pub(restricted)` syntax is experimental");
+```
 
 This `gate_feature_post!` macro prints an error if the
 `pub_restricted` feature is not enabled. It is not needed
@@ -131,9 +150,9 @@ now that `#[pub_restricted]` is stable.
 
 For more subtle features, you may find code like this:
 
-    ```
-    if self.tcx.sess.features.borrow().pub_restricted { /* XXX */ }
-    ```
+```rust,ignore
+if self.tcx.sess.features.borrow().pub_restricted { /* XXX */ }
+```
 
 This `pub_restricted` field (obviously named after the feature)
 would ordinarily be false if the feature flag is not present
@@ -141,43 +160,15 @@ and true if it is. So transform the code to assume that the field
 is true. In this case, that would mean removing the `if` and
 leaving just the `/* XXX */`.
 
-    ```
-    if self.tcx.sess.features.borrow().pub_restricted { /* XXX */ }
-    ```
+```rust,ignore
+if self.tcx.sess.features.borrow().pub_restricted { /* XXX */ }
 becomes
-```rust
-    /* XXX */
+/* XXX */
 
-    if self.tcx.sess.features.borrow().pub_restricted && something { /* XXX */ }
-    ```
-becomes
-```rust
-    if something { /* XXX */ }
-    ```
-
-## Updating documentation
-
-If any documentation for this feature exists, it should be
-in the `Unstable Book`, located at `src/doc/unstable-book`.
-If it exists, the page for the feature gate
-should be removed.
-
-If there was documentation there, integrating it into the
-existing documentation is needed.
-
-If there wasn't documentation there, it needs to be added.
-
-Places that may need updated documentation:
-
-    [The Reference]: this must be updated, in full detail.
-    [The Book]: this may or may not need updating, depending.
-    If you're not sure, please open an issue on this repository
-    and it can be discussed.
-    standard library documentation: as needed. Language features
-    often don't need this, but if it's a feature that changes
-    how good examples are written, such as when `?` was added
-    to the language, updating examples is important.
-    [Rust by Example]: as needed.
+if self.tcx.sess.features.borrow().pub_restricted && something { /* XXX */ }
+ becomes
+if something { /* XXX */ }
+```
 
 [rust-lang/rust#32409]:https://github.com/rust-lang/rust/issues/32409
 [The Reference]: https://github.com/rust-lang-nursery/reference
