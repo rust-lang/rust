@@ -26,7 +26,7 @@ use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion};
 use rustc_plugin as plugin;
 use rustc_plugin::registry::Registry;
 use rustc_privacy;
-use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
+use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::{self, ast, attr, diagnostics, visit};
@@ -179,7 +179,6 @@ pub fn compile_input(
                 registry,
                 &crate_name,
                 addl_plugins,
-                control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
                         input,
@@ -394,7 +393,6 @@ pub struct CompileController<'a> {
 
     // FIXME we probably want to group the below options together and offer a
     // better API, rather than this ad-hoc approach.
-    pub make_glob_map: MakeGlobMap,
     // Whether the compiler should keep the ast beyond parsing.
     pub keep_ast: bool,
     // -Zcontinue-parse-after-error
@@ -417,7 +415,6 @@ impl<'a> CompileController<'a> {
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             compilation_done: PhaseController::basic(),
-            make_glob_map: MakeGlobMap::No,
             keep_ast: false,
             continue_parse_after_error: false,
             provide: box |_| {},
@@ -739,7 +736,6 @@ pub fn phase_2_configure_and_expand<F>(
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
-    make_glob_map: MakeGlobMap,
     after_expand: F,
 ) -> Result<ExpansionResult, CompileIncomplete>
 where
@@ -759,7 +755,6 @@ where
         registry,
         crate_name,
         addl_plugins,
-        make_glob_map,
         &resolver_arenas,
         &mut crate_loader,
         after_expand,
@@ -785,11 +780,7 @@ where
             },
 
             analysis: ty::CrateAnalysis {
-                glob_map: if resolver.make_glob_map {
-                    Some(resolver.glob_map)
-                } else {
-                    None
-                },
+                glob_map: resolver.glob_map
             },
         }),
         Err(x) => Err(x),
@@ -805,7 +796,6 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
-    make_glob_map: MakeGlobMap,
     resolver_arenas: &'a ResolverArenas<'a>,
     crate_loader: &'a mut CrateLoader<'a>,
     after_expand: F,
@@ -937,7 +927,6 @@ where
         cstore,
         &krate,
         crate_name,
-        make_glob_map,
         crate_loader,
         &resolver_arenas,
     );

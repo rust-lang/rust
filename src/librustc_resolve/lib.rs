@@ -1546,9 +1546,7 @@ pub struct Resolver<'a> {
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
 
-    pub make_glob_map: bool,
-    /// Maps imports to the names of items actually imported (this actually maps
-    /// all imports, but only glob imports are actually interesting).
+    /// Maps glob imports to the names of items actually imported.
     pub glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
@@ -1795,7 +1793,6 @@ impl<'a> Resolver<'a> {
                cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               make_glob_map: MakeGlobMap,
                crate_loader: &'a mut CrateLoader<'a>,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
@@ -1879,7 +1876,6 @@ impl<'a> Resolver<'a> {
             extern_module_map: FxHashMap::default(),
             binding_parent_modules: FxHashMap::default(),
 
-            make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: Default::default(),
 
             used_imports: FxHashSet::default(),
@@ -1989,14 +1985,15 @@ impl<'a> Resolver<'a> {
             used.set(true);
             directive.used.set(true);
             self.used_imports.insert((directive.id, ns));
-            self.add_to_glob_map(directive.id, ident);
+            self.add_to_glob_map(&directive, ident);
             self.record_use(ident, ns, binding, false);
         }
     }
 
-    fn add_to_glob_map(&mut self, id: NodeId, ident: Ident) {
-        if self.make_glob_map {
-            self.glob_map.entry(id).or_default().insert(ident.name);
+    #[inline]
+    fn add_to_glob_map(&mut self, directive: &ImportDirective<'_>, ident: Ident) {
+        if directive.is_glob() {
+            self.glob_map.entry(directive.id).or_default().insert(ident.name);
         }
     }
 
@@ -4598,7 +4595,7 @@ impl<'a> Resolver<'a> {
                 let import_id = match binding.kind {
                     NameBindingKind::Import { directive, .. } => {
                         self.maybe_unused_trait_imports.insert(directive.id);
-                        self.add_to_glob_map(directive.id, trait_name);
+                        self.add_to_glob_map(&directive, trait_name);
                         Some(directive.id)
                     }
                     _ => None,
@@ -5303,12 +5300,6 @@ fn module_to_string(module: Module) -> Option<String> {
 
 fn err_path_resolution() -> PathResolution {
     PathResolution::new(Def::Err)
-}
-
-#[derive(PartialEq,Copy, Clone)]
-pub enum MakeGlobMap {
-    Yes,
-    No,
 }
 
 #[derive(Copy, Clone, Debug)]

@@ -1239,7 +1239,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
                 // Make a comma-separated list of names of imported modules.
                 let glob_map = &self.save_ctxt.analysis.glob_map;
-                let glob_map = glob_map.as_ref().unwrap();
                 let names = if glob_map.contains_key(&id) {
                     glob_map.get(&id).unwrap().iter().map(|n| n.to_string()).collect()
                 } else {
