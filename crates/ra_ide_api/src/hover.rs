@@ -1,7 +1,6 @@
 use ra_db::{SyntaxDatabase};
 use ra_syntax::{
-    AstNode, SyntaxNode, TreeArc,
-    ast::self,
+    AstNode, SyntaxNode, TreeArc, ast,
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 

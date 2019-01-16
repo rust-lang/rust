@@ -7,8 +7,6 @@ use ra_syntax::TextRange;
 use test_utils::assert_eq_text;
 use insta::assert_debug_snapshot_matches;
 
-mod runnables;
-
 #[test]
 fn test_unresolved_module_diagnostic() {
     let (analysis, file_id) = single_file("mod foo;");
@@ -182,10 +180,22 @@ fn test_rename_mod() {
     );
     let new_name = "foo2";
     let source_change = analysis.rename(position, new_name).unwrap();
-    assert_eq_dbg(
-        r#"Some(SourceChange { label: "rename", source_file_edits: [SourceFileEdit { file_id: FileId(1), edit: TextEdit { atoms: [AtomTextEdit { delete: [4; 7), insert: "foo2" }] } }], file_system_edits: [MoveFile { src: FileId(2), dst_source_root: SourceRootId(0), dst_path: "bar/foo2.rs" }], cursor_position: None })"#,
-        &source_change,
+    assert_debug_snapshot_matches!("rename_mod", &source_change);
+}
+
+#[test]
+fn test_rename_mod_in_dir() {
+    let (analysis, position) = analysis_and_position(
+        "
+        //- /lib.rs
+        mod fo<|>o;
+        //- /foo/mod.rs
+        // emtpy
+    ",
     );
+    let new_name = "foo2";
+    let source_change = analysis.rename(position, new_name).unwrap();
+    assert_debug_snapshot_matches!("rename_mod_in_dir", &source_change);
 }
 
 fn test_rename(text: &str, new_name: &str, expected: &str) {

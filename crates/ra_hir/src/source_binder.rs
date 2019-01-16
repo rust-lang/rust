@@ -35,14 +35,9 @@ pub fn module_from_declaration(
     let parent_module = module_from_file_id(db, file_id);
     let child_name = decl.name();
     match (parent_module, child_name) {
-        (Some(parent_module), Some(child_name)) => {
-            if let Some(child) = parent_module.child(db, &child_name.as_name()) {
-                return Some(child);
-            }
-        }
-        _ => (),
+        (Some(parent_module), Some(child_name)) => parent_module.child(db, &child_name.as_name()),
+        _ => None,
     }
-    None
 }
 
 /// Locates the module by position in the source code.
