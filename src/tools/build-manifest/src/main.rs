@@ -95,6 +95,7 @@ static TARGETS: &'static [&'static str] = &[
     "wasm32-unknown-unknown",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",
+    "x86_64-fortanix-unknown-sgx",
     "x86_64-fuchsia",
     "x86_64-linux-android",
     "x86_64-pc-windows-gnu",
