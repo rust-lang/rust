@@ -19,9 +19,16 @@ hop on [#rust-internals][pound-rust-internals].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
+The [rustc-guide] is your friend! It describes how the compiler works and how
+to contribute to it in more detail than this document.
+
+If this is your first time contributing, the [walkthrough] chapter of the guide
+can give you a good example of how a typical contribution would go.
+
 [pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
 [coc]: https://www.rust-lang.org/conduct.html
+[walkthrough]: https://rust-lang.github.io/rustc-guide/walkthrough.html
 
 ## Feature Requests
 [feature-requests]: #feature-requests
@@ -89,222 +96,14 @@ $ RUST_BACKTRACE=1 rustc ...
 ```
 
 ## The Build System
-[the-build-system]: #the-build-system
 
-Rust's build system allows you to bootstrap the compiler, run tests &
-benchmarks, generate documentation, install a fresh build of Rust, and more.
-It's your best friend when working on Rust, allowing you to compile & test
-your contributions before submission.
+For info on how to configure and build the compiler, please see [this
+chapter][rustcguidebuild] of the rustc-guide. This chapter contains info for
+contributions to the compiler and the standard library. It also lists some
+really useful commands to the build system (`./x.py`), which could save you a
+lot of time.
 
-The build system lives in [the `src/bootstrap` directory][bootstrap] in the
-project root. Our build system is itself written in Rust and is based on Cargo
-to actually build all the compiler's crates. If you have questions on the build
-system internals, try asking in [`#rust-internals`][pound-rust-internals].
-
-[bootstrap]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/
-
-### Configuration
-[configuration]: #configuration
-
-Before you can start building the compiler you need to configure the build for
-your system. In most cases, that will just mean using the defaults provided
-for Rust.
-
-To change configuration, you must copy the file `config.toml.example`
-to `config.toml` in the directory from which you will be running the build, and
-change the settings provided.
-
-There are large number of options provided in this config file that will alter the
-configuration used in the build process. Some options to note:
-
-#### `[llvm]`:
-- `assertions = true` = This enables LLVM assertions, which makes LLVM misuse cause an assertion failure instead of weird misbehavior. This also slows down the compiler's runtime by ~20%.
-- `ccache = true` - Use ccache when building llvm
-
-#### `[build]`:
-- `compiler-docs = true` - Build compiler documentation
-
-#### `[rust]`:
-- `debuginfo = true` - Build a compiler with debuginfo. Makes building rustc slower, but then you can use a debugger to debug `rustc`.
-- `debuginfo-lines = true` - An alternative to `debuginfo = true` that doesn't let you use a debugger, but doesn't make building rustc slower and still gives you line numbers in backtraces.
-- `debuginfo-tools = true` - Build the extended tools with debuginfo.
-- `debug-assertions = true` - Makes the log output of `debug!` work.
-- `optimize = false` - Disable optimizations to speed up compilation of stage1 rust, but makes the stage1 compiler x100 slower.
-
-For more options, the `config.toml` file contains commented out defaults, with
-descriptions of what each option will do.
-
-Note: Previously the `./configure` script was used to configure this
-project. It can still be used, but it's recommended to use a `config.toml`
-file. If you still have a `config.mk` file in your directory - from
-`./configure` - you may need to delete it for `config.toml` to work.
-
-### Building
-[building]: #building
-
-A default configuration requires around 3.5 GB of disk space, whereas building a debug configuration may require more than 30 GB.
-
-Dependencies
-- [build dependencies](README.md#building-from-source)
-- `gdb` 6.2.0 minimum, 7.1 or later recommended for test builds
-
-The build system uses the `x.py` script to control the build process. This script
-is used to build, test, and document various parts of the compiler. You can
-execute it as:
-
-```sh
-python x.py build
-```
-
-On some systems you can also use the shorter version:
-
-```sh
-./x.py build
-```
-
-To learn more about the driver and top-level targets, you can execute:
-
-```sh
-python x.py --help
-```
-
-The general format for the driver script is:
-
-```sh
-python x.py <command> [<directory>]
-```
-
-Some example commands are `build`, `test`, and `doc`. These will build, test,
-and document the specified directory. The second argument, `<directory>`, is
-optional and defaults to working over the entire compiler. If specified,
-however, only that specific directory will be built. For example:
-
-```sh
-# build the entire compiler
-python x.py build
-
-# build all documentation
-python x.py doc
-
-# run all test suites
-python x.py test
-
-# build only the standard library
-python x.py build src/libstd
-
-# test only one particular test suite
-python x.py test src/test/rustdoc
-
-# build only the stage0 libcore library
-python x.py build src/libcore --stage 0
-```
-
-You can explore the build system through the various `--help` pages for each
-subcommand. For example to learn more about a command you can run:
-
-```
-python x.py build --help
-```
-
-To learn about all possible rules you can execute, run:
-
-```
-python x.py build --help --verbose
-```
-
-Note: Previously `./configure` and `make` were used to build this project.
-They are still available, but `x.py` is the recommended build system.
-
-### Useful commands
-[useful-commands]: #useful-commands
-
-Some common invocations of `x.py` are:
-
-- `x.py build --help` - show the help message and explain the subcommand
-- `x.py build src/libtest --stage 1` - build up to (and including) the first
-  stage. For most cases we don't need to build the stage2 compiler, so we can
-  save time by not building it. The stage1 compiler is a fully functioning
-  compiler and (probably) will be enough to determine if your change works as
-  expected.
-- `x.py build src/rustc --stage 1` - This will build just rustc, without libstd.
-  This is the fastest way to recompile after you changed only rustc source code.
-  Note however that the resulting rustc binary won't have a stdlib to link
-  against by default. You can build libstd once with `x.py build src/libstd`,
-  but it is only guaranteed to work if recompiled, so if there are any issues
-  recompile it.
-- `x.py test` - build the full compiler & run all tests (takes a while). This
-  is what gets run by the continuous integration system against your pull
-  request. You should run this before submitting to make sure your tests pass
-  & everything builds in the correct manner.
-- `x.py test src/libstd --stage 1` - test the standard library without
-  recompiling stage 2.
-- `x.py test src/test/run-pass --test-args TESTNAME` - Run a matching set of
-  tests.
-  - `TESTNAME` should be a substring of the tests to match against e.g. it could
-    be the fully qualified test name, or just a part of it.
-    `TESTNAME=collections::hash::map::test_map::test_capacity_not_less_than_len`
-    or `TESTNAME=test_capacity_not_less_than_len`.
-- `x.py test src/test/run-pass --stage 1 --test-args <substring-of-test-name>` -
-  Run a single rpass test with the stage1 compiler (this will be quicker than
-  running the command above as we only build the stage1 compiler, not the entire
-  thing).  You can also leave off the directory argument to run all stage1 test
-  types.
-- `x.py test src/libcore --stage 1` - Run stage1 tests in `libcore`.
-- `x.py test src/tools/tidy` - Check that the source code is in compliance with
-  Rust's style guidelines. There is no official document describing Rust's full
-  guidelines as of yet, but basic rules like 4 spaces for indentation and no
-  more than 99 characters in a single line should be kept in mind when writing
-  code.
-
-### Using your local build
-[using-local-build]: #using-local-build
-
-If you use Rustup to manage your rust install, it has a feature called ["custom
-toolchains"][toolchain-link] that you can use to access your newly-built compiler
-without having to install it to your system or user PATH. If you've run `python
-x.py build`, then you can add your custom rustc to a new toolchain like this:
-
-[toolchain-link]: https://github.com/rust-lang-nursery/rustup.rs#working-with-custom-toolchains-and-local-builds
-
-```
-rustup toolchain link <name> build/<host-triple>/stage2
-```
-
-Where `<host-triple>` is the build triple for the host (the triple of your
-computer, by default), and `<name>` is the name for your custom toolchain. (If you
-added `--stage 1` to your build command, the compiler will be in the `stage1`
-folder instead.) You'll only need to do this once - it will automatically point
-to the latest build you've done.
-
-Once this is set up, you can use your custom toolchain just like any other. For
-example, if you've named your toolchain `local`, running `cargo +local build` will
-compile a project with your custom rustc, setting `rustup override set local` will
-override the toolchain for your current directory, and `cargo +local doc` will use
-your custom rustc and rustdoc to generate docs. (If you do this with a `--stage 1`
-build, you'll need to build rustdoc specially, since it's not normally built in
-stage 1. `python x.py build --stage 1 src/libstd src/tools/rustdoc` will build
-rustdoc and libstd, which will allow rustdoc to be run with that toolchain.)
-
-### Out-of-tree builds
-[out-of-tree-builds]: #out-of-tree-builds
-
-Rust's `x.py` script fully supports out-of-tree builds - it looks for
-the Rust source code from the directory `x.py` was found in, but it
-reads the `config.toml` configuration file from the directory it's
-run in, and places all build artifacts within a subdirectory named `build`.
-
-This means that if you want to do an out-of-tree build, you can just do it:
-```
-$ cd my/build/dir
-$ cp ~/my-config.toml config.toml # Or fill in config.toml otherwise
-$ path/to/rust/x.py build
-...
-$ # This will use the Rust source code in `path/to/rust`, but build
-$ # artifacts will now be in ./build
-```
-
-It's absolutely fine to have multiple build directories with different
-`config.toml` configurations using the same code.
+[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html
 
 ## Pull Requests
 [pull-requests]: #pull-requests
@@ -320,26 +119,13 @@ bring those changes into the source repository.
 
 Please make pull requests against the `master` branch.
 
-Compiling all of `./x.py test` can take a while. When testing your pull request,
-consider using one of the more specialized `./x.py` targets to cut down on the
-amount of time you have to wait. You need to have built the compiler at least
-once before running these will work, but that’s only one full build rather than
-one each time.
-
-    $ python x.py test --stage 1
-
-is one such example, which builds just `rustc`, and then runs the tests. If
-you’re adding something to the standard library, try
-
-    $ python x.py test src/libstd --stage 1
-
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
 
     $ python x.py test src/tools/tidy
 
 Make this check before every pull request (and every new commit in a pull
-request) ; you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
+request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
 before every push to make sure you never forget to make this check.
 
 All pull requests are reviewed by another person. We have a bot,
@@ -532,6 +318,12 @@ to check small fixes. For example, `rustdoc src/doc/reference.md` will render
 reference to `doc/reference.html`. The CSS might be messed up, but you can
 verify that the HTML is right.
 
+Additionally, contributions to the [rustc-guide] are always welcome. Contributions
+can be made directly at [the
+rust-lang/rustc-guide](https://github.com/rust-lang/rustc-guide) repo. The issue
+tracker in that repo is also a great way to find things that need doing. There
+are issues for beginners and advanced compiler devs alike!
+
 ## Issue Triage
 [issue-triage]: #issue-triage
 
@@ -627,7 +419,7 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
-* The [rustc guide] contains information about how various parts of the compiler work
+* The [rustc guide] contains information about how various parts of the compiler work and how to contribute to the compiler
 * [Rust Forge][rustforge] contains additional documentation, including write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
