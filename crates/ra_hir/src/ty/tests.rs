@@ -362,7 +362,10 @@ fn test(x: &str, y: isize) {
 fn infer_pattern() {
     check_inference(
         r#"
-enum E { A { x: usize }, B }
+enum E {
+    A { x: usize },
+    B
+}
 
 fn test(x: &i32) {
     let y = x;

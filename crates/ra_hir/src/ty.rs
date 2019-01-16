@@ -876,6 +876,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     // a Ty itself
     fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
+
         match (&body[pat], &expected.ty) {
             (Pat::Tuple(ref args), &Ty::Tuple(ref tuple_args))
                 if args.len() == tuple_args.len() =>
@@ -889,6 +890,31 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 if mutability == ty_mut =>
             {
                 self.infer_pat(pat, &Expectation::has_type((&**sub_ty).clone()));
+            }
+            (pattern, &Ty::Adt { def_id, .. }) => {
+                let adt_def = def_id.resolve(self.db);
+                match (pattern, adt_def) {
+                    (&Pat::Struct, Def::Struct(s)) => {}
+                    (
+                        &Pat::TupleStruct {
+                            path: ref p,
+                            args: ref sub_pats,
+                        },
+                        Def::Enum(ref e),
+                    ) => {
+                        // TODO: resolve enum
+                    }
+                    (
+                        &Pat::TupleStruct {
+                            path: ref p,
+                            args: ref sub_pats,
+                        },
+                        Def::EnumVariant(ref e),
+                    ) => {
+                        let variant_data = self.db.enum_variant_data(e.def_id);
+                    }
+                    _ => {}
+                }
             }
             // TODO: implement more
             (_, ref _expected_ty) => {}
@@ -1197,7 +1223,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         decl_ty
                     };
 
-                    self.infer_pat(*pat, &Expectation::has_type(ty))?;
+                    self.infer_pat(*pat, &Expectation::has_type(ty));
                 }
                 Statement::Expr(expr) => {
                     self.infer_expr(*expr, &Expectation::none());
@@ -1218,7 +1244,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = self.make_ty(type_ref);
             let ty = self.insert_type_vars(ty);
 
-            self.infer_pat(*pat, &Expectation::has_type(ty))?;
+            self.infer_pat(*pat, &Expectation::has_type(ty));
         }
         self.return_ty = {
             let ty = self.make_ty(signature.ret_type());
