@@ -100,7 +100,7 @@ writing, the next stable release (what is currently beta, iow) was
 
 ### Removing existing uses of the feature-gate
 
-Next search for the feature string (in this case, pub_restricted)
+Next search for the feature string (in this case, `pub_restricted`)
 in the codebase to find where it appears. Change uses of
 `#![feature(XXX)]` from the stdlib and rustc crates to be
 `#![cfg_attr(stage0, feature(XXX))]`. This includes the feature-gate
