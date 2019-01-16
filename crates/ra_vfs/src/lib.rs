@@ -86,7 +86,7 @@ pub struct Vfs {
     pending_changes: Vec<VfsChange>,
     worker: io::Worker,
     worker_handle: WorkerHandle,
-    watcher: Watcher,
+    watcher: Option<Watcher>,
 }
 
 impl fmt::Debug for Vfs {
@@ -99,7 +99,13 @@ impl Vfs {
     pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let (worker, worker_handle) = io::start();
 
-        let watcher = Watcher::start(worker.inp.clone()).unwrap(); // TODO return Result?
+        let watcher = match Watcher::start(worker.inp.clone()) {
+            Ok(watcher) => Some(watcher),
+            Err(e) => {
+                log::error!("could not start watcher: {}", e);
+                None
+            }
+        };
 
         let mut res = Vfs {
             roots: Arena::default(),
@@ -134,7 +140,11 @@ impl Vfs {
                 filter: Box::new(filter),
             };
             res.worker.inp.send(task).unwrap();
-            res.watcher.watch(path).unwrap();
+            if let Some(ref mut watcher) = res.watcher {
+                if let Err(e) = watcher.watch(path) {
+                    log::warn!("could not watch \"{}\": {}", path.display(), e);
+                }
+            }
         }
         let roots = res.roots.iter().map(|(id, _)| id).collect();
         (res, roots)
@@ -350,7 +360,9 @@ impl Vfs {
 
     /// Sutdown the VFS and terminate the background watching thread.
     pub fn shutdown(self) -> thread::Result<()> {
-        let _ = self.watcher.shutdown();
+        if let Some(watcher) = self.watcher {
+            let _ = watcher.shutdown();
+        }
         let _ = self.worker.shutdown();
         self.worker_handle.shutdown()
     }
