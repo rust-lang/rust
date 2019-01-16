@@ -331,8 +331,8 @@ impl_arena_id!(PatId);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FieldPat {
-    name: Name,
-    pat: Option<PatId>,
+    pub(crate) name: Name,
+    pub(crate) pat: Option<PatId>,
 }
 
 /// Close relative to rustc's hir::PatKind
@@ -392,7 +392,9 @@ impl Pat {
                 let total_iter = prefix.iter().chain(rest.iter()).chain(suffix.iter());
                 total_iter.map(|pat| *pat).for_each(f);
             }
-            Pat::Struct { .. } => {} // TODO
+            Pat::Struct { args, .. } => {
+                args.iter().filter_map(|a| a.pat).for_each(f);
+            }
         }
     }
 }
@@ -814,23 +816,20 @@ impl ExprCollector {
             ast::PatKind::PlaceholderPat(_) => Pat::Wild,
             ast::PatKind::StructPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
+                let fields = p
+                    .field_pat_list()
+                    .expect("every struct should have a field list")
+                    .field_pats()
+                    .into_iter()
+                    .map(|f| FieldPat {
+                        name: Name::new(f.ident),
+                        pat: f.pat.as_ref().map(|p| self.collect_pat(p)),
+                    })
+                    .collect();
 
-                if let Some(field_list) = p.field_pat_list() {
-                    let fields = field_list
-                        .field_pats()
-                        .into_iter()
-                        .map(|f| FieldPat {
-                            name: Name::new(f.ident),
-                            pat: f.pat.as_ref().map(|p| self.collect_pat(p)),
-                        })
-                        .collect();
-
-                    Pat::Struct {
-                        path: path,
-                        args: fields,
-                    }
-                } else {
-                    Pat::Missing
+                Pat::Struct {
+                    path: path,
+                    args: fields,
                 }
             }
 

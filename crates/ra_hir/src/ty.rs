@@ -36,7 +36,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement},
+    expr::{Body, Expr, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
 };
 
 /// The ID of a type variable.
@@ -872,6 +872,90 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
+    fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<crate::adt::StructField>)> {
+        let def = path
+            .and_then(|path| self.module.resolve_path(self.db, &path).take_types())
+            .map(|def_id| def_id.resolve(self.db));
+
+        let def = if let Some(def) = def {
+            def
+        } else {
+            return None;
+        };
+
+        match def {
+            Def::Struct(s) => {
+                let fields: Vec<_> = self
+                    .db
+                    .struct_data(s.def_id())
+                    .variant_data
+                    .fields()
+                    .iter()
+                    .cloned()
+                    .collect();
+                Some((type_for_struct(self.db, s), fields))
+            }
+            Def::EnumVariant(ev) => {
+                let fields: Vec<_> = ev.variant_data(self.db).fields().iter().cloned().collect();
+                Some((type_for_enum_variant(self.db, ev), fields))
+            }
+            _ => None,
+        }
+    }
+
+    fn infer_tuple_struct(&mut self, path: Option<&Path>, sub_pats: &[PatId]) -> Ty {
+        let (ty, fields) = if let Some(x) = self.resolve_fields(path) {
+            x
+        } else {
+            return Ty::Unknown;
+        };
+
+        // walk subpats
+        if fields.len() != sub_pats.len() {
+            return Ty::Unknown;
+        }
+
+        for (&sub_pat, field) in sub_pats.iter().zip(fields.iter()) {
+            let sub_ty = Ty::from_hir(
+                self.db,
+                &self.module,
+                self.impl_block.as_ref(),
+                &field.type_ref,
+            );
+
+            self.infer_pat(sub_pat, &Expectation::has_type(sub_ty));
+        }
+
+        ty
+    }
+
+    fn infer_struct(&mut self, path: Option<&Path>, sub_pats: &[FieldPat]) -> Ty {
+        let (ty, fields) = if let Some(x) = self.resolve_fields(path) {
+            x
+        } else {
+            return Ty::Unknown;
+        };
+
+        for sub_pat in sub_pats {
+            let tyref = fields
+                .iter()
+                .find(|field| field.name == sub_pat.name)
+                .map(|field| &field.type_ref);
+
+            if let Some(typeref) = tyref {
+                let sub_ty = Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), typeref);
+
+                if let Some(pat) = sub_pat.pat {
+                    self.infer_pat(pat, &Expectation::has_type(sub_ty));
+                } else {
+                    // TODO: deal with this case: S { x, y }
+                }
+            }
+        }
+
+        ty
+    }
+
     // FIXME: Expectation should probably contain a reference to a Ty instead of
     // a Ty itself
     fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
@@ -900,54 +984,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     path: ref p,
                     args: ref sub_pats,
                 },
-                _expected,
-            ) => {
-                let def = p
-                    .as_ref()
-                    .and_then(|path| self.module.resolve_path(self.db, &path).take_types())
-                    .map(|def_id| def_id.resolve(self.db));
-
-                if let Some(def) = def {
-                    let (ty, fields) = match def {
-                        Def::Struct(s) => {
-                            let fields: Vec<_> = self
-                                .db
-                                .struct_data(s.def_id())
-                                .variant_data
-                                .fields()
-                                .iter()
-                                .cloned()
-                                .collect();
-                            (type_for_struct(self.db, s), fields)
-                        }
-                        Def::EnumVariant(ev) => {
-                            let fields: Vec<_> =
-                                ev.variant_data(self.db).fields().iter().cloned().collect();
-                            (type_for_enum_variant(self.db, ev), fields)
-                        }
-                        _ => unreachable!(),
-                    };
-                    // walk subpats
-                    if fields.len() == sub_pats.len() {
-                        for (&sub_pat, field) in sub_pats.iter().zip(fields.iter()) {
-                            let sub_ty = Ty::from_hir(
-                                self.db,
-                                &self.module,
-                                self.impl_block.as_ref(),
-                                &field.type_ref,
-                            );
-
-                            self.infer_pat(sub_pat, &Expectation::has_type(sub_ty));
-                        }
-
-                        ty
-                    } else {
-                        expected.ty.clone()
-                    }
-                } else {
-                    expected.ty.clone()
-                }
-            }
+                _,
+            ) => self.infer_tuple_struct(p.as_ref(), sub_pats),
+            (
+                &Pat::Struct {
+                    path: ref p,
+                    args: ref fields,
+                },
+                _,
+            ) => self.infer_struct(p.as_ref(), fields),
             (_, ref _expected_ty) => expected.ty.clone(),
         };
         // use a new type variable if we got Ty::Unknown here
