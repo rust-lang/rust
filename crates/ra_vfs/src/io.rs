@@ -15,7 +15,8 @@ pub(crate) enum Task {
         path: PathBuf,
         filter: Box<Fn(&DirEntry) -> bool + Send>,
     },
-    LoadChange(crate::watcher::WatcherChange),
+    HandleChange(WatcherChange),
+    LoadChange(WatcherChange),
 }
 
 #[derive(Debug)]
@@ -63,6 +64,10 @@ fn handle_task(task: Task) -> TaskResult {
             log::debug!("... loaded {}", path.as_path().display());
             TaskResult::AddRoot(AddRootResult { root, files })
         }
+        Task::HandleChange(change) => {
+            // forward as is because Vfs has to decide if we should load it
+            TaskResult::HandleChange(change)
+        }
         Task::LoadChange(change) => {
             log::debug!("loading {:?} ...", change);
             let data = load_change(change);
@@ -107,7 +112,7 @@ fn load_change(change: WatcherChange) -> Option<WatcherChangeData> {
             let text = match fs::read_to_string(&path) {
                 Ok(text) => text,
                 Err(e) => {
-                    log::warn!("watcher error: {}", e);
+                    log::warn!("watcher error \"{}\": {}", path.display(), e);
                     return None;
                 }
             };
@@ -117,7 +122,7 @@ fn load_change(change: WatcherChange) -> Option<WatcherChangeData> {
             let text = match fs::read_to_string(&path) {
                 Ok(text) => text,
                 Err(e) => {
-                    log::warn!("watcher error: {}", e);
+                    log::warn!("watcher error \"{}\": {}", path.display(), e);
                     return None;
                 }
             };

@@ -62,23 +62,24 @@ fn test_vfs_works() -> std::io::Result<()> {
     }
 
     fs::write(&dir.path().join("a/b/baz.rs"), "quux").unwrap();
-    process_tasks(&mut vfs, 1);
+    // 2 tasks per watcher change, first for HandleChange then for LoadChange
+    process_tasks(&mut vfs, 2);
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "m"),
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     // removing overlay restores data on disk
     vfs.remove_file_overlay(&dir.path().join("a/b/baz.rs"));
     match vfs.commit_changes().as_slice() {
         [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
@@ -87,27 +88,27 @@ fn test_vfs_works() -> std::io::Result<()> {
             assert_eq!(text.as_str(), "spam");
             assert_eq!(path, "spam.rs");
         }
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     vfs.remove_file_overlay(&dir.path().join("a/b/spam.rs"));
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "spam.rs"),
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     fs::write(&dir.path().join("a/new.rs"), "new hello").unwrap();
-    process_tasks(&mut vfs, 1);
+    process_tasks(&mut vfs, 2);
     match vfs.commit_changes().as_slice() {
         [VfsChange::AddFile { text, path, .. }] => {
             assert_eq!(text.as_str(), "new hello");
             assert_eq!(path, "new.rs");
         }
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     fs::rename(&dir.path().join("a/new.rs"), &dir.path().join("a/new1.rs")).unwrap();
-    process_tasks(&mut vfs, 2);
+    process_tasks(&mut vfs, 4);
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile {
             path: removed_path, ..
@@ -124,10 +125,10 @@ fn test_vfs_works() -> std::io::Result<()> {
     }
 
     fs::remove_file(&dir.path().join("a/new1.rs")).unwrap();
-    process_tasks(&mut vfs, 1);
+    process_tasks(&mut vfs, 2);
     match vfs.commit_changes().as_slice() {
         [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "new1.rs"),
-        _ => panic!("unexpected changes"),
+        xs => panic!("unexpected changes {:?}", xs),
     }
 
     match vfs.task_receiver().try_recv() {

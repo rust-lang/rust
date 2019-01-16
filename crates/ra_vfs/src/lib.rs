@@ -266,6 +266,7 @@ impl Vfs {
             if let Some(file) = file {
                 if self.files[file].is_overlayed {
                     // file is overlayed
+                    log::debug!("skipping overlayed \"{}\"", path.display());
                     return false;
                 }
             }

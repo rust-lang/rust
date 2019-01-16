@@ -35,24 +35,24 @@ fn send_change_events(
             // ignore
         }
         DebouncedEvent::Rescan => {
-            sender.send(io::Task::LoadChange(WatcherChange::Rescan))?;
+            sender.send(io::Task::HandleChange(WatcherChange::Rescan))?;
         }
         DebouncedEvent::Create(path) => {
-            sender.send(io::Task::LoadChange(WatcherChange::Create(path)))?;
+            sender.send(io::Task::HandleChange(WatcherChange::Create(path)))?;
         }
         DebouncedEvent::Write(path) => {
-            sender.send(io::Task::LoadChange(WatcherChange::Write(path)))?;
+            sender.send(io::Task::HandleChange(WatcherChange::Write(path)))?;
         }
         DebouncedEvent::Remove(path) => {
-            sender.send(io::Task::LoadChange(WatcherChange::Remove(path)))?;
+            sender.send(io::Task::HandleChange(WatcherChange::Remove(path)))?;
         }
         DebouncedEvent::Rename(src, dst) => {
-            sender.send(io::Task::LoadChange(WatcherChange::Remove(src)))?;
-            sender.send(io::Task::LoadChange(WatcherChange::Create(dst)))?;
+            sender.send(io::Task::HandleChange(WatcherChange::Remove(src)))?;
+            sender.send(io::Task::HandleChange(WatcherChange::Create(dst)))?;
         }
         DebouncedEvent::Error(err, path) => {
             // TODO should we reload the file contents?
-            log::warn!("watcher error {}, {:?}", err, path);
+            log::warn!("watcher error \"{}\", {:?}", err, path);
         }
     }
     Ok(())
