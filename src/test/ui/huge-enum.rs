@@ -1,7 +1,5 @@
-// error-pattern: Option
-// normalize-stderr-test "<\[u32; \d+\]>" -> "<[u32; N]>"
-
-// FIXME: work properly with higher limits
+// normalize-stderr-test "std::option::Option<\[u32; \d+\]>" -> "TYPE"
+// normalize-stderr-test "\[u32; \d+\]" -> "TYPE"
 
 #[cfg(target_pointer_width = "32")]
 fn main() {
