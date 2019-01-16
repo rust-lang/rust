@@ -329,13 +329,23 @@ impl Expr {
 pub struct PatId(RawId);
 impl_arena_id!(PatId);
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct FieldPat {
+    name: Name,
+    pat: Option<PatId>,
+}
+
 /// Close relative to rustc's hir::PatKind
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Pat {
     Missing, // do we need this?
     Wild,
     Tuple(Vec<PatId>),
-    Struct, // TODO
+    Struct {
+        path: Option<Path>,
+        args: Vec<FieldPat>,
+        // TODO: 'ellipsis' option
+    },
     Range {
         start: ExprId,
         end: ExprId,
@@ -802,11 +812,30 @@ impl ExprCollector {
                 Pat::Tuple(args)
             }
             ast::PatKind::PlaceholderPat(_) => Pat::Wild,
+            ast::PatKind::StructPat(p) => {
+                let path = p.path().and_then(Path::from_ast);
+
+                if let Some(field_list) = p.field_pat_list() {
+                    let fields = field_list
+                        .field_pats()
+                        .into_iter()
+                        .map(|f| FieldPat {
+                            name: Name::new(f.ident),
+                            pat: f.pat.as_ref().map(|p| self.collect_pat(p)),
+                        })
+                        .collect();
+
+                    Pat::Struct {
+                        path: path,
+                        args: fields,
+                    }
+                } else {
+                    Pat::Missing
+                }
+            }
+
             // TODO: implement
-            ast::PatKind::FieldPatList(_)
-            | ast::PatKind::SlicePat(_)
-            | ast::PatKind::StructPat(_)
-            | ast::PatKind::RangePat(_) => Pat::Missing,
+            ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
         let syntax_ptr = LocalSyntaxPtr::new(pat.syntax());
         self.alloc_pat(pattern, syntax_ptr)

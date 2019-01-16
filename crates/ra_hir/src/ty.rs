@@ -877,6 +877,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
+        // FIXME: we can do some inference even if the expected ty isnt already
+        // of the right form
         let ty = match (&body[pat], &expected.ty) {
             (Pat::Tuple(ref args), &Ty::Tuple(ref tuple_args))
                 if args.len() == tuple_args.len() =>

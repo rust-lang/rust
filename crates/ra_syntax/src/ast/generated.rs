@@ -2156,7 +2156,6 @@ pub enum PatKind<'a> {
     PlaceholderPat(&'a PlaceholderPat),
     PathPat(&'a PathPat),
     StructPat(&'a StructPat),
-    FieldPatList(&'a FieldPatList),
     TupleStructPat(&'a TupleStructPat),
     TuplePat(&'a TuplePat),
     SlicePat(&'a SlicePat),
@@ -2171,7 +2170,6 @@ impl AstNode for Pat {
             | PLACEHOLDER_PAT
             | PATH_PAT
             | STRUCT_PAT
-            | FIELD_PAT_LIST
             | TUPLE_STRUCT_PAT
             | TUPLE_PAT
             | SLICE_PAT
@@ -2191,7 +2189,6 @@ impl Pat {
             PLACEHOLDER_PAT => PatKind::PlaceholderPat(PlaceholderPat::cast(&self.syntax).unwrap()),
             PATH_PAT => PatKind::PathPat(PathPat::cast(&self.syntax).unwrap()),
             STRUCT_PAT => PatKind::StructPat(StructPat::cast(&self.syntax).unwrap()),
-            FIELD_PAT_LIST => PatKind::FieldPatList(FieldPatList::cast(&self.syntax).unwrap()),
             TUPLE_STRUCT_PAT => PatKind::TupleStructPat(TupleStructPat::cast(&self.syntax).unwrap()),
             TUPLE_PAT => PatKind::TuplePat(TuplePat::cast(&self.syntax).unwrap()),
             SLICE_PAT => PatKind::SlicePat(SlicePat::cast(&self.syntax).unwrap()),
@@ -3066,7 +3063,15 @@ impl AstNode for StructPat {
 }
 
 
-impl StructPat {}
+impl StructPat {
+    pub fn field_pat_list(&self) -> Option<&FieldPatList> {
+        super::child_opt(self)
+    }
+
+    pub fn path(&self) -> Option<&Path> {
+        super::child_opt(self)
+    }
+}
 
 // TokenTree
 #[derive(Debug, PartialEq, Eq, Hash)]

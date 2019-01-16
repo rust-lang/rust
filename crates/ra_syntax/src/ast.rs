@@ -664,6 +664,75 @@ impl LiteralExpr {
     }
 }
 
+// STRUCT_PAT@[20; 42)
+//   PATH@[20; 26)
+//     PATH_SEGMENT@[20; 26)
+//       NAME_REF@[20; 26)
+//         IDENT@[20; 26) "Strukt"
+//   WHITESPACE@[26; 27)
+//   FIELD_PAT_LIST@[27; 42)
+//     L_CURLY@[27; 28)
+//     WHITESPACE@[28; 29)
+//     IDENT@[29; 30) "x"
+//     COLON@[30; 31)
+//     WHITESPACE@[31; 32)
+//     BIND_PAT@[32; 33)
+//       NAME@[32; 33)
+//         IDENT@[32; 33) "x"
+//     COMMA@[33; 34)
+//     WHITESPACE@[34; 35)
+//     BIND_PAT@[35; 36)
+//       NAME@[35; 36)
+//         IDENT@[35; 36) "y"
+//     COMMA@[36; 37)
+//     WHITESPACE@[37; 38)
+//     DOTDOT@[38; 40)
+//     WHITESPACE@[40; 41)
+//     R_CURLY@[41; 42)
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FieldPat {
+    pub ident: SmolStr,
+    pub pat: Option<TreeArc<Pat>>,
+}
+
+impl FieldPatList {
+    // TODO: try returning an iterator?
+    // FIXME: shouldnt the parser do this? :o
+    pub fn field_pats(&self) -> Vec<FieldPat> {
+        let mut child_iter = self.syntax().children();
+        let mut pats = Vec::new();
+
+        while let Some(node) = child_iter.next() {
+            if node.kind() != IDENT {
+                continue;
+            }
+
+            let ident = node.leaf_text().unwrap().clone();
+            let mut pat = None;
+
+            // get pat
+            while let Some(node) = child_iter.next() {
+                if node.kind() == COMMA {
+                    break;
+                }
+
+                if let Some(p) = Pat::cast(node) {
+                    pat = Some(p.to_owned());
+                }
+            }
+
+            let field_pat = FieldPat {
+                ident: ident,
+                pat: pat,
+            };
+            pats.push(field_pat);
+        }
+
+        pats
+    }
+}
+
 #[test]
 fn test_doc_comment_of_items() {
     let file = SourceFile::parse(
