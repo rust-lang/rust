@@ -1772,7 +1772,8 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr, ok_args: &[hir::Ex
 /// lint use of `map().unwrap_or()` for `Option`s
 fn lint_map_unwrap_or(cx: &LateContext<'_, '_>, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
     // lint if the caller of `map()` is an `Option`
-    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
+    let unwrap_ty = cx.tables.expr_ty(&unwrap_args[1]);
+    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) && is_copy(cx, unwrap_ty) {
         // get snippets for args to map() and unwrap_or()
         let map_snippet = snippet(cx, map_args[1].span, "..");
         let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
