@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::fmt::Write;
 use std::mem;
 
@@ -76,6 +77,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     pub locals: IndexVec<mir::Local, LocalValue<Tag>>,
+    pub local_layouts: IndexVec<mir::Local, Cell<Option<TyLayout<'tcx>>>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -290,9 +292,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local
     ) -> EvalResult<'tcx, TyLayout<'tcx>> {
-        let local_ty = frame.mir.local_decls[local].ty;
-        let local_ty = self.monomorphize(local_ty, frame.instance.substs);
-        self.layout_of(local_ty)
+        let cell = &frame.local_layouts[local];
+        if cell.get().is_none() {
+            let local_ty = frame.mir.local_decls[local].ty;
+            let local_ty = self.monomorphize(local_ty, frame.instance.substs);
+            let layout = self.layout_of(local_ty)?;
+            cell.set(Some(layout));
+        }
+
+        Ok(cell.get().unwrap())
     }
 
     pub fn str_to_immediate(&mut self, s: &str) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
@@ -426,6 +434,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
+            local_layouts: IndexVec::from_elem_n(Default::default(), mir.local_decls.len()),
             span,
             instance,
             stmt: 0,
@@ -464,11 +473,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 },
             }
             // Finally, properly initialize all those that still have the dummy value
-            for (local, decl) in locals.iter_mut().zip(mir.local_decls.iter()) {
+            for (idx, local) in locals.iter_enumerated_mut() {
                 match *local {
                     LocalValue::Live(_) => {
                         // This needs to be peoperly initialized.
-                        let layout = self.layout_of(self.monomorphize(decl.ty, instance.substs))?;
+                        let layout = self.layout_of_local(self.frame(), idx)?;
                         *local = LocalValue::Live(self.uninit_operand(layout)?);
                     }
                     LocalValue::Dead => {
