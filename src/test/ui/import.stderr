@@ -8,10 +8,10 @@ error[E0432]: unresolved import `foo`
   --> $DIR/import.rs:8:9
    |
 LL |     use foo; //~ ERROR unresolved import `foo` [E0432]
-   |         ^^^ no `foo` in the root
+   |         ^^^ no `foo` external crate
 
 error[E0603]: unresolved item `foo` is private
-  --> $DIR/import.rs:13:10
+  --> $DIR/import.rs:12:10
    |
 LL |     zed::foo(); //~ ERROR `foo` is private
    |          ^^^

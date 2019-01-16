@@ -8,5 +8,12 @@ help: you can escape reserved keywords to use them as identifiers
 LL | use r#extern::foo; //~ ERROR expected identifier, found keyword `extern`
    |     ^^^^^^^^
 
-error: aborting due to previous error
+error[E0432]: unresolved import `extern`
+  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+   |
+LL | use extern::foo; //~ ERROR expected identifier, found keyword `extern`
+   |     ^^^^^^ could not find `extern` in `{{root}}`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

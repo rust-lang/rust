@@ -709,8 +709,6 @@ impl<'a> Resolver<'a> {
 
                             let ambiguity_error_kind = if is_import {
                                 Some(AmbiguityKind::Import)
-                            } else if is_absolute_path {
-                                Some(AmbiguityKind::AbsolutePath)
                             } else if innermost_def == builtin || def == builtin {
                                 Some(AmbiguityKind::BuiltinAttr)
                             } else if innermost_def == derive_helper || def == derive_helper {
@@ -824,44 +822,7 @@ impl<'a> Resolver<'a> {
         }
 
         // The first found solution was the only one, return it.
-        if let Some((binding, flags)) = innermost_result {
-            // We get to here only if there's no ambiguity, in ambiguous cases an error will
-            // be reported anyway, so there's no reason to report an additional feature error.
-            // The `binding` can actually be introduced by something other than `--extern`,
-            // but its `Def` should coincide with a crate passed with `--extern`
-            // (otherwise there would be ambiguity) and we can skip feature error in this case.
-            'ok: {
-                if !is_import || !rust_2015 {
-                    break 'ok;
-                }
-                if ns == TypeNS && use_prelude && self.extern_prelude_get(ident, true).is_some() {
-                    break 'ok;
-                }
-                let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
-                let root_module = self.resolve_crate_root(root_ident);
-                if self.resolve_ident_in_module_ext(ModuleOrUniformRoot::Module(root_module),
-                                                    orig_ident, ns, None, false, path_span)
-                                                    .is_ok() {
-                    break 'ok;
-                }
-
-                let msg = "imports can only refer to extern crate names passed with \
-                           `--extern` in macros originating from 2015 edition";
-                let mut err = self.session.struct_span_err(ident.span, msg);
-                let what = self.binding_description(binding, ident,
-                                                    flags.contains(Flags::MISC_FROM_PRELUDE));
-                let note_msg = format!("this import refers to {what}", what = what);
-                let label_span = if binding.span.is_dummy() {
-                    err.note(&note_msg);
-                    ident.span
-                } else {
-                    err.span_note(binding.span, &note_msg);
-                    binding.span
-                };
-                err.span_label(label_span, "not an extern crate passed with `--extern`");
-                err.emit();
-            }
-
+        if let Some((binding, _)) = innermost_result {
             return Ok(binding);
         }
 

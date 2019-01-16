@@ -2,13 +2,13 @@ error[E0432]: unresolved import `NonExistent`
   --> $DIR/issue-55457.rs:1:5
    |
 LL | use NonExistent; //~ ERROR unresolved import `NonExistent`
-   |     ^^^^^^^^^^^ no `NonExistent` in the root. Did you mean to use `non_existent`?
+   |     ^^^^^^^^^^^ no `NonExistent` external crate
 
 error[E0432]: unresolved import `non_existent`
   --> $DIR/issue-55457.rs:2:5
    |
 LL | use non_existent::non_existent; //~ ERROR unresolved import `non_existent`
-   |     ^^^^^^^^^^^^ maybe a missing `extern crate non_existent;`?
+   |     ^^^^^^^^^^^^ could not find `non_existent` in `{{root}}`
 
 error: cannot determine resolution for the derive macro `NonExistent`
   --> $DIR/issue-55457.rs:5:10

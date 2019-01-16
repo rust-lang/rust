@@ -1243,7 +1243,7 @@ struct UseError<'a> {
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum AmbiguityKind {
     Import,
-    AbsolutePath,
+    // AbsolutePath,
     BuiltinAttr,
     DeriveHelper,
     LegacyHelperVsPrelude,
@@ -1259,8 +1259,8 @@ impl AmbiguityKind {
         match self {
             AmbiguityKind::Import =>
                 "name vs any other name during import resolution",
-            AmbiguityKind::AbsolutePath =>
-                "name in the crate root vs extern crate during absolute path resolution",
+            // AmbiguityKind::AbsolutePath =>
+                // "name in the crate root vs extern crate during absolute path resolution",
             AmbiguityKind::BuiltinAttr =>
                 "built-in attribute vs any other name",
             AmbiguityKind::DeriveHelper =>
@@ -1513,6 +1513,8 @@ pub struct Resolver<'a> {
     /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
     /// We are resolving a last import segment during import validation.
     last_import_segment: bool,
+    /// We are resolving a prefix for `use *` or `use ::*` on 2015 edition.
+    root_glob_import: bool,
     /// This binding should be ignored during in-module resolution, so that we don't get
     /// "self-confirming" import resolutions during import validation.
     blacklisted_binding: Option<&'a NameBinding<'a>>,
@@ -1861,6 +1863,7 @@ impl<'a> Resolver<'a> {
             current_self_type: None,
             current_self_item: None,
             last_import_segment: false,
+            root_glob_import: false,
             blacklisted_binding: None,
 
             primitive_type_table: PrimitiveTypeTable::new(),
@@ -3833,19 +3836,17 @@ impl<'a> Resolver<'a> {
                             self.resolve_self(&mut ctxt, self.current_module)));
                         continue;
                     }
-                    if name == keywords::PathRoot.name() && ident.span.rust_2018() {
-                        module = Some(ModuleOrUniformRoot::ExternPrelude);
+                    if name == keywords::PathRoot.name() {
+                        module = Some(if ident.span.rust_2018() {
+                            ModuleOrUniformRoot::ExternPrelude
+                        } else if !self.root_glob_import {
+                            ModuleOrUniformRoot::CrateRootAndExternPrelude
+                        } else {
+                            ModuleOrUniformRoot::Module(self.resolve_crate_root(ident))
+                        });
                         continue;
                     }
-                    if name == keywords::PathRoot.name() &&
-                       ident.span.rust_2015() && self.session.rust_2018() {
-                        // `::a::b` from 2015 macro on 2018 global edition
-                        module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
-                        continue;
-                    }
-                    if name == keywords::PathRoot.name() ||
-                       name == keywords::Crate.name() ||
-                       name == keywords::DollarCrate.name() {
+                    if name == keywords::Crate.name() || name == keywords::DollarCrate.name() {
                         // `::a::b`, `crate::a::b` or `$crate::a::b`
                         module = Some(ModuleOrUniformRoot::Module(
                             self.resolve_crate_root(ident)));

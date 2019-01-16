@@ -2,7 +2,7 @@ error[E0432]: unresolved import `rt`
   --> $DIR/hidden-rt-injection2.rs:5:9
    |
 LL |     use rt; //~ ERROR unresolved import
-   |         ^^ no `rt` in the root
+   |         ^^ no `rt` external crate
 
 error: aborting due to previous error
 

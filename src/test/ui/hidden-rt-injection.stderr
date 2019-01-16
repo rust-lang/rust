@@ -2,7 +2,7 @@ error[E0432]: unresolved import `native`
   --> $DIR/hidden-rt-injection.rs:5:9
    |
 LL |     use native; //~ ERROR unresolved import
-   |         ^^^^^^ no `native` in the root
+   |         ^^^^^^ no `native` external crate
 
 error: aborting due to previous error
 

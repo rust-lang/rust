@@ -129,8 +129,7 @@ impl<'a> Resolver<'a> {
         // get crate root prepended, but get special treatment during in-scope resolution instead.
         let is_glob = if let ast::UseTreeKind::Glob = use_tree.kind { true } else { false };
         let crate_root = match prefix_iter.peek() {
-            Some(seg) if !seg.ident.is_path_segment_keyword() &&
-                         seg.ident.span.rust_2015() && self.session.rust_2015() => {
+            Some(seg) if !seg.ident.is_path_segment_keyword() && seg.ident.span.rust_2015() => {
                 Some(seg.ident.span.ctxt())
             }
             None if is_glob && use_tree.span.rust_2015() => {

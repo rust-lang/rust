@@ -2,7 +2,7 @@ error[E0432]: unresolved import `something`
   --> $DIR/E0432.rs:1:5
    |
 LL | use something::Foo; //~ ERROR E0432
-   |     ^^^^^^^^^ maybe a missing `extern crate something;`?
+   |     ^^^^^^^^^ could not find `something` in `{{root}}`
 
 error: aborting due to previous error
 

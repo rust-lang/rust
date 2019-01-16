@@ -1,16 +1,9 @@
-error[E0432]: unresolved import `core`
-  --> $DIR/feature-gate-extern_absolute_paths.rs:1:5
+error[E0423]: expected function, found trait `core::default::Default`
+  --> $DIR/feature-gate-extern_absolute_paths.rs:4:17
    |
-LL | use core::default; //~ ERROR unresolved import `core`
-   |     ^^^^ maybe a missing `extern crate core;`?
+LL |     let _: u8 = ::core::default::Default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ not a function
 
-error[E0433]: failed to resolve: maybe a missing `extern crate core;`?
-  --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
-   |
-LL |     let _: u8 = ::core::default::Default(); //~ ERROR failed to resolve
-   |                   ^^^^ maybe a missing `extern crate core;`?
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors occurred: E0432, E0433.
-For more information about an error, try `rustc --explain E0432`.
+For more information about this error, try `rustc --explain E0423`.

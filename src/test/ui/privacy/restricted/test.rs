@@ -47,6 +47,6 @@ fn main() {
 }
 
 mod pathological {
-    pub(in bad::path) mod m1 {} //~ ERROR failed to resolve: maybe a missing `extern crate bad;`?
+    pub(in bad::path) mod m1 {} //~ ERROR failed to resolve: could not find `bad` in `{{root}}`
     pub(in foo) mod m2 {} //~ ERROR visibilities can only be restricted to ancestor modules
 }

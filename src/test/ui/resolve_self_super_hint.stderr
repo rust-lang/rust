@@ -14,13 +14,13 @@ error[E0432]: unresolved import `alloc`
   --> $DIR/resolve_self_super_hint.rs:14:17
    |
 LL |             use alloc::HashMap;
-   |                 ^^^^^ did you mean `a::alloc`?
+   |                 ^^^^^ could not find `alloc` in `{{root}}`
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:18:21
+  --> $DIR/resolve_self_super_hint.rs:17:21
    |
 LL |                 use alloc::HashMap;
-   |                     ^^^^^ did you mean `a::alloc`?
+   |                     ^^^^^ could not find `alloc` in `{{root}}`
 
 error: aborting due to 4 previous errors
 

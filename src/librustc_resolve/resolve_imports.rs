@@ -765,6 +765,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         } else {
             // For better failure detection, pretend that the import will
             // not define any names while resolving its module path.
+            let orig_root_glob_import = mem::replace(
+                &mut self.root_glob_import, directive.is_glob() && directive.module_path.len() == 1
+            );
             let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
             let path_res = self.resolve_path(
                 &directive.module_path,
@@ -775,6 +778,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 directive.crate_lint(),
             );
             directive.vis.set(orig_vis);
+            self.root_glob_import = orig_root_glob_import;
 
             match path_res {
                 PathResult::Module(module) => module,
@@ -850,12 +854,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     ) -> Option<(Span, String, Option<String>)> {
         self.current_module = directive.parent_scope.module;
 
+        let orig_root_glob_import = mem::replace(
+            &mut self.root_glob_import, directive.is_glob() && directive.module_path.len() == 1
+        );
         let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
         let prev_ambiguity_errors_len = self.ambiguity_errors.len();
         let path_res = self.resolve_path(&directive.module_path, None, &directive.parent_scope,
                                          true, directive.span, directive.crate_lint());
         let no_ambiguity = self.ambiguity_errors.len() == prev_ambiguity_errors_len;
         directive.vis.set(orig_vis);
+        self.root_glob_import = orig_root_glob_import;
         let module = match path_res {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.

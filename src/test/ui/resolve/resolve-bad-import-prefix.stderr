@@ -2,7 +2,7 @@ error[E0432]: unresolved import `Nonexistent`
   --> $DIR/resolve-bad-import-prefix.rs:12:5
    |
 LL | use Nonexistent::{}; //~ ERROR unresolved import `Nonexistent`
-   |     ^^^^^^^^^^^^^^^ no `Nonexistent` in the root
+   |     ^^^^^^^^^^^^^^^ no `Nonexistent` external crate
 
 error: aborting due to previous error
 

@@ -2,7 +2,7 @@ error[E0432]: unresolved import `issue_36881_aux`
   --> $DIR/issue-36881.rs:6:9
    |
 LL |     use issue_36881_aux::Foo; //~ ERROR unresolved import
-   |         ^^^^^^^^^^^^^^^ maybe a missing `extern crate issue_36881_aux;`?
+   |         ^^^^^^^^^^^^^^^ could not find `issue_36881_aux` in `{{root}}`
 
 error: aborting due to previous error
 

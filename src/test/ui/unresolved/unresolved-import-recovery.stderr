@@ -2,7 +2,7 @@ error[E0432]: unresolved import `unresolved`
   --> $DIR/unresolved-import-recovery.rs:4:13
    |
 LL |     pub use unresolved; //~ ERROR unresolved import `unresolved`
-   |             ^^^^^^^^^^ no `unresolved` in the root
+   |             ^^^^^^^^^^ no `unresolved` external crate
 
 error: aborting due to previous error
 
