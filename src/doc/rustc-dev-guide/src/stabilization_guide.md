@@ -64,7 +64,7 @@ Here is a general guide to how to stabilize a feature -- every feature
 is different, of course, so some features may require steps beyond 
 what this guide talks about.
 
-Note: Before we stabilize any feature, it is rule that it should appear
+Note: Before we stabilize any feature, it's the rule that it should appear
 in the documentation.
 
 ### Updating the feature-gate listing
