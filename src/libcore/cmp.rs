@@ -170,7 +170,7 @@ use self::Ordering::*;
 /// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
 ///
 /// assert!(b1 == BookFormat::Paperback);
-/// assert!(b1 != BookFormat::Ebook);
+/// assert!(BookFormat::Ebook != b1);
 /// assert!(b1 == b2);
 /// ```
 ///
