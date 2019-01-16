@@ -181,10 +181,11 @@ pub enum Ty {
     /// The pointee of a string slice. Written as `str`.
     Str,
 
-    // An array with the given length. Written as `[T; n]`.
-    // Array(Ty, ty::Const),
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(Arc<Ty>),
+
+    // An array with the given length. Written as `[T; n]`.
+    Array(Arc<Ty>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
     RawPtr(Arc<Ty>, Mutability),
@@ -276,7 +277,10 @@ impl Ty {
                 let inner_ty = Ty::from_hir(db, module, impl_block, inner);
                 Ty::RawPtr(Arc::new(inner_ty), *mutability)
             }
-            TypeRef::Array(_inner) => Ty::Unknown, // TODO
+            TypeRef::Array(inner) => {
+                let inner_ty = Ty::from_hir(db, module, impl_block, inner);
+                Ty::Array(Arc::new(inner_ty))
+            }
             TypeRef::Slice(inner) => {
                 let inner_ty = Ty::from_hir(db, module, impl_block, inner);
                 Ty::Slice(Arc::new(inner_ty))
@@ -352,7 +356,7 @@ impl Ty {
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         f(self);
         match self {
-            Ty::Slice(t) => Arc::make_mut(t).walk_mut(f),
+            Ty::Slice(t) | Ty::Array(t) => Arc::make_mut(t).walk_mut(f),
             Ty::RawPtr(t, _) => Arc::make_mut(t).walk_mut(f),
             Ty::Ref(t, _) => Arc::make_mut(t).walk_mut(f),
             Ty::Tuple(ts) => {
@@ -400,7 +404,7 @@ impl fmt::Display for Ty {
             Ty::Int(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Str => write!(f, "str"),
-            Ty::Slice(t) => write!(f, "[{}]", t),
+            Ty::Slice(t) | Ty::Array(t) => write!(f, "[{}]", t),
             Ty::RawPtr(t, m) => write!(f, "*{}{}", m.as_keyword_for_ptr(), t),
             Ty::Ref(t, m) => write!(f, "&{}{}", m.as_keyword_for_ref(), t),
             Ty::Never => write!(f, "!"),
@@ -1101,6 +1105,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 Ty::Tuple(Arc::from(ty_vec))
+            }
+            Expr::Array { exprs } => {
+                let elem_ty = match &expected.ty {
+                    Ty::Slice(inner) | Ty::Array(inner) => Ty::clone(&inner),
+                    _ => self.new_type_var(),
+                };
+
+                for expr in exprs.iter() {
+                    self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
+                }
+
+                Ty::Array(Arc::new(elem_ty))
             }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => Ty::Bool,

@@ -360,7 +360,9 @@ Grammar(
         "TupleExpr": (
             collections: [["exprs", "Expr"]]
         ),
-        "ArrayExpr": (),
+        "ArrayExpr": (
+            collections: [["exprs", "Expr"]]
+        ),
         "ParenExpr": (options: ["Expr"]),
         "PathExpr": (options: ["Path"]),
         "LambdaExpr": (

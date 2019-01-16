@@ -197,6 +197,9 @@ pub enum Expr {
     Tuple {
         exprs: Vec<ExprId>,
     },
+    Array {
+        exprs: Vec<ExprId>,
+    },
     Literal(Literal),
 }
 
@@ -312,7 +315,7 @@ impl Expr {
             | Expr::UnaryOp { expr, .. } => {
                 f(*expr);
             }
-            Expr::Tuple { exprs } => {
+            Expr::Tuple { exprs } | Expr::Array { exprs } => {
                 for expr in exprs {
                     f(*expr);
                 }
@@ -649,6 +652,10 @@ impl ExprCollector {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
+            ast::ExprKind::ArrayExpr(e) => {
+                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
+                self.alloc_expr(Expr::Array { exprs }, syntax_ptr)
+            }
             ast::ExprKind::Literal(e) => {
                 let child = if let Some(child) = e.literal_expr() {
                     child
@@ -691,7 +698,6 @@ impl ExprCollector {
             // TODO implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::ArrayExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
