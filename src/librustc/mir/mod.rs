@@ -1907,13 +1907,59 @@ pub enum Place<'tcx> {
 }
 
 /// A new Place repr
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NeoPlace<'tcx> {
     pub base: PlaceBase<'tcx>,
-    pub elems: &'tcx List<PlaceElem<'tcx>>,
+    pub elems: &'tcx [PlaceElem<'tcx>],
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<PlaceElem<'tcx>> {}
+// FIXME
+// impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<PlaceElem<'tcx>> {}
+
+impl NeoPlace<'tcx> {
+    /// Return `Some` if this place has no projections -- else return `None`.
+    /// So for `a` would return `Some`, but for `a.b.c` would return `None`.
+    pub fn as_base(&self) -> Option<&PlaceBase<'tcx>> {
+        if !self.elems.is_empty() {
+            // this is something like `a.b.c`
+            return None;
+        }
+
+        Some(&self.base)
+    }
+
+    /// Return `Some` if this is just a reference to a local variable
+    /// (e.g., `a`) and `None` if it is something else (e.g.,
+    /// `a.b.c`).
+    pub fn as_local(&self) -> Option<Local> {
+        match self.as_base()? {
+            PlaceBase::Local(l) => Some(*l),
+            _ => None,
+        }
+    }
+
+    pub fn into_tree(self) -> NeoPlaceTree<'tcx> {
+        match self.elems.split_last() {
+            None => NeoPlaceTree::Base(self.base),
+            Some((last_element, other_elements)) => {
+                NeoPlaceTree::Projected(Projection {
+                    base: NeoPlace { base: self.base, elems: other_elements },
+                    elem: *last_element,
+                })
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum NeoPlaceTree<'tcx> {
+    Base(PlaceBase<'tcx>),
+    Projected(NeoPlaceProjection<'tcx>),
+}
+
+/// Alias for projections as they appear in places, where the base is a place
+/// and the index is a local.
+pub type NeoPlaceProjection<'tcx> = Projection<'tcx, NeoPlace<'tcx>, Local, Ty<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn as_new_place(self, place: &Place<'tcx>) -> NeoPlace<'tcx> {
@@ -1977,7 +2023,7 @@ impl_stable_hash_for!(struct Static<'tcx> {
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Place`. See the aliases
 /// `PlaceProjection` etc below.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V, T> {
     pub base: B,
     pub elem: ProjectionElem<'tcx, V, T>,
@@ -3483,7 +3529,7 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx List<PlaceElem<'tcx>> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx [PlaceElem<'tcx>] {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_place_elems(&v)

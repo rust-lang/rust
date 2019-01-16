@@ -649,6 +649,17 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind<'tcx>> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for &'tcx [ProjectionKind<'tcx>] {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+        folder.tcx().intern_projs(&v)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|t| t.visit_with(visitor))
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         use ty::InstanceDef::*;
