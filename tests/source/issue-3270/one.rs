@@ -1,5 +1,7 @@
+// rustfmt-version: One
+
 pub fn main() {
- /*   let s = String::from(
+    /*   let s = String::from(
         "
 hello
 world

@@ -22,7 +22,7 @@ use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 use syntax_pos::Mark;
 
 use comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
-use config::Config;
+use config::{Config, Version};
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 
@@ -527,8 +527,9 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
                 Some(get_prefix_space_width(config, &line))
             };
 
-            let new_veto_trim_value =
-                (kind.is_string() || kind.is_commented_string()) && !line.ends_with('\\');
+            let new_veto_trim_value = (kind.is_string()
+                || (config.version() == Version::Two && kind.is_commented_string()))
+                && !line.ends_with('\\');
             let line = if veto_trim || new_veto_trim_value {
                 veto_trim = new_veto_trim_value;
                 trimmed = false;
@@ -541,10 +542,12 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
             // Because there is a veto against trimming and indenting lines within a string,
             // such lines should not be taken into account when computing the minimum.
             match kind {
-                FullCodeCharKind::InString
-                | FullCodeCharKind::EndString
-                | FullCodeCharKind::InStringCommented
-                | FullCodeCharKind::EndStringCommented => None,
+                FullCodeCharKind::InStringCommented | FullCodeCharKind::EndStringCommented
+                    if config.version() == Version::Two =>
+                {
+                    None
+                }
+                FullCodeCharKind::InString | FullCodeCharKind::EndString => None,
                 _ => prefix_space_width,
             }
         })

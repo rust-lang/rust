@@ -1,3 +1,5 @@
+// rustfmt-version: Two
+
 fn test() {
     /*
     a
