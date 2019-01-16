@@ -36,7 +36,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
+    expr::{Body, Expr, MatchArm, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
 };
 
 /// The ID of a type variable.
@@ -1097,14 +1097,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ret_ty
             }
             Expr::Match { expr, arms } => {
-                let _ty = self.infer_expr(*expr, &Expectation::none());
-                for arm in arms {
-                    // TODO type the bindings in pats
+                let mut expected = Expectation::none();
+                let input_ty = self.infer_expr(*expr, &Expectation::none());
+                let pat_expectation = Expectation::has_type(input_ty);
+
+                for MatchArm {
+                    pats,
+                    expr: arm_expr,
+                } in arms
+                {
+                    for &pat in pats {
+                        let _pat_ty = self.infer_pat(pat, &pat_expectation);
+                    }
                     // TODO type the guard
-                    let _ty = self.infer_expr(arm.expr, &Expectation::none());
+                    let ty = self.infer_expr(*arm_expr, &expected);
+                    expected = Expectation::has_type(ty);
                 }
-                // TODO unify all the match arm types
-                Ty::Unknown
+
+                expected.ty
             }
             Expr::Path(p) => self.infer_path_expr(expr, p).unwrap_or(Ty::Unknown),
             Expr::Continue => Ty::Never,
