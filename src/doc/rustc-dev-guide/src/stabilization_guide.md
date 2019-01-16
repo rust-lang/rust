@@ -147,7 +147,9 @@ leaving just the `/* XXX */`.
     /* XXX */
 
     if self.tcx.sess.features.borrow().pub_restricted && something { /* XXX */ }
-    = becomes ==>
+    ```
+becomes
+```rust
     if something { /* XXX */ }
     ```
 
