@@ -697,8 +697,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 debug_assert!(!t.has_escaping_bound_vars());
-                let mut obligation = obligation.with(t.clone());
-                obligation.recursion_depth += 1;
+                let obligation = obligation.with(t.clone());
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
