@@ -1445,7 +1445,7 @@ impl<'a> StringReader<'a> {
                                     format!("\"{}\"", &self.src[start..end]),
                                     Applicability::MachineApplicable
                                 ).emit();
-                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
+                            FatalError.raise();
                         }
                         if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
                             // Only attempt to infer single line string literals. If we encounter
