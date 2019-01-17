@@ -12,7 +12,7 @@ following steps.
 ## Documentation PRs
 
 If any documentation for this feature exists, it should be
-in the `Unstable Book`, located at `src/doc/unstable-book`.
+in the [`Unstable Book`], located at [`src/doc/unstable-book`].
 If it exists, the page for the feature gate should be removed.
 
 If there was documentation there, integrating it into the
@@ -63,8 +63,7 @@ The report should contain:
 
 If any member of the team responsible for tracking this
 feature agrees with stabilizing this feature, they will
-start the FCP (final-comment-period) process by
-commenting
+start the FCP (final-comment-period) process by commenting
 
 ```bash
 @rfcbot fcp merge
@@ -75,24 +74,24 @@ decision is to stabilize, we proceed to do the actual code modification.
 
 ## Stabilization PR
 
-Once we have decided to stabilize a feature, we need to have a PR that
-actually makes that stabilization happen. These kinds of PRs are a
-great way to get involved in Rust, as they take you on a little tour
-through the source code.
+Once we have decided to stabilize a feature, we need to have
+a PR that actually makes that stabilization happen. These kinds
+of PRs are a great way to get involved in Rust, as they take
+you on a little tour through the source code.
 
-Here is a general guide to how to stabilize a feature -- every feature
-is different, of course, so some features may require steps beyond 
-what this guide talks about.
+Here is a general guide to how to stabilize a feature --
+every feature is different, of course, so some features may
+require steps beyond what this guide talks about.
 
-Note: Before we stabilize any feature, it's the rule that it should appear
-in the documentation.
+Note: Before we stabilize any feature, it's the rule that it
+should appear in the documentation.
 
 ### Updating the feature-gate listing
 
 There is a central listing of feature-gates in
 [`src/libsyntax/feature_gate.rs`]. Search for the `declare_features!`
-macro. There should be an entry for the feature you are aiming to
-stabilize, something like (this example is taken from
+macro. There should be an entry for the feature you are aiming
+to stabilize, something like (this example is taken from
 [rust-lang/rust#32409]:
 
 ```rust,ignore
@@ -177,3 +176,5 @@ if something { /* XXX */ }
 [The Reference]: https://github.com/rust-lang-nursery/reference
 [The Book]: https://github.com/rust-lang/book
 [Rust by Example]: https://github.com/rust-lang/rust-by-example
+[`Unstable Book`]: https://doc.rust-lang.org/unstable-book/index.html
+[`src/doc/unstable-book`]: https://github.com/rust-lang/rust/tree/master/src/doc/unstable-book

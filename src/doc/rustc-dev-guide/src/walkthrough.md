@@ -258,8 +258,6 @@ After this, [a PR is made][stab] to remove the feature gate, enabling the featur
 default (on the 2018 edition). A note is added to the [Release notes][relnotes]
 about the feature.
 
-[stab]: https://github.com/rust-lang/rust/pull/56245
-
-[feature-stab]: https://forge.rust-lang.org/stabilization-guide.html
+Steps to stabilize the feature can be found at [Stabilizing Features](./stabilization_guide.md).
 
 [relnotes]: https://github.com/rust-lang/rust/blob/master/RELEASES.md
