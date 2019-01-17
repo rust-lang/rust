@@ -90,7 +90,7 @@ in the documentation.
 ### Updating the feature-gate listing
 
 There is a central listing of feature-gates in
-`[src/libsyntax/feature_gate.rs]`. Search for the `declare_features!`
+[`src/libsyntax/feature_gate.rs`]. Search for the `declare_features!`
 macro. There should be an entry for the feature you are aiming to
 stabilize, something like (this example is taken from
 [rust-lang/rust#32409]:
