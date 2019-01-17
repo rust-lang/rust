@@ -11,7 +11,7 @@ struct Foo<'a: 'b, 'b> {
 
 fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
     Foo { x, y };
-    //~^ ERROR unsatisfied lifetime constraints
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:9:5
    |
 LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
