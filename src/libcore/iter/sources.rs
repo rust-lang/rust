@@ -198,7 +198,10 @@ pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
 ///
 /// [`empty`]: fn.empty.html
 #[stable(feature = "iter_empty", since = "1.2.0")]
-pub struct Empty<T>(marker::PhantomData<T>);
+pub struct Empty<T>(marker::PhantomData<PhantomFnWorkaround<T>>);
+
+// Workaround for PhantomData<fn() -> T> not being allowed in const fn.
+struct PhantomFnWorkaround<T>(fn() -> T);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {
