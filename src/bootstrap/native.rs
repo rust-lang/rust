@@ -358,13 +358,20 @@ fn configure_cmake(builder: &Builder,
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    cfg.define("CMAKE_C_FLAGS", builder.cflags(target, GitRepo::Llvm).join(" "));
+    let mut cflags = builder.cflags(target, GitRepo::Llvm).join(" ");
+    if let Some(ref s) = builder.config.llvm_cxxflags {
+        cflags.push_str(&format!(" {}", s));
+    }
+    cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
     if builder.config.llvm_static_stdcpp &&
         !target.contains("windows") &&
         !target.contains("netbsd")
     {
         cxxflags.push_str(" -static-libstdc++");
+    }
+    if let Some(ref s) = builder.config.llvm_cxxflags {
+        cxxflags.push_str(&format!(" {}", s));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -381,6 +388,12 @@ fn configure_cmake(builder: &Builder,
             // tries to resolve this path in the LLVM build directory.
             cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
         }
+    }
+
+    if let Some(ref s) = builder.config.llvm_ldflags {
+        cfg.define("CMAKE_SHARED_LINKER_FLAGS", s);
+        cfg.define("CMAKE_MODULE_LINKER_FLAGS", s);
+        cfg.define("CMAKE_EXE_LINKER_FLAGS", s);
     }
 
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
