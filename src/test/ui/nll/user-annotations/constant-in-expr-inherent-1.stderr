@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/constant-in-expr-inherent-1.rs:10:5
    |
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {

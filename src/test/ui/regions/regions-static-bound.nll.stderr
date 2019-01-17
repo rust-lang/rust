@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/regions-static-bound.rs:9:5
    |
 LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {

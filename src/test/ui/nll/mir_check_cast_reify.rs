@@ -35,7 +35,7 @@ fn bar<'a>(x: &'a u32) -> &'static u32 {
     // as part of checking the `ReifyFnPointer`.
     let f: fn(_) -> _ = foo;
     f(x)
-    //~^ ERROR unsatisfied lifetime constraints
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

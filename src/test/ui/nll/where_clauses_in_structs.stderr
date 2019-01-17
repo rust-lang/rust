@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/where_clauses_in_structs.rs:13:11
    |
 LL | fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {

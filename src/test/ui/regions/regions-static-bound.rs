@@ -7,7 +7,7 @@ fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
     t //[ll]~ ERROR E0312
-        //[nll]~^ ERROR unsatisfied lifetime constraints
+        //[nll]~^ ERROR lifetime may not live long enough
 }
 
 fn error(u: &(), v: &()) {

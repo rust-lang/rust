@@ -16,7 +16,7 @@ LL | |     });
    = note: late-bound region is '_#2r
    = note: late-bound region is '_#3r
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
