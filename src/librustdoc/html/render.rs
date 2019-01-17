@@ -741,8 +741,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 
     let mut crate_data = BTreeMap::new();
     crate_data.insert("doc".to_owned(), Json::String(crate_doc));
-    crate_data.insert("items".to_owned(), Json::Array(crate_items));
-    crate_data.insert("paths".to_owned(), Json::Array(crate_paths));
+    crate_data.insert("i".to_owned(), Json::Array(crate_items));
+    crate_data.insert("p".to_owned(), Json::Array(crate_paths));
 
     // Collect the index into a string
     format!("searchIndex[{}] = {};",
@@ -914,12 +914,44 @@ themePicker.onblur = handleThemeButtonsBlur;
     write(cx.dst.join("COPYRIGHT.txt"),
           static_files::COPYRIGHT)?;
 
-    fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
+    fn collect(
+        path: &Path,
+        krate: &str,
+        key: &str,
+        for_search_index: bool,
+    ) -> io::Result<(Vec<String>, Vec<String>, Vec<String>)> {
+        use minifier::js;
+
         let mut ret = Vec::new();
         let mut krates = Vec::new();
+        let mut variables = Vec::new();
+
+        let mut krate = krate.to_owned();
+
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
+                if for_search_index && line.starts_with("var r_") {
+                    variables.push(line.clone());
+                    // We need to check if the crate name has been put into a variable as well.
+                    let tokens = js::simple_minify(&line).apply(js::clean_tokens);
+                    let mut pos = 0;
+                    while pos < tokens.len() {
+                        if let Some((var_pos, Some(value_pos))) =
+                                js::get_variable_name_and_value_positions(&tokens, pos) {
+                            if let Some(s) = tokens.0[value_pos].get_string() {
+                                if &s[1..s.len() - 1] == krate {
+                                    if let Some(var) = tokens[var_pos].get_other() {
+                                        krate = var.to_owned();
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                        pos += 1;
+                    }
+                    continue;
+                }
                 if !line.starts_with(key) {
                     continue;
                 }
@@ -933,7 +965,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                                  .unwrap_or_else(|| String::new()));
             }
         }
-        Ok((ret, krates))
+        Ok((ret, krates, variables))
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
@@ -948,7 +980,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     let dst = cx.dst.join("aliases.js");
     {
-        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
+        let (mut all_aliases, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false), &dst);
         let mut w = try_err!(File::create(&dst), &dst);
         let mut output = String::with_capacity(100);
         for (alias, items) in &cache.aliases {
@@ -1035,7 +1067,9 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
 
         let dst = cx.dst.join("source-files.js");
-        let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
+        let (mut all_sources, _krates, _) = try_err!(collect(&dst, &krate.name, "sourcesIndex",
+                                                             false),
+                                                     &dst);
         all_sources.push(format!("sourcesIndex[\"{}\"] = {};",
                                  &krate.name,
                                  hierarchy.to_json_string()));
@@ -1049,20 +1083,22 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the search index
     let dst = cx.dst.join("search-index.js");
-    let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let (mut all_indexes, mut krates, variables) = try_err!(collect(&dst,
+                                                                    &krate.name,
+                                                                    "searchIndex",
+                                                                    true), &dst);
     all_indexes.push(search_index);
 
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
-    try_err!(writeln!(&mut w, "var N = null;var searchIndex = {{}};"), &dst);
-    for index in &all_indexes {
-        try_err!(write_minify_replacer(&mut w, &*index, options.enable_minification,
-                                       &[(minifier::js::Keyword::Null, "N")]),
-                 &dst);
-    }
-    try_err!(writeln!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
+    try_err!(writeln!(&mut w, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
+    try_err!(write_minify_replacer(&mut w,
+                                   &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
+                                   options.enable_minification),
+             &dst);
+    try_err!(write!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
 
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
@@ -1161,8 +1197,9 @@ themePicker.onblur = handleThemeButtonsBlur;
                             remote_item_type.css_class(),
                             remote_path[remote_path.len() - 1]));
 
-        let (mut all_implementors, _) = try_err!(collect(&mydst, &krate.name, "implementors"),
-                                                 &mydst);
+        let (mut all_implementors, _, _) = try_err!(collect(&mydst, &krate.name, "implementors",
+                                                            false),
+                                                    &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.
@@ -1216,14 +1253,50 @@ fn write_minify(dst: PathBuf, contents: &str, enable_minification: bool) -> Resu
     }
 }
 
-fn write_minify_replacer<W: Write>(dst: &mut W,
-                                   contents: &str,
-                                   enable_minification: bool,
-                                   keywords_to_replace: &[(minifier::js::Keyword, &str)])
-                                   -> io::Result<()> {
+fn write_minify_replacer<W: Write>(
+    dst: &mut W,
+    contents: &str,
+    enable_minification: bool,
+) -> io::Result<()> {
+    use minifier::js::{Keyword, ReservedChar, Token};
+
     if enable_minification {
         writeln!(dst, "{}",
-                 minifier::js::minify_and_replace_keywords(contents, keywords_to_replace))
+                 minifier::js::simple_minify(contents)
+                              .apply(|f| {
+                                  // We keep backlines.
+                                  minifier::js::clean_tokens_except(f, |c| {
+                                      c.get_char() != Some(ReservedChar::Backline)
+                                  })
+                              })
+                              .apply(|f| {
+                                  minifier::js::replace_token_with(f, |t| {
+                                      match *t {
+                                          Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
+                                          Token::String(s) => {
+                                              let s = &s[1..s.len() -1]; // The quotes are included
+                                              if s.is_empty() {
+                                                  Some(Token::Other("E"))
+                                              } else if s == "t" {
+                                                  Some(Token::Other("T"))
+                                              } else if s == "u" {
+                                                  Some(Token::Other("U"))
+                                              } else {
+                                                  None
+                                              }
+                                          }
+                                          _ => None,
+                                      }
+                                  })
+                              })
+                              .apply(|f| {
+                                  // We add a backline after the newly created variables.
+                                  minifier::js::aggregate_strings_with_separation(
+                                      f,
+                                      Token::Char(ReservedChar::Backline),
+                                  )
+                              })
+                              .to_string())
     } else {
         writeln!(dst, "{}", contents)
     }
