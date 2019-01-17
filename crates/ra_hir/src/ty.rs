@@ -904,39 +904,39 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
-    fn infer_tuple_struct(&mut self, path: Option<&Path>, sub_pats: &[PatId]) -> Ty {
+    fn infer_tuple_struct(&mut self, path: Option<&Path>, subpats: &[PatId]) -> Ty {
         let (ty, fields) = if let Some(x) = self.resolve_fields(path) {
             x
         } else {
             return Ty::Unknown;
         };
 
-        if fields.len() != sub_pats.len() {
+        if fields.len() != subpats.len() {
             return Ty::Unknown;
         }
 
-        for (&sub_pat, field) in sub_pats.iter().zip(fields.iter()) {
+        for (&subpat, field) in subpats.iter().zip(fields.iter()) {
             let sub_ty = self.make_ty(&field.type_ref);
-            self.infer_pat(sub_pat, &Expectation::has_type(sub_ty));
+            self.infer_pat(subpat, &Expectation::has_type(sub_ty));
         }
 
         ty
     }
 
-    fn infer_struct(&mut self, path: Option<&Path>, sub_pats: &[FieldPat]) -> Ty {
+    fn infer_struct(&mut self, path: Option<&Path>, subpats: &[FieldPat]) -> Ty {
         let (ty, fields) = if let Some(x) = self.resolve_fields(path) {
             x
         } else {
             return Ty::Unknown;
         };
 
-        for sub_pat in sub_pats {
-            let matching_field = fields.iter().find(|field| field.name == sub_pat.name);
+        for subpat in subpats {
+            let matching_field = fields.iter().find(|field| field.name == subpat.name);
 
             if let Some(field) = matching_field {
                 let typeref = &field.type_ref;
                 let sub_ty = self.make_ty(typeref);
-                self.infer_pat(sub_pat.pat, &Expectation::has_type(sub_ty));
+                self.infer_pat(subpat.pat, &Expectation::has_type(sub_ty));
             }
         }
 
@@ -979,8 +979,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Pat::TupleStruct {
                 path: ref p,
-                args: ref sub_pats,
-            } => self.infer_tuple_struct(p.as_ref(), sub_pats),
+                args: ref subpats,
+            } => self.infer_tuple_struct(p.as_ref(), subpats),
             Pat::Struct {
                 path: ref p,
                 args: ref fields,
@@ -995,12 +995,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Pat::Bind {
                 mode,
                 name: _name,
-                sub_pat,
+                subpat,
             } => {
-                let subty = if let Some(subpat) = sub_pat {
+                let subty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected)
                 } else {
-                    Ty::Unknown
+                    let ty = self.new_type_var();
+                    self.unify(&ty, &expected.ty);
+                    let ty = self.resolve_ty_as_possible(ty);
+                    ty
                 };
 
                 match mode {

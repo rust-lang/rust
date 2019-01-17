@@ -398,7 +398,7 @@ pub enum Pat {
     Bind {
         mode: BindingAnnotation,
         name: Name,
-        sub_pat: Option<PatId>,
+        subpat: Option<PatId>,
     },
     TupleStruct {
         path: Option<Path>,
@@ -413,12 +413,10 @@ pub enum Pat {
 impl Pat {
     pub fn walk_child_pats(&self, mut f: impl FnMut(PatId)) {
         match self {
-            Pat::Range { .. }
-            | Pat::Lit(..)
-            | Pat::Path(..)
-            | Pat::Wild
-            | Pat::Missing
-            | Pat::Bind { .. } => {}
+            Pat::Range { .. } | Pat::Lit(..) | Pat::Path(..) | Pat::Wild | Pat::Missing => {}
+            Pat::Bind { subpat, .. } => {
+                subpat.iter().map(|pat| *pat).for_each(f);
+            }
             Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
                 args.iter().map(|pat| *pat).for_each(f);
             }
@@ -833,11 +831,11 @@ impl ExprCollector {
                     .map(|nr| nr.as_name())
                     .unwrap_or_else(Name::missing);
                 let annotation = BindingAnnotation::new(bp.is_mutable(), bp.is_ref());
-                let sub_pat = bp.pat().map(|subpat| self.collect_pat(subpat));
+                let subpat = bp.pat().map(|subpat| self.collect_pat(subpat));
                 Pat::Bind {
                     name,
                     mode: annotation,
-                    sub_pat,
+                    subpat,
                 }
             }
             ast::PatKind::TupleStructPat(p) => {
@@ -928,7 +926,7 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
                 Pat::Bind {
                     name: Name::self_param(),
                     mode: BindingAnnotation::Unannotated,
-                    sub_pat: None,
+                    subpat: None,
                 },
                 self_param,
             );

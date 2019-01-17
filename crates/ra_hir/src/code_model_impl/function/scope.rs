@@ -88,10 +88,17 @@ impl FnScopes {
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         match &body[pat] {
-            Pat::Bind { name, .. } => self.scopes[scope].entries.push(ScopeEntry {
-                name: name.clone(),
-                pat,
-            }),
+            Pat::Bind { name, .. } => {
+                // bind can have a subpattern, but it's actually not allowed
+                // to bind to things in there
+                let entry = ScopeEntry {
+                    name: name.clone(),
+                    pat,
+                };
+                self.scopes[scope].entries.push(entry)
+            }
+            // FIXME: isn't every call to add_binding starting an entirely new
+            // tree walk!?
             p => p.walk_child_pats(|pat| self.add_bindings(body, scope, pat)),
         }
     }
