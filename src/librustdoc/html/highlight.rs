@@ -296,7 +296,7 @@ impl<'a> Classifier<'a> {
             token::Literal(lit, _suf) => {
                 match lit {
                     // Text literals.
-                    token::Byte(..) | token::Char(..) |
+                    token::Byte(..) | token::Char(..) | token::Err(..) |
                         token::ByteStr(..) | token::ByteStrRaw(..) |
                         token::Str_(..) | token::StrRaw(..) => Class::String,
 
