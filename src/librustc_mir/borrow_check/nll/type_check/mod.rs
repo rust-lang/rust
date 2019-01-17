@@ -45,7 +45,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::ty::layout::VariantIdx;
 use std::rc::Rc;
-use std::{fmt, iter};
+use std::{fmt, iter, mem};
 use syntax_pos::{Span, DUMMY_SP};
 
 macro_rules! span_mirbug {
@@ -124,7 +124,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::new(elements),
+        liveness_constraints: LivenessValues::new(elements.clone()),
         outlives_constraints: ConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
@@ -253,7 +253,7 @@ enum FieldAccessError {
 /// is a problem.
 struct TypeVerifier<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'b Mir<'tcx>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -385,7 +385,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 }
 
 impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'b Mir<'tcx>) -> Self {
         TypeVerifier {
             mir,
             mir_def_id: cx.mir_def_id,
@@ -454,19 +454,31 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Place::Base(PlaceBase::Local(index)) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
-            Place::Base(PlaceBase::Promoted(box (_index, sty))) => {
+            Place::Base(PlaceBase::Promoted(box (index, sty))) => {
                 let sty = self.sanitize_type(place, sty);
-                // FIXME -- promoted MIR return types reference
-                // various "free regions" (e.g., scopes and things)
-                // that they ought not to do. We have to figure out
-                // how best to handle that -- probably we want treat
-                // promoted MIR much like closures, renumbering all
-                // their free regions and propagating constraints
-                // upwards. We have the same acyclic guarantees, so
-                // that should be possible. But for now, ignore them.
-                //
-                // let promoted_mir = &self.mir.promoted[index];
-                // promoted_mir.return_ty()
+
+                if !self.errors_reported {
+                    let promoted_mir = &self.mir.promoted[index];
+                    self.sanitize_promoted(promoted_mir, location);
+
+                    let promoted_ty = promoted_mir.return_ty();
+
+                    if let Err(terr) = self.cx.eq_types(
+                        sty,
+                        promoted_ty,
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                    ) {
+                        span_mirbug!(
+                            self,
+                            place,
+                            "bad promoted type ({:?}: {:?}): {:?}",
+                            promoted_ty,
+                            sty,
+                            terr
+                        );
+                    };
+                }
                 PlaceTy::Ty { ty: sty }
             }
             Place::Base(PlaceBase::Static(box Static { def_id, ty: sty })) => {
@@ -531,6 +543,74 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             );
         }
         place_ty
+    }
+
+    fn sanitize_promoted(&mut self, promoted_mir: &'b Mir<'tcx>, location: Location) {
+        // Determine the constraints from the promoted MIR by running the type
+        // checker on the promoted MIR, then transfer the constraints back to
+        // the main MIR, changing the locations to the provided location.
+
+        let main_mir = mem::replace(&mut self.mir, promoted_mir);
+        self.cx.mir = promoted_mir;
+
+        let all_facts = &mut None;
+        let mut constraints = Default::default();
+        let mut closure_bounds = Default::default();
+        if let Some(ref mut bcx) = self.cx.borrowck_context {
+            // Don't try to add borrow_region facts for the promoted MIR
+            mem::swap(bcx.all_facts, all_facts);
+
+            // Use a new sets of constraints and closure bounds so that we can
+            // modify their locations.
+            mem::swap(&mut bcx.constraints.outlives_constraints, &mut constraints);
+            mem::swap(&mut bcx.constraints.closure_bounds_mapping, &mut closure_bounds);
+        };
+
+        self.visit_mir(promoted_mir);
+
+        if !self.errors_reported {
+            // if verifier failed, don't do further checks to avoid ICEs
+            self.cx.typeck_mir(promoted_mir);
+        }
+
+        self.mir = main_mir;
+        self.cx.mir = main_mir;
+        // Merge the outlives constraints back in, at the given location.
+        if let Some(ref mut base_bcx) = self.cx.borrowck_context {
+            mem::swap(base_bcx.all_facts, all_facts);
+            mem::swap(&mut base_bcx.constraints.outlives_constraints, &mut constraints);
+            mem::swap(&mut base_bcx.constraints.closure_bounds_mapping, &mut closure_bounds);
+
+            let locations = location.to_locations();
+            for constraint in constraints.iter() {
+                let mut constraint = *constraint;
+                constraint.locations = locations;
+                if let ConstraintCategory::Return
+                    | ConstraintCategory::UseAsConst
+                    | ConstraintCategory::UseAsStatic = constraint.category
+                {
+                    // "Returning" from a promoted is an assigment to a
+                    // temporary from the user's point of view.
+                    constraint.category = ConstraintCategory::Boring;
+                }
+                base_bcx.constraints.outlives_constraints.push(constraint)
+            }
+
+            if !closure_bounds.is_empty() {
+                let combined_bounds_mapping = closure_bounds
+                    .into_iter()
+                    .flat_map(|(_, value)| value)
+                    .collect();
+                let existing = base_bcx
+                    .constraints
+                    .closure_bounds_mapping
+                    .insert(location, combined_bounds_mapping);
+                assert!(
+                    existing.is_none(),
+                    "Multiple promoteds/closures at the same location."
+                );
+            }
+        }
     }
 
     fn sanitize_projection(
@@ -2275,7 +2355,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
             let closure_constraints =
-                closure_region_requirements.apply_requirements(tcx, location, def_id, substs);
+                closure_region_requirements.apply_requirements(tcx, def_id, substs);
 
             if let Some(ref mut borrowck_context) = self.borrowck_context {
                 let bounds_mapping = closure_constraints
