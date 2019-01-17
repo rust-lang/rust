@@ -129,7 +129,6 @@ impl<P, Q> PartialEq<Pin<Q>> for Pin<P>
 where
     P: PartialEq<Q>,
 {
-    
     fn eq(&self, other: &Pin<Q>) -> bool {
         self.pointer == other.pointer
     }
@@ -144,7 +143,6 @@ impl<P, Q> PartialOrd<Pin<Q>> for Pin<P>
 where
     P: PartialOrd<Q>,
 {
-    
     fn partial_cmp(&self, other: &Pin<Q>) -> Option<cmp::Ordering> {
         self.pointer.partial_cmp(&other.pointer)
     }
