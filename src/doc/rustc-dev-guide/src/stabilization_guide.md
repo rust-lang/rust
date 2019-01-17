@@ -22,15 +22,15 @@ If there wasn't documentation there, it needs to be added.
 
 Places that may need updated documentation:
 
-    [The Reference]: This must be updated, in full detail.
-    [The Book]: This may or may not need updating, depends.
+- [The Reference]: This must be updated, in full detail.
+- [The Book]: This may or may not need updating, depends.
     If you're not sure, please open an issue on this repository
     and it can be discussed.
-    standard library documentation: As needed. Language features
+- standard library documentation: As needed. Language features
     often don't need this, but if it's a feature that changes
     how good examples are written, such as when `?` was added
     to the language, updating examples is important.
-    [Rust by Example]: As needed.
+- [Rust by Example]: As needed.
 
 Prepare PRs to update documentations invovling this new feature
 for  repositories mentioned above.Maintainers of these repositories
