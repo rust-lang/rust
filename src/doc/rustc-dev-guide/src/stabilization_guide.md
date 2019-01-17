@@ -33,7 +33,7 @@ Places that may need updated documentation:
 - [Rust by Example]: As needed.
 
 Prepare PRs to update documentations invovling this new feature
-for  repositories mentioned above.Maintainers of these repositories
+for  repositories mentioned above. Maintainers of these repositories
 will keep these PRs open until the whole stabilization process
 has completed. Meanwhile, we can proceed to the next step.
 
