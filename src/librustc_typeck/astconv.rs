@@ -10,6 +10,7 @@ use hir::HirVec;
 use lint;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
+use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
@@ -1278,29 +1279,50 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     // Create a type from a path to an associated type.
-    // For a path `A::B::C::D`, `ty` and `ty_path_def` are the type and def for `A::B::C`
+    // For a path `A::B::C::D`, `qself_ty` and `qself_def` are the type and def for `A::B::C`
     // and item_segment is the path segment for `D`. We return a type and a def for
     // the whole path.
-    // Will fail except for `T::A` and `Self::A`; i.e., if `ty`/`ty_path_def` are not a type
+    // Will fail except for `T::A` and `Self::A`; i.e., if `qself_ty`/`qself_def` are not a type
     // parameter or `Self`.
-    pub fn associated_path_def_to_ty(&self,
-                                     ref_id: ast::NodeId,
-                                     span: Span,
-                                     ty: Ty<'tcx>,
-                                     ty_path_def: Def,
-                                     item_segment: &hir::PathSegment)
-                                     -> (Ty<'tcx>, Def)
-    {
+    pub fn associated_path_to_ty(
+        &self,
+        ref_id: ast::NodeId,
+        span: Span,
+        qself_ty: Ty<'tcx>,
+        qself_def: Def,
+        assoc_segment: &hir::PathSegment,
+        permit_variants: bool,
+    ) -> (Ty<'tcx>, Def) {
         let tcx = self.tcx();
-        let assoc_name = item_segment.ident;
+        let assoc_ident = assoc_segment.ident;
 
-        debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
+        debug!("associated_path_to_ty: {:?}::{}", qself_ty, assoc_ident);
 
-        self.prohibit_generics(slice::from_ref(item_segment));
+        self.prohibit_generics(slice::from_ref(assoc_segment));
+
+        // Check if we have an enum variant.
+        let mut variant_resolution = None;
+        if let ty::Adt(adt_def, _) = qself_ty.sty {
+            if adt_def.is_enum() {
+                let variant_def = adt_def.variants.iter().find(|vd| {
+                    tcx.hygienic_eq(assoc_ident, vd.ident, adt_def.did)
+                });
+                if let Some(variant_def) = variant_def {
+                    let def = Def::Variant(variant_def.did);
+                    if permit_variants {
+                        check_type_alias_enum_variants_enabled(tcx, span);
+                        tcx.check_stability(variant_def.did, Some(ref_id), span);
+                        return (qself_ty, def);
+                    } else {
+                        variant_resolution = Some(def);
+                    }
+                }
+            }
+        }
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
-        let bound = match (&ty.sty, ty_path_def) {
+        let bound = match (&qself_ty.sty, qself_def) {
             (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
@@ -1313,77 +1335,61 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 };
 
                 let candidates = traits::supertraits(tcx, ty::Binder::bind(trait_ref))
-                    .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_name));
+                    .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_ident));
 
-                match self.one_bound_for_assoc_type(candidates, "Self", assoc_name, span) {
+                match self.one_bound_for_assoc_type(candidates, "Self", assoc_ident, span) {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
             (&ty::Param(_), Def::SelfTy(Some(param_did), None)) |
             (&ty::Param(_), Def::TyParam(param_did)) => {
-                match self.find_bound_for_assoc_item(param_did, assoc_name, span) {
+                match self.find_bound_for_assoc_item(param_did, assoc_ident, span) {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
-            (&ty::Adt(adt_def, _substs), Def::Enum(_did)) => {
-                let ty_str = ty.to_string();
-                // Incorrect enum variant.
-                let mut err = tcx.sess.struct_span_err(
-                    span,
-                    &format!("no variant `{}` on enum `{}`", &assoc_name.as_str(), ty_str),
-                );
-                // Check if it was a typo.
-                let input = adt_def.variants.iter().map(|variant| &variant.ident.name);
-                if let Some(suggested_name) = find_best_match_for_name(
-                    input,
-                    &assoc_name.as_str(),
-                    None,
-                ) {
-                    err.span_suggestion_with_applicability(
-                        span,
-                        "did you mean",
-                        format!("{}::{}", ty_str, suggested_name.to_string()),
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    err.span_label(span, "unknown variant");
-                }
-                err.emit();
-                return (tcx.types.err, Def::Err);
-            }
             _ => {
-                // Check if we have an enum variant.
-                match ty.sty {
-                    ty::Adt(adt_def, _) if adt_def.is_enum() => {
-                        let variant_def = adt_def.variants.iter().find(|vd| {
-                            tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
-                        });
-                        if let Some(variant_def) = variant_def {
-                            check_type_alias_enum_variants_enabled(tcx, span);
-
-                            let def = Def::Variant(variant_def.did);
-                            tcx.check_stability(def.def_id(), Some(ref_id), span);
-                            return (ty, def);
-                        }
-                    },
-                    _ => (),
-                }
-
-                // Don't print `TyErr` to the user.
-                if !ty.references_error() {
+                if variant_resolution.is_some() {
+                    // Variant in type position
+                    let msg = format!("expected type, found variant `{}`", assoc_ident);
+                    tcx.sess.span_err(span, &msg);
+                } else if qself_ty.is_enum() {
+                    // Report as incorrect enum variant rather than ambiguous type.
+                    let mut err = tcx.sess.struct_span_err(
+                        span,
+                        &format!("no variant `{}` on enum `{}`", &assoc_ident.as_str(), qself_ty),
+                    );
+                    // Check if it was a typo.
+                    let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
+                    if let Some(suggested_name) = find_best_match_for_name(
+                        adt_def.variants.iter().map(|variant| &variant.ident.name),
+                        &assoc_ident.as_str(),
+                        None,
+                    ) {
+                        err.span_suggestion_with_applicability(
+                            span,
+                            "did you mean",
+                            format!("{}::{}", qself_ty, suggested_name),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.span_label(span, "unknown variant");
+                    }
+                    err.emit();
+                } else if !qself_ty.references_error() {
+                    // Don't print `TyErr` to the user.
                     self.report_ambiguous_associated_type(span,
-                                                          &ty.to_string(),
+                                                          &qself_ty.to_string(),
                                                           "Trait",
-                                                          &assoc_name.as_str());
+                                                          &assoc_ident.as_str());
                 }
                 return (tcx.types.err, Def::Err);
             }
         };
 
         let trait_did = bound.def_id();
-        let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_name, trait_did, ref_id);
+        let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_ident, trait_did, ref_id);
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
                 i.ident.modern() == assoc_ident
@@ -1394,10 +1400,34 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         let def = Def::AssociatedTy(item.def_id);
         if !item.vis.is_accessible_from(def_scope, tcx) {
-            let msg = format!("{} `{}` is private", def.kind_name(), assoc_name);
+            let msg = format!("{} `{}` is private", def.kind_name(), assoc_ident);
             tcx.sess.span_err(span, &msg);
         }
         tcx.check_stability(item.def_id, Some(ref_id), span);
+
+        if let Some(variant_def) = variant_resolution {
+            let mut err = tcx.struct_span_lint_node(
+                AMBIGUOUS_ASSOCIATED_ITEMS,
+                ref_id,
+                span,
+                "ambiguous associated item",
+            );
+
+            let mut could_refer_to = |def: Def, also| {
+                let note_msg = format!("`{}` could{} refer to {} defined here",
+                                       assoc_ident, also, def.kind_name());
+                err.span_note(tcx.def_span(def.def_id()), &note_msg);
+            };
+            could_refer_to(variant_def, "");
+            could_refer_to(def, " also");
+
+            err.span_suggestion_with_applicability(
+                span,
+                "use fully-qualified syntax",
+                format!("<{} as {}>::{}", qself_ty, "Trait", assoc_ident),
+                Applicability::HasPlaceholders,
+            ).emit();
+        }
 
         (ty, def)
     }
@@ -1773,7 +1803,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     Def::Err
                 };
-                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
+                self.associated_path_to_ty(ast_ty.id, ast_ty.span, ty, def, segment, false).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.id);
