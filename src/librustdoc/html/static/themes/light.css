@@ -84,12 +84,6 @@ pre {
 	border-bottom-color: #ddd;
 }
 
-:target { background: #FDFFD3; }
-
-:target > .in-band {
-	background: #FDFFD3;
-}
-
 .content .method .where,
 .content .fn .where,
 .content .where.fmt-newline {
@@ -247,7 +241,7 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target > code {
+:target > code, :target > .in-band {
 	background: #FDFFD3;
 }
 
