@@ -186,8 +186,8 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        self.iterate_until_fixed_point("Expansion", |constraint, origin| {
-            debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
+        self.iterate_until_fixed_point("Expansion", |constraint| {
+            debug!("expansion: constraint={:?}", constraint);
             match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
@@ -722,18 +722,17 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
-    where
-        F: FnMut(&Constraint<'tcx>, &SubregionOrigin<'tcx>) -> (bool, bool),
+        where F: FnMut(&Constraint<'tcx>) -> (bool, bool),
     {
-        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.iter().collect();
+        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.keys().collect();
         let mut iteration = 0;
         let mut changed = true;
         while changed {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            constraints.retain(|(constraint, origin)| {
-                let (edge_changed, retain) = body(constraint, origin);
+            constraints.retain(|constraint| {
+                let (edge_changed, retain) = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
                     changed = true;
