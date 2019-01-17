@@ -1,0 +1,74 @@
+--- src/librustc_target/spec/powerpc64_unknown_freebsd.rs.orig
++++ src/librustc_target/spec/powerpc64_unknown_freebsd.rs
+@@ -0,0 +1,32 @@
++// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
++// file at the top-level directory of this distribution and at
++// http://rust-lang.org/COPYRIGHT.
++//
++// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
++// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
++// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
++// option. This file may not be copied, modified, or distributed
++// except according to those terms.
++
++use spec::{LinkerFlavor, Target, TargetResult};
++
++pub fn target() -> TargetResult {
++    let mut base = super::freebsd_base::opts();
++    base.cpu = "ppc64".to_string();
++    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
++    base.max_atomic_width = Some(64);
++
++    Ok(Target {
++        llvm_target: "powerpc64-unknown-freebsd".to_string(),
++        target_endian: "big".to_string(),
++        target_pointer_width: "64".to_string(),
++        target_c_int_width: "32".to_string(),
++        data_layout: "E-m:e-i64:64-n32:64".to_string(),
++        arch: "powerpc64".to_string(),
++        target_os: "freebsd".to_string(),
++        target_env: String::new(),
++        target_vendor: "unknown".to_string(),
++        linker_flavor: LinkerFlavor::Gcc,
++        options: base,
++    })
++}
+--- src/librustc_target/spec/mod.rs.orig
++++ src/librustc_target/spec/mod.rs	
+@@ -332,6 +332,7 @@ supported_targets! {
+ 
+     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
+     ("i686-unknown-freebsd", i686_unknown_freebsd),
++    ("powerpc64-unknown-freebsd", powerpc64_unknown_freebsd),
+     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
+ 
+     ("i686-unknown-dragonfly", i686_unknown_dragonfly),
+--- src/librustc_llvm/build.rs.orig
++++ src/librustc_llvm/build.rs
+@@ -266,7 +266,12 @@ fn main() {
+         } else if cxxflags.contains("stdlib=libc++") {
+             println!("cargo:rustc-link-lib=c++");
+         } else {
+-            println!("cargo:rustc-link-lib={}", stdcppname);
++            if target.contains("powerpc64-unknown-freebsd") {
++                println!("cargo:rustc-link-search=native=/usr/local/lib/gcc6");
++                println!("cargo:rustc-link-lib=static=stdc++");
++            } else {
++                println!("cargo:rustc-link-lib={}", stdcppname);
++            }
+         }
+     }
+ 
+--- src/bootstrap/bootstrap.py.orig	
++++ src/bootstrap/bootstrap.py	
+@@ -240,6 +240,10 @@ def default_build_triple():
+         err = "unknown OS type: {}".format(ostype)
+         sys.exit(err)
+ 
++    if cputype == 'powerpc' and ostype == 'unknown-freebsd':
++        cputype = subprocess.check_output(
++              ['uname', '-p']).strip().decode(default_encoding)
++
+     cputype_mapper = {
+         'BePC': 'i686',
+         'aarch64': 'aarch64',
