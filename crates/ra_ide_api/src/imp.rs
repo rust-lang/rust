@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use salsa::Database;
-
 use hir::{
     self, Problem, source_binder,
 };
-use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
+use ra_db::{
+    FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase,
+    salsa::{self, Database},
+};
 use ra_ide_api_light::{self, assists, LocalEdit, Severity};
 use ra_syntax::{
     TextRange, AstNode, SourceFile,
@@ -89,7 +90,7 @@ impl db::RootDatabase {
     fn gc_syntax_trees(&mut self) {
         self.query(ra_db::SourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
-        self.query(hir::db::SourceFileItemsQuery)
+        self.query(hir::db::FileItemsQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         self.query(hir::db::FileItemQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());

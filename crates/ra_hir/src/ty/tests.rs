@@ -3,9 +3,7 @@ use std::fmt::Write;
 use std::path::{PathBuf, Path};
 use std::fs;
 
-use salsa::Database;
-
-use ra_db::SyntaxDatabase;
+use ra_db::{SyntaxDatabase, salsa::Database};
 use ra_syntax::ast::{self, AstNode};
 use test_utils::{project_dir, assert_eq_text, read_text};
 

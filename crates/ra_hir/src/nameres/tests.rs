@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use salsa::Database;
-use ra_db::{FilesDatabase, CrateGraph, SourceRootId};
+use ra_db::{FilesDatabase, CrateGraph, SourceRootId, salsa::Database};
 use relative_path::RelativePath;
 use test_utils::assert_eq_text;
 

@@ -9,6 +9,7 @@ use std::panic;
 
 use ra_syntax::{TextUnit, TextRange, SourceFile, TreeArc};
 
+pub use ::salsa as salsa;
 pub use crate::{
     cancellation::Canceled,
     syntax_ptr::LocalSyntaxPtr,
@@ -51,12 +52,9 @@ pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
     }
 }
 
-salsa::query_group! {
-    pub trait SyntaxDatabase: crate::input::FilesDatabase + BaseDatabase {
-        fn source_file(file_id: FileId) -> TreeArc<SourceFile> {
-            type SourceFileQuery;
-        }
-    }
+#[salsa::query_group]
+pub trait SyntaxDatabase: crate::input::FilesDatabase + BaseDatabase {
+    fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
 }
 
 fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> TreeArc<SourceFile> {

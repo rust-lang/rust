@@ -28,11 +28,13 @@ use std::{fmt, sync::Arc};
 
 use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
-use ra_db::{SyntaxDatabase, FilesDatabase, BaseDatabase};
+use ra_db::{
+    SyntaxDatabase, FilesDatabase, BaseDatabase,
+    salsa::{self, ParallelDatabase},
+};
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
-use salsa::ParallelDatabase;
 
 use crate::{
     symbol_index::{FileSymbol, SymbolIndex},
