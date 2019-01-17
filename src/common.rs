@@ -539,6 +539,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     pub clif_comments: crate::pretty_clif::CommentWriter,
     pub constants: &'a mut crate::constant::ConstantCx,
     pub caches: &'a mut Caches<'tcx>,
+    pub spans: Vec<Span>,
 }
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
@@ -616,5 +617,12 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
 
     pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
         *self.local_map.get(&local).unwrap()
+    }
+
+    pub fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
+        // FIXME: record scope too
+        let index = self.spans.len() as u32;
+        self.spans.push(source_info.span);
+        self.bcx.set_srcloc(SourceLoc::new(index));
     }
 }
