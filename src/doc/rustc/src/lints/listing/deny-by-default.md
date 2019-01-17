@@ -149,6 +149,26 @@ error: const items should never be #[no_mangle]
   |
 ```
 
+## overflowing-literals
+
+This lint detects literal out of range for its type. Some
+example code that triggers this lint:
+
+```rust,compile_fail
+let x: u8 = 1000;
+```
+
+This will produce:
+
+```text
+error: literal out of range for u8
+ --> src/main.rs:2:17
+  |
+2 |     let x: u8 = 1000;
+  |                 ^^^^
+  |
+```
+
 ## parenthesized-params-in-types-and-modules
 
 This lint detects incorrect parentheses. Some example code that triggers this

@@ -285,26 +285,6 @@ warning: functions generic over types must be mangled
   |
 ```
 
-## overflowing-literals
-
-This lint detects literal out of range for its type. Some
-example code that triggers this lint:
-
-```rust
-let x: u8 = 1000;
-```
-
-This will produce:
-
-```text
-warning: literal out of range for u8
- --> src/main.rs:2:17
-  |
-2 |     let x: u8 = 1000;
-  |                 ^^^^
-  |
-```
-
 ## path-statements
 
 This lint detects path statements with no effect. Some example code that
