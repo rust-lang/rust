@@ -100,6 +100,7 @@ use self::VarKind::*;
 use hir::def::*;
 use hir::Node;
 use ty::{self, TyCtxt};
+use ty::query::{Providers, queries};
 use lint;
 use errors::Applicability;
 use util::nodemap::{NodeMap, HirIdMap, HirIdSet};
@@ -114,8 +115,9 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
-use hir::{Expr, HirId};
 use hir;
+use hir::{Expr, HirId};
+use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
@@ -179,9 +181,22 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
+fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
+}
+
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir().krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
+    for &module in tcx.hir().krate().modules.keys() {
+        queries::check_mod_liveness::ensure(tcx, tcx.hir().local_def_id(module));
+    }
     tcx.sess.abort_if_errors();
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers {
+        check_mod_liveness,
+        ..*providers
+    };
 }
 
 impl fmt::Debug for LiveNode {

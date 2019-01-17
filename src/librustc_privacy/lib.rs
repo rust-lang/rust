@@ -22,12 +22,12 @@ use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TraitRef, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
-use rustc::ty::query::Providers;
+use rustc::ty::query::{Providers, queries};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use syntax::ast::{self, CRATE_NODE_ID, Ident};
+use syntax::ast::{self, DUMMY_NODE_ID, Ident};
 use syntax::attr;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
@@ -782,6 +782,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
+        // Don't visit nested modules, since we run a separate visitor walk
+        // for each module in `privacy_access_levels`
+    }
+
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let orig_tables = mem::replace(&mut self.tables, self.tcx.body_tables(body));
         let body = self.tcx.hir().body(body);
@@ -915,6 +920,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     /// module and so forth, so supply a crate for doing a deep walk.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
+    }
+
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
+        // Don't visit nested modules, since we run a separate visitor walk
+        // for each module in `privacy_access_levels`
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
@@ -1659,6 +1669,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         privacy_access_levels,
+        check_mod_privacy,
         ..*providers
     };
 }
@@ -1667,34 +1678,43 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
     tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
-fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   krate: CrateNum)
-                                   -> Lrc<AccessLevels> {
-    assert_eq!(krate, LOCAL_CRATE);
-
-    let krate = tcx.hir().krate();
+fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
         tcx,
         tables: &empty_tables,
-        current_item: CRATE_NODE_ID,
+        current_item: DUMMY_NODE_ID,
         empty_tables: &empty_tables,
     };
-    intravisit::walk_crate(&mut visitor, krate);
+    let (module, span, node_id) = tcx.hir().get_module(module_def_id);
+    intravisit::walk_mod(&mut visitor, module, node_id);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
     let mut visitor = TypePrivacyVisitor {
         tcx,
         tables: &empty_tables,
-        current_item: DefId::local(CRATE_DEF_INDEX),
+        current_item: module_def_id,
         in_body: false,
-        span: krate.span,
+        span,
         empty_tables: &empty_tables,
     };
-    intravisit::walk_crate(&mut visitor, krate);
+    intravisit::walk_mod(&mut visitor, module, node_id);
+}
+
+fn privacy_access_levels<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    krate: CrateNum,
+) -> Lrc<AccessLevels> {
+    assert_eq!(krate, LOCAL_CRATE);
+
+    let krate = tcx.hir().krate();
+
+    for &module in krate.modules.keys() {
+        queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
+    }
 
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
