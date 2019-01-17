@@ -1143,7 +1143,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ret_ty
             }
             Expr::Match { expr, arms } => {
-                let mut expected = Expectation::none();
+                let mut expected = expected.clone();
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
                 let pat_expectation = Expectation::has_type(input_ty);
 
