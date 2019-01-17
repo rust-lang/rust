@@ -24,6 +24,7 @@ use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use rustc_errors::emitter::{Emitter};
+use rustc_target::spec::MergeFunctions;
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
@@ -152,8 +153,24 @@ impl ModuleConfig {
                             sess.opts.optimize == config::OptLevel::Aggressive &&
                             !sess.target.target.options.is_like_emscripten;
 
-        self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
-                               sess.opts.optimize == config::OptLevel::Aggressive;
+        // Some targets (namely, NVPTX) interact badly with the MergeFunctions
+        // pass. This is because MergeFunctions can generate new function calls
+        // which may interfere with the target calling convention; e.g. for the
+        // NVPTX target, PTX kernels should not call other PTX kernels.
+        // MergeFunctions can also be configured to generate aliases instead,
+        // but aliases are not supported by some backends (again, NVPTX).
+        // Therefore, allow targets to opt out of the MergeFunctions pass,
+        // but otherwise keep the pass enabled (at O2 and O3) since it can be
+        // useful for reducing code size.
+        self.merge_functions = match sess.opts.debugging_opts.merge_functions
+                                     .unwrap_or(sess.target.target.options.merge_functions) {
+            MergeFunctions::Disabled => false,
+            MergeFunctions::Trampolines |
+            MergeFunctions::Aliases => {
+                sess.opts.optimize == config::OptLevel::Default ||
+                sess.opts.optimize == config::OptLevel::Aggressive
+            }
+        };
     }
 
     pub fn bitcode_needed(&self) -> bool {

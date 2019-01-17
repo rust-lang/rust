@@ -3,6 +3,7 @@ use back::write::create_target_machine;
 use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
+use rustc_target::spec::MergeFunctions;
 use libc::c_int;
 use std::ffi::CString;
 use syntax::feature_gate::UnstableFeatures;
@@ -61,7 +62,14 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-disable-preinline");
         }
         if llvm::LLVMRustIsRustLLVM() {
-            add("-mergefunc-use-aliases");
+            match sess.opts.debugging_opts.merge_functions
+                  .unwrap_or(sess.target.target.options.merge_functions) {
+                MergeFunctions::Disabled |
+                MergeFunctions::Trampolines => {}
+                MergeFunctions::Aliases => {
+                    add("-mergefunc-use-aliases");
+                }
+            }
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
