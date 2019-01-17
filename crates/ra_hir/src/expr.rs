@@ -329,8 +329,6 @@ impl Expr {
 pub struct PatId(RawId);
 impl_arena_id!(PatId);
 
-// copied verbatim from librustc::hir
-
 /// Explicit binding annotations given in the HIR for a binding. Note
 /// that this is not the final binding *mode* that we infer after type
 /// inference.
@@ -341,8 +339,6 @@ pub enum BindingAnnotation {
     /// when matching. For example, the `x` in `Some(x)` will have binding
     /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
     /// ultimately be inferred to be by-reference.
-    ///
-    /// Note that implicit reference skipping is not implemented yet (#42640).
     Unannotated,
 
     /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
@@ -375,7 +371,7 @@ pub struct FieldPat {
 /// Close relative to rustc's hir::PatKind
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Pat {
-    Missing, // do we need this?
+    Missing,
     Wild,
     Tuple(Vec<PatId>),
     Struct {
@@ -387,7 +383,6 @@ pub enum Pat {
         start: ExprId,
         end: ExprId,
     },
-    Box(PatId),
     Slice {
         prefix: Vec<PatId>,
         rest: Option<PatId>,
@@ -420,7 +415,7 @@ impl Pat {
             Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
                 args.iter().map(|pat| *pat).for_each(f);
             }
-            Pat::Ref { pat, .. } | Pat::Box(pat) => f(*pat),
+            Pat::Ref { pat, .. } => f(*pat),
             Pat::Slice {
                 prefix,
                 rest,

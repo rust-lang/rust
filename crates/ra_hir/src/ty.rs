@@ -37,7 +37,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, BindingAnnotation, MatchArm, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
+    expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
 };
 
 /// The ID of a type variable.
@@ -874,15 +874,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
-        let def = path
-            .and_then(|path| self.module.resolve_path(self.db, &path).take_types())
-            .map(|def_id| def_id.resolve(self.db));
-
-        let def = if let Some(def) = def {
-            def
-        } else {
-            return None;
-        };
+        let def_id = self.module.resolve_path(self.db, path?).take_types()?;
+        let def = def_id.resolve(self.db);
 
         match def {
             Def::Struct(s) => {
@@ -891,60 +884,47 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .struct_data(s.def_id())
                     .variant_data
                     .fields()
-                    .iter()
-                    .cloned()
-                    .collect();
+                    .to_owned();
                 Some((type_for_struct(self.db, s), fields))
             }
             Def::EnumVariant(ev) => {
-                let fields: Vec<_> = ev.variant_data(self.db).fields().iter().cloned().collect();
+                let fields: Vec<_> = ev.variant_data(self.db).fields().to_owned();
                 Some((type_for_enum_variant(self.db, ev), fields))
             }
             _ => None,
         }
     }
 
-    fn infer_tuple_struct(&mut self, path: Option<&Path>, subpats: &[PatId]) -> Ty {
-        let (ty, fields) = if let Some(x) = self.resolve_fields(path) {
-            x
-        } else {
-            return Ty::Unknown;
-        };
+    fn infer_tuple_struct_pat(&mut self, path: Option<&Path>, subpats: &[PatId]) -> Ty {
+        let (ty, fields) = self
+            .resolve_fields(path)
+            .unwrap_or((Ty::Unknown, Vec::new()));
 
-        if fields.len() != subpats.len() {
-            return Ty::Unknown;
-        }
-
-        for (&subpat, field) in subpats.iter().zip(fields.iter()) {
-            let sub_ty = self.make_ty(&field.type_ref);
-            self.infer_pat(subpat, &Expectation::has_type(sub_ty));
+        for (i, &subpat) in subpats.iter().enumerate() {
+            let expected_ty = fields
+                .get(i)
+                .map_or(Ty::Unknown, |field| self.make_ty(&field.type_ref));
+            self.infer_pat(subpat, &Expectation::has_type(expected_ty));
         }
 
         ty
     }
 
-    fn infer_struct(&mut self, path: Option<&Path>, subpats: &[FieldPat]) -> Ty {
-        let (ty, fields) = if let Some(x) = self.resolve_fields(path) {
-            x
-        } else {
-            return Ty::Unknown;
-        };
+    fn infer_struct_pat(&mut self, path: Option<&Path>, subpats: &[FieldPat]) -> Ty {
+        let (ty, fields) = self
+            .resolve_fields(path)
+            .unwrap_or((Ty::Unknown, Vec::new()));
 
         for subpat in subpats {
             let matching_field = fields.iter().find(|field| field.name == subpat.name);
-
-            if let Some(field) = matching_field {
-                let typeref = &field.type_ref;
-                let sub_ty = self.make_ty(typeref);
-                self.infer_pat(subpat.pat, &Expectation::has_type(sub_ty));
-            }
+            let expected_ty =
+                matching_field.map_or(Ty::Unknown, |field| self.make_ty(&field.type_ref));
+            self.infer_pat(subpat.pat, &Expectation::has_type(expected_ty));
         }
 
         ty
     }
 
-    // TODO: Expectation should probably contain a Cow pointer to Ty?
-    // so that we can make new expectations of subtypes cheaply
     fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
@@ -969,7 +949,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match expected.ty {
-                    Ty::Ref(ref sub_ty, exp_mut) if *mutability == exp_mut => {
+                    Ty::Ref(ref sub_ty, exp_mut) => {
+                        if *mutability != exp_mut {
+                            // TODO: emit type error?
+                        }
                         Expectation::has_type((&**sub_ty).clone())
                     }
                     _ => Expectation::none(),
@@ -980,18 +963,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Pat::TupleStruct {
                 path: ref p,
                 args: ref subpats,
-            } => self.infer_tuple_struct(p.as_ref(), subpats),
+            } => self.infer_tuple_struct_pat(p.as_ref(), subpats),
             Pat::Struct {
                 path: ref p,
                 args: ref fields,
-            } => self.infer_struct(p.as_ref(), fields),
-            Pat::Path(path) => {
-                // is this right?
-                self.module
-                    .resolve_path(self.db, &path)
-                    .take_values()
-                    .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved))
-            }
+            } => self.infer_struct_pat(p.as_ref(), fields),
+            Pat::Path(path) => self
+                .module
+                .resolve_path(self.db, &path)
+                .take_values()
+                .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved)),
             Pat::Bind {
                 mode,
                 name: _name,
@@ -1000,10 +981,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let subty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected)
                 } else {
-                    let ty = self.new_type_var();
-                    self.unify(&ty, &expected.ty);
-                    let ty = self.resolve_ty_as_possible(ty);
-                    ty
+                    expected.ty.clone()
                 };
 
                 match mode {
@@ -1075,8 +1053,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 assert_eq!(args.len(), arg_types.len());
 
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
-                    let expected = if let Some(tyref) = arg_type {
-                        let ty = self.make_ty(tyref);
+                    let expected = if let Some(type_ref) = arg_type {
+                        let ty = self.make_ty(type_ref);
                         Expectation::has_type(ty)
                     } else {
                         Expectation::none()
@@ -1143,21 +1121,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ret_ty
             }
             Expr::Match { expr, arms } => {
-                let mut expected = expected.clone();
+                let expected = if expected.ty == Ty::Unknown {
+                    Expectation::has_type(self.new_type_var())
+                } else {
+                    expected.clone()
+                };
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
                 let pat_expectation = Expectation::has_type(input_ty);
 
-                for MatchArm {
-                    pats,
-                    expr: arm_expr,
-                } in arms
-                {
-                    for &pat in pats {
+                for arm in arms {
+                    for &pat in &arm.pats {
                         let _pat_ty = self.infer_pat(pat, &pat_expectation);
                     }
                     // TODO type the guard
-                    let ty = self.infer_expr(*arm_expr, &expected);
-                    expected = Expectation::has_type(ty);
+                    self.infer_expr(arm.expr, &expected);
                 }
 
                 expected.ty

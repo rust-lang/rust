@@ -97,8 +97,6 @@ impl FnScopes {
                 };
                 self.scopes[scope].entries.push(entry)
             }
-            // FIXME: isn't every call to add_binding starting an entirely new
-            // tree walk!?
             p => p.walk_child_pats(|pat| self.add_bindings(body, scope, pat)),
         }
     }
