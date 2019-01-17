@@ -33,6 +33,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     Def, DefId, Module, Function, Struct, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes,
+    adt::StructField,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
@@ -872,7 +873,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
-    fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<crate::adt::StructField>)> {
+    fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
         let def = path
             .and_then(|path| self.module.resolve_path(self.db, &path).take_types())
             .map(|def_id| def_id.resolve(self.db));
@@ -916,13 +917,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
 
         for (&sub_pat, field) in sub_pats.iter().zip(fields.iter()) {
-            let sub_ty = Ty::from_hir(
-                self.db,
-                &self.module,
-                self.impl_block.as_ref(),
-                &field.type_ref,
-            );
-
+            let sub_ty = self.make_ty(&field.type_ref);
             self.infer_pat(sub_pat, &Expectation::has_type(sub_ty));
         }
 
@@ -941,7 +936,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
             if let Some(field) = matching_field {
                 let typeref = &field.type_ref;
-                let sub_ty = Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), typeref);
+                let sub_ty = self.make_ty(typeref);
                 self.infer_pat(sub_pat.pat, &Expectation::has_type(sub_ty));
             }
         }
@@ -1031,14 +1026,34 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
-            Expr::For { iterable, body, .. } => {
+            Expr::For {
+                iterable,
+                body,
+                pat,
+            } => {
                 let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
-                // TODO write type for pat
+                self.infer_pat(*pat, &Expectation::none());
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
-            Expr::Lambda { body, .. } => {
-                // TODO write types for args, infer lambda type etc.
+            Expr::Lambda {
+                body,
+                args,
+                arg_types,
+            } => {
+                assert_eq!(args.len(), arg_types.len());
+
+                for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
+                    let expected = if let Some(tyref) = arg_type {
+                        let ty = self.make_ty(tyref);
+                        Expectation::has_type(ty)
+                    } else {
+                        Expectation::none()
+                    };
+                    self.infer_pat(*arg_pat, &expected);
+                }
+
+                // TODO: infer lambda type etc.
                 let _body_ty = self.infer_expr(*body, &Expectation::none());
                 Ty::Unknown
             }
@@ -1174,8 +1189,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr(*expr, &Expectation::none());
-                let cast_ty =
-                    Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), type_ref);
+                let cast_ty = self.make_ty(type_ref);
                 let cast_ty = self.insert_type_vars(cast_ty);
                 // TODO check the cast...
                 cast_ty

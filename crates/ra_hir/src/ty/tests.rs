@@ -367,6 +367,16 @@ fn test(x: &i32) {
     let &z = x;
     let a = z;
     let (c, d) = (1, "hello");
+
+    for (e, f) in some_iter {
+        let g = e;
+    }
+
+    if let [val] = opt {
+        let h = val;
+    }
+
+    let lambda = |a: u64, b, c: i32| { a + b; c };
 }
 "#,
         "pattern.txt",
