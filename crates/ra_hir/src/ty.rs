@@ -911,7 +911,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             return Ty::Unknown;
         };
 
-        // walk subpats
         if fields.len() != sub_pats.len() {
             return Ty::Unknown;
         }
@@ -944,44 +943,49 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    // FIXME: Expectation should probably contain a reference to a Ty instead of
-    // a Ty itself
+    // TODO: Expectation should probably contain a Cow pointer to Ty?
+    // so that we can make new expectations of subtypes cheaply
     fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
-        // FIXME: we can do some inference even if the expected ty isnt already
-        // of the right form
-        let ty = match (&body[pat], &expected.ty) {
-            (Pat::Tuple(ref args), &Ty::Tuple(ref tuple_args))
-                if args.len() == tuple_args.len() =>
-            {
-                for (&pat, ty) in args.iter().zip(tuple_args.iter()) {
-                    // FIXME: can we do w/o cloning?
-                    self.infer_pat(pat, &Expectation::has_type(ty.clone()));
-                }
-                expected.ty.clone()
+        let ty = match &body[pat] {
+            Pat::Tuple(ref args) => {
+                // this can probably be done without cloning/ collecting
+                let expectations = match expected.ty {
+                    Ty::Tuple(ref tuple_args) if args.len() == tuple_args.len() => {
+                        tuple_args.iter().cloned().collect()
+                    }
+                    _ => vec![Ty::Unknown; args.len()],
+                };
+
+                let inner_tys = args
+                    .iter()
+                    .zip(expectations.into_iter())
+                    .map(|(&pat, ty)| self.infer_pat(pat, &Expectation::has_type(ty)))
+                    .collect::<Vec<_>>()
+                    .into();
+
+                Ty::Tuple(inner_tys)
             }
-            (&Pat::Ref { pat, mutability }, &Ty::Ref(ref sub_ty, ty_mut))
-                if mutability == ty_mut =>
-            {
-                self.infer_pat(pat, &Expectation::has_type((&**sub_ty).clone()));
-                expected.ty.clone()
+            Pat::Ref { pat, mutability } => {
+                let expectation = match expected.ty {
+                    Ty::Ref(ref sub_ty, exp_mut) if *mutability == exp_mut => {
+                        Expectation::has_type((&**sub_ty).clone())
+                    }
+                    _ => Expectation::none(),
+                };
+                let subty = self.infer_pat(*pat, &expectation);
+                Ty::Ref(subty.into(), *mutability)
             }
-            (
-                &Pat::TupleStruct {
-                    path: ref p,
-                    args: ref sub_pats,
-                },
-                _,
-            ) => self.infer_tuple_struct(p.as_ref(), sub_pats),
-            (
-                &Pat::Struct {
-                    path: ref p,
-                    args: ref fields,
-                },
-                _,
-            ) => self.infer_struct(p.as_ref(), fields),
-            (_, ref _expected_ty) => expected.ty.clone(),
+            Pat::TupleStruct {
+                path: ref p,
+                args: ref sub_pats,
+            } => self.infer_tuple_struct(p.as_ref(), sub_pats),
+            Pat::Struct {
+                path: ref p,
+                args: ref fields,
+            } => self.infer_struct(p.as_ref(), fields),
+            _ => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
