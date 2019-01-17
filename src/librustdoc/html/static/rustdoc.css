@@ -391,10 +391,6 @@ h4 > code, h3 > code, .invisible > code {
 	display: block;
 }
 
-.in-band, code {
-	z-index: -5;
-}
-
 .invisible {
 	width: 100%;
 	display: inline-block;
