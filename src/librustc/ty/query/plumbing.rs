@@ -2,7 +2,7 @@
 //! that generate the actual methods on tcx which find and execute the
 //! provider, manage the caches, and so forth.
 
-use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor};
+use dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
 use errors::DiagnosticBuilder;
 use errors::Level;
 use errors::Diagnostic;
@@ -335,40 +335,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         eprintln!("end of query stack");
     }
 
-    /// Try to read a node index for the node dep_node.
-    /// A node will have an index, when it's already been marked green, or when we can mark it
-    /// green. This function will mark the current task as a reader of the specified node, when
-    /// a node index can be found for that node.
-    pub(super) fn try_mark_green_and_read(self, dep_node: &DepNode) -> Option<DepNodeIndex> {
-        match self.dep_graph.node_color(dep_node) {
-            Some(DepNodeColor::Green(dep_node_index)) => {
-                self.dep_graph.read_index(dep_node_index);
-                Some(dep_node_index)
-            }
-            Some(DepNodeColor::Red) => {
-                None
-            }
-            None => {
-                // try_mark_green (called below) will panic when full incremental
-                // compilation is disabled. If that's the case, we can't try to mark nodes
-                // as green anyway, so we can safely return None here.
-                if !self.dep_graph.is_fully_enabled() {
-                    return None;
-                }
-                match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
-                    Some(dep_node_index) => {
-                        debug_assert!(self.dep_graph.is_green(&dep_node));
-                        self.dep_graph.read_index(dep_node_index);
-                        Some(dep_node_index)
-                    }
-                    None => {
-                        None
-                    }
-                }
-            }
-        }
-    }
-
     #[inline(never)]
     fn try_get_with<Q: QueryDescription<'gcx>>(
         self,
@@ -435,10 +401,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         if !dep_node.kind.is_input() {
-            if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
+            if let Some((prev_dep_node_index,
+                         dep_node_index)) = self.dep_graph.try_mark_green_and_read(self,
+                                                                                   &dep_node) {
                 return Ok(self.load_from_disk_and_cache_in_memory::<Q>(
                     key,
                     job,
+                    prev_dep_node_index,
                     dep_node_index,
                     &dep_node
                 ))
@@ -454,6 +423,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         key: Q::Key,
         job: JobOwner<'a, 'gcx, Q>,
+        prev_dep_node_index: SerializedDepNodeIndex,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
     ) -> Q::Value
@@ -466,10 +436,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // First we try to load the result from the on-disk cache
         let result = if Q::cache_on_disk(key.clone()) &&
                         self.sess.opts.debugging_opts.incremental_queries {
-            let prev_dep_node_index =
-                self.dep_graph.prev_dep_node_index_of(dep_node);
-            let result = Q::try_load_from_disk(self.global_tcx(),
-                                               prev_dep_node_index);
+            let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
 
             // We always expect to find a cached result for things that
             // can be forced from DepNode.
@@ -624,7 +591,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Ensuring an "input" or anonymous query makes no sense
         assert!(!dep_node.kind.is_anon());
         assert!(!dep_node.kind.is_input());
-        if self.try_mark_green_and_read(&dep_node).is_none() {
+        if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
             // Either way, we can't call `dep_graph.read()` as we don't have the
