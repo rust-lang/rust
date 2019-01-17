@@ -337,6 +337,7 @@ pub struct FunctionDebugContext<'a, 'tcx> {
     debug_context: &'a mut DebugContext<'tcx>,
     entry_id: UnitEntryId,
     symbol: usize,
+    mir_span: Span,
 }
 
 impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
@@ -373,6 +374,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
             debug_context,
             entry_id,
             symbol,
+            mir_span: mir.span,
         }
     }
 
@@ -419,9 +421,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         ebbs.sort_by_key(|ebb| func.offsets[*ebb]); // Ensure inst offsets always increase
         for ebb in ebbs {
             for (offset, inst, _size) in func.inst_offsets(ebb, &encinfo) {
-                let srcloc = func.srclocs[inst];
-                if !srcloc.is_default() {
-                    let span = spans[srcloc.bits() as usize];
+                fn create_row_for_span(tcx: TyCtxt, line_program: &mut LineProgram, offset: u64, span: Span) {
                     let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
                     let file = loc.file.name.to_string();
                     let file = ::std::path::Path::new(&file);
@@ -435,9 +435,17 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
                     line_program.row().file = file_id;
                     //tcx.sess
                     //    .warn(&format!("srcloc {} {}:{}:{}", offset, file, loc.line, loc.col.to_usize()));
-                    line_program.row().address_offset = offset as u64;
+                    line_program.row().address_offset = offset;
                     line_program.row().line = loc.line as u64;
                     line_program.generate_row();
+                }
+
+                let srcloc = func.srclocs[inst];
+                if !srcloc.is_default() {
+                    let span = spans[srcloc.bits() as usize];
+                    create_row_for_span(tcx, line_program, offset as u64, span);
+                } else {
+                    create_row_for_span(tcx, line_program, offset as u64, self.mir_span);
                 }
             }
         }
