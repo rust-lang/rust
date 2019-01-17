@@ -56,6 +56,8 @@ The report should contain:
   previous steps).
 - Any other relevant information(Examples of such reports can
   be found in rust-lang/rust#44494 and rust-lang/rust#28237).
+- The resolutions of any unresolved questions if the stabilization
+  is for an RFC.
 
 ## FCP
 
@@ -88,7 +90,7 @@ in the documentation.
 ### Updating the feature-gate listing
 
 There is a central listing of feature-gates in
-`src/libsyntax/feature_gate.rs`. Search for the `declare_features!`
+`[src/libsyntax/feature_gate.rs]`. Search for the `declare_features!`
 macro. There should be an entry for the feature you are aiming to
 stabilize, something like (this example is taken from
 [rust-lang/rust#32409]:
@@ -171,6 +173,7 @@ if something { /* XXX */ }
 ```
 
 [rust-lang/rust#32409]:https://github.com/rust-lang/rust/issues/32409
+[src/libsyntax/feature_gate.rs]:https://doc.rust-lang.org/nightly/nightly-rustc/syntax/feature_gate/index.html
 [The Reference]: https://github.com/rust-lang-nursery/reference
 [The Book]: https://github.com/rust-lang/book
 [Rust by Example]: https://github.com/rust-lang/rust-by-example

@@ -260,10 +260,6 @@ about the feature.
 
 [stab]: https://github.com/rust-lang/rust/pull/56245
 
-TODO: currently, we have a [forge article][feature-stab] about stabilization, but
-we really ought to move that to the guide (in fact, we probably should have a whole
-chapter about feature gates and stabilization).
-
 [feature-stab]: https://forge.rust-lang.org/stabilization-guide.html
 
 [relnotes]: https://github.com/rust-lang/rust/blob/master/RELEASES.md
