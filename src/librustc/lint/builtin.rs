@@ -368,6 +368,12 @@ declare_lint! {
     report_in_external_macro: true
 }
 
+declare_lint! {
+    pub AMBIGUOUS_ASSOCIATED_ITEMS,
+    Warn,
+    "ambiguous associated items"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -433,6 +439,7 @@ impl LintPass for HardwiredLints {
             parser::QUESTION_MARK_MACRO_SEP,
             parser::ILL_FORMED_ATTRIBUTE_INPUT,
             DEPRECATED_IN_FUTURE,
+            AMBIGUOUS_ASSOCIATED_ITEMS,
         )
     }
 }
