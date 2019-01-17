@@ -8,6 +8,7 @@ repository = "https://github.com/Amanieu/hashbrown"
 readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
+exclude = [".travis.yml", "bors.toml"]
 
 [dependencies]
 byteorder = { version = "1.0", default-features = false }
