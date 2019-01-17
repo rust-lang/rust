@@ -509,6 +509,21 @@ impl<'hir> Map<'hir> {
         &self.forest.krate.attrs
     }
 
+    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, NodeId)
+    {
+        let node_id = self.as_local_node_id(module).unwrap();
+        self.read(node_id);
+        match self.find_entry(node_id).unwrap().node {
+            Node::Item(&Item {
+                span,
+                node: ItemKind::Mod(ref m),
+                ..
+            }) => (m, span, node_id),
+            Node::Crate => (&self.forest.krate.module, self.forest.krate.span, node_id),
+            _ => panic!("not a module")
+        }
+    }
+
     pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
         where V: ItemLikeVisitor<'hir>
     {
