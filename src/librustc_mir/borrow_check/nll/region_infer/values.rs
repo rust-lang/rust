@@ -154,10 +154,10 @@ impl<N: Idx> LivenessValues<N> {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
-    crate fn new(elements: &Rc<RegionValueElements>) -> Self {
+    crate fn new(elements: Rc<RegionValueElements>) -> Self {
         Self {
-            elements: elements.clone(),
             points: SparseBitMatrix::new(elements.num_points),
+            elements: elements,
         }
     }
 
