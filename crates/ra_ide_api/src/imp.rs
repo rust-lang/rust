@@ -19,7 +19,6 @@ use crate::{
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{FileSymbol, LibrarySymbolsQuery},
-    rename::rename
 };
 
 impl db::RootDatabase {
@@ -230,10 +229,6 @@ impl db::RootDatabase {
             .into_iter()
             .map(|local_edit| SourceChange::from_local_edit(frange.file_id, local_edit))
             .collect()
-    }
-
-    pub(crate) fn rename(&self, position: FilePosition, new_name: &str) -> Option<SourceChange> {
-        rename(self, position, new_name)
     }
 
     pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Vec<FileSymbol> {

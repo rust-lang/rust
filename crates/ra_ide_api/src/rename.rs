@@ -40,9 +40,7 @@ fn find_name_and_module_at_offset(
     position: FilePosition,
 ) -> Option<(&ast::Name, &ast::Module)> {
     let ast_name = find_node_at_offset::<ast::Name>(syntax, position.offset);
-    let ast_name_parent = ast_name
-        .and_then(|n| n.syntax().parent())
-        .and_then(|p| ast::Module::cast(p));
+    let ast_name_parent = ast::Module::cast(ast_name?.syntax().parent()?);
 
     if let (Some(ast_module), Some(name)) = (ast_name_parent, ast_name) {
         return Some((name, ast_module));

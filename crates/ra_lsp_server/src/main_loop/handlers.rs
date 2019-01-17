@@ -5,7 +5,7 @@ use lsp_types::{
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
     MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
     RenameParams, SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit, DocumentChanges, TextDocumentEdit, DocumentChangeOperation, ResourceOp
+    WorkspaceEdit
 };
 use ra_ide_api::{
     FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity,
@@ -472,37 +472,9 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
         return Ok(None);
     }
 
-    let mut source_change = change.unwrap();
-    let text_document_edits = source_change
-        .source_file_edits
-        .drain(..)
-        .into_iter()
-        .map(|e| e.try_conv_with(&world))
-        .collect::<Result<Vec<TextDocumentEdit>>>();
+    let source_change_req = change.unwrap().try_conv_with(&world)?;
 
-    let text_document_ops = source_change
-        .file_system_edits
-        .drain(..)
-        .into_iter()
-        .map(|e| e.try_conv_with(&world))
-        .collect::<Result<Vec<ResourceOp>>>();
-
-    let mut document_changes = Vec::new();
-    document_changes.extend(
-        text_document_edits?
-            .into_iter()
-            .map(DocumentChangeOperation::Edit),
-    );
-    document_changes.extend(
-        text_document_ops?
-            .into_iter()
-            .map(DocumentChangeOperation::Op),
-    );
-
-    Ok(Some(WorkspaceEdit {
-        changes: None,
-        document_changes: Some(DocumentChanges::Operations(document_changes)),
-    }))
+    Ok(Some(source_change_req.workspace_edit))
 }
 
 pub fn handle_references(

@@ -466,7 +466,7 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Option<SourceChange>> {
-        self.with_db(|db| db.rename(position, new_name))
+        self.with_db(|db| rename::rename(db, position, new_name))
     }
 
     fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
