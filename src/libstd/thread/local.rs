@@ -69,9 +69,6 @@ use mem;
 ///    destroyed, but not all platforms have this guard. Those platforms that do
 ///    not guard typically have a synthetic limit after which point no more
 ///    destructors are run.
-/// 3. On macOS, initializing TLS during destruction of other TLS slots can
-///    sometimes cancel *all* destructors for the current thread, whether or not
-///    the slots have already had their destructors run or not.
 ///
 /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
 /// [`thread_local!`]: ../../std/macro.thread_local.html
@@ -604,11 +601,8 @@ mod tests {
     }
 
     // Note that this test will deadlock if TLS destructors aren't run (this
-    // requires the destructor to be run to pass the test). macOS has a known bug
-    // where dtors-in-dtors may cancel other destructors, so we just ignore this
-    // test on macOS.
+    // requires the destructor to be run to pass the test).
     #[test]
-    #[cfg_attr(target_os = "macos", ignore)]
     fn dtors_in_dtors_in_dtors() {
         struct S1(Sender<()>);
         thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
