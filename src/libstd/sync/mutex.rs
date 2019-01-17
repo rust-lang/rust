@@ -450,13 +450,7 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct MutexFmt<'a, T: ?Sized>(&'a MutexGuard<'a, T>);
-        impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexFmt<'a, T> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.debug_struct("Mutex").field("data", &&*self.0).finish()
-            }
-        }
-        f.debug_struct("MutexGuard").field("lock", &MutexFmt(self)).finish()
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
