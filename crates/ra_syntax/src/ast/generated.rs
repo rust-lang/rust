@@ -180,7 +180,11 @@ impl AstNode for BindPat {
 
 
 impl ast::NameOwner for BindPat {}
-impl BindPat {}
+impl BindPat {
+    pub fn pat(&self) -> Option<&Pat> {
+        super::child_opt(self)
+    }
+}
 
 // Block
 #[derive(Debug, PartialEq, Eq, Hash)]

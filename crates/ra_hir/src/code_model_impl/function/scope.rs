@@ -88,7 +88,7 @@ impl FnScopes {
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         match &body[pat] {
-            Pat::Bind { name } => self.scopes[scope].entries.push(ScopeEntry {
+            Pat::Bind { name, .. } => self.scopes[scope].entries.push(ScopeEntry {
                 name: name.clone(),
                 pat,
             }),

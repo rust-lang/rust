@@ -37,7 +37,7 @@ use crate::{
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, MatchArm, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
+    expr::{Body, Expr, BindingAnnotation, MatchArm, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
 };
 
 /// The ID of a type variable.
@@ -985,6 +985,30 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 path: ref p,
                 args: ref fields,
             } => self.infer_struct(p.as_ref(), fields),
+            Pat::Path(path) => {
+                // is this right?
+                self.module
+                    .resolve_path(self.db, &path)
+                    .take_values()
+                    .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved))
+            }
+            Pat::Bind {
+                mode,
+                name: _name,
+                sub_pat,
+            } => {
+                let subty = if let Some(subpat) = sub_pat {
+                    self.infer_pat(*subpat, expected)
+                } else {
+                    Ty::Unknown
+                };
+
+                match mode {
+                    BindingAnnotation::Ref => Ty::Ref(subty.into(), Mutability::Shared),
+                    BindingAnnotation::RefMut => Ty::Ref(subty.into(), Mutability::Mut),
+                    BindingAnnotation::Mutable | BindingAnnotation::Unannotated => subty,
+                }
+            }
             _ => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here

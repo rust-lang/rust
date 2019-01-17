@@ -713,6 +713,16 @@ impl FieldPatList {
     }
 }
 
+impl BindPat {
+    pub fn is_mutable(&self) -> bool {
+        self.syntax().children().any(|n| n.kind() == MUT_KW)
+    }
+
+    pub fn is_ref(&self) -> bool {
+        self.syntax().children().any(|n| n.kind() == REF_KW)
+    }
+}
+
 #[test]
 fn test_doc_comment_of_items() {
     let file = SourceFile::parse(

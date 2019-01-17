@@ -329,6 +329,43 @@ impl Expr {
 pub struct PatId(RawId);
 impl_arena_id!(PatId);
 
+// copied verbatim from librustc::hir
+
+/// Explicit binding annotations given in the HIR for a binding. Note
+/// that this is not the final binding *mode* that we infer after type
+/// inference.
+#[derive(Clone, PartialEq, Eq, Debug, Copy)]
+pub enum BindingAnnotation {
+    /// No binding annotation given: this means that the final binding mode
+    /// will depend on whether we have skipped through a `&` reference
+    /// when matching. For example, the `x` in `Some(x)` will have binding
+    /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
+    /// ultimately be inferred to be by-reference.
+    ///
+    /// Note that implicit reference skipping is not implemented yet (#42640).
+    Unannotated,
+
+    /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
+    Mutable,
+
+    /// Annotated as `ref`, like `ref x`
+    Ref,
+
+    /// Annotated as `ref mut x`.
+    RefMut,
+}
+
+impl BindingAnnotation {
+    fn new(is_mutable: bool, is_ref: bool) -> Self {
+        match (is_mutable, is_ref) {
+            (true, true) => BindingAnnotation::RefMut,
+            (false, true) => BindingAnnotation::Ref,
+            (true, false) => BindingAnnotation::Mutable,
+            (false, false) => BindingAnnotation::Unannotated,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FieldPat {
     pub(crate) name: Name,
@@ -359,7 +396,9 @@ pub enum Pat {
     Path(Path),
     Lit(ExprId),
     Bind {
+        mode: BindingAnnotation,
         name: Name,
+        sub_pat: Option<PatId>,
     },
     TupleStruct {
         path: Option<Path>,
@@ -793,7 +832,13 @@ impl ExprCollector {
                     .name()
                     .map(|nr| nr.as_name())
                     .unwrap_or_else(Name::missing);
-                Pat::Bind { name }
+                let annotation = BindingAnnotation::new(bp.is_mutable(), bp.is_ref());
+                let sub_pat = bp.pat().map(|subpat| self.collect_pat(subpat));
+                Pat::Bind {
+                    name,
+                    mode: annotation,
+                    sub_pat,
+                }
             }
             ast::PatKind::TupleStructPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
@@ -882,6 +927,8 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
             let param = collector.alloc_pat(
                 Pat::Bind {
                     name: Name::self_param(),
+                    mode: BindingAnnotation::Unannotated,
+                    sub_pat: None,
                 },
                 self_param,
             );

@@ -377,6 +377,10 @@ fn test(x: &i32) {
     }
 
     let lambda = |a: u64, b, c: i32| { a + b; c };
+
+    let ref ref_to_x = x;
+    let mut mut_x = x;
+    let ref mut mut_ref_to_x = x;
 }
 "#,
         "pattern.txt",

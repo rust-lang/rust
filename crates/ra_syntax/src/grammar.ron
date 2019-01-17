@@ -488,7 +488,10 @@ Grammar(
         ),
 
         "RefPat": ( options: [ "Pat" ]),
-        "BindPat": ( traits: ["NameOwner"] ),
+        "BindPat": ( 
+            options: [ "Pat" ],
+            traits: ["NameOwner"]
+        ),
         "PlaceholderPat": (),
         "PathPat": ( options: [ "Path" ] ),
         "StructPat": ( options: ["FieldPatList", "Path"] ),
