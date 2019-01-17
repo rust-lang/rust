@@ -2,12 +2,12 @@
 //! by accident.
 //!
 //! In the past we've accidentally checked in test binaries and such which add a
-//! huge amount of bloat to the git history, so it's good to just ensure we
-//! don't do that again :)
+//! huge amount of bloat to the Git history, so it's good to just ensure we
+//! don't do that again.
 
 use std::path::Path;
 
-// All files are executable on Windows, so just check on Unix
+// All files are executable on Windows, so just check on Unix.
 #[cfg(windows)]
 pub fn check(_path: &Path, _bad: &mut bool) {}
 

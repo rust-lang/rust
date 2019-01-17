@@ -11,22 +11,24 @@ pub const LANG_FEATURES_DIR: &str = "language-features";
 
 pub const LIB_FEATURES_DIR: &str = "library-features";
 
-/// Build the path to the Unstable Book source directory from the Rust 'src' directory
+/// Builds the path to the Unstable Book source directory from the Rust 'src' directory.
 pub fn unstable_book_path(base_src_path: &path::Path) -> path::PathBuf {
     base_src_path.join(PATH_STR)
 }
 
-/// Directory where the features are documented within the Unstable Book source directory
+/// Builds the path to the directory where the features are documented within the Unstable Book
+/// source directory.
 pub fn unstable_book_lang_features_path(base_src_path: &path::Path) -> path::PathBuf {
     unstable_book_path(base_src_path).join(LANG_FEATURES_DIR)
 }
 
-/// Directory where the features are documented within the Unstable Book source directory
+/// Builds the path to the directory where the features are documented within the Unstable Book
+/// source directory.
 pub fn unstable_book_lib_features_path(base_src_path: &path::Path) -> path::PathBuf {
     unstable_book_path(base_src_path).join(LIB_FEATURES_DIR)
 }
 
-/// Test to determine if DirEntry is a file
+/// Tests whether `DirEntry` is a file.
 fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
     dir_entry
         .file_type()
@@ -34,7 +36,7 @@ fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
         .is_file()
 }
 
-/// Retrieve names of all unstable features
+/// Retrieves names of all unstable features.
 pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
     features
         .iter()
@@ -56,24 +58,23 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
 
 /// Retrieve file names of all library feature sections in the Unstable Book with:
 ///
-/// * hyphens replaced by underscores
-/// * the markdown suffix ('.md') removed
+/// * hyphens replaced by underscores,
+/// * the markdown suffix ('.md') removed.
 fn collect_unstable_book_lang_features_section_file_names(base_src_path: &path::Path)
                                                           -> BTreeSet<String> {
     collect_unstable_book_section_file_names(&unstable_book_lang_features_path(base_src_path))
 }
 
-/// Retrieve file names of all language feature sections in the Unstable Book with:
+/// Retrieves file names of all language feature sections in the Unstable Book with:
 ///
-/// * hyphens replaced by underscores
-/// * the markdown suffix ('.md') removed
+/// * hyphens replaced by underscores,
+/// * the markdown suffix ('.md') removed.
 fn collect_unstable_book_lib_features_section_file_names(base_src_path: &path::Path)
                                                          -> BTreeSet<String> {
     collect_unstable_book_section_file_names(&unstable_book_lib_features_path(base_src_path))
 }
 
 pub fn check(path: &path::Path, bad: &mut bool) {
-
     // Library features
 
     let lang_features = collect_lang_features(path, bad);
@@ -100,7 +101,7 @@ pub fn check(path: &path::Path, bad: &mut bool) {
     let unstable_book_lang_features_section_file_names =
         collect_unstable_book_lang_features_section_file_names(path);
 
-    // Check for Unstable Book sections that don't have a corresponding unstable feature
+    // Check for Unstable Book sections that don't have a corresponding unstable feature.
     for feature_name in &unstable_book_lang_features_section_file_names -
                         &unstable_lang_feature_names {
         tidy_error!(bad,
@@ -109,8 +110,8 @@ pub fn check(path: &path::Path, bad: &mut bool) {
                     feature_name)
     }
 
-    // List unstable features that don't have Unstable Book sections
-    // Remove the comment marker if you want the list printed
+    // List unstable features that don't have Unstable Book sections.
+    // Remove the comment marker if you want the list printed.
     /*
     println!("Lib features without unstable book sections:");
     for feature_name in &unstable_lang_feature_names -
