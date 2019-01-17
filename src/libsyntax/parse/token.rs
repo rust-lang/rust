@@ -74,7 +74,7 @@ impl Lit {
         match *self {
             Byte(_) => "byte literal",
             Char(_) => "char literal",
-            Err(_) => "error literal",
+            Err(_) => "invalid literal",
             Integer(_) => "integer literal",
             Float(_) => "float literal",
             Str_(_) | StrRaw(..) => "string literal",
