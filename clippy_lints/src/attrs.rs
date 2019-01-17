@@ -332,9 +332,12 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 // https://github.com/rust-lang/rust/pull/56992
                                 CheckLintNameResult::NoLint(None) => (),
                                 _ => {
-                                    db.span_suggestion(lint.span,
-                                                       "lowercase the lint name",
-                                                       name_lower);
+                                    db.span_suggestion_with_applicability(
+                                        lint.span,
+                                        "lowercase the lint name",
+                                        name_lower,
+                                        Applicability::MaybeIncorrect,
+                                    );
                                 }
                             }
                         }
