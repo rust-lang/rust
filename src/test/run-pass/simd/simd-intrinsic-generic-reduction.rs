@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 
 // ignore-emscripten
+// ignore-aarch64 FIXME: https://github.com/rust-lang/rust/issues/54510
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 
