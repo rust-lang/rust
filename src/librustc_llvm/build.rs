@@ -263,7 +263,11 @@ fn main() {
         } else if cxxflags.contains("stdlib=libc++") {
             println!("cargo:rustc-link-lib=c++");
         } else {
-            println!("cargo:rustc-link-lib={}", stdcppname);
+            if target.contains("powerpc64-unknown-freebsd") {
+                println!("cargo:rustc-link-search=native=/usr/local/lib/gcc6");
+                println!("cargo:rustc-link-lib=static=stdc++");
+            } else {
+                println!("cargo:rustc-link-lib={}", stdcppname);
         }
     }
 
