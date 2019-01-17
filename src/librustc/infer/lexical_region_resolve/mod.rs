@@ -188,32 +188,37 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
         self.iterate_until_fixed_point("Expansion", |constraint| {
             debug!("expansion: constraint={:?}", constraint);
-            match *constraint {
+            let (a_region, b_vid, b_data, retain) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
-                    (self.expand_node(a_region, b_vid, b_data), false)
+                    (a_region, b_vid, b_data, false)
                 }
                 Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => (false, false),
+                    VarValue::ErrorValue => return (false, false),
                     VarValue::Value(a_region) => {
-                        let b_node = var_values.value_mut(b_vid);
-                        let changed = self.expand_node(a_region, b_vid, b_node);
-                        let retain = match *b_node {
+                        let b_data = var_values.value_mut(b_vid);
+                        let retain = match *b_data {
                             VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
                             _ => true
                         };
-                        (changed, retain)
+                        (a_region, b_vid, b_data, retain)
                     }
                 },
                 Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
-                    (false, false)
+                    return (false, false)
                 }
-            }
+            };
+
+            let changed = self.expand_node(a_region, b_vid, b_data);
+            (changed, retain)
         })
     }
 
+    // This function is very hot in some workloads. There's a single callsite
+    // so always inlining is ok even though it's large.
+    #[inline(always)]
     fn expand_node(
         &self,
         a_region: Region<'tcx>,
