@@ -4063,12 +4063,13 @@ impl<'a> Parser<'a> {
 
         if let Some(mut err) = delayed_err {
             if let Some(etc_span) = etc_span {
-                err.multipart_suggestion(
+                err.multipart_suggestion_with_applicability(
                     "move the `..` to the end of the field list",
                     vec![
                         (etc_span, String::new()),
                         (self.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
                     ],
+                    Applicability::MachineApplicable,
                 );
             }
             err.emit();
@@ -6913,7 +6914,11 @@ impl<'a> Parser<'a> {
 
             let mut err = self.struct_span_err(fixed_name_sp, error_msg);
             err.span_label(fixed_name_sp, "dash-separated idents are not valid");
-            err.multipart_suggestion(suggestion_msg, replacement);
+            err.multipart_suggestion_with_applicability(
+                suggestion_msg,
+                replacement,
+                Applicability::MachineApplicable,
+            );
             err.emit();
         }
         Ok(ident)
