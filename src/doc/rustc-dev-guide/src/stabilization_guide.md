@@ -114,7 +114,7 @@ found by consulting [the forge](https://forge.rust-lang.org/), which will guide
 you the next stable release number. You want to add 1 to that,
 because the code that lands today will become go into beta on that
 date, and then become stable after that. So, at the time of this
-writing, the next stable release (what is currently beta, iow) was
+writing, the next stable release (i.e. what is currently beta) was
 1.30.0, hence I wrote 1.31.0 above.
 
 ### Removing existing uses of the feature-gate
