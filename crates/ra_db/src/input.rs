@@ -146,46 +146,31 @@ impl CrateGraph {
     }
 }
 
-salsa::query_group! {
-    pub trait FilesDatabase: salsa::Database {
-        /// Text of the file.
-        fn file_text(file_id: FileId) -> Arc<String> {
-            type FileTextQuery;
-            storage input;
-        }
-        /// Path to a file, relative to the root of its source root.
-        fn file_relative_path(file_id: FileId) -> RelativePathBuf {
-            type FileRelativePathQuery;
-            storage input;
-        }
-        /// Source root of the file.
-        fn file_source_root(file_id: FileId) -> SourceRootId {
-            type FileSourceRootQuery;
-            storage input;
-        }
-        /// Contents of the source root.
-        fn source_root(id: SourceRootId) -> Arc<SourceRoot> {
-            type SourceRootQuery;
-            storage input;
-        }
-        /// The set of "local" (that is, from the current workspace) roots.
-        /// Files in local roots are assumed to change frequently.
-        fn local_roots() -> Arc<Vec<SourceRootId>> {
-            type LocalRootsQuery;
-            storage input;
-        }
-        /// The set of roots for crates.io libraries.
-        /// Files in libraries are assumed to never change.
-        fn library_roots() -> Arc<Vec<SourceRootId>> {
-            type LibraryRootsQuery;
-            storage input;
-        }
-        /// The crate graph.
-        fn crate_graph() -> Arc<CrateGraph> {
-            type CrateGraphQuery;
-            storage input;
-        }
-    }
+#[salsa::query_group]
+pub trait FilesDatabase: salsa::Database {
+    /// Text of the file.
+    #[salsa::input]
+    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    /// Path to a file, relative to the root of its source root.
+    #[salsa::input]
+    fn file_relative_path(&self, file_id: FileId) -> RelativePathBuf;
+    /// Source root of the file.
+    #[salsa::input]
+    fn file_source_root(&self, file_id: FileId) -> SourceRootId;
+    /// Contents of the source root.
+    #[salsa::input]
+    fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
+    /// The set of "local" (that is, from the current workspace) roots.
+    /// Files in local roots are assumed to change frequently.
+    #[salsa::input]
+    fn local_roots(&self) -> Arc<Vec<SourceRootId>>;
+    /// The set of roots for crates.io libraries.
+    /// Files in libraries are assumed to never change.
+    #[salsa::input]
+    fn library_roots(&self) -> Arc<Vec<SourceRootId>>;
+    /// The crate graph.
+    #[salsa::input]
+    fn crate_graph(&self) -> Arc<CrateGraph>;
 }
 
 #[cfg(test)]

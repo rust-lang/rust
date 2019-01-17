@@ -1,7 +1,9 @@
 use std::{fmt, sync::Arc};
 
-use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase, FileId, Canceled};
+use ra_db::{
+    LocationIntener, BaseDatabase, FileId, Canceled,
+    salsa::{self, Database},
+};
 
 use crate::{symbol_index, LineIndex};
 
@@ -73,12 +75,9 @@ impl AsRef<LocationIntener<hir::MacroCallLoc, hir::MacroCallId>> for RootDatabas
     }
 }
 
-salsa::query_group! {
-    pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + BaseDatabase {
-        fn line_index(file_id: FileId) -> Arc<LineIndex> {
-            type LineIndexQuery;
-        }
-    }
+#[salsa::query_group]
+pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + BaseDatabase {
+    fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 
 fn line_index(db: &impl ra_db::FilesDatabase, file_id: FileId) -> Arc<LineIndex> {
@@ -109,10 +108,10 @@ salsa::database_storage! {
         }
         impl hir::db::HirDatabase {
             fn hir_source_file() for hir::db::HirSourceFileQuery;
-            fn expand_macro_invocation() for hir::db::ExpandMacroCallQuery;
+            fn expand_macro_invocation() for hir::db::ExpandMacroInvocationQuery;
             fn module_tree() for hir::db::ModuleTreeQuery;
             fn fn_scopes() for hir::db::FnScopesQuery;
-            fn file_items() for hir::db::SourceFileItemsQuery;
+            fn file_items() for hir::db::FileItemsQuery;
             fn file_item() for hir::db::FileItemQuery;
             fn input_module_items() for hir::db::InputModuleItemsQuery;
             fn item_map() for hir::db::ItemMapQuery;

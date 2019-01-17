@@ -32,8 +32,10 @@ use ra_syntax::{
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
 };
-use ra_db::{SourceRootId, FilesDatabase, LocalSyntaxPtr};
-use salsa::ParallelDatabase;
+use ra_db::{
+    SourceRootId, FilesDatabase, LocalSyntaxPtr,
+    salsa::{self, ParallelDatabase},
+};
 use rayon::prelude::*;
 
 use crate::{
@@ -41,16 +43,11 @@ use crate::{
     db::RootDatabase,
 };
 
-salsa::query_group! {
-    pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
-        fn file_symbols(file_id: FileId) -> Arc<SymbolIndex> {
-            type FileSymbolsQuery;
-        }
-        fn library_symbols(id: SourceRootId) -> Arc<SymbolIndex> {
-            type LibrarySymbolsQuery;
-            storage input;
-        }
-    }
+#[salsa::query_group]
+pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
+    fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
+    #[salsa::input]
+    fn library_symbols(&self, id: SourceRootId) -> Arc<SymbolIndex>;
 }
 
 fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {

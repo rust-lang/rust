@@ -1,8 +1,10 @@
 use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
-use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId};
+use ra_db::{
+    LocationIntener, BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId,
+    salsa::{self, Database},
+};
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
@@ -220,10 +222,10 @@ salsa::database_storage! {
         }
         impl db::HirDatabase {
             fn hir_source_file() for db::HirSourceFileQuery;
-            fn expand_macro_invocation() for db::ExpandMacroCallQuery;
+            fn expand_macro_invocation() for db::ExpandMacroInvocationQuery;
             fn module_tree() for db::ModuleTreeQuery;
             fn fn_scopes() for db::FnScopesQuery;
-            fn file_items() for db::SourceFileItemsQuery;
+            fn file_items() for db::FileItemsQuery;
             fn file_item() for db::FileItemQuery;
             fn input_module_items() for db::InputModuleItemsQuery;
             fn item_map() for db::ItemMapQuery;
