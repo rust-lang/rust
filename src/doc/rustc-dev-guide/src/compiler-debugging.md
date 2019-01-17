@@ -1,7 +1,3 @@
-**Note: This is copied from the
-[rust-forge](https://github.com/rust-lang-nursery/rust-forge). If anything needs
- updating, please open an issue or make a PR on the github repo.**
-
 # Debugging the compiler
 [debugging]: #debugging
 
@@ -134,6 +130,11 @@ $ # Cool, now I have a backtrace for the error
 ## Getting logging output
 [getting-logging-output]: #getting-logging-output
 
+These crates are used in compiler for logging:
+
+* [log]
+* [env-logger]: check the link to see the full `RUST_LOG` syntax
+
 The compiler has a lot of `debug!` calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the
@@ -141,10 +142,8 @@ compiler is doing a particular thing.
 
 To see the logs, you need to set the `RUST_LOG` environment variable to
 your log filter, e.g. to get the logs for a specific module, you can run the
-compiler as `RUST_LOG=module::path rustc my-file.rs`. The Rust logs are
-powered by [env-logger], and you can look at the docs linked there to see
-the full `RUST_LOG` syntax. All `debug!` output will then appear in
-standard error.
+compiler as `RUST_LOG=module::path rustc my-file.rs`. All `debug!` output will
+then appear in standard error.
 
 Note that unless you use a very strict filter, the logger will emit a *lot*
 of output - so it's typically a good idea to pipe standard error to a file
@@ -176,8 +175,10 @@ $ RUST_LOG=debug rustc +local my-file.rs 2>all-log
 $ RUST_LOG=rustc_trans=info rustc +local my-file.rs
 ```
 
-While calls to `info!` are included in every build of the compiler,
-calls to `debug!` are only included in the program if the
+### How to keep or remove `debug!` and `trace!` calls from the resulting binary
+
+While calls to `error!`, `warn!` and `info!` are included in every build of the compiler,
+calls to `debug!` and `trace!` are only included in the program if
 `debug-assertions=yes` is turned on in config.toml (it is
 turned off by default), so if you don't see `DEBUG` logs, especially
 if you run the compiler with `RUST_LOG=rustc rustc some.rs` and only see
@@ -200,48 +201,18 @@ However, there are still a few concerns that you might care about:
 
 ### Expensive operations in logs
 
-A note of caution: the expressions *within* the `debug!` call are run
-whenever RUST_LOG is set, even if the filter would exclude the log. This means
-that if in the module `rustc::foo` you have a statement
+If in the module `rustc::foo` you have a statement
 
 ```Rust
 debug!("{:?}", random_operation(tcx));
 ```
 
 Then if someone runs a debug `rustc` with `RUST_LOG=rustc::bar`, then
-`random_operation()` will still run - even while it's output will never be
-needed!
+`random_operation()` will run.
 
 This means that you should not put anything too expensive or likely
 to crash there - that would annoy anyone who wants to use logging for their own
-module. Note that if `RUST_LOG` is unset (the default), then the code will not
-run - this means that if your logging code panics, then no-one will know it
-until someone tries to use logging to find *another* bug.
-
-If you *need* to do an expensive operation in a log, be aware that while log
-expressions are *evaluated* even if logging is not enabled in your module,
-they are not *formatted* unless it *is*. This means you can put your
-expensive/crashy operations inside an `fmt::Debug` impl, and they will not be
-run unless your log is enabled:
-
-```Rust
-use std::fmt;
-
-struct ExpensiveOperationContainer<'a, 'gcx, 'tcx>
-    where 'tcx: 'gcx, 'a: 'tcx
-{
-    tcx: TyCtxt<'a, 'gcx, 'tcx>
-}
-
-impl<'a, 'gcx, 'tcx> fmt::Debug for ExpensiveOperationContainer<'a, 'gcx, 'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let value = random_operation(tcx);
-        fmt::Debug::fmt(&value, fmt)
-    }
-}
-
-debug!("{:?}", ExpensiveOperationContainer { tcx });
-```
+module. No-one will know it until someone tries to use logging to find *another* bug.
 
 ## Formatting Graphviz output (.dot files)
 [formatting-graphviz-output]: #formatting-graphviz-output
@@ -382,7 +353,7 @@ create a minimal working example with Godbolt. Go to
 5. Once you have a godbolt link demonstrating the issue, it is pretty easy to
    fill in an LLVM bug.
 
-
+[log]: https://docs.rs/log/0.4.6/log/index.html
 [env-logger]: https://docs.rs/env_logger/0.4.3/env_logger/
 
 ## Narrowing (Bisecting) Regressions
