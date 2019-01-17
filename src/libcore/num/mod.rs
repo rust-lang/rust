@@ -47,8 +47,6 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
                 #[repr(transparent)]
-                // FIXME: the rustc_layout_scalar_valid_range_start attr is marked as unused
-                #[cfg_attr(stage0, allow(unused_attributes))]
                 #[rustc_layout_scalar_valid_range_start(1)]
                 pub struct $Ty($Int);
             }
@@ -70,8 +68,6 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
-                        // FIXME: this unsafe block is actually needed
-                        #[cfg_attr(stage0, allow(unused_unsafe))]
                         Some(unsafe { $Ty(n) })
                     } else {
                         None
