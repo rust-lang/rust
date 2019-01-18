@@ -1,50 +1,37 @@
-error: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:5:16
-   |
-LL |     ($a:ident, $a:ident) => {}; //~ERROR duplicate matcher binding
-   |                ^^^^^^^^
-   |
-note: previous declaration was here
-  --> $DIR/macro-multiple-matcher-bindings.rs:5:6
-   |
-LL |     ($a:ident, $a:ident) => {}; //~ERROR duplicate matcher binding
-   |      ^^^^^^^^
+warning: duplicate matcher binding
+ --> src/test/ui/macros/macro-multiple-matcher-bindings.rs:7:6
+  |
+7 |     ($a:ident, $a:ident) => {}; //~WARN duplicate matcher binding
+  |      ^^^^^^^^  ^^^^^^^^
+  |
+  = note: #[warn(duplicate_matcher_binding_name)] on by default
+  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+  = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
-error: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:6:16
-   |
-LL |     ($a:ident, $a:path) => {};  //~ERROR duplicate matcher binding
-   |                ^^^^^^^
-   |
-note: previous declaration was here
-  --> $DIR/macro-multiple-matcher-bindings.rs:6:6
-   |
-LL |     ($a:ident, $a:path) => {};  //~ERROR duplicate matcher binding
-   |      ^^^^^^^^
+warning: duplicate matcher binding
+ --> src/test/ui/macros/macro-multiple-matcher-bindings.rs:8:6
+  |
+8 |     ($a:ident, $a:path) => {};  //~WARN duplicate matcher binding
+  |      ^^^^^^^^  ^^^^^^^
+  |
+  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+  = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
-error: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:15:18
+warning: duplicate matcher binding
+  --> src/test/ui/macros/macro-multiple-matcher-bindings.rs:17:6
    |
-LL |     ($a:ident, $($a:ident),*) => {}; //~ERROR duplicate matcher binding
-   |                  ^^^^^^^^
+LL |     ($a:ident, $($a:ident),*) => {}; //~WARN duplicate matcher binding
+   |      ^^^^^^^^    ^^^^^^^^
    |
-note: previous declaration was here
-  --> $DIR/macro-multiple-matcher-bindings.rs:15:6
-   |
-LL |     ($a:ident, $($a:ident),*) => {}; //~ERROR duplicate matcher binding
-   |      ^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
-error: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:16:25
+warning: duplicate matcher binding
+  --> src/test/ui/macros/macro-multiple-matcher-bindings.rs:18:8
    |
-LL |     ($($a:ident)+ # $($($a:path),+);*) => {}; //~ERROR duplicate matcher binding
-   |                         ^^^^^^^
+LL |     ($($a:ident)+ # $($($a:path),+);*) => {}; //~WARN duplicate matcher binding
+   |        ^^^^^^^^         ^^^^^^^
    |
-note: previous declaration was here
-  --> $DIR/macro-multiple-matcher-bindings.rs:16:8
-   |
-LL |     ($($a:ident)+ # $($($a:path),+);*) => {}; //~ERROR duplicate matcher binding
-   |        ^^^^^^^^
-
-error: aborting due to 4 previous errors
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 

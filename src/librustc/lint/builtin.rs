@@ -352,6 +352,12 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub DUPLICATE_MATCHER_BINDING_NAME,
+    Warn,
+    "duplicate macro matcher binding name"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
