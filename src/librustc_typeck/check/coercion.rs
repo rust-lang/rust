@@ -1246,9 +1246,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         let parent = fcx.tcx.hir().get(fcx.tcx.hir().get_parent_node(parent_id));
                         if fcx.get_node_fn_decl(parent).is_some() {
                             if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                                if !sp.overlaps(cause.span) {
-                                    db.span_label(*sp, reason_label);
-                                }
+                                db.span_label(*sp, reason_label);
                             }
                         }
                     }

@@ -25,6 +25,7 @@ error[E0308]: mismatched types
 LL | /     if false {
 LL | |     //~^ ERROR mismatched types
 LL | |         return 0i32;
+   | |                ---- expected because of this statement
 LL | |     } else {
 LL | |         1u32
 LL | |     }
