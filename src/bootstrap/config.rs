@@ -82,6 +82,9 @@ pub struct Config {
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
 
+    pub llvm_cflags: Option<String>,
+    pub llvm_cxxflags: Option<String>,
+    pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
 
     // rust codegen options
@@ -254,6 +257,9 @@ struct Llvm {
     link_shared: Option<bool>,
     version_suffix: Option<String>,
     clang_cl: Option<String>,
+    cflags: Option<String>,
+    cxxflags: Option<String>,
+    ldflags: Option<String>,
     use_libcxx: Option<bool>,
 }
 
@@ -516,6 +522,10 @@ impl Config {
             config.llvm_link_jobs = llvm.link_jobs;
             config.llvm_version_suffix = llvm.version_suffix.clone();
             config.llvm_clang_cl = llvm.clang_cl.clone();
+
+            config.llvm_cflags = llvm.cflags.clone();
+            config.llvm_cxxflags = llvm.cxxflags.clone();
+            config.llvm_ldflags = llvm.ldflags.clone();
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
         }
 
