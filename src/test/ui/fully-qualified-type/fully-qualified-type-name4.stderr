@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/fully-qualified-type-name4.rs:6:12
    |
+LL | fn bar(x: usize) -> Option<usize> {
+   |                     ------------- expected `std::option::Option<usize>` because of return type
 LL |     return x;
    |            ^ expected enum `std::option::Option`, found usize
    |

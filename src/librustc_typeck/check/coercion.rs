@@ -1250,13 +1250,25 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             }
                         }
                     }
-                    _ => {
+                    ObligationCauseCode::ReturnType(_id) => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                        let _id = fcx.tcx.hir().get_parent_node(_id);
+                        let mut pointing_at_return_type = false;
+                        if let Some((fn_decl, can_suggest)) = fcx.get_fn_decl(_id) {
+                            pointing_at_return_type = fcx.suggest_missing_return_type(
+                                &mut db, &fn_decl, expected, found, can_suggest);
+                        }
+                        if let (Some(sp), false) = (
+                            fcx.ret_coercion_span.borrow().as_ref(),
+                            pointing_at_return_type,
+                        ) {
                             if !sp.overlaps(cause.span) {
                                 db.span_label(*sp, reason_label);
                             }
                         }
+                    }
+                    _ => {
+                        db = fcx.report_mismatched_types(cause, expected, found, err);
                     }
                 }
 

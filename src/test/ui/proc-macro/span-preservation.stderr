@@ -15,6 +15,9 @@ LL |     let x: usize = "hello";;;;; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:19:29
    |
+LL | fn b(x: Option<isize>) -> usize {
+   |                           ----- expected `usize` because of return type
+LL |     match x {
 LL |         Some(x) => { return x }, //~ ERROR mismatched types
    |                             ^ expected usize, found isize
 

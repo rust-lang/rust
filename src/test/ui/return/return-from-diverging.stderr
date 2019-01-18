@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/return-from-diverging.rs:4:12
    |
+LL | fn fail() -> ! {
+   |              - expected `!` because of return type
 LL |     return "wow"; //~ ERROR mismatched types
    |            ^^^^^ expected !, found reference
    |
