@@ -392,7 +392,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .in-band, code {
-	z-index: -5;
+	z-index: 5;
 }
 
 .invisible {
