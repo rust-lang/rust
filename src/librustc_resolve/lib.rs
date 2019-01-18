@@ -3369,6 +3369,29 @@ impl<'a> Resolver<'a> {
                                 Ok(ref snippet) if snippet == "{" => true,
                                 _ => false,
                             };
+                            // In case this could be a struct literal that needs to be surrounded
+                            // by parenthesis, find the appropriate span.
+                            let mut i = 0;
+                            let mut closing_brace = None;
+                            loop {
+                                sp = sm.next_point(sp);
+                                match sm.span_to_snippet(sp) {
+                                    Ok(ref snippet) => {
+                                        if snippet == "}" {
+                                            let sp = span.to(sp);
+                                            if let Ok(snippet) = sm.span_to_snippet(sp) {
+                                                closing_brace = Some((sp, snippet));
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    _ => break,
+                                }
+                                i += 1;
+                                if i > 100 { // The bigger the span the more likely we're
+                                    break;   // incorrect. Bound it to 100 chars long.
+                                }
+                            }
                             match source {
                                 PathSource::Expr(Some(parent)) => {
                                     match parent.node {
@@ -3395,11 +3418,20 @@ impl<'a> Resolver<'a> {
                                     }
                                 },
                                 PathSource::Expr(None) if followed_by_brace == true => {
-                                    err.span_label(
-                                        span,
-                                        format!("did you mean `({} {{ /* fields */ }})`?",
-                                                path_str),
-                                    );
+                                    if let Some((sp, snippet)) = closing_brace {
+                                        err.span_suggestion_with_applicability(
+                                            sp,
+                                            "surround the struct literal with parenthesis",
+                                            format!("({})", snippet),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    } else {
+                                        err.span_label(
+                                            span,
+                                            format!("did you mean `({} {{ /* fields */ }})`?",
+                                                    path_str),
+                                        );
+                                    }
                                     return (err, candidates);
                                 },
                                 _ => {
