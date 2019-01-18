@@ -1219,7 +1219,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                            cfg_fn!(alloc_error_handler))),
 
     // RFC 2412
-    ("optimize", Whitelisted, Gated(Stability::Unstable,
+    ("optimize", Whitelisted, template!(List: "size|speed"), Gated(Stability::Unstable,
                                "optimize_attribute",
                                "#[optimize] attribute is an unstable feature",
                                cfg_fn!(optimize_attribute))),

@@ -144,6 +144,28 @@ pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
     }
 }
 
+pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
+    match sess.opts.optimize {
+        OptLevel::Size => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        },
+        OptLevel::SizeMin => {
+            llvm::Attribute::MinSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+        OptLevel::No => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+        _ => {}
+    }
+}
+
+
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs(
@@ -157,24 +179,7 @@ pub fn from_fn_attrs(
 
     match codegen_fn_attrs.optimize {
         OptimizeAttr::None => {
-            match cx.tcx.sess.opts.optimize {
-                OptLevel::Size => {
-                    llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
-                },
-                OptLevel::SizeMin => {
-                    llvm::Attribute::MinSize.apply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
-                }
-                OptLevel::No => {
-                    llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
-                }
-                _ => {}
-            }
+            default_optimisation_attrs(cx.tcx.sess, llfn);
         }
         OptimizeAttr::Speed => {
             llvm::Attribute::MinSize.unapply_llfn(Function, llfn);

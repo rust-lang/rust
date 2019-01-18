@@ -2379,7 +2379,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
         if attr.path != "optimize" {
             return ia;
         }
-        let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0720, "{}", s);
+        let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);
         match attr.meta().map(|i| i.node) {
             Some(MetaItemKind::Word) => {
                 err(attr.span, "expected one argument");
