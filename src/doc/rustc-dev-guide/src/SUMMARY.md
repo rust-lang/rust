@@ -4,7 +4,7 @@
 
 ---
 
-- [Part 1 Intro](./part-1-intro.md)
+- [Part 1: Building, debugging, and contributing to Rustc](./part-1-intro.md)
 - [About the compiler team](./compiler-team.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
     - [Build and Install distribution artifacts](./build-install-distribution-artifacts.md)
@@ -22,7 +22,7 @@
 
 ---
 
-- [Part 2 Intro](./part-2-intro.md)
+- [Part 2: How rustc works](./part-2-intro.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
 - [The Rustc Driver](./rustc-driver.md)
     - [Rustdoc](./rustdoc.md)

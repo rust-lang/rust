@@ -1,4 +1,4 @@
-# Part 1: General Knowledge
+# Part 1: Building, debugging, and contributing to Rustc
 
 This section of the rustc-guide contains knowledge that should be useful to you
 regardless of what part of the compiler you are working on. This includes both
