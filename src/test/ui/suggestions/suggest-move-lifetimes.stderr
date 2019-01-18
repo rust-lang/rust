@@ -16,7 +16,7 @@ LL | struct B<T, 'a, U> { //~ ERROR lifetime parameters must be declared
 help: move the lifetime parameter prior to the first type parameter
    |
 LL | struct B<'a, T, U> { //~ ERROR lifetime parameters must be declared
-   |          ^^^   --
+   |          ^^^ --
 
 error: lifetime parameters must be declared prior to type parameters
   --> $DIR/suggest-move-lifetimes.rs:10:16
@@ -36,7 +36,7 @@ LL | struct D<T, U, 'a, 'b, V, 'c> { //~ ERROR lifetime parameters must be decla
 help: move the lifetime parameter prior to the first type parameter
    |
 LL | struct D<'a, 'b, 'c, T, U, V> { //~ ERROR lifetime parameters must be declared
-   |          ^^^ ^^^ ^^^      ---
+   |          ^^^ ^^^ ^^^    -- --
 
 error: aborting due to 4 previous errors
 

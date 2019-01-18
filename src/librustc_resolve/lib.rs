@@ -3318,7 +3318,12 @@ impl<'a> Resolver<'a> {
             if let Some(def) = def {
                 match (def, source) {
                     (Def::Macro(..), _) => {
-                        err.span_label(span, format!("did you mean `{}!(...)`?", path_str));
+                        err.span_suggestion_with_applicability(
+                            span,
+                            "use `!` to invoke the macro",
+                            format!("{}!", path_str),
+                            Applicability::MaybeIncorrect,
+                        );
                         return (err, candidates);
                     }
                     (Def::TyAlias(..), PathSource::Trait(_)) => {
@@ -3330,13 +3335,22 @@ impl<'a> Resolver<'a> {
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
-                            err.span_label(parent.span, format!("did you mean `{}::{}`?",
-                                                                 path_str, ident));
+                            err.span_suggestion_with_applicability(
+                                parent.span,
+                                "use the path separator to refer to an item",
+                                format!("{}::{}", path_str, ident),
+                                Applicability::MaybeIncorrect,
+                            );
                             return (err, candidates);
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
-                            err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
-                                                                 path_str, segment.ident));
+                            let span = parent.span.with_hi(segment.ident.span.hi());
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "use the path separator to refer to an item",
+                                format!("{}::{}", path_str, segment.ident),
+                                Applicability::MaybeIncorrect,
+                            );
                             return (err, candidates);
                         }
                         _ => {}
@@ -3387,6 +3401,29 @@ impl<'a> Resolver<'a> {
                                 Ok(ref snippet) if snippet == "{" => true,
                                 _ => false,
                             };
+                            // In case this could be a struct literal that needs to be surrounded
+                            // by parenthesis, find the appropriate span.
+                            let mut i = 0;
+                            let mut closing_brace = None;
+                            loop {
+                                sp = sm.next_point(sp);
+                                match sm.span_to_snippet(sp) {
+                                    Ok(ref snippet) => {
+                                        if snippet == "}" {
+                                            let sp = span.to(sp);
+                                            if let Ok(snippet) = sm.span_to_snippet(sp) {
+                                                closing_brace = Some((sp, snippet));
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    _ => break,
+                                }
+                                i += 1;
+                                if i > 100 { // The bigger the span the more likely we're
+                                    break;   // incorrect. Bound it to 100 chars long.
+                                }
+                            }
                             match source {
                                 PathSource::Expr(Some(parent)) => {
                                     match parent.node {
@@ -3413,11 +3450,20 @@ impl<'a> Resolver<'a> {
                                     }
                                 },
                                 PathSource::Expr(None) if followed_by_brace == true => {
-                                    err.span_label(
-                                        span,
-                                        format!("did you mean `({} {{ /* fields */ }})`?",
-                                                path_str),
-                                    );
+                                    if let Some((sp, snippet)) = closing_brace {
+                                        err.span_suggestion_with_applicability(
+                                            sp,
+                                            "surround the struct literal with parenthesis",
+                                            format!("({})", snippet),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    } else {
+                                        err.span_label(
+                                            span,
+                                            format!("did you mean `({} {{ /* fields */ }})`?",
+                                                    path_str),
+                                        );
+                                    }
                                     return (err, candidates);
                                 },
                                 _ => {

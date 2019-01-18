@@ -153,7 +153,7 @@ impl_stable_hash_for!(enum hir::LifetimeName {
     Error,
 });
 
-impl_stable_hash_for!(struct hir::Label {
+impl_stable_hash_for!(struct ast::Label {
     ident
 });
 

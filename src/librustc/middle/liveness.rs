@@ -911,16 +911,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
-        // if there is a `break` or `again` at the top level, then it's
-        // effectively a return---this only occurs in `for` loops,
-        // where the body is really a closure.
-
         debug!("compute: using id for body, {}", self.ir.tcx.hir().node_to_pretty_string(body.id));
-
-        let exit_ln = self.s.exit_ln;
-
-        self.break_ln.insert(body.id, exit_ln);
-        self.cont_ln.insert(body.id, exit_ln);
 
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
@@ -1024,18 +1015,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&e, succ)
             }
 
-            hir::ExprKind::Closure(.., blk_id, _, _) => {
+            hir::ExprKind::Closure(..) => {
                 debug!("{} is an ExprKind::Closure",
                        self.ir.tcx.hir().node_to_pretty_string(expr.id));
-
-                // The next-node for a break is the successor of the entire
-                // loop. The next-node for a continue is the top of this loop.
-                let node = self.live_node(expr.hir_id, expr.span);
-
-                let break_ln = succ;
-                let cont_ln = node;
-                self.break_ln.insert(blk_id.node_id, break_ln);
-                self.cont_ln.insert(blk_id.node_id, cont_ln);
 
                 // the construction of a closure itself is not important,
                 // but we have to consider the closed over variables.
@@ -1407,15 +1389,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, self.ir.tcx.hir().node_to_pretty_string(body.id));
 
-        let break_ln = succ;
-        let cont_ln = ln;
-        self.break_ln.insert(expr.id, break_ln);
-        self.cont_ln.insert(expr.id, cont_ln);
+
+        self.break_ln.insert(expr.id, succ);
 
         let cond_ln = match kind {
             LoopLoop => ln,
             WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
         };
+
+        self.cont_ln.insert(expr.id, cond_ln);
+
         let body_ln = self.propagate_through_block(body, cond_ln);
 
         // repeat until fixed point is reached:

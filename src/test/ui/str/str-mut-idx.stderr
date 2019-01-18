@@ -29,6 +29,8 @@ LL |     s[1usize] = bot();
    |     ^^^^^^^^^ `str` cannot be mutably indexed by `usize`
    |
    = help: the trait `std::ops::IndexMut<usize>` is not implemented for `str`
+   = note: you can use `.chars().nth()` or `.bytes().nth()`
+           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error: aborting due to 3 previous errors
 
