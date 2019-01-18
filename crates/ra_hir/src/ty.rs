@@ -902,7 +902,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .get(i)
                 .and_then(|field| field.ty(self.db))
                 .unwrap_or(Ty::Unknown);
-            self.infer_pat(subpat, &Expectation::has_type(expected_ty));
+            self.infer_pat(subpat, &expected_ty);
         }
 
         ty
@@ -918,45 +918,45 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let expected_ty = matching_field
                 .and_then(|field| field.ty(self.db))
                 .unwrap_or(Ty::Unknown);
-            self.infer_pat(subpat.pat, &Expectation::has_type(expected_ty));
+            self.infer_pat(subpat.pat, &expected_ty);
         }
 
         ty
     }
 
-    fn infer_pat(&mut self, pat: PatId, expected: &Expectation) -> Ty {
+    fn infer_pat(&mut self, pat: PatId, expected: &Ty) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
         let ty = match &body[pat] {
             Pat::Tuple(ref args) => {
-                // this can probably be done without cloning/ collecting
-                let expectations = match expected.ty {
-                    Ty::Tuple(ref tuple_args) if args.len() == tuple_args.len() => {
-                        tuple_args.iter().cloned().collect()
-                    }
-                    _ => vec![Ty::Unknown; args.len()],
+                let expectations = match *expected {
+                    Ty::Tuple(ref tuple_args) => &**tuple_args,
+                    _ => &[],
                 };
+                let expectations_iter = expectations
+                    .into_iter()
+                    .chain(std::iter::repeat(&Ty::Unknown));
 
                 let inner_tys = args
                     .iter()
-                    .zip(expectations.into_iter())
-                    .map(|(&pat, ty)| self.infer_pat(pat, &Expectation::has_type(ty)))
+                    .zip(expectations_iter)
+                    .map(|(&pat, ty)| self.infer_pat(pat, ty))
                     .collect::<Vec<_>>()
                     .into();
 
                 Ty::Tuple(inner_tys)
             }
             Pat::Ref { pat, mutability } => {
-                let expectation = match expected.ty {
+                let expectation = match *expected {
                     Ty::Ref(ref sub_ty, exp_mut) => {
                         if *mutability != exp_mut {
                             // TODO: emit type error?
                         }
-                        Expectation::has_type((&**sub_ty).clone())
+                        &**sub_ty
                     }
-                    _ => Expectation::none(),
+                    _ => &Ty::Unknown,
                 };
-                let subty = self.infer_pat(*pat, &expectation);
+                let subty = self.infer_pat(*pat, expectation);
                 Ty::Ref(subty.into(), *mutability)
             }
             Pat::TupleStruct {
@@ -980,7 +980,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let subty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected)
                 } else {
-                    expected.ty.clone()
+                    expected.clone()
                 };
 
                 match mode {
@@ -993,7 +993,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        self.unify(&ty, &expected.ty);
+        self.unify(&ty, expected);
         let ty = self.resolve_ty_as_possible(ty);
         self.write_pat_ty(pat, ty.clone());
         ty
@@ -1040,7 +1040,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 pat,
             } => {
                 let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
-                self.infer_pat(*pat, &Expectation::none());
+                self.infer_pat(*pat, &Ty::Unknown);
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
@@ -1054,9 +1054,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
                     let expected = if let Some(type_ref) = arg_type {
                         let ty = self.make_ty(type_ref);
-                        Expectation::has_type(ty)
+                        ty
                     } else {
-                        Expectation::none()
+                        Ty::Unknown
                     };
                     self.infer_pat(*arg_pat, &expected);
                 }
@@ -1126,11 +1126,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     expected.clone()
                 };
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
-                let pat_expectation = Expectation::has_type(input_ty);
 
                 for arm in arms {
                     for &pat in &arm.pats {
-                        let _pat_ty = self.infer_pat(pat, &pat_expectation);
+                        let _pat_ty = self.infer_pat(pat, &input_ty);
                     }
                     // TODO type the guard
                     self.infer_expr(arm.expr, &expected);
@@ -1323,7 +1322,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         decl_ty
                     };
 
-                    self.infer_pat(*pat, &Expectation::has_type(ty));
+                    self.infer_pat(*pat, &ty);
                 }
                 Statement::Expr(expr) => {
                     self.infer_expr(*expr, &Expectation::none());
@@ -1344,7 +1343,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = self.make_ty(type_ref);
             let ty = self.insert_type_vars(ty);
 
-            self.infer_pat(*pat, &Expectation::has_type(ty));
+            self.infer_pat(*pat, &ty);
         }
         self.return_ty = {
             let ty = self.make_ty(signature.ret_type());
