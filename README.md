@@ -37,8 +37,7 @@ features (some of which are VS Code specific).
 
 ## Debugging
 
-See [these instructions](./DEBUGGING.md) for VS Code setup and the list of
-features (some of which are VS Code specific).
+See [these instructions](./DEBUGGING.md) on how to debug the vscode extension and the lsp server.
 
 ## Current Status and Plans
 
