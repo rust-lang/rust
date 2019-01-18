@@ -3318,7 +3318,12 @@ impl<'a> Resolver<'a> {
             if let Some(def) = def {
                 match (def, source) {
                     (Def::Macro(..), _) => {
-                        err.span_label(span, format!("did you mean `{}!(...)`?", path_str));
+                        err.span_suggestion_with_applicability(
+                            span,
+                            "use `!` to invoke the macro",
+                            format!("{}!", path_str),
+                            Applicability::MaybeIncorrect,
+                        );
                         return (err, candidates);
                     }
                     (Def::TyAlias(..), PathSource::Trait(_)) => {
@@ -3330,13 +3335,22 @@ impl<'a> Resolver<'a> {
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
-                            err.span_label(parent.span, format!("did you mean `{}::{}`?",
-                                                                 path_str, ident));
+                            err.span_suggestion_with_applicability(
+                                parent.span,
+                                "use the path separator to refer to an item",
+                                format!("{}::{}", path_str, ident),
+                                Applicability::MaybeIncorrect,
+                            );
                             return (err, candidates);
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
-                            err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
-                                                                 path_str, segment.ident));
+                            let span = parent.span.with_hi(segment.ident.span.hi());
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "use the path separator to refer to an item",
+                                format!("{}::{}", path_str, segment.ident),
+                                Applicability::MaybeIncorrect,
+                            );
                             return (err, candidates);
                         }
                         _ => {}
