@@ -33,48 +33,68 @@ impl InputModuleItems {
         let source = module_id.source(&module_tree);
         let file_id = source.file_id;
         let source = ModuleSource::from_source_item_id(db, source);
-        let file_items = db.file_items(file_id);
-        let fill = |acc: &mut InputModuleItems, items: &mut Iterator<Item = ast::ItemOrMacro>| {
-            for item in items {
-                match item {
-                    ast::ItemOrMacro::Item(it) => {
-                        acc.add_item(file_id, &file_items, it);
-                    }
-                    ast::ItemOrMacro::Macro(macro_call) => {
-                        let item_id = file_items.id_of_unchecked(macro_call.syntax());
-                        let loc = MacroCallLoc {
-                            source_root_id,
-                            module_id,
-                            source_item_id: SourceItemId {
-                                file_id,
-                                item_id: Some(item_id),
-                            },
-                        };
-                        let id = loc.id(db);
-                        let file_id = HirFileId::from(id);
-                        let file_items = db.file_items(file_id);
-                        //FIXME: expand recursively
-                        for item in db.hir_source_file(file_id).items() {
-                            acc.add_item(file_id, &file_items, item);
-                        }
-                    }
-                }
-            }
-        };
-
         let mut res = InputModuleItems::default();
         match source {
-            ModuleSource::SourceFile(it) => fill(&mut res, &mut it.items_with_macros()),
+            ModuleSource::SourceFile(it) => res.fill(
+                db,
+                source_root_id,
+                module_id,
+                file_id,
+                &mut it.items_with_macros(),
+            ),
             ModuleSource::Module(it) => {
                 if let Some(item_list) = it.item_list() {
-                    fill(&mut res, &mut item_list.items_with_macros())
+                    res.fill(
+                        db,
+                        source_root_id,
+                        module_id,
+                        file_id,
+                        &mut item_list.items_with_macros(),
+                    )
                 }
             }
         };
         Arc::new(res)
     }
 
-    pub(crate) fn add_item(
+    fn fill(
+        &mut self,
+        db: &impl HirDatabase,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+        file_id: HirFileId,
+        items: &mut Iterator<Item = ast::ItemOrMacro>,
+    ) {
+        let file_items = db.file_items(file_id);
+
+        for item in items {
+            match item {
+                ast::ItemOrMacro::Item(it) => {
+                    self.add_item(file_id, &file_items, it);
+                }
+                ast::ItemOrMacro::Macro(macro_call) => {
+                    let item_id = file_items.id_of_unchecked(macro_call.syntax());
+                    let loc = MacroCallLoc {
+                        source_root_id,
+                        module_id,
+                        source_item_id: SourceItemId {
+                            file_id,
+                            item_id: Some(item_id),
+                        },
+                    };
+                    let id = loc.id(db);
+                    let file_id = HirFileId::from(id);
+                    let file_items = db.file_items(file_id);
+                    //FIXME: expand recursively
+                    for item in db.hir_source_file(file_id).items() {
+                        self.add_item(file_id, &file_items, item);
+                    }
+                }
+            }
+        }
+    }
+
+    fn add_item(
         &mut self,
         file_id: HirFileId,
         file_items: &SourceFileItems,
