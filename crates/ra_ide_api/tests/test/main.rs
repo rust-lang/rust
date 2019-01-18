@@ -2,9 +2,7 @@ use ra_ide_api::{
     AnalysisChange,
     CrateGraph, FileId, mock_analysis::{MockAnalysis, single_file, single_file_with_position}, Query,
 };
-use ra_ide_api::mock_analysis::analysis_and_position;
 use ra_syntax::TextRange;
-use test_utils::assert_eq_text;
 use insta::assert_debug_snapshot_matches;
 
 #[test]
@@ -90,131 +88,6 @@ fn test_find_all_refs_for_fn_param() {
 
     let refs = get_all_refs(code);
     assert_eq!(refs.len(), 2);
-}
-
-#[test]
-fn test_rename_for_local() {
-    test_rename(
-        r#"
-    fn main() {
-        let mut i = 1;
-        let j = 1;
-        i = i<|> + j;
-
-        {
-            i = 0;
-        }
-
-        i = 5;
-    }"#,
-        "k",
-        r#"
-    fn main() {
-        let mut k = 1;
-        let j = 1;
-        k = k + j;
-
-        {
-            k = 0;
-        }
-
-        k = 5;
-    }"#,
-    );
-}
-
-#[test]
-fn test_rename_for_param_inside() {
-    test_rename(
-        r#"
-    fn foo(i : u32) -> u32 {
-        i<|>
-    }"#,
-        "j",
-        r#"
-    fn foo(j : u32) -> u32 {
-        j
-    }"#,
-    );
-}
-
-#[test]
-fn test_rename_refs_for_fn_param() {
-    test_rename(
-        r#"
-    fn foo(i<|> : u32) -> u32 {
-        i
-    }"#,
-        "new_name",
-        r#"
-    fn foo(new_name : u32) -> u32 {
-        new_name
-    }"#,
-    );
-}
-
-#[test]
-fn test_rename_for_mut_param() {
-    test_rename(
-        r#"
-    fn foo(mut i<|> : u32) -> u32 {
-        i
-    }"#,
-        "new_name",
-        r#"
-    fn foo(mut new_name : u32) -> u32 {
-        new_name
-    }"#,
-    );
-}
-
-#[test]
-fn test_rename_mod() {
-    let (analysis, position) = analysis_and_position(
-        "
-        //- /bar.rs
-        mod fo<|>o;
-        //- /bar/foo.rs
-        // emtpy
-    ",
-    );
-    let new_name = "foo2";
-    let source_change = analysis.rename(position, new_name).unwrap();
-    assert_debug_snapshot_matches!("rename_mod", &source_change);
-}
-
-#[test]
-fn test_rename_mod_in_dir() {
-    let (analysis, position) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod fo<|>o;
-        //- /foo/mod.rs
-        // emtpy
-    ",
-    );
-    let new_name = "foo2";
-    let source_change = analysis.rename(position, new_name).unwrap();
-    assert_debug_snapshot_matches!("rename_mod_in_dir", &source_change);
-}
-
-fn test_rename(text: &str, new_name: &str, expected: &str) {
-    let (analysis, position) = single_file_with_position(text);
-    let source_change = analysis.rename(position, new_name).unwrap();
-    let mut text_edit_bulder = ra_text_edit::TextEditBuilder::default();
-    let mut file_id: Option<FileId> = None;
-    if let Some(change) = source_change {
-        for edit in change.source_file_edits {
-            file_id = Some(edit.file_id);
-            for atom in edit.edit.as_atoms() {
-                text_edit_bulder.replace(atom.delete, atom.insert.clone());
-            }
-        }
-    }
-    let result = text_edit_bulder
-        .finish()
-        .apply(&*analysis.file_text(file_id.unwrap()));
-    assert_eq_text!(expected, &*result);
 }
 
 #[test]
