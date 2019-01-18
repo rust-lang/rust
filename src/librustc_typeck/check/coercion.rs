@@ -1224,9 +1224,31 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             cause.span,
                             blk_id,
                         );
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
+                        // TODO: replace with navigating up the chain until hitting an fn or
+                        // bailing if no "pass-through" Node is found, in order to provide a
+                        // suggestion when encountering something like:
+                        // ```
+                        // fn foo(a: bool) -> impl Debug {
+                        //     if a {
+                        //         bar()?;
+                        //     }
+                        //     {
+                        //         let x = unsafe { bar() };
+                        //         x
+                        //     }
+                        // }
+                        // ```
+                        //
+                        // Verify that this is a tail expression of a function, otherwise the
+                        // label pointing out the cause for the type coercion will be wrong
+                        // as prior return coercions would not be relevant (#57664).
+                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
+                        let parent = fcx.tcx.hir().get(fcx.tcx.hir().get_parent_node(parent_id));
+                        if fcx.get_node_fn_decl(parent).is_some() {
+                            if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                                if !sp.overlaps(cause.span) {
+                                    db.span_label(*sp, reason_label);
+                                }
                             }
                         }
                     }

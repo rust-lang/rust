@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return-2.rs:9:41
+   |
+LL |             let value: &bool = unsafe { &42 };
+   |                                         ^^^ expected bool, found integer
+   |
+   = note: expected type `&bool`
+              found type `&{integer}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
