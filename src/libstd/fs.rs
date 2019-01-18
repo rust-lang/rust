@@ -1121,7 +1121,9 @@ impl Permissions {
     /// writing.
     ///
     /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the `fs::set_permissions` function.
+    /// filesystem use the [`fs::set_permissions`] function.
+    ///
+    /// [`fs::set_permissions`]: fn.set_permissions.html
     ///
     /// # Examples
     ///
@@ -1639,9 +1641,14 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 ///
 /// The `dst` path will be a symbolic link pointing to the `src` path.
 /// On Windows, this will be a file symlink, not a directory symlink;
-/// for this reason, the platform-specific `std::os::unix::fs::symlink`
-/// and `std::os::windows::fs::{symlink_file, symlink_dir}` should be
+/// for this reason, the platform-specific [`std::os::unix::fs::symlink`]
+/// and [`std::os::windows::fs::symlink_file`] or [`symlink_dir`] should be
 /// used instead to make the intent explicit.
+///
+/// [`std::os::unix::fs::symlink`]: ../os/unix/fs/fn.symlink.html
+/// [`std::os::windows::fs::symlink_file`]: ../os/windows/fs/fn.symlink_file.html
+/// [`symlink_dir`]: ../os/windows/fs/fn.symlink_dir.html
+///
 ///
 /// # Examples
 ///
@@ -1795,13 +1802,15 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// * If any directory in the path specified by `path`
 /// does not already exist and it could not be created otherwise. The specific
 /// error conditions for when a directory is being created (after it is
-/// determined to not exist) are outlined by `fs::create_dir`.
+/// determined to not exist) are outlined by [`fs::create_dir`].
 ///
 /// Notable exception is made for situations where any of the directories
 /// specified in the `path` could not be created as it was being created concurrently.
 /// Such cases are considered to be successful. That is, calling `create_dir_all`
 /// concurrently from multiple threads or processes is guaranteed not to fail
 /// due to a race condition with itself.
+///
+/// [`fs::create_dir`]: fn.create_dir.html
 ///
 /// # Examples
 ///
@@ -1868,7 +1877,10 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Errors
 ///
-/// See `file::remove_file` and `fs::remove_dir`.
+/// See [`fs::remove_file`] and [`fs::remove_dir`].
+///
+/// [`fs::remove_file`]:  fn.remove_file.html
+/// [`fs::remove_dir`]: fn.remove_dir.html
 ///
 /// # Examples
 ///
