@@ -172,7 +172,7 @@ if something { /* XXX */ }
 ```
 
 [rust-lang/rust#32409]:https://github.com/rust-lang/rust/issues/32409
-[src/libsyntax/feature_gate.rs]:https://doc.rust-lang.org/nightly/nightly-rustc/syntax/feature_gate/index.html
+[`src/libsyntax/feature_gate.rs`]:https://doc.rust-lang.org/nightly/nightly-rustc/syntax/feature_gate/index.html
 [The Reference]: https://github.com/rust-lang-nursery/reference
 [The Book]: https://github.com/rust-lang/book
 [Rust by Example]: https://github.com/rust-lang/rust-by-example
