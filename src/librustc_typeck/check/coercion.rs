@@ -712,9 +712,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let b = self.shallow_resolve(b);
 
-        let node_id_a = self.tcx.hir().as_local_node_id(def_id_a).unwrap();
+        let hir_id_a = self.tcx.hir().as_local_hir_id(def_id_a).unwrap();
         match b.sty {
-            ty::FnPtr(_) if self.tcx.with_freevars(node_id_a, |v| v.is_empty()) => {
+            ty::FnPtr(_) if self.tcx.with_freevars(hir_id_a, |v| v.is_empty()) => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
@@ -1177,7 +1177,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         Expressions::UpFront(coercion_sites) => {
                             // if the user gave us an array to validate, check that we got
                             // the next expression in the list, as expected
-                            assert_eq!(coercion_sites[self.pushed].as_coercion_site().id, e.id);
+                            assert_eq!(coercion_sites[self.pushed].as_coercion_site().hir_id,
+                                       e.hir_id);
                         }
                     }
                     self.pushed += 1;

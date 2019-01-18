@@ -178,9 +178,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  mode: Mode,
                                  return_type: Ty<'tcx>,
                                  self_ty: Ty<'tcx>,
-                                 scope_expr_id: ast::NodeId)
+                                 scope_expr_id: hir::HirId)
                                  -> Vec<ty::AssociatedItem> {
-        debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
+        debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={:?})",
                self_ty,
                return_type,
                scope_expr_id);
@@ -207,10 +207,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           item_name: ast::Ident,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
-                          scope_expr_id: ast::NodeId,
+                          scope_expr_id: hir::HirId,
                           scope: ProbeScope)
                           -> PickResult<'tcx> {
-        debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
+        debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={:?})",
                self_ty,
                item_name,
                scope_expr_id);
@@ -232,7 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       return_type: Option<Ty<'tcx>>,
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
-                      scope_expr_id: ast::NodeId,
+                      scope_expr_id: hir::HirId,
                       scope: ProbeScope,
                       op: OP)
                       -> Result<R, MethodError<'tcx>>
@@ -370,7 +370,7 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
         let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-        let mut autoderef = Autoderef::new(infcx, param_env, ast::DUMMY_NODE_ID, DUMMY_SP, self_ty)
+        let mut autoderef = Autoderef::new(infcx, param_env, hir::DUMMY_HIR_ID, DUMMY_SP, self_ty)
             .include_raw_pointers()
             .silence_errors();
         let mut reached_raw_pointer = false;
@@ -781,13 +781,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
-                                                         expr_id: ast::NodeId)
+                                                         expr_hir_id: hir::HirId)
                                                          -> Result<(), MethodError<'tcx>> {
-        if expr_id == ast::DUMMY_NODE_ID {
+        if expr_hir_id == hir::DUMMY_HIR_ID {
             return Ok(())
         }
         let mut duplicates = FxHashSet::default();
-        let expr_hir_id = self.tcx.hir().node_to_hir_id(expr_id);
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
@@ -1371,7 +1370,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                             steps, IsSuggestion(true));
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
-            pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)?;
+            pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)?;
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
@@ -1381,7 +1380,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     pcx.reset();
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
-                    pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)
+                    pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
                         .ok().map_or(None, |_| {
                             pcx.pick_core()
                                 .and_then(|pick| pick.ok())

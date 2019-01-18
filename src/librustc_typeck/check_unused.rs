@@ -34,7 +34,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
             return;
         }
         if let hir::ItemKind::Use(ref path, _) = item.node {
-            self.check_import(item.id, path.span);
+            self.check_import(item.hir_id, path.span);
         }
     }
 
@@ -51,13 +51,13 @@ struct CheckVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
-    fn check_import(&self, id: ast::NodeId, span: Span) {
-        let def_id = self.tcx.hir().local_def_id(id);
+    fn check_import(&self, id: hir::HirId, span: Span) {
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
         if !self.tcx.maybe_unused_trait_import(def_id) {
             return;
         }
 
-        let import_def_id = self.tcx.hir().local_def_id(id);
+        let import_def_id = self.tcx.hir().local_def_id_from_hir_id(id);
         if self.used_trait_imports.contains(&import_def_id) {
             return;
         }
@@ -121,8 +121,8 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
     });
 
     for extern_crate in &crates_to_lint {
-        let id = tcx.hir().as_local_node_id(extern_crate.def_id).unwrap();
-        let item = tcx.hir().expect_item(id);
+        let id = tcx.hir().as_local_hir_id(extern_crate.def_id).unwrap();
+        let item = tcx.hir().expect_item_by_hir_id(id);
 
         // If the crate is fully unused, we suggest removing it altogether.
         // We do this in any edition.
@@ -213,7 +213,7 @@ struct ExternCrateToLint {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.node {
-            let extern_crate_def_id = self.tcx.hir().local_def_id(item.id);
+            let extern_crate_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             self.crates_to_lint.push(
                 ExternCrateToLint {
                     def_id: extern_crate_def_id,

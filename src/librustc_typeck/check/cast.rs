@@ -401,7 +401,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         };
         let mut err = fcx.tcx.struct_span_lint_node(
             lint,
-            self.expr.id,
+            self.expr.hir_id,
             self.span,
             &format!("trivial {}cast: `{}` as `{}`",
                      adjective,
@@ -416,8 +416,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 
-        debug!("check_cast({}, {:?} as {:?})",
-               self.expr.id,
+        debug!("check_cast({:?}, {:?} as {:?})",
+               self.expr.hir_id,
                self.expr_ty,
                self.cast_ty);
 

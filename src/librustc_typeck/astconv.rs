@@ -110,10 +110,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir().name(tcx.hir().as_local_node_id(def_id).unwrap()).as_interned_str()
+            tcx.hir().name(tcx.hir().as_local_hir_id(def_id).unwrap()).as_interned_str()
         };
 
-        let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
+        let hir_id = lifetime.hir_id;
         let r = match tcx.named_region(hir_id) {
             Some(rl::Region::Static) => {
                 tcx.types.re_static
@@ -305,7 +305,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
                     tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                  args.args[0].id(), multispan, msg);
+                                  args.args[0].hir_id(), multispan, msg);
                     return (false, None);
                 }
             }
@@ -736,7 +736,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
-                    trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
+                    trait_ref.hir_ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
             // okay to ignore Err because of ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
@@ -820,7 +820,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
-        ref_id: ast::NodeId,
+        ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
         speculative: bool,
@@ -1158,7 +1158,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
+                let hir_id = lifetime.hir_id;
                 if tcx.named_region(hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
@@ -1213,8 +1213,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let suitable_bounds = traits::transitive_bounds(tcx, bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
-        let param_node_id = tcx.hir().as_local_node_id(ty_param_def_id).unwrap();
-        let param_name = tcx.hir().ty_param_name(param_node_id);
+        let param_hir_id = tcx.hir().as_local_hir_id(ty_param_def_id).unwrap();
+        let param_name = tcx.hir().ty_param_name(param_hir_id);
         self.one_bound_for_assoc_type(suitable_bounds,
                                       &param_name.as_str(),
                                       assoc_name,
@@ -1284,7 +1284,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     // Will fail except for `T::A` and `Self::A`; i.e., if `ty`/`ty_path_def` are not a type
     // parameter or `Self`.
     pub fn associated_path_def_to_ty(&self,
-                                     ref_id: ast::NodeId,
+                                     ref_id: hir::HirId,
                                      span: Span,
                                      ty: Ty<'tcx>,
                                      ty_path_def: Def,
@@ -1668,12 +1668,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let node_id = tcx.hir().as_local_node_id(did).unwrap();
-                let item_id = tcx.hir().get_parent_node(node_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
+                let hir_id = tcx.hir().as_local_hir_id(did).unwrap();
+                let item_id = tcx.hir().get_parent_node(hir_id);
+                let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
-                tcx.mk_ty_param(index, tcx.hir().name(node_id).as_interned_str())
+                let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+                let index = generics.param_def_id_to_index[&def_id];
+                tcx.mk_ty_param(index, tcx.hir().name(hir_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // `Self` in impl (we know the concrete type).
@@ -1720,7 +1721,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
-               ast_ty.id, ast_ty, ast_ty.node);
+               ast_ty.hir_id, ast_ty, ast_ty.node);
 
         let tcx = self.tcx();
 
@@ -1773,10 +1774,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     Def::Err
                 };
-                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
+                self.associated_path_def_to_ty(ast_ty.hir_id, ast_ty.span, ty, def, segment).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length_def_id = tcx.hir().local_def_id(length.id);
+                let length_def_id = tcx.hir().local_def_id_from_hir_id(length.hir_id);
                 let substs = Substs::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
                 let length = tcx.intern_lazy_const(length);

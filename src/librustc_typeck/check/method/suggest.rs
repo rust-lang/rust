@@ -251,14 +251,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             ExprKind::Path(ref qpath) => {
                                 // local binding
                                 if let &QPath::Resolved(_, ref path) = &qpath {
-                                    if let hir::def::Def::Local(node_id) = path.def {
-                                        let span = tcx.hir().span(node_id);
+                                    if let hir::def::Def::Local(hir_id) = path.def {
+                                        let span = tcx.hir().span(hir_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span)
                                             .unwrap();
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
-                                        let parent_node = self.tcx.hir().get(
-                                            self.tcx.hir().get_parent_node(node_id),
+                                        let parent_node = self.tcx.hir().get_by_hir_id(
+                                            self.tcx.hir().get_parent_node(hir_id),
                                         );
                                         let msg = format!(
                                             "you must specify a type for this binding, like `{}`",
@@ -344,7 +344,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     };
 
                                     let field_ty = field.ty(tcx, substs);
-                                    let scope = self.tcx.hir().get_module_parent(self.body_id);
+                                    let scope = self.tcx.hir().get_module_parent(
+                                        self.body_id);
                                     if field.vis.is_accessible_from(scope, self.tcx) {
                                         if self.is_fn_ty(&field_ty, span) {
                                             err.help(&format!("use `({0}.{1})(...)` if you \
@@ -493,9 +494,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               mut msg: String,
                               candidates: Vec<DefId>) {
         let module_did = self.tcx.hir().get_module_parent(self.body_id);
-        let module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
+        let module_hid = self.tcx.hir().as_local_hir_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
-        let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
+        let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_hid);
         if let Some(span) = span {
             let path_strings = candidates.iter().map(|did| {
                 // Produce an additional newline to separate the new use statement
@@ -728,7 +729,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
             if let hir::ItemKind::Trait(..) = i.node {
-                let def_id = self.map.local_def_id(i.id);
+                let def_id = self.map.local_def_id_from_hir_id(i.hir_id);
                 self.traits.push(def_id);
             }
         }
@@ -785,7 +786,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
 }
 
 struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
-    target_module: ast::NodeId,
+    target_module: hir::HirId,
     span: Option<Span>,
     found_use: bool,
     tcx: TyCtxt<'a, 'gcx, 'tcx>
@@ -795,7 +796,7 @@ impl<'a, 'tcx, 'gcx> UsePlacementFinder<'a, 'tcx, 'gcx> {
     fn check(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         krate: &'tcx hir::Crate,
-        target_module: ast::NodeId,
+        target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder {
             target_module,
@@ -813,13 +814,13 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
         &mut self,
         module: &'tcx hir::Mod,
         _: Span,
-        node_id: ast::NodeId,
+        hir_id: hir::HirId,
     ) {
         if self.span.is_some() {
             return;
         }
-        if node_id != self.target_module {
-            hir::intravisit::walk_mod(self, module, node_id);
+        if hir_id != self.target_module {
+            hir::intravisit::walk_mod(self, module, hir_id);
             return;
         }
         // Find a `use` statement.

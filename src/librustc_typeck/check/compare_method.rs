@@ -83,11 +83,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // This node-id should be used for the `body_id` field on each
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
-    let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
+    let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
 
     let cause = ObligationCause {
         span: impl_m_span,
-        body_id: impl_m_node_id,
+        body_id: impl_m_hir_id,
         code: ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
@@ -205,7 +205,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
-    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
+    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_hir_id);
     let param_env = ty::ParamEnv::new(
         tcx.intern_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
@@ -262,7 +262,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         );
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+                                              impl_m_hir_id,
                                               param_env,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig));
@@ -275,7 +275,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+                                              impl_m_hir_id,
                                               param_env,
                                               &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
@@ -347,8 +347,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
-        fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
+        let fcx = FnCtxt::new(&inh, param_env, impl_m_hir_id);
+        fcx.regionck_item(impl_m_hir_id, impl_m_span, &[]);
 
         Ok(())
     })
@@ -415,8 +415,11 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                                                      trait_sig: ty::FnSig<'tcx>)
                                                      -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
-    let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
-    let (impl_m_output, impl_m_iter) = match tcx.hir().expect_impl_item(impl_m_node_id).node {
+    let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
+    let (impl_m_output, impl_m_iter) = match tcx.hir()
+                                                .expect_impl_item_by_hir_id(impl_m_hir_id)
+                                                .node
+    {
         ImplItemKind::Method(ref impl_m_sig, _) => {
             (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
         }
@@ -425,8 +428,9 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
 
     match *terr {
         TypeError::Mutability => {
-            if let Some(trait_m_node_id) = tcx.hir().as_local_node_id(trait_m.def_id) {
-                let trait_m_iter = match tcx.hir().expect_trait_item(trait_m_node_id).node {
+            if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
+                let trait_m_iter = match tcx.hir().expect_trait_item_by_hir_id(trait_m_hir_id).node
+                {
                     TraitItemKind::Method(ref trait_m_sig, _) => {
                         trait_m_sig.decl.inputs.iter()
                     }
@@ -450,9 +454,9 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
             }
         }
         TypeError::Sorts(ExpectedFound { .. }) => {
-            if let Some(trait_m_node_id) = tcx.hir().as_local_node_id(trait_m.def_id) {
+            if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
                 let (trait_m_output, trait_m_iter) =
-                    match tcx.hir().expect_trait_item(trait_m_node_id).node {
+                    match tcx.hir().expect_trait_item_by_hir_id(trait_m_hir_id).node {
                         TraitItemKind::Method(ref trait_m_sig, _) => {
                             (&trait_m_sig.decl.output, trait_m_sig.decl.inputs.iter())
                         }
@@ -587,8 +591,8 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let num_trait_m_type_params = trait_m_generics.own_counts().types;
 
     if num_impl_m_type_params != num_trait_m_type_params {
-        let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
-        let impl_m_item = tcx.hir().expect_impl_item(impl_m_node_id);
+        let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
+        let impl_m_item = tcx.hir().expect_impl_item_by_hir_id(impl_m_hir_id);
         let span = if impl_m_item.generics.params.is_empty()
             || impl_m_item.generics.span.is_dummy()  // impl Trait in argument position (#55374)
         {
@@ -637,9 +641,9 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let trait_number_args = trait_m_fty.inputs().skip_binder().len();
     let impl_number_args = impl_m_fty.inputs().skip_binder().len();
     if trait_number_args != impl_number_args {
-        let trait_m_node_id = tcx.hir().as_local_node_id(trait_m.def_id);
-        let trait_span = if let Some(trait_id) = trait_m_node_id {
-            match tcx.hir().expect_trait_item(trait_id).node {
+        let trait_m_hir_id = tcx.hir().as_local_hir_id(trait_m.def_id);
+        let trait_span = if let Some(trait_id) = trait_m_hir_id {
+            match tcx.hir().expect_trait_item_by_hir_id(trait_id).node {
                 TraitItemKind::Method(ref trait_m_sig, _) => {
                     let pos = if trait_number_args > 0 {
                         trait_number_args - 1
@@ -663,8 +667,8 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         } else {
             trait_item_span
         };
-        let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
-        let impl_span = match tcx.hir().expect_impl_item(impl_m_node_id).node {
+        let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
+        let impl_span = match tcx.hir().expect_impl_item_by_hir_id(impl_m_hir_id).node {
             ImplItemKind::Method(ref impl_m_sig, _) => {
                 let pos = if impl_number_args > 0 {
                     impl_number_args - 1
@@ -736,8 +740,8 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in impl_m_type_params.zip(trait_m_type_params)
     {
         if impl_synthetic != trait_synthetic {
-            let impl_node_id = tcx.hir().as_local_node_id(impl_def_id).unwrap();
-            let impl_span = tcx.hir().span(impl_node_id);
+            let impl_hir_id = tcx.hir().as_local_hir_id(impl_def_id).unwrap();
+            let impl_span = tcx.hir().span(impl_hir_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_span,
@@ -840,7 +844,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             match param.kind {
                                 GenericParamKind::Lifetime { .. } => None,
                                 GenericParamKind::Type { .. } => {
-                                    if param.id == impl_node_id {
+                                    if param.hir_id == impl_hir_id {
                                         Some(&param.bounds)
                                     } else {
                                         None
@@ -902,23 +906,23 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Create a parameter environment that represents the implementation's
         // method.
-        let impl_c_node_id = tcx.hir().as_local_node_id(impl_c.def_id).unwrap();
+        let impl_c_hir_id = tcx.hir().as_local_hir_id(impl_c.def_id).unwrap();
 
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
-        let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
+        let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                        impl_c_node_id,
+                                                        impl_c_hir_id,
                                                         param_env,
                                                         &impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
         let trait_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                         impl_c_node_id,
+                                                         impl_c_hir_id,
                                                          param_env,
                                                          &trait_ty);
 
@@ -934,7 +938,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    trait_ty);
 
             // Locate the Span containing just the type of the offending impl
-            match tcx.hir().expect_impl_item(impl_c_node_id).node {
+            match tcx.hir().expect_impl_item_by_hir_id(impl_c_hir_id).node {
                 ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
@@ -946,10 +950,10 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              trait",
                                             trait_c.ident);
 
-            let trait_c_node_id = tcx.hir().as_local_node_id(trait_c.def_id);
-            let trait_c_span = trait_c_node_id.map(|trait_c_node_id| {
+            let trait_c_hir_id = tcx.hir().as_local_hir_id(trait_c.def_id);
+            let trait_c_span = trait_c_hir_id.map(|trait_c_hir_id| {
                 // Add a label to the Span containing just the type of the const
-                match tcx.hir().expect_trait_item(trait_c_node_id).node {
+                match tcx.hir().expect_trait_item_by_hir_id(trait_c_hir_id).node {
                     TraitItemKind::Const(ref ty, _) => ty.span,
                     _ => bug!("{:?} is not a trait const", trait_c),
                 }
@@ -973,7 +977,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             return;
         }
 
-        let fcx = FnCtxt::new(&inh, param_env, impl_c_node_id);
-        fcx.regionck_item(impl_c_node_id, impl_c_span, &[]);
+        let fcx = FnCtxt::new(&inh, param_env, impl_c_hir_id);
+        fcx.regionck_item(impl_c_hir_id, impl_c_span, &[]);
     });
 }

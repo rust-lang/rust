@@ -15,7 +15,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
-use syntax::ast;
 use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -33,7 +32,7 @@ use syntax_pos::Span;
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) -> &'gcx ty::TypeckTables<'gcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
@@ -100,7 +99,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         body: &'gcx hir::Body,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'gcx, 'tcx> {
-        let owner = fcx.tcx.hir().definitions().node_to_hir_id(body.id().node_id);
+        let owner = body.id().hir_id;
 
         WritebackCx {
             fcx,
@@ -243,11 +242,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             }
             hir::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.id);
+                    self.visit_field_id(field.hir_id);
                 }
             }
             hir::ExprKind::Field(..) => {
-                self.visit_field_id(e.id);
+                self.visit_field_id(e.hir_id);
             }
             _ => {}
         }
@@ -273,7 +272,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             }
             hir::PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.node.id);
+                    self.visit_field_id(field.node.hir_id);
                 }
             }
             _ => {}
@@ -287,7 +286,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_local(&mut self, l: &'gcx hir::Local) {
         intravisit::walk_local(self, l);
-        let var_ty = self.fcx.local_ty(l.span, l.id).decl_ty;
+        let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
         let var_ty = self.resolve(&var_ty, &l.span);
         self.write_ty_to_tables(l.hir_id, var_ty);
     }
@@ -407,8 +406,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             if let ty::UserTypeAnnotation::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
                     // This is a unit-testing mechanism.
-                    let node_id = self.tcx().hir().hir_to_node_id(hir_id);
-                    let span = self.tcx().hir().span(node_id);
+                    let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err = self.tcx().sess.struct_span_err(
@@ -451,8 +449,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
-            let node_id = self.tcx().hir().as_local_node_id(def_id).unwrap();
-            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &node_id);
+            let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
+            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
 
             let generics = self.tcx().generics_of(def_id);
 
@@ -583,8 +581,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_field_id(&mut self, node_id: ast::NodeId) {
-        let hir_id = self.tcx().hir().node_to_hir_id(node_id);
+    fn visit_field_id(&mut self, hir_id: hir::HirId) {
         if let Some(index) = self.fcx
             .tables
             .borrow_mut()
@@ -731,7 +728,7 @@ impl Locatable for Span {
     }
 }
 
-impl Locatable for ast::NodeId {
+impl Locatable for hir::HirId {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
         tcx.hir().span(*self)
     }
@@ -739,15 +736,8 @@ impl Locatable for ast::NodeId {
 
 impl Locatable for DefIndex {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir().def_index_to_node_id(*self);
-        tcx.hir().span(node_id)
-    }
-}
-
-impl Locatable for hir::HirId {
-    fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir().hir_to_node_id(*self);
-        tcx.hir().span(node_id)
+        let hir_id = tcx.hir().def_index_to_hir_id(*self);
+        tcx.hir().span(hir_id)
     }
 }
 

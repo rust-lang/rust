@@ -22,7 +22,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
 ) {
-    let def_id = tcx.hir().local_def_id(it.id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
 
     match it.node {
         hir::ForeignItemKind::Fn(..) => {}
@@ -58,7 +58,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
         safety,
         abi
     )));
-    let cause = ObligationCause::new(it.span, it.id, ObligationCauseCode::IntrinsicType);
+    let cause = ObligationCause::new(it.span, it.hir_id, ObligationCauseCode::IntrinsicType);
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
 

@@ -53,16 +53,11 @@ pub struct InferVisitor<'cx, 'tcx: 'cx> {
 
 impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let item_did = self.tcx.hir().local_def_id(item.id);
+        let item_did = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-        let node_id = self
-            .tcx
-            .hir()
-            .as_local_node_id(item_did)
-            .expect("expected local def-id");
-        let item = match self.tcx.hir().get(node_id) {
+        let item = match self.tcx.hir().get_by_hir_id(item.hir_id) {
             Node::Item(item) => item,
             _ => bug!(),
         };

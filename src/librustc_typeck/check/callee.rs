@@ -250,7 +250,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
-                            unit_variant = Some(self.tcx.hir().node_to_pretty_string(expr.id))
+                            unit_variant = Some(
+                                self.tcx.hir().node_to_pretty_string_by_hir_id(expr.hir_id))
                         }
                     }
                 }
@@ -317,7 +318,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     let def_span = match def {
                         Def::Err => None,
-                        Def::Local(id) | Def::Upvar(id, ..) => Some(self.tcx.hir().span(id)),
+                        Def::Local(id)
+                        | Def::Upvar(id, ..) => Some(self.tcx.hir().span(id)),
                         _ => def
                             .opt_def_id()
                             .and_then(|did| self.tcx.hir().span_if_local(did)),

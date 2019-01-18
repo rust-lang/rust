@@ -21,7 +21,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity)
     {
-        if let Some(trait_ref) = self.tcx.impl_trait_ref(self.tcx.hir().local_def_id(item.id)) {
+        if let Some(trait_ref) = self.tcx.impl_trait_ref(self.tcx.hir().local_def_id_from_hir_id(item.hir_id)) {
             let trait_def = self.tcx.trait_def(trait_ref.def_id);
             let unsafe_attr = impl_generics.and_then(|generics| {
                 generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle")

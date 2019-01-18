@@ -105,7 +105,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn method_exists(&self,
                          method_name: ast::Ident,
                          self_ty: Ty<'tcx>,
-                         call_expr_id: ast::NodeId,
+                         call_expr_id: hir::HirId,
                          allow_private: bool)
                          -> bool {
         let mode = probe::Mode::MethodCall;
@@ -131,7 +131,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         msg: &str,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        call_expr_id: ast::NodeId,
+        call_expr_id: hir::HirId,
     ) {
         let has_params = self
             .probe_for_name(
@@ -202,7 +202,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .unwrap().insert(import_def_id);
         }
 
-        self.tcx.check_stability(pick.item.def_id, Some(call_expr.id), span);
+        self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
 
         let result = self.confirm_method(
             span,
@@ -255,7 +255,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_type_vars_if_possible(&self_ty);
         self.probe_for_name(span, mode, method_name, IsSuggestion(false),
-                            self_ty, call_expr.id, scope)
+                            self_ty, call_expr.hir_id, scope)
     }
 
     /// `lookup_method_in_trait` is used for overloaded operators.
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        expr_id: ast::NodeId
+        expr_id: hir::HirId
     ) -> Result<Def, MethodError<'tcx>> {
         debug!(
             "resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",
