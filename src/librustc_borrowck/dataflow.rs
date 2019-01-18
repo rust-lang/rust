@@ -15,7 +15,7 @@ use rustc_data_structures::graph::implementation::OUTGOING;
 
 use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
-use rustc::hir::intravisit::{self, IdRange};
+use rustc::hir::intravisit;
 use rustc::hir::print as pprust;
 
 
@@ -230,16 +230,15 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                body: Option<&hir::Body>,
                cfg: &cfg::CFG,
                oper: O,
-               id_range: IdRange,
                bits_per_id: usize) -> DataFlowContext<'a, 'tcx, O> {
         let usize_bits = mem::size_of::<usize>() * 8;
         let words_per_id = (bits_per_id + usize_bits - 1) / usize_bits;
         let num_nodes = cfg.graph.all_nodes().len();
 
-        debug!("DataFlowContext::new(analysis_name: {}, id_range={:?}, \
+        debug!("DataFlowContext::new(analysis_name: {}, \
                                      bits_per_id={}, words_per_id={}) \
                                      num_nodes: {}",
-               analysis_name, id_range, bits_per_id, words_per_id,
+               analysis_name, bits_per_id, words_per_id,
                num_nodes);
 
         let entry = if oper.initial_value() { usize::MAX } else {0};
