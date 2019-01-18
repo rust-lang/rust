@@ -24,7 +24,6 @@ use rustc::hir::{self, Pat, PatKind};
 use smallvec::smallvec;
 use std::slice;
 
-use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
@@ -51,7 +50,7 @@ pub(crate) fn check_match<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Result<(), ErrorReported> {
-    let body_id = if let Some(id) = tcx.hir().as_local_node_id(def_id) {
+    let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         tcx.hir().body_owned_by(id)
     } else {
         return Ok(());
@@ -183,7 +182,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir().get_module_parent(scrut.id);
+        let module = self.tcx.hir().get_module_parent(scrut.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -214,8 +213,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
-            let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent(scrut.id);
+            let pat_ty = self.tables.hir_id_to_type(scrut.hir_id);
+            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
@@ -247,13 +246,13 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| smallvec![pat.0])
                 .collect();
-            let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
+            let scrut_ty = self.tables.hir_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir().get_module_parent(pat.id);
+        let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
@@ -360,7 +359,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         hir::MatchSource::IfLetDesugar { .. } => {
                             cx.tcx.lint_node(
                                 lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                hir_pat.id,
+                                hir_pat.hir_id,
                                 pat.span,
                                 "irrefutable if-let pattern",
                             );
@@ -373,14 +372,14 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 0 => {
                                     cx.tcx.lint_node(
                                         lint::builtin::UNREACHABLE_PATTERNS,
-                                        hir_pat.id, pat.span,
+                                        hir_pat.hir_id, pat.span,
                                         "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
                                     cx.tcx.lint_node(
                                         lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                        hir_pat.id,
+                                        hir_pat.hir_id,
                                         pat.span,
                                         "irrefutable while-let pattern",
                                     );
@@ -393,7 +392,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         hir::MatchSource::Normal => {
                             let mut err = cx.tcx.struct_span_lint_node(
                                 lint::builtin::UNREACHABLE_PATTERNS,
-                                hir_pat.id,
+                                hir_pat.hir_id,
                                 pat.span,
                                 "unreachable pattern",
                             );
@@ -519,7 +518,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                 if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                     match bm {
                         ty::BindByValue(..) => {
-                            let pat_ty = cx.tables.node_id_to_type(p.hir_id);
+                            let pat_ty = cx.tables.hir_id_to_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
                                 check_move(p, sub.as_ref().map(|p| &**p), span_vec);
                             }
@@ -574,10 +573,10 @@ struct MutationChecker<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: &cmt_, _: euv::MatchMode) {}
-    fn consume(&mut self, _: ast::NodeId, _: Span, _: &cmt_, _: ConsumeMode) {}
+    fn consume(&mut self, _: hir::HirId, _: Span, _: &cmt_, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: &cmt_, _: ConsumeMode) {}
     fn borrow(&mut self,
-              _: ast::NodeId,
+              _: hir::HirId,
               span: Span,
               _: &cmt_,
               _: ty::Region<'tcx>,
@@ -599,8 +598,8 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
             ty::ImmBorrow | ty::UniqueImmBorrow => {}
         }
     }
-    fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
-    fn mutate(&mut self, _: ast::NodeId, span: Span, _: &cmt_, mode: MutateMode) {
+    fn decl_without_init(&mut self, _: hir::HirId, _: Span) {}
+    fn mutate(&mut self, _: hir::HirId, span: Span, _: &cmt_, mode: MutateMode) {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {
                 struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")

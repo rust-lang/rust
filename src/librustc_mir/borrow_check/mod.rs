@@ -128,7 +128,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let param_env = tcx.param_env(def_id);
     let id = tcx
         .hir()
-        .as_local_node_id(def_id)
+        .as_local_hir_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
     // Replace all regions with fresh inference variables. This
@@ -219,7 +219,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
-    let movable_generator = match tcx.hir().get(id) {
+    let movable_generator = match tcx.hir().get_by_hir_id(id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..

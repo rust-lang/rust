@@ -8,12 +8,13 @@ use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
+use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::{Name, NodeId};
+use syntax::ast::Name;
 use syntax_pos::Span;
 
 // helper functions, broken out by category:
@@ -462,7 +463,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn storage_live_binding(
         &mut self,
         block: BasicBlock,
-        var: NodeId,
+        var: hir::HirId,
         span: Span,
         for_guard: ForGuard,
     ) -> Place<'tcx> {
@@ -477,17 +478,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
         let place = Place::Local(local_id);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
-        let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
+        let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
         place
     }
 
-    pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span, for_guard: ForGuard) {
+    pub fn schedule_drop_for_binding(&mut self, var: hir::HirId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
-        let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
+        let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(
             span,
             region_scope,
@@ -508,7 +507,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Mutability,
             Name,
             BindingMode,
-            NodeId,
+            hir::HirId,
             Span,
             Ty<'tcx>,
             UserTypeProjections<'tcx>,
@@ -637,7 +636,7 @@ struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
     name: Name,
-    var_id: NodeId,
+    var_id: hir::HirId,
     var_ty: Ty<'tcx>,
     mutability: Mutability,
     binding_mode: BindingMode,
@@ -1493,7 +1492,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         name: Name,
         mode: BindingMode,
         num_patterns: usize,
-        var_id: NodeId,
+        var_id: hir::HirId,
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections<'tcx>,
         has_guard: ArmHasGuard,

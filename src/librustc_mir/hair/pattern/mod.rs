@@ -118,7 +118,7 @@ pub enum PatternKind<'tcx> {
         mutability: Mutability,
         name: ast::Name,
         mode: BindingMode,
-        var: ast::NodeId,
+        var: hir::HirId,
         ty: Ty<'tcx>,
         subpattern: Option<Pattern<'tcx>>,
     },
@@ -392,7 +392,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
-        let mut ty = self.tables.node_id_to_type(pat.hir_id);
+        let mut ty = self.tables.hir_id_to_type(pat.hir_id);
 
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
@@ -511,7 +511,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Binding(_, id, ident, ref sub) => {
-                let var_ty = self.tables.node_id_to_type(pat.hir_id);
+                let var_ty = self.tables.hir_id_to_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
                     // Avoid ICE
                     return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
@@ -582,7 +582,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     fields.iter()
                           .map(|field| {
                               FieldPattern {
-                                  field: Field::new(self.tcx.field_index(field.node.id,
+                                  field: Field::new(self.tcx.field_index(field.node.hir_id,
                                                                          self.tables)),
                                   pattern: self.lower_pattern(&field.node.pat),
                               }
@@ -745,7 +745,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                   id: hir::HirId,
                   span: Span)
                   -> Pattern<'tcx> {
-        let ty = self.tables.node_id_to_type(id);
+        let ty = self.tables.hir_id_to_type(id);
         let def = self.tables.qpath_def(qpath, id);
         let is_associated_const = match def {
             Def::AssociatedConst(_) => true,
@@ -902,7 +902,6 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
         let kind = match cv.ty.sty {
             ty::Float(_) => {
-                let id = self.tcx.hir().hir_to_node_id(id);
                 self.tcx.lint_node(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,
@@ -1038,7 +1037,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
+    Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>

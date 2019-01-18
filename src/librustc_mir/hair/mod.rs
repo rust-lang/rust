@@ -12,7 +12,6 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserTypeAnnotation};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir;
-use syntax::ast;
 use syntax_pos::Span;
 use self::cx::Cx;
 
@@ -28,7 +27,7 @@ mod util;
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
     Inherited,
-    Explicit(ast::NodeId)
+    Explicit(hir::HirId)
 }
 
 impl LintLevel {
@@ -54,7 +53,7 @@ pub struct Block<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum BlockSafety {
     Safe,
-    ExplicitUnsafe(ast::NodeId),
+    ExplicitUnsafe(hir::HirId),
     PushUnsafe,
     PopUnsafe
 }
@@ -227,7 +226,7 @@ pub enum ExprKind<'tcx> {
         index: ExprRef<'tcx>,
     },
     VarRef {
-        id: ast::NodeId,
+        id: hir::HirId,
     },
     /// first argument, used for self in a closure
     SelfRef,

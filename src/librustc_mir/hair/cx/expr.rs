@@ -24,7 +24,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             data: region::ScopeData::Node
         };
 
-        debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
+        debug!("Expr::make_mirror(): id={:?}, span={:?}", self.hir_id, self.span);
 
         let mut expr = make_mirror_unadjusted(cx, self);
 
@@ -44,7 +44,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: expr.to_ref(),
-                lint_level: cx.lint_level_of(self.id),
+                lint_level: cx.lint_level_of(self.hir_id),
             },
         };
 
@@ -304,7 +304,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                 } else {
                     ExprKind::Call {
-                        ty: cx.tables().node_id_to_type(fun.hir_id),
+                        ty: cx.tables().hir_id_to_type(fun.hir_id),
                         fun: fun.to_ref(),
                         args: args.to_ref(),
                         from_hir_call: true,
@@ -529,7 +529,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let upvars = cx.tcx.with_freevars(expr.id, |freevars| {
+            let upvars = cx.tcx.with_freevars(expr.hir_id, |freevars| {
                 freevars.iter()
                     .zip(substs.upvar_tys(def_id, cx.tcx))
                     .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
@@ -558,7 +558,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir().local_def_id(count.id);
+            let def_id = cx.tcx.hir().local_def_id_from_hir_id(count.hir_id);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
@@ -637,7 +637,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprKind::Field(ref source, ..) => {
             ExprKind::Field {
                 lhs: source.to_ref(),
-                name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
+                name: Field::new(cx.tcx.field_index(expr.hir_id, cx.tables)),
             }
         }
         hir::ExprKind::Cast(ref source, ref cast_ty) => {
@@ -677,7 +677,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let def = cx.tables().qpath_def(qpath, source.hir_id);
                     cx
                         .tables()
-                        .node_id_to_type(source.hir_id)
+                        .hir_id_to_type(source.hir_id)
                         .ty_adt_def()
                         .and_then(|adt_def| {
                         match def {
@@ -919,7 +919,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             debug!("convert_path_expr: user_ty={:?}", user_ty);
             ExprKind::Literal {
                 literal: cx.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::zero_sized(
-                    cx.tables().node_id_to_type(expr.hir_id),
+                    cx.tables().hir_id_to_type(expr.hir_id),
                 ))),
                 user_ty,
             }
@@ -940,7 +940,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_provided_types = cx.tables.user_provided_types();
             let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
-            match cx.tables().node_id_to_type(expr.hir_id).sty {
+            match cx.tables().hir_id_to_type(expr.hir_id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::Adt(adt_def, substs) => {
@@ -979,17 +979,15 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    var_id,
                    index,
                    closure_expr_id);
-            let var_hir_id = cx.tcx.hir().node_to_hir_id(var_id);
-            let var_ty = cx.tables().node_id_to_type(var_hir_id);
+            let var_ty = cx.tables().hir_id_to_type(var_id);
 
             // FIXME free regions in closures are not right
-            let closure_ty = cx.tables()
-                               .node_id_to_type(cx.tcx.hir().node_to_hir_id(closure_expr_id));
+            let closure_ty = cx.tables().hir_id_to_type(closure_expr_id);
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
-            let closure_def_id = cx.tcx.hir().local_def_id(closure_expr_id);
+            let closure_def_id = cx.tcx.hir().local_def_id_from_hir_id(closure_expr_id);
             let region = ty::ReFree(ty::FreeRegion {
                 scope: closure_def_id,
                 bound_region: ty::BoundRegion::BrAnon(0),
@@ -1066,7 +1064,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
-                var_path: ty::UpvarPath {hir_id: var_hir_id},
+                var_path: ty::UpvarPath {hir_id: var_id},
                 closure_expr_id: LocalDefId::from_def_id(closure_def_id),
             };
             match cx.tables().upvar_capture(upvar_id) {
@@ -1181,14 +1179,14 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = cx.tcx.hir().node_to_hir_id(freevar.var_id());
+    let var_hir_id = freevar.var_id();
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.tables().node_id_to_type(var_hir_id);
+    let var_ty = cx.tables().hir_id_to_type(var_hir_id);
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,
@@ -1223,7 +1221,7 @@ fn field_refs<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     fields.iter()
         .map(|field| {
             FieldExprRef {
-                name: Field::new(cx.tcx.field_index(field.id, cx.tables)),
+                name: Field::new(cx.tcx.field_index(field.hir_id, cx.tables)),
                 expr: field.expr.to_ref(),
             }
         })

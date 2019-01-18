@@ -607,10 +607,10 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         .unwrap()
                         .source_info
                         .span;
-                    let node_id = self
+                    let hir_id = self
                         .tcx
                         .hir()
-                        .as_local_node_id(self.source.def_id)
+                        .as_local_hir_id(self.source.def_id)
                         .expect("some part of a failing const eval must be local");
                     use rustc::mir::interpret::EvalErrorKind::*;
                     let msg = match msg {
@@ -649,7 +649,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     };
                     self.tcx.lint_node(
                         ::rustc::lint::builtin::CONST_ERR,
-                        node_id,
+                        hir_id,
                         span,
                         &msg,
                     );

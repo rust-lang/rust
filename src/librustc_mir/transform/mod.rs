@@ -78,10 +78,10 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                               v: &'tcx hir::VariantData,
                               _: ast::Name,
                               _: &'tcx hir::Generics,
-                              _: ast::NodeId,
+                              _: hir::HirId,
                               _: Span) {
-            if let hir::VariantData::Tuple(_, node_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id(node_id));
+            if let hir::VariantData::Tuple(_, hir_id) = *v {
+                self.set.insert(self.tcx.hir().local_def_id_from_hir_id(hir_id));
             }
             intravisit::walk_struct_def(self, v)
         }
@@ -209,8 +209,8 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
 }
 
 fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(node_id) {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(hir_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
         // this point, before we steal the mir-const result.
         let _ = tcx.mir_const_qualif(def_id);

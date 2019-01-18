@@ -814,13 +814,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            if let Some(fn_node_id) = self.infcx.tcx.hir().as_local_node_id(self.mir_def_id) {
+            if let Some(fn_hir_id) = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id) {
                 err.span_label(
                     drop_span,
                     format!(
                         "...but `{}` will be dropped here, when the function `{}` returns",
                         name,
-                        self.infcx.tcx.hir().name(fn_node_id),
+                        self.infcx.tcx.hir().name(fn_hir_id),
                     ),
                 );
 
@@ -1159,7 +1159,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let escapes_from = if tcx.is_closure(self.mir_def_id) {
             let tables = tcx.typeck_tables_of(self.mir_def_id);
             let mir_hir_id = tcx.hir().def_index_to_hir_id(self.mir_def_id.index);
-            match tables.node_id_to_type(mir_hir_id).sty {
+            match tables.hir_id_to_type(mir_hir_id).sty {
                 ty::Closure(..) => "closure",
                 ty::Generator(..) => "generator",
                 _ => bug!("Closure body doesn't have a closure or generator type"),
@@ -1755,12 +1755,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let node_id = self.infcx.tcx.hir().as_local_node_id(def_id).unwrap();
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id).unwrap();
                     let freevar = self.infcx
                         .tcx
-                        .with_freevars(node_id, |fv| fv[field.index()]);
+                        .with_freevars(hir_id, |fv| fv[field.index()]);
 
-                    self.infcx.tcx.hir().name(freevar.var_id()).to_string()
+                    let freevar_hir_id = freevar.var_id();
+                    self.infcx.tcx.hir().name(freevar_hir_id).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -2065,8 +2066,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did);
-        let fn_node_id = self.infcx.tcx.hir().as_local_node_id(did)?;
-        let fn_decl = self.infcx.tcx.hir().fn_decl(fn_node_id)?;
+        let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(did)?;
+        let fn_decl = self.infcx.tcx.hir().fn_decl(fn_hir_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking
         // at the return type, where there are three cases:
@@ -2512,14 +2513,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let node_id = self.infcx.tcx.hir().as_local_node_id(def_id)?;
-        let expr = &self.infcx.tcx.hir().expect_expr(node_id).node;
-        debug!("closure_span: node_id={:?} expr={:?}", node_id, expr);
+        let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id)?;
+        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).node;
+        debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(
             .., args_span, _
         ) = expr {
             let var_span = self.infcx.tcx.with_freevars(
-                node_id,
+                hir_id,
                 |freevars| {
                     for (v, place) in freevars.iter().zip(places) {
                         match place {

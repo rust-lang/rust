@@ -2,6 +2,7 @@ use rustc_target::spec::abi::{Abi};
 use syntax::ast;
 use syntax_pos::Span;
 
+use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
 use rustc_data_structures::bit_set::BitSet;
@@ -24,7 +25,7 @@ impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
-        let id = tcx.hir().as_local_node_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
             return;
@@ -83,7 +84,7 @@ impl MirPass for SanityCheck {
 /// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 mir: &Mir<'tcx>,
-                                                id: ast::NodeId,
+                                                id: hir::HirId,
                                                 _attributes: &[ast::Attribute],
                                                 results: &DataflowResults<'tcx, O>)
     where O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>

@@ -11,7 +11,6 @@ use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSA
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
-use syntax::ast;
 use syntax::symbol::Symbol;
 
 use std::ops::Bound;
@@ -27,8 +26,8 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     /// mark an `unsafe` block as used, so we don't lint it
-    used_unsafe: FxHashSet<ast::NodeId>,
-    inherited_blocks: Vec<(ast::NodeId, bool)>,
+    used_unsafe: FxHashSet<hir::HirId>,
+    inherited_blocks: Vec<(hir::HirId, bool)>,
 }
 
 impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
@@ -300,7 +299,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
 
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
-                           unsafe_blocks: &[(ast::NodeId, bool)]) {
+                           unsafe_blocks: &[(hir::HirId, bool)]) {
         let safety = self.source_scope_local_data[self.source_info.scope].safety;
         let within_unsafe = match safety {
             // `unsafe` blocks are required in safe code
@@ -326,10 +325,10 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             }
             // `unsafe` function bodies allow unsafe without additional unsafe blocks
             Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
-            Safety::ExplicitUnsafe(node_id) => {
+            Safety::ExplicitUnsafe(hir_id) => {
                 // mark unsafe block as used if there are any unsafe operations inside
                 if !violations.is_empty() {
-                    self.used_unsafe.insert(node_id);
+                    self.used_unsafe.insert(hir_id);
                 }
                 // only some unsafety is allowed in const fn
                 if self.min_const_fn {
@@ -356,8 +355,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 true
             }
         };
-        self.inherited_blocks.extend(unsafe_blocks.iter().map(|&(node_id, is_used)| {
-            (node_id, is_used && !within_unsafe)
+        self.inherited_blocks.extend(unsafe_blocks.iter().map(|&(hir_id, is_used)| {
+            (hir_id, is_used && !within_unsafe)
         }));
     }
     fn check_mut_borrowing_layout_constrained_field(
@@ -418,8 +417,8 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 struct UnusedUnsafeVisitor<'a> {
-    used_unsafe: &'a FxHashSet<ast::NodeId>,
-    unsafe_blocks: &'a mut Vec<(ast::NodeId, bool)>,
+    used_unsafe: &'a FxHashSet<hir::HirId>,
+    unsafe_blocks: &'a mut Vec<(hir::HirId, bool)>,
 }
 
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
@@ -433,19 +432,19 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
         hir::intravisit::walk_block(self, block);
 
         if let hir::UnsafeBlock(hir::UserProvided) = block.rules {
-            self.unsafe_blocks.push((block.id, self.used_unsafe.contains(&block.id)));
+            self.unsafe_blocks.push((block.hir_id, self.used_unsafe.contains(&block.hir_id)));
         }
     }
 }
 
 fn check_unused_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  def_id: DefId,
-                                 used_unsafe: &FxHashSet<ast::NodeId>,
-                                 unsafe_blocks: &'a mut Vec<(ast::NodeId, bool)>)
+                                 used_unsafe: &FxHashSet<hir::HirId>,
+                                 unsafe_blocks: &'a mut Vec<(hir::HirId, bool)>)
 {
     let body_id =
-        tcx.hir().as_local_node_id(def_id).and_then(|node_id| {
-            tcx.hir().maybe_body_owned_by(node_id)
+        tcx.hir().as_local_hir_id(def_id).and_then(|hir_id| {
+            tcx.hir().maybe_body_owned_by(hir_id)
         });
 
     let body_id = match body_id {
@@ -497,8 +496,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 }
 
 fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let lint_node_id = match tcx.hir().as_local_node_id(def_id) {
-        Some(node_id) => node_id,
+    let lint_hir_id = match tcx.hir().as_local_hir_id(def_id) {
+        Some(hir_id) => hir_id,
         None => bug!("checking unsafety for non-local def id {:?}", def_id)
     };
 
@@ -512,15 +511,15 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
          does not derive Copy (error E0133)".to_string()
     };
     tcx.lint_node(SAFE_PACKED_BORROWS,
-                  lint_node_id,
+                  lint_hir_id,
                   tcx.def_span(def_id),
                   &message);
 }
 
 /// Return the NodeId for an enclosing scope that is also `unsafe`
 fn is_enclosed(tcx: TyCtxt,
-               used_unsafe: &FxHashSet<ast::NodeId>,
-               id: ast::NodeId) -> Option<(String, ast::NodeId)> {
+               used_unsafe: &FxHashSet<hir::HirId>,
+               id: hir::HirId) -> Option<(String, hir::HirId)> {
     let parent_id = tcx.hir().get_parent_node(id);
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
@@ -528,7 +527,7 @@ fn is_enclosed(tcx: TyCtxt,
         } else if let Some(Node::Item(&hir::Item {
             node: hir::ItemKind::Fn(_, header, _, _),
             ..
-        })) = tcx.hir().find(parent_id) {
+        })) = tcx.hir().find_by_hir_id(parent_id) {
             match header.unsafety {
                 hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
                 hir::Unsafety::Normal => None,
@@ -541,7 +540,7 @@ fn is_enclosed(tcx: TyCtxt,
     }
 }
 
-fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: ast::NodeId) {
+fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
     let msg = "unnecessary `unsafe` block";
     let mut db = tcx.struct_span_lint_node(UNUSED_UNSAFE, id, span, msg);
@@ -596,20 +595,20 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                     .note(&details.as_str()[..])
                     .emit();
             }
-            UnsafetyViolationKind::ExternStatic(lint_node_id) => {
+            UnsafetyViolationKind::ExternStatic(lint_hir_id) => {
                 tcx.lint_node_note(SAFE_EXTERN_STATICS,
-                              lint_node_id,
+                              lint_hir_id,
                               source_info.span,
                               &format!("{} is unsafe and requires unsafe function or block \
                                         (error E0133)", &description.as_str()[..]),
                               &details.as_str()[..]);
             }
-            UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
+            UnsafetyViolationKind::BorrowPacked(lint_hir_id) => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
                     tcx.unsafe_derive_on_repr_packed(impl_def_id);
                 } else {
                     tcx.lint_node_note(SAFE_PACKED_BORROWS,
-                                  lint_node_id,
+                                  lint_hir_id,
                                   source_info.span,
                                   &format!("{} is unsafe and requires unsafe function or block \
                                             (error E0133)", &description.as_str()[..]),

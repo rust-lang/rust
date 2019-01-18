@@ -5,13 +5,13 @@ use dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
 use dataflow::MoveDataParamEnv;
 use dataflow::{self, do_dataflow, DebugFormatted};
+use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::bit_set::BitSet;
 use std::fmt;
-use syntax::ast;
 use syntax_pos::Span;
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
@@ -28,7 +28,7 @@ impl MirPass for ElaborateDrops {
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
-        let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(src.def_id).unwrap();
         let param_env = tcx.param_env(src.def_id).with_reveal_all();
         let move_data = match MoveData::gather_moves(mir, tcx) {
             Ok(move_data) => move_data,
@@ -80,7 +80,7 @@ impl MirPass for ElaborateDrops {
 fn find_dead_unwinds<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
-    id: ast::NodeId,
+    id: hir::HirId,
     env: &MoveDataParamEnv<'tcx, 'tcx>)
     -> BitSet<BasicBlock>
 {
