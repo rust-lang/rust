@@ -203,20 +203,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Some(ref name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
-                let mut note = true;
-                for decl in &self.mir.local_decls {
-                    if decl.ty == ty && decl.name.map(|x| x.to_string()) == opt_name {
-                        err.span_label(
-                            decl.source_info.span,
-                            format!(
-                                "move occurs because {} has type `{}`, \
-                                 which does not implement the `Copy` trait",
-                                note_msg, ty,
-                        ));
-                        note = false;
-                        break;
-                    }
-                }
                 if let ty::TyKind::Param(param_ty) = ty.sty {
                     let tcx = self.infcx.tcx;
                     let generics = tcx.generics_of(self.mir_def_id);
@@ -228,7 +214,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         );
                     }
                 }
-                if note {
+                if let Place::Local(local) = place {
+                    let decl = &self.mir.local_decls[*local];
+                    err.span_label(
+                        decl.source_info.span,
+                        format!(
+                            "move occurs because {} has type `{}`, \
+                                which does not implement the `Copy` trait",
+                            note_msg, ty,
+                    ));
+                } else {
                     err.note(&format!(
                         "move occurs because {} has type `{}`, \
                          which does not implement the `Copy` trait",
