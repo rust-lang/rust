@@ -898,7 +898,7 @@ where
     sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
         for pass in early_lint_passes {
-            ls.register_early_pass(Some(sess), true, pass);
+            ls.register_early_pass(Some(sess), true, false, pass);
         }
         for pass in late_lint_passes {
             ls.register_late_pass(Some(sess), true, pass);
@@ -919,7 +919,11 @@ where
     }
 
     time(sess, "pre ast expansion lint checks", || {
-        lint::check_ast_crate(sess, &krate, true)
+        lint::check_ast_crate(
+            sess,
+            &krate,
+            true,
+            rustc_lint::BuiltinCombinedPreExpansionLintPass::new());
     });
 
     let mut resolver = Resolver::new(
@@ -1131,7 +1135,7 @@ where
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate, false)
+        lint::check_ast_crate(sess, &krate, false, rustc_lint::BuiltinCombinedEarlyLintPass::new())
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.

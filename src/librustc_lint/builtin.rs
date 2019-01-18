@@ -60,6 +60,10 @@ declare_lint! {
 pub struct WhileTrue;
 
 impl LintPass for WhileTrue {
+    fn name(&self) -> &'static str {
+        "WhileTrue"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(WHILE_TRUE)
     }
@@ -109,6 +113,10 @@ impl BoxPointers {
 }
 
 impl LintPass for BoxPointers {
+    fn name(&self) -> &'static str {
+        "BoxPointers"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_POINTERS)
     }
@@ -158,6 +166,10 @@ declare_lint! {
 pub struct NonShorthandFieldPatterns;
 
 impl LintPass for NonShorthandFieldPatterns {
+    fn name(&self) -> &'static str {
+        "NonShorthandFieldPatterns"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_SHORTHAND_FIELD_PATTERNS)
     }
@@ -211,6 +223,10 @@ declare_lint! {
 pub struct UnsafeCode;
 
 impl LintPass for UnsafeCode {
+    fn name(&self) -> &'static str {
+        "UnsafeCode"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSAFE_CODE)
     }
@@ -373,6 +389,10 @@ impl MissingDoc {
 }
 
 impl LintPass for MissingDoc {
+    fn name(&self) -> &'static str {
+        "MissingDoc"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_DOCS)
     }
@@ -519,6 +539,10 @@ declare_lint! {
 pub struct MissingCopyImplementations;
 
 impl LintPass for MissingCopyImplementations {
+    fn name(&self) -> &'static str {
+        "MissingCopyImplementations"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_COPY_IMPLEMENTATIONS)
     }
@@ -586,6 +610,10 @@ impl MissingDebugImplementations {
 }
 
 impl LintPass for MissingDebugImplementations {
+    fn name(&self) -> &'static str {
+        "MissingDebugImplementations"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_DEBUG_IMPLEMENTATIONS)
     }
@@ -643,6 +671,10 @@ declare_lint! {
 pub struct AnonymousParameters;
 
 impl LintPass for AnonymousParameters {
+    fn name(&self) -> &'static str {
+        "AnonymousParameters"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(ANONYMOUS_PARAMETERS)
     }
@@ -707,6 +739,10 @@ impl DeprecatedAttr {
 }
 
 impl LintPass for DeprecatedAttr {
+    fn name(&self) -> &'static str {
+        "DeprecatedAttr"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!()
     }
@@ -747,6 +783,10 @@ declare_lint! {
 pub struct UnusedDocComment;
 
 impl LintPass for UnusedDocComment {
+    fn name(&self) -> &'static str {
+        "UnusedDocComment"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array![UNUSED_DOC_COMMENTS]
     }
@@ -787,6 +827,10 @@ declare_lint! {
 pub struct PluginAsLibrary;
 
 impl LintPass for PluginAsLibrary {
+    fn name(&self) -> &'static str {
+        "PluginAsLibrary"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array![PLUGIN_AS_LIBRARY]
     }
@@ -839,6 +883,10 @@ declare_lint! {
 pub struct InvalidNoMangleItems;
 
 impl LintPass for InvalidNoMangleItems {
+    fn name(&self) -> &'static str {
+        "InvalidNoMangleItems"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(NO_MANGLE_CONST_ITEMS,
                     NO_MANGLE_GENERIC_ITEMS)
@@ -910,6 +958,10 @@ declare_lint! {
 }
 
 impl LintPass for MutableTransmutes {
+    fn name(&self) -> &'static str {
+        "MutableTransmutes"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(MUTABLE_TRANSMUTES)
     }
@@ -970,6 +1022,10 @@ declare_lint! {
 }
 
 impl LintPass for UnstableFeatures {
+    fn name(&self) -> &'static str {
+        "UnstableFeatures"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSTABLE_FEATURES)
     }
@@ -997,6 +1053,10 @@ declare_lint! {
 }
 
 impl LintPass for UnionsWithDropFields {
+    fn name(&self) -> &'static str {
+        "UnionsWithDropFields"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNIONS_WITH_DROP_FIELDS)
     }
@@ -1029,6 +1089,10 @@ declare_lint! {
 }
 
 impl LintPass for UnreachablePub {
+    fn name(&self) -> &'static str {
+        "UnreachablePub"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNREACHABLE_PUB)
     }
@@ -1099,6 +1163,10 @@ declare_lint! {
 }
 
 impl LintPass for TypeAliasBounds {
+    fn name(&self) -> &'static str {
+        "TypeAliasBounds"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(TYPE_ALIAS_BOUNDS)
     }
@@ -1203,6 +1271,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
 pub struct UnusedBrokenConst;
 
 impl LintPass for UnusedBrokenConst {
+    fn name(&self) -> &'static str {
+        "UnusedBrokenConst"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!()
     }
@@ -1249,6 +1321,10 @@ declare_lint! {
 }
 
 impl LintPass for TrivialConstraints {
+    fn name(&self) -> &'static str {
+        "TrivialConstraints"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(TRIVIAL_BOUNDS)
     }
@@ -1303,6 +1379,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
 pub struct SoftLints;
 
 impl LintPass for SoftLints {
+    fn name(&self) -> &'static str {
+        "SoftLints"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(
             WHILE_TRUE,
@@ -1337,6 +1417,10 @@ declare_lint! {
 pub struct EllipsisInclusiveRangePatterns;
 
 impl LintPass for EllipsisInclusiveRangePatterns {
+    fn name(&self) -> &'static str {
+        "EllipsisInclusiveRangePatterns"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS)
     }
@@ -1411,6 +1495,10 @@ impl UnnameableTestItems {
 }
 
 impl LintPass for UnnameableTestItems {
+    fn name(&self) -> &'static str {
+        "UnnameableTestItems"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNNAMEABLE_TEST_ITEMS)
     }
@@ -1454,6 +1542,10 @@ declare_lint! {
 pub struct KeywordIdents;
 
 impl LintPass for KeywordIdents {
+    fn name(&self) -> &'static str {
+        "KeywordIdents"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(KEYWORD_IDENTS)
     }
@@ -1559,6 +1651,10 @@ impl EarlyLintPass for KeywordIdents {
 pub struct ExplicitOutlivesRequirements;
 
 impl LintPass for ExplicitOutlivesRequirements {
+    fn name(&self) -> &'static str {
+        "ExplicitOutlivesRequirements"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array![EXPLICIT_OUTLIVES_REQUIREMENTS]
     }

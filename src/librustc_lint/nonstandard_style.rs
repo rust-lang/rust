@@ -105,6 +105,10 @@ impl NonCamelCaseTypes {
 }
 
 impl LintPass for NonCamelCaseTypes {
+    fn name(&self) -> &'static str {
+        "NonCamelCaseTypes"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_CAMEL_CASE_TYPES)
     }
@@ -235,6 +239,10 @@ impl NonSnakeCase {
 }
 
 impl LintPass for NonSnakeCase {
+    fn name(&self) -> &'static str {
+        "NonSnakeCase"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_SNAKE_CASE)
     }
@@ -381,6 +389,10 @@ impl NonUpperCaseGlobals {
 }
 
 impl LintPass for NonUpperCaseGlobals {
+    fn name(&self) -> &'static str {
+        "NonUpperCaseGlobals"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_UPPER_CASE_GLOBALS)
     }

@@ -53,6 +53,10 @@ impl TypeLimits {
 }
 
 impl LintPass for TypeLimits {
+    fn name(&self) -> &'static str {
+        "TypeLimits"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_COMPARISONS,
                     OVERFLOWING_LITERALS)
@@ -783,6 +787,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 pub struct ImproperCTypes;
 
 impl LintPass for ImproperCTypes {
+    fn name(&self) -> &'static str {
+        "ImproperCTypes"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(IMPROPER_CTYPES)
     }
@@ -809,6 +817,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
 pub struct VariantSizeDifferences;
 
 impl LintPass for VariantSizeDifferences {
+    fn name(&self) -> &'static str {
+        "VariantSizeDifferences"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(VARIANT_SIZE_DIFFERENCES)
     }
