@@ -68,6 +68,9 @@ pub struct Options {
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
+    /// Optional path to persist the doctest executables to, defaults to a
+    /// temporary directory if not set.
+    pub persist_doctests: Option<PathBuf>,
 
     // Options that affect the documentation process
 
@@ -121,6 +124,7 @@ impl fmt::Debug for Options {
             .field("lint_cap", &self.lint_cap)
             .field("should_test", &self.should_test)
             .field("test_args", &self.test_args)
+            .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
@@ -431,6 +435,7 @@ impl Options {
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
+        let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -456,6 +461,7 @@ impl Options {
             manual_passes,
             display_warnings,
             crate_version,
+            persist_doctests,
             render_options: RenderOptions {
                 output,
                 external_html,

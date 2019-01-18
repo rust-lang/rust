@@ -341,6 +341,12 @@ fn opts() -> Vec<RustcOptGroup> {
                       "disable-per-crate-search",
                       "disables generating the crate selector on the search box")
         }),
+        unstable("persist-doctests", |o| {
+             o.optopt("",
+                       "persist-doctests",
+                       "Directory to persist doctest executables into",
+                       "PATH")
+        }),
     ]
 }
 

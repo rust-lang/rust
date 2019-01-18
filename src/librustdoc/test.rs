@@ -120,7 +120,8 @@ pub fn run(mut options: Options) -> isize {
             Some(source_map),
             None,
             options.linker,
-            options.edition
+            options.edition,
+            options.persist_doctests,
         );
 
         {
@@ -184,7 +185,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             cg: CodegenOptions, externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-            maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) {
+            maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
+            persist_doctests: Option<PathBuf>) {
     // The test harness wants its own `main` and top-level functions, so
     // never wrap the test in `fn main() { ... }`.
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
@@ -249,6 +251,20 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
+    enum DirState {
+        Temp(tempfile::TempDir),
+        Perm(PathBuf),
+    }
+
+    impl DirState {
+        fn path(&self) -> &std::path::Path {
+            match self {
+                DirState::Temp(t) => t.path(),
+                DirState::Perm(p) => p.as_path(),
+            }
+        }
+    }
+
     let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
         let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
@@ -267,7 +283,26 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let outdir = Mutex::new(
-            TempFileBuilder::new().prefix("rustdoctest").tempdir().expect("rustdoc needs a tempdir")
+            if let Some(mut path) = persist_doctests {
+                path.push(format!("{}_{}",
+                    filename
+                        .to_string()
+                        .rsplit('/')
+                        .next()
+                        .unwrap()
+                        .replace(".", "_"),
+                        line)
+                );
+                std::fs::create_dir_all(&path)
+                    .expect("Couldn't create directory for doctest executables");
+
+                DirState::Perm(path)
+            } else {
+                DirState::Temp(TempFileBuilder::new()
+                                .prefix("rustdoctest")
+                                .tempdir()
+                                .expect("rustdoc needs a tempdir"))
+            }
         );
         let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
         let mut control = driver::CompileController::basic();
@@ -629,13 +664,15 @@ pub struct Collector {
     filename: Option<PathBuf>,
     linker: Option<PathBuf>,
     edition: Edition,
+    persist_doctests: Option<PathBuf>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: Vec<SearchPath>, cg: CodegenOptions,
                externs: Externs, use_headers: bool, opts: TestOptions,
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
-               filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) -> Collector {
+               filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
+               persist_doctests: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -652,6 +689,7 @@ impl Collector {
             filename,
             linker,
             edition,
+            persist_doctests,
         }
     }
 
@@ -695,6 +733,8 @@ impl Tester for Collector {
         let maybe_sysroot = self.maybe_sysroot.clone();
         let linker = self.linker.clone();
         let edition = config.edition.unwrap_or(self.edition);
+        let persist_doctests = self.persist_doctests.clone();
+
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -727,7 +767,8 @@ impl Tester for Collector {
                                  &opts,
                                  maybe_sysroot,
                                  linker,
-                                 edition)
+                                 edition,
+                                 persist_doctests)
                     }))
                 } {
                     Ok(()) => (),

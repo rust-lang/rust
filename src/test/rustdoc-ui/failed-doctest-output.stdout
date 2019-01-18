@@ -12,7 +12,7 @@ error[E0425]: cannot find value `no` in this scope
 3 | no
   | ^^ not found in this scope
 
-thread '$DIR/failed-doctest-output.rs - OtherStruct (line 17)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:319:13
+thread '$DIR/failed-doctest-output.rs - OtherStruct (line 17)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:354:13
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 ---- $DIR/failed-doctest-output.rs - SomeStruct (line 11) stdout ----
@@ -21,7 +21,7 @@ thread '$DIR/failed-doctest-output.rs - SomeStruct (line 11)' panicked at 'test 
 thread 'main' panicked at 'oh no', $DIR/failed-doctest-output.rs:3:1
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
-', src/librustdoc/test.rs:354:17
+', src/librustdoc/test.rs:389:17
 
 
 failures:
