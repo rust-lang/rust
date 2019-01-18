@@ -40,7 +40,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::session::config::nightly_options;
 use rustc::ty;
-use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
+use rustc::util::nodemap::{HirIdMap, NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -804,17 +804,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 function_kind: FnKind<'tcx>,
                 declaration: &'tcx FnDecl,
                 _: Span,
-                node_id: NodeId)
+                node_id: ast::NodeId)
     {
         let (rib_kind, asyncness) = match function_kind {
             FnKind::ItemFn(_, ref header, ..) =>
                 (ItemRibKind, header.asyncness),
             FnKind::Method(_, ref sig, _, _) =>
                 (TraitOrImplItemRibKind, sig.header.asyncness),
-            FnKind::Closure(_) =>
+            FnKind::Closure(_) => {
                 // Async closures aren't resolved through `visit_fn`-- they're
                 // processed separately
-                (ClosureRibKind(node_id), IsAsync::NotAsync),
+                let hir_id = self.definitions.node_to_hir_id(node_id);
+                (ClosureRibKind(hir_id), IsAsync::NotAsync)
+            },
         };
 
         // Create a value rib for the function.
@@ -836,7 +838,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         // Resolve the function body, potentially inside the body of an async closure
         if let IsAsync::Async { closure_id, .. } = asyncness {
-            let rib_kind = ClosureRibKind(closure_id);
+            let closure_hir_id = self.definitions.node_to_hir_id(closure_id);
+            let rib_kind = ClosureRibKind(closure_hir_id);
             self.ribs[ValueNS].push(Rib::new(rib_kind));
             self.label_ribs.push(Rib::new(rib_kind));
         }
@@ -927,7 +930,7 @@ enum RibKind<'a> {
 
     /// We passed through a closure scope at the given node ID.
     /// Translate upvars as appropriate.
-    ClosureRibKind(NodeId /* func id */),
+    ClosureRibKind(hir::HirId /* func id */),
 
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
@@ -1523,7 +1526,7 @@ pub struct Resolver<'a> {
     def_map: DefMap,
     import_map: ImportMap,
     pub freevars: FreevarMap,
-    freevars_seen: NodeMap<NodeMap<usize>>,
+    freevars_seen: HirIdMap<HirIdMap<usize>>,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
 
@@ -2304,10 +2307,10 @@ impl<'a> Resolver<'a> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    pub fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
+    pub fn with_scope<F, T>(&mut self, id: hir::HirId, f: F) -> T
         where F: FnOnce(&mut Resolver) -> T
     {
-        let id = self.definitions.local_def_id(id);
+        let id = self.definitions.local_def_id_from_hir_id(id);
         let module = self.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
@@ -2488,7 +2491,8 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
-                self.with_scope(item.id, |this| {
+                let hir_id = self.definitions.node_to_hir_id(item.id);
+                self.with_scope(hir_id, |this| {
                     visit::walk_item(this, item);
                 });
             }
@@ -2959,7 +2963,8 @@ impl<'a> Resolver<'a> {
         // because that breaks the assumptions later
         // passes make about or-patterns.)
         let ident = ident.modern_and_legacy();
-        let mut def = Def::Local(pat_id);
+        let pat_hir_id = self.definitions.node_to_hir_id(pat_id);
+        let mut def = Def::Local(pat_hir_id);
         match bindings.get(&ident).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
@@ -4061,7 +4066,7 @@ impl<'a> Resolver<'a> {
             Def::Upvar(..) => {
                 span_bug!(span, "unexpected {:?} in bindings", def)
             }
-            Def::Local(node_id) => {
+            Def::Local(hir_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
@@ -4074,22 +4079,22 @@ impl<'a> Resolver<'a> {
                             let seen = self.freevars_seen
                                            .entry(function_id)
                                            .or_default();
-                            if let Some(&index) = seen.get(&node_id) {
-                                def = Def::Upvar(node_id, index, function_id);
+                            if let Some(&index) = seen.get(&hir_id) {
+                                def = Def::Upvar(hir_id, index, function_id);
                                 continue;
                             }
                             let vec = self.freevars
                                           .entry(function_id)
                                           .or_default();
                             let depth = vec.len();
-                            def = Def::Upvar(node_id, depth, function_id);
+                            def = Def::Upvar(hir_id, depth, function_id);
 
                             if record_used {
                                 vec.push(Freevar {
                                     def: prev_def,
                                     span,
                                 });
-                                seen.insert(node_id, depth);
+                                seen.insert(hir_id, depth);
                             }
                         }
                         ItemRibKind | TraitOrImplItemRibKind => {
@@ -4157,7 +4162,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Fields are generally expected in the same contexts as locals.
-        if filter_fn(Def::Local(ast::DUMMY_NODE_ID)) {
+        if filter_fn(Def::Local(hir::DUMMY_HIR_ID)) {
             if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.def_map.get(&node_id) {
@@ -4453,7 +4458,8 @@ impl<'a> Resolver<'a> {
             }
             // Resolve the body of async exprs inside the async closure to which they desugar
             ExprKind::Async(_, async_closure_id, ref block) => {
-                let rib_kind = ClosureRibKind(async_closure_id);
+                let ac_hir_id = self.definitions.node_to_hir_id(async_closure_id);
+                let rib_kind = ClosureRibKind(ac_hir_id);
                 self.ribs[ValueNS].push(Rib::new(rib_kind));
                 self.label_ribs.push(Rib::new(rib_kind));
                 self.visit_block(&block);
@@ -4467,7 +4473,8 @@ impl<'a> Resolver<'a> {
                 _, IsAsync::Async { closure_id: inner_closure_id, .. }, _,
                 ref fn_decl, ref body, _span,
             ) => {
-                let rib_kind = ClosureRibKind(expr.id);
+                let expr_hir_id = self.definitions.node_to_hir_id(expr.id);
+                let rib_kind = ClosureRibKind(expr_hir_id);
                 self.ribs[ValueNS].push(Rib::new(rib_kind));
                 self.label_ribs.push(Rib::new(rib_kind));
                 // Resolve arguments:
@@ -4481,7 +4488,8 @@ impl<'a> Resolver<'a> {
 
                 // Now resolve the inner closure
                 {
-                    let rib_kind = ClosureRibKind(inner_closure_id);
+                    let ic_hir_id = self.definitions.node_to_hir_id(inner_closure_id);
+                    let rib_kind = ClosureRibKind(ic_hir_id);
                     self.ribs[ValueNS].push(Rib::new(rib_kind));
                     self.label_ribs.push(Rib::new(rib_kind));
                     // No need to resolve arguments: the inner closure has none.
