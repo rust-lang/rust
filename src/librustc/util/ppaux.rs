@@ -166,7 +166,7 @@ define_print! {
 
                 // Special-case `Fn(...) -> ...` and resugar it.
                 let fn_trait_kind = cx.tcx.lang_items().fn_trait_kind(principal.def_id);
-                if !cx.config.is_verbose && fn_trait_kind.is_some() {
+                if !cx.tcx.sess.verbose() && fn_trait_kind.is_some() {
                     if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
                         let mut projections = self.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
@@ -463,7 +463,7 @@ impl fmt::Debug for ty::RegionVid {
 define_print! {
     () ty::InferTy, (self, cx) {
         display {
-            if cx.config.is_verbose {
+            if cx.tcx.sess.verbose() {
                 return self.print_debug(cx);
             }
             match *self {

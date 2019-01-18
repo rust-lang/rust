@@ -2369,20 +2369,20 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
 
                 // When printing regions, add trailing space if necessary.
-                let ns = Namespace::ValueNS;
-                ty::print::PrintCx::with_tls_tcx(ty::print::FmtPrinter::new(fmt, ns), |mut cx| {
-                    let region = if cx.config.is_verbose || cx.config.identify_regions {
-                        let mut region = region.to_string();
-                        if region.len() > 0 {
-                            region.push(' ');
-                        }
-                        region
-                    } else {
-                        // Do not even print 'static
-                        String::new()
-                    };
-                    write!(cx.printer, "&{}{}{:?}", region, kind_str, place)
-                })
+                let print_region = ty::tls::with(|tcx| {
+                    tcx.sess.verbose() || tcx.sess.opts.debugging_opts.identify_regions
+                });
+                let region = if print_region {
+                    let mut region = region.to_string();
+                    if region.len() > 0 {
+                        region.push(' ');
+                    }
+                    region
+                } else {
+                    // Do not even print 'static
+                    String::new()
+                };
+                write!(fmt, "&{}{}{:?}", region, kind_str, place)
             }
 
             Aggregate(ref kind, ref places) => {

@@ -515,7 +515,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         });
 
         // Don't print args that are the defaults of their respective parameters.
-        let num_supplied_defaults = if self.config.is_verbose {
+        let num_supplied_defaults = if self.tcx.sess.verbose() {
             0
         } else {
             params.iter().rev().take_while(|param| {
@@ -818,9 +818,11 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
             return true;
         }
 
-        if self.config.is_verbose {
+        if self.tcx.sess.verbose() {
             return true;
         }
+
+        let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
 
         match *region {
             ty::ReEarlyBound(ref data) => {
@@ -846,7 +848,7 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
             }
 
             ty::ReScope(_) |
-            ty::ReVar(_) if self.config.identify_regions => true,
+            ty::ReVar(_) if identify_regions => true,
 
             ty::ReVar(_) |
             ty::ReScope(_) |
@@ -874,9 +876,11 @@ impl<F: fmt::Write> FmtPrinter<F> {
             return Ok(self.printer);
         }
 
-        if self.config.is_verbose {
+        if self.tcx.sess.verbose() {
             return region.print_debug(self);
         }
+
+        let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
 
         // These printouts are concise.  They do not contain all the information
         // the user might want to diagnose an error, but there is basically no way
@@ -904,7 +908,7 @@ impl<F: fmt::Write> FmtPrinter<F> {
                     }
                 }
             }
-            ty::ReScope(scope) if self.config.identify_regions => {
+            ty::ReScope(scope) if identify_regions => {
                 match scope.data {
                     region::ScopeData::Node =>
                         p!(write("'{}s", scope.item_local_id().as_usize())),
@@ -921,7 +925,7 @@ impl<F: fmt::Write> FmtPrinter<F> {
                     )),
                 }
             }
-            ty::ReVar(region_vid) if self.config.identify_regions => {
+            ty::ReVar(region_vid) if identify_regions => {
                 p!(write("{:?}", region_vid));
             }
             ty::ReVar(_) => {}
@@ -1029,7 +1033,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 p!(write("Placeholder({:?})", placeholder))
             }
             ty::Opaque(def_id, substs) => {
-                if self.config.is_verbose {
+                if self.tcx.sess.verbose() {
                     p!(write("Opaque({:?}, {:?})", def_id, substs));
                     return Ok(self.printer);
                 }

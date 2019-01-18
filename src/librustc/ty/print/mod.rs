@@ -29,26 +29,12 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct PrintConfig {
     pub(crate) is_debug: bool,
-    pub(crate) is_verbose: bool,
-    pub(crate) identify_regions: bool,
     used_region_names: Option<FxHashSet<InternedString>>,
     region_index: usize,
     binder_depth: usize,
-}
-
-impl PrintConfig {
-    fn new(tcx: TyCtxt<'_, '_, '_>) -> Self {
-        PrintConfig {
-            is_debug: false,
-            is_verbose: tcx.sess.verbose(),
-            identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
-            used_region_names: None,
-            region_index: 0,
-            binder_depth: 0,
-        }
-    }
 }
 
 pub struct PrintCx<'a, 'gcx, 'tcx, P> {
@@ -75,7 +61,7 @@ impl<'a, 'gcx, 'tcx, P> PrintCx<'a, 'gcx, 'tcx, P> {
         f(PrintCx {
             tcx,
             printer,
-            config: &mut PrintConfig::new(tcx),
+            config: &mut PrintConfig::default(),
         })
     }
 
