@@ -44,8 +44,8 @@
 //! The current version of the prelude (version 1) lives in
 //! [`std::prelude::v1`], and re-exports the following.
 //!
-//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`]}. The marker
-//!   traits indicate fundamental properties of types.
+//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`], [`Unpin`]}. The
+//!   marker traits indicate fundamental properties of types.
 //! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}. Various
 //!   operations for both destructors and overloading `()`.
 //! * [`std::mem`]::[`drop`][`mem::drop`], a convenience function for explicitly
@@ -108,6 +108,7 @@
 //! [`Sync`]: ../marker/trait.Sync.html
 //! [`ToOwned`]: ../borrow/trait.ToOwned.html
 //! [`ToString`]: ../string/trait.ToString.html
+//! [`Unpin`]: ../marker/trait.Unpin.html
 //! [`Vec`]: ../vec/struct.Vec.html
 //! [`Clone::clone`]: ../clone/trait.Clone.html#tymethod.clone
 //! [`mem::drop`]: ../mem/fn.drop.html
