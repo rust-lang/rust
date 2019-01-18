@@ -1,18 +1,15 @@
+use crate::hir;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
-use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
-use crate::ty::{self, ParamConst, Ty, TypeFoldable};
+use crate::ty::subst::{Kind, SubstsRef, UnpackedKind};
+use crate::ty::{self, ParamConst, Ty};
 use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print, Printer};
 use crate::mir::interpret::ConstValue;
 
 use std::fmt::{self, Write as _};
 use std::iter;
-use std::usize;
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast::CRATE_NODE_ID;
-use syntax::symbol::{Symbol, InternedString};
-use crate::hir;
 
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
@@ -145,117 +142,6 @@ macro_rules! define_scoped_cx {
     };
 }
 
-impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
-    fn fn_sig(
-        mut self,
-        inputs: &[Ty<'tcx>],
-        c_variadic: bool,
-        output: Ty<'tcx>,
-    ) -> Result<P, fmt::Error> {
-        define_scoped_cx!(self);
-
-        p!(write("("));
-        let mut inputs = inputs.iter();
-        if let Some(&ty) = inputs.next() {
-            p!(print_display(ty));
-            for &ty in inputs {
-                p!(write(", "), print_display(ty));
-            }
-            if c_variadic {
-                p!(write(", ..."));
-            }
-        }
-        p!(write(")"));
-        if !output.is_unit() {
-            p!(write(" -> "), print_display(output));
-        }
-
-        Ok(self.printer)
-    }
-
-    fn in_binder<T>(mut self, value: &ty::Binder<T>) -> Result<P, fmt::Error>
-        where T: Print<'tcx, P, Output = P, Error = fmt::Error> + TypeFoldable<'tcx>
-    {
-        fn name_by_region_index(index: usize) -> InternedString {
-            match index {
-                0 => Symbol::intern("'r"),
-                1 => Symbol::intern("'s"),
-                i => Symbol::intern(&format!("'t{}", i-2)),
-            }.as_interned_str()
-        }
-
-        // Replace any anonymous late-bound regions with named
-        // variants, using gensym'd identifiers, so that we can
-        // clearly differentiate between named and unnamed regions in
-        // the output. We'll probably want to tweak this over time to
-        // decide just how much information to give.
-        if self.config.binder_depth == 0 {
-            self.prepare_late_bound_region_info(value);
-        }
-
-        let mut empty = true;
-        let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
-            write!(cx.printer, "{}", if empty {
-                empty = false;
-                start
-            } else {
-                cont
-            })
-        };
-
-        // NOTE(eddyb) this must be below `start_or_continue`'s definition
-        // as that also has a `define_scoped_cx` and that kind of shadowing
-        // is disallowed (name resolution thinks `scoped_cx!` is ambiguous).
-        define_scoped_cx!(self);
-
-        let old_region_index = self.config.region_index;
-        let mut region_index = old_region_index;
-        let new_value = self.tcx.replace_late_bound_regions(value, |br| {
-            let _ = start_or_continue(&mut self, "for<", ", ");
-            let br = match br {
-                ty::BrNamed(_, name) => {
-                    let _ = write!(self.printer, "{}", name);
-                    br
-                }
-                ty::BrAnon(_) |
-                ty::BrFresh(_) |
-                ty::BrEnv => {
-                    let name = loop {
-                        let name = name_by_region_index(region_index);
-                        region_index += 1;
-                        if !self.is_name_used(&name) {
-                            break name;
-                        }
-                    };
-                    let _ = write!(self.printer, "{}", name);
-                    ty::BrNamed(self.tcx.hir().local_def_id(CRATE_NODE_ID), name)
-                }
-            };
-            self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
-        }).0;
-        start_or_continue(&mut self, "", "> ")?;
-
-        // Push current state to gcx, and restore after writing new_value.
-        self.config.binder_depth += 1;
-        self.config.region_index = region_index;
-        let result = new_value.print_display(PrintCx {
-            tcx: self.tcx,
-            printer: self.printer,
-            config: self.config,
-        });
-        self.config.region_index = old_region_index;
-        self.config.binder_depth -= 1;
-        result
-    }
-
-    fn is_name_used(&self, name: &InternedString) -> bool {
-        match self.config.used_region_names {
-            Some(ref names) => names.contains(name),
-            None => false,
-        }
-    }
-}
-
 pub fn parameterized<F: fmt::Write>(
     f: &mut F,
     did: DefId,
@@ -285,7 +171,7 @@ define_print! {
                         let mut projections = self.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
                             nest!(|cx| cx.print_def_path(principal.def_id, None, iter::empty()));
-                            nest!(|cx| cx.fn_sig(args, false, proj.ty));
+                            nest!(|cx| cx.pretty_fn_sig(args, false, proj.ty));
                             resugared_principal = true;
                         }
                     }
@@ -535,7 +421,7 @@ define_print! {
             }
 
             p!(write("fn"));
-            nest!(|cx| cx.fn_sig(self.inputs(), self.c_variadic, self.output()));
+            nest!(|cx| cx.pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
         }
         debug {
             p!(write("({:?}; c_variadic: {})->{:?}",
@@ -624,7 +510,7 @@ impl fmt::Debug for ty::FloatVarValue {
           for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(|cx| cx.in_binder(cx.tcx.lift(self)
+        PrintCx::with_tls_tcx(|cx| cx.pretty_in_binder(cx.tcx.lift(self)
             .expect("could not lift for printing")))
     }
 }*/
@@ -642,7 +528,7 @@ define_print_multi! {
     ]
     (self, cx) {
         display {
-            nest!(|cx| cx.in_binder(self))
+            nest!(|cx| cx.pretty_in_binder(self))
         }
     }
 }
@@ -655,264 +541,6 @@ define_print! {
         debug {
             nest!(|cx| cx.path_qualified(self.self_ty(), Some(*self)));
         }
-    }
-}
-
-// FIXME(eddyb) move this to `ty::print`.
-impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
-    pub fn pretty_print_type(
-        mut self,
-        ty: Ty<'tcx>,
-    ) -> Result<P::Type, P::Error> {
-        define_scoped_cx!(self);
-
-        match ty.sty {
-            ty::Bool => p!(write("bool")),
-            ty::Char => p!(write("char")),
-            ty::Int(t) => p!(write("{}", t.ty_to_string())),
-            ty::Uint(t) => p!(write("{}", t.ty_to_string())),
-            ty::Float(t) => p!(write("{}", t.ty_to_string())),
-            ty::RawPtr(ref tm) => {
-                p!(write("*{} ", match tm.mutbl {
-                    hir::MutMutable => "mut",
-                    hir::MutImmutable => "const",
-                }));
-                p!(print(tm.ty))
-            }
-            ty::Ref(r, ty, mutbl) => {
-                p!(write("&"));
-                if self.print_region_outputs_anything(r) {
-                    p!(print_display(r), write(" "));
-                }
-                p!(print(ty::TypeAndMut { ty, mutbl }))
-            }
-            ty::Never => p!(write("!")),
-            ty::Tuple(ref tys) => {
-                p!(write("("));
-                let mut tys = tys.iter();
-                if let Some(&ty) = tys.next() {
-                    p!(print(ty), write(","));
-                    if let Some(&ty) = tys.next() {
-                        p!(write(" "), print(ty));
-                        for &ty in tys {
-                            p!(write(", "), print(ty));
-                        }
-                    }
-                }
-                p!(write(")"))
-            }
-            ty::FnDef(def_id, substs) => {
-                let sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
-                p!(print(sig), write(" {{"));
-                nest!(|cx| cx.print_value_path(def_id, Some(substs)));
-                p!(write("}}"))
-            }
-            ty::FnPtr(ref bare_fn) => {
-                p!(print(bare_fn))
-            }
-            ty::Infer(infer_ty) => p!(write("{}", infer_ty)),
-            ty::Error => p!(write("[type error]")),
-            ty::Param(ref param_ty) => p!(write("{}", param_ty)),
-            ty::Bound(debruijn, bound_ty) => {
-                match bound_ty.kind {
-                    ty::BoundTyKind::Anon => {
-                        if debruijn == ty::INNERMOST {
-                            p!(write("^{}", bound_ty.var.index()))
-                        } else {
-                            p!(write("^{}_{}", debruijn.index(), bound_ty.var.index()))
-                        }
-                    }
-
-                    ty::BoundTyKind::Param(p) => p!(write("{}", p)),
-                }
-            }
-            ty::Adt(def, substs) => {
-                nest!(|cx| cx.print_def_path(def.did, Some(substs), iter::empty()));
-            }
-            ty::Dynamic(data, r) => {
-                let print_r = self.print_region_outputs_anything(r);
-                if print_r {
-                    p!(write("("));
-                }
-                p!(write("dyn "), print(data));
-                if print_r {
-                    p!(write(" + "), print_display(r), write(")"));
-                }
-            }
-            ty::Foreign(def_id) => {
-                nest!(|cx| cx.print_def_path(def_id, None, iter::empty()));
-            }
-            ty::Projection(ref data) => p!(print(data)),
-            ty::UnnormalizedProjection(ref data) => {
-                p!(write("Unnormalized("), print(data), write(")"))
-            }
-            ty::Placeholder(placeholder) => {
-                p!(write("Placeholder({:?})", placeholder))
-            }
-            ty::Opaque(def_id, substs) => {
-                if self.config.is_verbose {
-                    p!(write("Opaque({:?}, {:?})", def_id, substs));
-                    return Ok(self.printer);
-                }
-
-                let def_key = self.tcx.def_key(def_id);
-                if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
-                    p!(write("{}", name));
-                    let mut substs = substs.iter();
-                    // FIXME(eddyb) print this with `print_def_path`.
-                    if let Some(first) = substs.next() {
-                        p!(write("::<"));
-                        p!(print_display(first));
-                        for subst in substs {
-                            p!(write(", "), print_display(subst));
-                        }
-                        p!(write(">"));
-                    }
-                    return Ok(self.printer);
-                }
-                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                // by looking up the projections associated with the def_id.
-                let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
-
-                let mut first = true;
-                let mut is_sized = false;
-                p!(write("impl"));
-                for predicate in bounds.predicates {
-                    if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                        // Don't print +Sized, but rather +?Sized if absent.
-                        if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
-                            is_sized = true;
-                            continue;
-                        }
-
-                        p!(
-                                write("{}", if first { " " } else { "+" }),
-                                print(trait_ref));
-                        first = false;
-                    }
-                }
-                if !is_sized {
-                    p!(write("{}?Sized", if first { " " } else { "+" }));
-                } else if first {
-                    p!(write(" Sized"));
-                }
-            }
-            ty::Str => p!(write("str")),
-            ty::Generator(did, substs, movability) => {
-                let upvar_tys = substs.upvar_tys(did, self.tcx);
-                let witness = substs.witness(did, self.tcx);
-                if movability == hir::GeneratorMovability::Movable {
-                    p!(write("[generator"));
-                } else {
-                    p!(write("[static generator"));
-                }
-
-                // FIXME(eddyb) should use `def_span`.
-                if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
-                    p!(write("@{:?}", self.tcx.hir().span_by_hir_id(hir_id)));
-                    let mut sep = " ";
-                    for (freevar, upvar_ty) in self.tcx.freevars(did)
-                        .as_ref()
-                        .map_or(&[][..], |fv| &fv[..])
-                        .iter()
-                        .zip(upvar_tys)
-                    {
-                        p!(
-                            write("{}{}:",
-                                    sep,
-                                    self.tcx.hir().name(freevar.var_id())),
-                            print(upvar_ty));
-                        sep = ", ";
-                    }
-                } else {
-                    // cross-crate closure types should only be
-                    // visible in codegen bug reports, I imagine.
-                    p!(write("@{:?}", did));
-                    let mut sep = " ";
-                    for (index, upvar_ty) in upvar_tys.enumerate() {
-                        p!(
-                                write("{}{}:", sep, index),
-                                print(upvar_ty));
-                        sep = ", ";
-                    }
-                }
-
-                p!(write(" "), print(witness), write("]"))
-            },
-            ty::GeneratorWitness(types) => {
-                nest!(|cx| cx.in_binder(&types))
-            }
-            ty::Closure(did, substs) => {
-                let upvar_tys = substs.upvar_tys(did, self.tcx);
-                p!(write("[closure"));
-
-                // FIXME(eddyb) should use `def_span`.
-                if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
-                    if self.tcx.sess.opts.debugging_opts.span_free_formats {
-                        p!(write("@{:?}", hir_id));
-                    } else {
-                        p!(write("@{:?}", self.tcx.hir().span_by_hir_id(hir_id)));
-                    }
-                    let mut sep = " ";
-                    for (freevar, upvar_ty) in self.tcx.freevars(did)
-                        .as_ref()
-                        .map_or(&[][..], |fv| &fv[..])
-                        .iter()
-                        .zip(upvar_tys)
-                    {
-                        p!(
-                            write("{}{}:",
-                                    sep,
-                                    self.tcx.hir().name(freevar.var_id())),
-                            print(upvar_ty));
-                        sep = ", ";
-                    }
-                } else {
-                    // cross-crate closure types should only be
-                    // visible in codegen bug reports, I imagine.
-                    p!(write("@{:?}", did));
-                    let mut sep = " ";
-                    for (index, upvar_ty) in upvar_tys.enumerate() {
-                        p!(
-                                write("{}{}:", sep, index),
-                                print(upvar_ty));
-                        sep = ", ";
-                    }
-                }
-
-                if self.config.is_verbose {
-                    p!(write(
-                        " closure_kind_ty={:?} closure_sig_ty={:?}",
-                        substs.closure_kind_ty(did, self.tcx),
-                        substs.closure_sig_ty(did, self.tcx)
-                    ));
-                }
-
-                p!(write("]"))
-            },
-            ty::Array(ty, sz) => {
-                p!(write("["), print(ty), write("; "));
-                match sz {
-                    ty::LazyConst::Unevaluated(_def_id, _substs) => {
-                        p!(write("_"));
-                    }
-                    ty::LazyConst::Evaluated(c) => {
-                        match c.val {
-                            ConstValue::Infer(..) => p!(write("_")),
-                            ConstValue::Param(ParamConst { name, .. }) =>
-                                p!(write("{}", name)),
-                            _ => p!(write("{}", c.unwrap_usize(self.tcx))),
-                        }
-                    }
-                }
-                p!(write("]"))
-            }
-            ty::Slice(ty) => {
-                p!(write("["), print(ty), write("]"))
-            }
-        }
-
-        Ok(self.printer)
     }
 }
 

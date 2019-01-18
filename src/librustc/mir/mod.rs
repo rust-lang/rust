@@ -2370,7 +2370,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                 // When printing regions, add trailing space if necessary.
                 let ns = Namespace::ValueNS;
-                ty::print::PrintCx::with_tls_tcx(ty::print::FmtPrinter::new(fmt, ns), |cx| {
+                ty::print::PrintCx::with_tls_tcx(ty::print::FmtPrinter::new(fmt, ns), |mut cx| {
                     let region = if cx.config.is_verbose || cx.config.identify_regions {
                         let mut region = region.to_string();
                         if region.len() > 0 {
@@ -2381,7 +2381,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         // Do not even print 'static
                         String::new()
                     };
-                    write!(cx.printer.fmt, "&{}{}{:?}", region, kind_str, place)
+                    write!(cx.printer, "&{}{}{:?}", region, kind_str, place)
                 })
             }
 
