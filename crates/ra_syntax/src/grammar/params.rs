@@ -61,8 +61,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     m.complete(p, PARAM_LIST);
 }
 
-const VALUE_PARAMETER_FIRST: TokenSet =
-    token_set_union![patterns::PATTERN_FIRST, types::TYPE_FIRST,];
+const VALUE_PARAMETER_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
 
 fn value_parameter(p: &mut Parser, flavor: Flavor) {
     let m = p.start();

@@ -1,10 +1,10 @@
 use super::*;
 
-pub(super) const PATTERN_FIRST: TokenSet = token_set_union![
-    token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE],
-    expressions::LITERAL_FIRST,
-    paths::PATH_FIRST,
-];
+pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
+    .union(paths::PATH_FIRST)
+    .union(token_set![
+        REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE
+    ]);
 
 pub(super) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET)

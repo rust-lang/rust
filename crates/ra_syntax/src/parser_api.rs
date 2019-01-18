@@ -112,7 +112,7 @@ impl<'t> Parser<'t> {
 
     /// Create an error node and consume the next token.
     pub(crate) fn err_and_bump(&mut self, message: &str) {
-        self.err_recover(message, TokenSet::EMPTY);
+        self.err_recover(message, TokenSet::empty());
     }
 
     /// Create an error node and consume the next token.

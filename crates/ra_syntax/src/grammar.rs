@@ -150,7 +150,7 @@ fn name_r(p: &mut Parser, recovery: TokenSet) {
 }
 
 fn name(p: &mut Parser) {
-    name_r(p, TokenSet::EMPTY)
+    name_r(p, TokenSet::empty())
 }
 
 fn name_ref(p: &mut Parser) {
