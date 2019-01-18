@@ -1,21 +1,28 @@
 # Summary
 
-- [About this guide](./about-this-guide.md)
+[About this guide](./about-this-guide.md)
+
+---
+
+- [Part 1 Intro](./part-1-intro.md)
 - [About the compiler team](./compiler-team.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
     - [Build and Install distribution artifacts](./build-install-distribution-artifacts.md)
     - [Documenting Compiler](./compiler-documenting.md)
-- [Coding conventions](./conventions.md)
-- [Stabilizing Features](./stabilization_guide.md)
-- [Walkthrough: a typical contribution](./walkthrough.md)
 - [The compiler testing framework](./tests/intro.md)
     - [Running tests](./tests/running.md)
     - [Adding new tests](./tests/adding.md)
-    - [Using `compiletest` + commands to control test
-      execution](./compiletest.md)
+    - [Using `compiletest` + commands to control test execution](./compiletest.md)
+- [Walkthrough: a typical contribution](./walkthrough.md)
+- [Stabilizing Features](./stabilization_guide.md)
 - [Debugging the Compiler](./compiler-debugging.md)
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
+- [Coding conventions](./conventions.md)
+
+---
+
+- [Part 2 Intro](./part-2-intro.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
 - [The Rustc Driver](./rustc-driver.md)
     - [Rustdoc](./rustdoc.md)
@@ -71,7 +78,7 @@
 
 ---
 
-- [Appendix A: Stupid Stats](./appendix/stupid-stats.md)
-- [Appendix B: Background material](./appendix/background.md)
-- [Appendix C: Glossary](./appendix/glossary.md)
-- [Appendix D: Code Index](./appendix/code-index.md)
+[Appendix A: Stupid Stats](./appendix/stupid-stats.md)
+[Appendix B: Background material](./appendix/background.md)
+[Appendix C: Glossary](./appendix/glossary.md)
+[Appendix D: Code Index](./appendix/code-index.md)
