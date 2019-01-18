@@ -137,5 +137,3 @@ function createSourceSidebar() {
 
     main.insertBefore(sidebar, main.firstChild);
 }
-
-createSourceSidebar();

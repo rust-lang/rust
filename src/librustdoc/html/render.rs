@@ -1076,7 +1076,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         all_sources.sort();
         let mut w = try_err!(File::create(&dst), &dst);
         try_err!(writeln!(&mut w,
-                          "var N = null;var sourcesIndex = {{}};\n{}",
+                          "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();",
                           all_sources.join("\n")),
                  &dst);
     }
