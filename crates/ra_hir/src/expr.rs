@@ -857,11 +857,19 @@ impl ExprCollector {
                 let fields = p
                     .field_pat_list()
                     .expect("every struct should have a field list")
-                    .field_pats()
-                    .into_iter()
+                    .pats()
                     .map(|f| {
-                        let name = Name::new(f.ident);
-                        let pat = self.collect_pat(&*f.pat);
+                        let ast_pat = f.pat().expect("field pat always contains a pattern");
+                        let pat = self.collect_pat(ast_pat);
+                        let name = f
+                            .name()
+                            .unwrap_or_else(|| {
+                                ast::BindPat::cast(ast_pat.syntax())
+                                    .expect("field pat without label is a bind pat")
+                                    .name()
+                                    .expect("bind pat has a name")
+                            })
+                            .as_name();
                         FieldPat { name, pat }
                     })
                     .collect();

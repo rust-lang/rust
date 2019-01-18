@@ -664,55 +664,6 @@ impl LiteralExpr {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct FieldPat {
-    pub ident: SmolStr,
-    // FIXME: could we use a regular reference?
-    pub pat: TreeArc<Pat>,
-}
-
-impl FieldPatList {
-    // TODO: try returning an iterator?
-    // FIXME: shouldnt the parser do this? :o
-    pub fn field_pats(&self) -> Vec<FieldPat> {
-        let mut child_iter = self.syntax().children();
-        let mut pats = Vec::new();
-
-        while let Some(node) = child_iter.next() {
-            let kind = node.kind();
-            if kind != IDENT && kind != BIND_PAT {
-                continue;
-            }
-
-            let ident = if let Some(text) = node.leaf_text() {
-                text.clone()
-            } else {
-                SmolStr::new(node.text().to_string())
-            };
-            let mut pat = Pat::cast(node).map(AstNode::to_owned);
-
-            // get pat
-            while let Some(node) = child_iter.next() {
-                if node.kind() == COMMA {
-                    break;
-                }
-
-                if let Some(p) = Pat::cast(node) {
-                    pat = Some(p.to_owned());
-                }
-            }
-
-            let field_pat = FieldPat {
-                ident: ident,
-                pat: pat.unwrap(),
-            };
-            pats.push(field_pat);
-        }
-
-        pats
-    }
-}
-
 impl BindPat {
     pub fn is_mutable(&self) -> bool {
         self.syntax().children().any(|n| n.kind() == MUT_KW)

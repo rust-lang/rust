@@ -154,6 +154,7 @@ Grammar(
         "PATH_PAT",
         "STRUCT_PAT",
         "FIELD_PAT_LIST",
+        "FIELD_PAT",
         "TUPLE_STRUCT_PAT",
         "TUPLE_PAT",
         "SLICE_PAT",
@@ -495,7 +496,11 @@ Grammar(
         "PlaceholderPat": (),
         "PathPat": ( options: [ "Path" ] ),
         "StructPat": ( options: ["FieldPatList", "Path"] ),
-        "FieldPatList": (),
+        "FieldPatList": ( collections: [["pats", "FieldPat"]] ),
+        "FieldPat": (
+            traits: ["NameOwner"],
+            options: ["Pat"]
+        ),
         "TupleStructPat": (
             options: ["Path"],
             collections: [["args", "Pat"]],

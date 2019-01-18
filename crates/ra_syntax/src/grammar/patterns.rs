@@ -128,15 +128,7 @@ fn field_pat_list(p: &mut Parser) {
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
             DOTDOT => p.bump(),
-            IDENT if p.nth(1) == COLON => {
-                p.bump();
-                p.bump();
-                pattern(p);
-            }
-            L_CURLY => error_block(p, "expected ident"),
-            _ => {
-                bind_pat(p, false);
-            }
+            _ => field_pat(p),
         }
         if !p.at(R_CURLY) {
             p.expect(COMMA);
@@ -144,6 +136,22 @@ fn field_pat_list(p: &mut Parser) {
     }
     p.expect(R_CURLY);
     m.complete(p, FIELD_PAT_LIST);
+}
+
+fn field_pat(p: &mut Parser) {
+    let m = p.start();
+    match p.current() {
+        IDENT if p.nth(1) == COLON => {
+            name(p);
+            p.bump();
+            pattern(p);
+        }
+        L_CURLY => error_block(p, "expected ident"),
+        _ => {
+            bind_pat(p, false);
+        }
+    }
+    m.complete(p, FIELD_PAT);
 }
 
 // test placeholder_pat

@@ -858,6 +858,35 @@ impl FieldExpr {
     }
 }
 
+// FieldPat
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct FieldPat {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for FieldPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for FieldPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            FIELD_PAT => Some(FieldPat::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+    fn to_owned(&self) -> TreeArc<FieldPat> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::NameOwner for FieldPat {}
+impl FieldPat {
+    pub fn pat(&self) -> Option<&Pat> {
+        super::child_opt(self)
+    }
+}
+
 // FieldPatList
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -880,7 +909,11 @@ impl AstNode for FieldPatList {
 }
 
 
-impl FieldPatList {}
+impl FieldPatList {
+    pub fn pats(&self) -> impl Iterator<Item = &FieldPat> {
+        super::children(self)
+    }
+}
 
 // FloatNumber
 #[derive(Debug, PartialEq, Eq, Hash)]
