@@ -1163,7 +1163,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                     }
                 }
 
-                if self.config.is_verbose {
+                if self.tcx.sess.verbose() {
                     p!(write(
                         " closure_kind_ty={:?} closure_sig_ty={:?}",
                         substs.closure_kind_ty(did, self.tcx),

@@ -165,7 +165,8 @@ impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use crate::traits::WhereClause::*;
 
-        // Bypass ppaux because it does not print out anonymous regions.
+        // Bypass `ty::print` because it does not print out anonymous regions.
+        // FIXME(eddyb) implement a custom `PrettyPrinter`, or move this to `ty::print`.
         fn write_region_name<'tcx>(
             r: ty::Region<'tcx>,
             fmt: &mut fmt::Formatter<'_>
@@ -256,7 +257,7 @@ impl fmt::Display for traits::QuantifierKind {
 }
 
 /// Collect names for regions / types bound by a quantified goal / clause.
-/// This collector does not try to do anything clever like in ppaux, it's just used
+/// This collector does not try to do anything clever like in `ty::print`, it's just used
 /// for debug output in tests anyway.
 struct BoundNamesCollector {
     // Just sort by name because `BoundRegion::BrNamed` does not have a `BoundVar` index anyway.

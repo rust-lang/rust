@@ -34,7 +34,7 @@ use crate::ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
     UserTypeAnnotationIndex,
 };
-use crate::util::ppaux;
+use crate::ty::print::{FmtPrinter, Printer, PrintCx};
 
 pub use crate::mir::interpret::AssertMessage;
 
@@ -2406,7 +2406,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        ppaux::parameterized(fmt, variant_def.did, substs, Namespace::ValueNS)?;
+                        let f = &mut *fmt;
+                        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::ValueNS), |cx| {
+                            let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
+                            cx.print_def_path(variant_def.did, Some(substs), iter::empty())?;
+                            Ok(())
+                        })?;
 
                         match variant_def.ctor_kind {
                             CtorKind::Const => Ok(()),

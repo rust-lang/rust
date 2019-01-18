@@ -1,7 +1,6 @@
 use crate::hir;
 use crate::hir::def::Namespace;
-use crate::hir::def_id::DefId;
-use crate::ty::subst::{Kind, SubstsRef, UnpackedKind};
+use crate::ty::subst::{Kind, UnpackedKind};
 use crate::ty::{self, ParamConst, Ty};
 use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print, Printer};
 use crate::mir::interpret::ConstValue;
@@ -140,19 +139,6 @@ macro_rules! define_scoped_cx {
             () => ($cx)
         }
     };
-}
-
-pub fn parameterized<F: fmt::Write>(
-    f: &mut F,
-    did: DefId,
-    substs: SubstsRef<'_>,
-    ns: Namespace,
-) -> fmt::Result {
-    PrintCx::with_tls_tcx(FmtPrinter::new(f, ns), |cx| {
-        let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
-        cx.print_def_path(did, Some(substs), iter::empty())?;
-        Ok(())
-    })
 }
 
 define_print! {
