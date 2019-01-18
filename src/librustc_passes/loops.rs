@@ -123,7 +123,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     let loop_kind = if loop_id == ast::DUMMY_NODE_ID {
                         None
                     } else {
-                        Some(match self.hir_map.expect_expr(loop_id).node {
+                        let hir_id = self.hir_map.node_to_hir_id(loop_id);
+                        Some(match self.hir_map.expect_expr(hir_id).node {
                             hir::ExprKind::While(..) => LoopKind::WhileLoop,
                             hir::ExprKind::Loop(_, _, source) => LoopKind::Loop(source),
                             ref r => span_bug!(e.span,

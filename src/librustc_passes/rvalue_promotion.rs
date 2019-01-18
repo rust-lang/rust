@@ -23,10 +23,9 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
-use rustc::util::nodemap::{ItemLocalSet, NodeSet};
+use rustc::util::nodemap::{ItemLocalSet, HirIdSet};
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use self::Promotability::*;
 use std::ops::{BitAnd, BitAndAssign, BitOr};
@@ -53,11 +52,11 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     assert!(def_id.is_local());
 
-    let node_id = tcx.hir().as_local_node_id(def_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir().body_owned_by(node_id);
-    let body_hir_id = tcx.hir().node_to_hir_id(body_id.node_id);
-    tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
+    let body_id = tcx.hir().body_owned_by(hir_id);
+
+    tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
 fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -81,9 +80,9 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     // `def_id` should be a `Body` owner
-    let node_id = tcx.hir().as_local_node_id(def_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir().body_owned_by(node_id);
+    let body_id = tcx.hir().body_owned_by(hir_id);
     let _ = visitor.check_nested_body(body_id);
 
     Lrc::new(visitor.result)
@@ -93,7 +92,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     in_fn: bool,
     in_static: bool,
-    mut_rvalue_borrows: NodeSet,
+    mut_rvalue_borrows: HirIdSet,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: &'tcx Substs<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -170,7 +169,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn remove_mut_rvalue_borrow(&mut self, pat: &hir::Pat) -> bool {
         let mut any_removed = false;
         pat.walk(|p| {
-            any_removed |= self.mut_rvalue_borrows.remove(&p.id);
+            any_removed |= self.mut_rvalue_borrows.remove(&p.hir_id);
             true
         });
         any_removed
@@ -180,7 +179,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
         let item_id = self.tcx.hir().body_owner(body_id);
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
 
         let outer_in_fn = self.in_fn;
         let outer_tables = self.tables;
@@ -220,12 +219,12 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
     fn check_stmt(&mut self, stmt: &'tcx hir::Stmt) -> Promotability {
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _node_id) => {
+            hir::StmtKind::Decl(ref decl, ..) => {
                 match &decl.node {
                     hir::DeclKind::Local(local) => {
                         if self.remove_mut_rvalue_borrow(&local.pat) {
                             if let Some(init) = &local.init {
-                                self.mut_rvalue_borrows.insert(init.id);
+                                self.mut_rvalue_borrows.insert(init.hir_id);
                             }
                         }
 
@@ -238,8 +237,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                     hir::DeclKind::Item(_) => Promotable
                 }
             }
-            hir::StmtKind::Expr(ref box_expr, _node_id) |
-            hir::StmtKind::Semi(ref box_expr, _node_id) => {
+            hir::StmtKind::Expr(ref box_expr, ..) |
+            hir::StmtKind::Semi(ref box_expr, ..) => {
                 let _ = self.check_expr(box_expr);
                 NotPromotable
             }
@@ -247,12 +246,12 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_expr(&mut self, ex: &'tcx hir::Expr) -> Promotability {
-        let node_ty = self.tables.node_id_to_type(ex.hir_id);
+        let node_ty = self.tables.hir_id_to_type(ex.hir_id);
         let mut outer = check_expr_kind(self, ex, node_ty);
         outer &= check_adjustments(self, ex);
 
         // Handle borrows on (or inside the autorefs of) this expression.
-        if self.mut_rvalue_borrows.remove(&ex.id) {
+        if self.mut_rvalue_borrows.remove(&ex.hir_id) {
             outer = NotPromotable
         }
 
@@ -309,7 +308,7 @@ fn check_expr_kind<'a, 'tcx>(
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
-            match v.tables.node_id_to_type(lhs.hir_id).sty {
+            match v.tables.hir_id_to_type(lhs.hir_id).sty {
                 ty::RawPtr(_) | ty::FnPtr(..) => {
                     assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
                             op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
@@ -322,7 +321,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
         hir::ExprKind::Cast(ref from, _) => {
             let expr_promotability = v.check_expr(from);
-            debug!("Checking const cast(id={})", from.id);
+            debug!("Checking const cast(id={:?})", from.hir_id);
             match v.tables.cast_kinds().get(from.hir_id) {
                 None => {
                     v.tcx.sess.delay_span_bug(e.span, "no kind for cast");
@@ -462,7 +461,7 @@ fn check_expr_kind<'a, 'tcx>(
             let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            if v.tcx.with_freevars(e.id, |fv| !fv.is_empty()) {
+            if v.tcx.with_freevars(e.hir_id, |fv| !fv.is_empty()) {
                 NotPromotable
             } else {
                 nested_body_promotable
@@ -522,7 +521,7 @@ fn check_expr_kind<'a, 'tcx>(
                 mut_borrow = v.remove_mut_rvalue_borrow(pat);
             }
             if mut_borrow {
-                v.mut_rvalue_borrows.insert(expr.id);
+                v.mut_rvalue_borrows.insert(expr.hir_id);
             }
 
             let _ = v.check_expr(expr);
@@ -623,13 +622,13 @@ fn check_adjustments<'a, 'tcx>(
 
 impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
     fn consume(&mut self,
-               _consume_id: ast::NodeId,
+               _consume_id: hir::HirId,
                _consume_span: Span,
                _cmt: &mc::cmt_,
                _mode: euv::ConsumeMode) {}
 
     fn borrow(&mut self,
-              borrow_id: ast::NodeId,
+              borrow_id: hir::HirId,
               _borrow_span: Span,
               cmt: &mc::cmt_<'tcx>,
               _loan_region: ty::Region<'tcx>,
@@ -680,9 +679,9 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
         }
     }
 
-    fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) {}
+    fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) {}
     fn mutate(&mut self,
-              _assignment_id: ast::NodeId,
+              _assignment_id: hir::HirId,
               _assignment_span: Span,
               _assignee_cmt: &mc::cmt_,
               _mode: euv::MutateMode) {
