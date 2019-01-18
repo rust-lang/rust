@@ -6,7 +6,7 @@ before_cache:
 
 build: &rust_build
     language: rust
-    rust: 1.31.1
+    rust: 1.32.0
     script:
         - rustup component add rustfmt
         - rustup component add rust-src

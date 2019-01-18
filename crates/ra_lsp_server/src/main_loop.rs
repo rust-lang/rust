@@ -12,7 +12,6 @@ use gen_lsp_server::{
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_vfs::VfsTask;
-use rayon;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
