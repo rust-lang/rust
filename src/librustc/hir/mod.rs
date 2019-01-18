@@ -19,7 +19,7 @@ use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
+use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
@@ -141,17 +141,6 @@ pub const DUMMY_HIR_ID: HirId = HirId {
 };
 
 pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
-pub struct Label {
-    pub ident: Ident,
-}
-
-impl fmt::Debug for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "label({:?})", self.ident)
-    }
-}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
@@ -1466,7 +1455,7 @@ pub enum ExprKind {
     /// A unary operation (For example: `!x`, `*x`)
     Unary(UnOp, P<Expr>),
     /// A literal (For example: `1`, `"foo"`)
-    Lit(P<Lit>),
+    Lit(Lit),
     /// A cast (`foo as f64`)
     Cast(P<Expr>, P<Ty>),
     Type(P<Expr>, P<Ty>),
