@@ -141,9 +141,7 @@ impl Vfs {
             };
             res.worker.inp.send(task).unwrap();
             if let Some(ref mut watcher) = res.watcher {
-                if let Err(e) = watcher.watch(path) {
-                    log::warn!("could not watch \"{}\": {}", path.display(), e);
-                }
+                watcher.watch(path);
             }
         }
         let roots = res.roots.iter().map(|(id, _)| id).collect();

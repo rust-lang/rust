@@ -1,17 +1,17 @@
+use crate::io;
+use crossbeam_channel::Sender;
+use drop_bomb::DropBomb;
+use ignore;
+use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
 use std::{
     path::{Path, PathBuf},
-    sync::mpsc,
+    sync::{mpsc, Arc, Mutex},
     thread,
     time::Duration,
 };
 
-use crate::io;
-use crossbeam_channel::Sender;
-use drop_bomb::DropBomb;
-use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
-
 pub struct Watcher {
-    watcher: RecommendedWatcher,
+    watcher: Arc<Mutex<RecommendedWatcher>>,
     thread: thread::JoinHandle<()>,
     bomb: DropBomb,
 }
@@ -24,9 +24,10 @@ pub enum WatcherChange {
     Rescan,
 }
 
-fn send_change_events(
+fn handle_change_event(
     ev: DebouncedEvent,
     sender: &Sender<io::Task>,
+    watcher: &Arc<Mutex<RecommendedWatcher>>,
 ) -> Result<(), Box<std::error::Error>> {
     match ev {
         DebouncedEvent::NoticeWrite(_)
@@ -38,6 +39,9 @@ fn send_change_events(
             sender.send(io::Task::HandleChange(WatcherChange::Rescan))?;
         }
         DebouncedEvent::Create(path) => {
+            if path.is_dir() {
+                watch_recursive(watcher, &path);
+            }
             sender.send(io::Task::HandleChange(WatcherChange::Create(path)))?;
         }
         DebouncedEvent::Write(path) => {
@@ -58,17 +62,45 @@ fn send_change_events(
     Ok(())
 }
 
+fn watch_one(watcher: &mut RecommendedWatcher, path: &Path) {
+    match watcher.watch(path, RecursiveMode::NonRecursive) {
+        Ok(()) => log::debug!("watching \"{}\"", path.display()),
+        Err(e) => log::warn!("could not watch \"{}\": {}", path.display(), e),
+    }
+}
+
+fn watch_recursive(watcher: &Arc<Mutex<RecommendedWatcher>>, path: &Path) {
+    log::debug!("watch_recursive \"{}\"", path.display());
+    let mut w = watcher.lock().unwrap();
+    // TODO it seems path itself isn't checked against ignores
+    // check if path should be ignored before walking it
+    for res in ignore::Walk::new(path) {
+        match res {
+            Ok(entry) => {
+                if entry.path().is_dir() {
+                    watch_one(&mut w, entry.path());
+                }
+            }
+            Err(e) => log::warn!("watcher error: {}", e),
+        }
+    }
+}
+
 impl Watcher {
     pub(crate) fn start(
         output_sender: Sender<io::Task>,
     ) -> Result<Watcher, Box<std::error::Error>> {
         let (input_sender, input_receiver) = mpsc::channel();
-        let watcher = notify::watcher(input_sender, Duration::from_millis(250))?;
+        let watcher = Arc::new(Mutex::new(notify::watcher(
+            input_sender,
+            Duration::from_millis(250),
+        )?));
+        let w = watcher.clone();
         let thread = thread::spawn(move || {
             input_receiver
                 .into_iter()
                 // forward relevant events only
-                .try_for_each(|change| send_change_events(change, &output_sender))
+                .try_for_each(|change| handle_change_event(change, &output_sender, &w))
                 .unwrap()
         });
         Ok(Watcher {
@@ -78,9 +110,8 @@ impl Watcher {
         })
     }
 
-    pub fn watch(&mut self, root: impl AsRef<Path>) -> Result<(), Box<std::error::Error>> {
-        self.watcher.watch(root, RecursiveMode::Recursive)?;
-        Ok(())
+    pub fn watch(&mut self, root: impl AsRef<Path>) {
+        watch_recursive(&self.watcher, root.as_ref());
     }
 
     pub fn shutdown(mut self) -> thread::Result<()> {
