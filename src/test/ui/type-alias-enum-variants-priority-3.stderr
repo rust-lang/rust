@@ -1,0 +1,8 @@
+error: expected type, found variant `V`
+  --> $DIR/type-alias-enum-variants-priority-3.rs:7:15
+   |
+LL | fn check() -> <E>::V {}
+   |               ^^^^^^
+
+error: aborting due to previous error
+
