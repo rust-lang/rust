@@ -1,4 +1,4 @@
-use ra_syntax::{ast, AstNode, TextRange};
+use ra_syntax::{ast, AstNode};
 
 use crate::{Name, AsName};
 
@@ -18,7 +18,10 @@ pub enum PathKind {
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
-    pub fn expand_use_item(item: &ast::UseItem, mut cb: impl FnMut(Path, Option<TextRange>)) {
+    pub fn expand_use_item<'a>(
+        item: &'a ast::UseItem,
+        mut cb: impl FnMut(Path, Option<&'a ast::PathSegment>),
+    ) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
         }
@@ -98,10 +101,10 @@ impl From<Name> for Path {
     }
 }
 
-fn expand_use_tree(
+fn expand_use_tree<'a>(
     prefix: Option<Path>,
-    tree: &ast::UseTree,
-    cb: &mut impl FnMut(Path, Option<TextRange>),
+    tree: &'a ast::UseTree,
+    cb: &mut impl FnMut(Path, Option<&'a ast::PathSegment>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -125,20 +128,18 @@ fn expand_use_tree(
                 if let Some(segment) = ast_path.segment() {
                     if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
                         if let Some(prefix) = prefix {
-                            cb(prefix, Some(segment.syntax().range()));
+                            cb(prefix, Some(segment));
                             return;
                         }
                     }
                 }
             }
             if let Some(path) = convert_path(prefix, ast_path) {
-                let range = if tree.has_star() {
-                    None
-                } else {
-                    let range = ast_path.segment().unwrap().syntax().range();
-                    Some(range)
+                if tree.has_star() {
+                    cb(path, None)
+                } else if let Some(segment) = ast_path.segment() {
+                    cb(path, Some(segment))
                 };
-                cb(path, range)
             }
             // TODO: report errors somewhere
             // We get here if we do

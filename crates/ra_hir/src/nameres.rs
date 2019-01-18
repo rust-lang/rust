@@ -60,7 +60,7 @@ pub struct Resolution {
     /// None for unresolved
     pub def_id: PerNs<DefId>,
     /// ident by whitch this is imported into local scope.
-    pub import: Option<NamedImport>,
+    pub import: Option<LoweredImport>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -151,10 +151,10 @@ impl<T> PerNs<T> {
 
 pub(crate) struct Resolver<'a, DB> {
     db: &'a DB,
-    input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+    input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
     source_root: SourceRootId,
     module_tree: Arc<ModuleTree>,
-    processed_imports: FxHashSet<(ModuleId, usize)>,
+    processed_imports: FxHashSet<(ModuleId, LoweredImport)>,
     result: ItemMap,
 }
 
@@ -164,7 +164,7 @@ where
 {
     pub(crate) fn new(
         db: &'a DB,
-        input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+        input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
         source_root: SourceRootId,
         module_tree: Arc<ModuleTree>,
     ) -> Resolver<'a, DB> {
@@ -197,7 +197,7 @@ where
         self.result
     }
 
-    fn populate_module(&mut self, module_id: ModuleId, input: Arc<InputModuleItems>) {
+    fn populate_module(&mut self, module_id: ModuleId, input: Arc<LoweredModule>) {
         let mut module_items = ModuleScope::default();
 
         // Populate extern crates prelude
@@ -220,14 +220,14 @@ where
                 }
             };
         }
-        for import in input.imports.iter() {
-            if let Some(name) = import.path.segments.iter().last() {
-                if let ImportKind::Named(import) = import.kind {
+        for (import_id, import_data) in input.imports.iter() {
+            if let Some(name) = import_data.path.segments.iter().last() {
+                if !import_data.is_glob {
                     module_items.items.insert(
                         name.clone(),
                         Resolution {
                             def_id: PerNs::none(),
-                            import: Some(import),
+                            import: Some(import_id),
                         },
                     );
                 }
@@ -281,23 +281,27 @@ where
     }
 
     fn resolve_imports(&mut self, module_id: ModuleId) {
-        for (i, import) in self.input[&module_id].imports.iter().enumerate() {
-            if self.processed_imports.contains(&(module_id, i)) {
+        for (import_id, import_data) in self.input[&module_id].imports.iter() {
+            if self.processed_imports.contains(&(module_id, import_id)) {
                 // already done
                 continue;
             }
-            if self.resolve_import(module_id, import) {
-                log::debug!("import {:?} resolved (or definite error)", import);
-                self.processed_imports.insert((module_id, i));
+            if self.resolve_import(module_id, import_id, import_data) {
+                log::debug!("import {:?} resolved (or definite error)", import_id);
+                self.processed_imports.insert((module_id, import_id));
             }
         }
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> bool {
+    fn resolve_import(
+        &mut self,
+        module_id: ModuleId,
+        import_id: LoweredImport,
+        import: &ImportData,
+    ) -> bool {
         log::debug!("resolving import: {:?}", import);
-        let ptr = match import.kind {
-            ImportKind::Glob => return false,
-            ImportKind::Named(ptr) => ptr,
+        if import.is_glob {
+            return false;
         };
 
         let mut curr: ModuleId = match import.path.kind {
@@ -358,7 +362,7 @@ where
                                 self.update(module_id, |items| {
                                     let res = Resolution {
                                         def_id,
-                                        import: Some(ptr),
+                                        import: Some(import_id),
                                     };
                                     items.items.insert(name.clone(), res);
                                 });
@@ -394,7 +398,7 @@ where
                 self.update(module_id, |items| {
                     let res = Resolution {
                         def_id,
-                        import: Some(ptr),
+                        import: Some(import_id),
                     };
                     items.items.insert(name.clone(), res);
                 })

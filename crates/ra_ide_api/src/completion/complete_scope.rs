@@ -1,5 +1,5 @@
 use rustc_hash::FxHashSet;
-use ra_syntax::TextUnit;
+use ra_syntax::{AstNode, TextUnit};
 
 use crate::completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext};
 
@@ -17,18 +17,15 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     let module_scope = module.scope(ctx.db);
-    let (file_id, _) = module.definition_source(ctx.db);
     module_scope
         .entries()
         .filter(|(_name, res)| {
-            // Don't expose this item
-            // FIXME: this penetrates through all kinds of abstractions,
-            // we need to figura out the way to do it less ugly.
+            // For cases like `use self::foo<|>` don't suggest foo itself.
             match res.import {
                 None => true,
                 Some(import) => {
-                    let range = import.range(ctx.db, file_id);
-                    !range.is_subrange(&ctx.leaf.range())
+                    let source = module.import_source(ctx.db, import);
+                    !source.syntax().range().is_subrange(&ctx.leaf.range())
                 }
             }
         })

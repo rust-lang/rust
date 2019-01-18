@@ -46,7 +46,7 @@ pub(super) fn item_map(db: &impl HirDatabase, source_root: SourceRootId) -> Arc<
     let module_tree = db.module_tree(source_root);
     let input = module_tree
         .modules()
-        .map(|id| (id, db.input_module_items(source_root, id)))
+        .map(|id| (id, db.lower_module_module(source_root, id)))
         .collect::<FxHashMap<_, _>>();
 
     let resolver = Resolver::new(db, &input, source_root, module_tree);

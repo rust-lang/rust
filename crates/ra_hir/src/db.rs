@@ -10,7 +10,7 @@ use crate::{
     FnSignature, FnScopes,
     macros::MacroExpansion,
     module_tree::{ModuleId, ModuleTree},
-    nameres::{ItemMap, lower::InputModuleItems},
+    nameres::{ItemMap, lower::{InputModuleItems, LoweredModule, ImportSourceMap}},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks},
     adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
@@ -64,6 +64,27 @@ pub trait HirDatabase:
         source_root_id: SourceRootId,
         module_id: ModuleId,
     ) -> Arc<InputModuleItems>;
+
+    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_query)]
+    fn lower_module(
+        &self,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+    ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
+
+    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_module_query)]
+    fn lower_module_module(
+        &self,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+    ) -> Arc<LoweredModule>;
+
+    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_source_map_query)]
+    fn lower_module_source_map(
+        &self,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+    ) -> Arc<ImportSourceMap>;
 
     #[salsa::invoke(query_definitions::item_map)]
     fn item_map(&self, source_root_id: SourceRootId) -> Arc<ItemMap>;

@@ -5,7 +5,7 @@ use crate::{
     Module, ModuleSource, Problem,
     Crate, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def,
     module_tree::ModuleId,
-    nameres::ModuleScope,
+    nameres::{ModuleScope, lower::LoweredImport},
     db::HirDatabase,
 };
 
@@ -37,7 +37,7 @@ impl Module {
         Some(link.name(&module_tree).clone())
     }
 
-    pub fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
+    pub(crate) fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
         let loc = self.def_id.loc(db);
         let file_id = loc.source_item_id.file_id.as_original_file();
         let syntax_node = db.file_item(loc.source_item_id);
@@ -50,7 +50,7 @@ impl Module {
         (file_id, module_source)
     }
 
-    pub fn declaration_source_impl(
+    pub(crate) fn declaration_source_impl(
         &self,
         db: &impl HirDatabase,
     ) -> Option<(FileId, TreeArc<ast::Module>)> {
@@ -64,6 +64,17 @@ impl Module {
             .as_original_file();
         let src = link.source(&module_tree, db);
         Some((file_id, src))
+    }
+
+    pub(crate) fn import_source_impl(
+        &self,
+        db: &impl HirDatabase,
+        import: LoweredImport,
+    ) -> TreeArc<ast::PathSegment> {
+        let loc = self.def_id.loc(db);
+        let source_map = db.lower_module_source_map(loc.source_root_id, loc.module_id);
+        let (_, source) = self.definition_source(db);
+        source_map.get(&source, import)
     }
 
     pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Option<Crate> {
