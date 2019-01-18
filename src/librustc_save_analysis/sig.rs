@@ -269,7 +269,8 @@ impl Sig for ast::Ty {
                 };
 
                 let name = pprust::path_segment_to_string(path.segments.last().ok_or("Bad path")?);
-                let def = scx.get_path_def(id.ok_or("Missing id for Path")?);
+                let hir_id = scx.tcx.hir().node_to_hir_id(id.ok_or("Missing id for Path")?);
+                let def = scx.get_path_def(hir_id);
                 let id = id_from_def_id(def.def_id());
                 if path.segments.len() - qself.position == 1 {
                     let start = offset + prefix.len();
@@ -572,7 +573,8 @@ impl Sig for ast::Item {
 
 impl Sig for ast::Path {
     fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext) -> Result {
-        let def = scx.get_path_def(id.ok_or("Missing id for Path")?);
+        let hir_id = scx.tcx.hir().node_to_hir_id(id.ok_or("Missing id for Path")?);
+        let def = scx.get_path_def(hir_id);
 
         let (name, start, end) = match def {
             Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {

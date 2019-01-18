@@ -413,7 +413,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     Some(Node::Item(item)) => match item.node {
                         hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
-                            qualname.push_str(&self.tcx.hir().node_to_pretty_string(ty.id));
+                            qualname.push_str(&self.tcx.hir().node_to_pretty_string_by_hir_id(
+                                ty.hir_id));
 
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;
@@ -522,7 +523,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
-        let hir_node = self.tcx.hir().expect_expr(expr.id);
+        let hir_id = self.tcx.hir().node_to_hir_id(expr.id);
+        let hir_node = self.tcx.hir().expect_expr(hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::Error {
             return None;
@@ -614,8 +616,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_def(&self, id: NodeId) -> HirDef {
-        match self.tcx.hir().get(id) {
+    pub fn get_path_def(&self, id: hir::HirId) -> HirDef {
+        match self.tcx.hir().get_by_hir_id(id) {
             Node::TraitRef(tr) => tr.path.def,
 
             Node::Item(&hir::Item {
@@ -651,8 +653,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 node: hir::PatKind::TupleStruct(ref qpath, ..),
                 ..
             }) => {
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
-                self.tables.qpath_def(qpath, hir_id)
+                self.tables.qpath_def(qpath, id)
             }
 
             Node::Binding(&hir::Pat {
@@ -715,7 +716,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             return None;
         }
 
-        let def = self.get_path_def(id);
+        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        let def = self.get_path_def(hir_id);
         let span = path_seg.ident.span;
         filter!(self.span_utils, span);
         let span = self.span_from_span(span);
@@ -725,7 +727,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
-                    ref_id: id_from_node_id(id, self),
+                    ref_id: id_from_def_id(self.tcx.hir().local_def_id_from_hir_id(id)),
                 })
             }
             HirDef::Static(..) |
@@ -881,7 +883,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        match self.get_path_def(ref_id) {
+        let hir_id = self.tcx.hir().node_to_hir_id(ref_id);
+        match self.get_path_def(hir_id) {
             HirDef::PrimTy(_) | HirDef::SelfTy(..) | HirDef::Err => None,
             def => Some(def.def_id()),
         }
