@@ -4347,11 +4347,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     struct_span_err!(self.tcx.sess, expr.span, E0572,
                                      "return statement outside of function body").emit();
                 } else if let Some(ref e) = *expr_opt {
-                    *self.ret_coercion_span.borrow_mut() = Some(e.span);
+                    if self.ret_coercion_span.borrow().is_none() {
+                        *self.ret_coercion_span.borrow_mut() = Some(e.span);
+                    }
                     self.check_return_expr(e);
                 } else {
                     let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
-                    *self.ret_coercion_span.borrow_mut() = Some(expr.span);
+                    if self.ret_coercion_span.borrow().is_none() {
+                        *self.ret_coercion_span.borrow_mut() = Some(expr.span);
+                    }
                     let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
                     if let Some((fn_decl, _)) = self.get_fn_decl(expr.id) {
                         coercion.coerce_forced_unit(

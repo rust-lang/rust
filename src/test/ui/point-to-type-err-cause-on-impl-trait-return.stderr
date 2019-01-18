@@ -13,6 +13,9 @@ LL |     1u32
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:13:16
    |
+LL |         return 0i32;
+   |                ---- expected because of this statement
+LL |     } else {
 LL |         return 1u32;
    |                ^^^^ expected i32, found u32
    |
