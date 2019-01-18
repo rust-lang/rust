@@ -84,6 +84,8 @@ use intrinsics;
 use cell::UnsafeCell;
 use fmt;
 
+use hint::spin_loop;
+
 /// Save power or switch hyperthreads in a busy-wait spin-loop.
 ///
 /// This function is deliberately more primitive than
@@ -96,15 +98,7 @@ use fmt;
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    unsafe {
-        asm!("pause" ::: "memory" : "volatile");
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        asm!("yield" ::: "memory" : "volatile");
-    }
+    spin_loop()
 }
 
 /// A boolean type which can be safely shared between threads.
