@@ -1,6 +1,5 @@
 //! Used by `rustc` when compiling a plugin crate.
 
-use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -10,7 +9,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 
 struct RegistrarFinder {
-    registrars: Vec<(ast::NodeId, Span)> ,
+    registrars: Vec<(hir::HirId, Span)> ,
 }
 
 impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
@@ -18,7 +17,7 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
         if let hir::ItemKind::Fn(..) = item.node {
             if attr::contains_name(&item.attrs,
                                    "plugin_registrar") {
-                self.registrars.push((item.id, item.span));
+                self.registrars.push((item.hir_id, item.span));
             }
         }
     }
@@ -47,8 +46,8 @@ fn plugin_registrar_fn<'tcx>(
     match finder.registrars.len() {
         0 => None,
         1 => {
-            let (node_id, _) = finder.registrars.pop().unwrap();
-            Some(tcx.hir().local_def_id(node_id))
+            let (hir_id, _) = finder.registrars.pop().unwrap();
+            Some(tcx.hir().local_def_id_from_hir_id(hir_id))
         },
         _ => {
             let diagnostic = tcx.sess.diagnostic();
