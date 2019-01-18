@@ -12,4 +12,14 @@ fn check() -> Pub {
     Priv
 }
 
+pub trait Trait {
+    type Pub: Default;
+    fn method() -> Self::Pub;
+}
+
+impl Trait for u8 {
+    existential type Pub: Default;
+    fn method() -> Self::Pub { Priv }
+}
+
 fn main() {}
