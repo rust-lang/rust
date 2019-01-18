@@ -1,0 +1,7 @@
+error[E0658]: kind="static-nobundle" is feature gated (see issue #37403)
+   |
+   = help: add #![feature(static_nobundle)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
