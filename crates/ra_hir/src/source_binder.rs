@@ -142,7 +142,7 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
         None => return Vec::new(),
     };
     let loc = module.def_id.loc(db);
-    let items = db.input_module_items(loc.source_root_id, loc.module_id);
+    let items = db.lower_module_module(loc.source_root_id, loc.module_id);
     let mut res = Vec::new();
 
     for macro_call_id in items

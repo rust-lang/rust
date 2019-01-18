@@ -113,7 +113,6 @@ salsa::database_storage! {
             fn fn_scopes() for hir::db::FnScopesQuery;
             fn file_items() for hir::db::FileItemsQuery;
             fn file_item() for hir::db::FileItemQuery;
-            fn input_module_items() for hir::db::InputModuleItemsQuery;
             fn lower_module() for hir::db::LowerModuleQuery;
             fn lower_module_module() for hir::db::LowerModuleModuleQuery;
             fn lower_module_source_map() for hir::db::LowerModuleSourceMapQuery;

@@ -5,7 +5,7 @@ use crate::{
     Module, ModuleSource, Problem,
     Crate, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def,
     module_tree::ModuleId,
-    nameres::{ModuleScope, lower::LoweredImport},
+    nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
 };
 
@@ -69,7 +69,7 @@ impl Module {
     pub(crate) fn import_source_impl(
         &self,
         db: &impl HirDatabase,
-        import: LoweredImport,
+        import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
         let loc = self.def_id.loc(db);
         let source_map = db.lower_module_source_map(loc.source_root_id, loc.module_id);

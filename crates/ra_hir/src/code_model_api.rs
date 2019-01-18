@@ -7,7 +7,7 @@ use ra_syntax::{ast, TreeArc, SyntaxNode};
 use crate::{
     Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
     type_ref::TypeRef,
-    nameres::{ModuleScope, lower::LoweredImport},
+    nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
     expr::BodySyntaxMapping,
     ty::InferenceResult,
@@ -100,7 +100,7 @@ impl Module {
     pub fn import_source(
         &self,
         db: &impl HirDatabase,
-        import: LoweredImport,
+        import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
         self.import_source_impl(db, import)
     }

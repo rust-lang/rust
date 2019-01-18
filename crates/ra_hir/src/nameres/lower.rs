@@ -1,157 +1,17 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    TextRange, SyntaxKind, AstNode, SourceFile, TreeArc,
+    SyntaxKind, AstNode, SourceFile, TreeArc,
     ast::{self, ModuleItemOwner},
 };
 use ra_db::{SourceRootId, LocalSyntaxPtr};
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 
 use crate::{
-    SourceItemId, SourceFileItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
+    SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
     HirFileId, MacroCallLoc, AsName,
     module_tree::ModuleId
 };
-/// A set of items and imports declared inside a module, without relation to
-/// other modules.
-///
-/// This sits in-between raw syntax and name resolution and allows us to avoid
-/// recomputing name res: if two instance of `InputModuleItems` are the same, we
-/// can avoid redoing name resolution.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct InputModuleItems {
-    pub(crate) items: Vec<ModuleItem>,
-    pub(super) imports: Vec<Import>,
-}
-
-impl InputModuleItems {
-    pub(crate) fn input_module_items_query(
-        db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> Arc<InputModuleItems> {
-        let module_tree = db.module_tree(source_root_id);
-        let source = module_id.source(&module_tree);
-        let file_id = source.file_id;
-        let source = ModuleSource::from_source_item_id(db, source);
-        let mut res = InputModuleItems::default();
-        match source {
-            ModuleSource::SourceFile(it) => res.fill(
-                db,
-                source_root_id,
-                module_id,
-                file_id,
-                &mut it.items_with_macros(),
-            ),
-            ModuleSource::Module(it) => {
-                if let Some(item_list) = it.item_list() {
-                    res.fill(
-                        db,
-                        source_root_id,
-                        module_id,
-                        file_id,
-                        &mut item_list.items_with_macros(),
-                    )
-                }
-            }
-        };
-        Arc::new(res)
-    }
-
-    fn fill(
-        &mut self,
-        db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-        file_id: HirFileId,
-        items: &mut Iterator<Item = ast::ItemOrMacro>,
-    ) {
-        let file_items = db.file_items(file_id);
-
-        for item in items {
-            match item {
-                ast::ItemOrMacro::Item(it) => {
-                    self.add_item(file_id, &file_items, it);
-                }
-                ast::ItemOrMacro::Macro(macro_call) => {
-                    let item_id = file_items.id_of_unchecked(macro_call.syntax());
-                    let loc = MacroCallLoc {
-                        source_root_id,
-                        module_id,
-                        source_item_id: SourceItemId {
-                            file_id,
-                            item_id: Some(item_id),
-                        },
-                    };
-                    let id = loc.id(db);
-                    let file_id = HirFileId::from(id);
-                    let file_items = db.file_items(file_id);
-                    //FIXME: expand recursively
-                    for item in db.hir_source_file(file_id).items() {
-                        self.add_item(file_id, &file_items, item);
-                    }
-                }
-            }
-        }
-    }
-
-    fn add_item(
-        &mut self,
-        file_id: HirFileId,
-        file_items: &SourceFileItems,
-        item: &ast::ModuleItem,
-    ) -> Option<()> {
-        match item.kind() {
-            ast::ModuleItemKind::StructDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::EnumDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::FnDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::TraitDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::TypeDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::ImplBlock(_) => {
-                // impls don't define items
-            }
-            ast::ModuleItemKind::UseItem(it) => self.add_use_item(file_items, it),
-            ast::ModuleItemKind::ExternCrateItem(_) => {
-                // TODO
-            }
-            ast::ModuleItemKind::ConstDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::StaticDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::Module(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-        }
-        Some(())
-    }
-
-    fn add_use_item(&mut self, file_items: &SourceFileItems, item: &ast::UseItem) {
-        let file_item_id = file_items.id_of_unchecked(item.syntax());
-        let start_offset = item.syntax().range().start();
-        Path::expand_use_item(item, |path, segment| {
-            let kind = match segment {
-                None => ImportKind::Glob,
-                Some(segment) => ImportKind::Named(NamedImport {
-                    file_item_id,
-                    relative_range: segment.syntax().range() - start_offset,
-                }),
-            };
-            self.imports.push(Import { kind, path })
-        })
-    }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Vis {
@@ -188,27 +48,9 @@ impl ModuleItem {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Import {
-    pub(super) path: Path,
-    pub(super) kind: ImportKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NamedImport {
-    pub file_item_id: SourceFileItemId,
-    pub relative_range: TextRange,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum ImportKind {
-    Glob,
-    Named(NamedImport),
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LoweredImport(RawId);
-impl_arena_id!(LoweredImport);
+pub struct ImportId(RawId);
+impl_arena_id!(ImportId);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImportData {
@@ -216,24 +58,30 @@ pub(super) struct ImportData {
     pub(super) is_glob: bool,
 }
 
+/// A set of items and imports declared inside a module, without relation to
+/// other modules.
+///
+/// This sits in-between raw syntax and name resolution and allows us to avoid
+/// recomputing name res: if two instance of `InputModuleItems` are the same, we
+/// can avoid redoing name resolution.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct LoweredModule {
-    pub(super) items: Vec<ModuleItem>,
-    pub(super) imports: Arena<LoweredImport, ImportData>,
+    pub(crate) items: Vec<ModuleItem>,
+    pub(super) imports: Arena<ImportId, ImportData>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImportSourceMap {
-    map: ArenaMap<LoweredImport, LocalSyntaxPtr>,
+    map: ArenaMap<ImportId, LocalSyntaxPtr>,
 }
 
 impl ImportSourceMap {
-    fn insert(&mut self, import: LoweredImport, segment: &ast::PathSegment) {
+    fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
         self.map
             .insert(import, LocalSyntaxPtr::new(segment.syntax()))
     }
 
-    pub fn get(&self, source: &ModuleSource, import: LoweredImport) -> TreeArc<ast::PathSegment> {
+    pub fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
         let file = match source {
             ModuleSource::SourceFile(file) => &*file,
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),

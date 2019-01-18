@@ -31,7 +31,7 @@ mod code_model_impl;
 use crate::{
     db::HirDatabase,
     name::{AsName, KnownName},
-    ids::{DefKind, SourceItemId, SourceFileItemId, SourceFileItems},
+    ids::{DefKind, SourceItemId, SourceFileItems},
 };
 
 pub use self::{

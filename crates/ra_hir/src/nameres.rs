@@ -60,7 +60,7 @@ pub struct Resolution {
     /// None for unresolved
     pub def_id: PerNs<DefId>,
     /// ident by whitch this is imported into local scope.
-    pub import: Option<LoweredImport>,
+    pub import: Option<ImportId>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -154,7 +154,7 @@ pub(crate) struct Resolver<'a, DB> {
     input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
     source_root: SourceRootId,
     module_tree: Arc<ModuleTree>,
-    processed_imports: FxHashSet<(ModuleId, LoweredImport)>,
+    processed_imports: FxHashSet<(ModuleId, ImportId)>,
     result: ItemMap,
 }
 
@@ -296,7 +296,7 @@ where
     fn resolve_import(
         &mut self,
         module_id: ModuleId,
-        import_id: LoweredImport,
+        import_id: ImportId,
         import: &ImportData,
     ) -> bool {
         log::debug!("resolving import: {:?}", import);
