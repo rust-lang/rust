@@ -1,4 +1,0 @@
-status = [
-  "continuous-integration/travis-ci/push",
-  "continuous-integration/appveyor/branch"
-]
