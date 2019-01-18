@@ -10,7 +10,7 @@ use crate::{
     FnSignature, FnScopes,
     macros::MacroExpansion,
     module_tree::{ModuleId, ModuleTree},
-    nameres::{ItemMap, InputModuleItems},
+    nameres::{ItemMap, lower::InputModuleItems},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks},
     adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
@@ -58,7 +58,7 @@ pub trait HirDatabase:
     #[salsa::invoke(crate::module_tree::Submodule::submodules_query)]
     fn submodules(&self, source: SourceItemId) -> Arc<Vec<crate::module_tree::Submodule>>;
 
-    #[salsa::invoke(query_definitions::input_module_items)]
+    #[salsa::invoke(crate::nameres::lower::InputModuleItems::input_module_items_query)]
     fn input_module_items(
         &self,
         source_root_id: SourceRootId,

@@ -14,23 +14,20 @@
 //! modifications (that is, typing inside a function should not change IMIs),
 //! so that the results of name resolution can be preserved unless the module
 //! structure itself is modified.
+pub(crate) mod lower;
+use lower::*;
+
 use std::sync::Arc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use ra_syntax::{
-    TextRange,
-    SyntaxKind::{self, *},
-    ast::{self, AstNode}
-};
-use ra_db::{SourceRootId, FileId};
+use ra_syntax::SyntaxKind::*;
+use ra_db::SourceRootId;
 
 use crate::{
-    HirFileId,
     DefId, DefLoc, DefKind,
-    SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
     HirDatabase, Crate,
-    Name, AsName,
+    Name,
     module_tree::{ModuleId, ModuleTree},
 };
 
@@ -54,64 +51,6 @@ impl ModuleScope {
     pub fn get(&self, name: &Name) -> Option<&Resolution> {
         self.items.get(name)
     }
-}
-
-/// A set of items and imports declared inside a module, without relation to
-/// other modules.
-///
-/// This sits in-between raw syntax and name resolution and allows us to avoid
-/// recomputing name res: if two instance of `InputModuleItems` are the same, we
-/// can avoid redoing name resolution.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct InputModuleItems {
-    pub(crate) items: Vec<ModuleItem>,
-    imports: Vec<Import>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ModuleItem {
-    pub(crate) id: SourceItemId,
-    pub(crate) name: Name,
-    kind: SyntaxKind,
-    vis: Vis,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum Vis {
-    // Priv,
-    Other,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Import {
-    path: Path,
-    kind: ImportKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NamedImport {
-    pub file_item_id: SourceFileItemId,
-    pub relative_range: TextRange,
-}
-
-impl NamedImport {
-    // FIXME: this is only here for one use-case in completion. Seems like a
-    // pretty gross special case.
-    pub fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
-        let source_item_id = SourceItemId {
-            file_id: file_id.into(),
-            item_id: Some(self.file_item_id),
-        };
-        let syntax = db.file_item(source_item_id);
-        let offset = syntax.range().start();
-        self.relative_range + offset
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ImportKind {
-    Glob,
-    Named(NamedImport),
 }
 
 /// `Resolution` is basically `DefId` atm, but it should account for stuff like
@@ -207,86 +146,6 @@ impl<T> PerNs<T> {
             types: self.types.map(&f),
             values: self.values.map(&f),
         }
-    }
-}
-
-impl InputModuleItems {
-    pub(crate) fn add_item(
-        &mut self,
-        file_id: HirFileId,
-        file_items: &SourceFileItems,
-        item: &ast::ModuleItem,
-    ) -> Option<()> {
-        match item.kind() {
-            ast::ModuleItemKind::StructDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::EnumDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::FnDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::TraitDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::TypeDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::ImplBlock(_) => {
-                // impls don't define items
-            }
-            ast::ModuleItemKind::UseItem(it) => self.add_use_item(file_items, it),
-            ast::ModuleItemKind::ExternCrateItem(_) => {
-                // TODO
-            }
-            ast::ModuleItemKind::ConstDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::StaticDef(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-            ast::ModuleItemKind::Module(it) => {
-                self.items.push(ModuleItem::new(file_id, file_items, it)?)
-            }
-        }
-        Some(())
-    }
-
-    fn add_use_item(&mut self, file_items: &SourceFileItems, item: &ast::UseItem) {
-        let file_item_id = file_items.id_of_unchecked(item.syntax());
-        let start_offset = item.syntax().range().start();
-        Path::expand_use_item(item, |path, range| {
-            let kind = match range {
-                None => ImportKind::Glob,
-                Some(range) => ImportKind::Named(NamedImport {
-                    file_item_id,
-                    relative_range: range - start_offset,
-                }),
-            };
-            self.imports.push(Import { kind, path })
-        })
-    }
-}
-
-impl ModuleItem {
-    fn new(
-        file_id: HirFileId,
-        file_items: &SourceFileItems,
-        item: &impl ast::NameOwner,
-    ) -> Option<ModuleItem> {
-        let name = item.name()?.as_name();
-        let kind = item.syntax().kind();
-        let vis = Vis::Other;
-        let item_id = Some(file_items.id_of_unchecked(item.syntax()));
-        let id = SourceItemId { file_id, item_id };
-        let res = ModuleItem {
-            id,
-            name,
-            kind,
-            vis,
-        };
-        Some(res)
     }
 }
 
