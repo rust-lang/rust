@@ -5234,22 +5234,13 @@ impl<'a> Parser<'a> {
                     kind: ast::GenericParamKind::Lifetime,
                 });
                 if let Some(sp) = seen_ty_param {
-                    let param_span = self.prev_span;
-                    let ate_comma = self.eat(&token::Comma);
-                    let remove_sp = if ate_comma {
-                        param_span.until(self.span)
-                    } else {
-                        last_comma_span.unwrap_or(param_span).to(param_span)
-                    };
-                    bad_lifetime_pos.push(param_span);
-
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(param_span) {
+                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
+                    bad_lifetime_pos.push(self.prev_span);
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
                         suggestions.push((remove_sp, String::new()));
-                        suggestions.push((sp.shrink_to_lo(), format!("{}, ", snippet)));
-                    }
-                    if ate_comma {
-                        last_comma_span = Some(self.prev_span);
-                        continue
+                        suggestions.push((
+                            sp.shrink_to_lo(),
+                            format!("{}, ", snippet)));
                     }
                 }
             } else if self.check_ident() {
