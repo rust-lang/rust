@@ -36,7 +36,7 @@ $ code .
 
 ## Demo
 
-![demonstration of debugging](./images/Rls_Debug.gif)
+![demonstration of debugging](https://user-images.githubusercontent.com/1711539/51384036-254fab80-1b2c-11e9-824d-95f9a6e9cf4f.gif)
 
 ## Troubleshooting
 
