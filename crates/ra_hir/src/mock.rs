@@ -227,7 +227,9 @@ salsa::database_storage! {
             fn fn_scopes() for db::FnScopesQuery;
             fn file_items() for db::FileItemsQuery;
             fn file_item() for db::FileItemQuery;
-            fn input_module_items() for db::InputModuleItemsQuery;
+            fn lower_module() for db::LowerModuleQuery;
+            fn lower_module_module() for db::LowerModuleModuleQuery;
+            fn lower_module_source_map() for db::LowerModuleSourceMapQuery;
             fn item_map() for db::ItemMapQuery;
             fn submodules() for db::SubmodulesQuery;
             fn infer() for db::InferQuery;
