@@ -17,7 +17,6 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt, RegionKind};
-use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Node;
@@ -88,15 +87,14 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
-               consume_id: ast::NodeId,
+               consume_id: hir::HirId,
                consume_span: Span,
                cmt: &mc::cmt_<'tcx>,
                mode: euv::ConsumeMode) {
-        debug!("consume(consume_id={}, cmt={:?}, mode={:?})",
+        debug!("consume(consume_id={:?}, cmt={:?}, mode={:?})",
                consume_id, cmt, mode);
 
-        let hir_id = self.tcx().hir().node_to_hir_id(consume_id);
-        self.consume_common(hir_id.local_id, consume_span, cmt, mode);
+        self.consume_common(consume_id.local_id, consume_span, cmt, mode);
     }
 
     fn matched_pat(&mut self,
@@ -117,39 +115,38 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     }
 
     fn borrow(&mut self,
-              borrow_id: ast::NodeId,
+              borrow_id: hir::HirId,
               borrow_span: Span,
               cmt: &mc::cmt_<'tcx>,
               loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {
-        debug!("borrow(borrow_id={}, cmt={:?}, loan_region={:?}, \
+        debug!("borrow(borrow_id={:?}, cmt={:?}, loan_region={:?}, \
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
 
-        let hir_id = self.tcx().hir().node_to_hir_id(borrow_id);
         if let Some(lp) = opt_loan_path(cmt) {
             let moved_value_use_kind = match loan_cause {
                 euv::ClosureCapture(_) => MovedInCapture,
                 _ => MovedInUse,
             };
-            self.check_if_path_is_moved(hir_id.local_id, borrow_span, moved_value_use_kind, &lp);
+            self.check_if_path_is_moved(borrow_id.local_id, borrow_span, moved_value_use_kind, &lp);
         }
 
-        self.check_for_conflicting_loans(hir_id.local_id);
+        self.check_for_conflicting_loans(borrow_id.local_id);
 
         self.check_for_loans_across_yields(cmt, loan_region, borrow_span);
     }
 
     fn mutate(&mut self,
-              assignment_id: ast::NodeId,
+              assignment_id: hir::HirId,
               assignment_span: Span,
               assignee_cmt: &mc::cmt_<'tcx>,
               mode: euv::MutateMode)
     {
-        debug!("mutate(assignment_id={}, assignee_cmt={:?})",
+        debug!("mutate(assignment_id={:?}, assignee_cmt={:?})",
                assignment_id, assignee_cmt);
 
         if let Some(lp) = opt_loan_path(assignee_cmt) {
@@ -175,11 +172,10 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                 }
             }
         }
-        self.check_assignment(self.tcx().hir().node_to_hir_id(assignment_id).local_id,
-                              assignment_span, assignee_cmt);
+        self.check_assignment(assignment_id.local_id, assignment_span, assignee_cmt);
     }
 
-    fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) { }
+    fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) { }
 }
 
 pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
@@ -187,7 +183,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
                                      body: &hir::Body) {
-    debug!("check_loans(body id={})", body.value.id);
+    debug!("check_loans(body id={:?})", body.value.hir_id);
 
     let def_id = bccx.tcx.hir().body_owner_def_id(body.id());
 
@@ -893,7 +889,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let lp = opt_loan_path(assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
-                    let hir_id = self.bccx.tcx.hir().node_to_hir_id(local_id);
+                    let hir_id = local_id;
                     self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                 } else {
                     self.bccx.report_reassigned_immutable_variable(

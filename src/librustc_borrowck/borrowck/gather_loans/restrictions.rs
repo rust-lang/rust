@@ -66,9 +66,9 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 RestrictionResult::Safe
             }
 
-            Categorization::Local(local_id) => {
+            Categorization::Local(hir_id) => {
                 // R-Variable, locally declared
-                let lp = new_lp(LpVar(local_id));
+                let lp = new_lp(LpVar(hir_id));
                 RestrictionResult::SafeIf(lp.clone(), vec![lp])
             }
 
