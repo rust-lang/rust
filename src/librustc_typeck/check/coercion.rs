@@ -1224,7 +1224,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             cause.span,
                             blk_id,
                         );
-                        // TODO: replace with navigating up the chain until hitting an fn or
+                        // FIXME: replace with navigating up the chain until hitting an fn or
                         // bailing if no "pass-through" Node is found, in order to provide a
                         // suggestion when encountering something like:
                         // ```
