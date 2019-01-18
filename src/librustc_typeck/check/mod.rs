@@ -5089,12 +5089,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         found: Ty<'tcx>,
         cause_span: Span,
         blk_id: ast::NodeId,
-    ) {
+    ) -> bool {
         self.suggest_missing_semicolon(err, expression, expected, cause_span);
+        let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
-            self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
+            pointing_at_return_type = self.suggest_missing_return_type(
+                err, &fn_decl, expected, found, can_suggest);
         }
         self.suggest_ref_or_into(err, expression, expected, found);
+        pointing_at_return_type
     }
 
     pub fn suggest_ref_or_into(
@@ -5193,12 +5196,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// This routine checks if the return type is left as default, the method is not part of an
     /// `impl` block and that it isn't the `main` method. If so, it suggests setting the return
     /// type.
-    fn suggest_missing_return_type(&self,
-                                   err: &mut DiagnosticBuilder<'tcx>,
-                                   fn_decl: &hir::FnDecl,
-                                   expected: Ty<'tcx>,
-                                   found: Ty<'tcx>,
-                                   can_suggest: bool) {
+    fn suggest_missing_return_type(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        fn_decl: &hir::FnDecl,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        can_suggest: bool,
+    ) -> bool {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
@@ -5208,16 +5213,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     "try adding a return type",
                     format!("-> {} ", self.resolve_type_vars_with_obligations(found)),
                     Applicability::MachineApplicable);
+                true
             }
             (&hir::FunctionRetTy::DefaultReturn(span), false, true, true) => {
                 err.span_label(span, "possibly return type missing here?");
+                true
             }
             (&hir::FunctionRetTy::DefaultReturn(span), _, false, true) => {
                 // `fn main()` must return `()`, do not suggest changing return type
                 err.span_label(span, "expected `()` because of default return type");
+                true
             }
             // expectation was caused by something else, not the default return
-            (&hir::FunctionRetTy::DefaultReturn(_), _, _, false) => {}
+            (&hir::FunctionRetTy::DefaultReturn(_), _, _, false) => false,
             (&hir::FunctionRetTy::Return(ref ty), _, _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
@@ -5229,7 +5237,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if ty.sty == expected.sty {
                     err.span_label(sp, format!("expected `{}` because of return type",
                                                expected));
+                    return true;
                 }
+                false
             }
         }
     }

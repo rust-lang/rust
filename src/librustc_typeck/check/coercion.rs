@@ -1216,7 +1216,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                       "supposed to be part of a block tail expression, but the \
                                        expression is empty");
                         });
-                        fcx.suggest_mismatched_types_on_tail(
+                        let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
                             &mut db,
                             expr,
                             expected,
@@ -1244,7 +1244,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         // as prior return coercions would not be relevant (#57664).
                         let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
                         let parent = fcx.tcx.hir().get(fcx.tcx.hir().get_parent_node(parent_id));
-                        if fcx.get_node_fn_decl(parent).is_some() {
+                        if fcx.get_node_fn_decl(parent).is_some() && !pointing_at_return_type {
                             if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
                                 db.span_label(*sp, reason_label);
                             }
