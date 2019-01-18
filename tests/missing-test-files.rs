@@ -4,7 +4,7 @@ use std::path::Path;
 #[test]
 fn test_missing_tests() {
     let missing_files = explore_directory(Path::new("./tests"));
-    if missing_files.len() > 0 {
+    if !missing_files.is_empty() {
         assert!(
             false,
             format!(
@@ -31,25 +31,22 @@ fn explore_directory(dir: &Path) -> Vec<String> {
     let mut current_file = String::new();
     let mut files: Vec<DirEntry> = fs::read_dir(dir).unwrap().filter_map(Result::ok).collect();
     files.sort_by_key(|e| e.path());
-    for entry in files.iter() {
+    for entry in &files {
         let path = entry.path();
         if path.is_dir() {
             missing_files.extend(explore_directory(&path));
         } else {
             let file_stem = path.file_stem().unwrap().to_str().unwrap().to_string();
-            match path.extension() {
-                Some(ext) => {
-                    match ext.to_str().unwrap() {
-                        "rs" => current_file = file_stem.clone(),
-                        "stderr" | "stdout" => {
-                            if file_stem != current_file {
-                                missing_files.push(path.to_str().unwrap().to_string());
-                            }
-                        },
-                        _ => continue,
-                    };
-                },
-                None => {},
+            if let Some(ext) = path.extension() {
+                match ext.to_str().unwrap() {
+                    "rs" => current_file = file_stem.clone(),
+                    "stderr" | "stdout" => {
+                        if file_stem != current_file {
+                            missing_files.push(path.to_str().unwrap().to_string());
+                        }
+                    },
+                    _ => continue,
+                };
             }
         }
     }
