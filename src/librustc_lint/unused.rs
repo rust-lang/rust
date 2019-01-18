@@ -41,7 +41,7 @@ impl LintPass for UnusedResults {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
-            hir::StmtKind::Semi(ref expr, _) => &**expr,
+            hir::StmtKind::Semi(ref expr, ..) => &**expr,
             _ => return,
         };
 
@@ -51,7 +51,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let t = cx.tables.expr_ty(&expr);
         let type_permits_lack_of_use = if t.is_unit()
-            || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir().get_module_parent(expr.id), t) {
+            || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir().get_module_parent(expr.hir_id),
+                                             t)
+        {
             true
         } else {
             match t.sty {
@@ -205,7 +207,7 @@ impl LintPass for PathStatements {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        if let hir::StmtKind::Semi(ref expr, _) = s.node {
+        if let hir::StmtKind::Semi(ref expr, ..) = s.node {
             if let hir::ExprKind::Path(_) = expr.node {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
