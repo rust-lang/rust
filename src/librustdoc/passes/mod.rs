@@ -1,13 +1,13 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::lint as lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
 use std::fmt;
-use syntax::ast::NodeId;
 
 use clean::{self, GetDefId, Item};
 use core::{DocContext, DocAccessLevels};
@@ -380,7 +380,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
         if check_missing_code == true && tests.found_tests == 0 {
             let mut diag = cx.tcx.struct_span_lint_node(
                 lint::builtin::MISSING_DOC_CODE_EXAMPLES,
-                NodeId::from_u32(0),
+                hir::CRATE_HIR_ID,
                 span_of_attrs(&item.attrs),
                 "Missing code example in this documentation");
             diag.emit();
@@ -389,7 +389,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
                   !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
             let mut diag = cx.tcx.struct_span_lint_node(
                 lint::builtin::PRIVATE_DOC_TESTS,
-                NodeId::from_u32(0),
+                hir::CRATE_HIR_ID,
                 span_of_attrs(&item.attrs),
                 "Documentation test in private item");
             diag.emit();

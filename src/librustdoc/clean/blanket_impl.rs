@@ -123,7 +123,6 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                             path: get_path_for_type(infcx.tcx,
                                                     trait_def_id,
                                                     hir::def::Def::Trait),
-                            ref_id: ast::DUMMY_NODE_ID,
                             hir_ref_id: hir::DUMMY_HIR_ID,
                         };
                         let provided_trait_methods =

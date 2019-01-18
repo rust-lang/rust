@@ -162,6 +162,14 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
         }
     }
 
+    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
+        if self.all_fake_def_ids.borrow().contains(&def_id) {
+            None
+        } else {
+            self.tcx.hir().as_local_hir_id(def_id)
+        }
+    }
+
     pub fn get_real_ty<F>(&self,
                           def_id: DefId,
                           def_ctor: &F,
@@ -177,6 +185,7 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
             real_name.unwrap_or(last.ident),
             None,
             None,
+            None,
             self.generics_to_path_params(generics.clone()),
             false,
         ));
@@ -188,7 +197,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
         };
 
         hir::Ty {
-            id: ast::DUMMY_NODE_ID,
             node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
             span: DUMMY_SP,
             hir_id: hir::DUMMY_HIR_ID,
@@ -208,7 +216,7 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
                     };
 
                     args.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        id: ast::DUMMY_NODE_ID,
+                        hir_id: hir::DUMMY_HIR_ID,
                         span: DUMMY_SP,
                         name: hir::LifetimeName::Param(name),
                     }));
@@ -229,7 +237,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
-            id: ast::DUMMY_NODE_ID,
             node: hir::TyKind::Path(hir::QPath::Resolved(
                 None,
                 P(hir::Path {
