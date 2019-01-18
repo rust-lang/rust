@@ -894,9 +894,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn suggest_borrow_on_unsized_slice(&self,
                                        code: &ObligationCauseCode<'tcx>,
                                        err: &mut DiagnosticBuilder<'tcx>) {
-        if let &ObligationCauseCode::VariableType(node_id) = code {
-            let parent_node = self.tcx.hir().get_parent_node(node_id);
-            if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
+        if let &ObligationCauseCode::VariableType(hir_id) = code {
+            let parent_node = self.tcx.hir().get_parent_node(hir_id);
+            if let Some(Node::Local(ref local)) = self.tcx.hir().find_by_hir_id(parent_node) {
                 if let Some(ref expr) = local.init {
                     if let hir::ExprKind::Index(_, _) = expr.node {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
@@ -1031,7 +1031,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                  ).collect::<Vec<_>>())
             }
             Node::StructCtor(ref variant_data) => {
-                (self.tcx.sess.source_map().def_span(self.tcx.hir().span(variant_data.id())),
+                (self.tcx.sess.source_map().def_span(self.tcx.hir().span(
+                    variant_data.hir_id())),
                  vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {:?}", node),

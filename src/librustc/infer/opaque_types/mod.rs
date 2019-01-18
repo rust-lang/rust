@@ -4,7 +4,6 @@ use hir::Node;
 use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast;
 use traits::{self, PredicateObligation};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
@@ -98,7 +97,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         parent_def_id: DefId,
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
@@ -632,7 +631,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
 struct Instantiator<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     parent_def_id: DefId,
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     opaque_types: OpaqueTypeMap<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
@@ -681,13 +680,14 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     //     let x = || foo(); // returns the Opaque assoc with `foo`
                     // }
                     // ```
-                    if let Some(opaque_node_id) = tcx.hir().as_local_node_id(def_id) {
+                    if let Some(opaque_hir_id) = tcx.hir().as_local_hir_id(def_id) {
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
-                            let opaque_parent_node_id = tcx.hir().get_parent(opaque_node_id);
-                            parent_def_id == tcx.hir().local_def_id(opaque_parent_node_id)
+                            let opaque_parent_hir_id = tcx.hir().get_parent(opaque_hir_id);
+                            parent_def_id == tcx.hir().local_def_id_from_hir_id(
+                                opaque_parent_hir_id)
                         };
-                        let in_definition_scope = match tcx.hir().find(opaque_node_id) {
+                        let in_definition_scope = match tcx.hir().find_by_hir_id(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.node {
                                 // impl trait
                                 hir::ItemKind::Existential(hir::ExistTy {
@@ -701,7 +701,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                                 }) => may_define_existential_type(
                                     tcx,
                                     self.parent_def_id,
-                                    opaque_node_id,
+                                    opaque_hir_id,
                                 ),
                                 _ => def_scope_default(),
                             },
@@ -709,13 +709,13 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                                 hir::ImplItemKind::Existential(_) => may_define_existential_type(
                                     tcx,
                                     self.parent_def_id,
-                                    opaque_node_id,
+                                    opaque_hir_id,
                                 ),
                                 _ => def_scope_default(),
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
-                                tcx.hir().node_to_string(opaque_node_id),
+                                tcx.hir().hir_to_string(opaque_hir_id),
                             ),
                         };
                         if in_definition_scope {
@@ -813,7 +813,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Whether `opaque_node_id` is a sibling or a child of a sibling of `def_id`
+/// Whether `opaque_hir_id` is a sibling or a child of a sibling of `def_id`
 ///
 /// ```rust
 /// pub mod foo {
@@ -828,27 +828,27 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 /// ```
 ///
 /// Here, `def_id` will be the `DefId` of the existential type `Baz`.
-/// `opaque_node_id` is the `NodeId` of the reference to Baz --
+/// `opaque_hir_id` is the `HirId` of the reference to Baz --
 ///  so either the return type of f1 or f2.
 /// We will return true if the reference is within the same module as the existential type
 /// So true for f1, false for f2.
 pub fn may_define_existential_type(
     tcx: TyCtxt<'_, '_, '_>,
     def_id: DefId,
-    opaque_node_id: ast::NodeId,
+    opaque_hir_id: hir::HirId,
 ) -> bool {
-    let mut node_id = tcx
+    let mut hir_id = tcx
         .hir()
-        .as_local_node_id(def_id)
+        .as_local_hir_id(def_id)
         .unwrap();
     // named existential types can be defined by any siblings or
     // children of siblings
-    let mod_id = tcx.hir().get_parent(opaque_node_id);
+    let mod_id = tcx.hir().get_parent(opaque_hir_id);
     // so we walk up the node tree until we hit the root or the parent
     // of the opaque type
-    while node_id != mod_id && node_id != ast::CRATE_NODE_ID {
-        node_id = tcx.hir().get_parent(node_id);
+    while hir_id != mod_id && hir_id != hir::CRATE_HIR_ID {
+        hir_id = tcx.hir().get_parent(hir_id);
     }
     // syntactically we are allowed to define the concrete type
-    node_id == mod_id
+    hir_id == mod_id
 }

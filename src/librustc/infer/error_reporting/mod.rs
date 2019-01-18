@@ -56,7 +56,6 @@ use hir::def_id::DefId;
 use hir::Node;
 use middle::region;
 use std::{cmp, fmt};
-use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::error::TypeError;
@@ -87,7 +86,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     )
                 };
                 let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir().find(scope.node_id(self, region_scope_tree)) {
+                let tag = match self.hir().find_by_hir_id(scope.hir_id(self, region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
                     Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
@@ -182,8 +181,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let cm = self.sess.source_map();
 
         let scope = region.free_region_binding_scope(self);
-        let node = self.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
-        let tag = match self.hir().find(node) {
+        let node = self.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
+        let tag = match self.hir().find_by_hir_id(node) {
             Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
@@ -1184,12 +1183,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     if !param.is_self() {
                         let type_param = generics.type_param(param, self.tcx);
                         let hir = &self.tcx.hir();
-                        hir.as_local_node_id(type_param.def_id).map(|id| {
+                        hir.as_local_hir_id(type_param.def_id).map(|id| {
                             // Get the `hir::Param` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
                             let mut has_bounds = false;
-                            if let Node::GenericParam(ref param) = hir.get(id) {
+                            if let Node::GenericParam(ref param) = hir.get_by_hir_id(id) {
                                 has_bounds = !param.bounds.is_empty();
                             }
                             let sp = hir.span(id);
@@ -1434,8 +1433,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
-                let var_name = self.tcx.hir().name(var_node_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
             infer::NLL(..) => bug!("NLL variable found in lexical phase"),

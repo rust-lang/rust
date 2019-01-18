@@ -30,7 +30,7 @@ pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
 struct HirIdValidator<'a, 'hir: 'a> {
     hir_map: &'a hir::map::Map<'hir>,
     owner_def_index: Option<DefIndex>,
-    hir_ids_seen: FxHashMap<ItemLocalId, NodeId>,
+    hir_ids_seen: FxHashMap<ItemLocalId, HirId>,
     errors: &'a Lock<Vec<String>>,
 }
 
@@ -55,17 +55,17 @@ impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
 impl<'a, 'hir: 'a> ItemLikeVisitor<'hir> for OuterVisitor<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir hir::Item) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
-        inner_visitor.check(i.id, |this| intravisit::walk_item(this, i));
+        inner_visitor.check(i.hir_id, |this| intravisit::walk_item(this, i));
     }
 
     fn visit_trait_item(&mut self, i: &'hir hir::TraitItem) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
-        inner_visitor.check(i.id, |this| intravisit::walk_trait_item(this, i));
+        inner_visitor.check(i.hir_id, |this| intravisit::walk_trait_item(this, i));
     }
 
     fn visit_impl_item(&mut self, i: &'hir hir::ImplItem) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
-        inner_visitor.check(i.id, |this| intravisit::walk_impl_item(this, i));
+        inner_visitor.check(i.hir_id, |this| intravisit::walk_impl_item(this, i));
     }
 }
 
@@ -77,10 +77,10 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
     }
 
     fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self,
-                                                       node_id: NodeId,
+                                                       hir_id: HirId,
                                                        walk: F) {
         assert!(self.owner_def_index.is_none());
-        let owner_def_index = self.hir_map.local_def_id(node_id).index;
+        let owner_def_index = self.hir_map.local_def_id_from_hir_id(hir_id).index;
         self.owner_def_index = Some(owner_def_index);
         walk(self);
 
@@ -134,7 +134,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                 missing_items,
                 self.hir_ids_seen
                     .values()
-                    .map(|n| format!("({:?} {})", n, self.hir_map.node_to_string(*n)))
+                    .map(|n| format!("({:?} {})", n, self.hir_map.hir_to_string(*n)))
                     .collect::<Vec<_>>()));
         }
     }
@@ -147,33 +147,31 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         intravisit::NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 
-    fn visit_id(&mut self, node_id: NodeId) {
+    fn visit_id(&mut self, hir_id: HirId) {
         let owner = self.owner_def_index.expect("no owner_def_index");
-        let stable_id = self.hir_map.definitions().node_to_hir_id[node_id];
 
-        if stable_id == hir::DUMMY_HIR_ID {
-            self.error(|| format!("HirIdValidator: No HirId assigned for NodeId {}: {:?}",
-                                     node_id,
-                                     self.hir_map.node_to_string(node_id)));
+        if hir_id == hir::DUMMY_HIR_ID {
+            self.error(|| format!("HirIdValidator: HirId {:?} is invalid",
+                                  self.hir_map.hir_to_string(hir_id)));
             return;
         }
 
-        if owner != stable_id.owner {
+        if owner != hir_id.owner {
             self.error(|| format!(
                 "HirIdValidator: The recorded owner of {} is {} instead of {}",
-                self.hir_map.node_to_string(node_id),
-                self.hir_map.def_path(DefId::local(stable_id.owner)).to_string_no_crate(),
+                self.hir_map.hir_to_string(hir_id),
+                self.hir_map.def_path(DefId::local(hir_id.owner)).to_string_no_crate(),
                 self.hir_map.def_path(DefId::local(owner)).to_string_no_crate()));
         }
 
-        if let Some(prev) = self.hir_ids_seen.insert(stable_id.local_id, node_id) {
-            if prev != node_id {
+        if let Some(prev) = self.hir_ids_seen.insert(hir_id.local_id, hir_id) {
+            if prev != hir_id {
                 self.error(|| format!(
                     "HirIdValidator: Same HirId {}/{} assigned for nodes {} and {}",
-                    self.hir_map.def_path(DefId::local(stable_id.owner)).to_string_no_crate(),
-                    stable_id.local_id.as_usize(),
-                    self.hir_map.node_to_string(prev),
-                    self.hir_map.node_to_string(node_id)));
+                    self.hir_map.def_path(DefId::local(hir_id.owner)).to_string_no_crate(),
+                    hir_id.local_id.as_usize(),
+                    self.hir_map.hir_to_string(prev),
+                    self.hir_map.hir_to_string(hir_id)));
             }
         }
     }

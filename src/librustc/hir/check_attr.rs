@@ -95,7 +95,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.id));
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            self.tcx.codegen_fn_attrs(def_id);
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
@@ -283,7 +284,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
         // When checking statements ignore expressions, they will be checked later
-        if let hir::StmtKind::Decl(_, _) = stmt.node {
+        if let hir::StmtKind::Decl(_, ..) = stmt.node {
             for attr in stmt.node.attrs() {
                 if attr.check_name("inline") {
                     self.check_inline(attr, &stmt.span, Target::Statement);

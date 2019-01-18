@@ -31,8 +31,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               "...so that reference does not outlive borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
-                let var_name = self.tcx.hir().name(var_node_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 err.span_note(span,
                               &format!("...so that closure can access `{}`", var_name));
             }
@@ -48,10 +47,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               "...so that pointer is not dereferenced outside its lifetime");
             }
             infer::FreeVariable(span, id) => {
+                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 err.span_note(span,
                               &format!("...so that captured variable `{}` does not outlive the \
                                         enclosing closure",
-                                       self.tcx.hir().name(id)));
+                                       self.tcx.hir().name(hir_id)));
             }
             infer::IndexSlice(span) => {
                 err.span_note(span, "...so that slice is not indexed outside the lifetime");
@@ -164,8 +164,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
-                let var_name = self.tcx.hir().name(var_node_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0313,
@@ -217,12 +216,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err
             }
             infer::FreeVariable(span, id) => {
+                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0474,
                                                "captured variable `{}` does not outlive the \
                                                 enclosing closure",
-                                               self.tcx.hir().name(id));
+                                               self.tcx.hir().name(hir_id));
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,
                     "captured variable is valid for ", sup, "");
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,

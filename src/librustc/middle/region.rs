@@ -14,7 +14,6 @@ use std::mem;
 use std::fmt;
 use rustc_data_structures::sync::Lrc;
 use syntax::source_map;
-use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::TyCtxt;
 use ty::query::Providers;
@@ -168,15 +167,13 @@ impl Scope {
         self.id
     }
 
-    pub fn node_id(&self, tcx: TyCtxt<'_, '_, '_>, scope_tree: &ScopeTree) -> ast::NodeId {
+    pub fn hir_id(&self, _tcx: TyCtxt<'_, '_, '_>, scope_tree: &ScopeTree) -> hir::HirId {
         match scope_tree.root_body {
-            Some(hir_id) => {
-                tcx.hir().hir_to_node_id(hir::HirId {
-                    owner: hir_id.owner,
-                    local_id: self.item_local_id()
-                })
-            }
-            None => ast::DUMMY_NODE_ID
+            Some(hir_id) => hir::HirId {
+                owner: hir_id.owner,
+                local_id: self.item_local_id()
+            },
+            None => hir::DUMMY_HIR_ID
         }
     }
 
@@ -184,13 +181,13 @@ impl Scope {
     /// returned span may not correspond to the span of any node id in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_, '_, '_>, scope_tree: &ScopeTree) -> Span {
-        let node_id = self.node_id(tcx, scope_tree);
-        if node_id == ast::DUMMY_NODE_ID {
+        let hir_id = self.hir_id(tcx, scope_tree);
+        if hir_id == hir::DUMMY_HIR_ID {
             return DUMMY_SP;
         }
-        let span = tcx.hir().span(node_id);
+        let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(ref blk) = tcx.hir().get(node_id) {
+            if let Node::Block(ref blk) = tcx.hir().get_by_hir_id(hir_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`
@@ -223,7 +220,7 @@ pub struct ScopeTree {
     /// The parent of the root body owner, if the latter is an
     /// an associated const or method, as impls/traits can also
     /// have lifetime parameters free in this body.
-    root_parent: Option<ast::NodeId>,
+    root_parent: Option<hir::HirId>,
 
     /// `parent_map` maps from a scope id to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
@@ -650,7 +647,7 @@ impl<'tcx> ScopeTree {
                                       -> Scope {
         let param_owner = tcx.parent_def_id(br.def_id).unwrap();
 
-        let param_owner_id = tcx.hir().as_local_node_id(param_owner).unwrap();
+        let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
         let scope = tcx.hir().maybe_body_owned_by(param_owner_id).map(|body_id| {
             tcx.hir().body(body_id).value.hir_id.local_id
         }).unwrap_or_else(|| {
@@ -661,7 +658,7 @@ impl<'tcx> ScopeTree {
                        "free_scope: {:?} not recognized by the \
                         region scope tree for {:?} / {:?}",
                        param_owner,
-                       self.root_parent.map(|id| tcx.hir().local_def_id(id)),
+                       self.root_parent.map(|id| tcx.hir().local_def_id_from_hir_id(id)),
                        self.root_body.map(|hir_id| DefId::local(hir_id.owner)));
 
             // The trait/impl lifetime is in scope for the method's body.
@@ -686,7 +683,7 @@ impl<'tcx> ScopeTree {
         // on the same function that they ended up being freed in.
         assert_eq!(param_owner, fr.scope);
 
-        let param_owner_id = tcx.hir().as_local_node_id(param_owner).unwrap();
+        let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
         let body_id = tcx.hir().body_owned_by(param_owner_id);
         Scope { id: tcx.hir().body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
     }
@@ -745,7 +742,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_, '_>,
 }
 
 fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk: &'tcx hir::Block) {
-    debug!("resolve_block(blk.id={:?})", blk.id);
+    debug!("resolve_block(blk.hir_id={:?})", blk.hir_id);
 
     let prev_cx = visitor.cx;
 
@@ -835,7 +832,7 @@ fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &
 }
 
 fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-    let stmt_id = visitor.tcx.hir().node_to_hir_id(stmt.node.id()).local_id;
+    let stmt_id = stmt.node.hir_id().local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     // Every statement will clean up the temporaries created during
@@ -1323,7 +1320,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         return tcx.region_scope_tree(closure_base_def_id);
     }
 
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
@@ -1343,7 +1340,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         // If the item is an associated const or a method,
         // record its impl/trait parent, as it can also have
         // lifetime parameters free in this body.
-        match tcx.hir().get(id) {
+        match tcx.hir().get_by_hir_id(id) {
             Node::ImplItem(_) |
             Node::TraitItem(_) => {
                 visitor.scope_tree.root_parent = Some(tcx.hir().get_parent(id));

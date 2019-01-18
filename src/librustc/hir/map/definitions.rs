@@ -450,6 +450,16 @@ impl Definitions {
     }
 
     #[inline]
+    pub fn local_def_id_from_hir_id(&self, node: hir::HirId) -> DefId {
+        for (node_id, hir_id) in self.node_to_hir_id.iter_enumerated() {
+            if node == *hir_id {
+                return self.local_def_id(node_id);
+            }
+        }
+        unreachable!()
+    }
+
+    #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
             let space_index = def_id.index.address_space().index();
@@ -457,6 +467,20 @@ impl Definitions {
             let node_id = self.def_index_to_node[space_index][array_index];
             if node_id != ast::DUMMY_NODE_ID {
                 Some(node_id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
+        if def_id.krate == LOCAL_CRATE {
+            let hir_id = self.def_index_to_hir_id(def_id.index);
+            if hir_id != hir::DUMMY_HIR_ID {
+                Some(hir_id)
             } else {
                 None
             }

@@ -12,7 +12,7 @@ use middle::cstore::CrateStoreDyn;
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::join;
-use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
+use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
@@ -39,16 +39,16 @@ pub const REGULAR_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
 /// Represents an entry and its parent NodeId.
 #[derive(Copy, Clone, Debug)]
 pub struct Entry<'hir> {
-    parent: NodeId,
+    parent_hir: HirId,
     dep_node: DepNodeIndex,
     node: Node<'hir>,
 }
 
 impl<'hir> Entry<'hir> {
-    fn parent_node(self) -> Option<NodeId> {
+    fn parent_hir(self) -> Option<HirId> {
         match self.node {
             Node::Crate | Node::MacroDef(_) => None,
-            _ => Some(self.parent),
+            _ => Some(self.parent_hir),
         }
     }
 
@@ -126,11 +126,15 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn is_body_owner(self, node_id: NodeId) -> bool {
+    fn is_body_owner(self, hir_id: HirId) -> bool {
         match self.associated_body() {
-            Some(b) => b.node_id == node_id,
+            Some(b) => b.hir_id == hir_id,
             None => false,
         }
+    }
+
+    fn hir_id(&self) -> HirId {
+        self.node.hir_id()
     }
 }
 
@@ -208,6 +212,15 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // can replace Map::read when no longer needed
+    pub fn read_by_hir_id(&self, hir_id: HirId) {
+        if let Some(entry) = self.find_entry_by_hir_id(hir_id) {
+            self.dep_graph.read_index(entry.dep_node);
+        } else {
+            bug!("called `HirMap::read_by_hir_id()` with invalid `HirId`: {:?}", hir_id)
+        }
+    }
+
     #[inline]
     pub fn definitions(&self) -> &'hir Definitions {
         self.definitions
@@ -224,6 +237,10 @@ impl<'hir> Map<'hir> {
         })
     }
 
+    pub fn def_path_from_hir_id(&self, id: HirId) -> DefPath {
+        self.def_path(self.local_def_id_from_hir_id(id))
+    }
+
     pub fn def_path(&self, def_id: DefId) -> DefPath {
         assert!(def_id.is_local());
         self.definitions.def_path(def_id.index)
@@ -238,6 +255,15 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
+    pub fn local_def_id_from_hir_id(&self, hir_id: HirId) -> DefId {
+        let node = self.hir_to_node_id(hir_id);
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            bug!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
+                 node, self.find_entry(node))
+        })
+    }
+
+    #[inline]
     pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
         self.definitions.opt_local_def_id(node)
     }
@@ -245,6 +271,11 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
         self.definitions.as_local_node_id(def_id)
+    }
+
+    #[inline]
+    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
+        self.definitions.as_local_hir_id(def_id)
     }
 
     #[inline]
@@ -286,7 +317,7 @@ impl<'hir> Map<'hir> {
 
         match node {
             Node::Item(item) => {
-                let def_id = || self.local_def_id(item.id);
+                let def_id = || self.definitions.local_def_id_from_hir_id(item.hir_id);
 
                 match item.node {
                     ItemKind::Static(_, m, _) => Some(Def::Static(def_id(), m == MutMutable)),
@@ -308,7 +339,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ForeignItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.definitions.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
                     ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
@@ -316,7 +347,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::TraitItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.definitions.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     TraitItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     TraitItemKind::Method(..) => Some(Def::Method(def_id)),
@@ -324,7 +355,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ImplItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.definitions.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),
@@ -333,7 +364,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::Variant(variant) => {
-                let def_id = self.local_def_id(variant.node.data.id());
+                let def_id = self.definitions.local_def_id_from_hir_id(variant.node.data.hir_id());
                 Some(Def::Variant(def_id))
             }
             Node::Field(_) |
@@ -351,16 +382,18 @@ impl<'hir> Map<'hir> {
             Node::Block(_) |
             Node::Crate => None,
             Node::Local(local) => {
-                Some(Def::Local(local.id))
+                Some(Def::Local(local.hir_id))
             }
             Node::MacroDef(macro_def) => {
-                Some(Def::Macro(self.local_def_id(macro_def.id),
-                                MacroKind::Bang))
+                let def_id = self.definitions.local_def_id_from_hir_id(macro_def.hir_id);
+                Some(Def::Macro(def_id, MacroKind::Bang))
             }
             Node::GenericParam(param) => {
                 Some(match param.kind {
-                    GenericParamKind::Lifetime { .. } => Def::Local(param.id),
-                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
+                    GenericParamKind::Lifetime { .. } =>
+                        Def::Local(param.hir_id),
+                    GenericParamKind::Type { .. } =>
+                        Def::TyParam(self.definitions.local_def_id_from_hir_id(param.hir_id)),
                 })
             }
         }
@@ -372,6 +405,11 @@ impl<'hir> Map<'hir> {
 
     fn find_entry(&self, id: NodeId) -> Option<Entry<'hir>> {
         self.map.get(id.as_usize()).cloned().unwrap_or(None)
+    }
+
+    // can replace Map::find_entry when no longer needed
+    fn find_entry_by_hir_id(&self, hir_id: HirId) -> Option<Entry<'hir>> {
+        self.map.iter().filter_map(|&entry| entry).find(|&entry| entry.hir_id() == hir_id)
     }
 
     pub fn krate(&self) -> &'hir Crate {
@@ -395,60 +433,61 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body {
-        self.read(id.node_id);
+        self.read_by_hir_id(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.body(id)
     }
 
-    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl> {
-        if let Some(entry) = self.find_entry(node_id) {
+    pub fn fn_decl(&self, hir_id: HirId) -> Option<FnDecl> {
+        if let Some(entry) = self.find_entry_by_hir_id(hir_id) {
             entry.fn_decl().cloned()
         } else {
-            bug!("no entry for node_id `{}`", node_id)
+            bug!("no entry for hir_id `{:?}`", hir_id)
         }
     }
 
     /// Returns the `NodeId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
-    pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
-        let parent = self.get_parent_node(node_id);
-        assert!(self.map[parent.as_usize()].map_or(false, |e| e.is_body_owner(node_id)));
+    pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> HirId {
+        let parent = self.get_parent_node(hir_id);
+        assert!(self.map[parent.local_id.as_usize()]
+                    .map_or(false, |e| e.is_body_owner(hir_id)));
         parent
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
-        self.local_def_id(self.body_owner(id))
+        self.local_def_id_from_hir_id(self.body_owner(id))
     }
 
-    /// Given a node id, returns the `BodyId` associated with it,
+    /// Given a hir id, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
-        if let Some(entry) = self.find_entry(id) {
+    pub fn maybe_body_owned_by(&self, id: HirId) -> Option<BodyId> {
+        if let Some(entry) = self.find_entry_by_hir_id(id) {
             if self.dep_graph.is_fully_enabled() {
-                let hir_id_owner = self.node_to_hir_id(id).owner;
+                let hir_id_owner = id.owner;
                 let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
                 self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
             }
 
             entry.associated_body()
         } else {
-            bug!("no entry for id `{}`", id)
+            bug!("no entry for id `{:?}`", id)
         }
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
-    pub fn body_owned_by(&self, id: NodeId) -> BodyId {
+    pub fn body_owned_by(&self, id: HirId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
             span_bug!(self.span(id), "body_owned_by: {} has no associated body",
-                      self.node_to_string(id));
+                      self.hir_to_string(id));
         })
     }
 
-    pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
-        match self.get(id) {
+    pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Const(..), .. }) |
             Node::TraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             Node::ImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) |
@@ -463,19 +502,19 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
-        match self.get(id) {
+    pub fn ty_param_owner(&self, id: HirId) -> HirId {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node(id),
-            _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id))
+            _ => bug!("ty_param_owner: {} not a type parameter", self.hir_to_string(id))
         }
     }
 
-    pub fn ty_param_name(&self, id: NodeId) -> Name {
-        match self.get(id) {
+    pub fn ty_param_name(&self, id: HirId) -> Name {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) => keywords::SelfUpper.name(),
             Node::GenericParam(param) => param.name.ident().name,
-            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
+            _ => bug!("ty_param_name: {} not a type parameter", self.hir_to_string(id)),
         }
     }
 
@@ -542,6 +581,12 @@ impl<'hir> Map<'hir> {
         self.find(id).unwrap_or_else(|| bug!("couldn't find node id {} in the AST map", id))
     }
 
+    pub fn get_by_hir_id(&self, id: HirId) -> Node<'hir> {
+        // read recorded by `find`
+        self.find_by_hir_id(id).unwrap_or_else(||
+            bug!("couldn't find id {:?} in the HIR map", id))
+    }
+
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
         self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
     }
@@ -589,34 +634,49 @@ impl<'hir> Map<'hir> {
         result
     }
 
+    // can replace Map::find when no longer needed
+    pub fn find_by_hir_id(&self, hir_id: HirId) -> Option<Node<'hir>> {
+        let result = self.find_entry_by_hir_id(hir_id).and_then(|entry| {
+            if let Node::Crate = entry.node {
+                None
+            } else {
+                Some(entry.node)
+            }
+        });
+        if result.is_some() {
+            self.read_by_hir_id(hir_id);
+        }
+        result
+    }
+
     /// Similar to `get_parent`; returns the parent node-id, or own `id` if there is
-    /// no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
+    /// no parent. Note that the parent may be `CRATE_HIR_ID`, which is not itself
     /// present in the map -- so passing the return value of get_parent_node to
     /// get may actually panic.
-    /// This function returns the immediate parent in the AST, whereas get_parent
+    /// This function returns the immediate parent in the HIR, whereas get_parent
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
     /// never appear as the parent_node. So you can always walk the `parent_nodes`
     /// from a node to the root of the ast (unless you get the same id back here
     /// that can happen if the id is not in the map itself or is just weird).
-    pub fn get_parent_node(&self, id: NodeId) -> NodeId {
+    pub fn get_parent_node(&self, id: HirId) -> HirId {
         if self.dep_graph.is_fully_enabled() {
-            let hir_id_owner = self.node_to_hir_id(id).owner;
+            let hir_id_owner = id.owner;
             let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
             self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
         }
 
-        self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
+        self.find_entry_by_hir_id(id).and_then(|x| x.parent_hir()).unwrap_or(id)
     }
 
     /// Check if the node is an argument. An argument is a local variable whose
     /// immediate parent is an item or a closure.
-    pub fn is_argument(&self, id: NodeId) -> bool {
-        match self.find(id) {
+    pub fn is_argument(&self, id: HirId) -> bool {
+        match self.find_by_hir_id(id) {
             Some(Node::Binding(_)) => (),
             _ => return false,
         }
-        match self.find(self.get_parent_node(id)) {
+        match self.find_by_hir_id(self.get_parent_node(id)) {
             Some(Node::Item(_)) |
             Some(Node::TraitItem(_)) |
             Some(Node::ImplItem(_)) => true,
@@ -636,23 +696,23 @@ impl<'hir> Map<'hir> {
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
     fn walk_parent_nodes<F, F2>(&self,
-                                start_id: NodeId,
-                                found: F,
-                                bail_early: F2)
-        -> Result<NodeId, NodeId>
+                                          start_id: HirId,
+                                          found: F,
+                                          bail_early: F2)
+        -> Result<HirId, HirId>
         where F: Fn(&Node<'hir>) -> bool, F2: Fn(&Node<'hir>) -> bool
     {
         let mut id = start_id;
         loop {
             let parent_node = self.get_parent_node(id);
-            if parent_node == CRATE_NODE_ID {
-                return Ok(CRATE_NODE_ID);
+            if parent_node == CRATE_HIR_ID {
+                return Ok(CRATE_HIR_ID);
             }
             if parent_node == id {
                 return Err(id);
             }
 
-            if let Some(entry) = self.find_entry(parent_node) {
+            if let Some(entry) = self.find_entry_by_hir_id(parent_node) {
                 if let Node::Crate = entry.node {
                     return Err(id);
                 }
@@ -668,7 +728,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieve the `NodeId` for `id`'s enclosing method, unless there's a
+    /// Retrieve the `HirId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
@@ -676,7 +736,7 @@ impl<'hir> Map<'hir> {
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
     ///         true  // `get_return_block` gets passed the `id` corresponding
-    ///     } else {  // to this, it will return `foo`'s `NodeId`.
+    ///     } else {  // to this, it will return `foo`'s `HirId`.
     ///         false
     ///     }
     /// }
@@ -690,7 +750,7 @@ impl<'hir> Map<'hir> {
     ///     false
     /// }
     /// ```
-    pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
+    pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
         let match_fn = |node: &Node<'_>| {
             match *node {
                 Node::Item(_) |
@@ -716,11 +776,11 @@ impl<'hir> Map<'hir> {
         self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
     }
 
-    /// Retrieve the `NodeId` for `id`'s parent item, or `id` itself if no
+    /// Retrieve the `HirId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent(&self, id: NodeId) -> NodeId {
+    pub fn get_parent(&self, id: HirId) -> HirId {
         match self.walk_parent_nodes(id, |node| match *node {
             Node::Item(_) |
             Node::ForeignItem(_) |
@@ -735,13 +795,13 @@ impl<'hir> Map<'hir> {
 
     /// Returns the `DefId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub fn get_module_parent(&self, id: NodeId) -> DefId {
-        self.local_def_id(self.get_module_parent_node(id))
+    pub fn get_module_parent(&self, id: HirId) -> DefId {
+        self.local_def_id_from_hir_id(self.get_module_parent_node(id))
     }
 
-    /// Returns the `NodeId` of `id`'s nearest module parent, or `id` itself if no
+    /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub fn get_module_parent_node(&self, id: NodeId) -> NodeId {
+    pub fn get_module_parent_node(&self, id: HirId) -> HirId {
         match self.walk_parent_nodes(id, |node| match *node {
             Node::Item(&Item { node: ItemKind::Mod(_), .. }) => true,
             _ => false,
@@ -755,7 +815,7 @@ impl<'hir> Map<'hir> {
     /// FIXME: it is not clear to me that all items qualify as scopes -- statics
     /// and associated types probably shouldn't, for example. Behavior in this
     /// regard should be expected to be highly unstable.
-    pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {
+    pub fn get_enclosing_scope(&self, id: HirId) -> Option<HirId> {
         self.walk_parent_nodes(id, |node| match *node {
             Node::Item(_) |
             Node::ForeignItem(_) |
@@ -766,27 +826,34 @@ impl<'hir> Map<'hir> {
         }, |_| false).ok()
     }
 
-    pub fn get_parent_did(&self, id: NodeId) -> DefId {
-        self.local_def_id(self.get_parent(id))
+    pub fn get_parent_did(&self, id: HirId) -> DefId {
+        self.local_def_id_from_hir_id(self.get_parent(id))
     }
 
-    pub fn get_foreign_abi(&self, id: NodeId) -> Abi {
+    pub fn get_foreign_abi(&self, id: HirId) -> Abi {
         let parent = self.get_parent(id);
-        if let Some(entry) = self.find_entry(parent) {
+        if let Some(entry) = self.find_entry_by_hir_id(parent) {
             if let Entry {
                 node: Node::Item(Item { node: ItemKind::ForeignMod(ref nm), .. }), .. } = entry
             {
-                self.read(id); // reveals some of the content of a node
+                self.read_by_hir_id(id); // reveals some of the content of a node
                 return nm.abi;
             }
         }
-        bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
+        bug!("expected foreign mod or inlined parent, found {}", self.hir_to_string(parent))
     }
 
     pub fn expect_item(&self, id: NodeId) -> &'hir Item {
         match self.find(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id))
+        }
+    }
+
+    pub fn expect_item_by_hir_id(&self, id: HirId) -> &'hir Item {
+        match self.find_by_hir_id(id) { // read recorded by `find`
+            Some(Node::Item(item)) => item,
+            _ => bug!("expected item, found {}", self.hir_to_string(id))
         }
     }
 
@@ -797,6 +864,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn expect_impl_item_by_hir_id(&self, id: HirId) -> &'hir ImplItem {
+        match self.find_by_hir_id(id) {
+            Some(Node::ImplItem(item)) => item,
+            _ => bug!("expected impl item, found {}", self.hir_to_string(id))
+        }
+    }
+
     pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem {
         match self.find(id) {
             Some(Node::TraitItem(item)) => item,
@@ -804,45 +878,52 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant_data(&self, id: NodeId) -> &'hir VariantData {
-        match self.find(id) {
+    pub fn expect_trait_item_by_hir_id(&self, id: HirId) -> &'hir TraitItem {
+        match self.find_by_hir_id(id) {
+            Some(Node::TraitItem(item)) => item,
+            _ => bug!("expected trait item, found {}", self.hir_to_string(id))
+        }
+    }
+
+    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
+        match self.find_by_hir_id(id) {
             Some(Node::Item(i)) => {
                 match i.node {
                     ItemKind::Struct(ref struct_def, _) |
                     ItemKind::Union(ref struct_def, _) => struct_def,
-                    _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id))
+                    _ => bug!("struct ID bound to non-struct {}", self.hir_to_string(id))
                 }
             }
             Some(Node::StructCtor(data)) => data,
             Some(Node::Variant(variant)) => &variant.node.data,
-            _ => bug!("expected struct or variant, found {}", self.node_to_string(id))
+            _ => bug!("expected struct or variant, found {}", self.hir_to_string(id))
         }
     }
 
-    pub fn expect_variant(&self, id: NodeId) -> &'hir Variant {
-        match self.find(id) {
+    pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
+        match self.find_by_hir_id(id) {
             Some(Node::Variant(variant)) => variant,
-            _ => bug!("expected variant, found {}", self.node_to_string(id)),
+            _ => bug!("expected variant, found {}", self.hir_to_string(id)),
         }
     }
 
-    pub fn expect_foreign_item(&self, id: NodeId) -> &'hir ForeignItem {
-        match self.find(id) {
+    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
+        match self.find_by_hir_id(id) {
             Some(Node::ForeignItem(item)) => item,
-            _ => bug!("expected foreign item, found {}", self.node_to_string(id))
+            _ => bug!("expected foreign item, found {}", self.hir_to_string(id))
         }
     }
 
-    pub fn expect_expr(&self, id: NodeId) -> &'hir Expr {
-        match self.find(id) { // read recorded by find
+    pub fn expect_expr(&self, id: HirId) -> &'hir Expr {
+        match self.find_by_hir_id(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,
-            _ => bug!("expected expr, found {}", self.node_to_string(id))
+            _ => bug!("expected expr, found {}", self.hir_to_string(id))
         }
     }
 
     /// Returns the name associated with the given NodeId's AST.
-    pub fn name(&self, id: NodeId) -> Name {
-        match self.get(id) {
+    pub fn name(&self, id: HirId) -> Name {
+        match self.get_by_hir_id(id) {
             Node::Item(i) => i.ident.name,
             Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
@@ -853,15 +934,15 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.name,
             Node::StructCtor(_) => self.name(self.get_parent(id)),
-            _ => bug!("no name for {}", self.node_to_string(id))
+            _ => bug!("no name for {}", self.hir_to_string(id))
         }
     }
 
     /// Given a node ID, get a list of attributes associated with the AST
     /// corresponding to the Node ID
-    pub fn attrs(&self, id: NodeId) -> &'hir [ast::Attribute] {
-        self.read(id); // reveals attributes on the node
-        let attrs = match self.find(id) {
+    pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
+        self.read_by_hir_id(id); // reveals attributes on the node
+        let attrs = match self.find_by_hir_id(id) {
             Some(Node::Item(i)) => Some(&i.attrs[..]),
             Some(Node::ForeignItem(fi)) => Some(&fi.attrs[..]),
             Some(Node::TraitItem(ref ti)) => Some(&ti.attrs[..]),
@@ -892,13 +973,13 @@ impl<'hir> Map<'hir> {
             map: self,
             item_name: parts.last().unwrap(),
             in_which: &parts[..parts.len() - 1],
-            idx: CRATE_NODE_ID,
+            idx: CRATE_HIR_ID,
         }
     }
 
-    pub fn span(&self, id: NodeId) -> Span {
-        self.read(id); // reveals span from node
-        match self.find_entry(id).map(|entry| entry.node) {
+    pub fn span(&self, id: HirId) -> Span {
+        self.read_by_hir_id(id); // reveals span from node
+        match self.find_entry_by_hir_id(id).map(|entry| entry.node) {
             Some(Node::Item(item)) => item.span,
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
             Some(Node::TraitItem(trait_method)) => trait_method.span,
@@ -914,7 +995,8 @@ impl<'hir> Map<'hir> {
             Some(Node::Binding(pat)) => pat.span,
             Some(Node::Pat(pat)) => pat.span,
             Some(Node::Block(block)) => block.span,
-            Some(Node::StructCtor(_)) => self.expect_item(self.get_parent(id)).span,
+            Some(Node::StructCtor(_)) =>
+                self.expect_item_by_hir_id(self.get_parent(id)).span,
             Some(Node::Lifetime(lifetime)) => lifetime.span,
             Some(Node::GenericParam(param)) => param.span,
             Some(Node::Visibility(&Spanned {
@@ -929,19 +1011,31 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        self.as_local_node_id(id).map(|id| self.span(id))
+        self.as_local_hir_id(id).map(|id| self.span(id))
     }
 
     pub fn node_to_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id, true)
     }
 
+    pub fn hir_to_string(&self, id: HirId) -> String {
+        hir_id_to_string(self, id, true)
+    }
+
     pub fn node_to_user_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id, false)
     }
 
+    pub fn hir_to_user_string(&self, id: HirId) -> String {
+        hir_id_to_string(self, id, false)
+    }
+
     pub fn node_to_pretty_string(&self, id: NodeId) -> String {
         print::to_string(self, |s| s.print_node(self.get(id)))
+    }
+
+    pub fn node_to_pretty_string_by_hir_id(&self, id: HirId) -> String {
+        print::to_string(self, |s| s.print_node(self.get_by_hir_id(id)))
     }
 }
 
@@ -949,7 +1043,7 @@ pub struct NodesMatchingSuffix<'a, 'hir:'a> {
     map: &'a Map<'hir>,
     item_name: &'a String,
     in_which: &'a [String],
-    idx: NodeId,
+    idx: HirId,
 }
 
 impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
@@ -959,12 +1053,12 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
     /// In other words: let `[x_0,x_1,...,x_k]` be `self.in_which`;
     /// returns true if parent's path ends with the suffix
     /// `x_0::x_1::...::x_k`.
-    fn suffix_matches(&self, parent: NodeId) -> bool {
+    fn suffix_matches(&self, parent: HirId) -> bool {
         let mut cursor = parent;
         for part in self.in_which.iter().rev() {
             let (mod_id, mod_name) = match find_first_mod_parent(self.map, cursor) {
                 None => return false,
-                Some((node_id, name)) => (node_id, name),
+                Some((hir_id, name)) => (hir_id, name),
             };
             if mod_name != &**part {
                 return false;
@@ -979,9 +1073,9 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // If `id` itself is a mod named `m` with parent `p`, then
         // returns `Some(id, m, p)`.  If `id` has no mod in its parent
         // chain, then returns `None`.
-        fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: NodeId) -> Option<(NodeId, Name)> {
+        fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: HirId) -> Option<(HirId, Name)> {
             loop {
-                if let Node::Item(item) = map.find(id)? {
+                if let Node::Item(item) = map.find_by_hir_id(id)? {
                     if item_is_mod(&item) {
                         return Some((id, item.ident.name))
                     }
@@ -1002,22 +1096,23 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
 
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
-    fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
+    fn matches_names(&self, parent_of_n: HirId, name: Name) -> bool {
         name == &**self.item_name && self.suffix_matches(parent_of_n)
     }
 }
 
 impl<'a, 'hir> Iterator for NodesMatchingSuffix<'a, 'hir> {
-    type Item = NodeId;
+    type Item = HirId;
 
-    fn next(&mut self) -> Option<NodeId> {
+    fn next(&mut self) -> Option<HirId> {
         loop {
             let idx = self.idx;
-            if idx.as_usize() >= self.map.entry_count() {
+            if idx.local_id.as_usize() >= self.map.entry_count() {
                 return None;
             }
-            self.idx = NodeId::from_u32(self.idx.as_u32() + 1);
-            let name = match self.map.find_entry(idx).map(|entry| entry.node) {
+            let node_id = self.map.hir_to_node_id(idx);
+            self.idx = self.map.node_to_hir_id(NodeId::from_u32(node_id.as_u32() + 1));
+            let name = match self.map.find_entry_by_hir_id(idx).map(|entry| entry.node) {
                 Some(Node::Item(n)) => n.name(),
                 Some(Node::ForeignItem(n)) => n.name(),
                 Some(Node::TraitItem(n)) => n.name(),
@@ -1271,6 +1366,135 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         }
         Some(Node::Lifetime(_)) => {
             format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
+        }
+        Some(Node::GenericParam(ref param)) => {
+            format!("generic_param {:?}{}", param, id_str)
+        }
+        Some(Node::Visibility(ref vis)) => {
+            format!("visibility {:?}{}", vis, id_str)
+        }
+        Some(Node::MacroDef(_)) => {
+            format!("macro {}{}",  path_str(), id_str)
+        }
+        Some(Node::Crate) => String::from("root_crate"),
+        None => format!("unknown node{}", id_str),
+    }
+}
+
+fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
+    let id_str = format!(" (id={:?})", id);
+    let id_str = if include_id { &id_str[..] } else { "" };
+
+    let path_str = || {
+        // This functionality is used for debugging, try to use TyCtxt to get
+        // the user-friendly path, otherwise fall back to stringifying DefPath.
+        ::ty::tls::with_opt(|tcx| {
+            if let Some(tcx) = tcx {
+                tcx.hir_path_str(id)
+            } else {
+                let path = map.def_path_from_hir_id(id);
+                path.data.into_iter().map(|elem| {
+                    elem.data.to_string()
+                }).collect::<Vec<_>>().join("::")
+            }
+        })
+    };
+
+    match map.find_by_hir_id(id) {
+        Some(Node::Item(item)) => {
+            let item_str = match item.node {
+                ItemKind::ExternCrate(..) => "extern crate",
+                ItemKind::Use(..) => "use",
+                ItemKind::Static(..) => "static",
+                ItemKind::Const(..) => "const",
+                ItemKind::Fn(..) => "fn",
+                ItemKind::Mod(..) => "mod",
+                ItemKind::ForeignMod(..) => "foreign mod",
+                ItemKind::GlobalAsm(..) => "global asm",
+                ItemKind::Ty(..) => "ty",
+                ItemKind::Existential(..) => "existential type",
+                ItemKind::Enum(..) => "enum",
+                ItemKind::Struct(..) => "struct",
+                ItemKind::Union(..) => "union",
+                ItemKind::Trait(..) => "trait",
+                ItemKind::TraitAlias(..) => "trait alias",
+                ItemKind::Impl(..) => "impl",
+            };
+            format!("{} {}{}", item_str, path_str(), id_str)
+        }
+        Some(Node::ForeignItem(_)) => {
+            format!("foreign item {}{}", path_str(), id_str)
+        }
+        Some(Node::ImplItem(ii)) => {
+            match ii.node {
+                ImplItemKind::Const(..) => {
+                    format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
+                }
+                ImplItemKind::Method(..) => {
+                    format!("method {} in {}{}", ii.ident, path_str(), id_str)
+                }
+                ImplItemKind::Type(_) => {
+                    format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
+                }
+                ImplItemKind::Existential(_) => {
+                    format!("assoc existential type {} in {}{}", ii.ident, path_str(), id_str)
+                }
+            }
+        }
+        Some(Node::TraitItem(ti)) => {
+            let kind = match ti.node {
+                TraitItemKind::Const(..) => "assoc constant",
+                TraitItemKind::Method(..) => "trait method",
+                TraitItemKind::Type(..) => "assoc type",
+            };
+
+            format!("{} {} in {}{}", kind, ti.ident, path_str(), id_str)
+        }
+        Some(Node::Variant(ref variant)) => {
+            format!("variant {} in {}{}",
+                    variant.node.ident,
+                    path_str(), id_str)
+        }
+        Some(Node::Field(ref field)) => {
+            format!("field {} in {}{}",
+                    field.ident,
+                    path_str(), id_str)
+        }
+        Some(Node::AnonConst(_)) => {
+            format!("const {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Expr(_)) => {
+            format!("expr {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Stmt(_)) => {
+            format!("stmt {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::PathSegment(_)) => {
+            format!("path segment {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Ty(_)) => {
+            format!("type {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::TraitRef(_)) => {
+            format!("trait_ref {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Binding(_)) => {
+            format!("local {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Pat(_)) => {
+            format!("pat {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Block(_)) => {
+            format!("block {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::Local(_)) => {
+            format!("local {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
+        }
+        Some(Node::StructCtor(_)) => {
+            format!("struct_ctor {}{}", path_str(), id_str)
+        }
+        Some(Node::Lifetime(_)) => {
+            format!("lifetime {}{}", map.node_to_pretty_string_by_hir_id(id), id_str)
         }
         Some(Node::GenericParam(ref param)) => {
             format!("generic_param {:?}{}", param, id_str)

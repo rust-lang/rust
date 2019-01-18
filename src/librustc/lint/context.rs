@@ -514,6 +514,8 @@ pub struct LateContext<'a, 'tcx: 'a> {
 
     last_ast_node_with_lint_attrs: ast::NodeId,
 
+    last_hir_node_with_lint_attrs: hir::HirId,
+
     /// Generic type parameters in scope for the item we are in.
     pub generics: Option<&'tcx hir::Generics>,
 }
@@ -552,6 +554,10 @@ impl LintPassObject for EarlyLintPassObject {}
 
 impl LintPassObject for LateLintPassObject {}
 
+pub enum ItemId {
+    Early(ast::NodeId),
+    Late(hir::HirId)
+}
 
 pub trait LintContext<'tcx>: Sized {
     type PassObject: LintPassObject;
@@ -629,7 +635,7 @@ pub trait LintContext<'tcx>: Sized {
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
     fn with_lint_attrs<F>(&mut self,
-                          id: ast::NodeId,
+                          id: ItemId,
                           attrs: &'tcx [ast::Attribute],
                           f: F)
         where F: FnOnce(&mut Self);
@@ -700,7 +706,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
                                   span: Option<S>,
                                   msg: &str)
                                   -> DiagnosticBuilder<'_> {
-        let id = self.last_ast_node_with_lint_attrs;
+        let id = self.last_hir_node_with_lint_attrs;
         match span {
             Some(s) => self.tcx.struct_span_lint_node(lint, id, s, msg),
             None => self.tcx.struct_lint_node(lint, id, msg),
@@ -708,13 +714,18 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn with_lint_attrs<F>(&mut self,
-                          id: ast::NodeId,
+                          id: ItemId,
                           attrs: &'tcx [ast::Attribute],
                           f: F)
         where F: FnOnce(&mut Self)
     {
+        let id = match id {
+            ItemId::Early(_) => panic!("NodeId is not available in early lint context!"),
+            ItemId::Late(hir_id) => hir_id
+        };
+
         let prev = self.last_ast_node_with_lint_attrs;
-        self.last_ast_node_with_lint_attrs = id;
+        self.last_hir_node_with_lint_attrs = id;
         self.enter_attrs(attrs);
         f(self);
         self.exit_attrs(attrs);
@@ -761,11 +772,16 @@ impl<'a> LintContext<'a> for EarlyContext<'a> {
     }
 
     fn with_lint_attrs<F>(&mut self,
-                          id: ast::NodeId,
+                          id: ItemId,
                           attrs: &'a [ast::Attribute],
                           f: F)
         where F: FnOnce(&mut Self)
     {
+        let id = match id {
+            ItemId::Early(node_id) => node_id,
+            ItemId::Late(_) => panic!("HirId is not available in early lint context!")
+        };
+
         let push = self.builder.push(attrs);
         self.check_id(id);
         self.enter_attrs(attrs);
@@ -776,16 +792,16 @@ impl<'a> LintContext<'a> for EarlyContext<'a> {
 }
 
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
-    fn with_param_env<F>(&mut self, id: ast::NodeId, f: F)
+    fn with_param_env<F>(&mut self, id: hir::HirId, f: F)
         where F: FnOnce(&mut Self),
     {
         let old_param_env = self.param_env;
-        self.param_env = self.tcx.param_env(self.tcx.hir().local_def_id(id));
+        self.param_env = self.tcx.param_env(self.tcx.hir().local_def_id_from_hir_id(id));
         f(self);
         self.param_env = old_param_env;
     }
-    pub fn current_lint_root(&self) -> ast::NodeId {
-        self.last_ast_node_with_lint_attrs
+    pub fn current_lint_root(&self) -> hir::HirId {
+        self.last_hir_node_with_lint_attrs
     }
 }
 
@@ -823,8 +839,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         let generics = self.generics.take();
         self.generics = it.node.generics();
-        self.with_lint_attrs(it.id, &it.attrs, |cx| {
-            cx.with_param_env(it.id, |cx| {
+        self.with_lint_attrs(ItemId::Late(it.hir_id), &it.attrs, |cx| {
+            cx.with_param_env(it.hir_id, |cx| {
                 run_lints!(cx, check_item, it);
                 hir_visit::walk_item(cx, it);
                 run_lints!(cx, check_item_post, it);
@@ -834,8 +850,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
-        self.with_lint_attrs(it.id, &it.attrs, |cx| {
-            cx.with_param_env(it.id, |cx| {
+        self.with_lint_attrs(ItemId::Late(it.hir_id), &it.attrs, |cx| {
+            cx.with_param_env(it.hir_id, |cx| {
                 run_lints!(cx, check_foreign_item, it);
                 hir_visit::walk_foreign_item(cx, it);
                 run_lints!(cx, check_foreign_item_post, it);
@@ -849,7 +865,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr) {
-        self.with_lint_attrs(e.id, &e.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Late(e.hir_id), &e.attrs, |cx| {
             run_lints!(cx, check_expr, e);
             hir_visit::walk_expr(cx, e);
             run_lints!(cx, check_expr_post, e);
@@ -867,7 +883,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: hir_visit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                body_id: hir::BodyId, span: Span, id: ast::NodeId) {
+                body_id: hir::BodyId, span: Span, id: hir::HirId) {
         // Wrap in tables here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.
         let old_tables = self.tables;
@@ -883,7 +899,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
                         s: &'tcx hir::VariantData,
                         name: ast::Name,
                         g: &'tcx hir::Generics,
-                        item_id: ast::NodeId,
+                        item_id: hir::HirId,
                         _: Span) {
         run_lints!(self, check_struct_def, s, name, g, item_id);
         hir_visit::walk_struct_def(self, s);
@@ -891,7 +907,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
-        self.with_lint_attrs(s.id, &s.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Late(s.hir_id), &s.attrs, |cx| {
             run_lints!(cx, check_struct_field, s);
             hir_visit::walk_struct_field(cx, s);
         })
@@ -900,8 +916,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_variant(&mut self,
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     item_id: ast::NodeId) {
-        self.with_lint_attrs(v.node.data.id(), &v.node.attrs, |cx| {
+                     item_id: hir::HirId) {
+        self.with_lint_attrs(ItemId::Late(v.node.data.hir_id()), &v.node.attrs, |cx| {
             run_lints!(cx, check_variant, v, g);
             hir_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, v, g);
@@ -917,14 +933,14 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         run_lints!(self, check_name, sp, name);
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod, s: Span, n: ast::NodeId) {
-        run_lints!(self, check_mod, m, s, n);
-        hir_visit::walk_mod(self, m, n);
-        run_lints!(self, check_mod_post, m, s, n);
+    fn visit_mod(&mut self, m: &'tcx hir::Mod, s: Span, h: hir::HirId) {
+        run_lints!(self, check_mod, m, s, h);
+        hir_visit::walk_mod(self, m, h);
+        run_lints!(self, check_mod_post, m, s, h);
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local) {
-        self.with_lint_attrs(l.id, &l.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Late(l.hir_id), &l.attrs, |cx| {
             run_lints!(cx, check_local, l);
             hir_visit::walk_local(cx, l);
         })
@@ -970,8 +986,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         let generics = self.generics.take();
         self.generics = Some(&trait_item.generics);
-        self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
-            cx.with_param_env(trait_item.id, |cx| {
+        self.with_lint_attrs(ItemId::Late(trait_item.hir_id), &trait_item.attrs, |cx| {
+            cx.with_param_env(trait_item.hir_id, |cx| {
                 run_lints!(cx, check_trait_item, trait_item);
                 hir_visit::walk_trait_item(cx, trait_item);
                 run_lints!(cx, check_trait_item_post, trait_item);
@@ -983,8 +999,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         let generics = self.generics.take();
         self.generics = Some(&impl_item.generics);
-        self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
-            cx.with_param_env(impl_item.id, |cx| {
+        self.with_lint_attrs(ItemId::Late(impl_item.hir_id), &impl_item.attrs, |cx| {
+            cx.with_param_env(impl_item.hir_id, |cx| {
                 run_lints!(cx, check_impl_item, impl_item);
                 hir_visit::walk_impl_item(cx, impl_item);
                 run_lints!(cx, check_impl_item_post, impl_item);
@@ -1010,7 +1026,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
 impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     fn visit_item(&mut self, it: &'a ast::Item) {
-        self.with_lint_attrs(it.id, &it.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(it.id), &it.attrs, |cx| {
             run_lints!(cx, check_item, it);
             ast_visit::walk_item(cx, it);
             run_lints!(cx, check_item_post, it);
@@ -1018,7 +1034,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_foreign_item(&mut self, it: &'a ast::ForeignItem) {
-        self.with_lint_attrs(it.id, &it.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(it.id), &it.attrs, |cx| {
             run_lints!(cx, check_foreign_item, it);
             ast_visit::walk_foreign_item(cx, it);
             run_lints!(cx, check_foreign_item_post, it);
@@ -1035,7 +1051,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
-        self.with_lint_attrs(e.id, &e.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(e.id), &e.attrs, |cx| {
             run_lints!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
         })
@@ -1068,14 +1084,14 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_struct_field(&mut self, s: &'a ast::StructField) {
-        self.with_lint_attrs(s.id, &s.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(s.id), &s.attrs, |cx| {
             run_lints!(cx, check_struct_field, s);
             ast_visit::walk_struct_field(cx, s);
         })
     }
 
     fn visit_variant(&mut self, v: &'a ast::Variant, g: &'a ast::Generics, item_id: ast::NodeId) {
-        self.with_lint_attrs(item_id, &v.node.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(item_id), &v.node.attrs, |cx| {
             run_lints!(cx, check_variant, v, g);
             ast_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, v, g);
@@ -1100,7 +1116,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_local(&mut self, l: &'a ast::Local) {
-        self.with_lint_attrs(l.id, &l.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(l.id), &l.attrs, |cx| {
             run_lints!(cx, check_local, l);
             ast_visit::walk_local(cx, l);
         })
@@ -1143,7 +1159,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'a ast::TraitItem) {
-        self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(trait_item.id), &trait_item.attrs, |cx| {
             run_lints!(cx, check_trait_item, trait_item);
             ast_visit::walk_trait_item(cx, trait_item);
             run_lints!(cx, check_trait_item_post, trait_item);
@@ -1151,7 +1167,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'a ast::ImplItem) {
-        self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
+        self.with_lint_attrs(ItemId::Early(impl_item.id), &impl_item.attrs, |cx| {
             run_lints!(cx, check_impl_item, impl_item);
             ast_visit::walk_impl_item(cx, impl_item);
             run_lints!(cx, check_impl_item_post, impl_item);
@@ -1211,11 +1227,12 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
                 lints: tcx.sess.lint_store.borrow(),
             },
             last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,
+            last_hir_node_with_lint_attrs: hir::CRATE_HIR_ID,
             generics: None,
         };
 
         // Visit the whole crate.
-        cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
+        cx.with_lint_attrs(ItemId::Early(ast::CRATE_NODE_ID), &krate.attrs, |cx| {
             // since the root module isn't visited as an item (because it isn't an
             // item), warn for it here.
             run_lints!(cx, check_crate, krate);
@@ -1251,7 +1268,7 @@ pub fn check_ast_crate(
         let mut cx = EarlyContext::new(sess, krate, passes, buffered);
 
         // Visit the whole crate.
-        cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
+        cx.with_lint_attrs(ItemId::Early(ast::CRATE_NODE_ID), &krate.attrs, |cx| {
             // since the root module isn't visited as an item (because it isn't an
             // item), warn for it here.
             run_lints!(cx, check_crate, krate);

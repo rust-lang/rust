@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
             (None, None) => {
-                let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
+                let (main_label_1, span_label_1) = if ty_sup.hir_id == ty_sub.hir_id {
                     (
                         "this type is declared with multiple lifetimes...".to_owned(),
                         "...but data with one lifetime flows into the other here".to_owned()

@@ -12,13 +12,13 @@ pub use self::UnsafeSource::*;
 
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
-use util::nodemap::{NodeMap, FxHashSet};
+use util::nodemap::{HirIdMap, NodeMap, FxHashSet};
 use mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
@@ -71,7 +71,7 @@ pub mod print;
 /// the local_id part of the HirId changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct HirId {
     pub owner: DefIndex,
     pub local_id: ItemLocalId,
@@ -155,7 +155,7 @@ impl fmt::Debug for Label {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
 
     /// Either "'a", referring to a named lifetime definition,
@@ -273,8 +273,8 @@ impl fmt::Display for Lifetime {
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
-               "lifetime({}: {})",
-               self.id,
+               "lifetime({:?}: {})",
+               self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
     }
 }
@@ -331,6 +331,7 @@ pub struct PathSegment {
     // affected. (In general, we don't bother to get the defs for synthesized
     // segments, only for segments which have come from the AST).
     pub id: Option<NodeId>,
+    pub hir_id: Option<HirId>,
     pub def: Option<Def>,
 
     /// Type/lifetime parameters attached to this path. They come in
@@ -353,6 +354,7 @@ impl PathSegment {
         PathSegment {
             ident,
             id: None,
+            hir_id: None,
             def: None,
             infer_types: true,
             args: None,
@@ -362,6 +364,7 @@ impl PathSegment {
     pub fn new(
         ident: Ident,
         id: Option<NodeId>,
+        hir_id: Option<HirId>,
         def: Option<Def>,
         args: GenericArgs,
         infer_types: bool,
@@ -369,6 +372,7 @@ impl PathSegment {
         PathSegment {
             ident,
             id,
+            hir_id,
             def,
             infer_types,
             args: if args.is_empty() {
@@ -407,10 +411,10 @@ impl GenericArg {
         }
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn hir_id(&self) -> HirId {
         match self {
-            GenericArg::Lifetime(l) => l.id,
-            GenericArg::Type(t) => t.id,
+            GenericArg::Lifetime(l) => l.hir_id,
+            GenericArg::Type(t) => t.hir_id,
         }
     }
 }
@@ -537,7 +541,7 @@ pub enum GenericParamKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct GenericParam {
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub name: ParamName,
     pub attrs: HirVec<Attribute>,
     pub bounds: GenericBounds,
@@ -567,7 +571,7 @@ impl Generics {
         Generics {
             params: HirVec::new(),
             where_clause: WhereClause {
-                id: DUMMY_NODE_ID,
+                hir_id: DUMMY_HIR_ID,
                 predicates: HirVec::new(),
             },
             span: DUMMY_SP,
@@ -610,7 +614,7 @@ pub enum SyntheticTyParamKind {
 /// A `where` clause in a definition
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub predicates: HirVec<WherePredicate>,
 }
 
@@ -670,7 +674,7 @@ pub struct WhereRegionPredicate {
 /// An equality predicate (unsupported), e.g., `T=int`
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereEqPredicate {
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
@@ -798,7 +802,7 @@ pub struct MacroDef {
     pub name: Name,
     pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub body: TokenStream,
     pub legacy: bool,
@@ -811,7 +815,6 @@ pub struct Block {
     /// An expression at the end of the block
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
-    pub id: NodeId,
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
@@ -824,7 +827,6 @@ pub struct Block {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Pat {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: PatKind,
     pub span: Span,
@@ -832,7 +834,7 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id,
+        write!(f, "pat({:?}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_pat(self)))
     }
 }
@@ -887,7 +889,7 @@ impl Pat {
 /// except is_shorthand is true
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FieldPat {
-    pub id: NodeId,
+    pub hir_id: HirId,
     /// The identifier for the field
     pub ident: Ident,
     /// The pattern the field is destructured to
@@ -931,10 +933,10 @@ pub enum PatKind {
     Wild,
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
-    /// The `NodeId` is the canonical ID for the variable being bound,
+    /// The `HirId` is the canonical ID for the variable being bound,
     /// e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID,
     /// which is the pattern ID of the first `x`.
-    Binding(BindingAnnotation, NodeId, Ident, Option<P<Pat>>),
+    Binding(BindingAnnotation, HirId, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g., `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -1151,8 +1153,8 @@ impl fmt::Debug for StmtKind {
         // Sadness.
         let spanned = source_map::dummy_spanned(self.clone());
         write!(f,
-               "stmt({}: {})",
-               spanned.node.id(),
+               "stmt({:?}: {})",
+               spanned.node.hir_id(),
                print::to_string(print::NO_ANN, |s| s.print_stmt(&spanned)))
     }
 }
@@ -1160,13 +1162,13 @@ impl fmt::Debug for StmtKind {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum StmtKind {
     /// Could be an item or a local (let) binding:
-    Decl(P<Decl>, NodeId),
+    Decl(P<Decl>, HirId),
 
     /// Expr without trailing semi-colon (must have unit type):
-    Expr(P<Expr>, NodeId),
+    Expr(P<Expr>, HirId),
 
     /// Expr with trailing semi-colon (may have any type):
-    Semi(P<Expr>, NodeId),
+    Semi(P<Expr>, HirId),
 }
 
 impl StmtKind {
@@ -1178,11 +1180,11 @@ impl StmtKind {
         }
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn hir_id(&self) -> HirId {
         match *self {
-            StmtKind::Decl(_, id) |
-            StmtKind::Expr(_, id) |
-            StmtKind::Semi(_, id) => id,
+            StmtKind::Decl(_, hir_id) |
+            StmtKind::Expr(_, hir_id) |
+            StmtKind::Semi(_, hir_id) => hir_id,
         }
     }
 }
@@ -1194,7 +1196,6 @@ pub struct Local {
     pub ty: Option<P<Ty>>,
     /// Initializer expression to set the value, if any
     pub init: Option<P<Expr>>,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
@@ -1243,7 +1244,7 @@ pub enum Guard {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub ident: Ident,
     pub expr: P<Expr>,
     pub span: Span,
@@ -1266,7 +1267,7 @@ pub enum UnsafeSource {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct BodyId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// The body of a function, closure, or constant value. In the case of
@@ -1300,7 +1301,7 @@ pub struct Body {
 impl Body {
     pub fn id(&self) -> BodyId {
         BodyId {
-            node_id: self.value.id
+            hir_id: self.value.hir_id
         }
     }
 }
@@ -1324,7 +1325,6 @@ pub enum BodyOwnerKind {
 /// explicit discriminant values for enum variants.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub body: BodyId,
 }
@@ -1332,7 +1332,6 @@ pub struct AnonConst {
 /// An expression
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
-    pub id: NodeId,
     pub span: Span,
     pub node: ExprKind,
     pub attrs: ThinVec<Attribute>,
@@ -1431,7 +1430,7 @@ impl Expr {
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id,
+        write!(f, "expr({:?}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_expr(self)))
     }
 }
@@ -1667,7 +1666,6 @@ pub struct TraitItemId {
 /// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItem {
-    pub id: NodeId,
     pub ident: Ident,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
@@ -1710,7 +1708,6 @@ pub struct ImplItemId {
 /// Represents anything within an `impl` block
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItem {
-    pub id: NodeId,
     pub ident: Ident,
     pub hir_id: HirId,
     pub vis: Visibility,
@@ -1738,7 +1735,7 @@ pub enum ImplItemKind {
 // Bind a type to an associated type: `A=Foo`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeBinding {
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub ident: Ident,
     pub ty: P<Ty>,
     pub span: Span,
@@ -1746,7 +1743,6 @@ pub struct TypeBinding {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
-    pub id: NodeId,
     pub node: TyKind,
     pub span: Span,
     pub hir_id: HirId,
@@ -1851,7 +1847,6 @@ pub struct InlineAsm {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arg {
     pub pat: P<Pat>,
-    pub id: NodeId,
     pub hir_id: HirId,
 }
 
@@ -2062,7 +2057,6 @@ pub enum UseKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,
-    pub ref_id: NodeId,
     pub hir_ref_id: HirId,
 }
 
@@ -2083,7 +2077,7 @@ pub type Visibility = Spanned<VisibilityKind>;
 pub enum VisibilityKind {
     Public,
     Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId, hir_id: HirId },
+    Restricted { path: P<Path>, hir_id: HirId },
     Inherited,
 }
 
@@ -2119,7 +2113,7 @@ pub struct StructField {
     pub span: Span,
     pub ident: Ident,
     pub vis: Visibility,
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
 }
@@ -2145,9 +2139,9 @@ impl StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, NodeId),
-    Tuple(HirVec<StructField>, NodeId),
-    Unit(NodeId),
+    Struct(HirVec<StructField>, HirId),
+    Tuple(HirVec<StructField>, HirId),
+    Unit(HirId),
 }
 
 impl VariantData {
@@ -2157,9 +2151,11 @@ impl VariantData {
             _ => &[],
         }
     }
-    pub fn id(&self) -> NodeId {
+    pub fn hir_id(&self) -> HirId {
         match *self {
-            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
+            VariantData::Struct(_, hir_id)
+            | VariantData::Tuple(_, hir_id)
+            | VariantData::Unit(hir_id) => hir_id,
         }
     }
     pub fn is_struct(&self) -> bool {
@@ -2199,7 +2195,6 @@ pub struct ItemId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
     pub ident: Ident,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub node: ItemKind,
@@ -2356,7 +2351,7 @@ pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
-    pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,
 }
@@ -2394,7 +2389,7 @@ pub struct Freevar {
 }
 
 impl Freevar {
-    pub fn var_id(&self) -> NodeId {
+    pub fn var_id(&self) -> HirId {
         match self.def {
             Def::Local(id) | Def::Upvar(id, ..) => id,
             _ => bug!("Freevar::var_id: bad def ({:?})", self.def)
@@ -2402,7 +2397,7 @@ impl Freevar {
     }
 }
 
-pub type FreevarMap = NodeMap<Vec<Freevar>>;
+pub type FreevarMap = HirIdMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 
@@ -2553,4 +2548,36 @@ pub enum Node<'hir> {
     Visibility(&'hir Visibility),
 
     Crate,
+}
+
+impl<'hir> Node<'hir> {
+    pub fn hir_id(&self) -> HirId {
+        match *self {
+            Node::Item(item) => item.hir_id,
+            Node::ForeignItem(foreign_item) => foreign_item.hir_id,
+            Node::TraitItem(trait_method) => trait_method.hir_id,
+            Node::ImplItem(impl_item) => impl_item.hir_id,
+            Node::Variant(spanned) => spanned.node.data.hir_id(),
+            Node::Field(field) => field.hir_id,
+            Node::AnonConst(constant) => constant.hir_id,
+            Node::Expr(expr) => expr.hir_id,
+            Node::Stmt(spanned) => spanned.node.hir_id(),
+            Node::PathSegment(seg) => seg.hir_id.unwrap(), // is None possible here?
+            Node::Ty(ty) => ty.hir_id,
+            Node::TraitRef(tr) => tr.hir_ref_id,
+            Node::Binding(pat) => pat.hir_id,
+            Node::Pat(pat) => pat.hir_id,
+            Node::Block(block) => block.hir_id,
+            Node::StructCtor(variant_data) => variant_data.hir_id(),
+            Node::Lifetime(lifetime) => lifetime.hir_id,
+            Node::GenericParam(param) => param.hir_id,
+            Node::Visibility(&Spanned {
+                node: VisibilityKind::Restricted { hir_id, .. }, ..
+            }) => hir_id,
+            Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
+            Node::Local(local) => local.hir_id,
+            Node::MacroDef(macro_def) => macro_def.hir_id,
+            Node::Crate => CRATE_HIR_ID,
+        }
+    }
 }

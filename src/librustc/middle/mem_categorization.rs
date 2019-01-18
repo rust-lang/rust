@@ -88,7 +88,7 @@ pub enum Categorization<'tcx> {
     ThreadLocal(ty::Region<'tcx>),       // value that cannot move, but still restricted in scope
     StaticItem,
     Upvar(Upvar),                        // upvar referenced by closure env
-    Local(ast::NodeId),                  // local variable
+    Local(hir::HirId),                  // local variable
     Deref(cmt<'tcx>, PointerKind<'tcx>), // deref of a ptr
     Interior(cmt<'tcx>, InteriorKind),   // something interior: field, tuple, etc
     Downcast(cmt<'tcx>, DefId),          // selects a particular enum variant (*1)
@@ -198,9 +198,9 @@ pub struct cmt_<'tcx> {
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
-    ImmLocal(ast::NodeId),
+    ImmLocal(hir::HirId),
     ClosureEnv(LocalDefId),
-    LocalDeref(ast::NodeId),
+    LocalDeref(hir::HirId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
 
@@ -337,8 +337,8 @@ impl MutabilityCategory {
     }
 
     fn from_local(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>,
-                  id: ast::NodeId) -> MutabilityCategory {
-        let ret = match tcx.hir().get(id) {
+                  id: hir::HirId) -> MutabilityCategory {
+        let ret = match tcx.hir().get_by_hir_id(id) {
             Node::Binding(p) => match p.node {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()
@@ -486,9 +486,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // FIXME
             None if self.is_tainted_by_errors() => Err(()),
             None => {
-                let id = self.tcx.hir().hir_to_node_id(id);
-                bug!("no type for node {}: {} in mem_categorization",
-                     id, self.tcx.hir().node_to_string(id));
+                bug!("no type for node {:?}: {} in mem_categorization",
+                     id, self.tcx.hir().hir_to_string(id));
             }
         }
     }
@@ -497,7 +496,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                    hir_id: hir::HirId)
                    -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(hir_id,
-                                        self.tables.node_id_to_type_opt(hir_id))
+                                        Some(self.tables.hir_id_to_type(hir_id)))
     }
 
     pub fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
@@ -632,7 +631,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn cat_expr_unadjusted(&self, expr: &hir::Expr) -> McResult<cmt_<'tcx>> {
-        debug!("cat_expr: id={} expr={:?}", expr.id, expr);
+        debug!("cat_expr: id={:?} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
         match expr.node {
@@ -647,11 +646,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
             hir::ExprKind::Field(ref base, f_ident) => {
                 let base_cmt = Rc::new(self.cat_expr(&base)?);
-                debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
-                       expr.id,
+                debug!("cat_expr(cat_field): id={:?} expr={:?} base={:?}",
+                       expr.hir_id,
                        expr,
                        base_cmt);
-                let f_index = self.tcx.field_index(expr.id, self.tables);
+                let f_index = self.tcx.field_index(expr.hir_id, self.tables);
                 Ok(self.cat_field(expr, base_cmt, f_index, f_ident, expr_ty))
             }
 
@@ -757,12 +756,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     fn cat_upvar(&self,
                  hir_id: hir::HirId,
                  span: Span,
-                 var_id: ast::NodeId,
-                 fn_node_id: ast::NodeId)
+                 var_hir_id: hir::HirId,
+                 fn_hir_id: hir::HirId)
                  -> McResult<cmt_<'tcx>>
     {
-        let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_node_id);
-
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
@@ -806,8 +803,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ref t => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", t),
         };
 
-        let closure_expr_def_id = self.tcx.hir().local_def_id(fn_node_id);
-        let var_hir_id = self.tcx.hir().node_to_hir_id(var_id);
+        let closure_expr_def_id = self.tcx.hir().local_def_id_from_hir_id(fn_hir_id);
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_hir_id },
             closure_expr_id: closure_expr_def_id.to_local(),
@@ -816,7 +812,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let var_ty = self.node_ty(var_hir_id)?;
 
         // Mutability of original variable itself
-        let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);
+        let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_hir_id);
 
         // Construct the upvar. This represents access to the field
         // from the environment (perhaps we should eventually desugar
@@ -1321,7 +1317,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.node.pat)?; // see (*2)
-                    let f_index = self.tcx.field_index(fp.node.id, self.tables);
+                    let f_index = self.tcx.field_index(fp.node.hir_id, self.tables);
                     let cmt_field = Rc::new(self.cat_field(pat, cmt.clone(), f_index,
                                                            fp.node.ident, field_ty));
                     self.cat_pattern_(cmt_field, &fp.node.pat, op)?;

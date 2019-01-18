@@ -43,7 +43,7 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let body_exit;
 
     // Find the tables for this body.
-    let owner_def_id = tcx.hir().local_def_id(tcx.hir().body_owner(body.id()));
+    let owner_def_id = tcx.hir().local_def_id_from_hir_id(tcx.hir().body_owner(body.id()));
     let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
@@ -99,15 +99,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
-        let hir_id = self.tcx.hir().node_to_hir_id(stmt.node.id());
+        let hir_id = stmt.node.hir_id();
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, ..) => {
                 let exit = self.decl(&decl, pred);
                 self.add_ast_node(hir_id.local_id, &[exit])
             }
 
-            hir::StmtKind::Expr(ref expr, _) |
-            hir::StmtKind::Semi(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr, ..) |
+            hir::StmtKind::Semi(ref expr, ..) => {
                 let exit = self.expr(&expr, pred);
                 self.add_ast_node(hir_id.local_id, &[exit])
             }
@@ -406,7 +406,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             args: I) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        let m = self.tcx.hir().get_module_parent(call_expr.id);
+        let m = self.tcx.hir().get_module_parent(call_expr.hir_id);
         if self.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(call_expr)) {
             self.add_unreachable_node()
         } else {

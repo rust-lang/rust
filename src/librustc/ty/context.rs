@@ -65,7 +65,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use rustc_target::spec::abi;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
@@ -242,11 +242,9 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
         if let Some(local_id_root) = local_id_root {
             if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
-                    let node_id = tcx.hir().hir_to_node_id(hir_id);
-
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
-                         tcx.hir().node_to_string(node_id),
+                         tcx.hir().hir_to_string(hir_id),
                          DefId::local(hir_id.owner),
                          local_id_root)
                 });
@@ -523,17 +521,16 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn node_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
-        self.node_id_to_type_opt(id).unwrap_or_else(||
+    pub fn hir_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
+        self.hir_id_to_type_opt(id).unwrap_or_else(||
             bug!("node_id_to_type: no type for node `{}`",
                  tls::with(|tcx| {
-                     let id = tcx.hir().hir_to_node_id(id);
-                     tcx.hir().node_to_string(id)
+                     tcx.hir().hir_to_string(id)
                  }))
         )
     }
 
-    pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+    pub fn hir_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_types.get(&id.local_id).cloned()
     }
@@ -558,11 +555,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
     pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
-        self.node_id_to_type(pat.hir_id)
+        self.hir_id_to_type(pat.hir_id)
     }
 
     pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(pat.hir_id)
+        self.hir_id_to_type_opt(pat.hir_id)
     }
 
     // Returns the type of an expression as a monotype.
@@ -576,11 +573,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
     pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
-        self.node_id_to_type(expr.hir_id)
+        self.hir_id_to_type(expr.hir_id)
     }
 
     pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(expr.hir_id)
+        self.hir_id_to_type_opt(expr.hir_id)
     }
 
     pub fn adjustments(&self) -> LocalTableInContext<'_, Vec<ty::adjustment::Adjustment<'tcx>>> {
@@ -1220,7 +1217,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 (k, Lrc::new(v))
             }).collect(),
             freevars: resolutions.freevars.into_iter().map(|(k, v)| {
-                (hir.local_def_id(k), Lrc::new(v))
+                (hir.local_def_id_from_hir_id(k), Lrc::new(v))
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
@@ -2796,7 +2793,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn lint_node<S: Into<MultiSpan>>(self,
                                          lint: &'static Lint,
-                                         id: NodeId,
+                                         id: HirId,
                                          span: S,
                                          msg: &str) {
         self.struct_span_lint_node(lint, id, span.into(), msg).emit()
@@ -2815,7 +2812,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn lint_node_note<S: Into<MultiSpan>>(self,
                                               lint: &'static Lint,
-                                              id: NodeId,
+                                              id: HirId,
                                               span: S,
                                               msg: &str,
                                               note: &str) {
@@ -2824,7 +2821,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit()
     }
 
-    pub fn lint_level_at_node(self, lint: &'static Lint, mut id: NodeId)
+    pub fn lint_level_at_node(self, lint: &'static Lint, mut hir_id: hir::HirId)
         -> (lint::Level, lint::LintSource)
     {
         // Right now we insert a `with_ignore` node in the dep graph here to
@@ -2838,15 +2835,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.dep_graph.with_ignore(|| {
             let sets = self.lint_levels(LOCAL_CRATE);
             loop {
-                let hir_id = self.hir().definitions().node_to_hir_id(id);
                 if let Some(pair) = sets.level_and_source(lint, hir_id, self.sess) {
                     return pair
                 }
-                let next = self.hir().get_parent_node(id);
-                if next == id {
+                let next = self.hir().get_parent_node(hir_id);
+                if next == hir_id {
                     bug!("lint traversal reached the root of the crate");
                 }
-                id = next;
+                hir_id = next;
             }
         })
     }
@@ -2858,14 +2854,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
-        let node_id = self.hir().hir_to_node_id(hir_id);
-        let (level, src) = self.lint_level_at_node(lint, node_id);
+        let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
     pub fn struct_span_lint_node<S: Into<MultiSpan>>(self,
                                                      lint: &'static Lint,
-                                                     id: NodeId,
+                                                     id: HirId,
                                                      span: S,
                                                      msg: &str)
         -> DiagnosticBuilder<'tcx>
@@ -2874,7 +2869,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
-    pub fn struct_lint_node(self, lint: &'static Lint, id: NodeId, msg: &str)
+    pub fn struct_lint_node(self, lint: &'static Lint, id: HirId, msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
         let (level, src) = self.lint_level_at_node(lint, id);

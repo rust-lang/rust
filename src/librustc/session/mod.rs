@@ -3,6 +3,7 @@ use self::code_stats::CodeStats;
 
 use dep_graph::cgu_reuse_tracker::CguReuseTracker;
 use hir::def_id::CrateNum;
+use hir::HirId;
 use rustc_data_structures::fingerprint::Fingerprint;
 
 use lint;
@@ -68,7 +69,7 @@ pub struct Session {
     pub target_tlib_path: Option<SearchPath>,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
-    pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
+    pub entry_fn: Once<Option<(HirId, Span, config::EntryFnType)>>,
     pub sysroot: PathBuf,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.

@@ -65,10 +65,10 @@ pub enum Def {
     Method(DefId),
     AssociatedConst(DefId),
 
-    Local(ast::NodeId),
-    Upvar(ast::NodeId,  // `NodeId` of closed over local
-          usize,        // index in the `freevars` list of the closure
-          ast::NodeId), // expr node that creates the closure
+    Local(hir::HirId),
+    Upvar(hir::HirId,  // `HirId` of closed over local
+          usize,       // index in the `freevars` list of the closure
+          hir::HirId), // expr node that creates the closure
     Label(ast::NodeId),
 
     // Macro namespace

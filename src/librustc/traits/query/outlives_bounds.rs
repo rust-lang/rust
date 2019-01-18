@@ -1,6 +1,6 @@
+use hir;
 use infer::InferCtxt;
 use infer::canonical::OriginalQueryValues;
-use syntax::ast;
 use syntax::source_map::Span;
 use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use traits::query::NoSolution;
@@ -89,7 +89,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         ty: Ty<'tcx>,
         span: Span,
     ) -> Vec<OutlivesBound<'tcx>> {
