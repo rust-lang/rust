@@ -2,9 +2,11 @@ import * as vscode from 'vscode';
 
 import { Server } from './server';
 
+const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
+
 export class Config {
     public highlightingOn = true;
-    public raLspServerPath = 'ra_lsp_server';
+    public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
 
     constructor() {
         vscode.workspace.onDidChangeConfiguration(_ =>
@@ -24,7 +26,8 @@ export class Config {
         }
 
         if (config.has('raLspServerPath')) {
-            this.raLspServerPath = config.get('raLspServerPath') as string;
+            this.raLspServerPath =
+                RA_LSP_DEBUG || (config.get('raLspServerPath') as string);
         }
     }
 }

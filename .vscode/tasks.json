@@ -1,0 +1,47 @@
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "compile",
+      "label": "Build Extension",
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": "$tsc",
+        "fileLocation": ["relative", "${workspaceRoot}/editors/code"]
+      },
+      "path": "editors/code/"
+    },
+    {
+      "label": "Build Lsp",
+      "type": "shell",
+      "command": "cargo build",
+      "problemMatcher": {
+        "owner": "rust",
+        "fileLocation": ["relative", "${workspaceRoot}"],
+        "pattern": [
+          {
+            "regexp": "^(warning|warn|error)(?:\\[(.*?)\\])?: (.*)$",
+            "severity": 1,
+            "code": 2,
+            "message": 3
+          },
+          {
+            "regexp": "^[\\s->=]*(.*?):(\\d*):(\\d*)\\s*$",
+            "file": 1,
+            "line": 2,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "label": "Build All",
+      "group": "build",
+      "dependsOn": ["Build Extension", "Build Lsp"],
+      "problemMatcher": []
+    }
+  ]
+}

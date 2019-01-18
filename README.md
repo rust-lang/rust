@@ -14,7 +14,6 @@ Work on the Rust Analyzer is sponsored by
 
 [![Ferrous Systems](https://ferrous-systems.com/images/ferrous-logo-text.svg)](https://ferrous-systems.com/)
 
-
 ## Quick Start
 
 Rust analyzer builds on Rust >= 1.31.0 and uses the 2018 edition.
@@ -36,6 +35,11 @@ $ cargo install --path crates/ra_lsp_server
 See [these instructions](./editors/README.md) for VS Code setup and the list of
 features (some of which are VS Code specific).
 
+## Debugging
+
+See [these instructions](./DEBUGGING.md) for VS Code setup and the list of
+features (some of which are VS Code specific).
+
 ## Current Status and Plans
 
 Rust analyzer aims to fill the same niche as the official [Rust Language
@@ -53,11 +57,11 @@ The near/mid term plan is to work independently of the main rustc compiler and
 implement at least simplistic versions of name resolution, macro expansion and
 type inference. The purpose is two fold:
 
-* to quickly bootstrap usable and useful language server: solution that covers
+- to quickly bootstrap usable and useful language server: solution that covers
   80% of Rust code will be useful for IDEs, and will be vastly simpler than 100%
   solution.
 
-* to understand how the consumer-side of compiler API should look like
+- to understand how the consumer-side of compiler API should look like
   (especially it's on-demand aspects). If you have `get_expression_type`
   function, you can write a ton of purely-IDE features on top of it, even if the
   function is only partially correct. Pluging in the precise function afterwards
@@ -76,7 +80,6 @@ implemented in Rust: [https://discord.gg/sx3RQZB](https://discord.gg/sx3RQZB).
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) and [ARCHITECTURE.md](./ARCHITECTURE.md)
-
 
 ## License
 

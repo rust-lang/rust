@@ -2,6 +2,5 @@
 crates/*/target
 **/*.rs.bk
 .idea/*
-.vscode/*
 *.log
 *.iml
