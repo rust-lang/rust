@@ -26,10 +26,10 @@ fn baz() -> impl std::fmt::Display {
 
 fn qux() -> impl std::fmt::Display {
     if false {
-        //~^ ERROR if and else have incompatible types
         0i32
     } else {
         1u32
+        //~^ ERROR if and else have incompatible types
     }
 }
 

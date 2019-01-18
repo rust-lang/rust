@@ -38,15 +38,17 @@ LL | |     }
               found type `u32`
 
 error[E0308]: if and else have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:28:5
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:31:9
    |
 LL | /     if false {
-LL | |         //~^ ERROR if and else have incompatible types
 LL | |         0i32
+   | |         ---- expected because of this
 LL | |     } else {
 LL | |         1u32
+   | |         ^^^^ expected i32, found u32
+LL | |         //~^ ERROR if and else have incompatible types
 LL | |     }
-   | |_____^ expected i32, found u32
+   | |_____- if and else have incompatible types
    |
    = note: expected type `i32`
               found type `u32`
