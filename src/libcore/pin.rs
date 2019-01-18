@@ -99,6 +99,7 @@
 
 use fmt;
 use marker::{Sized, Unpin};
+use cmp::{self, PartialEq, PartialOrd};
 use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 
 /// A pinned pointer.
@@ -112,14 +113,55 @@ use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 /// [`Unpin`]: ../../std/marker/trait.Unpin.html
 /// [`pin` module]: ../../std/pin/index.html
 //
-// Note: the derives below are allowed because they all only use `&P`, so they
-// cannot move the value behind `pointer`.
+// Note: the derives below, and the explicit `PartialEq` and `PartialOrd`
+// implementations, are allowed because they all only use `&P`, so they cannot move
+// the value behind `pointer`.
 #[stable(feature = "pin", since = "1.33.0")]
 #[fundamental]
 #[repr(transparent)]
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Hash, Eq, Ord)]
 pub struct Pin<P> {
     pointer: P,
+}
+
+#[stable(feature = "pin_partialeq_partialord_impl_applicability", since = "1.34.0")]
+impl<P, Q> PartialEq<Pin<Q>> for Pin<P>
+where
+    P: PartialEq<Q>,
+{
+    fn eq(&self, other: &Pin<Q>) -> bool {
+        self.pointer == other.pointer
+    }
+
+    fn ne(&self, other: &Pin<Q>) -> bool {
+        self.pointer != other.pointer
+    }
+}
+
+#[stable(feature = "pin_partialeq_partialord_impl_applicability", since = "1.34.0")]
+impl<P, Q> PartialOrd<Pin<Q>> for Pin<P>
+where
+    P: PartialOrd<Q>,
+{
+    fn partial_cmp(&self, other: &Pin<Q>) -> Option<cmp::Ordering> {
+        self.pointer.partial_cmp(&other.pointer)
+    }
+
+    fn lt(&self, other: &Pin<Q>) -> bool {
+        self.pointer < other.pointer
+    }
+
+    fn le(&self, other: &Pin<Q>) -> bool {
+        self.pointer <= other.pointer
+    }
+
+    fn gt(&self, other: &Pin<Q>) -> bool {
+        self.pointer > other.pointer
+    }
+
+    fn ge(&self, other: &Pin<Q>) -> bool {
+        self.pointer >= other.pointer
+    }
 }
 
 impl<P: Deref> Pin<P>
