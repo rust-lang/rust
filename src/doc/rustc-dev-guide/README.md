@@ -1,4 +1,4 @@
-This is a collaborate effort to build a guide that explains how rustc
+This is a collaborative effort to build a guide that explains how rustc
 works. The aim of the guide is to help new contributors get oriented
 to rustc, as well as to help more experienced folks in figuring out
 some new part of the compiler that they haven't worked on before.
@@ -9,9 +9,9 @@ You may also find the rustdocs [for the compiler itself][rustdocs] useful.
 
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
-The guide can be useful today, but it has a lot of work still go.
-
 ### Contributing to the guide
+
+The guide is useful today, but it has a lot of work still go.
 
 If you'd like to help improve the guide, we'd love to have you! You can find
 plenty of issues on the [issue
