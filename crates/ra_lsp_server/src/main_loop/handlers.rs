@@ -465,14 +465,15 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
         .into());
     }
 
-    let change = world
+    let optional_change = world
         .analysis()
         .rename(FilePosition { file_id, offset }, &*params.new_name)?;
-    if change.is_none() {
-        return Ok(None);
-    }
+    let change = match optional_change {
+        None => return Ok(None),
+        Some(it) => it,
+    };
 
-    let source_change_req = change.unwrap().try_conv_with(&world)?;
+    let source_change_req = change.try_conv_with(&world)?;
 
     Ok(Some(source_change_req.workspace_edit))
 }
