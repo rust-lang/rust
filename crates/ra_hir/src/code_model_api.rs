@@ -158,7 +158,7 @@ impl Module {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructField {
-    struct_: Struct,
+    parent: DefId,
     name: Name,
 }
 
@@ -166,8 +166,9 @@ impl StructField {
     pub fn name(&self) -> &Name {
         &self.name
     }
+
     pub fn ty(&self, db: &impl HirDatabase) -> Option<Ty> {
-        db.type_for_field(self.struct_.def_id, self.name.clone())
+        db.type_for_field(self.parent, self.name.clone())
     }
 }
 
@@ -191,7 +192,7 @@ impl Struct {
             .fields()
             .iter()
             .map(|it| StructField {
-                struct_: self.clone(),
+                parent: self.def_id,
                 name: it.name.clone(),
             })
             .collect()
@@ -253,6 +254,17 @@ impl EnumVariant {
 
     pub fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
         db.enum_variant_data(self.def_id).variant_data.clone()
+    }
+
+    pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
+        self.variant_data(db)
+            .fields()
+            .iter()
+            .map(|it| StructField {
+                parent: self.def_id,
+                name: it.name.clone(),
+            })
+            .collect()
     }
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {

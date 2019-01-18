@@ -872,22 +872,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
-    // TODO: add fields method for tuple like structs and variants
-    // TODO: and add tests!
-
     fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
         let def_id = self.module.resolve_path(self.db, path?).take_types()?;
         let def = def_id.resolve(self.db);
 
         match def {
             Def::Struct(s) => {
-                let fields: Vec<_> = s.fields(self.db);
+                let fields = s.fields(self.db);
                 Some((type_for_struct(self.db, s), fields))
             }
-            // Def::EnumVariant(ev) => {
-            //     let fields: Vec<_> = ev.variant_data(self.db).fields().to_owned();
-            //     Some((type_for_enum_variant(self.db, ev), fields))
-            // }
+            Def::EnumVariant(ev) => {
+                let fields = ev.fields(self.db);
+                Some((type_for_enum_variant(self.db, ev), fields))
+            }
             _ => None,
         }
     }
