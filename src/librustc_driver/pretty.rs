@@ -273,8 +273,8 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn;
 
     /// Computes an user-readable representation of a path, if possible.
-    fn node_path(&self, id: ast::NodeId) -> Option<String> {
-        self.hir_map().and_then(|map| map.def_path_from_id(id)).map(|path| {
+    fn node_path(&self, id: hir::HirId) -> Option<String> {
+        self.hir_map().map(|map| map.def_path_from_hir_id(id)).map(|path| {
             path.data
                 .into_iter()
                 .map(|elem| elem.data.to_string())
@@ -411,28 +411,24 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::AnnNode::Name(_) => Ok(()),
             pprust_hir::AnnNode::Item(item) => {
                 s.s.space()?;
-                s.synth_comment(format!("node_id: {} hir local_id: {}",
-                                        item.id, item.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("hir_id: {:?}", item.hir_id))
             }
-            pprust_hir::AnnNode::SubItem(id) => {
+            pprust_hir::AnnNode::SubItem(hir_id) => {
                 s.s.space()?;
-                s.synth_comment(id.to_string())
+                s.synth_comment(format!("{:?}", hir_id))
             }
             pprust_hir::AnnNode::Block(blk) => {
                 s.s.space()?;
-                s.synth_comment(format!("block node_id: {} hir local_id: {}",
-                                        blk.id, blk.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("block hir_id: {:?}", blk.hir_id))
             }
             pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;
-                s.synth_comment(format!("node_id: {} hir local_id: {}",
-                                        expr.id, expr.hir_id.local_id.as_u32()))?;
+                s.synth_comment(format!("hir_id: {:?}", expr.hir_id))?;
                 s.pclose()
             }
             pprust_hir::AnnNode::Pat(pat) => {
                 s.s.space()?;
-                s.synth_comment(format!("pat node_id: {} hir local_id: {}",
-                                        pat.id, pat.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("pat hir_id: {:?}", pat.hir_id))
             }
         }
     }
@@ -489,8 +485,8 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
         self
     }
 
-    fn node_path(&self, id: ast::NodeId) -> Option<String> {
-        Some(self.tcx.node_path_str(id))
+    fn node_path(&self, id: hir::HirId) -> Option<String> {
+        Some(self.tcx.hir_path_str(id))
     }
 }
 
@@ -545,7 +541,7 @@ fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
 
 #[derive(Clone, Debug)]
 pub enum UserIdentifiedItem {
-    ItemViaNode(ast::NodeId),
+    ItemViaNode(hir::HirId),
     ItemViaPath(Vec<String>),
 }
 
@@ -553,21 +549,23 @@ impl FromStr for UserIdentifiedItem {
     type Err = ();
     fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
         Ok(s.parse()
-            .map(ast::NodeId::from_u32)
+            .map(|n| { let mut hir_id = hir::CRATE_HIR_ID;
+                       hir_id.local_id = hir::ItemLocalId::from_u32(n);
+                       hir_id })
             .map(ItemViaNode)
             .unwrap_or_else(|_| ItemViaPath(s.split("::").map(|s| s.to_string()).collect())))
     }
 }
 
 enum NodesMatchingUII<'a, 'hir: 'a> {
-    NodesMatchingDirect(option::IntoIter<ast::NodeId>),
+    NodesMatchingDirect(option::IntoIter<hir::HirId>),
     NodesMatchingSuffix(hir_map::NodesMatchingSuffix<'a, 'hir>),
 }
 
 impl<'a, 'hir> Iterator for NodesMatchingUII<'a, 'hir> {
-    type Item = ast::NodeId;
+    type Item = hir::HirId;
 
-    fn next(&mut self) -> Option<ast::NodeId> {
+    fn next(&mut self) -> Option<hir::HirId> {
         match self {
             &mut NodesMatchingDirect(ref mut iter) => iter.next(),
             &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
@@ -585,23 +583,23 @@ impl<'a, 'hir> Iterator for NodesMatchingUII<'a, 'hir> {
 impl UserIdentifiedItem {
     fn reconstructed_input(&self) -> String {
         match *self {
-            ItemViaNode(node_id) => node_id.to_string(),
+            ItemViaNode(hir_id) => format!("{:?}", hir_id),
             ItemViaPath(ref parts) => parts.join("::"),
         }
     }
 
-    fn all_matching_node_ids<'a, 'hir>(&'a self,
-                                       map: &'a hir_map::Map<'hir>)
-                                       -> NodesMatchingUII<'a, 'hir> {
+    fn all_matching_hir_ids<'a, 'hir>(&'a self,
+                                      map: &'a hir_map::Map<'hir>)
+                                      -> NodesMatchingUII<'a, 'hir> {
         match *self {
-            ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
+            ItemViaNode(hir_id) => NodesMatchingDirect(Some(hir_id).into_iter()),
             ItemViaPath(ref parts) => NodesMatchingSuffix(map.nodes_matching_suffix(&parts)),
         }
     }
 
-    fn to_one_node_id(self, user_option: &str, sess: &Session, map: &hir_map::Map) -> ast::NodeId {
+    fn to_one_hir_id(self, user_option: &str, sess: &Session, map: &hir_map::Map) -> hir::HirId {
         let fail_because = |is_wrong_because| -> ast::NodeId {
-            let message = format!("{} needs NodeId (int) or unique path suffix (b::c::d); got \
+            let message = format!("{} needs HirId (int) or unique path suffix (b::c::d); got \
                                    {}, which {}",
                                   user_option,
                                   self.reconstructed_input(),
@@ -609,9 +607,9 @@ impl UserIdentifiedItem {
             sess.fatal(&message)
         };
 
-        let mut saw_node = ast::DUMMY_NODE_ID;
+        let mut saw_node = hir::DUMMY_HIR_ID;
         let mut seen = 0;
-        for node in self.all_matching_node_ids(map) {
+        for node in self.all_matching_hir_ids(map) {
             saw_node = node;
             seen += 1;
             if seen > 1 {
@@ -834,15 +832,15 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let body_id = match code {
         blocks::Code::Expr(expr) => {
             // Find the function this expression is from.
-            let mut node_id = expr.id;
+            let mut hir_id = expr.hir_id;
             loop {
-                let node = tcx.hir().get(node_id);
+                let node = tcx.hir().get_by_hir_id(hir_id);
                 if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
                     break n.body();
                 }
-                let parent = tcx.hir().get_parent_node(node_id);
-                assert_ne!(node_id, parent);
-                node_id = parent;
+                let parent = tcx.hir().get_parent_node(hir_id);
+                assert_ne!(hir_id, parent);
+                hir_id = parent;
             }
         }
         blocks::Code::FnLike(fn_like) => fn_like.body(),
@@ -853,7 +851,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let lcfg = LabelledCFG {
         tcx,
         cfg: &cfg,
-        name: format!("node_{}", code.id()),
+        name: format!("{:?}", code.id()),
         labelled_edges,
     };
 
@@ -1063,11 +1061,11 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                                          box out,
                                                                          annotation.pp_ann(),
                                                                          true);
-                    for node_id in uii.all_matching_node_ids(hir_map) {
-                        let node = hir_map.get(node_id);
+                    for hir_id in uii.all_matching_hir_ids(hir_map) {
+                        let node = hir_map.get_by_hir_id(hir_id);
                         pp_state.print_node(node)?;
                         pp_state.s.space()?;
-                        let path = annotation.node_path(node_id)
+                        let path = annotation.node_path(hir_id)
                             .expect("-Z unpretty missing node paths");
                         pp_state.synth_comment(path)?;
                         pp_state.s.hardbreak()?;
@@ -1087,8 +1085,8 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            crate_name,
                                            move |_annotation, _krate| {
                     debug!("pretty printing source code {:?}", s);
-                    for node_id in uii.all_matching_node_ids(hir_map) {
-                        let node = hir_map.get(node_id);
+                    for hir_id in uii.all_matching_hir_ids(hir_map) {
+                        let node = hir_map.get_by_hir_id(hir_id);
                         write!(out, "{:#?}", node)?;
                     }
                     Ok(())
@@ -1116,9 +1114,9 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
                                        ofile: Option<&Path>) {
-    let nodeid = if let Some(uii) = uii {
+    let hir_id = if let Some(uii) = uii {
         debug!("pretty printing for {:?}", uii);
-        Some(uii.to_one_node_id("-Z unpretty", sess, &hir_map))
+        Some(uii.to_one_hir_id("-Z unpretty", sess, &hir_map))
     } else {
         debug!("pretty printing for whole crate");
         None
@@ -1142,8 +1140,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      |tcx, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
-                if let Some(nodeid) = nodeid {
-                    let def_id = tcx.hir().local_def_id(nodeid);
+                if let Some(hir_id) = hir_id {
+                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                     match ppm {
                         PpmMir => write_mir_pretty(tcx, Some(def_id), &mut out),
                         PpmMirCFG => write_mir_graphviz(tcx, Some(def_id), &mut out),
@@ -1159,14 +1157,14 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 Ok(())
             }
             PpmFlowGraph(mode) => {
-                let nodeid =
-                    nodeid.expect("`pretty flowgraph=..` needs NodeId (int) or unique path \
+                let hir_id =
+                    hir_id.expect("`pretty flowgraph=..` needs HirId (int) or unique path \
                                    suffix (b::c::d)");
-                let node = tcx.hir().find(nodeid).unwrap_or_else(|| {
-                    tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
+                let node = tcx.hir().find_by_hir_id(hir_id).unwrap_or_else(|| {
+                    tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {:?}", hir_id))
                 });
 
-                match blocks::Code::from_node(&tcx.hir(), nodeid) {
+                match blocks::Code::from_node(&tcx.hir(), hir_id) {
                     Some(code) => {
                         let variants = gather_flowgraph_variants(tcx.sess);
 
@@ -1179,7 +1177,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                got {:?}",
                                               node);
 
-                        tcx.sess.span_fatal(tcx.hir().span(nodeid), &message)
+                        tcx.sess.span_fatal(tcx.hir().span(hir_id), &message)
                     }
                 }
             }
