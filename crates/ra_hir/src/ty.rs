@@ -31,9 +31,8 @@ use join_to_string::join;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    Def, DefId, Module, Function, Struct, Enum, EnumVariant, Path, Name, ImplBlock,
+    Def, DefId, Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes,
-    adt::StructField,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
@@ -873,24 +872,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
+    // TODO: add fields method for tuple like structs and variants
+    // TODO: and add tests!
+
     fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
         let def_id = self.module.resolve_path(self.db, path?).take_types()?;
         let def = def_id.resolve(self.db);
 
         match def {
             Def::Struct(s) => {
-                let fields: Vec<_> = self
-                    .db
-                    .struct_data(s.def_id())
-                    .variant_data
-                    .fields()
-                    .to_owned();
+                let fields: Vec<_> = s.fields(self.db);
                 Some((type_for_struct(self.db, s), fields))
             }
-            Def::EnumVariant(ev) => {
-                let fields: Vec<_> = ev.variant_data(self.db).fields().to_owned();
-                Some((type_for_enum_variant(self.db, ev), fields))
-            }
+            // Def::EnumVariant(ev) => {
+            //     let fields: Vec<_> = ev.variant_data(self.db).fields().to_owned();
+            //     Some((type_for_enum_variant(self.db, ev), fields))
+            // }
             _ => None,
         }
     }
@@ -903,7 +900,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for (i, &subpat) in subpats.iter().enumerate() {
             let expected_ty = fields
                 .get(i)
-                .map_or(Ty::Unknown, |field| self.make_ty(&field.type_ref));
+                .and_then(|field| field.ty(self.db))
+                .unwrap_or(Ty::Unknown);
             self.infer_pat(subpat, &Expectation::has_type(expected_ty));
         }
 
@@ -916,9 +914,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             .unwrap_or((Ty::Unknown, Vec::new()));
 
         for subpat in subpats {
-            let matching_field = fields.iter().find(|field| field.name == subpat.name);
-            let expected_ty =
-                matching_field.map_or(Ty::Unknown, |field| self.make_ty(&field.type_ref));
+            let matching_field = fields.iter().find(|field| field.name() == &subpat.name);
+            let expected_ty = matching_field
+                .and_then(|field| field.ty(self.db))
+                .unwrap_or(Ty::Unknown);
             self.infer_pat(subpat.pat, &Expectation::has_type(expected_ty));
         }
 
