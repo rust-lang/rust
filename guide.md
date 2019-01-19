@@ -281,10 +281,9 @@ file", which could then be reused by several semantic models if this file
 happens to be a part of several crates.
 
 Rust analyzer uses a similar representation of syntax trees to that of `Roslyn`
-and Swift's new
-[libsyntax](https://github.com/apple/swift/tree/5e2c815edfd758f9b1309ce07bfc01c4bc20ec23/lib/Syntax).
-Swift's docs give an excellent overview of the approach, so I skip this part
-here and instead outline the main characteristics of the syntax trees:
+and Swift's new [libsyntax]. Swift's docs give an excellent overview of the
+approach, so I skip this part here and instead outline the main characteristics
+of the syntax trees:
 
 * Syntax trees are fully lossless. Converting **any** text to a syntax tree and
   back is a total identity function. All whitespace and comments are explicitly
@@ -313,6 +312,7 @@ here and instead outline the main characteristics of the syntax trees:
 The implementation is based on the generic [rowan] crate on top of which a
 [rust-specific] AST is generated.
 
+[libsyntax]: https://github.com/apple/swift/tree/5e2c815edfd758f9b1309ce07bfc01c4bc20ec23/lib/Syntax
 [rowan]: https://github.com/rust-analyzer/rowan/tree/100a36dc820eb393b74abe0d20ddf99077b61f88
 [rust-specific]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_syntax/src/ast/generated.rs
 
@@ -323,8 +323,9 @@ The next step in constructing the semantic model is ...
 The algorithm for building a tree of modules is to start with a crate root
 (remember, each `Crate` from a `CrateGraph` has a `FileId`), collect all mod
 declarations and recursively process child modules. This is handled by the
-[`module_tree_query`](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L116-L123),
-with a two slight variations.
+[`module_tree_query`], with a two slight variations.
+
+[`module_tree_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L116-L123
 
 First, rust analyzer builds a module tree for all crates in a source root
 simultaneously. The main reason for this is historical (`module_tree` predates
@@ -345,12 +346,12 @@ names. Now, changing the whitespace results in `submodules_query` being
 re-executed for a *single* module, but because the result of this query stays
 the same, we don't have to re-execute [`module_tree_query`]. In fact, we only
 need to re-execute it when we add/remove new files or when we change mod
-declarations,
+declarations.
 
 [`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L41)
 
-
-
+We store the resulting modules in a `Vec`-based indexed arena. The indices in
+the arena becomes module identifiers.
 
 
 ## Location Interner pattern
