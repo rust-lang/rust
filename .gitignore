@@ -4,3 +4,4 @@ crates/*/target
 .idea/*
 *.log
 *.iml
+.vscode/settings.json
