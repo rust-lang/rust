@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use gimli::write::{
     Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
     DebugRngLists, DebugStr, EndianVec, LineProgram, LineProgramId, LineProgramTable, Range,
-    RangeList, RangesTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable, Writer,
+    RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable, Writer,
 };
 use gimli::Format;
 
@@ -43,8 +43,8 @@ pub struct DebugContext<'tcx> {
     unit_id: UnitId,
     line_programs: LineProgramTable,
     global_line_program: LineProgramId,
-    ranges: RangesTable,
-    unit_ranges: RangeList,
+    range_lists: RangeListTable,
+    unit_range_list: RangeList,
     symbol_names: Vec<String>,
 
     _dummy: PhantomData<&'tcx ()>,
@@ -68,7 +68,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let mut units = UnitTable::default();
         let mut strings = StringTable::default();
         let mut line_programs = LineProgramTable::default();
-        let ranges = RangesTable::default();
+        let range_lists = RangeListTable::default();
 
         let global_line_program = line_programs.add(LineProgram::new(
             version,
@@ -122,8 +122,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             unit_id,
             line_programs,
             global_line_program,
-            ranges,
-            unit_ranges: RangeList(Vec::new()),
+            range_lists,
+            unit_range_list: RangeList(Vec::new()),
             symbol_names: Vec::new(),
             _dummy: PhantomData,
         }
@@ -149,13 +149,13 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     }
 
     pub fn emit(&mut self, artifact: &mut Artifact) {
-        let unit_range_id = self.ranges.add(self.unit_ranges.clone());
+        let unit_range_list_id = self.range_lists.add(self.unit_range_list.clone());
         let unit = self.units.get_mut(self.unit_id);
         let root = unit.root();
         let root = unit.get_mut(root);
         root.set(
             gimli::DW_AT_ranges,
-            AttributeValue::RangeListsRef(unit_range_id),
+            AttributeValue::RangeListRef(unit_range_list_id),
         );
 
         let mut debug_abbrev = DebugAbbrev::from(WriterRelocate::new(self));
@@ -167,8 +167,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
 
         let debug_line_offsets = self.line_programs.write(&mut debug_line).unwrap();
         let debug_str_offsets = self.strings.write(&mut debug_str).unwrap();
-        let (debug_ranges_offsets, debug_rnglists_offsets) = self
-            .ranges
+        let range_list_offsets = self
+            .range_lists
             .write(
                 &mut debug_ranges,
                 &mut debug_rnglists,
@@ -182,8 +182,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
                 &mut debug_abbrev,
                 &mut debug_info,
                 &debug_line_offsets,
-                &debug_ranges_offsets,
-                &debug_rnglists_offsets,
+                &range_list_offsets,
                 &debug_str_offsets,
             )
             .unwrap();
@@ -394,7 +393,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         byteorder::LittleEndian::write_u64(&mut size_array, size as u64);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Data8(size_array));
 
-        self.debug_context.unit_ranges.0.push(Range {
+        self.debug_context.unit_range_list.0.push(Range {
             begin: Address::Relative {
                 symbol: self.symbol,
                 addend: 0,

@@ -37,8 +37,8 @@ faerie = "0.7.1"
 #cranelift-simplejit = { path = "../cranelift/lib/simplejit" }
 #cranelift-faerie = { path = "../cranelift/lib/faerie" }
 
-[patch."https://github.com/gimli-rs/gimli.git"]
-gimli = { git = "https://github.com/bjorn3/gimli.git", branch = "impl_range_write" }
+#[patch."https://github.com/gimli-rs/gimli.git"]
+#gimli = { path = "../" }
 
 [profile.dev.overrides."*"]
 opt-level = 3
