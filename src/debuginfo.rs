@@ -36,14 +36,16 @@ pub struct DebugContext<'tcx> {
     version: u16,
     address_size: u8,
 
+    symbols: indexmap::IndexSet<String>,
+
     strings: StringTable,
     units: UnitTable,
-    unit_id: UnitId,
     line_programs: LineProgramTable,
-    global_line_program: LineProgramId,
     range_lists: RangeListTable,
+
+    unit_id: UnitId,
+    global_line_program: LineProgramId,
     unit_range_list: RangeList,
-    symbol_names: Vec<String>,
 
     _dummy: PhantomData<&'tcx ()>,
 }
@@ -115,14 +117,17 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             version,
             address_size,
 
+            symbols: indexmap::IndexSet::new(),
+
             strings,
             units,
-            unit_id,
             line_programs,
-            global_line_program,
             range_lists,
+
+            unit_id,
+            global_line_program,
             unit_range_list: RangeList(Vec::new()),
-            symbol_names: Vec::new(),
+
             _dummy: PhantomData,
         }
     }
@@ -345,8 +350,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         name: &str,
         _sig: &Signature,
     ) -> Self {
-        let symbol = debug_context.symbol_names.len();
-        debug_context.symbol_names.push(name.to_string());
+        let (symbol, _) = debug_context.symbols.insert_full(name.to_string());
 
         let unit = debug_context.units.get_mut(debug_context.unit_id);
         // FIXME: add to appropriate scope intead of root
@@ -382,7 +386,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         size: u32,
         context: &Context,
         isa: &cranelift::codegen::isa::TargetIsa,
-        spans: &[Span],
+        source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
         let unit = self.debug_context.units.get_mut(self.debug_context.unit_id);
         // FIXME: add to appropriate scope intead of root
@@ -439,8 +443,8 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
 
                 let srcloc = func.srclocs[inst];
                 if !srcloc.is_default() {
-                    let span = spans[srcloc.bits() as usize];
-                    create_row_for_span(tcx, line_program, offset as u64, span);
+                    let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
+                    create_row_for_span(tcx, line_program, offset as u64, source_info.span);
                 } else {
                     create_row_for_span(tcx, line_program, offset as u64, self.mir_span);
                 }
@@ -495,7 +499,7 @@ impl<'a, 'tcx> Writer for WriterRelocate<'a, 'tcx> {
                 self.relocs.push(DebugReloc {
                     offset: offset as u32,
                     size,
-                    name: self.ctx.symbol_names[symbol].clone(),
+                    name: self.ctx.symbols.get_index(symbol).unwrap().clone(),
                     addend: addend as i64,
                 });
                 self.write_word(0, size)

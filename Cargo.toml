@@ -29,6 +29,7 @@ tempfile = "3.0.4"
 env_logger = "0.6"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 faerie = "0.7.1"
+indexmap = "1.0.2"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]

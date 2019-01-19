@@ -108,7 +108,7 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         clif_comments,
         constants: &mut cx.ccx,
         caches: &mut cx.caches,
-        spans: Vec::new(),
+        source_info_set: indexmap::IndexSet::new(),
     };
 
     // Step 6. Codegen function
@@ -116,7 +116,7 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
         codegen_fn_content(&mut fx);
     });
-    let spans = fx.spans.clone();
+    let source_info_set = fx.source_info_set.clone();
 
     // Step 7. Write function to file for debugging
     #[cfg(debug_assertions)]
@@ -129,7 +129,7 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     cx.caches.context.func = func;
     cx.module
         .define_function_peek_compiled(func_id, &mut cx.caches.context, |size, context, isa| {
-            debug_context.as_mut().map(|x| x.define(tcx, size, context, isa, &spans[..]));
+            debug_context.as_mut().map(|x| x.define(tcx, size, context, isa, &source_info_set));
         })
         .unwrap();
     //let module = &mut cx.module;
