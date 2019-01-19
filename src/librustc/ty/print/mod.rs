@@ -31,7 +31,6 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
 
 #[derive(Default)]
 pub(crate) struct PrintConfig {
-    pub(crate) is_debug: bool,
     used_region_names: Option<FxHashSet<InternedString>>,
     region_index: usize,
     binder_depth: usize,
@@ -83,31 +82,6 @@ pub trait Print<'tcx, P> {
     type Error;
 
     fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error>;
-    fn print_display(
-        &self,
-        cx: PrintCx<'_, '_, 'tcx, P>,
-    ) -> Result<Self::Output, Self::Error> {
-        let old_debug = cx.config.is_debug;
-        cx.config.is_debug = false;
-        let result = self.print(PrintCx {
-            tcx: cx.tcx,
-            printer: cx.printer,
-            config: cx.config,
-        });
-        cx.config.is_debug = old_debug;
-        result
-    }
-    fn print_debug(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
-        let old_debug = cx.config.is_debug;
-        cx.config.is_debug = true;
-        let result = self.print(PrintCx {
-            tcx: cx.tcx,
-            printer: cx.printer,
-            config: cx.config,
-        });
-        cx.config.is_debug = old_debug;
-        result
-    }
 }
 
 pub trait Printer: Sized {

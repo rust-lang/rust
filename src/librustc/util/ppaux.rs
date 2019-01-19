@@ -10,108 +10,64 @@ use std::iter;
 
 use rustc_target::spec::abi::Abi;
 
-macro_rules! gen_display_debug_body {
-    ( $with:path ) => {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
-                $with(&cx.tcx.lift(self).expect("could not lift for printing"), cx)?;
-                Ok(())
-            })
-        }
-    };
-}
-macro_rules! gen_display_debug {
-    ( ($($x:tt)+) $target:ty, display yes ) => {
-        impl<$($x)+> fmt::Display for $target {
-            gen_display_debug_body! { Print::print_display }
-        }
-    };
-    ( () $target:ty, display yes ) => {
-        impl fmt::Display for $target {
-            gen_display_debug_body! { Print::print_display }
-        }
-    };
-    ( ($($x:tt)+) $target:ty, debug yes ) => {
-        impl<$($x)+> fmt::Debug for $target {
-            gen_display_debug_body! { Print::print_debug }
-        }
-    };
-    ( () $target:ty, debug yes ) => {
-        impl fmt::Debug for $target {
-            gen_display_debug_body! { Print::print_debug }
-        }
-    };
-    ( $generic:tt $target:ty, $t:ident no ) => {};
-}
-macro_rules! gen_print_impl {
-    ( ($($x:tt)+) $target:ty, ($self:ident, $cx:ident) $disp:block $dbg:block ) => {
-        impl<$($x)+, P: PrettyPrinter> Print<'tcx, P> for $target {
-            type Output = P;
-            type Error = fmt::Error;
-            fn print(&$self, $cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
-                #[allow(unused_mut)]
-                let mut $cx = $cx;
-                let _: () = {
-                    define_scoped_cx!($cx);
-
-                    if $cx.config.is_debug $dbg
-                    else $disp
-                };
-                Ok($cx.printer)
-            }
-        }
-    };
-    ( () $target:ty, ($self:ident, $cx:ident) $disp:block $dbg:block ) => {
+macro_rules! define_print {
+    (@display $target:ty, ($self:ident, $cx:ident) $disp:block) => {
         impl<P: PrettyPrinter> Print<'tcx, P> for $target {
             type Output = P;
             type Error = fmt::Error;
             fn print(&$self, $cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
                 #[allow(unused_mut)]
                 let mut $cx = $cx;
-                let _: () = {
-                    define_scoped_cx!($cx);
-
-                    if $cx.config.is_debug $dbg
-                    else $disp
-                };
+                define_scoped_cx!($cx);
+                let _: () = $disp;
+                #[allow(unreachable_code)]
                 Ok($cx.printer)
             }
         }
+
+        impl fmt::Display for $target {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
+                    cx.tcx.lift(self).expect("could not lift for printing").print(cx)?;
+                    Ok(())
+                })
+            }
+        }
     };
-    ( $generic:tt $target:ty,
-      $vars:tt $gendisp:ident $disp:block $gendbg:ident $dbg:block ) => {
-        gen_print_impl! { $generic $target, $vars $disp $dbg }
-        gen_display_debug! { $generic $target, display $gendisp }
-        gen_display_debug! { $generic $target, debug $gendbg }
-    }
+
+    (@debug $target:ty, ($self:ident, $cx:ident) $dbg:block) => {
+        impl fmt::Debug for $target {
+            fn fmt(&$self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |$cx| {
+                    #[allow(unused_mut)]
+                    let mut $cx = $cx;
+                    define_scoped_cx!($cx);
+                    let _: () = $dbg;
+                    let _ = $cx;
+                    Ok(())
+                })
+            }
+        }
+    };
+
+    ([$($target:ty),+] $vars:tt $def:tt) => {
+        $(define_print!($target, $vars $def);)+
+    };
+
+    ($target:ty, $vars:tt {
+        display $disp:block
+        debug $dbg:block
+    }) => {
+        define_print!(@display $target, $vars $disp);
+        define_print!(@debug $target, $vars $dbg);
+    };
+    ($target:ty, $vars:tt {
+        display $disp:block
+    }) => {
+        define_print!(@display $target, $vars $disp);
+    };
 }
-macro_rules! define_print {
-    ( $generic:tt $target:ty,
-      $vars:tt { display $disp:block debug $dbg:block } ) => {
-        gen_print_impl! { $generic $target, $vars yes $disp yes $dbg }
-    };
-    ( $generic:tt $target:ty,
-      $vars:tt { debug $dbg:block display $disp:block } ) => {
-        gen_print_impl! { $generic $target, $vars yes $disp yes $dbg }
-    };
-    ( $generic:tt $target:ty,
-      $vars:tt { debug $dbg:block } ) => {
-        gen_print_impl! { $generic $target, $vars no {
-            bug!(concat!("display not implemented for ", stringify!($target)));
-        } yes $dbg }
-    };
-    ( $generic:tt $target:ty,
-      ($self:ident, $cx:ident) { display $disp:block } ) => {
-        gen_print_impl! { $generic $target, ($self, $cx) yes $disp no {
-            write!($cx.printer, "{:?}", $self)?
-        } }
-    };
-}
-macro_rules! define_print_multi {
-    ( [ $($generic:tt $target:ty),* ] $vars:tt $def:tt ) => {
-        $(define_print! { $generic $target, $vars $def })*
-    };
-}
+
 macro_rules! nest {
     ($closure:expr) => {
         scoped_cx!() = scoped_cx!().nest($closure)?
@@ -142,7 +98,7 @@ macro_rules! define_scoped_cx {
 }
 
 define_print! {
-    ('tcx) &'tcx ty::List<ty::ExistentialPredicate<'tcx>>, (self, cx) {
+    &'tcx ty::List<ty::ExistentialPredicate<'tcx>>, (self, cx) {
         display {
             // Generate the main trait ref, including associated types.
             let mut first = true;
@@ -266,7 +222,7 @@ impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
 }
 
 define_print! {
-    ('tcx) &'tcx ty::List<Ty<'tcx>>, (self, cx) {
+    &'tcx ty::List<Ty<'tcx>>, (self, cx) {
         display {
             p!(write("{{"));
             let mut tys = self.iter();
@@ -282,7 +238,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::TypeAndMut<'tcx>, (self, cx) {
+    ty::TypeAndMut<'tcx>, (self, cx) {
         display {
             p!(
                    write("{}", if self.mutbl == hir::MutMutable { "mut " } else { "" }),
@@ -292,26 +248,27 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::ExistentialTraitRef<'tcx>, (self, cx) {
+    ty::ExistentialTraitRef<'tcx>, (self, cx) {
         display {
             let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
 
             let trait_ref = *ty::Binder::bind(*self)
                 .with_self_ty(cx.tcx, dummy_self)
                 .skip_binder();
-            p!(print_display(trait_ref))
-        }
-        debug {
-            p!(print_display(self))
+            p!(print(trait_ref))
         }
     }
 }
 
-define_print! {
-    ('tcx) ty::adjustment::Adjustment<'tcx>, (self, cx) {
-        debug {
-            p!(write("{:?} -> ", self.kind), print(self.target))
-        }
+impl fmt::Debug for ty::ExistentialTraitRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl fmt::Debug for ty::adjustment::Adjustment<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} -> {}", self.kind, self.target)
     }
 }
 
@@ -330,7 +287,7 @@ impl fmt::Debug for ty::BoundRegion {
 }
 
 define_print! {
-    () ty::RegionKind, (self, cx) {
+    ty::RegionKind, (self, cx) {
         display {
             return cx.print_region(self);
         }
@@ -350,7 +307,7 @@ define_print! {
                     p!(write("ReLateBound({:?}, {:?})", binder_id, bound_region))
                 }
 
-                ty::ReFree(ref fr) => p!(print_debug(fr)),
+                ty::ReFree(ref fr) => p!(write("{:?}", fr)),
 
                 ty::ReScope(id) => {
                     p!(write("ReScope({:?})", id))
@@ -374,29 +331,25 @@ define_print! {
     }
 }
 
-define_print! {
-    () ty::FreeRegion, (self, cx) {
-        debug {
-            p!(write("ReFree({:?}, {:?})", self.scope, self.bound_region))
-        }
+impl fmt::Debug for ty::FreeRegion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ReFree({:?}, {:?})", self.scope, self.bound_region)
+    }
+}
+
+impl fmt::Debug for ty::Variance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            ty::Covariant => "+",
+            ty::Contravariant => "-",
+            ty::Invariant => "o",
+            ty::Bivariant => "*",
+        })
     }
 }
 
 define_print! {
-    () ty::Variance, (self, cx) {
-        debug {
-            cx.printer.write_str(match *self {
-                ty::Covariant => "+",
-                ty::Contravariant => "-",
-                ty::Invariant => "o",
-                ty::Bivariant => "*",
-            })?
-        }
-    }
-}
-
-define_print! {
-    ('tcx) ty::FnSig<'tcx>, (self, cx) {
+    ty::FnSig<'tcx>, (self, cx) {
         display {
             if self.unsafety == hir::Unsafety::Unsafe {
                 p!(write("unsafe "));
@@ -447,10 +400,11 @@ impl fmt::Debug for ty::RegionVid {
 }
 
 define_print! {
-    () ty::InferTy, (self, cx) {
+    ty::InferTy, (self, cx) {
         display {
             if cx.tcx.sess.verbose() {
-                return self.print_debug(cx);
+                p!(write("{:?}", self));
+                return Ok(cx.printer);
             }
             match *self {
                 ty::TyVar(_) => p!(write("_")),
@@ -501,16 +455,16 @@ impl fmt::Debug for ty::FloatVarValue {
     }
 }*/
 
-define_print_multi! {
+define_print! {
     [
-    ('tcx) ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
-    ('tcx) ty::Binder<ty::TraitRef<'tcx>>,
-    ('tcx) ty::Binder<ty::FnSig<'tcx>>,
-    ('tcx) ty::Binder<ty::TraitPredicate<'tcx>>,
-    ('tcx) ty::Binder<ty::SubtypePredicate<'tcx>>,
-    ('tcx) ty::Binder<ty::ProjectionPredicate<'tcx>>,
-    ('tcx) ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
-    ('tcx) ty::Binder<ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>>
+        ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
+        ty::Binder<ty::TraitRef<'tcx>>,
+        ty::Binder<ty::FnSig<'tcx>>,
+        ty::Binder<ty::TraitPredicate<'tcx>>,
+        ty::Binder<ty::SubtypePredicate<'tcx>>,
+        ty::Binder<ty::ProjectionPredicate<'tcx>>,
+        ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
+        ty::Binder<ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>>
     ]
     (self, cx) {
         display {
@@ -520,29 +474,35 @@ define_print_multi! {
 }
 
 define_print! {
-    ('tcx) ty::TraitRef<'tcx>, (self, cx) {
+    ty::TraitRef<'tcx>, (self, cx) {
         display {
             nest!(|cx| cx.print_def_path(self.def_id, Some(self.substs), iter::empty()));
         }
         debug {
-            nest!(|cx| cx.path_qualified(self.self_ty(), Some(*self)));
+            // HACK(eddyb) this is used across the compiler to print
+            // a `TraitRef` qualified (with the Self type explicit),
+            // instead of having a different way to make that choice.
+            p!(write("<{} as {}>", self.self_ty(), self))
         }
     }
 }
 
 define_print! {
-    ('tcx) Ty<'tcx>, (self, cx) {
+    Ty<'tcx>, (self, cx) {
         display {
             return cx.print_type(self);
         }
-        debug {
-            p!(print_display(self))
-        }
+    }
+}
+
+impl fmt::Debug for Ty<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
 define_print! {
-    ('tcx) ConstValue<'tcx>, (self, cx) {
+    ConstValue<'tcx>, (self, cx) {
         display {
             match self {
                 ConstValue::Infer(..) => p!(write("_")),
@@ -554,7 +514,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::Const<'tcx>, (self, cx) {
+    ty::Const<'tcx>, (self, cx) {
         display {
             p!(write("{} : {}", self.val, self.ty))
         }
@@ -562,7 +522,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::LazyConst<'tcx>, (self, cx) {
+    ty::LazyConst<'tcx>, (self, cx) {
         display {
             match self {
                 // FIXME(const_generics) this should print at least the type.
@@ -574,7 +534,7 @@ define_print! {
 }
 
 define_print! {
-    () ty::ParamTy, (self, cx) {
+    ty::ParamTy, (self, cx) {
         display {
             p!(write("{}", self.name))
         }
@@ -585,7 +545,7 @@ define_print! {
 }
 
 define_print! {
-    () ty::ParamConst, (self, cx) {
+    ty::ParamConst, (self, cx) {
         display {
             p!(write("{}", self.name))
         }
@@ -596,10 +556,10 @@ define_print! {
 }
 
 // Similar problem to `Binder<T>`, can't define a generic impl.
-define_print_multi! {
+define_print! {
     [
-    ('tcx) ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
-    ('tcx) ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+        ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
+        ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
     ]
     (self, cx) {
         display {
@@ -609,7 +569,7 @@ define_print_multi! {
 }
 
 define_print! {
-    ('tcx) ty::SubtypePredicate<'tcx>, (self, cx) {
+    ty::SubtypePredicate<'tcx>, (self, cx) {
         display {
             p!(print(self.a), write(" <: "), print(self.b))
         }
@@ -617,35 +577,30 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::TraitPredicate<'tcx>, (self, cx) {
+    ty::TraitPredicate<'tcx>, (self, cx) {
+        display {
+            p!(print(self.trait_ref.self_ty()), write(": "), print(self.trait_ref))
+        }
         debug {
             p!(write("TraitPredicate({:?})",
                    self.trait_ref))
         }
-        display {
-            p!(print(self.trait_ref.self_ty()), write(": "), print(self.trait_ref))
-        }
     }
 }
 
 define_print! {
-    ('tcx) ty::ProjectionPredicate<'tcx>, (self, cx) {
-        debug {
-            p!(
-                   write("ProjectionPredicate("),
-                   print(self.projection_ty),
-                   write(", "),
-                   print(self.ty),
-                   write(")"))
-        }
+    ty::ProjectionPredicate<'tcx>, (self, cx) {
         display {
             p!(print(self.projection_ty), write(" == "), print(self.ty))
         }
+        debug {
+            p!(write("ProjectionPredicate({:?}, {:?})", self.projection_ty, self.ty))
+        }
     }
 }
 
 define_print! {
-    ('tcx) ty::ProjectionTy<'tcx>, (self, cx) {
+    ty::ProjectionTy<'tcx>, (self, cx) {
         display {
             nest!(|cx| cx.print_def_path(self.item_def_id, Some(self.substs), iter::empty()));
         }
@@ -653,7 +608,7 @@ define_print! {
 }
 
 define_print! {
-    () ty::ClosureKind, (self, cx) {
+    ty::ClosureKind, (self, cx) {
         display {
             match *self {
                 ty::ClosureKind::Fn => p!(write("Fn")),
@@ -665,7 +620,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::Predicate<'tcx>, (self, cx) {
+    ty::Predicate<'tcx>, (self, cx) {
         display {
             match *self {
                 ty::Predicate::Trait(ref data) => p!(print(data)),
@@ -693,12 +648,12 @@ define_print! {
         }
         debug {
             match *self {
-                ty::Predicate::Trait(ref a) => p!(print(a)),
-                ty::Predicate::Subtype(ref pair) => p!(print(pair)),
-                ty::Predicate::RegionOutlives(ref pair) => p!(print(pair)),
-                ty::Predicate::TypeOutlives(ref pair) => p!(print(pair)),
-                ty::Predicate::Projection(ref pair) => p!(print(pair)),
-                ty::Predicate::WellFormed(ty) => p!(print(ty)),
+                ty::Predicate::Trait(ref a) => p!(write("{:?}", a)),
+                ty::Predicate::Subtype(ref pair) => p!(write("{:?}", pair)),
+                ty::Predicate::RegionOutlives(ref pair) => p!(write("{:?}", pair)),
+                ty::Predicate::TypeOutlives(ref pair) => p!(write("{:?}", pair)),
+                ty::Predicate::Projection(ref pair) => p!(write("{:?}", pair)),
+                ty::Predicate::WellFormed(ty) => p!(write("WellFormed({:?})", ty)),
                 ty::Predicate::ObjectSafe(trait_def_id) => {
                     p!(write("ObjectSafe({:?})", trait_def_id))
                 }
@@ -715,7 +670,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) Kind<'tcx>, (self, cx) {
+    Kind<'tcx>, (self, cx) {
         display {
             match self.unpack() {
                 UnpackedKind::Lifetime(lt) => p!(print(lt)),
@@ -725,9 +680,9 @@ define_print! {
         }
         debug {
             match self.unpack() {
-                UnpackedKind::Lifetime(lt) => p!(print(lt)),
-                UnpackedKind::Type(ty) => p!(print(ty)),
-                UnpackedKind::Const(ct) => p!(print(ct)),
+                UnpackedKind::Lifetime(lt) => p!(write("{:?}", lt)),
+                UnpackedKind::Type(ty) => p!(write("{:?}", ty)),
+                UnpackedKind::Const(ct) => p!(write("{:?}", ct)),
             }
         }
     }

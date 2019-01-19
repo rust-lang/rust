@@ -451,7 +451,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 ty::Adt(..) | ty::Foreign(_) |
                 ty::Bool | ty::Char | ty::Str |
                 ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
-                    return self_ty.print_display(self);
+                    return self_ty.print(self);
                 }
 
                 _ => {}
@@ -461,9 +461,9 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         self.generic_delimiters(|mut cx| {
             define_scoped_cx!(cx);
 
-            p!(print_display(self_ty));
+            p!(print(self_ty));
             if let Some(trait_ref) = trait_ref {
-                p!(write(" as "), print_display(trait_ref));
+                p!(write(" as "), print(trait_ref));
             }
             Ok(cx.printer)
         })
@@ -484,9 +484,9 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
 
             p!(write("impl "));
             if let Some(trait_ref) = trait_ref {
-                p!(print_display(trait_ref), write(" for "));
+                p!(print(trait_ref), write(" for "));
             }
-            p!(print_display(self_ty));
+            p!(print(self_ty));
 
             Ok(cx.printer)
         })
@@ -578,14 +578,14 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                     }
                 }
 
-                p!(print_display(arg));
+                p!(print(arg));
             }
 
             for projection in projection0.into_iter().chain(projections) {
                 maybe_comma(&mut cx)?;
 
                 p!(write("{}=", cx.tcx.associated_item(projection.item_def_id).ident),
-                   print_display(projection.ty));
+                   print(projection.ty));
             }
 
             Ok(cx.printer)
@@ -877,7 +877,8 @@ impl<F: fmt::Write> FmtPrinter<F> {
         }
 
         if self.tcx.sess.verbose() {
-            return region.print_debug(self);
+            p!(write("{:?}", region));
+            return Ok(self.printer);
         }
 
         let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
@@ -965,7 +966,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             ty::Ref(r, ty, mutbl) => {
                 p!(write("&"));
                 if self.print_region_outputs_anything(r) {
-                    p!(print_display(r), write(" "));
+                    p!(print(r), write(" "));
                 }
                 p!(print(ty::TypeAndMut { ty, mutbl }))
             }
@@ -1019,7 +1020,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }
                 p!(write("dyn "), print(data));
                 if print_r {
-                    p!(write(" + "), print_display(r), write(")"));
+                    p!(write(" + "), print(r), write(")"));
                 }
             }
             ty::Foreign(def_id) => {
@@ -1033,6 +1034,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 p!(write("Placeholder({:?})", placeholder))
             }
             ty::Opaque(def_id, substs) => {
+                // FIXME(eddyb) print this with `print_def_path`.
                 if self.tcx.sess.verbose() {
                     p!(write("Opaque({:?}, {:?})", def_id, substs));
                     return Ok(self.printer);
@@ -1045,9 +1047,9 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                     // FIXME(eddyb) print this with `print_def_path`.
                     if let Some(first) = substs.next() {
                         p!(write("::<"));
-                        p!(print_display(first));
+                        p!(print(first));
                         for subst in substs {
-                            p!(write(", "), print_display(subst));
+                            p!(write(", "), print(subst));
                         }
                         p!(write(">"));
                     }
@@ -1209,9 +1211,9 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         p!(write("("));
         let mut inputs = inputs.iter();
         if let Some(&ty) = inputs.next() {
-            p!(print_display(ty));
+            p!(print(ty));
             for &ty in inputs {
-                p!(write(", "), print_display(ty));
+                p!(write(", "), print(ty));
             }
             if c_variadic {
                 p!(write(", ..."));
@@ -1219,7 +1221,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         }
         p!(write(")"));
         if !output.is_unit() {
-            p!(write(" -> "), print_display(output));
+            p!(write(" -> "), print(output));
         }
 
         Ok(self.printer)
@@ -1290,7 +1292,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         // Push current state to gcx, and restore after writing new_value.
         self.config.binder_depth += 1;
         self.config.region_index = region_index;
-        let result = new_value.print_display(PrintCx {
+        let result = new_value.print(PrintCx {
             tcx: self.tcx,
             printer: self.printer,
             config: self.config,
