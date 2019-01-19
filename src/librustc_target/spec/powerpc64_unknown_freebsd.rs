@@ -19,3 +19,4 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
+}
