@@ -1,0 +1,29 @@
+error[E0277]: `std::rc::Rc<u32>` cannot be sent between threads safely
+  --> $DIR/trait-alias-cross-crate.rs:14:5
+   |
+LL |     use_alias::<Rc<u32>>();
+   |     ^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<u32>` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `std::rc::Rc<u32>`
+note: required by `use_alias`
+  --> $DIR/trait-alias-cross-crate.rs:10:1
+   |
+LL | fn use_alias<T: SendSync>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::rc::Rc<u32>` cannot be shared between threads safely
+  --> $DIR/trait-alias-cross-crate.rs:14:5
+   |
+LL |     use_alias::<Rc<u32>>();
+   |     ^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<u32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::rc::Rc<u32>`
+note: required by `use_alias`
+  --> $DIR/trait-alias-cross-crate.rs:10:1
+   |
+LL | fn use_alias<T: SendSync>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -3170,18 +3170,6 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefI
     None
 }
 
-/// Returns `true` if `def_id` is a trait alias.
-pub fn is_trait_alias(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-        if let Node::Item(item) = tcx.hir().get(node_id) {
-            if let hir::ItemKind::TraitAlias(..) = item.node {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 /// See `ParamEnv` struct definition for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)

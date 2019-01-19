@@ -673,6 +673,9 @@ impl<'a> Resolver<'a> {
                 }
                 module.populated.set(true);
             }
+            Def::TraitAlias(..) => {
+                self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
+            }
             Def::Struct(..) | Def::Union(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
 

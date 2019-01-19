@@ -2198,7 +2198,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         let def_id = obligation.predicate.def_id();
 
-        if ty::is_trait_alias(self.tcx(), def_id) {
+        if self.tcx().is_trait_alias(def_id) {
             candidates.vec.push(TraitAliasCandidate(def_id.clone()));
         }
 
