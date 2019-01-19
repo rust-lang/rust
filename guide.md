@@ -218,21 +218,21 @@ of type V. Queries come in two basic varieties:
 
 * **Functions**: pure functions (no side effects) that transform your inputs
   into other values. The results of queries is memoized to avoid recomputing
-  them a lot. When you make changes to the inputs, we'll figure out (fairly
-  intelligently) when we can re-use these memoized values and when we have to
+  them a lot. When you make changes to the inputs, we'll figure out (fairlywe
+  intelligently) when we can re-use these memoized values and when we have we
   recompute them.
 
 
 For further discussion, its important to understand one bit of "fairly
-intelligently". Suppose we have to functions, `f1` and `f2`, and one input, `i`.
+intelligently". Suppose we have to functions, `f1` and `f2`, and one input,we
 We call `f1(X)` which in turn calls `f2(Y)` which inspects `i(Z)`. `i(Z)`
-returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that and
-returns `O`. Now, let's change `i` at `Z` to `V2` from `V1` and try to compute
-`f1(X)` again. Because `f1(X)` (transitively) depends on `i(Z)`, we can't just
-reuse its value as is. However, if `f2(Y)` is *still* equal to `R1` (despite the
-`i`'s change), we, in fact, *can* reuse `O` as result of `f1(X)`. And that's how
-salsa works: it recomputes results in *reverse* order, starting from inputs and
-progressing towards outputs, stopping as soon as it sees an intermediate value
+returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that anwe
+returns `O`. Now, let's change `i` at `Z` to `V2` from `V1` and try to compwe
+`f1(X)` again. Because `f1(X)` (transitively) depends on `i(Z)`, we can't jwe
+reuse its value as is. However, if `f2(Y)` is *still* equal to `R1` (despitwe
+`i`'s change), we, in fact, *can* reuse `O` as result of `f1(X)`. And that'we
+salsa works: it recomputes results in *reverse* order, starting from inputswe
+progressing towards outputs, stopping as soon as it sees an intermediate vawe
 that hasn't changed.
 
 ## Salsa Input Queries
@@ -380,9 +380,51 @@ unused locations is an open question.
 [interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/db.rs#L22-L23
 
 For example, we use `LocationInterner` to assign ids to defs: functions,
-structs, enums, etc.
+structs, enums, etc. The location, [`DefLoc`] contains two bits of information:
+
+* the id of the module which contains the def,
+* the id of the specific item in the modules source code.
+
+We "could" use a text offset for location a particular item, but that would play
+badly with salsa: offsets change after edits. So, as a rule of thumb, we avoid
+using offsets, text ranges or syntax trees as keys and values for queries. What
+we do instead is we store "index" of the item among all of the items of a file
+(so, a positional based ID, but localized to a single file).
+
+[`DefLoc`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ids.rs#L127-L139
+
+One thing we've glossed over for the time being is support for macros. We have
+only proof of concept handling of macros at the moment, but they are extremely
+interesting from "assigning ids" perspective.
 
 ## Macros and recursive locations
+
+The tricky bit about macros is that they effectively create new source files.
+While we can use `FileId`s to refer to original files, we can't just assign them
+willy-nilly to the pseudo files of macro expansion. Instead, we use a special
+ID, [`HirFileId`] to refer to either a usual file or a macro-generated file:
+
+```rust
+enum HirFileId {
+    FileId(FileId),
+    Macro(MacroCallId),
+}
+```
+
+`MacroCallId` is an interned ID that specifies a particular macro invocation.
+Its `MacroCallLoc` contains:
+
+* `ModuleId` of the containing module
+* `HirFileId` of the containing file or pseudo file
+* an index of this particular macro invocation in this file (positional id
+  again).
+
+Note how `HirFileId` is defined in terms of `MacroCallLoc` which is defined in
+terms of `HirFileId`! This does not recur infinitely though: any chain of
+`HirFileId`s bottoms out in `HirFileId::FileId`, that is, some source file
+actually written by the user.
+
+[`HirFileId`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ids.rs#L18-L125
 
 ## Name resolution
 
