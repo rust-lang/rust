@@ -565,6 +565,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     && lhs_constructor.ident.name == "Some"
                     && (pat_args.is_empty()
                         || !is_refutable(cx, &pat_args[0])
+                            && !is_used_inside(cx, iter_expr, &arms[0].body)
                             && !is_iterator_used_after_while_let(cx, iter_expr)
                             && !is_nested(cx, expr, &method_args[0]))
                 {
@@ -1886,6 +1887,19 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
+}
+
+fn is_used_inside<'a, 'tcx: 'a>(cx: &'a LateContext<'a, 'tcx>, expr: &'tcx Expr, container: &'tcx Expr) -> bool {
+    let def_id = match var_def_id(cx, expr) {
+        Some(id) => id,
+        None => return false,
+    };
+    if let Some(used_mutably) = mutated_variables(container, cx) {
+        if used_mutably.contains(&def_id) {
+            return true;
+        }
+    }
+    false
 }
 
 fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, iter_expr: &'tcx Expr) -> bool {

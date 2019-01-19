@@ -216,4 +216,14 @@ fn refutable() {
     while let Some(..) = values.iter().next() {
         values.remove(&1);
     }
+
+    // Issue 3670
+    {
+        let array = [Some(0), None, Some(1)];
+        let mut iter = array.iter();
+
+        while let Some(elem) = iter.next() {
+            let _ = elem.or_else(|| *iter.next()?);
+        }
+    }
 }
