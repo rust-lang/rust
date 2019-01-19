@@ -854,25 +854,25 @@ impl ExprCollector {
             ast::PatKind::PlaceholderPat(_) => Pat::Wild,
             ast::PatKind::StructPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
-                let fields = p
+                let field_pat_list = p
                     .field_pat_list()
-                    .expect("every struct should have a field list")
-                    .pats()
-                    .map(|f| {
-                        let ast_pat = f.pat().expect("field pat always contains a pattern");
+                    .expect("every struct should have a field list");
+                let mut fields: Vec<_> = field_pat_list
+                    .bind_pats()
+                    .map(|bind_pat| {
+                        let ast_pat = ast::Pat::cast(bind_pat.syntax()).expect("bind pat is a pat");
                         let pat = self.collect_pat(ast_pat);
-                        let name = f
-                            .name()
-                            .unwrap_or_else(|| {
-                                ast::BindPat::cast(ast_pat.syntax())
-                                    .expect("field pat without label is a bind pat")
-                                    .name()
-                                    .expect("bind pat has a name")
-                            })
-                            .as_name();
+                        let name = bind_pat.name().expect("bind pat has a name").as_name();
                         FieldPat { name, pat }
                     })
                     .collect();
+                let iter = field_pat_list.field_pats().map(|f| {
+                    let ast_pat = f.pat().expect("field pat always contains a pattern");
+                    let pat = self.collect_pat(ast_pat);
+                    let name = f.name().expect("field pats always have a name").as_name();
+                    FieldPat { name, pat }
+                });
+                fields.extend(iter);
 
                 Pat::Struct {
                     path: path,

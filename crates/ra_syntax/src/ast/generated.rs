@@ -910,7 +910,11 @@ impl AstNode for FieldPatList {
 
 
 impl FieldPatList {
-    pub fn pats(&self) -> impl Iterator<Item = &FieldPat> {
+    pub fn field_pats(&self) -> impl Iterator<Item = &FieldPat> {
+        super::children(self)
+    }
+
+    pub fn bind_pats(&self) -> impl Iterator<Item = &BindPat> {
         super::children(self)
     }
 }

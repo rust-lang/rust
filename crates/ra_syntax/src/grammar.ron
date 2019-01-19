@@ -496,7 +496,12 @@ Grammar(
         "PlaceholderPat": (),
         "PathPat": ( options: [ "Path" ] ),
         "StructPat": ( options: ["FieldPatList", "Path"] ),
-        "FieldPatList": ( collections: [["pats", "FieldPat"]] ),
+        "FieldPatList": (
+            collections: [
+                ["field_pats", "FieldPat"],
+                ["bind_pats", "BindPat"],
+            ]
+        ),
         "FieldPat": (
             traits: ["NameOwner"],
             options: ["Pat"]
