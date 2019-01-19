@@ -6,6 +6,7 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
+use std::mem;
 use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
@@ -32,22 +33,16 @@ struct AstValidator<'a> {
 }
 
 impl<'a> AstValidator<'a> {
-    fn with_banned_impl_trait<F>(&mut self, f: F)
-        where F: FnOnce(&mut Self)
-    {
-        let old_is_impl_trait_banned = self.is_impl_trait_banned;
-        self.is_impl_trait_banned = true;
+    fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_impl_trait_banned, true);
         f(self);
-        self.is_impl_trait_banned = old_is_impl_trait_banned;
+        self.is_impl_trait_banned = old;
     }
 
-    fn with_impl_trait<F>(&mut self, outer_impl_trait: Option<Span>, f: F)
-        where F: FnOnce(&mut Self)
-    {
-        let old_outer_impl_trait = self.outer_impl_trait;
-        self.outer_impl_trait = outer_impl_trait;
+    fn with_impl_trait(&mut self, outer_impl_trait: Option<Span>, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.outer_impl_trait, outer_impl_trait);
         f(self);
-        self.outer_impl_trait = old_outer_impl_trait;
+        self.outer_impl_trait = old;
     }
 
     // Mirrors visit::walk_ty, but tracks relevant state
