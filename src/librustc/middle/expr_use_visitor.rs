@@ -589,21 +589,17 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt) {
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => {
-                match decl.node {
-                    hir::DeclKind::Local(ref local) => {
-                        self.walk_local(&local);
-                    }
-
-                    hir::DeclKind::Item(_) => {
-                        // we don't visit nested items in this visitor,
-                        // only the fn body we were given.
-                    }
-                }
+            hir::StmtKind::Local(ref local) => {
+                self.walk_local(&local);
             }
 
-            hir::StmtKind::Expr(ref expr, _) |
-            hir::StmtKind::Semi(ref expr, _) => {
+            hir::StmtKind::Item(_) => {
+                // we don't visit nested items in this visitor,
+                // only the fn body we were given.
+            }
+
+            hir::StmtKind::Expr(ref expr) |
+            hir::StmtKind::Semi(ref expr) => {
                 self.consume_expr(&expr);
             }
         }

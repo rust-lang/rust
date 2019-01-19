@@ -21,6 +21,7 @@ pub fn is_min_const_fn(
                 | Predicate::RegionOutlives(_)
                 | Predicate::TypeOutlives(_)
                 | Predicate::WellFormed(_)
+                | Predicate::Projection(_)
                 | Predicate::ConstEvaluatable(..) => continue,
                 | Predicate::ObjectSafe(_) => {
                     bug!("object safe predicate on function: {:#?}", predicate)
@@ -29,13 +30,6 @@ pub fn is_min_const_fn(
                     bug!("closure kind predicate on function: {:#?}", predicate)
                 }
                 Predicate::Subtype(_) => bug!("subtype predicate on function: {:#?}", predicate),
-                Predicate::Projection(_) => {
-                    let span = tcx.def_span(current);
-                    // we'll hit a `Predicate::Trait` later which will report an error
-                    tcx.sess
-                        .delay_span_bug(span, "projection without trait bound");
-                    continue;
-                }
                 Predicate::Trait(pred) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;

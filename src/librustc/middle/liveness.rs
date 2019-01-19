@@ -962,44 +962,29 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode)
                               -> LiveNode {
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => {
-                self.propagate_through_decl(&decl, succ)
-            }
+            hir::StmtKind::Local(ref local) => {
+                // Note: we mark the variable as defined regardless of whether
+                // there is an initializer.  Initially I had thought to only mark
+                // the live variable as defined if it was initialized, and then we
+                // could check for uninit variables just by scanning what is live
+                // at the start of the function. But that doesn't work so well for
+                // immutable variables defined in a loop:
+                //     loop { let x; x = 5; }
+                // because the "assignment" loops back around and generates an error.
+                //
+                // So now we just check that variables defined w/o an
+                // initializer are not live at the point of their
+                // initialization, which is mildly more complex than checking
+                // once at the func header but otherwise equivalent.
 
-            hir::StmtKind::Expr(ref expr, _) | hir::StmtKind::Semi(ref expr, _) => {
+                let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
+                self.define_bindings_in_pat(&local.pat, succ)
+            }
+            hir::StmtKind::Item(..) => succ,
+            hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
                 self.propagate_through_expr(&expr, succ)
             }
         }
-    }
-
-    fn propagate_through_decl(&mut self, decl: &hir::Decl, succ: LiveNode)
-                              -> LiveNode {
-        match decl.node {
-            hir::DeclKind::Local(ref local) => {
-                self.propagate_through_local(&local, succ)
-            }
-            hir::DeclKind::Item(_) => succ,
-        }
-    }
-
-    fn propagate_through_local(&mut self, local: &hir::Local, succ: LiveNode)
-                               -> LiveNode {
-        // Note: we mark the variable as defined regardless of whether
-        // there is an initializer.  Initially I had thought to only mark
-        // the live variable as defined if it was initialized, and then we
-        // could check for uninit variables just by scanning what is live
-        // at the start of the function. But that doesn't work so well for
-        // immutable variables defined in a loop:
-        //     loop { let x; x = 5; }
-        // because the "assignment" loops back around and generates an error.
-        //
-        // So now we just check that variables defined w/o an
-        // initializer are not live at the point of their
-        // initialization, which is mildly more complex than checking
-        // once at the func header but otherwise equivalent.
-
-        let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
-        self.define_bindings_in_pat(&local.pat, succ)
     }
 
     fn propagate_through_exprs(&mut self, exprs: &[Expr], succ: LiveNode)
