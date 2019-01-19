@@ -264,6 +264,12 @@ define_queries! { <'tcx>
 
         [] fn check_mod_item_types: CheckModItemTypes(DefId) -> (),
 
+        [] fn check_mod_privacy: CheckModPrivacy(DefId) -> (),
+
+        [] fn check_mod_intrinsics: CheckModIntrinsics(DefId) -> (),
+
+        [] fn check_mod_liveness: CheckModLiveness(DefId) -> (),
+
         [] fn collect_mod_item_types: CollectModItemTypes(DefId) -> (),
 
         /// Caches CoerceUnsized kinds for impls on custom types.

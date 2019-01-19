@@ -476,6 +476,9 @@ define_dep_nodes!( <'tcx>
     [] CheckModLoops(DefId),
     [] CheckModUnstableApiUsage(DefId),
     [] CheckModItemTypes(DefId),
+    [] CheckModPrivacy(DefId),
+    [] CheckModIntrinsics(DefId),
+    [] CheckModLiveness(DefId),
     [] CollectModItemTypes(DefId),
 
     [] Reachability,

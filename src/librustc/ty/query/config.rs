@@ -109,6 +109,33 @@ impl<'tcx> QueryDescription<'tcx> for queries::check_mod_item_types<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_privacy<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking privacy in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_intrinsics<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking intrinsics in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_liveness<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking liveness of variables in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::collect_mod_item_types<'tcx> {
     fn describe(
         tcx: TyCtxt<'_, '_, '_>,
