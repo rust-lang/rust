@@ -34,7 +34,7 @@ use test_utils::tested_by;
 
 use crate::{
     Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
-    FnSignature, FnScopes, ModuleDef, AdtDef,
+    FnSignature, ExprScopes, ModuleDef, AdtDef,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
@@ -814,7 +814,7 @@ impl Index<PatId> for InferenceResult {
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
     body: Arc<Body>,
-    scopes: Arc<FnScopes>,
+    scopes: Arc<ExprScopes>,
     module: Module,
     impl_block: Option<ImplBlock>,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
@@ -908,7 +908,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(
         db: &'a D,
         body: Arc<Body>,
-        scopes: Arc<FnScopes>,
+        scopes: Arc<ExprScopes>,
         module: Module,
         impl_block: Option<ImplBlock>,
     ) -> Self {
@@ -1720,7 +1720,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
     db.check_canceled();
     let body = func.body(db);
-    let scopes = db.fn_scopes(func);
+    let scopes = db.expr_scopes(func);
     let module = func.module(db);
     let impl_block = func.impl_block(db);
     let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);

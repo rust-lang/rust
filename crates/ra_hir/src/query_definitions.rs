@@ -4,13 +4,13 @@ use ra_syntax::{SyntaxNode, TreeArc};
 
 use crate::{
     SourceFileItems, SourceItemId, HirFileId,
-    Function, FnScopes,
+    Function, ExprScopes,
     db::HirDatabase,
 };
 
-pub(super) fn fn_scopes(db: &impl HirDatabase, func: Function) -> Arc<FnScopes> {
+pub(super) fn expr_scopes(db: &impl HirDatabase, func: Function) -> Arc<ExprScopes> {
     let body = db.body_hir(func);
-    let res = FnScopes::new(body);
+    let res = ExprScopes::new(body);
     Arc::new(res)
 }
 
