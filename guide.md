@@ -351,10 +351,36 @@ declarations.
 [`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L41)
 
 We store the resulting modules in a `Vec`-based indexed arena. The indices in
-the arena becomes module identifiers.
-
+the arena becomes module ids. And this brings us to the next topic:
+assigning ids in the general case.
 
 ## Location Interner pattern
+
+One way to assign ids is how we've dealt with modules: collect all items into a
+single array in some specific order and use index in the array as an id. The
+main drawback of this approach is that ids are not stable: adding a new item can
+shift ids of all other items. This works for modules, because adding a module is
+a comparatively rare operation, but would be less convenient for, for example
+functions.
+
+Another solution here is positional ids: we can identify a function as "the
+function with name `foo` in a ModuleId(92) module". Such locations are stable:
+adding a new function to the module (unless it is also named `foo`) does not
+change the location. However, such "id" ceases to be a `Copy` integer and in
+general can become pretty large if we account for nesting (third parameter of
+the foo function of the bar impl in the baz module).
+
+[`LocationInterner`] allows us to combine benefits of positional and numeric
+ids. It is a bidirectional append only map between locations and consecutive
+integers which can "intern" a location and return an integer id back. Salsa
+database we use includes a couple of [interners]. How to "garbage collect"
+unused locations is an open question.
+
+[`LocationInterner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_db/src/loc2id.rs#L65-L71
+[interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/db.rs#L22-L23
+
+For example, we use `LocationInterner` to assign ids to defs: functions,
+structs, enums, etc.
 
 ## Macros and recursive locations
 
