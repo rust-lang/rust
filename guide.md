@@ -515,3 +515,15 @@ construct a mapping from `ExprId`s to types.
 [type-inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ty.rs#L1208-L1223
 
 ## Tying it all together: completion
+
+To conclude the overview of the rust analyzer, let's trace the request for
+(type-inference powered!) code completion!
+
+We start by [receiving a message] from the language client. We decode the
+message as a request for completion and [schedule it on the threadpool]. This is
+the place where we [catch] canceled error if, immediately after completion, the
+client sends some modification.
+
+[receiving a message]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L203
+[schedule it on the threadpool]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L428
+[catch]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
