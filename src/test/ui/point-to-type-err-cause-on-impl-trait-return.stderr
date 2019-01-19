@@ -1,0 +1,58 @@
+error[E0308]: mismatched types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:5:5
+   |
+LL |         return 0i32;
+   |                ---- expected because of this statement
+LL |     }
+LL |     1u32
+   |     ^^^^ expected i32, found u32
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:13:16
+   |
+LL |         return 0i32;
+   |                ---- expected because of this statement
+LL |     } else {
+LL |         return 1u32;
+   |                ^^^^ expected i32, found u32
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:19:5
+   |
+LL | /     if false {
+LL | |     //~^ ERROR mismatched types
+LL | |         return 0i32;
+   | |                ---- expected because of this statement
+LL | |     } else {
+LL | |         1u32
+LL | |     }
+   | |_____^ expected i32, found u32
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error[E0308]: if and else have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:31:9
+   |
+LL | /     if false {
+LL | |         0i32
+   | |         ---- expected because of this
+LL | |     } else {
+LL | |         1u32
+   | |         ^^^^ expected i32, found u32
+LL | |         //~^ ERROR if and else have incompatible types
+LL | |     }
+   | |_____- if and else have incompatible types
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

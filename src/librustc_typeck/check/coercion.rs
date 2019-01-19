@@ -1216,7 +1216,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                       "supposed to be part of a block tail expression, but the \
                                        expression is empty");
                         });
-                        fcx.suggest_mismatched_types_on_tail(
+                        let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
                             &mut db,
                             expr,
                             expected,
@@ -1224,7 +1224,44 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             cause.span,
                             blk_id,
                         );
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                        // FIXME: replace with navigating up the chain until hitting an fn or
+                        // bailing if no "pass-through" Node is found, in order to provide a
+                        // suggestion when encountering something like:
+                        // ```
+                        // fn foo(a: bool) -> impl Debug {
+                        //     if a {
+                        //         bar()?;
+                        //     }
+                        //     {
+                        //         let x = unsafe { bar() };
+                        //         x
+                        //     }
+                        // }
+                        // ```
+                        //
+                        // Verify that this is a tail expression of a function, otherwise the
+                        // label pointing out the cause for the type coercion will be wrong
+                        // as prior return coercions would not be relevant (#57664).
+                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
+                        let parent = fcx.tcx.hir().get(fcx.tcx.hir().get_parent_node(parent_id));
+                        if fcx.get_node_fn_decl(parent).is_some() && !pointing_at_return_type {
+                            if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                                db.span_label(*sp, reason_label);
+                            }
+                        }
+                    }
+                    ObligationCauseCode::ReturnType(_id) => {
+                        db = fcx.report_mismatched_types(cause, expected, found, err);
+                        let _id = fcx.tcx.hir().get_parent_node(_id);
+                        let mut pointing_at_return_type = false;
+                        if let Some((fn_decl, can_suggest)) = fcx.get_fn_decl(_id) {
+                            pointing_at_return_type = fcx.suggest_missing_return_type(
+                                &mut db, &fn_decl, expected, found, can_suggest);
+                        }
+                        if let (Some(sp), false) = (
+                            fcx.ret_coercion_span.borrow().as_ref(),
+                            pointing_at_return_type,
+                        ) {
                             if !sp.overlaps(cause.span) {
                                 db.span_label(*sp, reason_label);
                             }
@@ -1232,11 +1269,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
-                            }
-                        }
                     }
                 }
 
