@@ -1,5 +1,6 @@
 use check::{FnCtxt, Expectation, Diverges, Needs};
 use check::coercion::CoerceMany;
+use errors::Applicability;
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -989,7 +990,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                     let suggested_name =
                         find_best_match_for_name(input, &ident.as_str(), None);
                     if let Some(suggested_name) = suggested_name {
-                        err.span_suggestion(*span, "did you mean", suggested_name.to_string());
+                        err.span_suggestion_with_applicability(
+                            *span,
+                            "did you mean",
+                            suggested_name.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+
                         // we don't want to throw `E0027` in case we have thrown `E0026` for them
                         unmentioned_fields.retain(|&x| x.as_str() != suggested_name.as_str());
                     }
