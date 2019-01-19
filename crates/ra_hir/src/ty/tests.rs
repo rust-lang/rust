@@ -439,6 +439,32 @@ fn test(a1: A<u32>, i: i32) {
 }
 
 #[test]
+fn infer_generics_in_patterns() {
+    check_inference(
+        r#"
+struct A<T> {
+    x: T,
+}
+
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+fn test(a1: A<u32>, o: Option<u64>) {
+    let A { x: x2 } = a1;
+    let A::<i64> { x: x3 } = A { x: 1 };
+    match o {
+        Option::Some(t) => t,
+        _ => 1,
+    };
+}
+"#,
+        "generics_in_patterns.txt",
+    );
+}
+
+#[test]
 fn infer_function_generics() {
     check_inference(
         r#"
