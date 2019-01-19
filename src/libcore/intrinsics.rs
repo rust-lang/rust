@@ -692,7 +692,6 @@ extern "rust-intrinsic" {
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.
-    #[cfg(not(stage0))]
     pub fn panic_if_uninhabited<T>();
 
     /// Creates a value initialized to zero.

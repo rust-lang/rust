@@ -226,7 +226,7 @@ fn make_win_dist(
         let trim_chars: &[_] = &[' ', '='];
         let value =
             line[(idx + 1)..]
-                .trim_left_matches(trim_chars)
+                .trim_start_matches(trim_chars)
                 .split(';')
                 .map(PathBuf::from);
 

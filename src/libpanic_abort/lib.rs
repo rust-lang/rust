@@ -12,7 +12,6 @@
 #![panic_runtime]
 #![allow(unused_features)]
 
-#![cfg_attr(stage0, feature(cfg_target_vendor))]
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(nll)]
