@@ -36,6 +36,7 @@ mod impl_block;
 mod expr;
 mod generics;
 mod docs;
+mod resolve;
 
 mod code_model_api;
 mod code_model_impl;
@@ -60,6 +61,7 @@ pub use self::{
     docs::{Docs, Documentation},
     adt::AdtDef,
     expr::{ExprScopes, ScopesWithSyntaxMapping},
+    resolve::Resolver,
 };
 
 pub use self::code_model_api::{

@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, ModuleDef, Struct, Enum,
-    AsName, Module, HirFileId, Crate, Trait,
+    AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::{LocationCtx, SourceFileItemId},
 };
 
@@ -200,4 +200,9 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
     }
 
     res
+}
+
+#[allow(unused_variables)]
+pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {
+    unimplemented!()
 }

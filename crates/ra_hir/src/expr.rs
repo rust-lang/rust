@@ -10,15 +10,15 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, Function,
-    name::AsName, HirDatabase,
+    Path, Name, HirDatabase, Function, Resolver,
+    name::AsName,
     type_ref::{Mutability, TypeRef},
 };
 use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
 
 pub use self::scope::{ExprScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 
-mod scope;
+pub(crate) mod scope;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(RawId);
@@ -61,6 +61,11 @@ impl Body {
 
     pub fn body_expr(&self) -> ExprId {
         self.body_expr
+    }
+
+    #[allow(unused_variables)]
+    pub fn resolver_for_expr(&self, expr_id: ExprId) -> Resolver {
+        unimplemented!()
     }
 }
 

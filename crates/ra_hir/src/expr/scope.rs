@@ -73,6 +73,7 @@ impl ExprScopes {
         context_expr: ExprId,
         name: Name,
     ) -> Option<&'a ScopeEntry> {
+        // TODO replace by Resolver::resolve_name
         let mut shadowed = FxHashSet::default();
         let ret = self
             .scope_chain_for(context_expr)
@@ -179,6 +180,7 @@ impl ScopesWithSyntaxMapping {
 
     // XXX: during completion, cursor might be outside of any particular
     // expression. Try to figure out the correct scope...
+    // TODO: move this to source binder?
     fn adjust(&self, ptr: SyntaxNodePtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
         let r = ptr.range();
         let child_scopes = self

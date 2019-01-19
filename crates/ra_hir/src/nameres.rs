@@ -30,7 +30,7 @@ use crate::{
     nameres::lower::{ImportId, LoweredModule, ImportData},
 };
 
-/// `ItemMap` is the result of name resolution. It contains, for each
+/// `ItemMap` is the result of module name resolution. It contains, for each
 /// module, the set of visible items.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {

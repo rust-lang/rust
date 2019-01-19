@@ -9,14 +9,15 @@ use crate::{
     type_ref::TypeRef,
     nameres::{ModuleScope, lower::ImportId},
     HirDatabase, PersistentHirDatabase,
-    expr::BodySyntaxMapping,
-    ty::{InferenceResult},
+    expr::{Body, BodySyntaxMapping},
+    ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplId,
+    resolve::Resolver,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -175,11 +176,17 @@ impl Module {
     }
 
     pub fn resolve_path(&self, db: &impl PersistentHirDatabase, path: &Path) -> PerNs<ModuleDef> {
+        // TODO replace by Resolver::resolve_path
         db.item_map(self.krate).resolve_path(db, *self, path)
     }
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         self.problems_impl(db)
+    }
+
+    #[allow(unused_variables)]
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        unimplemented!()
     }
 }
 
@@ -447,6 +454,10 @@ impl Function {
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
         db.body_syntax_mapping(*self)
+    }
+
+    pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
+        db.body_hir(*self)
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {

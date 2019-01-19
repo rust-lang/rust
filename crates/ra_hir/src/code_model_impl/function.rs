@@ -5,14 +5,12 @@ use ra_syntax::ast::{self, NameOwner};
 use crate::{
     HirDatabase, Name, AsName, Function, FnSignature,
     type_ref::{TypeRef, Mutability},
-    expr::Body, PersistentHirDatabase,
+    PersistentHirDatabase,
     impl_block::ImplBlock,
 };
 
 impl Function {
-    pub(crate) fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(*self)
-    }
+    // TODO impl_block should probably also be part of the code model API?
 
     /// The containing impl block, if this is a method.
     pub(crate) fn impl_block(&self, db: &impl HirDatabase) -> Option<ImplBlock> {
