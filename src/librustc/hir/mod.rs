@@ -17,7 +17,7 @@ use util::nodemap::{NodeMap, FxHashSet};
 use mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
-use syntax::source_map::{self, Spanned};
+use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
@@ -1134,45 +1134,41 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<StmtKind>;
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct Stmt {
+    pub id: NodeId,
+    pub node: StmtKind,
+    pub span: Span,
+}
 
-impl fmt::Debug for StmtKind {
+impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Sadness.
-        let spanned = source_map::dummy_spanned(self.clone());
-        write!(f,
-               "stmt({}: {})",
-               spanned.node.id(),
-               print::to_string(print::NO_ANN, |s| s.print_stmt(&spanned)))
+        write!(f, "stmt({}: {})", self.id,
+               print::to_string(print::NO_ANN, |s| s.print_stmt(self)))
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum StmtKind {
-    /// Could be an item or a local (let) binding:
-    Decl(P<Decl>, NodeId),
+    /// A local (let) binding:
+    Local(P<Local>),
+    /// An item binding:
+    Item(P<ItemId>),
 
     /// Expr without trailing semi-colon (must have unit type):
-    Expr(P<Expr>, NodeId),
+    Expr(P<Expr>),
 
     /// Expr with trailing semi-colon (may have any type):
-    Semi(P<Expr>, NodeId),
+    Semi(P<Expr>),
 }
 
 impl StmtKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            StmtKind::Decl(ref d, _) => d.node.attrs(),
-            StmtKind::Expr(ref e, _) |
-            StmtKind::Semi(ref e, _) => &e.attrs,
-        }
-    }
-
-    pub fn id(&self) -> NodeId {
-        match *self {
-            StmtKind::Decl(_, id) |
-            StmtKind::Expr(_, id) |
-            StmtKind::Semi(_, id) => id,
+            StmtKind::Local(ref l) => &l.attrs,
+            StmtKind::Item(_) => &[],
+            StmtKind::Expr(ref e) |
+            StmtKind::Semi(ref e) => &e.attrs,
         }
     }
 }
@@ -1189,32 +1185,6 @@ pub struct Local {
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
     pub source: LocalSource,
-}
-
-pub type Decl = Spanned<DeclKind>;
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum DeclKind {
-    /// A local (let) binding:
-    Local(P<Local>),
-    /// An item binding:
-    Item(ItemId),
-}
-
-impl DeclKind {
-    pub fn attrs(&self) -> &[Attribute] {
-        match *self {
-            DeclKind::Local(ref l) => &l.attrs,
-            DeclKind::Item(_) => &[]
-        }
-    }
-
-    pub fn is_local(&self) -> bool {
-        match *self {
-            DeclKind::Local(_) => true,
-            _ => false,
-        }
-    }
 }
 
 /// represents one arm of a 'match'

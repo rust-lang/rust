@@ -192,7 +192,6 @@ macro_rules! late_lint_methods {
             fn check_stmt(a: &$hir hir::Stmt);
             fn check_arm(a: &$hir hir::Arm);
             fn check_pat(a: &$hir hir::Pat);
-            fn check_decl(a: &$hir hir::Decl);
             fn check_expr(a: &$hir hir::Expr);
             fn check_expr_post(a: &$hir hir::Expr);
             fn check_ty(a: &$hir hir::Ty);

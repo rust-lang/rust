@@ -784,20 +784,25 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
         // index information.)
 
         for (i, statement) in blk.stmts.iter().enumerate() {
-            if let hir::StmtKind::Decl(..) = statement.node {
-                // Each StmtKind::Decl introduces a subscope for bindings
-                // introduced by the declaration; this subscope covers
-                // a suffix of the block . Each subscope in a block
-                // has the previous subscope in the block as a parent,
-                // except for the first such subscope, which has the
-                // block itself as a parent.
-                visitor.enter_scope(
-                    Scope {
-                        id: blk.hir_id.local_id,
-                        data: ScopeData::Remainder(FirstStatementIndex::new(i))
-                    }
-                );
-                visitor.cx.var_parent = visitor.cx.parent;
+            match statement.node {
+                hir::StmtKind::Local(..) |
+                hir::StmtKind::Item(..) => {
+                    // Each declaration introduces a subscope for bindings
+                    // introduced by the declaration; this subscope covers a
+                    // suffix of the block. Each subscope in a block has the
+                    // previous subscope in the block as a parent, except for
+                    // the first such subscope, which has the block itself as a
+                    // parent.
+                    visitor.enter_scope(
+                        Scope {
+                            id: blk.hir_id.local_id,
+                            data: ScopeData::Remainder(FirstStatementIndex::new(i))
+                        }
+                    );
+                    visitor.cx.var_parent = visitor.cx.parent;
+                }
+                hir::StmtKind::Expr(..) |
+                hir::StmtKind::Semi(..) => {}
             }
             visitor.visit_stmt(statement)
         }
@@ -835,7 +840,7 @@ fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &
 }
 
 fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-    let stmt_id = visitor.tcx.hir().node_to_hir_id(stmt.node.id()).local_id;
+    let stmt_id = visitor.tcx.hir().node_to_hir_id(stmt.id).local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     // Every statement will clean up the temporaries created during

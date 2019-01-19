@@ -258,9 +258,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_pat(&mut self, p: &'v Pat) {
         walk_pat(self, p)
     }
-    fn visit_decl(&mut self, d: &'v Decl) {
-        walk_decl(self, d)
-    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
@@ -951,23 +948,14 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 }
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
+    visitor.visit_id(statement.id);
     match statement.node {
-        StmtKind::Decl(ref declaration, id) => {
-            visitor.visit_id(id);
-            visitor.visit_decl(declaration)
-        }
-        StmtKind::Expr(ref expression, id) |
-        StmtKind::Semi(ref expression, id) => {
-            visitor.visit_id(id);
+        StmtKind::Local(ref local) => visitor.visit_local(local),
+        StmtKind::Item(ref item) => visitor.visit_nested_item(**item),
+        StmtKind::Expr(ref expression) |
+        StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
         }
-    }
-}
-
-pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
-    match declaration.node {
-        DeclKind::Local(ref local) => visitor.visit_local(local),
-        DeclKind::Item(item) => visitor.visit_nested_item(item),
     }
 }
 

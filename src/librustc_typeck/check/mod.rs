@@ -4840,15 +4840,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => {
-                if let hir::DeclKind::Item(_) = decl.node {
-                    return
-                }
-            }
-            hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+            hir::StmtKind::Item(..) => return,
+            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
-        self.warn_if_unreachable(stmt.node.id(), stmt.span, "statement");
+        self.warn_if_unreachable(stmt.id, stmt.span, "statement");
 
         // Hide the outer diverging and `has_errors` flags.
         let old_diverges = self.diverges.get();
@@ -4857,20 +4853,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.has_errors.set(false);
 
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => {
-                match decl.node {
-                    hir::DeclKind::Local(ref l) => {
-                        self.check_decl_local(&l);
-                    }
-                    // Ignore for now.
-                    hir::DeclKind::Item(_) => ()
-                }
+            hir::StmtKind::Local(ref l) => {
+                self.check_decl_local(&l);
             }
-            hir::StmtKind::Expr(ref expr, _) => {
+            // Ignore for now.
+            hir::StmtKind::Item(_) => {}
+            hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());
             }
-            hir::StmtKind::Semi(ref expr, _) => {
+            hir::StmtKind::Semi(ref expr) => {
                 self.check_expr(&expr);
             }
         }
@@ -5273,7 +5265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None => return None,
         };
         let last_expr = match last_stmt.node {
-            hir::StmtKind::Semi(ref e, _) => e,
+            hir::StmtKind::Semi(ref e) => e,
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);

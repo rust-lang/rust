@@ -992,14 +992,29 @@ impl<'a> State<'a> {
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
         self.maybe_print_comment(st.span.lo())?;
         match st.node {
-            hir::StmtKind::Decl(ref decl, _) => {
-                self.print_decl(&decl)?;
+            hir::StmtKind::Local(ref loc) => {
+                self.space_if_not_bol()?;
+                self.ibox(indent_unit)?;
+                self.word_nbsp("let")?;
+
+                self.ibox(indent_unit)?;
+                self.print_local_decl(&loc)?;
+                self.end()?;
+                if let Some(ref init) = loc.init {
+                    self.nbsp()?;
+                    self.word_space("=")?;
+                    self.print_expr(&init)?;
+                }
+                self.end()?
             }
-            hir::StmtKind::Expr(ref expr, _) => {
+            hir::StmtKind::Item(ref item) => {
+                self.ann.nested(self, Nested::Item(**item))?
+            }
+            hir::StmtKind::Expr(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
             }
-            hir::StmtKind::Semi(ref expr, _) => {
+            hir::StmtKind::Semi(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
                 self.s.word(";")?;
@@ -1560,30 +1575,6 @@ impl<'a> State<'a> {
             self.print_type(&ty)?;
         }
         Ok(())
-    }
-
-    pub fn print_decl(&mut self, decl: &hir::Decl) -> io::Result<()> {
-        self.maybe_print_comment(decl.span.lo())?;
-        match decl.node {
-            hir::DeclKind::Local(ref loc) => {
-                self.space_if_not_bol()?;
-                self.ibox(indent_unit)?;
-                self.word_nbsp("let")?;
-
-                self.ibox(indent_unit)?;
-                self.print_local_decl(&loc)?;
-                self.end()?;
-                if let Some(ref init) = loc.init {
-                    self.nbsp()?;
-                    self.word_space("=")?;
-                    self.print_expr(&init)?;
-                }
-                self.end()
-            }
-            hir::DeclKind::Item(item) => {
-                self.ann.nested(self, Nested::Item(item))
-            }
-        }
     }
 
     pub fn print_usize(&mut self, i: usize) -> io::Result<()> {
@@ -2401,18 +2392,10 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
 /// seen the semicolon, and thus don't need another.
 fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
     match *stmt {
-        hir::StmtKind::Decl(ref d, _) => {
-            match d.node {
-                hir::DeclKind::Local(_) => true,
-                hir::DeclKind::Item(_) => false,
-            }
-        }
-        hir::StmtKind::Expr(ref e, _) => {
-            expr_requires_semi_to_be_stmt(&e)
-        }
-        hir::StmtKind::Semi(..) => {
-            false
-        }
+        hir::StmtKind::Local(_) => true,
+        hir::StmtKind::Item(_) => false,
+        hir::StmtKind::Expr(ref e) => expr_requires_semi_to_be_stmt(&e),
+        hir::StmtKind::Semi(..) => false,
     }
 }
 
