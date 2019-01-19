@@ -42,7 +42,7 @@ use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use std::cmp;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -629,7 +629,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+            this.evaluate_predicate_recursively(TraitObligationStackList::empty(),
+                obligation.clone())
         })
     }
 
@@ -655,12 +656,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         predicates: I,
     ) -> Result<EvaluationResult, OverflowError>
     where
-        I: IntoIterator<Item = &'a PredicateObligation<'tcx>>,
+        I: IntoIterator<Item = PredicateObligation<'tcx>>,
         'tcx: 'a,
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
-            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
+            let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
             debug!(
                 "evaluate_predicate_recursively({:?}) = {:?}",
                 obligation, eval
@@ -679,9 +680,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn evaluate_predicate_recursively<'o>(
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
-        obligation: &PredicateObligation<'tcx>,
+        obligation: PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        debug!("evaluate_predicate_recursively({:?})", obligation);
+        debug!("evaluate_predicate_recursively(previous_stack={:?}, obligation={:?})",
+            previous_stack.head(), obligation);
+
+        // Previous_stack stores a TraitObligatiom, while 'obligation' is
+        // a PredicateObligation. These are distinct types, so we can't
+        // use any Option combinator method that would force them to be
+        // the same
+        match previous_stack.head() {
+            Some(h) => self.check_recursion_limit(&obligation, h.obligation)?,
+            None => self.check_recursion_limit(&obligation, &obligation)?
+        }
 
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
@@ -695,8 +706,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 match self.infcx
                     .subtype_predicate(&obligation.cause, obligation.param_env, p)
                 {
-                    Some(Ok(InferOk { obligations, .. })) => {
-                        self.evaluate_predicates_recursively(previous_stack, &obligations)
+                    Some(Ok(InferOk { mut obligations, .. })) => {
+                        self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                        self.evaluate_predicates_recursively(previous_stack,obligations.into_iter())
                     }
                     Some(Err(_)) => Ok(EvaluatedToErr),
                     None => Ok(EvaluatedToAmbig),
@@ -710,8 +722,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 ty,
                 obligation.cause.span,
             ) {
-                Some(obligations) => {
-                    self.evaluate_predicates_recursively(previous_stack, obligations.iter())
+                Some(mut obligations) => {
+                    self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                    self.evaluate_predicates_recursively(previous_stack, obligations.into_iter())
                 }
                 None => Ok(EvaluatedToAmbig),
             },
@@ -733,10 +746,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Predicate::Projection(ref data) => {
                 let project_obligation = obligation.with(data.clone());
                 match project::poly_project_and_unify_type(self, &project_obligation) {
-                    Ok(Some(subobligations)) => {
+                    Ok(Some(mut subobligations)) => {
+                        self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
                         let result = self.evaluate_predicates_recursively(
                             previous_stack,
-                            subobligations.iter(),
+                            subobligations.into_iter(),
                         );
                         if let Some(key) =
                             ProjectionCacheKey::from_poly_projection_predicate(self, data)
@@ -1005,7 +1019,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             match this.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => this.evaluate_predicates_recursively(
                     stack.list(),
-                    selection.nested_obligations().iter(),
+                    selection.nested_obligations().into_iter()
                 ),
                 Err(..) => Ok(EvaluatedToErr),
             }
@@ -1080,6 +1094,45 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .insert(trait_ref, WithDepNode::new(dep_node, result));
     }
 
+    // For various reasons, it's possible for a subobligation
+    // to have a *lower* recursion_depth than the obligation used to create it.
+    // Projection sub-obligations may be returned from the projection cache,
+    // which results in obligations with an 'old' recursion_depth.
+    // Additionally, methods like ty::wf::obligations and
+    // InferCtxt.subtype_predicate produce subobligations without
+    // taking in a 'parent' depth, causing the generated subobligations
+    // to have a recursion_depth of 0
+    //
+    // To ensure that obligation_depth never decreasees, we force all subobligations
+    // to have at least the depth of the original obligation.
+    fn add_depth<T: 'cx, I: Iterator<Item = &'cx mut Obligation<'tcx, T>>>(&self, it: I,
+                                                                           min_depth: usize) {
+        it.for_each(|o| o.recursion_depth = cmp::max(min_depth, o.recursion_depth) + 1);
+    }
+
+    // Check that the recursion limit has not been exceeded.
+    //
+    // The weird return type of this function allows it to be used with the 'try' (?)
+    // operator within certain functions
+    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>, V: Display + TypeFoldable<'tcx>>(
+        &self,
+        obligation: &Obligation<'tcx, T>,
+        error_obligation: &Obligation<'tcx, V>
+    ) -> Result<(), OverflowError>  {
+        let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
+        if obligation.recursion_depth >= recursion_limit {
+            match self.query_mode {
+                TraitQueryMode::Standard => {
+                    self.infcx().report_overflow_error(error_obligation, true);
+                }
+                TraitQueryMode::Canonical => {
+                    return Err(OverflowError);
+                }
+            }
+        }
+        Ok(())
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
     //
@@ -1096,17 +1149,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
-        let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
-        if stack.obligation.recursion_depth >= recursion_limit {
-            match self.query_mode {
-                TraitQueryMode::Standard => {
-                    self.infcx().report_overflow_error(&stack.obligation, true);
-                }
-                TraitQueryMode::Canonical => {
-                    return Err(Overflow);
-                }
-            }
-        }
+        self.check_recursion_limit(&stack.obligation, &stack.obligation)?;
+
 
         // Check the cache. Note that we freshen the trait-ref
         // separately rather than using `stack.fresh_trait_ref` --
@@ -1767,7 +1811,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.evaluation_probe(|this| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
-                    this.evaluate_predicates_recursively(stack.list(), obligations.iter())
+                    this.evaluate_predicates_recursively(stack.list(), obligations.into_iter())
                 }
                 Err(()) => Ok(EvaluatedToErr),
             }
@@ -3801,6 +3845,10 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
 
     fn with(r: &'o TraitObligationStack<'o, 'tcx>) -> TraitObligationStackList<'o, 'tcx> {
         TraitObligationStackList { head: Some(r) }
+    }
+
+    fn head(&self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
+        self.head
     }
 }
 

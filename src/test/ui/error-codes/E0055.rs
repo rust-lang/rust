@@ -1,4 +1,4 @@
-#![recursion_limit="2"]
+#![recursion_limit="5"]
 struct Foo;
 
 impl Foo {
@@ -7,7 +7,7 @@ impl Foo {
 
 fn main() {
     let foo = Foo;
-    let ref_foo = &&Foo;
+    let ref_foo = &&&&&Foo;
     ref_foo.foo();
     //~^ ERROR E0055
 }
