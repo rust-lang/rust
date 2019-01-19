@@ -11,6 +11,7 @@
        test(attr(deny(warnings))))]
 
 #![feature(nll)]
+#![feature(rustc_private)]
 
 pub use self::Piece::*;
 pub use self::Position::*;
