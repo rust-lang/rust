@@ -3,7 +3,7 @@ use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::intravisit;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashSet;
@@ -179,6 +179,10 @@ impl<'a, 'tcx> Functions {
     }
 
     fn check_line_number(self, cx: &LateContext<'_, '_>, span: Span) {
+        if in_external_macro(cx.sess(), span) {
+            return;
+        }
+
         let code_snippet = snippet(cx, span, "..");
         let mut line_count: u64 = 0;
         let mut in_comment = false;
