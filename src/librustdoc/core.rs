@@ -51,9 +51,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
-    // Note that external items for which `doc(hidden)` applies to are shown as
-    // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from crateanalysis.
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
@@ -468,14 +465,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             freevars: resolver.freevars.clone(),
             export_map: resolver.export_map.clone(),
             trait_map: resolver.trait_map.clone(),
+            glob_map: resolver.glob_map.clone(),
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
             extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
                 (ident.name, entry.introduced_by_item)
             }).collect(),
-        };
-        let analysis = ty::CrateAnalysis {
-            glob_map: resolver.glob_map.clone(),
         };
 
         let mut arenas = AllArenas::new();
@@ -492,12 +487,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         &sess,
                                                         &*cstore,
                                                         hir_map,
-                                                        analysis,
                                                         resolutions,
                                                         &mut arenas,
                                                         &name,
                                                         &output_filenames,
-                                                        |tcx, _, _, result| {
+                                                        |tcx, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
