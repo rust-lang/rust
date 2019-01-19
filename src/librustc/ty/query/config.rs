@@ -74,27 +74,18 @@ impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
 
 macro_rules! impl_uncacheable_query {
     () => {};
-    ($query_name:ident, $descr:literal, |$tcx:pat, $key:pat| $arg:expr; $($rest:tt)*) => {
-        impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
-            fn describe($tcx: TyCtxt<'_, '_, '_>, $key: Self::Key) -> CowStr {
-                format!($descr, $arg).into()
-            }
-        }
-        impl_uncacheable_query!($($rest)*);
+    ($query:ident, $descr:literal, |$tcx:pat, $key:pat| $arg:expr; $($rest:tt)*) => {
+        impl_uncacheable_query!(@$query, |$tcx, $key| format!($descr, $arg).into(); $($rest)*);
     };
-    ($query_name:ident, $description:expr; $($rest:tt)*) => {
-        impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
-            fn describe(_tcx: TyCtxt<'_, '_, '_>, _: Self::Key) -> CowStr {
-                $description.into()
-            }
-        }
-        impl_uncacheable_query!($($rest)*);
+    ($query:ident, $description:expr; $($rest:tt)*) => {
+        impl_uncacheable_query!(@$query, |_, _| $description.into(); $($rest)*);
     };
-    (bug $query_name:ident; $($rest:tt)*) => {
-        impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
-            fn describe(_tcx: TyCtxt<'_, '_, '_>, _: Self::Key) -> CowStr {
-                bug!(stringify!($query_name))
-            }
+    (bug $query:ident; $($rest:tt)*) => {
+        impl_uncacheable_query!(@$query, |_, _| bug!(stringify!($query)); $($rest)*);
+    };
+    (@$query:ident, |$tcx:pat, $key:pat| $descr:expr; $($rest:tt)*) => {
+        impl<'tcx> QueryDescription<'tcx> for queries::$query<'tcx> {
+            fn describe($tcx: TyCtxt<'_, '_, '_>, $key: Self::Key) -> CowStr { $descr }
         }
         impl_uncacheable_query!($($rest)*);
     };
