@@ -103,7 +103,7 @@ use rustc_mir::monomorphize::Instance;
 
 use syntax_pos::symbol::Symbol;
 
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::mem::discriminant;
 
 pub fn provide(providers: &mut Providers) {
@@ -221,7 +221,7 @@ fn get_symbol_hash<'a, 'tcx>(
 }
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
-    let mut buffer = SymbolPathBuffer::new();
+    let mut buffer = SymbolPathBuffer::new(tcx);
     item_path::with_forced_absolute_paths(|| {
         tcx.push_item_path(&mut buffer, def_id, false);
     });
@@ -317,7 +317,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, def_id, instance, instance_ty, substs);
 
-    let mut buf = SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id));
+    let mut buf = SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id), tcx);
 
     if instance.is_vtable_shim() {
         buf.push("{{vtable-shim}}");
@@ -339,26 +339,28 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 //
 // To be able to work on all platforms and get *some* reasonable output, we
 // use C++ name-mangling.
-#[derive(Debug)]
-struct SymbolPathBuffer {
+struct SymbolPathBuffer<'a, 'tcx> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result: String,
     temp_buf: String,
 }
 
-impl SymbolPathBuffer {
-    fn new() -> Self {
+impl SymbolPathBuffer<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         let mut result = SymbolPathBuffer {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
+            tcx,
         };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
     }
 
-    fn from_interned(symbol: ty::SymbolName) -> Self {
+    fn from_interned(symbol: ty::SymbolName, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         let mut result = SymbolPathBuffer {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
+            tcx,
         };
         result.result.push_str(&symbol.as_str());
         result
@@ -377,7 +379,7 @@ impl SymbolPathBuffer {
     }
 }
 
-impl ItemPathBuffer for SymbolPathBuffer {
+impl ItemPathBuffer for SymbolPathBuffer<'a, 'tcx> {
     fn root_mode(&self) -> &RootMode {
         const ABSOLUTE: &RootMode = &RootMode::Absolute;
         ABSOLUTE
@@ -385,7 +387,7 @@ impl ItemPathBuffer for SymbolPathBuffer {
 
     fn push(&mut self, text: &str) {
         self.temp_buf.clear();
-        let need_underscore = sanitize(&mut self.temp_buf, text);
+        let need_underscore = sanitize(&mut self.temp_buf, text, self.tcx);
         let _ = write!(
             self.result,
             "{}",
@@ -398,12 +400,24 @@ impl ItemPathBuffer for SymbolPathBuffer {
     }
 }
 
+// Manual Debug implementation to omit non-Debug `tcx` field.
+impl fmt::Debug for SymbolPathBuffer<'_, '_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("SymbolPathBuffer")
+            .field("result", &self.result)
+            .field("temp_buf", &self.temp_buf)
+            .finish()
+    }
+}
+
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
+// NVPTX assembly has more strict naming rules than gas, so additionally, dots
+// are replaced with '$' there.
 //
 // returns true if an underscore must be added at the start
-pub fn sanitize(result: &mut String, s: &str) -> bool {
+pub fn sanitize(result: &mut String, s: &str, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
     for c in s.chars() {
         match c {
             // Escape these with $ sequences
@@ -416,12 +430,25 @@ pub fn sanitize(result: &mut String, s: &str) -> bool {
             ')' => result.push_str("$RP$"),
             ',' => result.push_str("$C$"),
 
-            // '.' doesn't occur in types and functions, so reuse it
-            // for ':' and '-'
-            '-' | ':' => result.push('.'),
+            '-' | ':' => if tcx.has_strict_asm_symbol_naming() {
+                // NVPTX doesn't support these characters in symbol names.
+                result.push('$')
+            }
+            else {
+                // '.' doesn't occur in types and functions, so reuse it
+                // for ':' and '-'
+                result.push('.')
+            },
+
+            '.' => if tcx.has_strict_asm_symbol_naming() {
+                result.push('$')
+            }
+            else {
+                result.push('.')
+            },
 
             // These are legal symbols
-            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => result.push(c),
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => result.push(c),
 
             _ => {
                 result.push('$');

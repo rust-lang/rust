@@ -75,6 +75,7 @@ pub enum LinkerFlavor {
     Ld,
     Msvc,
     Lld(LldFlavor),
+    PtxLinker,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
@@ -143,6 +144,7 @@ flavor_mappings! {
     ((LinkerFlavor::Gcc), "gcc"),
     ((LinkerFlavor::Ld), "ld"),
     ((LinkerFlavor::Msvc), "msvc"),
+    ((LinkerFlavor::PtxLinker), "ptx-linker"),
     ((LinkerFlavor::Lld(LldFlavor::Wasm)), "wasm-ld"),
     ((LinkerFlavor::Lld(LldFlavor::Ld64)), "ld64.lld"),
     ((LinkerFlavor::Lld(LldFlavor::Ld)), "ld.lld"),
@@ -455,6 +457,8 @@ supported_targets! {
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 
     ("x86_64-unknown-uefi", x86_64_unknown_uefi),
+
+    ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.

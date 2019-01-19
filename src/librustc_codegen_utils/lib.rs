@@ -12,6 +12,7 @@
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(in_band_lifetimes)]
 
 #![recursion_limit="256"]
 

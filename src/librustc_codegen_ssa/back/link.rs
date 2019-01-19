@@ -149,6 +149,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 LinkerFlavor::Ld => "ld",
                 LinkerFlavor::Msvc => "link.exe",
                 LinkerFlavor::Lld(_) => "lld",
+                LinkerFlavor::PtxLinker => "rust-ptx-linker",
             }), flavor)),
             (Some(linker), None) => {
                 let stem = if linker.extension().and_then(|ext| ext.to_str()) == Some("exe") {

@@ -831,6 +831,7 @@ impl Build {
                   !target.contains("msvc") &&
                   !target.contains("emscripten") &&
                   !target.contains("wasm32") &&
+                  !target.contains("nvptx") &&
                   !target.contains("fuchsia") {
             Some(self.cc(target))
         } else {
