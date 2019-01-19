@@ -268,6 +268,7 @@ fn main() {
                 println!("cargo:rustc-link-lib=static=stdc++");
             } else {
                 println!("cargo:rustc-link-lib={}", stdcppname);
+            }
         }
     }
 
