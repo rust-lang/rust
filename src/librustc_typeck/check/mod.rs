@@ -2437,9 +2437,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // types that involve projections, since those can resolve to
         // `'static` bounds (modulo #54940, which hopefully will be
         // fixed by the time you see this comment, dear reader,
-        // although I have my doubts). Other sorts of things are
-        // already sufficiently enforced with erased regions. =)
-        if ty.has_free_regions() || ty.has_projections() {
+        // although I have my doubts). Also pass in types with inference
+        // types, because they may be repeated. Other sorts of things
+        // are already sufficiently enforced with erased regions. =)
+        if ty.has_free_regions() || ty.has_projections() || ty.has_infer_types() {
             let c_ty = self.infcx.canonicalize_response(&UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.tables.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
