@@ -1,7 +1,7 @@
 use crate::io;
 use crossbeam_channel::Sender;
 use drop_bomb::DropBomb;
-use ignore;
+use ignore::{gitignore::Gitignore, Walk};
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
 use parking_lot::Mutex;
 use std::{
@@ -40,8 +40,11 @@ fn handle_change_event(
             sender.send(io::Task::HandleChange(WatcherChange::Rescan))?;
         }
         DebouncedEvent::Create(path) => {
-            if path.is_dir() {
-                watch_recursive(watcher, &path);
+            // we have to check if `path` is ignored because Walk iterator doesn't check it
+            // also childs are only ignored if they match a pattern
+            // (see `matched` vs `matched_path_or_any_parents` in `Gitignore`)
+            if path.is_dir() && !should_ignore_dir(&path) {
+                watch_recursive(watcher, &path, Some(sender));
             }
             sender.send(io::Task::HandleChange(WatcherChange::Create(path)))?;
         }
@@ -63,15 +66,18 @@ fn handle_change_event(
     Ok(())
 }
 
-fn watch_one(watcher: &mut RecommendedWatcher, path: &Path) {
-    match watcher.watch(path, RecursiveMode::NonRecursive) {
-        Ok(()) => log::debug!("watching \"{}\"", path.display()),
-        Err(e) => log::warn!("could not watch \"{}\": {}", path.display(), e),
+fn watch_one(watcher: &mut RecommendedWatcher, dir: &Path) {
+    match watcher.watch(dir, RecursiveMode::NonRecursive) {
+        Ok(()) => log::debug!("watching \"{}\"", dir.display()),
+        Err(e) => log::warn!("could not watch \"{}\": {}", dir.display(), e),
     }
 }
 
-fn watch_recursive(watcher: &Arc<Mutex<Option<RecommendedWatcher>>>, path: &Path) {
-    log::debug!("watch_recursive \"{}\"", path.display());
+fn watch_recursive(
+    watcher: &Arc<Mutex<Option<RecommendedWatcher>>>,
+    dir: &Path,
+    sender: Option<&Sender<io::Task>>,
+) {
     let mut watcher = watcher.lock();
     let mut watcher = match *watcher {
         Some(ref mut watcher) => watcher,
@@ -80,19 +86,46 @@ fn watch_recursive(watcher: &Arc<Mutex<Option<RecommendedWatcher>>>, path: &Path
             return;
         }
     };
-    // TODO it seems path itself isn't checked against ignores
-    // check if path should be ignored before walking it
-    for res in ignore::Walk::new(path) {
+    for res in Walk::new(dir) {
         match res {
             Ok(entry) => {
                 if entry.path().is_dir() {
                     watch_one(&mut watcher, entry.path());
+                }
+                if let Some(sender) = sender {
+                    // emit as create because we haven't seen it yet
+                    if let Err(e) = sender.send(io::Task::HandleChange(WatcherChange::Create(
+                        entry.path().to_path_buf(),
+                    ))) {
+                        log::warn!("watcher error: {}", e)
+                    }
                 }
             }
             Err(e) => log::warn!("watcher error: {}", e),
         }
     }
 }
+
+fn should_ignore_dir(dir: &Path) -> bool {
+    let mut parent = dir;
+    loop {
+        parent = match parent.parent() {
+            Some(p) => p,
+            None => break,
+        };
+        let gitignore = parent.join(".gitignore");
+        if gitignore.exists() {
+            let gitignore = Gitignore::new(gitignore).0;
+            if gitignore.matched_path_or_any_parents(dir, true).is_ignore() {
+                log::debug!("ignored {}", dir.display());
+                return true;
+            }
+        }
+    }
+    false
+}
+
+const WATCHER_DELAY: Duration = Duration::from_millis(250);
 
 impl Watcher {
     pub(crate) fn start(
@@ -101,7 +134,7 @@ impl Watcher {
         let (input_sender, input_receiver) = mpsc::channel();
         let watcher = Arc::new(Mutex::new(Some(notify::watcher(
             input_sender,
-            Duration::from_millis(250),
+            WATCHER_DELAY,
         )?)));
         let w = watcher.clone();
         let thread = thread::spawn(move || {
@@ -119,7 +152,7 @@ impl Watcher {
     }
 
     pub fn watch(&mut self, root: impl AsRef<Path>) {
-        watch_recursive(&self.watcher, root.as_ref());
+        watch_recursive(&self.watcher, root.as_ref(), None);
     }
 
     pub fn shutdown(mut self) -> thread::Result<()> {

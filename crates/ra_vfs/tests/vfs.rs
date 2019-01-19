@@ -11,9 +11,21 @@ fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
     }
 }
 
+macro_rules! assert_match {
+    ($x:expr, $pat:pat) => {
+        assert_match!($x, $pat, assert!(true))
+    };
+    ($x:expr, $pat:pat, $assert:expr) => {
+        match $x {
+            $pat => $assert,
+            x => assert!(false, "Expected {}, got {:?}", stringify!($pat), x),
+        };
+    };
+}
+
 #[test]
 fn test_vfs_works() -> std::io::Result<()> {
-    // Logger::with_str("debug").start().unwrap();
+    // Logger::with_str("vfs=debug,ra_vfs=debug").start().unwrap();
 
     let files = [
         ("a/foo.rs", "hello"),
@@ -21,12 +33,15 @@ fn test_vfs_works() -> std::io::Result<()> {
         ("a/b/baz.rs", "nested hello"),
     ];
 
-    let dir = tempdir()?;
+    let dir = tempdir().unwrap();
     for (path, text) in files.iter() {
         let file_path = dir.path().join(path);
-        fs::create_dir_all(file_path.parent().unwrap())?;
+        fs::create_dir_all(file_path.parent().unwrap()).unwrap();
         fs::write(file_path, text)?
     }
+
+    let gitignore = dir.path().join("a/.gitignore");
+    fs::write(gitignore, "/target").unwrap();
 
     let a_root = dir.path().join("a");
     let b_root = dir.path().join("a/b");
@@ -62,79 +77,97 @@ fn test_vfs_works() -> std::io::Result<()> {
     }
 
     fs::write(&dir.path().join("a/b/baz.rs"), "quux").unwrap();
-    // 2 tasks per watcher change, first for HandleChange then for LoadChange
+    // 2 tasks per change, HandleChange and then LoadChange
     process_tasks(&mut vfs, 2);
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::ChangeFile { text, .. }],
+        assert_eq!(text.as_str(), "quux")
+    );
 
     vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "m"),
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::ChangeFile { text, .. }],
+        assert_eq!(text.as_str(), "m")
+    );
 
     // removing overlay restores data on disk
     vfs.remove_file_overlay(&dir.path().join("a/b/baz.rs"));
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::ChangeFile { text, .. }] => assert_eq!(text.as_str(), "quux"),
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::ChangeFile { text, .. }],
+        assert_eq!(text.as_str(), "quux")
+    );
 
     vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::AddFile { text, path, .. }] => {
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::AddFile { text, path, .. }],
+        {
             assert_eq!(text.as_str(), "spam");
             assert_eq!(path, "spam.rs");
         }
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    );
 
     vfs.remove_file_overlay(&dir.path().join("a/b/spam.rs"));
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "spam.rs"),
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::RemoveFile { path, .. }],
+        assert_eq!(path, "spam.rs")
+    );
 
-    fs::write(&dir.path().join("a/new.rs"), "new hello").unwrap();
-    process_tasks(&mut vfs, 2);
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::AddFile { text, path, .. }] => {
-            assert_eq!(text.as_str(), "new hello");
-            assert_eq!(path, "new.rs");
-        }
-        xs => panic!("unexpected changes {:?}", xs),
-    }
-
-    fs::rename(&dir.path().join("a/new.rs"), &dir.path().join("a/new1.rs")).unwrap();
+    fs::create_dir_all(dir.path().join("a/c")).unwrap();
+    fs::write(dir.path().join("a/c/new.rs"), "new hello").unwrap();
     process_tasks(&mut vfs, 4);
-    match vfs.commit_changes().as_slice() {
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::AddFile { text, path, .. }],
+        {
+            assert_eq!(text.as_str(), "new hello");
+            assert_eq!(path, "c/new.rs");
+        }
+    );
+
+    fs::rename(
+        &dir.path().join("a/c/new.rs"),
+        &dir.path().join("a/c/new1.rs"),
+    )
+    .unwrap();
+    process_tasks(&mut vfs, 4);
+    assert_match!(
+        vfs.commit_changes().as_slice(),
         [VfsChange::RemoveFile {
             path: removed_path, ..
         }, VfsChange::AddFile {
             text,
             path: added_path,
             ..
-        }] => {
-            assert_eq!(removed_path, "new.rs");
-            assert_eq!(added_path, "new1.rs");
+        }],
+        {
+            assert_eq!(removed_path, "c/new.rs");
+            assert_eq!(added_path, "c/new1.rs");
             assert_eq!(text.as_str(), "new hello");
         }
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    );
 
-    fs::remove_file(&dir.path().join("a/new1.rs")).unwrap();
+    fs::remove_file(&dir.path().join("a/c/new1.rs")).unwrap();
     process_tasks(&mut vfs, 2);
-    match vfs.commit_changes().as_slice() {
-        [VfsChange::RemoveFile { path, .. }] => assert_eq!(path, "new1.rs"),
-        xs => panic!("unexpected changes {:?}", xs),
-    }
+    assert_match!(
+        vfs.commit_changes().as_slice(),
+        [VfsChange::RemoveFile { path, .. }],
+        assert_eq!(path, "c/new1.rs")
+    );
 
-    match vfs.task_receiver().try_recv() {
-        Err(crossbeam_channel::TryRecvError::Empty) => (),
-        res => panic!("unexpected {:?}", res),
-    }
+    fs::create_dir_all(dir.path().join("a/target")).unwrap();
+    // should be ignored
+    fs::write(&dir.path().join("a/target/new.rs"), "ignore me").unwrap();
+    process_tasks(&mut vfs, 1); // 1 task because no LoadChange will happen, just HandleChange for dir creation
+
+    assert_match!(
+        vfs.task_receiver().try_recv(),
+        Err(crossbeam_channel::TryRecvError::Empty)
+    );
 
     vfs.shutdown().unwrap();
     Ok(())
