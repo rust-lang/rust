@@ -3,15 +3,16 @@ use crossbeam_channel::Sender;
 use drop_bomb::DropBomb;
 use ignore;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
+use parking_lot::Mutex;
 use std::{
     path::{Path, PathBuf},
-    sync::{mpsc, Arc, Mutex},
+    sync::{mpsc, Arc},
     thread,
     time::Duration,
 };
 
 pub struct Watcher {
-    watcher: Arc<Mutex<RecommendedWatcher>>,
+    watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
     thread: thread::JoinHandle<()>,
     bomb: DropBomb,
 }
@@ -27,7 +28,7 @@ pub enum WatcherChange {
 fn handle_change_event(
     ev: DebouncedEvent,
     sender: &Sender<io::Task>,
-    watcher: &Arc<Mutex<RecommendedWatcher>>,
+    watcher: &Arc<Mutex<Option<RecommendedWatcher>>>,
 ) -> Result<(), Box<std::error::Error>> {
     match ev {
         DebouncedEvent::NoticeWrite(_)
@@ -69,16 +70,23 @@ fn watch_one(watcher: &mut RecommendedWatcher, path: &Path) {
     }
 }
 
-fn watch_recursive(watcher: &Arc<Mutex<RecommendedWatcher>>, path: &Path) {
+fn watch_recursive(watcher: &Arc<Mutex<Option<RecommendedWatcher>>>, path: &Path) {
     log::debug!("watch_recursive \"{}\"", path.display());
-    let mut w = watcher.lock().unwrap();
+    let mut watcher = watcher.lock();
+    let mut watcher = match *watcher {
+        Some(ref mut watcher) => watcher,
+        None => {
+            // watcher has been dropped
+            return;
+        }
+    };
     // TODO it seems path itself isn't checked against ignores
     // check if path should be ignored before walking it
     for res in ignore::Walk::new(path) {
         match res {
             Ok(entry) => {
                 if entry.path().is_dir() {
-                    watch_one(&mut w, entry.path());
+                    watch_one(&mut watcher, entry.path());
                 }
             }
             Err(e) => log::warn!("watcher error: {}", e),
@@ -91,10 +99,10 @@ impl Watcher {
         output_sender: Sender<io::Task>,
     ) -> Result<Watcher, Box<std::error::Error>> {
         let (input_sender, input_receiver) = mpsc::channel();
-        let watcher = Arc::new(Mutex::new(notify::watcher(
+        let watcher = Arc::new(Mutex::new(Some(notify::watcher(
             input_sender,
             Duration::from_millis(250),
-        )?));
+        )?)));
         let w = watcher.clone();
         let thread = thread::spawn(move || {
             input_receiver
@@ -116,7 +124,7 @@ impl Watcher {
 
     pub fn shutdown(mut self) -> thread::Result<()> {
         self.bomb.defuse();
-        drop(self.watcher);
+        drop(self.watcher.lock().take());
         let res = self.thread.join();
         match &res {
             Ok(()) => log::info!("... Watcher terminated with ok"),
