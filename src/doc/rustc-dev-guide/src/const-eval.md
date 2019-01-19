@@ -30,9 +30,9 @@ used) and a `GlobalId`. The `GlobalId` is made up of an
 
 Constant evaluation returns a `Result` with either the error, or the simplest
 representation of the constant. "simplest" meaning if it is representable as an
-integer or fat pointer, it will directly yield the value (via `Value::ByVal` or
-`Value::ByValPair`), instead of referring to the [`miri`](./miri.html) virtual
-memory allocation (via `Value::ByRef`). This means that the `const_eval`
+integer or fat pointer, it will directly yield the value (via `ConstValue::Scalar` or
+`ConstValue::ScalarPair`), instead of referring to the [`miri`](./miri.html) virtual
+memory allocation (via `ConstValue::ByRef`). This means that the `const_eval`
 function cannot be used to create miri-pointers to the evaluated constant or
 static. If you need that, you need to directly work with the functions in
 [src/librustc_mir/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html).
