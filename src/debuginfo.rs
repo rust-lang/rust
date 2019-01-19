@@ -4,13 +4,13 @@ use crate::prelude::*;
 
 use std::marker::PhantomData;
 
-use gimli::{Endianity, Format, RunTimeEndian};
 use gimli::write::{
     Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
     DebugRngLists, DebugStr, EndianVec, LineProgram, LineProgramId, LineProgramTable, Range,
-    RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable, Writer,
+    RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable,
+    Writer,
 };
-
+use gimli::{Endianity, Format, RunTimeEndian};
 
 use faerie::*;
 
@@ -71,7 +71,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let range_lists = RangeListTable::default();
 
         let global_line_program = line_programs.add(LineProgram::new(
-            version,
+            3, // FIXME https://github.com/gimli-rs/gimli/issues/363
             address_size,
             format,
             1,
@@ -383,7 +383,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         &mut self,
         tcx: TyCtxt,
         //module: &mut Module<impl Backend>,
-        size: u32,
+        code_size: u32,
         context: &Context,
         isa: &cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
@@ -392,7 +392,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         // FIXME: add to appropriate scope intead of root
         let entry = unit.get_mut(self.entry_id);
         let mut size_array = [0; 8];
-        target_endian(tcx).write_u64(&mut size_array, size as u64);
+        target_endian(tcx).write_u64(&mut size_array, code_size as u64);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Data8(size_array));
 
         self.debug_context.unit_range_list.0.push(Range {
@@ -402,7 +402,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
             },
             end: Address::Relative {
                 symbol: self.symbol,
-                addend: size as i64,
+                addend: code_size as i64,
             },
         });
 
@@ -420,39 +420,54 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         let func = &context.func;
         let mut ebbs = func.layout.ebbs().collect::<Vec<_>>();
         ebbs.sort_by_key(|ebb| func.offsets[*ebb]); // Ensure inst offsets always increase
-        for ebb in ebbs {
-            for (offset, inst, _size) in func.inst_offsets(ebb, &encinfo) {
-                fn create_row_for_span(tcx: TyCtxt, line_program: &mut LineProgram, offset: u64, span: Span) {
-                    let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
-                    let file = loc.file.name.to_string();
-                    let file = ::std::path::Path::new(&file);
-                    let dir_id = line_program
-                        .add_directory(file.parent().unwrap().to_str().unwrap().as_bytes());
-                    let file_id = line_program.add_file(
-                        file.file_name().unwrap().to_str().unwrap().as_bytes(),
-                        dir_id,
-                        None,
-                    );
-                    line_program.row().file = file_id;
-                    //tcx.sess
-                    //    .warn(&format!("srcloc {} {}:{}:{}", offset, file, loc.line, loc.col.to_usize()));
-                    line_program.row().address_offset = offset;
-                    line_program.row().line = loc.line as u64;
-                    line_program.generate_row();
-                }
 
+        let create_row_for_span = |line_program: &mut LineProgram, span: Span| {
+            let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
+            let file = loc.file.name.to_string();
+            let file = ::std::path::Path::new(&file);
+            let dir_id =
+                line_program.add_directory(file.parent().unwrap().to_str().unwrap().as_bytes());
+            let file_id = line_program.add_file(
+                file.file_name().unwrap().to_str().unwrap().as_bytes(),
+                dir_id,
+                None,
+            );
+
+            /*println!(
+                "srcloc {:>04X} {}:{}:{}",
+                line_program.row().address_offset,
+                file.display(),
+                loc.line,
+                loc.col.to_u32()
+            );*/
+
+            line_program.row().file = file_id;
+            line_program.row().line = loc.line as u64;
+            line_program.row().column = loc.col.to_u32() as u64 + 1;
+            line_program.generate_row();
+        };
+
+        let mut end = 0;
+        for ebb in ebbs {
+            for (offset, inst, size) in func.inst_offsets(ebb, &encinfo) {
                 let srcloc = func.srclocs[inst];
+                line_program.row().address_offset = offset as u64;
                 if !srcloc.is_default() {
                     let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
-                    create_row_for_span(tcx, line_program, offset as u64, source_info.span);
+                    create_row_for_span(line_program, source_info.span);
                 } else {
-                    create_row_for_span(tcx, line_program, offset as u64, self.mir_span);
+                    create_row_for_span(line_program, self.mir_span);
                 }
+                end = offset + size;
             }
         }
 
-        let address_offset = line_program.row().address_offset;
-        line_program.end_sequence(address_offset);
+        if code_size != end {
+            line_program.row().address_offset = end as u64;
+            create_row_for_span(line_program, self.mir_span);
+        }
+
+        line_program.end_sequence(code_size as u64);
     }
 }
 
