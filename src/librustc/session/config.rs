@@ -1353,10 +1353,15 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "Present the input source, unstable (and less-pretty) variants;
         valid types are any of the types for `--pretty`, as well as:
+        `expanded`, `expanded,identified`,
+        `expanded,hygiene` (with internal representations),
         `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+        `flowgraph,unlabelled=<nodeid>` (unlabelled graphviz formatted flowgraph for node),
         `everybody_loops` (all function bodies replaced with `loop {}`),
-        `hir` (the HIR), `hir,identified`, or
-        `hir,typed` (HIR with types for each node)."),
+        `hir` (the HIR), `hir,identified`,
+        `hir,typed` (HIR with types for each node),
+        `hir-tree` (dump the raw HIR),
+        `mir` (the MIR), or `mir-cfg` (graphviz formatted MIR)"),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
