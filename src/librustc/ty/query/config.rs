@@ -74,6 +74,9 @@ impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
 
 macro_rules! impl_uncacheable_query {
     () => {};
+    ($query:ident, as_module($descr:literal); $($rest:tt)*) => {
+        impl_uncacheable_query!($query, $descr, |tcx, key| key.describe_as_module(tcx); $($rest)*);
+    };
     ($query:ident, $descr:literal, |$tcx:pat, $key:pat| $arg:expr; $($rest:tt)*) => {
         impl_uncacheable_query!(@$query, |$tcx, $key| format!($descr, $arg).into(); $($rest)*);
     };
@@ -92,16 +95,14 @@ macro_rules! impl_uncacheable_query {
 }
 
 impl_uncacheable_query! {
-    check_mod_attrs, "checking attributes in {}", |tcx, key| key.describe_as_module(tcx);
-    check_mod_unstable_api_usage, "checking for unstable API usage in {}",
-        |tcx, key| key.describe_as_module(tcx);
-    check_mod_loops, "checking loops in {}", |tcx, key| key.describe_as_module(tcx);
-    check_mod_item_types, "checking item types in {}", |tcx, key| key.describe_as_module(tcx);
-    check_mod_privacy, "checking privacy in {}", |tcx, key| key.describe_as_module(tcx);
-    check_mod_intrinsics, "checking intrinsics in {}", |tcx, key| key.describe_as_module(tcx);
-    check_mod_liveness, "checking liveness of variables in {}",
-        |tcx, key| key.describe_as_module(tcx);
-    collect_mod_item_types, "collecting item types in {}", |tcx, key| key.describe_as_module(tcx);
+    check_mod_attrs, as_module("checking attributes in {}");
+    check_mod_unstable_api_usage, as_module("checking for unstable API usage in {}");
+    check_mod_loops, as_module("checking loops in {}");
+    check_mod_item_types, as_module("checking item types in {}");
+    check_mod_privacy, as_module("checking privacy in {}");
+    check_mod_intrinsics, as_module("checking intrinsics in {}");
+    check_mod_liveness, as_module("checking liveness of variables in {}");
+    collect_mod_item_types, as_module("collecting item types in {}");
     normalize_projection_ty, "normalizing `{:?}`", |_, goal| goal;
     implied_outlives_bounds, "computing implied outlives bounds for `{:?}`", |_, goal| goal;
     dropck_outlives, "computing dropck types for `{:?}`", |_, goal| goal;
