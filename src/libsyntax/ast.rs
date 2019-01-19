@@ -15,7 +15,7 @@ use rustc_target::spec::abi::Abi;
 use source_map::{dummy_spanned, respan, Spanned};
 use symbol::{keywords, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::{ThinTokenStream, TokenStream};
+use tokenstream::TokenStream;
 use ThinVec;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -1216,7 +1216,7 @@ pub type Mac = Spanned<Mac_>;
 pub struct Mac_ {
     pub path: Path,
     pub delim: MacDelimiter,
-    pub tts: ThinTokenStream,
+    pub tts: TokenStream,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
@@ -1228,13 +1228,13 @@ pub enum MacDelimiter {
 
 impl Mac_ {
     pub fn stream(&self) -> TokenStream {
-        self.tts.stream()
+        self.tts.clone()
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MacroDef {
-    pub tokens: ThinTokenStream,
+    pub tokens: TokenStream,
     pub legacy: bool,
 }
 

@@ -46,7 +46,7 @@ use print::pprust;
 use ptr::P;
 use parse::PResult;
 use ThinVec;
-use tokenstream::{self, DelimSpan, ThinTokenStream, TokenTree, TokenStream};
+use tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use symbol::{Symbol, keywords};
 
 use std::borrow::Cow;
@@ -280,17 +280,17 @@ struct TokenCursorFrame {
 /// on the parser.
 #[derive(Clone)]
 enum LastToken {
-    Collecting(Vec<TokenStream>),
-    Was(Option<TokenStream>),
+    Collecting(Vec<TreeAndJoint>),
+    Was(Option<TreeAndJoint>),
 }
 
 impl TokenCursorFrame {
-    fn new(sp: DelimSpan, delim: DelimToken, tts: &ThinTokenStream) -> Self {
+    fn new(sp: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
         TokenCursorFrame {
             delim: delim,
             span: sp,
             open_delim: delim == token::NoDelim,
-            tree_cursor: tts.stream().into_trees(),
+            tree_cursor: tts.clone().into_trees(),
             close_delim: delim == token::NoDelim,
             last_token: LastToken::Was(None),
         }
@@ -2330,7 +2330,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, ThinTokenStream)> {
+    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, TokenStream)> {
         let delim = match self.token {
             token::OpenDelim(delim) => delim,
             _ => {
@@ -2350,7 +2350,7 @@ impl<'a> Parser<'a> {
             token::Brace => MacDelimiter::Brace,
             token::NoDelim => self.bug("unexpected no delimiter"),
         };
-        Ok((delim, tts.stream().into()))
+        Ok((delim, tts.into()))
     }
 
     /// At the bottom (top?) of the precedence hierarchy,
@@ -4641,7 +4641,7 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident()?;
                 let tokens = if self.check(&token::OpenDelim(token::Brace)) {
                     match self.parse_token_tree() {
-                        TokenTree::Delimited(_, _, tts) => tts.stream(),
+                        TokenTree::Delimited(_, _, tts) => tts,
                         _ => unreachable!(),
                     }
                 } else if self.check(&token::OpenDelim(token::Paren)) {
@@ -7757,7 +7757,7 @@ impl<'a> Parser<'a> {
             &mut self.token_cursor.stack[prev].last_token
         };
 
-        // Pull our the toekns that we've collected from the call to `f` above
+        // Pull out the tokens that we've collected from the call to `f` above.
         let mut collected_tokens = match *last_token {
             LastToken::Collecting(ref mut v) => mem::replace(v, Vec::new()),
             LastToken::Was(_) => panic!("our vector went away?"),
@@ -7776,10 +7776,9 @@ impl<'a> Parser<'a> {
         // call. In that case we need to record all the tokens we collected in
         // our parent list as well. To do that we push a clone of our stream
         // onto the previous list.
-        let stream = collected_tokens.into_iter().collect::<TokenStream>();
         match prev_collecting {
             Some(mut list) => {
-                list.push(stream.clone());
+                list.extend(collected_tokens.iter().cloned());
                 list.extend(extra_token);
                 *last_token = LastToken::Collecting(list);
             }
@@ -7788,7 +7787,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok((ret?, stream))
+        Ok((ret?, TokenStream::new(collected_tokens)))
     }
 
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
