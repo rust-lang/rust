@@ -129,6 +129,7 @@ salsa::database_storage! {
             fn body_hir() for hir::db::BodyHirQuery;
             fn body_syntax_mapping() for hir::db::BodySyntaxMappingQuery;
             fn fn_signature() for hir::db::FnSignatureQuery;
+            fn generic_params() for hir::db::GenericParamsQuery;
         }
     }
 }

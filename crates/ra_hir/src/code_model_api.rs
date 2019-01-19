@@ -12,6 +12,7 @@ use crate::{
     expr::BodySyntaxMapping,
     ty::InferenceResult,
     adt::VariantData,
+    generics::GenericParams,
     code_model_impl::def_id_to_ast,
 };
 
@@ -201,6 +202,10 @@ impl Struct {
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
         def_id_to_ast(db, self.def_id)
     }
+
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -227,6 +232,10 @@ impl Enum {
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
         def_id_to_ast(db, self.def_id)
+    }
+
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }
 
@@ -339,6 +348,10 @@ impl Function {
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer(self.def_id)
     }
+
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -384,6 +397,10 @@ impl Trait {
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
         def_id_to_ast(db, self.def_id)
     }
+
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -398,5 +415,9 @@ impl Type {
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
         def_id_to_ast(db, self.def_id)
+    }
+
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }

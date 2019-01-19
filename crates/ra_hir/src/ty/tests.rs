@@ -418,6 +418,95 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_struct_generics() {
+    check_inference(
+        r#"
+struct A<T> {
+    x: T,
+}
+
+fn test(a1: A<u32>, i: i32) {
+    a1.x;
+    let a2 = A { x: i };
+    a2.x;
+    let a3 = A::<i128> { x: 1 };
+    a3.x;
+}
+"#,
+        "struct_generics.txt",
+    );
+}
+
+#[test]
+fn infer_generics_in_patterns() {
+    check_inference(
+        r#"
+struct A<T> {
+    x: T,
+}
+
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+fn test(a1: A<u32>, o: Option<u64>) {
+    let A { x: x2 } = a1;
+    let A::<i64> { x: x3 } = A { x: 1 };
+    match o {
+        Option::Some(t) => t,
+        _ => 1,
+    };
+}
+"#,
+        "generics_in_patterns.txt",
+    );
+}
+
+#[test]
+fn infer_function_generics() {
+    check_inference(
+        r#"
+fn id<T>(t: T) -> T { t }
+
+fn test() {
+    id(1u32);
+    id::<i128>(1);
+    let x: u64 = id(1);
+}
+"#,
+        "function_generics.txt",
+    );
+}
+
+#[test]
+fn infer_generic_chain() {
+    check_inference(
+        r#"
+struct A<T> {
+    x: T,
+}
+impl<T2> A<T2> {
+    fn x(self) -> T2 {
+        self.x
+    }
+}
+fn id<T>(t: T) -> T { t }
+
+fn test() -> i128 {
+     let x = 1;
+     let y = id(x);
+     let a = A { x: id(y) };
+     let z = id(a.x);
+     let b = A { x: z };
+     b.x()
+}
+"#,
+        "generic_chain.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

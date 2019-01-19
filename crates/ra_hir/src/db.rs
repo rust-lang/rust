@@ -14,6 +14,7 @@ use crate::{
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks},
     adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
+    generics::GenericParams,
 };
 
 #[salsa::query_group]
@@ -100,6 +101,9 @@ pub trait HirDatabase:
 
     #[salsa::invoke(crate::expr::body_syntax_mapping)]
     fn body_syntax_mapping(&self, def_id: DefId) -> Arc<crate::expr::BodySyntaxMapping>;
+
+    #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
+    fn generic_params(&self, def_id: DefId) -> Arc<GenericParams>;
 
     #[salsa::invoke(crate::FnSignature::fn_signature_query)]
     fn fn_signature(&self, def_id: DefId) -> Arc<FnSignature>;

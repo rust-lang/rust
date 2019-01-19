@@ -221,10 +221,10 @@ where
             };
         }
         for (import_id, import_data) in input.imports.iter() {
-            if let Some(name) = import_data.path.segments.iter().last() {
+            if let Some(segment) = import_data.path.segments.iter().last() {
                 if !import_data.is_glob {
                     module_items.items.insert(
-                        name.clone(),
+                        segment.name.clone(),
                         Resolution {
                             def_id: PerNs::none(),
                             import: Some(import_id),
@@ -319,13 +319,13 @@ where
             PathKind::Crate => module_id.crate_root(&self.module_tree),
         };
 
-        for (i, name) in import.path.segments.iter().enumerate() {
+        for (i, segment) in import.path.segments.iter().enumerate() {
             let is_last = i == import.path.segments.len() - 1;
 
-            let def_id = match self.result.per_module[&curr].items.get(name) {
+            let def_id = match self.result.per_module[&curr].items.get(&segment.name) {
                 Some(res) if !res.def_id.is_none() => res.def_id,
                 _ => {
-                    log::debug!("path segment {:?} not found", name);
+                    log::debug!("path segment {:?} not found", segment.name);
                     return false;
                 }
             };
@@ -336,7 +336,7 @@ where
                 } else {
                     log::debug!(
                         "path segment {:?} resolved to value only, but is not last",
-                        name
+                        segment.name
                     );
                     return false;
                 };
@@ -358,17 +358,17 @@ where
                             log::debug!("resolving {:?} in other source root", path);
                             let def_id = module.resolve_path(self.db, &path);
                             if !def_id.is_none() {
-                                let name = path.segments.last().unwrap();
+                                let last_segment = path.segments.last().unwrap();
                                 self.update(module_id, |items| {
                                     let res = Resolution {
                                         def_id,
                                         import: Some(import_id),
                                     };
-                                    items.items.insert(name.clone(), res);
+                                    items.items.insert(last_segment.name.clone(), res);
                                 });
                                 log::debug!(
                                     "resolved import {:?} ({:?}) cross-source root to {:?}",
-                                    name,
+                                    last_segment.name,
                                     import,
                                     def_id.map(|did| did.loc(self.db))
                                 );
@@ -382,7 +382,7 @@ where
                     _ => {
                         log::debug!(
                             "path segment {:?} resolved to non-module {:?}, but is not last",
-                            name,
+                            segment.name,
                             type_def_id.loc(self.db)
                         );
                         return true; // this resolved to a non-module, so the path won't ever resolve
@@ -391,7 +391,7 @@ where
             } else {
                 log::debug!(
                     "resolved import {:?} ({:?}) within source root to {:?}",
-                    name,
+                    segment.name,
                     import,
                     def_id.map(|did| did.loc(self.db))
                 );
@@ -400,7 +400,7 @@ where
                         def_id,
                         import: Some(import_id),
                     };
-                    items.items.insert(name.clone(), res);
+                    items.items.insert(segment.name.clone(), res);
                 })
             }
         }

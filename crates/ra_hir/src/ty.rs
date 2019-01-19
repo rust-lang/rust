@@ -37,6 +37,8 @@ use crate::{
     type_ref::{TypeRef, Mutability},
     name::KnownName,
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
+    generics::GenericParams,
+    path::GenericArg,
 };
 
 /// The ID of a type variable.
@@ -151,10 +153,20 @@ impl Expectation {
     }
 }
 
+/// A list of substitutions for generic parameters.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Substs(Arc<[Ty]>);
+
+impl Substs {
+    pub fn empty() -> Substs {
+        Substs(Arc::new([]))
+    }
+}
+
 /// A type. This is based on the `TyKind` enum in rustc (librustc/ty/sty.rs).
 ///
 /// This should be cheap to clone.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Ty {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -175,7 +187,8 @@ pub enum Ty {
         def_id: DefId,
         /// The name, for displaying.
         name: Name,
-        // later we'll need generic substitutions here
+        /// Substitutions for the generic parameters of the type.
+        substs: Substs,
     },
 
     /// The pointee of a string slice. Written as `str`.
@@ -234,9 +247,15 @@ pub enum Ty {
 
     // Opaque (`impl Trait`) type found in a return type.
     // Opaque(DefId, Substs),
+    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
+    Param {
+        /// The index of the parameter (starting with parameters from the
+        /// surrounding impl, then the current function).
+        idx: u32,
+        /// The name of the parameter, for displaying.
+        name: Name,
+    },
 
-    // A type parameter; for example, `T` in `fn f<T>(x: T) {}
-    // Param(ParamTy),
     /// A type variable used during type checking. Not to be confused with a
     /// type parameter.
     Infer(InferTy),
@@ -250,7 +269,7 @@ pub enum Ty {
 }
 
 /// A function signature.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FnSig {
     input: Vec<Ty>,
     output: Ty,
@@ -259,8 +278,12 @@ pub struct FnSig {
 impl Ty {
     pub(crate) fn from_hir(
         db: &impl HirDatabase,
+        // TODO: the next three parameters basically describe the scope for name
+        // resolution; this should be refactored into something like a general
+        // resolver architecture
         module: &Module,
         impl_block: Option<&ImplBlock>,
+        generics: &GenericParams,
         type_ref: &TypeRef,
     ) -> Self {
         match type_ref {
@@ -268,32 +291,32 @@ impl Ty {
             TypeRef::Tuple(inner) => {
                 let inner_tys = inner
                     .iter()
-                    .map(|tr| Ty::from_hir(db, module, impl_block, tr))
+                    .map(|tr| Ty::from_hir(db, module, impl_block, generics, tr))
                     .collect::<Vec<_>>();
                 Ty::Tuple(inner_tys.into())
             }
-            TypeRef::Path(path) => Ty::from_hir_path(db, module, impl_block, path),
+            TypeRef::Path(path) => Ty::from_hir_path(db, module, impl_block, generics, path),
             TypeRef::RawPtr(inner, mutability) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, inner);
+                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
                 Ty::RawPtr(Arc::new(inner_ty), *mutability)
             }
             TypeRef::Array(inner) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, inner);
+                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
                 Ty::Array(Arc::new(inner_ty))
             }
             TypeRef::Slice(inner) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, inner);
+                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
                 Ty::Slice(Arc::new(inner_ty))
             }
             TypeRef::Reference(inner, mutability) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, inner);
+                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
                 Ty::Ref(Arc::new(inner_ty), *mutability)
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params) => {
                 let mut inner_tys = params
                     .iter()
-                    .map(|tr| Ty::from_hir(db, module, impl_block, tr))
+                    .map(|tr| Ty::from_hir(db, module, impl_block, generics, tr))
                     .collect::<Vec<_>>();
                 let return_ty = inner_tys
                     .pop()
@@ -312,15 +335,19 @@ impl Ty {
         db: &impl HirDatabase,
         module: &Module,
         impl_block: Option<&ImplBlock>,
+        generics: &GenericParams,
         type_ref: Option<&TypeRef>,
     ) -> Self {
-        type_ref.map_or(Ty::Unknown, |t| Ty::from_hir(db, module, impl_block, t))
+        type_ref.map_or(Ty::Unknown, |t| {
+            Ty::from_hir(db, module, impl_block, generics, t)
+        })
     }
 
     pub(crate) fn from_hir_path(
         db: &impl HirDatabase,
         module: &Module,
         impl_block: Option<&ImplBlock>,
+        generics: &GenericParams,
         path: &Path,
     ) -> Self {
         if let Some(name) = path.as_ident() {
@@ -329,7 +356,15 @@ impl Ty {
             } else if let Some(float_ty) = primitive::UncertainFloatTy::from_name(name) {
                 return Ty::Float(float_ty);
             } else if name.as_known_name() == Some(KnownName::SelfType) {
-                return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target_type()));
+                // TODO pass the impl block's generics?
+                let generics = &GenericParams::default();
+                return Ty::from_hir_opt(
+                    db,
+                    module,
+                    None,
+                    generics,
+                    impl_block.map(|i| i.target_type()),
+                );
             } else if let Some(known) = name.as_known_name() {
                 match known {
                     KnownName::Bool => return Ty::Bool,
@@ -337,16 +372,89 @@ impl Ty {
                     KnownName::Str => return Ty::Str,
                     _ => {}
                 }
+            } else if let Some(generic_param) = generics.find_by_name(&name) {
+                return Ty::Param {
+                    idx: generic_param.idx,
+                    name: generic_param.name.clone(),
+                };
             }
         }
 
         // Resolve in module (in type namespace)
-        let resolved = if let Some(r) = module.resolve_path(db, path).take_types() {
-            r
-        } else {
-            return Ty::Unknown;
+        let resolved = match module.resolve_path(db, path).take_types() {
+            Some(r) => r,
+            None => return Ty::Unknown,
         };
-        db.type_for_def(resolved)
+        let ty = db.type_for_def(resolved);
+        let substs = Ty::substs_from_path(db, module, impl_block, generics, path, resolved);
+        ty.apply_substs(substs)
+    }
+
+    /// Collect generic arguments from a path into a `Substs`. See also
+    /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
+    fn substs_from_path(
+        db: &impl HirDatabase,
+        // the scope of the segment...
+        module: &Module,
+        impl_block: Option<&ImplBlock>,
+        outer_generics: &GenericParams,
+        path: &Path,
+        resolved: DefId,
+    ) -> Substs {
+        let mut substs = Vec::new();
+        let def = resolved.resolve(db);
+        let last = path
+            .segments
+            .last()
+            .expect("path should have at least one segment");
+        let (def_generics, segment) = match def {
+            Def::Struct(s) => (s.generic_params(db), last),
+            Def::Enum(e) => (e.generic_params(db), last),
+            Def::Function(f) => (f.generic_params(db), last),
+            Def::Trait(t) => (t.generic_params(db), last),
+            Def::EnumVariant(ev) => {
+                // the generic args for an enum variant may be either specified
+                // on the segment referring to the enum, or on the segment
+                // referring to the variant. So `Option::<T>::None` and
+                // `Option::None::<T>` are both allowed (though the former is
+                // preferred). See also `def_ids_for_path_segments` in rustc.
+                let len = path.segments.len();
+                let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some() {
+                    // Option::<T>::None
+                    &path.segments[len - 2]
+                } else {
+                    // Option::None::<T>
+                    last
+                };
+                (ev.parent_enum(db).generic_params(db), segment)
+            }
+            _ => return Substs::empty(),
+        };
+        // substs_from_path
+        if let Some(generic_args) = &segment.args_and_bindings {
+            // if args are provided, it should be all of them, but we can't rely on that
+            let param_count = def_generics.params.len();
+            for arg in generic_args.args.iter().take(param_count) {
+                match arg {
+                    GenericArg::Type(type_ref) => {
+                        let ty = Ty::from_hir(db, module, impl_block, outer_generics, type_ref);
+                        substs.push(ty);
+                    }
+                }
+            }
+        }
+        // add placeholders for args that were not provided
+        // TODO: handle defaults
+        for _ in segment
+            .args_and_bindings
+            .as_ref()
+            .map(|ga| ga.args.len())
+            .unwrap_or(0)..def_generics.params.len()
+        {
+            substs.push(Ty::Unknown);
+        }
+        assert_eq!(substs.len(), def_generics.params.len());
+        Substs(substs.into())
     }
 
     pub fn unit() -> Self {
@@ -374,7 +482,14 @@ impl Ty {
                 }
                 sig_mut.output.walk_mut(f);
             }
-            Ty::Adt { .. } => {} // need to walk type parameters later
+            Ty::Adt { substs, .. } => {
+                // Without an Arc::make_mut_slice, we can't avoid the clone here:
+                let mut v: Vec<_> = substs.0.iter().cloned().collect();
+                for t in &mut v {
+                    t.walk_mut(f);
+                }
+                substs.0 = v.into();
+            }
             _ => {}
         }
     }
@@ -391,6 +506,49 @@ impl Ty {
         match self {
             Ty::Ref(t, _) => Some(Ty::clone(t)),
             Ty::RawPtr(t, _) => Some(Ty::clone(t)),
+            _ => None,
+        }
+    }
+
+    /// If this is a type with type parameters (an ADT or function), replaces
+    /// the `Substs` for these type parameters with the given ones. (So e.g. if
+    /// `self` is `Option<_>` and the substs contain `u32`, we'll have
+    /// `Option<u32>` afterwards.)
+    pub fn apply_substs(self, substs: Substs) -> Ty {
+        match self {
+            Ty::Adt { def_id, name, .. } => Ty::Adt {
+                def_id,
+                name,
+                substs,
+            },
+            _ => self,
+        }
+    }
+
+    /// Replaces type parameters in this type using the given `Substs`. (So e.g.
+    /// if `self` is `&[T]`, where type parameter T has index 0, and the
+    /// `Substs` contain `u32` at index 0, we'll have `&[u32]` afterwards.)
+    pub fn subst(self, substs: &Substs) -> Ty {
+        self.fold(&mut |ty| match ty {
+            Ty::Param { idx, name } => {
+                if (idx as usize) < substs.0.len() {
+                    substs.0[idx as usize].clone()
+                } else {
+                    // TODO: does this indicate a bug? i.e. should we always
+                    // have substs for all type params? (they might contain the
+                    // params themselves again...)
+                    Ty::Param { idx, name }
+                }
+            }
+            ty => ty,
+        })
+    }
+
+    /// Returns the type parameters of this type if it has some (i.e. is an ADT
+    /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
+    fn substs(&self) -> Option<Substs> {
+        match self {
+            Ty::Adt { substs, .. } => Some(substs.clone()),
             _ => None,
         }
     }
@@ -425,7 +583,17 @@ impl fmt::Display for Ty {
                     .to_fmt(f)?;
                 write!(f, " -> {}", sig.output)
             }
-            Ty::Adt { name, .. } => write!(f, "{}", name),
+            Ty::Adt { name, substs, .. } => {
+                write!(f, "{}", name)?;
+                if substs.0.len() > 0 {
+                    join(substs.0.iter())
+                        .surround_with("<", ">")
+                        .separator(", ")
+                        .to_fmt(f)?;
+                }
+                Ok(())
+            }
+            Ty::Param { name, .. } => write!(f, "{}", name),
             Ty::Unknown => write!(f, "[unknown]"),
             Ty::Infer(..) => write!(f, "_"),
         }
@@ -440,28 +608,49 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
     let signature = f.signature(db);
     let module = f.module(db);
     let impl_block = f.impl_block(db);
-    // TODO we ignore type parameters for now
+    let generics = f.generic_params(db);
     let input = signature
         .params()
         .iter()
-        .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), tr))
+        .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), &generics, tr))
         .collect::<Vec<_>>();
-    let output = Ty::from_hir(db, &module, impl_block.as_ref(), signature.ret_type());
+    let output = Ty::from_hir(
+        db,
+        &module,
+        impl_block.as_ref(),
+        &generics,
+        signature.ret_type(),
+    );
     let sig = FnSig { input, output };
     Ty::FnPtr(Arc::new(sig))
 }
 
+fn make_substs(generics: &GenericParams) -> Substs {
+    Substs(
+        generics
+            .params
+            .iter()
+            .map(|_p| Ty::Unknown)
+            .collect::<Vec<_>>()
+            .into(),
+    )
+}
+
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
+    let generics = s.generic_params(db);
     Ty::Adt {
         def_id: s.def_id(),
         name: s.name(db).unwrap_or_else(Name::missing),
+        substs: make_substs(&generics),
     }
 }
 
 pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
+    let generics = s.generic_params(db);
     Ty::Adt {
         def_id: s.def_id(),
         name: s.name(db).unwrap_or_else(Name::missing),
+        substs: make_substs(&generics),
     }
 }
 
@@ -495,9 +684,9 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Ty {
 
 pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) -> Option<Ty> {
     let def = def_id.resolve(db);
-    let variant_data = match def {
-        Def::Struct(s) => s.variant_data(db),
-        Def::EnumVariant(ev) => ev.variant_data(db),
+    let (variant_data, generics) = match def {
+        Def::Struct(s) => (s.variant_data(db), s.generic_params(db)),
+        Def::EnumVariant(ev) => (ev.variant_data(db), ev.parent_enum(db).generic_params(db)),
         // TODO: unions
         _ => panic!(
             "trying to get type for field in non-struct/variant {:?}",
@@ -507,7 +696,13 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
     let module = def_id.module(db);
     let impl_block = def_id.impl_block(db);
     let type_ref = variant_data.get_field_type_ref(&field)?;
-    Some(Ty::from_hir(db, &module, impl_block.as_ref(), &type_ref))
+    Some(Ty::from_hir(
+        db,
+        &module,
+        impl_block.as_ref(),
+        &generics,
+        &type_ref,
+    ))
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
@@ -684,8 +879,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.type_of_pat.insert(pat, ty);
     }
 
-    fn make_ty(&self, type_ref: &TypeRef) -> Ty {
-        Ty::from_hir(self.db, &self.module, self.impl_block.as_ref(), type_ref)
+    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
+        // TODO provide generics of function
+        let generics = GenericParams::default();
+        let ty = Ty::from_hir(
+            self.db,
+            &self.module,
+            self.impl_block.as_ref(),
+            &generics,
+            type_ref,
+        );
+        let ty = self.insert_type_vars(ty);
+        ty
+    }
+
+    fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs) -> bool {
+        substs1
+            .0
+            .iter()
+            .zip(substs2.0.iter())
+            .all(|(t1, t2)| self.unify(t1, t2))
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -708,12 +921,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             (Ty::Bool, _) | (Ty::Str, _) | (Ty::Never, _) | (Ty::Char, _) => ty1 == ty2,
             (
                 Ty::Adt {
-                    def_id: def_id1, ..
+                    def_id: def_id1,
+                    substs: substs1,
+                    ..
                 },
                 Ty::Adt {
-                    def_id: def_id2, ..
+                    def_id: def_id2,
+                    substs: substs2,
+                    ..
                 },
-            ) if def_id1 == def_id2 => true,
+            ) if def_id1 == def_id2 => self.unify_substs(substs1, substs2),
             (Ty::Slice(t1), Ty::Slice(t2)) => self.unify(t1, t2),
             (Ty::RawPtr(t1, m1), Ty::RawPtr(t2, m2)) if m1 == m2 => self.unify(t1, t2),
             (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify(t1, t2),
@@ -848,73 +1065,100 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         Some(ty)
     }
 
-    fn resolve_variant(&self, path: Option<&Path>) -> (Ty, Option<DefId>) {
-        let path = if let Some(path) = path {
-            path
-        } else {
-            return (Ty::Unknown, None);
+    fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<DefId>) {
+        let path = match path {
+            Some(path) => path,
+            None => return (Ty::Unknown, None),
         };
-        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path).take_types() {
-            def_id
-        } else {
-            return (Ty::Unknown, None);
+        let def_id = match self.module.resolve_path(self.db, &path).take_types() {
+            Some(def_id) => def_id,
+            _ => return (Ty::Unknown, None),
         };
+        // TODO remove the duplication between here and `Ty::from_path`?
+        // TODO provide generics of function
+        let generics = GenericParams::default();
+        let substs = Ty::substs_from_path(
+            self.db,
+            &self.module,
+            self.impl_block.as_ref(),
+            &generics,
+            path,
+            def_id,
+        );
         match def_id.resolve(self.db) {
             Def::Struct(s) => {
                 let ty = type_for_struct(self.db, s);
+                let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(def_id))
             }
             Def::EnumVariant(ev) => {
                 let ty = type_for_enum_variant(self.db, ev);
+                let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(def_id))
             }
             _ => (Ty::Unknown, None),
         }
     }
 
-    fn resolve_fields(&self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
-        let def_id = self.module.resolve_path(self.db, path?).take_types()?;
+    fn resolve_fields(&mut self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
+        let (ty, def_id) = self.resolve_variant(path);
+        let def_id = def_id?;
         let def = def_id.resolve(self.db);
 
         match def {
             Def::Struct(s) => {
                 let fields = s.fields(self.db);
-                Some((type_for_struct(self.db, s), fields))
+                Some((ty, fields))
             }
             Def::EnumVariant(ev) => {
                 let fields = ev.fields(self.db);
-                Some((type_for_enum_variant(self.db, ev), fields))
+                Some((ty, fields))
             }
             _ => None,
         }
     }
 
-    fn infer_tuple_struct_pat(&mut self, path: Option<&Path>, subpats: &[PatId]) -> Ty {
+    fn infer_tuple_struct_pat(
+        &mut self,
+        path: Option<&Path>,
+        subpats: &[PatId],
+        expected: &Ty,
+    ) -> Ty {
         let (ty, fields) = self
             .resolve_fields(path)
             .unwrap_or((Ty::Unknown, Vec::new()));
+
+        self.unify(&ty, expected);
+
+        let substs = ty.substs().expect("adt should have substs");
 
         for (i, &subpat) in subpats.iter().enumerate() {
             let expected_ty = fields
                 .get(i)
                 .and_then(|field| field.ty(self.db))
-                .unwrap_or(Ty::Unknown);
+                .unwrap_or(Ty::Unknown)
+                .subst(&substs);
             self.infer_pat(subpat, &expected_ty);
         }
 
         ty
     }
 
-    fn infer_struct_pat(&mut self, path: Option<&Path>, subpats: &[FieldPat]) -> Ty {
+    fn infer_struct_pat(&mut self, path: Option<&Path>, subpats: &[FieldPat], expected: &Ty) -> Ty {
         let (ty, fields) = self
             .resolve_fields(path)
             .unwrap_or((Ty::Unknown, Vec::new()));
+
+        self.unify(&ty, expected);
+
+        let substs = ty.substs().expect("adt should have substs");
 
         for subpat in subpats {
             let matching_field = fields.iter().find(|field| field.name() == &subpat.name);
             let expected_ty = matching_field
                 .and_then(|field| field.ty(self.db))
-                .unwrap_or(Ty::Unknown);
+                .unwrap_or(Ty::Unknown)
+                .subst(&substs);
             self.infer_pat(subpat.pat, &expected_ty);
         }
 
@@ -959,11 +1203,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Pat::TupleStruct {
                 path: ref p,
                 args: ref subpats,
-            } => self.infer_tuple_struct_pat(p.as_ref(), subpats),
+            } => self.infer_tuple_struct_pat(p.as_ref(), subpats, expected),
             Pat::Struct {
                 path: ref p,
                 args: ref fields,
-            } => self.infer_struct_pat(p.as_ref(), fields),
+            } => self.infer_struct_pat(p.as_ref(), fields, expected),
             Pat::Path(path) => self
                 .module
                 .resolve_path(self.db, &path)
@@ -1155,11 +1399,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 spread,
             } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
+                let substs = ty.substs().expect("adt should have substs");
                 for field in fields {
                     let field_ty = if let Some(def_id) = def_id {
                         self.db
                             .type_for_field(def_id, field.name.clone())
                             .unwrap_or(Ty::Unknown)
+                            .subst(&substs)
                     } else {
                         Ty::Unknown
                     };
@@ -1180,7 +1426,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             let i = name.to_string().parse::<usize>().ok();
                             i.and_then(|i| fields.get(i).cloned())
                         }
-                        Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, name.clone()),
+                        Ty::Adt {
+                            def_id, ref substs, ..
+                        } => self
+                            .db
+                            .type_for_field(def_id, name.clone())
+                            .map(|ty| ty.subst(substs)),
                         _ => None,
                     })
                     .unwrap_or(Ty::Unknown);
@@ -1193,7 +1444,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
-                let cast_ty = self.insert_type_vars(cast_ty);
                 // TODO check the cast...
                 cast_ty
             }
@@ -1305,12 +1555,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     type_ref,
                     initializer,
                 } => {
-                    let decl_ty = Ty::from_hir_opt(
-                        self.db,
-                        &self.module,
-                        self.impl_block.as_ref(),
-                        type_ref.as_ref(),
-                    );
+                    let decl_ty = type_ref
+                        .as_ref()
+                        .map(|tr| self.make_ty(tr))
+                        .unwrap_or(Ty::Unknown);
                     let decl_ty = self.insert_type_vars(decl_ty);
                     let ty = if let Some(expr) = initializer {
                         let expr_ty = self.infer_expr(*expr, &Expectation::has_type(decl_ty));
@@ -1338,13 +1586,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         for (type_ref, pat) in signature.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
-            let ty = self.insert_type_vars(ty);
 
             self.infer_pat(*pat, &ty);
         }
         self.return_ty = {
             let ty = self.make_ty(signature.ret_type());
-            let ty = self.insert_type_vars(ty);
             ty
         };
     }

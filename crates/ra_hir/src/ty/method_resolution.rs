@@ -8,7 +8,11 @@ use rustc_hash::FxHashMap;
 
 use ra_db::SourceRootId;
 
-use crate::{HirDatabase, DefId, module_tree::ModuleId, Module, Crate, Name, Function, impl_block::{ImplId, ImplBlock, ImplItem}};
+use crate::{
+    HirDatabase, DefId, module_tree::ModuleId, Module, Crate, Name, Function,
+    impl_block::{ImplId, ImplBlock, ImplItem},
+    generics::GenericParams
+};
 use super::Ty;
 
 /// This is used as a key for indexing impls.
@@ -64,8 +68,15 @@ impl CrateImplBlocks {
             if let Some(_target_trait) = impl_data.target_trait() {
                 // ignore for now
             } else {
-                let target_ty =
-                    Ty::from_hir(db, &module, Some(&impl_block), impl_data.target_type());
+                // TODO provide generics of impl
+                let generics = GenericParams::default();
+                let target_ty = Ty::from_hir(
+                    db,
+                    &module,
+                    Some(&impl_block),
+                    &generics,
+                    impl_data.target_type(),
+                );
                 if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
                     self.impls
                         .entry(target_ty_fp)

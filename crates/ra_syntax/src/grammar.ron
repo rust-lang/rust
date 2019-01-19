@@ -597,8 +597,16 @@ Grammar(
             ]
         ),
         "PathSegment": (
-            options: [ "NameRef" ]
+            options: [ "NameRef", "TypeArgList" ]
         ),
+        "TypeArgList": (collections: [
+            ["type_args", "TypeArg"],
+            ["lifetime_args", "LifetimeArg"],
+            ["assoc_type_args", "AssocTypeArg"],
+        ]),
+        "TypeArg": (options: ["TypeRef"]),
+        "AssocTypeArg": (options: ["NameRef", "TypeRef"]),
+        "LifetimeArg": (options: ["Lifetime"]),
         "Comment": ( traits: ["AstToken"] ),
         "Whitespace": ( traits: ["AstToken"] ),
     },

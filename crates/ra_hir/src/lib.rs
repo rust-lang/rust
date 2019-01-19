@@ -24,6 +24,7 @@ mod type_ref;
 mod ty;
 mod impl_block;
 mod expr;
+mod generics;
 
 mod code_model_api;
 mod code_model_impl;

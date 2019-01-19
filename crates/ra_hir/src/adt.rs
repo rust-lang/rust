@@ -1,3 +1,6 @@
+//! This module contains the implementation details of the HIR for ADTs, i.e.
+//! structs and enums (and unions).
+
 use std::sync::Arc;
 
 use ra_syntax::{
@@ -62,7 +65,7 @@ fn get_def_id(
     };
     let loc = DefLoc {
         kind: expected_kind,
-        source_item_id: source_item_id,
+        source_item_id,
         ..*same_file_loc
     };
     loc.id(db)
