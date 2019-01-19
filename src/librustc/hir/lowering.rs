@@ -1826,7 +1826,7 @@ impl<'a> LoweringContext<'a> {
                         struct_span_err!(self.sess, data.span, E0214, "{}", msg)
                             .span_label(data.span, "only traits may use parentheses")
                             .emit();
-                        (hir::GenericArgs::none(), true)
+                        (hir::GenericArgs::none(), false)
                     }
                 },
             }

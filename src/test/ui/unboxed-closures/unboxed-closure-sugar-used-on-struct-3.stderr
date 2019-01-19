@@ -4,6 +4,13 @@ error[E0214]: parenthesized parameters may only be used with a trait
 LL |     let b = Bar::(isize, usize)::new(); // OK too (for the parser)
    |                ^^^^^^^^^^^^^^^^ only traits may use parentheses
 
-error: aborting due to previous error
+error[E0107]: wrong number of type arguments: expected 2, found 0
+  --> $DIR/unboxed-closure-sugar-used-on-struct-3.rs:14:13
+   |
+LL |     let b = Bar::(isize, usize)::new(); // OK too (for the parser)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 type arguments
 
-For more information about this error, try `rustc --explain E0214`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0107, E0214.
+For more information about an error, try `rustc --explain E0107`.
