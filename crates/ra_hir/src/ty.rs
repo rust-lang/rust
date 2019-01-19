@@ -453,6 +453,7 @@ impl Ty {
         {
             substs.push(Ty::Unknown);
         }
+        assert_eq!(substs.len(), def_generics.params.len());
         Substs(substs.into())
     }
 
