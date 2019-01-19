@@ -234,7 +234,7 @@ def default_build_triple():
         cputype = subprocess.check_output(
               ['uname', '-p']).strip().decode(default_encoding)
 
-cputype_mapper = {
+    cputype_mapper = {
         'BePC': 'i686',
         'aarch64': 'aarch64',
         'amd64': 'x86_64',
