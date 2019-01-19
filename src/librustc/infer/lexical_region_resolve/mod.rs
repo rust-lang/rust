@@ -186,34 +186,39 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        self.iterate_until_fixed_point("Expansion", |constraint, origin| {
-            debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
-            match *constraint {
+        self.iterate_until_fixed_point("Expansion", |constraint| {
+            debug!("expansion: constraint={:?}", constraint);
+            let (a_region, b_vid, b_data, retain) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
-                    (self.expand_node(a_region, b_vid, b_data), false)
+                    (a_region, b_vid, b_data, false)
                 }
                 Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => (false, false),
+                    VarValue::ErrorValue => return (false, false),
                     VarValue::Value(a_region) => {
-                        let b_node = var_values.value_mut(b_vid);
-                        let changed = self.expand_node(a_region, b_vid, b_node);
-                        let retain = match *b_node {
+                        let b_data = var_values.value_mut(b_vid);
+                        let retain = match *b_data {
                             VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
                             _ => true
                         };
-                        (changed, retain)
+                        (a_region, b_vid, b_data, retain)
                     }
                 },
                 Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
-                    (false, false)
+                    return (false, false)
                 }
-            }
+            };
+
+            let changed = self.expand_node(a_region, b_vid, b_data);
+            (changed, retain)
         })
     }
 
+    // This function is very hot in some workloads. There's a single callsite
+    // so always inlining is ok even though it's large.
+    #[inline(always)]
     fn expand_node(
         &self,
         a_region: Region<'tcx>,
@@ -722,18 +727,17 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
-    where
-        F: FnMut(&Constraint<'tcx>, &SubregionOrigin<'tcx>) -> (bool, bool),
+        where F: FnMut(&Constraint<'tcx>) -> (bool, bool),
     {
-        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.iter().collect();
+        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.keys().collect();
         let mut iteration = 0;
         let mut changed = true;
         while changed {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            constraints.retain(|(constraint, origin)| {
-                let (edge_changed, retain) = body(constraint, origin);
+            constraints.retain(|constraint| {
+                let (edge_changed, retain) = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
                     changed = true;
