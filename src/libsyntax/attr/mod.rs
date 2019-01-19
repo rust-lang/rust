@@ -570,7 +570,7 @@ impl MetaItemKind {
             }
             Some(TokenTree::Delimited(_, delim, ref tts)) if delim == token::Paren => {
                 tokens.next();
-                tts.stream()
+                tts.clone()
             }
             _ => return Some(MetaItemKind::Word),
         };

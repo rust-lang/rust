@@ -1128,8 +1128,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
                 EntryKind::Impl(self.lazy(&data))
             }
-            hir::ItemKind::Trait(..) |
-            hir::ItemKind::TraitAlias(..) => {
+            hir::ItemKind::Trait(..) => {
                 let trait_def = tcx.trait_def(def_id);
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
@@ -1140,6 +1139,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 };
 
                 EntryKind::Trait(self.lazy(&data))
+            }
+            hir::ItemKind::TraitAlias(..) => {
+                let data = TraitAliasData {
+                    super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
+                };
+
+                EntryKind::TraitAlias(self.lazy(&data))
             }
             hir::ItemKind::ExternCrate(_) |
             hir::ItemKind::Use(..) => bug!("cannot encode info for item {:?}", item),
@@ -1214,6 +1220,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Impl(..) |
                 hir::ItemKind::Existential(..) |
                 hir::ItemKind::Trait(..) => Some(self.encode_generics(def_id)),
+                hir::ItemKind::TraitAlias(..) => Some(self.encode_generics(def_id)),
                 _ => None,
             },
             predicates: match item.node {
@@ -1226,7 +1233,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Impl(..) |
                 hir::ItemKind::Existential(..) |
-                hir::ItemKind::Trait(..) => Some(self.encode_predicates(def_id)),
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) => Some(self.encode_predicates(def_id)),
                 _ => None,
             },
 
@@ -1236,7 +1244,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             // hack. (No reason not to expand it in the future if
             // necessary.)
             predicates_defined_on: match item.node {
-                hir::ItemKind::Trait(..) => Some(self.encode_predicates_defined_on(def_id)),
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) => Some(self.encode_predicates_defined_on(def_id)),
                 _ => None, // not *wrong* for other kinds of items, but not needed
             },
 

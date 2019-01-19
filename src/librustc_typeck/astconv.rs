@@ -2,7 +2,7 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
-use errors::{Applicability, FatalError, DiagnosticId};
+use errors::{Applicability, DiagnosticId};
 use hir::{self, GenericArg, GenericArgs};
 use hir::def::Def;
 use hir::def_id::DefId;
@@ -690,27 +690,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
-        let trait_def_id = self.trait_def_id(trait_ref);
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
-                                        trait_def_id,
+                                        trait_ref.trait_def_id(),
                                         self_ty,
                                         trait_ref.path.segments.last().unwrap())
     }
 
-    /// Get the `DefId` of the given trait ref. It _must_ actually be a trait.
-    fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
-        let path = &trait_ref.path;
-        match path.def {
-            Def::Trait(trait_def_id) => trait_def_id,
-            Def::TraitAlias(alias_def_id) => alias_def_id,
-            Def::Err => {
-                FatalError.raise();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    /// The given trait ref must actually be a trait.
+    /// The given trait-ref must actually be a trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,
@@ -718,7 +704,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         speculative: bool)
         -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
     {
-        let trait_def_id = self.trait_def_id(trait_ref);
+        let trait_def_id = trait_ref.trait_def_id();
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 

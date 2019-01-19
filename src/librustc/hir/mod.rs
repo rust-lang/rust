@@ -10,6 +10,7 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
+use errors::FatalError;
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
@@ -2053,6 +2054,20 @@ pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
     pub hir_ref_id: HirId,
+}
+
+impl TraitRef {
+    /// Get the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
+    pub fn trait_def_id(&self) -> DefId {
+        match self.path.def {
+            Def::Trait(did) => did,
+            Def::TraitAlias(did) => did,
+            Def::Err => {
+                FatalError.raise();
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

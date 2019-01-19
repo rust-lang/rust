@@ -258,7 +258,7 @@ for tokenstream::TokenTree {
             tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
                 span.hash_stable(hcx, hasher);
                 std_hash::Hash::hash(&delim, hasher);
-                for sub_tt in tts.stream().trees() {
+                for sub_tt in tts.trees() {
                     sub_tt.hash_stable(hcx, hasher);
                 }
             }

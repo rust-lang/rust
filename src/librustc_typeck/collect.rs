@@ -715,7 +715,7 @@ fn super_predicates_of<'a, 'tcx>(
     // In the case of trait aliases, however, we include all bounds in the where clause,
     // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
     // as one of its "superpredicates".
-    let is_trait_alias = ty::is_trait_alias(tcx, trait_def_id);
+    let is_trait_alias = tcx.is_trait_alias(trait_def_id);
     let superbounds2 = icx.type_parameter_bounds_in_generics(
         generics, item.id, self_param_ty, OnlySelfBounds(!is_trait_alias));
 

@@ -748,7 +748,7 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, quoted: bool) -> Vec<ast::Stmt
         },
         TokenTree::Delimited(span, delim, ref tts) => {
             let mut stmts = statements_mk_tt(cx, &TokenTree::open_tt(span.open, delim), false);
-            stmts.extend(statements_mk_tts(cx, tts.stream()));
+            stmts.extend(statements_mk_tts(cx, tts.clone()));
             stmts.extend(statements_mk_tt(cx, &TokenTree::close_tt(span.close, delim), false));
             stmts
         }

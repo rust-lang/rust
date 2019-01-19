@@ -4866,8 +4866,13 @@ impl<'a> Resolver<'a> {
                 } else if ident.span.rust_2018() {
                     let msg = "relative paths are not supported in visibilities on 2018 edition";
                     self.session.struct_span_err(ident.span, msg)
-                                .span_suggestion(path.span, "try", format!("crate::{}", path))
-                                .emit();
+                        .span_suggestion_with_applicability(
+                            path.span,
+                            "try",
+                            format!("crate::{}", path),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
                     return ty::Visibility::Public;
                 } else {
                     let ctxt = ident.span.ctxt();

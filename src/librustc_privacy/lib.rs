@@ -13,7 +13,7 @@ extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
 
-use rustc::hir::{self, Node, PatKind};
+use rustc::hir::{self, Node, PatKind, AssociatedItemKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -548,7 +548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                         let mut reach = self.reach(trait_item_ref.id.node_id, item_level);
                         reach.generics().predicates();
 
-                        if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
+                        if trait_item_ref.kind == AssociatedItemKind::Type &&
                            !trait_item_ref.defaultness.has_value() {
                             // No type to visit.
                         } else {
@@ -1343,11 +1343,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         if self.item_is_public(&impl_item_ref.id.node_id, &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
-                                hir::AssociatedItemKind::Const => {
+                                AssociatedItemKind::Const => {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
-                                hir::AssociatedItemKind::Method { has_self: false } => {
+                                AssociatedItemKind::Method { has_self: false } => {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
@@ -1568,6 +1568,24 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             in_assoc_ty: false,
         }
     }
+
+    fn check_trait_or_impl_item(&self, node_id: ast::NodeId, assoc_item_kind: AssociatedItemKind,
+                                defaultness: hir::Defaultness, vis: ty::Visibility) {
+        let mut check = self.check(node_id, vis);
+
+        let (check_ty, is_assoc_ty) = match assoc_item_kind {
+            AssociatedItemKind::Const | AssociatedItemKind::Method { .. } => (true, false),
+            AssociatedItemKind::Type => (defaultness.has_value(), true),
+            // `ty()` for existential types is the underlying type,
+            // it's not a part of interface, so we skip it.
+            AssociatedItemKind::Existential => (false, true),
+        };
+        check.in_assoc_ty = is_assoc_ty;
+        check.generics().predicates();
+        if check_ty {
+            check.ty();
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
@@ -1602,16 +1620,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.id, item_visibility).generics().predicates();
 
                 for trait_item_ref in trait_item_refs {
-                    let mut check = self.check(trait_item_ref.id.node_id, item_visibility);
-                    check.in_assoc_ty = trait_item_ref.kind == hir::AssociatedItemKind::Type;
-                    check.generics().predicates();
-
-                    if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
-                       !trait_item_ref.defaultness.has_value() {
-                        // No type to visit.
-                    } else {
-                        check.ty();
-                    }
+                    self.check_trait_or_impl_item(trait_item_ref.id.node_id, trait_item_ref.kind,
+                                                  trait_item_ref.defaultness, item_visibility);
                 }
             }
             hir::ItemKind::TraitAlias(..) => {
@@ -1657,9 +1667,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                     } else {
                         impl_vis
                     };
-                    let mut check = self.check(impl_item.id, impl_item_vis);
-                    check.in_assoc_ty = impl_item_ref.kind == hir::AssociatedItemKind::Type;
-                    check.generics().predicates().ty();
+                    self.check_trait_or_impl_item(impl_item_ref.id.node_id, impl_item_ref.kind,
+                                                  impl_item_ref.defaultness, impl_item_vis);
                 }
             }
         }
