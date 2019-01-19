@@ -27,7 +27,7 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::macros::expand_macro_invocation)]
     fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;
 
-    #[salsa::invoke(query_definitions::expr_scopes)]
+    #[salsa::invoke(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]

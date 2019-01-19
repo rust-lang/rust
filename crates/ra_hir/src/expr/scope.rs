@@ -9,7 +9,11 @@ use ra_syntax::{
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
 
-use crate::{Name, AsName, expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping}};
+use crate::{
+    Name, AsName, Function,
+    expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping},
+    db::HirDatabase,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ScopeId(RawId);
@@ -35,7 +39,14 @@ pub struct ScopeData {
 }
 
 impl ExprScopes {
-    pub(crate) fn new(body: Arc<Body>) -> ExprScopes {
+    // TODO: This should take something more general than Function
+    pub(crate) fn expr_scopes_query(db: &impl HirDatabase, function: Function) -> Arc<ExprScopes> {
+        let body = db.body_hir(function);
+        let res = ExprScopes::new(body);
+        Arc::new(res)
+    }
+
+    fn new(body: Arc<Body>) -> ExprScopes {
         let mut scopes = ExprScopes {
             body: body.clone(),
             scopes: Arena::default(),
