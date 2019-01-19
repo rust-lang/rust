@@ -1,4 +1,4 @@
-Created: 2019-01-19T13:42:17.817204+00:00
+Created: 2019-01-19T16:37:23.629020+00:00
 Creator: insta@0.1.4
 Source: crates/ra_ide_api/src/completion/completion_item.rs
 
@@ -11,13 +11,11 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [143; 144),
-                insert: "the_method($0)"
-            }
+        insert_text: Some(
+            "the_method($0)"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [143; 144),
+        delete_range: None
     }
 ]

@@ -1,4 +1,4 @@
-Created: 2019-01-19T13:42:17.826915+00:00
+Created: 2019-01-19T16:37:23.648502+00:00
 Creator: insta@0.1.4
 Source: crates/ra_ide_api/src/completion/completion_item.rs
 
@@ -11,9 +11,10 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
+        insert_text: None,
         insert_text_format: PlainText,
-        text_edit: None,
-        additional_text_edits: None
+        replace_range: [23; 24),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -23,13 +24,11 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: PlainText,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [23; 24),
-                insert: "super::"
-            }
+        insert_text: Some(
+            "super::"
         ),
-        additional_text_edits: None
+        insert_text_format: PlainText,
+        replace_range: [23; 24),
+        delete_range: None
     }
 ]

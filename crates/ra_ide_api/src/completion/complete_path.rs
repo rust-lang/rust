@@ -15,18 +15,26 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::Def::Module(module) => {
             let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {
-                CompletionItem::new(CompletionKind::Reference, ctx, name.to_string())
-                    .from_resolution(ctx, res)
-                    .add_to(acc);
+                CompletionItem::new(
+                    CompletionKind::Reference,
+                    ctx.leaf_range(),
+                    name.to_string(),
+                )
+                .from_resolution(ctx, res)
+                .add_to(acc);
             }
         }
         hir::Def::Enum(e) => {
             e.variants(ctx.db)
                 .into_iter()
                 .for_each(|(variant_name, _variant)| {
-                    CompletionItem::new(CompletionKind::Reference, ctx, variant_name.to_string())
-                        .kind(CompletionItemKind::EnumVariant)
-                        .add_to(acc)
+                    CompletionItem::new(
+                        CompletionKind::Reference,
+                        ctx.leaf_range(),
+                        variant_name.to_string(),
+                    )
+                    .kind(CompletionItemKind::EnumVariant)
+                    .add_to(acc)
                 });
         }
         _ => return,

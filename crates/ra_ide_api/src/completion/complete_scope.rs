@@ -29,9 +29,13 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
             }
         })
         .for_each(|(name, res)| {
-            CompletionItem::new(CompletionKind::Reference, ctx, name.to_string())
-                .from_resolution(ctx, res)
-                .add_to(acc)
+            CompletionItem::new(
+                CompletionKind::Reference,
+                ctx.leaf_range(),
+                name.to_string(),
+            )
+            .from_resolution(ctx, res)
+            .add_to(acc)
         });
 }
 
@@ -46,9 +50,13 @@ fn complete_fn(
         .flat_map(|scope| scopes.scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
         .for_each(|entry| {
-            CompletionItem::new(CompletionKind::Reference, ctx, entry.name().to_string())
-                .kind(CompletionItemKind::Binding)
-                .add_to(acc)
+            CompletionItem::new(
+                CompletionKind::Reference,
+                ctx.leaf_range(),
+                entry.name().to_string(),
+            )
+            .kind(CompletionItemKind::Binding)
+            .add_to(acc)
         });
 }
 

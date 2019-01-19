@@ -1,4 +1,4 @@
-Created: 2019-01-19T13:42:17.819839+00:00
+Created: 2019-01-19T16:37:23.640134+00:00
 Creator: insta@0.1.4
 Source: crates/ra_ide_api/src/completion/completion_item.rs
 
@@ -11,14 +11,12 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "if $0 {}"
-            }
+        insert_text: Some(
+            "if $0 {}"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -28,14 +26,12 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "match $0 {}"
-            }
+        insert_text: Some(
+            "match $0 {}"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -45,14 +41,12 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "while $0 {}"
-            }
+        insert_text: Some(
+            "while $0 {}"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -62,14 +56,12 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "loop {$0}"
-            }
+        insert_text: Some(
+            "loop {$0}"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -79,14 +71,12 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "else {$0}"
-            }
+        insert_text: Some(
+            "else {$0}"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -96,14 +86,12 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "else if $0 {}"
-            }
+        insert_text: Some(
+            "else if $0 {}"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Keyword,
@@ -113,13 +101,11 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [91; 105),
-                insert: "return;"
-            }
+        insert_text: Some(
+            "return;"
         ),
-        additional_text_edits: None
+        insert_text_format: Snippet,
+        replace_range: [91; 105),
+        delete_range: None
     }
 ]

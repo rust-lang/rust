@@ -1,10 +1,7 @@
 use hir::PerNs;
-use ra_text_edit::{
-    AtomTextEdit,
-    TextEdit,
-};
 
 use crate::completion::completion_context::CompletionContext;
+use ra_syntax::TextRange;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -18,26 +15,10 @@ pub struct CompletionItem {
     kind: Option<CompletionItemKind>,
     detail: Option<String>,
     lookup: Option<String>,
-    /// The format of the insert text. The format applies to both the `insert_text` property
-    /// and the `insert` property of a provided `text_edit`.
+    insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
-    /// An edit which is applied to a document when selecting this completion. When an edit is
-    /// provided the value of `insert_text` is ignored.
-    ///
-    /// *Note:* The range of the edit must be a single line range and it must contain the position
-    /// at which completion has been requested.
-    ///
-    /// *Note:* If sending a range that overlaps a string, the string should match the relevant
-    /// part of the replacement text, or be filtered out.
-    text_edit: Option<AtomTextEdit>,
-    /// An optional array of additional text edits that are applied when
-    /// selecting this completion. Edits must not overlap (including the same insert position)
-    /// with the main edit nor with themselves.
-    ///
-    /// Additional text edits should be used to change text unrelated to the current cursor position
-    /// (for example adding an import statement at the top of the file if the completion item will
-    /// insert an unqualified type).
-    additional_text_edits: Option<TextEdit>,
+    replace_range: TextRange,
+    delete_range: Option<TextRange>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,14 +57,14 @@ pub enum InsertTextFormat {
 }
 
 impl CompletionItem {
-    pub(crate) fn new<'a>(
+    pub(crate) fn new(
         completion_kind: CompletionKind,
-        ctx: &'a CompletionContext,
+        replace_range: TextRange,
         label: impl Into<String>,
-    ) -> Builder<'a> {
+    ) -> Builder {
         let label = label.into();
         Builder {
-            ctx,
+            replace_range,
             completion_kind,
             label,
             insert_text: None,
@@ -91,8 +72,7 @@ impl CompletionItem {
             detail: None,
             lookup: None,
             kind: None,
-            text_edit: None,
-            additional_text_edits: None,
+            delete_range: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -114,22 +94,27 @@ impl CompletionItem {
     pub fn insert_text_format(&self) -> InsertTextFormat {
         self.insert_text_format.clone()
     }
-
+    pub fn insert_text(&self) -> String {
+        match &self.insert_text {
+            Some(t) => t.clone(),
+            None => self.label.clone(),
+        }
+    }
     pub fn kind(&self) -> Option<CompletionItemKind> {
         self.kind
     }
-    pub fn text_edit(&mut self) -> Option<&AtomTextEdit> {
-        self.text_edit.as_ref()
+    pub fn delete_range(&self) -> Option<TextRange> {
+        self.delete_range
     }
-    pub fn take_additional_text_edits(&mut self) -> Option<TextEdit> {
-        self.additional_text_edits.take()
+    pub fn replace_range(&self) -> TextRange {
+        self.replace_range
     }
 }
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
-pub(crate) struct Builder<'a> {
-    ctx: &'a CompletionContext<'a>,
+pub(crate) struct Builder {
+    replace_range: TextRange,
     completion_kind: CompletionKind,
     label: String,
     insert_text: Option<String>,
@@ -137,76 +122,53 @@ pub(crate) struct Builder<'a> {
     detail: Option<String>,
     lookup: Option<String>,
     kind: Option<CompletionItemKind>,
-    text_edit: Option<AtomTextEdit>,
-    additional_text_edits: Option<TextEdit>,
+    delete_range: Option<TextRange>,
 }
 
-impl<'a> Builder<'a> {
+impl Builder {
     pub(crate) fn add_to(self, acc: &mut Completions) {
         acc.add(self.build())
     }
 
     pub(crate) fn build(self) -> CompletionItem {
-        let self_text_edit = self.text_edit;
-        let self_insert_text = self.insert_text;
-        let text_edit = match (self_text_edit, self_insert_text) {
-            (Some(text_edit), ..) => Some(text_edit),
-            (None, Some(insert_text)) => {
-                Some(AtomTextEdit::replace(self.ctx.leaf_range(), insert_text))
-            }
-            _ => None,
-        };
-
         CompletionItem {
+            replace_range: self.replace_range,
             label: self.label,
             detail: self.detail,
             insert_text_format: self.insert_text_format,
             lookup: self.lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
-            text_edit,
-            additional_text_edits: self.additional_text_edits,
+            delete_range: self.delete_range,
+            insert_text: self.insert_text,
         }
     }
-    pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder<'a> {
+    pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
         self.lookup = Some(lookup.into());
         self
     }
-    pub(crate) fn insert_text(mut self, insert_text: impl Into<String>) -> Builder<'a> {
+    pub(crate) fn insert_text(mut self, insert_text: impl Into<String>) -> Builder {
         self.insert_text = Some(insert_text.into());
         self
     }
     #[allow(unused)]
-    pub(crate) fn insert_text_format(
-        mut self,
-        insert_text_format: InsertTextFormat,
-    ) -> Builder<'a> {
+    pub(crate) fn insert_text_format(mut self, insert_text_format: InsertTextFormat) -> Builder {
         self.insert_text_format = insert_text_format;
         self
     }
-    pub(crate) fn snippet(mut self, snippet: impl Into<String>) -> Builder<'a> {
+    pub(crate) fn snippet(mut self, snippet: impl Into<String>) -> Builder {
         self.insert_text_format = InsertTextFormat::Snippet;
         self.insert_text(snippet)
     }
-    pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder<'a> {
+    pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
         self.kind = Some(kind);
         self
     }
     #[allow(unused)]
-    pub(crate) fn text_edit(mut self, text_edit: AtomTextEdit) -> Builder<'a> {
-        self.text_edit = Some(text_edit);
-        self
-    }
-    #[allow(unused)]
-    pub(crate) fn additional_text_edits(mut self, additional_text_edits: TextEdit) -> Builder<'a> {
-        self.additional_text_edits = Some(additional_text_edits);
-        self
-    }
-    #[allow(unused)]
-    pub(crate) fn detail(self, detail: impl Into<String>) -> Builder<'a> {
+    pub(crate) fn detail(self, detail: impl Into<String>) -> Builder {
         self.set_detail(Some(detail))
     }
-    pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder<'a> {
+    pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
         self.detail = detail.map(Into::into);
         self
     }
@@ -214,7 +176,7 @@ impl<'a> Builder<'a> {
         mut self,
         ctx: &CompletionContext,
         resolution: &hir::Resolution,
-    ) -> Builder<'a> {
+    ) -> Builder {
         let resolved = resolution.def_id.map(|d| d.resolve(ctx.db));
         let kind = match resolved {
             PerNs {
@@ -259,7 +221,7 @@ impl<'a> Builder<'a> {
         mut self,
         ctx: &CompletionContext,
         function: hir::Function,
-    ) -> Builder<'a> {
+    ) -> Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             if function.signature(ctx.db).params().is_empty() {
@@ -274,7 +236,7 @@ impl<'a> Builder<'a> {
     }
 }
 
-impl<'a> Into<CompletionItem> for Builder<'a> {
+impl<'a> Into<CompletionItem> for Builder {
     fn into(self) -> CompletionItem {
         self.build()
     }

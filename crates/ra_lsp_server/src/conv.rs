@@ -13,6 +13,7 @@ use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 
 use crate::{req, server_world::ServerWorld, Result};
+use ra_text_edit::TextEditBuilder;
 
 pub trait Conv {
     type Output;
@@ -78,19 +79,24 @@ impl ConvWith for CompletionItem {
     type Ctx = LineIndex;
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(mut self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
-        let text_edit = self.text_edit().map(|t| t.conv_with(ctx));
-        let additonal_text_edit = self
-            .take_additional_text_edits()
-            .map(|it| it.conv_with(ctx));
+    fn conv_with(self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
+        let atom_text_edit = AtomTextEdit::replace(self.replace_range(), self.insert_text());
+        let text_edit = (&atom_text_edit).conv_with(ctx);
+        let additional_text_edits = if let Some(delete_range) = self.delete_range() {
+            let mut builder = TextEditBuilder::default();
+            builder.delete(delete_range);
+            Some(builder.finish().conv_with(ctx))
+        } else {
+            None
+        };
 
         let mut res = lsp_types::CompletionItem {
             label: self.label().to_string(),
             detail: self.detail().map(|it| it.to_string()),
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
-            text_edit,
-            additional_text_edits: additonal_text_edit,
+            text_edit: Some(text_edit),
+            additional_text_edits,
             ..Default::default()
         };
         res.insert_text_format = Some(match self.insert_text_format() {

@@ -1,4 +1,4 @@
-Created: 2019-01-19T11:53:16.799743+00:00
+Created: 2019-01-19T16:37:23.666350+00:00
 Creator: insta@0.1.4
 Source: crates/ra_ide_api/src/completion/completion_item.rs
 
@@ -11,9 +11,10 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
+        insert_text: None,
         insert_text_format: PlainText,
-        text_edit: None,
-        additional_text_edits: None
+        replace_range: [12; 14),
+        delete_range: None
     },
     CompletionItem {
         completion_kind: Reference,
@@ -23,8 +24,9 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         ),
         detail: None,
         lookup: None,
+        insert_text: None,
         insert_text_format: PlainText,
-        text_edit: None,
-        additional_text_edits: None
+        replace_range: [12; 14),
+        delete_range: None
     }
 ]

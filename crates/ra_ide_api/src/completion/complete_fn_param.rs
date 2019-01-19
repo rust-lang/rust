@@ -34,7 +34,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
             }
         })
         .for_each(|(label, lookup)| {
-            CompletionItem::new(CompletionKind::Magic, ctx, label)
+            CompletionItem::new(CompletionKind::Magic, ctx.leaf_range(), label)
                 .lookup_by(lookup)
                 .add_to(acc)
         });
