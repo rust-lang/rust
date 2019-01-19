@@ -57,6 +57,8 @@ fn expect_fun_call() {
 
     Some("foo").expect({ &format!("error") });
     Some("foo").expect(format!("error").as_ref());
+
+    Some("foo").expect(format!("{} {}", 1, 2).as_ref());
 }
 
 fn main() {}

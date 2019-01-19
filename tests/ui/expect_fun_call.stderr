@@ -36,5 +36,11 @@ error: use of `expect` followed by a function call
 LL |     Some("foo").expect(format!("error").as_ref());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("error"))`
 
-error: aborting due to 6 previous errors
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:61:17
+   |
+LL |     Some("foo").expect(format!("{} {}", 1, 2).as_ref());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("{} {}", 1, 2))`
+
+error: aborting due to 7 previous errors
 
