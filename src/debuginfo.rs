@@ -4,16 +4,13 @@ use crate::prelude::*;
 
 use std::marker::PhantomData;
 
+use gimli::{Endianity, Format, RunTimeEndian};
 use gimli::write::{
     Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
     DebugRngLists, DebugStr, EndianVec, LineProgram, LineProgramId, LineProgramTable, Range,
     RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable, Writer,
 };
-use gimli::Format;
 
-// FIXME: use target endian
-use byteorder::ByteOrder;
-use gimli::RunTimeEndian;
 
 use faerie::*;
 
@@ -25,6 +22,7 @@ fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
         Endian::Little => RunTimeEndian::Little,
     }
 }
+
 struct DebugReloc {
     offset: u32,
     size: u8,
@@ -390,7 +388,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         // FIXME: add to appropriate scope intead of root
         let entry = unit.get_mut(self.entry_id);
         let mut size_array = [0; 8];
-        byteorder::LittleEndian::write_u64(&mut size_array, size as u64);
+        target_endian(tcx).write_u64(&mut size_array, size as u64);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Data8(size_array));
 
         self.debug_context.unit_range_list.0.push(Range {
