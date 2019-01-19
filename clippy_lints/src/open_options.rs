@@ -72,7 +72,7 @@ fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr, options: &mut Vec
                     if let Spanned {
                         node: LitKind::Bool(lit),
                         ..
-                    } = **span
+                    } = *span
                     {
                         if lit {
                             Argument::True
