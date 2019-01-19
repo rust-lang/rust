@@ -37,7 +37,7 @@ use crate::{
     type_ref::{TypeRef, Mutability},
     name::KnownName,
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
-    generics::Generics,
+    generics::GenericParams,
     path::GenericArg,
 };
 
@@ -283,7 +283,7 @@ impl Ty {
         // resolver architecture
         module: &Module,
         impl_block: Option<&ImplBlock>,
-        generics: &Generics,
+        generics: &GenericParams,
         type_ref: &TypeRef,
     ) -> Self {
         match type_ref {
@@ -335,7 +335,7 @@ impl Ty {
         db: &impl HirDatabase,
         module: &Module,
         impl_block: Option<&ImplBlock>,
-        generics: &Generics,
+        generics: &GenericParams,
         type_ref: Option<&TypeRef>,
     ) -> Self {
         type_ref.map_or(Ty::Unknown, |t| {
@@ -347,7 +347,7 @@ impl Ty {
         db: &impl HirDatabase,
         module: &Module,
         impl_block: Option<&ImplBlock>,
-        generics: &Generics,
+        generics: &GenericParams,
         path: &Path,
     ) -> Self {
         if let Some(name) = path.as_ident() {
@@ -357,7 +357,7 @@ impl Ty {
                 return Ty::Float(float_ty);
             } else if name.as_known_name() == Some(KnownName::SelfType) {
                 // TODO pass the impl block's generics?
-                let generics = &Generics::default();
+                let generics = &GenericParams::default();
                 return Ty::from_hir_opt(
                     db,
                     module,
@@ -397,7 +397,7 @@ impl Ty {
         // the scope of the segment...
         module: &Module,
         impl_block: Option<&ImplBlock>,
-        outer_generics: &Generics,
+        outer_generics: &GenericParams,
         path: &Path,
         resolved: DefId,
     ) -> Substs {
@@ -408,10 +408,10 @@ impl Ty {
             .last()
             .expect("path should have at least one segment");
         let (def_generics, segment) = match def {
-            Def::Struct(s) => (s.generics(db), last),
-            Def::Enum(e) => (e.generics(db), last),
-            Def::Function(f) => (f.generics(db), last),
-            Def::Trait(t) => (t.generics(db), last),
+            Def::Struct(s) => (s.generic_params(db), last),
+            Def::Enum(e) => (e.generic_params(db), last),
+            Def::Function(f) => (f.generic_params(db), last),
+            Def::Trait(t) => (t.generic_params(db), last),
             Def::EnumVariant(ev) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
@@ -426,7 +426,7 @@ impl Ty {
                     // Option::None::<T>
                     last
                 };
-                (ev.parent_enum(db).generics(db), segment)
+                (ev.parent_enum(db).generic_params(db), segment)
             }
             _ => return Substs::empty(),
         };
@@ -607,7 +607,7 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
     let signature = f.signature(db);
     let module = f.module(db);
     let impl_block = f.impl_block(db);
-    let generics = f.generics(db);
+    let generics = f.generic_params(db);
     let input = signature
         .params()
         .iter()
@@ -624,7 +624,7 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
     Ty::FnPtr(Arc::new(sig))
 }
 
-fn make_substs(generics: &Generics) -> Substs {
+fn make_substs(generics: &GenericParams) -> Substs {
     Substs(
         generics
             .params
@@ -636,7 +636,7 @@ fn make_substs(generics: &Generics) -> Substs {
 }
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
-    let generics = s.generics(db);
+    let generics = s.generic_params(db);
     Ty::Adt {
         def_id: s.def_id(),
         name: s.name(db).unwrap_or_else(Name::missing),
@@ -645,7 +645,7 @@ fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
 }
 
 pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
-    let generics = s.generics(db);
+    let generics = s.generic_params(db);
     Ty::Adt {
         def_id: s.def_id(),
         name: s.name(db).unwrap_or_else(Name::missing),
@@ -684,8 +684,8 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Ty {
 pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) -> Option<Ty> {
     let def = def_id.resolve(db);
     let (variant_data, generics) = match def {
-        Def::Struct(s) => (s.variant_data(db), s.generics(db)),
-        Def::EnumVariant(ev) => (ev.variant_data(db), ev.parent_enum(db).generics(db)),
+        Def::Struct(s) => (s.variant_data(db), s.generic_params(db)),
+        Def::EnumVariant(ev) => (ev.variant_data(db), ev.parent_enum(db).generic_params(db)),
         // TODO: unions
         _ => panic!(
             "trying to get type for field in non-struct/variant {:?}",
@@ -880,7 +880,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
         // TODO provide generics of function
-        let generics = Generics::default();
+        let generics = GenericParams::default();
         let ty = Ty::from_hir(
             self.db,
             &self.module,
@@ -1075,7 +1075,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // TODO remove the duplication between here and `Ty::from_path`?
         // TODO provide generics of function
-        let generics = Generics::default();
+        let generics = GenericParams::default();
         let substs = Ty::substs_from_path(
             self.db,
             &self.module,

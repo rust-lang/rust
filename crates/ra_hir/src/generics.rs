@@ -18,14 +18,14 @@ pub struct GenericParam {
 
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
-pub struct Generics {
+pub struct GenericParams {
     pub(crate) params: Vec<GenericParam>,
 }
 
-impl Generics {
-    pub(crate) fn generics_query(db: &impl HirDatabase, def_id: DefId) -> Arc<Generics> {
+impl GenericParams {
+    pub(crate) fn generic_params_query(db: &impl HirDatabase, def_id: DefId) -> Arc<GenericParams> {
         let (_file_id, node) = def_id.source(db);
-        let mut generics = Generics::default();
+        let mut generics = GenericParams::default();
         if let Some(type_param_list) = node.children().find_map(TypeParamList::cast) {
             for (idx, type_param) in type_param_list.type_params().enumerate() {
                 let name = type_param

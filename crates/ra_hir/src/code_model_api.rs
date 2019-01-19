@@ -12,7 +12,7 @@ use crate::{
     expr::BodySyntaxMapping,
     ty::InferenceResult,
     adt::VariantData,
-    generics::Generics,
+    generics::GenericParams,
     code_model_impl::def_id_to_ast,
 };
 
@@ -203,8 +203,8 @@ impl Struct {
         def_id_to_ast(db, self.def_id)
     }
 
-    pub fn generics(&self, db: &impl HirDatabase) -> Arc<Generics> {
-        db.generics(self.def_id)
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }
 
@@ -234,8 +234,8 @@ impl Enum {
         def_id_to_ast(db, self.def_id)
     }
 
-    pub fn generics(&self, db: &impl HirDatabase) -> Arc<Generics> {
-        db.generics(self.def_id)
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }
 
@@ -349,8 +349,8 @@ impl Function {
         db.infer(self.def_id)
     }
 
-    pub fn generics(&self, db: &impl HirDatabase) -> Arc<Generics> {
-        db.generics(self.def_id)
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }
 
@@ -398,8 +398,8 @@ impl Trait {
         def_id_to_ast(db, self.def_id)
     }
 
-    pub fn generics(&self, db: &impl HirDatabase) -> Arc<Generics> {
-        db.generics(self.def_id)
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }
 
@@ -417,7 +417,7 @@ impl Type {
         def_id_to_ast(db, self.def_id)
     }
 
-    pub fn generics(&self, db: &impl HirDatabase) -> Arc<Generics> {
-        db.generics(self.def_id)
+    pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.def_id)
     }
 }

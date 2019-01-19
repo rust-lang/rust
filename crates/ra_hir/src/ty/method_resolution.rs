@@ -11,7 +11,7 @@ use ra_db::SourceRootId;
 use crate::{
     HirDatabase, DefId, module_tree::ModuleId, Module, Crate, Name, Function,
     impl_block::{ImplId, ImplBlock, ImplItem},
-    generics::Generics
+    generics::GenericParams
 };
 use super::Ty;
 
@@ -69,7 +69,7 @@ impl CrateImplBlocks {
                 // ignore for now
             } else {
                 // TODO provide generics of impl
-                let generics = Generics::default();
+                let generics = GenericParams::default();
                 let target_ty = Ty::from_hir(
                     db,
                     &module,

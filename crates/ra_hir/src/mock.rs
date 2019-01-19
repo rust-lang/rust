@@ -243,7 +243,7 @@ salsa::database_storage! {
             fn body_hir() for db::BodyHirQuery;
             fn body_syntax_mapping() for db::BodySyntaxMappingQuery;
             fn fn_signature() for db::FnSignatureQuery;
-            fn generics() for db::GenericsQuery;
+            fn generic_params() for db::GenericParamsQuery;
         }
     }
 }
