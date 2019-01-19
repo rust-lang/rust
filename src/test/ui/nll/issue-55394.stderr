@@ -1,11 +1,11 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/issue-55394.rs:11:9
    |
 LL |     fn new(bar: &mut Bar) -> Self {
    |                 -            ---- return type is Foo<'2>
    |                 |
    |                 let's call the lifetime of this reference `'1`
-LL |         Foo { bar } //~ ERROR unsatisfied lifetime constraints
+LL |         Foo { bar } //~ERROR lifetime may not live long enough
    |         ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
 
 error: aborting due to previous error

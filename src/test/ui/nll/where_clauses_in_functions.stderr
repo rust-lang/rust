@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/where_clauses_in_functions.rs:13:5
    |
 LL | fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {

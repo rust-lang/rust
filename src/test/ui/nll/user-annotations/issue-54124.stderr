@@ -1,19 +1,19 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/issue-54124.rs:4:22
    |
 LL | fn test<'a>() {
    |         -- lifetime `'a` defined here
-LL |     let _:fn(&()) = |_:&'a ()| {}; //~ ERROR unsatisfied lifetime constraints
+LL |     let _:fn(&()) = |_:&'a ()| {}; //~ ERROR lifetime may not live long enough
    |                      ^ - let's call the lifetime of this reference `'1`
    |                      |
    |                      requires that `'1` must outlive `'a`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/issue-54124.rs:4:22
    |
 LL | fn test<'a>() {
    |         -- lifetime `'a` defined here
-LL |     let _:fn(&()) = |_:&'a ()| {}; //~ ERROR unsatisfied lifetime constraints
+LL |     let _:fn(&()) = |_:&'a ()| {}; //~ ERROR lifetime may not live long enough
    |                      ^ requires that `'a` must outlive `'static`
 
 error: aborting due to 2 previous errors
