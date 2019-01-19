@@ -103,23 +103,22 @@ mod namespace;
 mod outlives;
 mod variance;
 
-use hir::Node;
 use rustc_target::spec::abi::Abi;
-use rustc::hir;
+use rustc::hir::{self, Node};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
 use rustc::session;
-use rustc::session::config::nightly_options;
+use rustc::session::CompileIncomplete;
+use rustc::session::config::{EntryFnType, nightly_options};
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::util;
 use rustc::util::profiling::ProfileCategory;
-use session::{CompileIncomplete, config};
 use syntax_pos::Span;
-use syntax::ast;
 use util::common::time;
 
 use std::iter;
@@ -184,10 +183,9 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              main_id: ast::NodeId,
-                              main_span: Span) {
-    let main_def_id = tcx.hir().local_def_id(main_id);
+fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefId) {
+    let main_id = tcx.hir().as_local_node_id(main_def_id).unwrap();
+    let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
         ty::FnDef(..) => {
@@ -250,10 +248,9 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               start_id: ast::NodeId,
-                               start_span: Span) {
-    let start_def_id = tcx.hir().local_def_id(start_id);
+fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: DefId) {
+    let start_id = tcx.hir().as_local_node_id(start_def_id).unwrap();
+    let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
     match start_t.sty {
         ty::FnDef(..) => {
@@ -309,11 +306,10 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    if let Some((id, sp, entry_type)) = *tcx.sess.entry_fn.borrow() {
-        match entry_type {
-            config::EntryFnType::Main => check_main_fn_ty(tcx, id, sp),
-            config::EntryFnType::Start => check_start_fn_ty(tcx, id, sp),
-        }
+    match tcx.entry_fn(LOCAL_CRATE) {
+        Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
+        Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
+        _ => {}
     }
 }
 

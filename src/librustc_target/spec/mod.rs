@@ -217,6 +217,46 @@ impl ToJson for RelroLevel {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum MergeFunctions {
+    Disabled,
+    Trampolines,
+    Aliases
+}
+
+impl MergeFunctions {
+    pub fn desc(&self) -> &str {
+        match *self {
+            MergeFunctions::Disabled => "disabled",
+            MergeFunctions::Trampolines => "trampolines",
+            MergeFunctions::Aliases => "aliases",
+        }
+    }
+}
+
+impl FromStr for MergeFunctions {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<MergeFunctions, ()> {
+        match s {
+            "disabled" => Ok(MergeFunctions::Disabled),
+            "trampolines" => Ok(MergeFunctions::Trampolines),
+            "aliases" => Ok(MergeFunctions::Aliases),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for MergeFunctions {
+    fn to_json(&self) -> Json {
+        match *self {
+            MergeFunctions::Disabled => "disabled".to_json(),
+            MergeFunctions::Trampolines => "trampolines".to_json(),
+            MergeFunctions::Aliases => "aliases".to_json(),
+        }
+    }
+}
+
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 pub type TargetResult = Result<Target, String>;
 
@@ -690,7 +730,15 @@ pub struct TargetOptions {
 
     /// If set, have the linker export exactly these symbols, instead of using
     /// the usual logic to figure this out from the crate itself.
-    pub override_export_symbols: Option<Vec<String>>
+    pub override_export_symbols: Option<Vec<String>>,
+
+    /// Determines how or whether the MergeFunctions LLVM pass should run for
+    /// this target. Either "disabled", "trampolines", or "aliases".
+    /// The MergeFunctions pass is generally useful, but some targets may need
+    /// to opt out. The default is "aliases".
+    ///
+    /// Workaround for: https://github.com/rust-lang/rust/issues/57356
+    pub merge_functions: MergeFunctions
 }
 
 impl Default for TargetOptions {
@@ -773,6 +821,7 @@ impl Default for TargetOptions {
             requires_uwtable: false,
             simd_types_indirect: true,
             override_export_symbols: None,
+            merge_functions: MergeFunctions::Aliases,
         }
     }
 }
@@ -874,6 +923,19 @@ impl Target {
                 obj.find(&name[..])
                     .map(|o| o.as_u64()
                          .map(|s| base.options.$key_name = Some(s)));
+            } );
+            ($key_name:ident, MergeFunctions) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s.parse::<MergeFunctions>() {
+                        Ok(mergefunc) => base.options.$key_name = mergefunc,
+                        _ => return Some(Err(format!("'{}' is not a valid value for \
+                                                      merge-functions. Use 'disabled', \
+                                                      'trampolines', or 'aliases'.",
+                                                      s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
             } );
             ($key_name:ident, PanicStrategy) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -1064,6 +1126,7 @@ impl Target {
         key!(requires_uwtable, bool);
         key!(simd_types_indirect, bool);
         key!(override_export_symbols, opt_list);
+        key!(merge_functions, MergeFunctions)?;
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1275,6 +1338,7 @@ impl ToJson for Target {
         target_option_val!(requires_uwtable);
         target_option_val!(simd_types_indirect);
         target_option_val!(override_export_symbols);
+        target_option_val!(merge_functions);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

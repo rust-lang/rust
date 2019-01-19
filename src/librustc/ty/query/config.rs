@@ -656,6 +656,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::foreign_modules<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::entry_fn<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "looking up the entry function of a crate".into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::plugin_registrar_fn<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "looking up the plugin registrar for a crate".into()

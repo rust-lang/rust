@@ -35,10 +35,8 @@ use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name, Attribute};
 use syntax_pos::Span;
 use hir::*;
 use hir::def::Def;
-use hir::map::{self, Map};
+use hir::map::Map;
 use super::itemlikevisit::DeepVisitor;
-
-use std::cmp;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
@@ -1132,58 +1130,4 @@ pub fn walk_defaultness<'v, V: Visitor<'v>>(_: &mut V, _: &'v Defaultness) {
     // No visitable content here: this fn exists so you can call it if
     // the right thing to do, should content be added in the future,
     // would be to walk it.
-}
-
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct IdRange {
-    pub min: NodeId,
-    pub max: NodeId,
-}
-
-impl IdRange {
-    pub fn max() -> IdRange {
-        IdRange {
-            min: NodeId::MAX,
-            max: NodeId::from_u32(0),
-        }
-    }
-
-    pub fn empty(&self) -> bool {
-        self.min >= self.max
-    }
-
-    pub fn contains(&self, id: NodeId) -> bool {
-        id >= self.min && id < self.max
-    }
-
-    pub fn add(&mut self, id: NodeId) {
-        self.min = cmp::min(self.min, id);
-        self.max = cmp::max(self.max, NodeId::from_u32(id.as_u32() + 1));
-    }
-}
-
-
-pub struct IdRangeComputingVisitor<'a, 'hir: 'a> {
-    result: IdRange,
-    map: &'a map::Map<'hir>,
-}
-
-impl<'a, 'hir> IdRangeComputingVisitor<'a, 'hir> {
-    pub fn new(map: &'a map::Map<'hir>) -> IdRangeComputingVisitor<'a, 'hir> {
-        IdRangeComputingVisitor { result: IdRange::max(), map: map }
-    }
-
-    pub fn result(&self) -> IdRange {
-        self.result
-    }
-}
-
-impl<'a, 'hir> Visitor<'hir> for IdRangeComputingVisitor<'a, 'hir> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
-        NestedVisitorMap::OnlyBodies(&self.map)
-    }
-
-    fn visit_id(&mut self, id: NodeId) {
-        self.result.add(id);
-    }
 }

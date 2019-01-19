@@ -435,7 +435,8 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                     match *seq_tt {
                         TokenTree::MetaVarDecl(_, _, id) => id.name == "vis",
                         TokenTree::Sequence(_, ref sub_seq) =>
-                            sub_seq.op == quoted::KleeneOp::ZeroOrMore,
+                            sub_seq.op == quoted::KleeneOp::ZeroOrMore
+                            || sub_seq.op == quoted::KleeneOp::ZeroOrOne,
                         _ => false,
                     }
                 }) {
@@ -543,7 +544,10 @@ impl FirstSets {
                         }
 
                         // Reverse scan: Sequence comes before `first`.
-                        if subfirst.maybe_empty || seq_rep.op == quoted::KleeneOp::ZeroOrMore {
+                        if subfirst.maybe_empty
+                           || seq_rep.op == quoted::KleeneOp::ZeroOrMore
+                           || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                        {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
                             first.add_all(&TokenSet { maybe_empty: true, ..subfirst });
@@ -591,8 +595,10 @@ impl FirstSets {
 
                             assert!(first.maybe_empty);
                             first.add_all(subfirst);
-                            if subfirst.maybe_empty ||
-                               seq_rep.op == quoted::KleeneOp::ZeroOrMore {
+                            if subfirst.maybe_empty
+                               || seq_rep.op == quoted::KleeneOp::ZeroOrMore
+                               || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                            {
                                 // continue scanning for more first
                                 // tokens, but also make sure we
                                 // restore empty-tracking state

@@ -638,7 +638,7 @@ impl DepGraph {
                             DepKind::Hir |
                             DepKind::HirBody |
                             DepKind::CrateMetadata => {
-                                if dep_node.extract_def_id(tcx).is_none() {
+                                if dep_dep_node.extract_def_id(tcx).is_none() {
                                     // If the node does not exist anymore, we
                                     // just fail to mark green.
                                     return None

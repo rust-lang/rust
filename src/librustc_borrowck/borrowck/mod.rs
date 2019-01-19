@@ -39,7 +39,6 @@ use syntax_pos::{MultiSpan, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
 
 use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
@@ -157,12 +156,6 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
     where F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG
 {
     // Check the body of fn items.
-    let tcx = this.tcx;
-    let id_range = {
-        let mut visitor = intravisit::IdRangeComputingVisitor::new(&tcx.hir());
-        visitor.visit_body(this.body);
-        visitor.result()
-    };
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, body_id);
 
@@ -184,7 +177,6 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
                              Some(this.body),
                              cfg,
                              LoanDataFlowOperator,
-                             id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
         loan_dfcx.add_gen(loan.gen_scope.item_local_id(), loan_idx);
@@ -198,7 +190,6 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this,
                                                       cfg,
-                                                      id_range,
                                                       this.body);
 
     Some(AnalysisData { all_loans,
