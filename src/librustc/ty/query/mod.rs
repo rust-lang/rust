@@ -22,7 +22,7 @@ use mir::mono::CodegenUnit;
 use mir;
 use mir::interpret::GlobalId;
 use session::{CompileResult, CrateDisambiguator};
-use session::config::OutputFilenames;
+use session::config::{EntryFnType, OutputFilenames};
 use traits::{self, Vtable};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
@@ -476,6 +476,9 @@ define_queries! { <'tcx>
 
         [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
 
+        /// Identifies the entry-point (e.g. the `main` function) for a given
+        /// crate, returning `None` if there is no entry point (such as for library crates).
+        [] fn entry_fn: EntryFn(CrateNum) -> Option<(DefId, EntryFnType)>,
         [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
         [] fn proc_macro_decls_static: ProcMacroDeclsStatic(CrateNum) -> Option<DefId>,
         [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,

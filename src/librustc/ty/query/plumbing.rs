@@ -1329,6 +1329,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CheckImplItemWellFormed => { force!(check_impl_item_well_formed, def_id!()); }
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
+        DepKind::EntryFn => { force!(entry_fn, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
         DepKind::ProcMacroDeclsStatic => { force!(proc_macro_decls_static, krate!()); }
         DepKind::CrateDisambiguator => { force!(crate_disambiguator, krate!()); }

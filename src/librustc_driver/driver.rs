@@ -1149,6 +1149,7 @@ pub fn default_provide(providers: &mut ty::query::Providers) {
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     middle::region::provide(providers);
+    middle::entry::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);
 }
@@ -1183,10 +1184,6 @@ where
         rustc_incremental::load_query_result_cache(sess)
     });
 
-    time(sess, "looking for entry point", || {
-        middle::entry::find_entry_point(sess, &hir_map, name)
-    });
-
     let mut local_providers = ty::query::Providers::default();
     default_provide(&mut local_providers);
     codegen_backend.provide(&mut local_providers);
@@ -1215,6 +1212,10 @@ where
             // Do some initialization of the DepGraph that can only be done with the
             // tcx available.
             time(sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
+
+            time(sess, "looking for entry point", || {
+                middle::entry::find_entry_point(tcx)
+            });
 
             time(sess, "looking for plugin registrar", || {
                 plugin::build::find_plugin_registrar(tcx)

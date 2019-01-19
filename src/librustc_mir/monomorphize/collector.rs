@@ -177,13 +177,13 @@
 use rustc::hir::{self, CodegenFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::session::config;
+use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
@@ -321,9 +321,7 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut roots = Vec::new();
 
     {
-        let entry_fn = tcx.sess.entry_fn.borrow().map(|(node_id, _, _)| {
-            tcx.hir().local_def_id(node_id)
-        });
+        let entry_fn = tcx.entry_fn(LOCAL_CRATE);
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
@@ -924,7 +922,7 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mode: MonoItemCollectionMode,
     output: &'b mut Vec<MonoItem<'tcx>>,
-    entry_fn: Option<DefId>,
+    entry_fn: Option<(DefId, EntryFnType)>,
 }
 
 impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
@@ -1023,7 +1021,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
                 true
             }
             MonoItemCollectionMode::Lazy => {
-                self.entry_fn == Some(def_id) ||
+                self.entry_fn.map(|(id, _)| id) == Some(def_id) ||
                 self.tcx.is_reachable_non_generic(def_id) ||
                 self.tcx.codegen_fn_attrs(def_id).flags.contains(
                     CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
@@ -1048,14 +1046,9 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
     fn push_extra_entry_roots(&mut self) {
-        if self.tcx.sess.entry_fn.get().map(|e| e.2) != Some(config::EntryFnType::Main) {
-            return
-        }
-
-        let main_def_id = if let Some(def_id) = self.entry_fn {
-            def_id
-        } else {
-            return
+        let main_def_id = match self.entry_fn {
+            Some((def_id, EntryFnType::Main)) => def_id,
+            _ => return,
         };
 
         let start_def_id = match self.tcx.lang_items().require(StartFnLangItem) {
