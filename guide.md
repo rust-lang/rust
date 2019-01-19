@@ -426,8 +426,65 @@ actually written by the user.
 
 [`HirFileId`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ids.rs#L18-L125
 
+Now that we understand how to identify a definition, in a source or in a
+macro-generated file, we can discuss name resolution a bit.
+
 ## Name resolution
 
+Name resolution faces the same problem as the module tree: if we look at the
+syntax tree directly, we'll have to recompute name resolution after every
+modification. The solution to the problem is the same: we [lower] source code of
+each module into a position-independent representation which does not change if
+we modify bodies of the items. After that we [loop] resolving all imports until
+we've reached a fixed point.
+
+[lower]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L113-L117
+[loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L113-L117
+
+And, given all our preparation with ids and position-independent representation,
+it is satisfying to [test] that typing inside function body does not invalidate
+name resolution results.
+
+[test]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/tests.rs#L376
+
+An interesting fact about name resolution is that it "erases" all of
+intermediate paths from the imports: in the end, we know which items are defined
+and which items are imported in each module, but, if the import was `use
+foo::bar::baz`, we deliberately forget what modules `foo` and `bar` resolve to.
+
+To serve "goto definition" requests on intermediate segments we need this info
+in IDE. Luckily, we need it only for a tiny fraction of imports, so we just ask
+the module explicitly, "where does `foo::bar` path resolve to?". This is a
+general pattern: we try to compute the minimal possible amount of information
+during analysis while allowing IDE to ask for additional specific bits.
+
+Name resolution is also a good place to introduce another salsa pattern used
+throughout the analyzer:
+
 ## Source Map pattern
+
+Due to an obscure edge case in completion, IDE needs to know the syntax node of
+an use statement which imported the given completion candidate. We can't just
+store the syntax node as a part of name resolution: this will break
+incrementality, due to the fact that syntax changes after every file
+modification.
+
+We solve this problem during the lowering step of name resolution. Lowering
+query actually produces a *pair* of outputs: `LoweredModule` and [`SourceMap`].
+`LoweredModule` module contains [imports], but in a position-independent form.
+The `SourceMap` contains a mapping from position-independent imports to
+(position-dependent) syntax nodes.
+
+The result of this basic lowering query changes after every modification. But
+there's an intermediate [projection query] which returns only the first
+position-independent part of the lowering. The result of this query is stable.
+Naturally, name resolution [uses] this stable projection query.
+
+[imports]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L52-L59
+[`SourceMap`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L52-L59
+[projection query]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L97-L103
+[uses]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/query_definitions.rs#L49
+
+## Type inference
 
 ## Tying it all together: completion
