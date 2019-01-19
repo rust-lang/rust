@@ -259,7 +259,11 @@ Java) there isn't a one-to-one mapping between source code and semantic model. A
 single function definition in the source code might result in several semantic
 functions: for example, the same source file might be included as a module into
 several crate, or a single "crate" might be present in the compilation DAG
-several times, with different sets of `cfg`s enabled.
+several times, with different sets of `cfg`s enabled. The IDE-specific task of
+mapping source code position into semantic model is inherently imprecise for
+this reason, and is handled by the [`source_binder`].
+
+[`source_binder`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/source_binder.rs
 
 The semantic interface is declared in [`code_model_api`] module. Each entity is
 identified by integer id and has a bunch of methods which take a salsa database
@@ -486,5 +490,28 @@ Naturally, name resolution [uses] this stable projection query.
 [uses]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/query_definitions.rs#L49
 
 ## Type inference
+
+First of all, implementation of type inference in rust analyzer was spearheaded
+by [@flodiebold]. [#327] was an awesome Christmas present, thank you, Florian!
+
+Type inference runs on per-function granularity and uses the patterns we've
+discussed previously.
+
+First, we [lower ast] of function body into a position-independent
+representation. In this representation, each expression is assigned a
+[positional id]. Alongside the lowered expression, [a source map] is produced,
+which maps between expression ids and original syntax. This lowering step also
+deals with "incomplete" source trees by replacing missing expressions by an
+explicit `Missing` expression.
+
+Given the lower body of the function, we can now run [type inference] and
+construct a mapping from `ExprId`s to types.
+
+[@flodiebold]: https://github.com/flodiebold
+[#327]: https://github.com/rust-analyzer/rust-analyzer/pull/327
+[lower ast]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs
+[positional id]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L13-L15
+[a source map]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L41-L44
+[type-inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ty.rs#L1208-L1223
 
 ## Tying it all together: completion
