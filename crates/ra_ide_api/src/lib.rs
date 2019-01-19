@@ -43,7 +43,7 @@ use crate::{
 };
 
 pub use crate::{
-    completion::{CompletionItem, CompletionItemKind, InsertText},
+    completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     runnables::{Runnable, RunnableKind},
     navigation_target::NavigationTarget,
 };

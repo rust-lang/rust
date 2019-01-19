@@ -1,0 +1,18 @@
+Created: 2019-01-19T11:27:14.070727+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Magic,
+        label: "file_id: FileId",
+        kind: None,
+        detail: None,
+        lookup: Some(
+            "file_id"
+        ),
+        insert_text_format: PlainText,
+        text_edit: None,
+        additional_text_edits: None
+    }
+]

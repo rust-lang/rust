@@ -1,0 +1,35 @@
+Created: 2019-01-19T13:42:17.822990+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "self",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text_format: PlainText,
+        text_edit: None,
+        additional_text_edits: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "super",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text_format: PlainText,
+        text_edit: Some(
+            AtomTextEdit {
+                delete: [18; 20),
+                insert: "super::"
+            }
+        ),
+        additional_text_edits: None
+    }
+]

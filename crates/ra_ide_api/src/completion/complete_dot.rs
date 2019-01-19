@@ -1,6 +1,7 @@
 use hir::{Ty, Def};
 
-use crate::completion::{CompletionContext, Completions, CompletionKind, CompletionItem, CompletionItemKind};
+use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
+use crate::completion::completion_item::CompletionKind;
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -30,6 +31,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                         for field in s.fields(ctx.db) {
                             CompletionItem::new(
                                 CompletionKind::Reference,
+                                ctx,
                                 field.name().to_string(),
                             )
                             .kind(CompletionItemKind::Field)
@@ -43,7 +45,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             }
             Ty::Tuple(fields) => {
                 for (i, _ty) in fields.iter().enumerate() {
-                    CompletionItem::new(CompletionKind::Reference, i.to_string())
+                    CompletionItem::new(CompletionKind::Reference, ctx, i.to_string())
                         .kind(CompletionItemKind::Field)
                         .add_to(acc);
                 }
@@ -57,7 +59,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
     receiver.iterate_methods(ctx.db, |func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
-            CompletionItem::new(CompletionKind::Reference, sig.name().to_string())
+            CompletionItem::new(CompletionKind::Reference, ctx, sig.name().to_string())
                 .from_function(ctx, func)
                 .kind(CompletionItemKind::Method)
                 .add_to(acc);
@@ -69,27 +71,29 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
 #[cfg(test)]
 mod tests {
     use crate::completion::*;
+    use crate::completion::completion_item::check_completion;
 
-    fn check_ref_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Reference);
+    fn check_ref_completion(name: &str, code: &str) {
+        check_completion(name, code, CompletionKind::Reference);
     }
 
     #[test]
     fn test_struct_field_completion() {
         check_ref_completion(
+            "struct_field_completion",
             r"
             struct A { the_field: u32 }
             fn foo(a: A) {
                a.<|>
             }
             ",
-            r#"the_field "u32""#,
         );
     }
 
     #[test]
     fn test_struct_field_completion_self() {
         check_ref_completion(
+            "struct_field_completion_self",
             r"
             struct A { the_field: (u32,) }
             impl A {
@@ -98,14 +102,13 @@ mod tests {
                 }
             }
             ",
-            r#"the_field "(u32,)"
-               foo "foo($0)""#,
         );
     }
 
     #[test]
     fn test_struct_field_completion_autoderef() {
         check_ref_completion(
+            "struct_field_completion_autoderef",
             r"
             struct A { the_field: (u32, i32) }
             impl A {
@@ -114,27 +117,26 @@ mod tests {
                 }
             }
             ",
-            r#"the_field "(u32, i32)"
-               foo "foo($0)""#,
         );
     }
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
         check_ref_completion(
+            "no_struct_field_completion_for_method_call",
             r"
             struct A { the_field: u32 }
             fn foo(a: A) {
                a.<|>()
             }
             ",
-            r#""#,
         );
     }
 
     #[test]
     fn test_method_completion() {
         check_ref_completion(
+            "method_completion",
             r"
             struct A {}
             impl A {
@@ -144,13 +146,13 @@ mod tests {
                a.<|>
             }
             ",
-            r#"the_method "the_method($0)""#,
         );
     }
 
     #[test]
     fn test_no_non_self_method() {
         check_ref_completion(
+            "no_non_self_method",
             r"
             struct A {}
             impl A {
@@ -160,7 +162,6 @@ mod tests {
                a.<|>
             }
             ",
-            r#""#,
         );
     }
 }

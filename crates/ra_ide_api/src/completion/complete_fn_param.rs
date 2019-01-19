@@ -34,7 +34,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
             }
         })
         .for_each(|(label, lookup)| {
-            CompletionItem::new(CompletionKind::Magic, label)
+            CompletionItem::new(CompletionKind::Magic, ctx, label)
                 .lookup_by(lookup)
                 .add_to(acc)
         });
@@ -56,38 +56,40 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 #[cfg(test)]
 mod tests {
     use crate::completion::*;
+    use crate::completion::completion_item::check_completion;
 
-    fn check_magic_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Magic);
+    fn check_magic_completion(name: &str, code: &str) {
+        check_completion(name, code, CompletionKind::Magic);
     }
 
     #[test]
     fn test_param_completion_last_param() {
         check_magic_completion(
+            "param_completion_last_param",
             r"
             fn foo(file_id: FileId) {}
             fn bar(file_id: FileId) {}
             fn baz(file<|>) {}
             ",
-            r#"file_id "file_id: FileId""#,
         );
     }
 
     #[test]
     fn test_param_completion_nth_param() {
         check_magic_completion(
+            "param_completion_nth_param",
             r"
             fn foo(file_id: FileId) {}
             fn bar(file_id: FileId) {}
             fn baz(file<|>, x: i32) {}
             ",
-            r#"file_id "file_id: FileId""#,
         );
     }
 
     #[test]
     fn test_param_completion_trait_param() {
         check_magic_completion(
+            "param_completion_trait_param",
             r"
             pub(crate) trait SourceRoot {
                 pub fn contains(&self, file_id: FileId) -> bool;
@@ -96,7 +98,6 @@ mod tests {
                 pub fn syntax(&self, file<|>)
             }
             ",
-            r#"file_id "file_id: FileId""#,
         );
     }
 }

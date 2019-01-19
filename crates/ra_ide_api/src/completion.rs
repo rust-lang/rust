@@ -19,7 +19,7 @@ use crate::{
     },
 };
 
-pub use crate::completion::completion_item::{CompletionItem, InsertText, CompletionItemKind};
+pub use crate::completion::completion_item::{CompletionItem, CompletionItemKind, InsertTextFormat};
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///
@@ -59,16 +59,4 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     complete_dot::complete_dot(&mut acc, &ctx);
 
     Some(acc)
-}
-
-#[cfg(test)]
-fn check_completion(code: &str, expected_completions: &str, kind: CompletionKind) {
-    use crate::mock_analysis::{single_file_with_position, analysis_and_position};
-    let (analysis, position) = if code.contains("//-") {
-        analysis_and_position(code)
-    } else {
-        single_file_with_position(code)
-    };
-    let completions = completions(&analysis.db, position).unwrap();
-    completions.assert_match(expected_completions, kind);
 }

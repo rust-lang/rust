@@ -1,13 +1,13 @@
 use lsp_types::{
-    self, CreateFile, DocumentChangeOperation, DocumentChanges, InsertTextFormat, Location, LocationLink,
+    self, CreateFile, DocumentChangeOperation, DocumentChanges, Location, LocationLink,
     Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
     WorkspaceEdit,
 };
 use ra_ide_api::{
     CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
-    InsertText, NavigationTarget, SourceChange, SourceFileEdit, RangeInfo,
-    LineCol, LineIndex, translate_offset_with_edit
+    NavigationTarget, SourceChange, SourceFileEdit, RangeInfo,
+    LineCol, LineIndex, translate_offset_with_edit, InsertTextFormat
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -74,27 +74,30 @@ impl Conv for CompletionItemKind {
     }
 }
 
-impl Conv for CompletionItem {
+impl ConvWith for CompletionItem {
+    type Ctx = LineIndex;
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv(self) -> <Self as Conv>::Output {
-        let mut res = ::lsp_types::CompletionItem {
+    fn conv_with(mut self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
+        let text_edit = self.text_edit().map(|t| t.conv_with(ctx));
+        let additonal_text_edit = self
+            .take_additional_text_edits()
+            .map(|it| it.conv_with(ctx));
+
+        let mut res = lsp_types::CompletionItem {
             label: self.label().to_string(),
             detail: self.detail().map(|it| it.to_string()),
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
+            text_edit,
+            additional_text_edits: additonal_text_edit,
             ..Default::default()
         };
-        match self.insert_text() {
-            InsertText::PlainText { text } => {
-                res.insert_text = Some(text);
-                res.insert_text_format = Some(InsertTextFormat::PlainText);
-            }
-            InsertText::Snippet { text } => {
-                res.insert_text = Some(text);
-                res.insert_text_format = Some(InsertTextFormat::Snippet);
-            }
-        }
+        res.insert_text_format = Some(match self.insert_text_format() {
+            InsertTextFormat::Snippet => lsp_types::InsertTextFormat::Snippet,
+            InsertTextFormat::PlainText => lsp_types::InsertTextFormat::PlainText,
+        });
+
         res
     }
 }
