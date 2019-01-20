@@ -14,6 +14,7 @@ use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
+use syntax_pos::symbol::Symbol;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -38,6 +39,8 @@ pub enum Constant {
     Repeat(Box<Constant>, u64),
     /// a tuple of constants
     Tuple(Vec<Constant>),
+    /// a literal with syntax error
+    Err(Symbol),
 }
 
 impl PartialEq for Constant {
@@ -103,6 +106,9 @@ impl Hash for Constant {
                 c.hash(state);
                 l.hash(state);
             },
+            Constant::Err(ref s) => {
+                s.hash(state);
+            },
         }
     }
 }
@@ -155,6 +161,7 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
+        LitKind::Err(s) => Constant::Err(s),
     }
 }
 

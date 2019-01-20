@@ -131,9 +131,10 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.node {
-                        hir::StmtKind::Decl(ref d, _) => Some(d.span),
-                        hir::StmtKind::Expr(ref e, _) => Some(e.span),
-                        hir::StmtKind::Semi(_, _) => Some(inner_stmt.span),
+                        hir::StmtKind::Local(ref local) => Some(local.span),
+                        hir::StmtKind::Expr(ref e) => Some(e.span),
+                        hir::StmtKind::Semi(..) => Some(inner_stmt.span),
+                        hir::StmtKind::Item(..) => None,
                     }
                 },
                 _ => {
@@ -250,7 +251,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
 
-        if let hir::StmtKind::Semi(ref expr, _) = stmt.node {
+        if let hir::StmtKind::Semi(ref expr) = stmt.node {
             if let Some(arglists) = method_chain_args(expr, &["map"]) {
                 lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }

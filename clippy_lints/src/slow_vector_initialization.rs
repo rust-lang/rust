@@ -91,8 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
-            if let StmtKind::Decl(ref decl, _) = stmt.node;
-            if let DeclKind::Local(ref local) = decl.node;
+            if let StmtKind::Local(ref local) = stmt.node;
             if let PatKind::Binding(BindingAnnotation::Mutable, _, variable_name, None) = local.pat.node;
             if let Some(ref init) = local.init;
             if let Some(ref len_arg) = Self::is_vec_with_capacity(init);
@@ -104,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Self::search_initialization(cx, vi, stmt.node.id());
+                Self::search_initialization(cx, vi, stmt.id);
             }
         }
     }
@@ -287,7 +286,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
         if self.initialization_found {
             match stmt.node {
-                StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => {
+                StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
                     self.search_slow_extend_filling(expr);
                     self.search_slow_resize_filling(expr);
                 },

@@ -463,28 +463,6 @@ declare_clippy_lint! {
     "creating a let binding to a value of unit type, which usually can't be used afterwards"
 }
 
-fn check_let_unit(cx: &LateContext<'_, '_>, decl: &Decl) {
-    if let DeclKind::Local(ref local) = decl.node {
-        if is_unit(cx.tables.pat_ty(&local.pat)) {
-            if in_external_macro(cx.sess(), decl.span) || in_macro(local.pat.span) {
-                return;
-            }
-            if higher::is_from_for_desugar(decl) {
-                return;
-            }
-            span_lint(
-                cx,
-                LET_UNIT_VALUE,
-                decl.span,
-                &format!(
-                    "this let-binding has unit value. Consider omitting `let {} =`",
-                    snippet(cx, local.pat.span, "..")
-                ),
-            );
-        }
-    }
-}
-
 impl LintPass for LetPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LET_UNIT_VALUE)
@@ -492,8 +470,26 @@ impl LintPass for LetPass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetPass {
-    fn check_decl(&mut self, cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl) {
-        check_let_unit(cx, decl)
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
+        if let StmtKind::Local(ref local) = stmt.node {
+            if is_unit(cx.tables.pat_ty(&local.pat)) {
+                if in_external_macro(cx.sess(), stmt.span) || in_macro(local.pat.span) {
+                    return;
+                }
+                if higher::is_from_for_desugar(local) {
+                    return;
+                }
+                span_lint(
+                    cx,
+                    LET_UNIT_VALUE,
+                    stmt.span,
+                    &format!(
+                        "this let-binding has unit value. Consider omitting `let {} =`",
+                        snippet(cx, local.pat.span, "..")
+                    ),
+                );
+            }
+        }
     }
 }
 

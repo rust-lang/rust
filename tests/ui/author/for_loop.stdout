@@ -1,7 +1,6 @@
 if_chain! {
     if let ExprKind::Block(ref block) = expr.node;
-    if let StmtKind::Decl(ref decl, _) = block.node
-    if let DeclKind::Local(ref local) = decl.node;
+    if let StmtKind::Local(ref local) = block.node;
     if let Some(ref init) = local.init
     if let ExprKind::Match(ref expr, ref arms, MatchSource::ForLoopDesugar) = init.node;
     if let ExprKind::Call(ref func, ref args) = expr.node;
@@ -14,8 +13,7 @@ if_chain! {
     // unimplemented: field checks
     if arms.len() == 1;
     if let ExprKind::Loop(ref body, ref label, LoopSource::ForLoop) = arms[0].body.node;
-    if let StmtKind::Decl(ref decl1, _) = body.node
-    if let DeclKind::Local(ref local1) = decl1.node;
+    if let StmtKind::Local(ref local1) = body.node;
     if let PatKind::Binding(BindingAnnotation::Mutable, _, name, None) = local1.pat.node;
     if name.node.as_str() == "__next";
     if let StmtKind::Expr(ref e, _) = local1.pat.node
@@ -42,8 +40,7 @@ if_chain! {
     if arms1[1].pats.len() == 1;
     if let PatKind::Path(ref path7) = arms1[1].pats[0].node;
     if match_qpath(path7, &["{{root}}", "std", "option", "Option", "None"]);
-    if let StmtKind::Decl(ref decl2, _) = path7.node
-    if let DeclKind::Local(ref local2) = decl2.node;
+    if let StmtKind::Local(ref local2) = path7.node;
     if let Some(ref init1) = local2.init
     if let ExprKind::Path(ref path8) = init1.node;
     if match_qpath(path8, &["__next"]);
@@ -51,8 +48,7 @@ if_chain! {
     if name1.node.as_str() == "y";
     if let StmtKind::Expr(ref e1, _) = local2.pat.node
     if let ExprKind::Block(ref block1) = e1.node;
-    if let StmtKind::Decl(ref decl3, _) = block1.node
-    if let DeclKind::Local(ref local3) = decl3.node;
+    if let StmtKind::Local(ref local3) = block1.node;
     if let Some(ref init2) = local3.init
     if let ExprKind::Path(ref path9) = init2.node;
     if match_qpath(path9, &["y"]);

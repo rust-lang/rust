@@ -43,17 +43,14 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     /// Check whether two statements are the same.
     pub fn eq_stmt(&mut self, left: &Stmt, right: &Stmt) -> bool {
         match (&left.node, &right.node) {
-            (&StmtKind::Decl(ref l, _), &StmtKind::Decl(ref r, _)) => {
-                if let (&DeclKind::Local(ref l), &DeclKind::Local(ref r)) = (&l.node, &r.node) {
-                    self.eq_pat(&l.pat, &r.pat)
-                        && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
-                        && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
-                } else {
-                    false
-                }
+            (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
+                self.eq_pat(&l.pat, &r.pat)
+                    && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
+                    && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
             },
-            (&StmtKind::Expr(ref l, _), &StmtKind::Expr(ref r, _))
-            | (&StmtKind::Semi(ref l, _), &StmtKind::Semi(ref r, _)) => self.eq_expr(l, r),
+            (&StmtKind::Expr(ref l), &StmtKind::Expr(ref r)) | (&StmtKind::Semi(ref l), &StmtKind::Semi(ref r)) => {
+                self.eq_expr(l, r)
+            },
             _ => false,
         }
     }
@@ -643,23 +640,24 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
         match b.node {
-            StmtKind::Decl(ref decl, _) => {
-                let c: fn(_, _) -> _ = StmtKind::Decl;
+            StmtKind::Local(ref local) => {
+                let c: fn(_) -> _ = StmtKind::Local;
                 c.hash(&mut self.s);
-
-                if let DeclKind::Local(ref local) = decl.node {
-                    if let Some(ref init) = local.init {
-                        self.hash_expr(init);
-                    }
+                if let Some(ref init) = local.init {
+                    self.hash_expr(init);
                 }
             },
-            StmtKind::Expr(ref expr, _) => {
-                let c: fn(_, _) -> _ = StmtKind::Expr;
+            StmtKind::Item(..) => {
+                let c: fn(_) -> _ = StmtKind::Item;
+                c.hash(&mut self.s);
+            },
+            StmtKind::Expr(ref expr) => {
+                let c: fn(_) -> _ = StmtKind::Expr;
                 c.hash(&mut self.s);
                 self.hash_expr(expr);
             },
-            StmtKind::Semi(ref expr, _) => {
-                let c: fn(_, _) -> _ = StmtKind::Semi;
+            StmtKind::Semi(ref expr) => {
+                let c: fn(_) -> _ = StmtKind::Semi;
                 c.hash(&mut self.s);
                 self.hash_expr(expr);
             },
