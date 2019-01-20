@@ -473,8 +473,7 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot |
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
-            Question | OpenDelim(..) | CloseDelim(..) => return None,
-
+            Question | OpenDelim(..) | CloseDelim(..) |
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
             Whitespace | Comment | Shebang(..) | Eof => return None,
         })

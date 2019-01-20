@@ -3121,7 +3121,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 opt_ty.unwrap_or_else(
                     || tcx.mk_float_var(self.next_float_var_id()))
             }
-            ast::LitKind::Bool(_) => tcx.types.bool
+            ast::LitKind::Bool(_) => tcx.types.bool,
+            ast::LitKind::Err(_) => tcx.types.err,
         }
     }
 

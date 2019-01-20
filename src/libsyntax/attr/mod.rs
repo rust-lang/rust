@@ -661,6 +661,7 @@ impl LitKind {
             } else {
                 "false"
             })), false),
+            LitKind::Err(val) => Token::Literal(token::Lit::Err(val), None),
         }
     }
 
