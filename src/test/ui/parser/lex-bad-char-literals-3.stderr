@@ -1,15 +1,15 @@
 error: character literal may only contain one codepoint
   --> $DIR/lex-bad-char-literals-3.rs:1:18
    |
-LL | static c: char = '●●'; 
+LL | static c: char = '●●';
    |                  ^^^^
 help: if you meant to write a `str` literal, use double quotes
    |
-LL | static c: char = "●●"; 
+LL | static c: char = "●●";
    |                  ^^^^
 
 error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-3.rs:6:20
+  --> $DIR/lex-bad-char-literals-3.rs:5:20
    |
 LL |     let ch: &str = '●●';
    |                    ^^^^
