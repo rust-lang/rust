@@ -495,7 +495,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.id)) {
             // `expr` is a literal field for a struct, only suggest if appropriate
             for field in fields {
-                if field.expr.id == expr.id {
+                if field.expr.id == expr.id && field.is_shorthand {
                     // This is a field literal
                     prefix = format!("{}: ", field.ident);
                     break;
