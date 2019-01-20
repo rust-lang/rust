@@ -139,7 +139,7 @@ impl Pass {
         if_chain! {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
-            if let StmtKind::Semi(ref expr, _) = expr.node;
+            if let StmtKind::Semi(ref expr) = expr.node;
             if let ExprKind::Ret(ref ret_expr) = expr.node;
             if let &Some(ref ret_expr) = ret_expr;
 

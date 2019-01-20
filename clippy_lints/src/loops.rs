@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::hir::def::Def;
 use rustc::hir::def_id;
-use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc::hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::middle::region;
@@ -597,7 +597,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
-        if let StmtKind::Semi(ref expr, _) = stmt.node {
+        if let StmtKind::Semi(ref expr) = stmt.node {
             if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
                 if args.len() == 1 && method.ident.name == "collect" && match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(
@@ -668,13 +668,7 @@ fn never_loop_block(block: &Block, main_loop_id: NodeId) -> NeverLoopResult {
 fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
     match stmt.node {
         StmtKind::Semi(ref e, ..) | StmtKind::Expr(ref e, ..) => Some(e),
-        StmtKind::Decl(ref d, ..) => decl_to_expr(d),
-    }
-}
-
-fn decl_to_expr(decl: &Decl) -> Option<&Expr> {
-    match decl.node {
-        DeclKind::Local(ref local) => local.init.as_ref().map(|p| &**p),
+        StmtKind::Local(ref local) => local.init.as_ref().map(|p| &**p),
         _ => None,
     }
 }
@@ -942,8 +936,8 @@ fn get_indexed_assignments<'a, 'tcx>(
         stmts
             .iter()
             .map(|stmt| match stmt.node {
-                StmtKind::Decl(..) => None,
-                StmtKind::Expr(ref e, _node_id) | StmtKind::Semi(ref e, _node_id) => Some(get_assignment(cx, e, var)),
+                StmtKind::Local(..) | StmtKind::Item(..) => None,
+                StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => Some(get_assignment(cx, e, var)),
             })
             .chain(expr.as_ref().into_iter().map(|e| Some(get_assignment(cx, &*e, var))))
             .filter_map(|op| op)
@@ -1976,16 +1970,12 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
     if block.stmts.is_empty() {
         return None;
     }
-    if let StmtKind::Decl(ref decl, _) = block.stmts[0].node {
-        if let DeclKind::Local(ref local) = decl.node {
+    if let StmtKind::Local(ref local) = block.stmts[0].node {
             if let Some(ref expr) = local.init {
                 Some(expr)
             } else {
                 None
             }
-        } else {
-            None
-        }
     } else {
         None
     }
@@ -1996,8 +1986,8 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
     match block.expr {
         Some(ref expr) if block.stmts.is_empty() => Some(expr),
         None if !block.stmts.is_empty() => match block.stmts[0].node {
-            StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => Some(expr),
-            StmtKind::Decl(..) => None,
+            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => Some(expr),
+            StmtKind::Local(..) | StmtKind::Item(..) => None,
         },
         _ => None,
     }
@@ -2095,9 +2085,9 @@ struct InitializeVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
-    fn visit_decl(&mut self, decl: &'tcx Decl) {
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
         // Look for declarations of the variable
-        if let DeclKind::Local(ref local) = decl.node {
+        if let StmtKind::Local(ref local) = stmt.node {
             if local.pat.id == self.var_id {
                 if let PatKind::Binding(_, _, ident, _) = local.pat.node {
                     self.name = Some(ident.name);
@@ -2114,7 +2104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                 }
             }
         }
-        walk_decl(self, decl);
+        walk_stmt(self, stmt);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
@@ -2261,7 +2251,7 @@ struct LoopNestVisitor {
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
-        if stmt.node.id() == self.id {
+        if stmt.id == self.id {
             self.nesting = LookFurther;
         } else if self.nesting == Unknown {
             walk_stmt(self, stmt);

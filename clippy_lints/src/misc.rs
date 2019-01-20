@@ -277,8 +277,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx Stmt) {
         if_chain! {
-            if let StmtKind::Decl(ref d, _) = s.node;
-            if let DeclKind::Local(ref l) = d.node;
+            if let StmtKind::Local(ref l) = s.node;
             if let PatKind::Binding(an, _, i, None) = l.pat.node;
             if let Some(ref init) = l.init;
             then {
@@ -316,7 +315,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         };
         if_chain! {
-            if let StmtKind::Semi(ref expr, _) = s.node;
+            if let StmtKind::Semi(ref expr) = s.node;
             if let ExprKind::Binary(ref binop, ref a, ref b) = expr.node;
             if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);

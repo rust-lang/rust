@@ -1336,13 +1336,11 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                         _ => {},
                     },
                     hir::Node::Stmt(stmt) => {
-                        if let hir::StmtKind::Decl(ref decl, _) = stmt.node {
-                            if let hir::DeclKind::Local(ref loc) = decl.node {
+                        if let hir::StmtKind::Local(ref loc) = stmt.node {
                                 if let hir::PatKind::Ref(..) = loc.pat.node {
                                     // let ref y = *x borrows x, let ref y = x.clone() does not
                                     return;
                                 }
-                            }
                         }
                     },
                     _ => {},
