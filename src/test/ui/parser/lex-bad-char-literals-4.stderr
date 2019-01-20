@@ -1,20 +1,8 @@
-error: character literal may only contain one codepoint
+error: character literal may only contain one codepoint: '●
   --> $DIR/lex-bad-char-literals-4.rs:4:5
    |
-LL |     '●  //~ ERROR: character literal may only contain one codepoint: '●
+LL |     '●  //~ ERROR: character literal may only contain one codepoint
    |     ^^
 
-error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-4.rs:4:70
-   |
-LL |     '●  //~ ERROR: character literal may only contain one codepoint: '●
-   |                                                                      ^^
-
-error: expected one of `.`, `;`, `?`, or an operator, found `~`
-  --> $DIR/lex-bad-char-literals-4.rs:4:11
-   |
-LL |     '●  //~ ERROR: character literal may only contain one codepoint: '●
-   |           ^ expected one of `.`, `;`, `?`, or an operator here
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

@@ -1,56 +1,47 @@
 error: character literal may only contain one codepoint
   --> $DIR/lex-bad-char-literals-6.rs:2:19
    |
-LL |     let x: &str = 'ab';  //~ ERROR: character literal may only contain one codepoint
+LL |     let x: &str = 'ab';
    |                   ^^^^
 
 error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-6.rs:3:19
+  --> $DIR/lex-bad-char-literals-6.rs:4:19
    |
-LL |     let y: char = 'cd';  //~ ERROR: character literal may only contain one codepoint
+LL |     let y: char = 'cd';
    |                   ^^^^
 
 error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-6.rs:4:13
+  --> $DIR/lex-bad-char-literals-6.rs:6:13
    |
-LL |     let z = 'ef';  //~ ERROR: character literal may only contain one codepoint
+LL |     let z = 'ef';
    |             ^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/lex-bad-char-literals-6.rs:2:19
-   |
-LL |     let x: &str = 'ab';  //~ ERROR: character literal may only contain one codepoint
-   |                   ^^^^ expected &str, found char
-   |
-   = note: expected type `&str`
-              found type `char`
-
 error[E0277]: can't compare `&str` with `char`
-  --> $DIR/lex-bad-char-literals-6.rs:6:10
+  --> $DIR/lex-bad-char-literals-6.rs:9:10
    |
-LL |     if x == y {}  // no error here
+LL |     if x == y {}
    |          ^^ no implementation for `&str == char`
    |
    = help: the trait `std::cmp::PartialEq<char>` is not implemented for `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/lex-bad-char-literals-6.rs:10:20
+  --> $DIR/lex-bad-char-literals-6.rs:15:20
    |
-LL |     let a: usize = "";  // type error here to confirm we got past the parser
+LL |     let a: usize = "";
    |                    ^^ expected usize, found reference
    |
    = note: expected type `usize`
               found type `&'static str`
 
 error[E0277]: can't compare `&str` with `char`
-  --> $DIR/lex-bad-char-literals-6.rs:8:10
+  --> $DIR/lex-bad-char-literals-6.rs:12:10
    |
-LL |     if x == z {}  // no error here
+LL |     if x == z {}
    |          ^^ no implementation for `&str == char`
    |
    = help: the trait `std::cmp::PartialEq<char>` is not implemented for `&str`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors occurred: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.
