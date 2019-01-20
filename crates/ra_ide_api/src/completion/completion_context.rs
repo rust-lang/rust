@@ -69,7 +69,11 @@ impl<'a> CompletionContext<'a> {
     // This is purely advisory and can be used, for example, to highlight this range in the editor.
     // Clients are expected to ignore this field.
     pub(crate) fn source_range(&self) -> TextRange {
-        self.leaf.range()
+        match self.leaf.kind() {
+            // workaroud when completion is triggered by trigger characters.
+            DOT | COLONCOLON => TextRange::from_to(self.offset, self.offset),
+            _ => self.leaf.range()
+        }
     }
 
     fn fill(&mut self, original_file: &'a SourceFile, offset: TextUnit) {
