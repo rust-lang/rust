@@ -371,7 +371,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ty::Int(t) => {
                     let ity = attr::IntType::SignedInt(t);
                     let size = layout::Integer::from_attr(&cx.tcx, ity).size();
-                    let actually = sign_extend(val, size);
+                    let actually = sign_extend(val, size) as i128;
                     (format!("{:?}", t), actually.to_string())
                 }
                 ty::Uint(t) => {
