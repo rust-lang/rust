@@ -96,37 +96,37 @@ Soon we'll talk how we build an LSP server on top of `Analysis`, but first,
 let's deal with that paths issue.
 
 
-## Source roots (aka filesystems are horrible)
+## Source roots (a.k.a. "Filesystems are horrible")
 
 This is a non-essential section, feel free to skip.
 
-The previous section said that the file system path is an attribute of a file,
-but this is not a whole truth. Making it an absolute `PathBuf` will be bad for
-several reasons. First, file-systems are full of (platform-dependent) edge cases:
+The previous section said that the filesystem path is an attribute of a file,
+but this is not the whole truth. Making it an absolute `PathBuf` will be bad for
+several reasons. First, filesystems are full of (platform-dependent) edge cases:
 
 * it's hard (requires a syscall) to decide if two paths are equivalent
-* some file-systems are case-sensitive
+* some filesystems are case-sensitive (e.g. on macOS)
 * paths are not necessary UTF-8
 * symlinks can form cycles
 
 Second, this might hurt reproducibility and hermeticity of builds. In theory,
 moving a project from `/foo/bar/my-project` to `/spam/eggs/my-project` should
-not change a bit in the output. However, if absolute path is a part of the
+not change a bit in the output. However, if the absolute path is a part of the
 input, it is at least in theory observable, and *could* affect the output.
 
-Yet another problem is that we really-really want to avoid doing IO, but with
+Yet another problem is that we really *really* want to avoid doing I/O, but with
 Rust the set of "input" files is not necessary known up-front. In theory, you
 can have `#[path="/dev/random"] mod foo;`.
 
 To solve (or explicitly refuse to solve) these problems rust-analyzer uses the
-concept of source root. Roughly speaking, source roots is a contents of a
+concept of a "source root". Roughly speaking, source roots are the contents of a
 directory on a file systems, like `/home/matklad/projects/rustraytracer/**.rs`.
 
 More precisely, all files (`FileId`s) are partitioned into disjoint
-`SourceRoot`s. Each file has a relative utf-8 path within the `SourceRoot`.
-`SourceRoot` has an identity (integer id). Crucially, the root path of the
-source root itself is unknown to the analyzer: client is supposed to maintain a
-mapping between SourceRoot ids (which are assigned by the client) and actual
+`SourceRoot`s. Each file has a relative UTF-8 path within the `SourceRoot`.
+`SourceRoot` has an identity (integer ID). Crucially, the root path of the
+source root itself is unknown to the analyzer: A client is supposed to maintain a
+mapping between `SourceRoot` IDs (which are assigned by the client) and actual
 `PathBuf`s. `SourceRoot`s give a sane tree model of the file system to the
 analyzer.
 
@@ -136,7 +136,7 @@ the source root, even `/dev/random`.
 
 ## Language Server Protocol
 
-Now let's see how `Analysis` API is exposed via JSON RPC based LSP protocol. The
+Now let's see how the `Analysis` API is exposed via the JSON RPC based language server protocol. The
 hard part here is managing changes (which can come either from the file system
 or from the editor) and concurrency (we want to spawn background jobs for things
 like syntax highlighting). We use the event loop pattern to manage the zoo, and
@@ -151,7 +151,7 @@ Let's walk through a typical analyzer session!
 
 First, we need to figure out what to analyze. To do this, we run `cargo
 metadata` to learn about Cargo packages for current workspace and dependencies,
-and we run `rustc --print sysroot` and scan sysroot to learn about crates like
+and we run `rustc --print sysroot` and scan the "sysroot" (the directory containing the current Rust toolchain's files) to learn about crates like
 `std`. Currently we load this configuration once at the start of the server, but
 it should be possible to dynamically reconfigure it later without restart.
 
@@ -162,7 +162,7 @@ it needs to be lowered to get the input in the form of `AnalysisChange`. This
 happens in [`ServerWorldState::new`] method. Specifically
 
 * Create a `SourceRoot` for each Cargo package and sysroot.
-* Schedule a file system scan of the roots.
+* Schedule a filesystem scan of the roots.
 * Create an analyzer's `Crate` for each Cargo **target** and sysroot crate.
 * Setup dependencies between the crates.
 
@@ -170,18 +170,18 @@ happens in [`ServerWorldState::new`] method. Specifically
 [`ServerWorldState::new`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L38-L160
 
 The results of the scan (which may take a while) will be processed in the body
-of the main loop, just like any other change. Here's where we handle
+of the main loop, just like any other change. Here's where we handle:
 
 * [File system changes](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L194)
 * [Changes from the editor](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L377)
 
-After a single loop's turn, we group them into one `AnalysisChange` and
+After a single loop's turn, we group the changes into one `AnalysisChange` and
 [apply] it. This always happens on the main thread and blocks the loop.
 
 [apply]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
 
 To handle requests, like ["goto definition"], we create an instance of the
-`Analysis` and [`schedule`] the task (which consumes `Analysis`) onto
+`Analysis` and [`schedule`] the task (which consumes `Analysis`) on the
 threadpool. [The task] calls the corresponding `Analysis` method, while
 massaging the types into the LSP representation. Keep in mind that if we are
 executing "goto definition" on the threadpool and a new change comes in, the
@@ -197,7 +197,7 @@ dig into the implementation!
 
 ## Salsa
 
-The most straightforward way to implement "apply change, get analysis, repeat"
+The most straightforward way to implement an "apply change, get analysis, repeat"
 API would be to maintain the input state and to compute all possible analysis
 information from scratch after every change. This works, but scales poorly with
 the size of the project. To make this fast, we need to take advantage of the
@@ -205,16 +205,16 @@ fact that most of the changes are small, and that analysis results are unlikely
 to change significantly between invocations.
 
 To do this we use [salsa]: a framework for incremental on-demand computation.
-You can skip the rest of the section if you are familiar with rustc red-green
-algorithm.
+You can skip the rest of the section if you are familiar with rustc's red-green
+algorithm (which is used for incremental compilation).
 
 [salsa]: https://github.com/salsa-rs/salsa
 
 It's better to refer to salsa's docs to learn about it. Here's a small excerpt:
 
 The key idea of salsa is that you define your program as a set of queries. Every
-query is used like function K -> V that maps from some key of type K to a value
-of type V. Queries come in two basic varieties:
+query is used like a function `K -> V` that maps from some key of type `K` to a value
+of type `V`. Queries come in two basic varieties:
 
 * **Inputs**: the base inputs to your system. You can change these whenever you
   like.
@@ -254,23 +254,23 @@ indeed, what `apply_change` does is it sets the values of input queries.
 
 ## From text to semantic model
 
-The bulk of the rust-analyzer is transforming input text into semantic model of
+The bulk of the rust-analyzer is transforming input text into a semantic model of
 Rust code: a web of entities like modules, structs, functions and traits.
 
 An important fact to realize is that (unlike most other languages like C# or
-Java) there isn't a one-to-one mapping between source code and semantic model. A
+Java) there isn't a one-to-one mapping between source code and the semantic model. A
 single function definition in the source code might result in several semantic
 functions: for example, the same source file might be included as a module into
 several crate, or a single "crate" might be present in the compilation DAG
 several times, with different sets of `cfg`s enabled. The IDE-specific task of
-mapping source code position into semantic model is inherently imprecise for
+mapping source code position into a semantic model is inherently imprecise for
 this reason, and is handled by the [`source_binder`].
 
 [`source_binder`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/source_binder.rs
 
-The semantic interface is declared in [`code_model_api`] module. Each entity is
-identified by integer id and has a bunch of methods which take a salsa database
-as an argument and returns other entities (which are ids). Internally, this
+The semantic interface is declared in the [`code_model_api`] module. Each entity is
+identified by an integer ID and has a bunch of methods which take a salsa database
+as an argument and returns other entities (which are also IDs). Internally, these
 methods invoke various queries on the database to build the model on demand.
 Here's [the list of queries].
 
@@ -287,7 +287,7 @@ syntax. For this reason, rust-analyzer can build a syntax tree for each "source
 file", which could then be reused by several semantic models if this file
 happens to be a part of several crates.
 
-Rust-analyzer uses a similar representation of syntax trees to that of `Roslyn`
+The representation of syntax trees that rust-analyzer uses is similar to that of `Roslyn`
 and Swift's new [libsyntax]. Swift's docs give an excellent overview of the
 approach, so I skip this part here and instead outline the main characteristics
 of the syntax trees:
@@ -328,9 +328,9 @@ The next step in constructing the semantic model is ...
 ## Building a Module Tree
 
 The algorithm for building a tree of modules is to start with a crate root
-(remember, each `Crate` from a `CrateGraph` has a `FileId`), collect all mod
+(remember, each `Crate` from a `CrateGraph` has a `FileId`), collect all `mod`
 declarations and recursively process child modules. This is handled by the
-[`module_tree_query`], with a two slight variations.
+[`module_tree_query`], with two slight variations.
 
 [`module_tree_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L116-L123
 
@@ -358,41 +358,41 @@ declarations.
 [`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L41
 
 We store the resulting modules in a `Vec`-based indexed arena. The indices in
-the arena becomes module ids. And this brings us to the next topic:
-assigning ids in the general case.
+the arena becomes module IDs. And this brings us to the next topic:
+assigning IDs in the general case.
 
 ## Location Interner pattern
 
-One way to assign ids is how we've dealt with modules: collect all items into a
-single array in some specific order and use index in the array as an id. The
-main drawback of this approach is that ids are not stable: adding a new item can
-shift ids of all other items. This works for modules, because adding a module is
-a comparatively rare operation, but would be less convenient for, for example
+One way to assign IDs is how we've dealt with modules: Collect all items into a
+single array in some specific order and use the index in the array as an ID. The
+main drawback of this approach is that these IDs are not stable: Adding a new item can
+shift the IDs of all other items. This works for modules, because adding a module is
+a comparatively rare operation, but would be less convenient for, for example,
 functions.
 
-Another solution here is positional ids: we can identify a function as "the
+Another solution here is positional IDs: We can identify a function as "the
 function with name `foo` in a ModuleId(92) module". Such locations are stable:
 adding a new function to the module (unless it is also named `foo`) does not
-change the location. However, such "id" ceases to be a `Copy` integer and in
-general can become pretty large if we account for nesting (third parameter of
-the foo function of the bar impl in the baz module).
+change the location. However, such "ID" types ceases to be a `Copy`able integer and in
+general can become pretty large if we account for nesting (for example: "third parameter of
+the `foo` function of the `bar` `impl` in the `baz` module").
 
-[`LocationInterner`] allows us to combine benefits of positional and numeric
-ids. It is a bidirectional append only map between locations and consecutive
-integers which can "intern" a location and return an integer id back. Salsa
+[`LocationInterner`] allows us to combine the benefits of positional and numeric
+IDs. It is a bidirectional append-only map between locations and consecutive
+integers which can "intern" a location and return an integer ID back. The salsa
 database we use includes a couple of [interners]. How to "garbage collect"
 unused locations is an open question.
 
 [`LocationInterner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_db/src/loc2id.rs#L65-L71
 [interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/db.rs#L22-L23
 
-For example, we use `LocationInterner` to assign ids to defs: functions,
+For example, we use `LocationInterner` to assign IDs to definitions of functions,
 structs, enums, etc. The location, [`DefLoc`] contains two bits of information:
 
-* the id of the module which contains the def,
-* the id of the specific item in the modules source code.
+* the ID of the module which contains the definition,
+* the ID of the specific item in the modules source code.
 
-We "could" use a text offset for location a particular item, but that would play
+We "could" use a text offset for the location of a particular item, but that would play
 badly with salsa: offsets change after edits. So, as a rule of thumb, we avoid
 using offsets, text ranges or syntax trees as keys and values for queries. What
 we do instead is we store "index" of the item among all of the items of a file
@@ -402,7 +402,7 @@ we do instead is we store "index" of the item among all of the items of a file
 
 One thing we've glossed over for the time being is support for macros. We have
 only proof of concept handling of macros at the moment, but they are extremely
-interesting from "assigning ids" perspective.
+interesting from an "assigning IDs" perspective.
 
 ## Macros and recursive locations
 
@@ -440,7 +440,7 @@ macro-generated file, we can discuss name resolution a bit.
 
 Name resolution faces the same problem as the module tree: if we look at the
 syntax tree directly, we'll have to recompute name resolution after every
-modification. The solution to the problem is the same: we [lower] source code of
+modification. The solution to the problem is the same: We [lower] the source code of
 each module into a position-independent representation which does not change if
 we modify bodies of the items. After that we [loop] resolving all imports until
 we've reached a fixed point.
@@ -448,20 +448,20 @@ we've reached a fixed point.
 [lower]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L113-L117
 [loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres.rs#L186-L196
 
-And, given all our preparation with ids and position-independent representation,
+And, given all our preparation with IDs and a position-independent representation,
 it is satisfying to [test] that typing inside function body does not invalidate
 name resolution results.
 
 [test]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/tests.rs#L376
 
-An interesting fact about name resolution is that it "erases" all of
+An interesting fact about name resolution is that it "erases" all of the
 intermediate paths from the imports: in the end, we know which items are defined
 and which items are imported in each module, but, if the import was `use
 foo::bar::baz`, we deliberately forget what modules `foo` and `bar` resolve to.
 
 To serve "goto definition" requests on intermediate segments we need this info
-in IDE. Luckily, we need it only for a tiny fraction of imports, so we just ask
-the module explicitly, "where does `foo::bar` path resolve to?". This is a
+in the IDE, however. Luckily, we need it only for a tiny fraction of imports, so we just ask
+the module explicitly, "What does the path `foo::bar` resolve to?". This is a
 general pattern: we try to compute the minimal possible amount of information
 during analysis while allowing IDE to ask for additional specific bits.
 
@@ -476,9 +476,9 @@ store the syntax node as a part of name resolution: this will break
 incrementality, due to the fact that syntax changes after every file
 modification.
 
-We solve this problem during the lowering step of name resolution. Lowering
+We solve this problem during the lowering step of name resolution. The lowering
 query actually produces a *pair* of outputs: `LoweredModule` and [`SourceMap`].
-`LoweredModule` module contains [imports], but in a position-independent form.
+The `LoweredModule` module contains [imports], but in a position-independent form.
 The `SourceMap` contains a mapping from position-independent imports to
 (position-dependent) syntax nodes.
 
@@ -500,20 +500,20 @@ by [@flodiebold]. [#327] was an awesome Christmas present, thank you, Florian!
 Type inference runs on per-function granularity and uses the patterns we've
 discussed previously.
 
-First, we [lower ast] of function body into a position-independent
+First, we [lower the AST] of a function body into a position-independent
 representation. In this representation, each expression is assigned a
-[positional id]. Alongside the lowered expression, [a source map] is produced,
+[positional ID]. Alongside the lowered expression, [a source map] is produced,
 which maps between expression ids and original syntax. This lowering step also
 deals with "incomplete" source trees by replacing missing expressions by an
 explicit `Missing` expression.
 
-Given the lower body of the function, we can now run [type inference] and
+Given the lowered body of the function, we can now run [type inference] and
 construct a mapping from `ExprId`s to types.
 
 [@flodiebold]: https://github.com/flodiebold
 [#327]: https://github.com/rust-analyzer/rust-analyzer/pull/327
-[lower ast]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs
-[positional id]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L13-L15
+[lower the AST]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs
+[positional ID]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L13-L15
 [a source map]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L41-L44
 [type inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ty.rs#L1208-L1223
 
@@ -524,15 +524,15 @@ To conclude the overview of the rust-analyzer, let's trace the request for
 
 We start by [receiving a message] from the language client. We decode the
 message as a request for completion and [schedule it on the threadpool]. This is
-the place where we [catch] canceled error if, immediately after completion, the
+the also place where we [catch] canceled errors if, immediately after completion, the
 client sends some modification.
 
-In [the handler] we deserialize LSP request into rust-analyzer specific data
+In [the handler] we a deserialize LSP request into the rust-analyzer specific data
 types (by converting a file url into a numeric `FileId`), [ask analysis for
 completion] and serializer results to LSP.
 
-[Completion implementation] is finally the place where we start doing the actual
-work. The first step is to collection `CompletionContext` -- a struct which
+The [completion implementation] is finally the place where we start doing the actual
+work. The first step is to collect the `CompletionContext` -- a struct which
 describes the cursor position in terms of Rust syntax and semantics. For
 example, `function_syntax: Option<&'a ast::FnDef>` stores a reference to
 enclosing function *syntax*, while `function: Option<hir::Function>` is the
@@ -541,14 +541,14 @@ enclosing function *syntax*, while `function: Option<hir::Function>` is the
 To construct the context, we first do an ["IntelliJ Trick"]: we insert a dummy
 identifier at the cursor's position and parse this modified file, to get a
 reasonably looking syntax tree. Then we do a bunch of "classification" routines
-to figure out the context. For example, we [find ancestor fn node] and we get a
+to figure out the context. For example, we [find an ancestor `fn` node] and we get a
 [semantic model] for it (using the lossy `source_binder` infrastructure).
 
 The second step is to run a [series of independent completion routines]. Let's
 take a closer look at [`complete_dot`], which completes fields and methods in
 `foo.bar|`. First we extract a semantic function and a syntactic receiver
 expression out of the `Context`. Then we run type-inference for this single
-function and map our syntactic expression to `ExprId`. Using the id, we figure
+function and map our syntactic expression to `ExprId`. Using the ID, we figure
 out the type of the receiver expression. Then we add all fields & methods from
 the type to completion.
 
@@ -557,10 +557,10 @@ the type to completion.
 [catch]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
 [the handler]: https://salsa.zulipchat.com/#narrow/stream/181542-rfcs.2Fsalsa-query-group/topic/design.20next.20steps
 [ask analysis for completion]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L439-L444
-[Completion implementation]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L46-L62
+[completion implementation]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L46-L62
 [`CompletionContext`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L14-L37
 ["IntelliJ Trick"]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L72-L75
-[find ancestor fn node]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L116-L120
+[find an ancestor `fn` node]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L116-L120
 [semantic model]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L123
 [series of independent completion routines]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L52-L59
 [`complete_dot`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/complete_dot.rs#L6-L22
