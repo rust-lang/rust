@@ -15,24 +15,33 @@ the "travis example" badge above.
 
 You can run `rustfmt` with Rust 1.24 and above.
 
+### On the Stable toolchain
+
 To install:
 
-```
+```sh
 rustup component add rustfmt
 ```
 
-to run on a cargo project in the current working directory:
+To run on a cargo project in the current working directory:
 
-```
+```sh
 cargo fmt
 ```
 
-For the latest and greatest `rustfmt` (nightly required):
-```
+### On the Nightly toolchain
+
+For the latest and greatest `rustfmt`, nightly is required.
+
+To install:
+
+```sh
 rustup component add rustfmt --toolchain nightly
 ```
-To run:
-```
+
+To run on a cargo project in the current working directory:
+
+```sh
 cargo +nightly fmt
 ```
 
@@ -67,7 +76,7 @@ because in the future Rustfmt might work on code where it currently does not):
 
 ## Installation
 
-```
+```sh
 rustup component add rustfmt
 ```
 
@@ -75,7 +84,7 @@ rustup component add rustfmt
 
 To install from source (nightly required), first checkout to the tag or branch you want to install, then issue
 
-```
+```sh
 cargo install --path .
 ```
 
@@ -161,6 +170,11 @@ Configuration options are either stable or unstable. Stable options can always
 be used, while unstable ones are only available on a nightly toolchain, and opt-in.
 See [Configurations.md](Configurations.md) for details.
 
+### Rust's Editions
+
+Rustfmt is able to pick up the edition used by reading the `Cargo.toml` file if
+executed through the Cargo's formatting tool `cargo fmt`. Otherwise, the edition
+needs to be specified in `rustfmt.toml`, e.g., with `edition = "2018"`.
 
 ## Tips
 
@@ -178,7 +192,7 @@ See [Configurations.md](Configurations.md) for details.
 
   Example:
 
-  ```
+  ```sh
   cargo fmt -- --emit files
   ```
 
