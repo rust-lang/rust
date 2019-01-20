@@ -314,7 +314,7 @@ pub fn handle_completion(
         let mut res = false;
         if let Some(ctx) = params.context {
             if ctx.trigger_character.unwrap_or_default() == ":" {
-                let source_file = world.analysis().file_syntax(position.file_id);
+                let source_file = world.analysis().parse(position.file_id);
                 let syntax = source_file.syntax();
                 let text = syntax.text();
                 if let Some(next_char) = text.char_at(position.offset) {

@@ -299,7 +299,7 @@ impl Analysis {
     }
 
     /// Gets the syntax tree of the file.
-    pub fn file_syntax(&self, file_id: FileId) -> TreeArc<SourceFile> {
+    pub fn parse(&self, file_id: FileId) -> TreeArc<SourceFile> {
         self.db.source_file(file_id).clone()
     }
 
