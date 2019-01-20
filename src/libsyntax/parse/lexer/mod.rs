@@ -238,19 +238,6 @@ impl<'a> StringReader<'a> {
         sr
     }
 
-    pub fn new_without_err(sess: &'a ParseSess,
-                           source_file: Lrc<syntax_pos::SourceFile>,
-                           override_span: Option<Span>,
-                           prepend_error_text: &str) -> Result<Self, ()> {
-        let mut sr = StringReader::new_raw(sess, source_file, override_span);
-        if sr.advance_token().is_err() {
-            eprintln!("{}", prepend_error_text);
-            sr.emit_fatal_errors();
-            return Err(());
-        }
-        Ok(sr)
-    }
-
     pub fn new_or_buffered_errs(sess: &'a ParseSess,
                                 source_file: Lrc<syntax_pos::SourceFile>,
                                 override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
