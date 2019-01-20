@@ -240,7 +240,7 @@ define_queries! { <'tcx>
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
-        [no_hash] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
+        [] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
     },
 
     TypeChecking {
