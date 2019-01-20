@@ -100,6 +100,7 @@ pub enum PathStyle {
 enum SemiColonMode {
     Break,
     Ignore,
+    Comma,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -2656,18 +2657,37 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            let mut recovery_field = None;
+            if let token::Ident(ident, _) = self.token {
+                if !self.token.is_reserved_ident() {
+                    let mut ident = ident.clone();
+                    ident.span = self.span;
+                    recovery_field = Some(ast::Field {
+                        ident,
+                        span: self.span,
+                        expr: self.mk_expr(self.span, ExprKind::Err, ThinVec::new()),
+                        is_shorthand: true,
+                        attrs: ThinVec::new(),
+                    });
+                }
+            }
             match self.parse_field() {
                 Ok(f) => fields.push(f),
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
+                    if let Some(f) = recovery_field {
+                        fields.push(f);
+                    }
 
                     // If the next token is a comma, then try to parse
                     // what comes next as additional fields, rather than
                     // bailing out until next `}`.
                     if self.token != token::Comma {
-                        self.recover_stmt();
-                        break;
+                        self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
+                        if self.token != token::Comma {
+                            break;
+                        }
                     }
                 }
             }
@@ -2676,9 +2696,10 @@ impl<'a> Parser<'a> {
                                      &[token::CloseDelim(token::Brace)]) {
                 Ok(()) => {}
                 Err(mut e) => {
+                    e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
-                    self.recover_stmt();
-                    break;
+                    self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
+                    self.eat(&token::Comma);
                 }
             }
         }
@@ -4538,13 +4559,13 @@ impl<'a> Parser<'a> {
                 token::CloseDelim(token::DelimToken::Brace) => {
                     if brace_depth == 0 {
                         debug!("recover_stmt_ return - close delim {:?}", self.token);
-                        return;
+                        break;
                     }
                     brace_depth -= 1;
                     self.bump();
                     if in_block && bracket_depth == 0 && brace_depth == 0 {
                         debug!("recover_stmt_ return - block end {:?}", self.token);
-                        return;
+                        break;
                     }
                 }
                 token::CloseDelim(token::DelimToken::Bracket) => {
@@ -4556,7 +4577,7 @@ impl<'a> Parser<'a> {
                 }
                 token::Eof => {
                     debug!("recover_stmt_ return - Eof");
-                    return;
+                    break;
                 }
                 token::Semi => {
                     self.bump();
@@ -4564,7 +4585,17 @@ impl<'a> Parser<'a> {
                        brace_depth == 0 &&
                        bracket_depth == 0 {
                         debug!("recover_stmt_ return - Semi");
-                        return;
+                        break;
+                    }
+                }
+                token::Comma => {
+                    if break_on_semi == SemiColonMode::Comma &&
+                       brace_depth == 0 &&
+                       bracket_depth == 0 {
+                        debug!("recover_stmt_ return - Semi");
+                        break;
+                    } else {
+                        self.bump();
                     }
                 }
                 _ => {
