@@ -316,8 +316,9 @@ impl Analysis {
 
     /// Returns position of the mathcing brace (all types of braces are
     /// supported).
-    pub fn matching_brace(&self, file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
-        ra_ide_api_light::matching_brace(file, offset)
+    pub fn matching_brace(&self, position: FilePosition) -> Option<TextUnit> {
+        let file = self.db.source_file(position.file_id);
+        ra_ide_api_light::matching_brace(&file, position.offset)
     }
 
     /// Returns a syntax tree represented as `String`, for debug purposes.

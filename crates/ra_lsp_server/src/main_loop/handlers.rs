@@ -51,7 +51,6 @@ pub fn handle_find_matching_brace(
     params: req::FindMatchingBraceParams,
 ) -> Result<Vec<Position>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_syntax(file_id);
     let line_index = world.analysis().file_line_index(file_id);
     let res = params
         .offsets
@@ -60,7 +59,7 @@ pub fn handle_find_matching_brace(
         .map(|offset| {
             world
                 .analysis()
-                .matching_brace(&file, offset)
+                .matching_brace(FilePosition { file_id, offset })
                 .unwrap_or(offset)
         })
         .map_conv_with(&line_index)
