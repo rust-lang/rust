@@ -4,7 +4,6 @@ fn main() {
     let _ = Foo { bar: .5, baz: 42 };
     //~^ ERROR float literals must have an integer part
     //~| ERROR missing field `bat` in initializer of `Foo`
-    //~| ERROR mismatched types
     let bar = 1.5f32;
     let _ = Foo { bar.into(), bat: -1, . };
     //~^ ERROR expected one of

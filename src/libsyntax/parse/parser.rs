@@ -1990,15 +1990,23 @@ impl<'a> Parser<'a> {
                 result.unwrap()
             }
             token::Dot if self.look_ahead(1, |t| match t {
-                token::Literal(parse::token::Lit::Integer(_) , None) => true,
+                token::Literal(parse::token::Lit::Integer(_) , _) => true,
                 _ => false,
             }) => { // recover from `let x = .4;`
                 let lo = self.span;
                 self.bump();
                 if let token::Literal(
                     parse::token::Lit::Integer(val),
-                    None
+                    suffix,
                 ) = self.token {
+                    let suffix = suffix.and_then(|s| {
+                        let s = s.as_str().get();
+                        if ["f32", "f64"].contains(&s) {
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    }).unwrap_or("");
                     self.bump();
                     let sp = lo.to(self.prev_span);
                     let mut err = self.diagnostic()
@@ -2006,11 +2014,15 @@ impl<'a> Parser<'a> {
                     err.span_suggestion_with_applicability(
                         sp,
                         "must have an integer part",
-                        format!("0.{}", val),
+                        format!("0.{}{}", val, suffix),
                         Applicability::MachineApplicable,
                     );
                     err.emit();
-                    return Ok(ast::LitKind::Float(val, ast::FloatTy::F32));
+                    return Ok(match suffix {
+                        "f32" => ast::LitKind::Float(val, ast::FloatTy::F32),
+                        "f64" => ast::LitKind::Float(val, ast::FloatTy::F64),
+                        _ => ast::LitKind::FloatUnsuffixed(val),
+                    });
                 } else {
                     unreachable!();
                 };
