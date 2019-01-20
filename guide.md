@@ -2,7 +2,7 @@
 
 ## About the guide
 
-This guide describes the current start of the rust-analyzer as of 2019-01-20
+This guide describes the current state of `rust-analyzer` as of 2019-01-20
 (git tag [guide-2019-01]). Its purpose is to document various problems and
 architectural solutions related to the problem of building IDE-first compiler
 for Rust.
@@ -11,24 +11,24 @@ for Rust.
 
 ## The big picture
 
-On the highest possible level, rust analyzer is a stateful component. Client may
+On the highest possible level, rust analyzer is a stateful component. A client may
 apply changes to the analyzer (new contents of `foo.rs` file is "fn main() {}")
 and it may ask semantic questions about the current state (what is the
 definition of the identifier with offset 92 in file `bar.rs`?). Two important
 properties hold:
 
-* Analyzer does not do any IO. It starts in an empty state and all input data is
+* Analyzer does not do any I/O. It starts in an empty state and all input data is
   provided via `apply_change` API.
 
 * Only queries about the current state are supported. One can, of course,
-  simulate undo and redo by keeping log of changes and inverse-changes.
+  simulate undo and redo by keeping a log of changes and inverse changes respectively.
 
 ## IDE API
 
-To see this big picture, let's take a look at the [`AnalysisHost`] and
+To see the bigger picture of how the IDE features works, let's take a look at the [`AnalysisHost`] and
 [`Analysis`] pair of types. `AnalysisHost` has three methods:
 
-* `default` for creating an empty analysis
+* `default()` for creating an empty analysis instance
 * `apply_change(&mut self)` to make changes (this is how you get from an empty
   state to something interesting)
 * `analysis(&self)` to get an instance of `Analysis`
@@ -42,28 +42,28 @@ stack, we'll talk about it later.
 [`AnalysisHost`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L265-L284
 [`Analysis`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L291-L478
 
-The reason for `Analysis` and `AnalysisHost` separation is that we want apply
-changes "uniquely", but we might want to fork an `Analysis` and send it to
+The reason for this separation of `Analysis` and `AnalysisHost` is that we want to apply
+changes "uniquely", but we might also want to fork an `Analysis` and send it to
 another thread for background processing. That is, there is only a single
 `AnalysisHost`, but there may be several (equivalent) `Analysis`.
 
 Note that all of the `Analysis` API return `Cancelable<T>`. This is required to
-be responsive in IDE setting. Sometimes a long-running query is being computed
+be responsive in an IDE setting. Sometimes a long-running query is being computed
 and the user types something in the editor and asks for completion. In this
 case, we cancel the long-running computation (so it returns `Err(Canceled)`),
 apply the change and execute request for completion. We never use stale data to
 answer requests. Under the cover, `AnalysisHost` "remembers" all outstanding
-`Analysis` instances. `AnalysisHost::apply_change` method cancels all
-`Analysis`es, blocks until of them are `Dropped` and then applies change
-in-place. This is the familiar to rustaceans read-write lock interior
+`Analysis` instances. The `AnalysisHost::apply_change` method cancels all
+`Analysis`es, blocks until all of them are `Dropped` and then applies changes
+in-place. This may be familiar to Rustaceans who use read-write locks for interior
 mutability.
 
-Next, lets talk about what are inputs to the Analysis, precisely.
+Next, let's talk about what the inputs to the `Analysis` are, precisely.
 
 ## Inputs
 
-Rust Analyzer never does any IO itself, all inputs get passed explicitly via
-`AnalysisHost::apply_change` method, which accepts a single argument:
+Rust Analyzer never does any I/O itself, all inputs get passed explicitly via
+the `AnalysisHost::apply_change` method, which accepts a single argument, a
 `AnalysisChange`. [`AnalysisChange`] is a builder for a single change
 "transaction", so it suffices to study its methods to understand all of the
 input data.
@@ -72,12 +72,12 @@ input data.
 
 The `(add|change|remove)_file` methods control the set of the input files, where
 each file has an integer id (`FileId`, picked by the client), text (`String`)
-and a filesystem path. Paths are tricky, they'll be explained in source roots
-section, together with `add_root` method. `add_library` method allows to add a
+and a filesystem path. Paths are tricky; they'll be explained below, in source roots
+section, together with the `add_root` method. The `add_library` method allows us to add a
 group of files which are assumed to rarely change. It's mostly an optimization
-and does not change fundamental picture.
+and does not change the fundamental picture.
 
-`set_crate_graph` method allows to control how the input files are partitioned
+The `set_crate_graph` method allows us to control how the input files are partitioned
 into compilation unites -- crates. It also controls (in theory, not implemented
 yet) `cfg` flags. `CrateGraph` is a directed acyclic graph of crates. Each crate
 has a root `FileId`, a set of active `cfg` flags and a set of dependencies. Each
@@ -220,21 +220,21 @@ of type V. Queries come in two basic varieties:
 
 * **Functions**: pure functions (no side effects) that transform your inputs
   into other values. The results of queries is memoized to avoid recomputing
-  them a lot. When you make changes to the inputs, we'll figure out (fairlywe
-  intelligently) when we can re-use these memoized values and when we have we
+  them a lot. When you make changes to the inputs, we'll figure out (fairly
+  intelligently) when we can re-use these memoized values and when we have to
   recompute them.
 
 
 For further discussion, its important to understand one bit of "fairly
-intelligently". Suppose we have to functions, `f1` and `f2`, and one input,we
+intelligently". Suppose we have two functions, `f1` and `f2`, and one input, `z`.
 We call `f1(X)` which in turn calls `f2(Y)` which inspects `i(Z)`. `i(Z)`
-returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that anwe
-returns `O`. Now, let's change `i` at `Z` to `V2` from `V1` and try to compwe
-`f1(X)` again. Because `f1(X)` (transitively) depends on `i(Z)`, we can't jwe
-reuse its value as is. However, if `f2(Y)` is *still* equal to `R1` (despitwe
-`i`'s change), we, in fact, *can* reuse `O` as result of `f1(X)`. And that'we
-salsa works: it recomputes results in *reverse* order, starting from inputswe
-progressing towards outputs, stopping as soon as it sees an intermediate vawe
+returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that and
+returns `O`. Now, let's change `i` at `Z` to `V2` from `V1` and try to compute
+`f1(X)` again. Because `f1(X)` (transitively) depends on `i(Z)`, we can't just
+reuse its value as is. However, if `f2(Y)` is *still* equal to `R1` (despite
+`i`'s change), we, in fact, *can* reuse `O` as result of `f1(X)`. And that's how
+salsa works: it recomputes results in *reverse* order, starting from inputs and
+progressing towards outputs, stopping as soon as it sees an intermediate value
 that hasn't changed.
 
 ## Salsa Input Queries
@@ -312,7 +312,7 @@ of the syntax trees:
   `Option`s. The tree for `fn foo` will contain a function declaration with
   `None` for parameter list and body.
 
-* Syntax trees do not know the file they are build from, they only know about
+* Syntax trees do not know the file they are built from, they only know about
   the text.
 
 The implementation is based on the generic [rowan] crate on top of which a
@@ -335,10 +335,10 @@ declarations and recursively process child modules. This is handled by the
 
 First, rust analyzer builds a module tree for all crates in a source root
 simultaneously. The main reason for this is historical (`module_tree` predates
-`CrateGraph`), but this approach also allows to account for files which are not
+`CrateGraph`), but this approach also enables accounting for files which are not
 part of any crate. That is, if you create a file but do not include it as a
 submodule anywhere, you still get semantic completion, and you get a warning
-about free-floating module (the actual warning is not implemented yet).
+about a free-floating module (the actual warning is not implemented yet).
 
 The second difference is that `module_tree_query` does not *directly* depend on
 the "parse" query (which is confusingly called `source_file`). Why would calling
@@ -347,14 +347,14 @@ an insignificant whitespace. Adding whitespace changes the parse tree (because
 it includes whitespace), and that means recomputing the whole module tree.
 
 We deal with this problem by introducing an intermediate [`submodules_query`].
-This query processes the syntax tree an extract a set of declared submodule
+This query processes the syntax tree and extracts a set of declared submodule
 names. Now, changing the whitespace results in `submodules_query` being
 re-executed for a *single* module, but because the result of this query stays
 the same, we don't have to re-execute [`module_tree_query`]. In fact, we only
 need to re-execute it when we add/remove new files or when we change mod
 declarations.
 
-[`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L41)
+[`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L41
 
 We store the resulting modules in a `Vec`-based indexed arena. The indices in
 the arena becomes module ids. And this brings us to the next topic:
@@ -445,7 +445,7 @@ we modify bodies of the items. After that we [loop] resolving all imports until
 we've reached a fixed point.
 
 [lower]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L113-L117
-[loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L113-L117
+[loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres.rs#L186-L196
 
 And, given all our preparation with ids and position-independent representation,
 it is satisfying to [test] that typing inside function body does not invalidate
@@ -514,7 +514,7 @@ construct a mapping from `ExprId`s to types.
 [lower ast]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs
 [positional id]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L13-L15
 [a source map]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L41-L44
-[type-inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ty.rs#L1208-L1223
+[type inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ty.rs#L1208-L1223
 
 ## Tying it all together: completion
 
