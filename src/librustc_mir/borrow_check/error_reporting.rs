@@ -2341,9 +2341,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => {}
         }
 
-        let _ = ty::print::PrintCx::with(self.infcx.tcx, printer, |cx| {
-            ty.print(cx)
-        });
+        let _ = ty.print(ty::print::PrintCx::new(self.infcx.tcx, printer));
         s
     }
 
@@ -2368,9 +2366,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => bug!("ty for annotation of borrow region is not a reference"),
         };
 
-        let _ = ty::print::PrintCx::with(self.infcx.tcx, printer, |cx| {
-            region.print(cx)
-        });
+        let _ = region.print(ty::print::PrintCx::new(self.infcx.tcx, printer));
         s
     }
 }

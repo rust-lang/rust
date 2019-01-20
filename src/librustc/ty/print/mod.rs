@@ -4,52 +4,50 @@ use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::subst::{Subst, SubstsRef};
 
 use rustc_data_structures::fx::FxHashSet;
-use syntax::symbol::InternedString;
 
 use std::iter;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
 mod pretty;
 pub use self::pretty::*;
 
-#[derive(Default)]
-struct PrintConfig {
-    used_region_names: Option<FxHashSet<InternedString>>,
-    region_index: usize,
-    binder_depth: usize,
-}
-
 pub struct PrintCx<'a, 'gcx, 'tcx, P> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub printer: P,
-    config: &'a mut PrintConfig,
+    inner: P,
 }
 
-// HACK(eddyb) this is solely for `self: PrintCx<Self>`, e.g. to
-// implement traits on the printer and call the methods on the context.
 impl<P> Deref for PrintCx<'_, '_, '_, P> {
     type Target = P;
     fn deref(&self) -> &P {
-        &self.printer
+        &self.inner
+    }
+}
+
+impl<P> DerefMut for PrintCx<'_, '_, '_, P> {
+    fn deref_mut(&mut self) -> &mut P {
+        &mut self.inner
     }
 }
 
 impl<'a, 'gcx, 'tcx, P> PrintCx<'a, 'gcx, 'tcx, P> {
-    pub fn with<R>(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        printer: P,
-        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, P>) -> R,
-    ) -> R {
-        f(PrintCx {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, inner: P) -> Self {
+        PrintCx {
             tcx,
-            printer,
-            config: &mut PrintConfig::default(),
-        })
+            inner,
+        }
     }
 
-    pub fn with_tls_tcx<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
-        ty::tls::with(|tcx| PrintCx::with(tcx, printer, f))
+    pub fn with_tls_tcx<R>(inner: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
+        ty::tls::with(|tcx| f(PrintCx::new(tcx, inner)))
+    }
+
+    pub fn into_inner(self) -> P {
+        self.inner
+    }
+
+    pub fn ok<E>(self) -> Result<P, E> {
+        Ok(self.into_inner())
     }
 }
 

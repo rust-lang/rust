@@ -526,9 +526,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    PrintCx::with(self.tcx, AbsolutePathPrinter, |cx| {
-                        cx.print_def_path(def_id, None, iter::empty())
-                    })
+                    PrintCx::new(self.tcx, AbsolutePathPrinter)
+                        .print_def_path(def_id, None, iter::empty())
                 };
 
                 // We compare strings because DefPath can be different

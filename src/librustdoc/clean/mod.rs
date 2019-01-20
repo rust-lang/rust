@@ -4312,9 +4312,9 @@ where F: Fn(DefId) -> Def {
         }
     }
 
-    let names = PrintCx::with(tcx, AbsolutePathPrinter, |cx| {
-        cx.print_def_path(def_id, None, iter::empty()).unwrap()
-    });
+    let names = PrintCx::new(tcx, AbsolutePathPrinter)
+        .print_def_path(def_id, None, iter::empty())
+        .unwrap();
 
     hir::Path {
         span: DUMMY_SP,

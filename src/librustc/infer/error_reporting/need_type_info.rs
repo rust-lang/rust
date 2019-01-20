@@ -84,9 +84,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(highlight) = highlight {
             printer.region_highlight_mode = highlight;
         }
-        let _ = ty::print::PrintCx::with(self.tcx, printer, |cx| {
-            ty.print(cx)
-        });
+        let _ = ty.print(ty::print::PrintCx::new(self.tcx, printer));
         s
     }
 

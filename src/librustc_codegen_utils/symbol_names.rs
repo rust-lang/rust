@@ -224,11 +224,10 @@ fn get_symbol_hash<'a, 'tcx>(
 }
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
-    PrintCx::with(tcx, SymbolPath::new(tcx), |cx| {
-        cx.print_def_path(def_id, None, iter::empty())
-            .unwrap()
-            .into_interned()
-    })
+    PrintCx::new(tcx, SymbolPath::new(tcx))
+        .print_def_path(def_id, None, iter::empty())
+        .unwrap()
+        .into_interned()
 }
 
 fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
@@ -415,7 +414,7 @@ impl Printer for SymbolPath {
         self: PrintCx<'_, '_, '_, Self>,
         _region: ty::Region<'_>,
     ) -> Result<Self::Region, Self::Error> {
-        Ok(self.printer)
+        self.ok()
     }
 
     fn print_type(
@@ -440,8 +439,8 @@ impl Printer for SymbolPath {
         mut self: PrintCx<'_, '_, '_, Self>,
         cnum: CrateNum,
     ) -> Result<Self::Path, Self::Error> {
-        self.printer.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
-        Ok(self.printer)
+        self.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
+        self.ok()
     }
     fn path_qualified(
         self: PrintCx<'_, '_, 'tcx, Self>,
@@ -524,10 +523,10 @@ impl PrettyPrinter for SymbolPath {
         mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
         f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
     ) -> Result<Self, Self::Error> {
-        write!(self.printer, "<")?;
+        write!(self, "<")?;
 
         let kept_within_component =
-            mem::replace(&mut self.printer.keep_within_component, true);
+            mem::replace(&mut self.keep_within_component, true);
         let mut path = f(self)?;
         path.keep_within_component = kept_within_component;
 
