@@ -6,11 +6,11 @@ LL |     let b = S { foo: () with a };
    |             |
    |             while parsing this struct
 
-error[E0063]: missing field `bar` in initializer of `main::S`
+error[E0063]: missing fields `bar`, `foo` in initializer of `main::S`
   --> $DIR/removed-syntax-with-1.rs:8:13
    |
 LL |     let b = S { foo: () with a };
-   |             ^ missing `bar`
+   |             ^ missing `bar`, `foo`
 
 error: aborting due to 2 previous errors
 

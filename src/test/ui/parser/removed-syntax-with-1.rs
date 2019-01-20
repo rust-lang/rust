@@ -7,5 +7,5 @@ fn main() {
     let a = S { foo: (), bar: () };
     let b = S { foo: () with a };
     //~^ ERROR expected one of `,`, `.`, `?`, `}`, or an operator, found `with`
-    //~| ERROR missing field `bar` in initializer of `main::S`
+    //~| ERROR missing fields `bar`, `foo` in initializer of `main::S`
 }

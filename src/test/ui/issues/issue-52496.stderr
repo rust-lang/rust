@@ -26,23 +26,12 @@ error[E0063]: missing field `bat` in initializer of `Foo`
 LL |     let _ = Foo { bar: .5, baz: 42 };
    |             ^^^ missing `bat`
 
-error[E0308]: mismatched types
-  --> $DIR/issue-52496.rs:8:19
-   |
-LL |     let _ = Foo { bar.into(), bat: -1, . };
-   |                   ^^^ expected f64, found f32
-help: you can cast an `f32` to `f64` in a lossless way
-   |
-LL |     let _ = Foo { bar.into().into(), bat: -1, . };
-   |                   ^^^^^^^^^^
-
-error[E0063]: missing field `baz` in initializer of `Foo`
+error[E0063]: missing fields `bar`, `baz` in initializer of `Foo`
   --> $DIR/issue-52496.rs:8:13
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
-   |             ^^^ missing `baz`
+   |             ^^^ missing `bar`, `baz`
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
-Some errors occurred: E0063, E0308.
-For more information about an error, try `rustc --explain E0063`.
+For more information about this error, try `rustc --explain E0063`.

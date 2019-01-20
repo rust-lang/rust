@@ -2695,28 +2695,12 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let mut recovery_field = None;
-            if let token::Ident(ident, _) = self.token {
-                if !self.token.is_reserved_ident() {
-                    let mut ident = ident.clone();
-                    ident.span = self.span;
-                    recovery_field = Some(ast::Field {
-                        ident,
-                        span: self.span,
-                        expr: self.mk_expr(self.span, ExprKind::Err, ThinVec::new()),
-                        is_shorthand: true,
-                        attrs: ThinVec::new(),
-                    });
-                }
-            }
+            let mut parsed_field = None;
             match self.parse_field() {
-                Ok(f) => fields.push(f),
+                Ok(f) => parsed_field = Some(f),
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
-                    if let Some(f) = recovery_field {
-                        fields.push(f);
-                    }
 
                     // If the next token is a comma, then try to parse
                     // what comes next as additional fields, rather than
@@ -2732,7 +2716,10 @@ impl<'a> Parser<'a> {
 
             match self.expect_one_of(&[token::Comma],
                                      &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => {}
+                Ok(()) => if let Some(f) = parsed_field {
+                    // only include the field if there's no parse error
+                    fields.push(f);
+                }
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
