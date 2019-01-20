@@ -25,12 +25,6 @@ error: integer arithmetic detected
 LL |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
 
-error: integer arithmetic detected
-  --> $DIR/arithmetic.rs:18:5
-   |
-LL |     -i;
-   |     ^^
-
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:28:5
    |
@@ -69,5 +63,5 @@ error: floating-point arithmetic detected
 LL |     -f;
    |     ^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 

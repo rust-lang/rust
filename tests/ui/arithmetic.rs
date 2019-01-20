@@ -15,7 +15,7 @@ fn main() {
     1 %
     i / 2; // no error, this is part of the expression in the preceding line
     i - 2 + 2 - i;
-    -i;
+    -i; // no error, overflows are checked by `overflowing_literals`
 
     i & 1; // no wrapping
     i | 1;
