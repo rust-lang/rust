@@ -241,6 +241,14 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         match *b_data {
             VarValue::Value(cur_region) => {
+                // Identical scopes can show up quite often, if the fixed point
+                // iteration converges slowly, skip them
+                if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
+                    if a_scope == cur_scope {
+                        return false;
+                    }
+                }
+
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
                 if lub == cur_region {
                     return false;
@@ -279,12 +287,6 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.tcx();
-
-        // Equal scopes can show up quite often, if the fixed point
-        // iteration converges slowly, skip them
-        if a == b {
-            return a;
-        }
 
         match (a, b) {
             (&ty::ReClosureBound(..), _)
