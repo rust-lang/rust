@@ -499,7 +499,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         dep_node: &DepNode,
         dep_node_index: DepNodeIndex,
     ) {
-        use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
         use crate::ich::Fingerprint;
 
         assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
@@ -509,11 +508,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         debug!("BEGIN verify_ich({:?})", dep_node);
         let mut hcx = self.create_stable_hashing_context();
-        let mut hasher = StableHasher::new();
 
-        result.hash_stable(&mut hcx, &mut hasher);
-
-        let new_hash: Fingerprint = hasher.finish();
+        let new_hash = Q::hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
         debug!("END verify_ich({:?})", dep_node);
 
         let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
@@ -549,12 +545,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     tcx.dep_graph.with_eval_always_task(dep_node,
                                                         tcx,
                                                         key,
-                                                        Q::compute)
+                                                        Q::compute,
+                                                        Q::hash_result)
                 } else {
                     tcx.dep_graph.with_task(dep_node,
                                             tcx,
                                             key,
-                                            Q::compute)
+                                            Q::compute,
+                                            Q::hash_result)
                 }
             })
         });
@@ -676,6 +674,18 @@ macro_rules! handle_cycle_error {
     }};
     ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
         handle_cycle_error!([$($modifiers),*][$($args)*])
+    };
+}
+
+macro_rules! hash_result {
+    ([][$hcx:expr, $result:expr]) => {{
+        dep_graph::hash_result($hcx, &$result)
+    }};
+    ([no_hash$(, $modifiers:ident)*][$hcx:expr, $result:expr]) => {{
+        None
+    }};
+    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
+        hash_result!([$($modifiers),*][$($args)*])
     };
 }
 
@@ -964,6 +974,13 @@ macro_rules! define_queries_inner {
                         .$name;
                     provider(tcx.global_tcx(), key)
                 })
+            }
+
+            fn hash_result(
+                _hcx: &mut StableHashingContext<'_>,
+                _result: &Self::Value
+            ) -> Option<Fingerprint> {
+                hash_result!([$($modifiers)*][_hcx, _result])
             }
 
             fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value {
