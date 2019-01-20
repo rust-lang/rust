@@ -2,7 +2,10 @@ error[E0214]: parenthesized parameters may only be used with a trait
   --> $DIR/unboxed-closure-sugar-used-on-struct.rs:7:18
    |
 LL | fn foo(b: Box<Bar()>) {
-   |                  ^^ only traits may use parentheses
+   |                  ^^
+   |                  |
+   |                  only traits may use parentheses
+   |                  help: use angle brackets instead: `<>`
 
 error[E0107]: wrong number of type arguments: expected 1, found 0
   --> $DIR/unboxed-closure-sugar-used-on-struct.rs:7:15

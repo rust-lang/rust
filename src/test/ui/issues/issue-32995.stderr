@@ -18,19 +18,19 @@ LL |     let b: ::std::boxed()::Box<_> = Box::new(1);
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:12:23
+  --> $DIR/issue-32995.rs:12:25
    |
 LL |     let p = ::std::str::()::from_utf8(b"foo").unwrap();
-   |                       ^^^^
+   |                         ^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:16:34
+  --> $DIR/issue-32995.rs:16:36
    |
 LL |     let p = ::std::str::from_utf8::()(b"foo").unwrap();
-   |                                  ^^^^
+   |                                    ^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>

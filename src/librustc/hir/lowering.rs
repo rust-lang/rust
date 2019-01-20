@@ -31,6 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 use dep_graph::DepGraph;
+use errors::Applicability;
 use hir::{self, ParamName};
 use hir::HirVec;
 use hir::map::{DefKey, DefPathData, Definitions};
@@ -1823,9 +1824,17 @@ impl<'a> LoweringContext<'a> {
                         (hir::GenericArgs::none(), true)
                     }
                     ParenthesizedGenericArgs::Err => {
-                        struct_span_err!(self.sess, data.span, E0214, "{}", msg)
-                            .span_label(data.span, "only traits may use parentheses")
-                            .emit();
+                        let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
+                        err.span_label(data.span, "only traits may use parentheses");
+                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
+                            err.span_suggestion_with_applicability(
+                                data.span,
+                                "use angle brackets instead",
+                                format!("<{}>", &snippet[1..snippet.len() - 1]),
+                                Applicability::MaybeIncorrect,
+                            );
+                        };
+                        err.emit();
                         (self.lower_angle_bracketed_parameter_data(
                             &data.as_angle_bracketed_args(),
                             param_mode,
