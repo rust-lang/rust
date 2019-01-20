@@ -7,7 +7,7 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintC
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax_pos::symbol::keywords::SelfUpper;
+use syntax_pos::{symbol::keywords::SelfUpper, Span};
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.
@@ -55,11 +55,11 @@ impl LintPass for UseSelf {
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
+fn span_use_self_lint(cx: &LateContext<'_, '_>, span: Span) {
     span_lint_and_sugg(
         cx,
         USE_SELF,
-        path.span,
+        span,
         "unnecessary structure name repetition",
         "use the applicable keyword",
         "Self".to_owned(),
@@ -92,7 +92,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
                         };
 
                         if !is_self_ty {
-                            span_use_self_lint(self.cx, path);
+                            span_use_self_lint(self.cx, path.span);
                         }
                     }
                 }
@@ -221,10 +221,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
         if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
             if self.item_path.def == path.def {
-                span_use_self_lint(self.cx, path);
+                span_use_self_lint(self.cx, path.segments.first().expect(SEGMENTS_MSG).ident.span);
             } else if let Def::StructCtor(ctor_did, CtorKind::Fn) = path.def {
                 if self.item_path.def.opt_def_id() == self.cx.tcx.parent_def_id(ctor_did) {
-                    span_use_self_lint(self.cx, path);
+                    span_use_self_lint(self.cx, path.span);
                 }
             }
         }

@@ -22,7 +22,7 @@ error: unnecessary structure name repetition
   --> $DIR/use_self.rs:15:13
    |
 LL |             Foo::new()
-   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:20:25
@@ -34,7 +34,7 @@ error: unnecessary structure name repetition
   --> $DIR/use_self.rs:21:13
    |
 LL |             Foo::new()
-   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:86:22
@@ -100,7 +100,7 @@ error: unnecessary structure name repetition
   --> $DIR/use_self.rs:101:13
    |
 LL |             Bad::default()
-   |             ^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+   |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:106:23
