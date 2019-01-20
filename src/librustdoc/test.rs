@@ -5,12 +5,11 @@ use rustc_lint;
 use rustc_driver::{self, driver, target_features, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
-use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
-use rustc::session::search_paths::{SearchPath, PathKind};
+use rustc::session::search_paths::SearchPath;
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
@@ -21,7 +20,6 @@ use tempfile::Builder as TempFileBuilder;
 use testing;
 
 use std::env;
-use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -265,7 +263,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         }
     }
 
-    let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
+    let (outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
         let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                         Some(source_map.clone()),
@@ -304,7 +302,6 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                                 .expect("rustdoc needs a tempdir"))
             }
         );
-        let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
         let mut control = driver::CompileController::basic();
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -336,7 +333,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
         };
 
-        (libdir, outdir, compile_result)
+        (outdir, compile_result)
     });
 
     match (compile_result, compile_fail) {
@@ -362,21 +359,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     if no_run { return }
 
     // Run the code!
-    //
-    // We're careful to prepend the *target* dylib search path to the child's
-    // environment to ensure that the target loads the right libraries at
-    // runtime. It would be a sad day if the *host* libraries were loaded as a
-    // mistake.
     let mut cmd = Command::new(&outdir.lock().unwrap().path().join("rust_out"));
-    let var = DynamicLibrary::envvar();
-    let newpath = {
-        let path = env::var_os(var).unwrap_or(OsString::new());
-        let mut path = env::split_paths(&path).collect::<Vec<_>>();
-        path.insert(0, libdir);
-        env::join_paths(path).unwrap()
-    };
-    cmd.env(var, &newpath);
-
     match cmd.output() {
         Err(e) => panic!("couldn't run the test: {}{}", e,
                         if e.kind() == io::ErrorKind::PermissionDenied {
