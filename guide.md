@@ -2,10 +2,11 @@
 
 ## About the guide
 
-This guide describes the current state of rust-analyzer as of 2019-01-20
-(git tag [guide-2019-01]). Its purpose is to document various problems and
+This guide describes the current state of rust-analyzer as of 2019-01-20 (git
+tag [guide-2019-01]). Its purpose is to document various problems and
 architectural solutions related to the problem of building IDE-first compiler
-for Rust.
+for Rust. There is a video version of this guide as well:
+https://youtu.be/ANKBNiSWyfc.
 
 [guide-2019-01]: https://github.com/rust-analyzer/rust-analyzer/tree/guide-2019-01
 
