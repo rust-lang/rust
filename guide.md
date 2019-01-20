@@ -524,6 +524,40 @@ message as a request for completion and [schedule it on the threadpool]. This is
 the place where we [catch] canceled error if, immediately after completion, the
 client sends some modification.
 
+In [the handler] we deserialize LSP request into rust-analyzer specific data
+types (by converting a file url into a numeric `FileId`), [ask analysis for
+completion] and serializer results to LSP.
+
+[Completion implementation] is finally the place where we start doing the actual
+work. The first step is to collection `CompletionContext` -- a struct which
+describes the cursor position in terms of Rust syntax and semantics. For
+example, `function_syntax: Option<&'a ast::FnDef>` stores a reference to
+enclosing function *syntax*, while `function: Option<hir::Function>` is the
+`Def` for this function.
+
+To construct the context, we first do an ["IntelliJ Trick"]: we insert a dummy
+identifier at the cursor's position and parse this modified file, to get a
+reasonably looking syntax tree. Then we do a bunch of "classification" routines
+to figure out the context. For example, we [find ancestor fn node] and we get a
+[semantic model] for it (using the lossy `source_binder` infrastructure).
+
+The second step is to run a [series of independent completion routines]. Let's
+take a closer look at [`complete_dot`], which completes fields and methods in
+`foo.bar|`. First we extract a semantic function and a syntactic receiver
+expression out of the `Context`. Then we run type-inference for this single
+function and map our syntactic expression to `ExprId`. Using the id, we figure
+out the type of the receiver expression. Then we add all fields & methods from
+the type to completion.
+
 [receiving a message]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L203
 [schedule it on the threadpool]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L428
 [catch]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
+[the handler]: https://salsa.zulipchat.com/#narrow/stream/181542-rfcs.2Fsalsa-query-group/topic/design.20next.20steps
+[ask analysis for completion]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L439-L444
+[Completion implementation]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L46-L62
+[`CompletionContext`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L14-L37
+["IntelliJ Trick"]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L72-L75
+[find ancestor fn node]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L116-L120
+[semantic model]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L123
+[series of independent completion routines]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L52-L59
+[`complete_dot`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/complete_dot.rs#L6-L22
