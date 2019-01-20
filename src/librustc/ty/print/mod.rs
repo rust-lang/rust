@@ -13,11 +13,8 @@ use std::ops::Deref;
 mod pretty;
 pub use self::pretty::*;
 
-// FIXME(eddyb) this module uses `pub(crate)` for things used only
-// from `ppaux` - when that is removed, they can be re-privatized.
-
 #[derive(Default)]
-pub(crate) struct PrintConfig {
+struct PrintConfig {
     used_region_names: Option<FxHashSet<InternedString>>,
     region_index: usize,
     binder_depth: usize,
@@ -26,7 +23,7 @@ pub(crate) struct PrintConfig {
 pub struct PrintCx<'a, 'gcx, 'tcx, P> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub printer: P,
-    pub(crate) config: &'a mut PrintConfig,
+    config: &'a mut PrintConfig,
 }
 
 // HACK(eddyb) this is solely for `self: PrintCx<Self>`, e.g. to
@@ -51,7 +48,7 @@ impl<'a, 'gcx, 'tcx, P> PrintCx<'a, 'gcx, 'tcx, P> {
         })
     }
 
-    pub(crate) fn with_tls_tcx<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
+    pub fn with_tls_tcx<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
         ty::tls::with(|tcx| PrintCx::with(tcx, printer, f))
     }
 }

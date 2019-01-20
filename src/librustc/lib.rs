@@ -135,7 +135,6 @@ pub mod ty;
 pub mod util {
     pub mod captures;
     pub mod common;
-    mod ppaux;
     pub mod nodemap;
     pub mod profiling;
     pub mod bug;
