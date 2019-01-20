@@ -1807,7 +1807,7 @@ impl<'a> LoweringContext<'a> {
         explicit_owner: Option<NodeId>,
     ) -> hir::PathSegment {
         let (mut generic_args, infer_types) = if let Some(ref generic_args) = segment.args {
-            let msg = "parenthesized parameters may only be used with a trait";
+            let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
@@ -1825,14 +1825,17 @@ impl<'a> LoweringContext<'a> {
                     }
                     ParenthesizedGenericArgs::Err => {
                         let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
-                        err.span_label(data.span, "only traits may use parentheses");
+                        err.span_label(data.span, "only `Fn` traits may use parentheses");
                         if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
-                            err.span_suggestion_with_applicability(
-                                data.span,
-                                "use angle brackets instead",
-                                format!("<{}>", &snippet[1..snippet.len() - 1]),
-                                Applicability::MaybeIncorrect,
-                            );
+                            // Do not suggest going from `Trait()` to `Trait<>`
+                            if data.inputs.len() > 0 {
+                                err.span_suggestion_with_applicability(
+                                    data.span,
+                                    "use angle brackets instead",
+                                    format!("<{}>", &snippet[1..snippet.len() - 1]),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         };
                         err.emit();
                         (self.lower_angle_bracketed_parameter_data(
