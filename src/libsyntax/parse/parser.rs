@@ -1989,6 +1989,32 @@ impl<'a> Parser<'a> {
 
                 result.unwrap()
             }
+            token::Dot if self.look_ahead(1, |t| match t {
+                token::Literal(parse::token::Lit::Integer(_) , None) => true,
+                _ => false,
+            }) => { // recover from `let x = .4;`
+                let lo = self.span;
+                self.bump();
+                if let token::Literal(
+                    parse::token::Lit::Integer(val),
+                    None
+                ) = self.token {
+                    self.bump();
+                    let sp = lo.to(self.prev_span);
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "numeric float literals must have a significant");
+                    err.span_suggestion_with_applicability(
+                        sp,
+                        "numeric float literals must have a significant",
+                        format!("0.{}", val),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    return Ok(ast::LitKind::Float(val, ast::FloatTy::F32));
+                } else {
+                    unreachable!();
+                };
+            }
             _ => { return self.unexpected_last(&self.token); }
         };
 

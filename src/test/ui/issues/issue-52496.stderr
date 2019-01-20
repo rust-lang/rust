@@ -1,13 +1,11 @@
-error: expected expression, found `.`
+error: numeric float literals must have a significant
   --> $DIR/issue-52496.rs:4:24
    |
 LL |     let _ = Foo { bar: .5, baz: 42 };
-   |             ---        ^ expected expression
-   |             |
-   |             while parsing this struct
+   |                        ^^ help: numeric float literals must have a significant: `0.5`
 
 error: expected one of `,` or `}`, found `.`
-  --> $DIR/issue-52496.rs:8:22
+  --> $DIR/issue-52496.rs:9:22
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
    |             ---      ^ expected one of `,` or `}` here
@@ -15,12 +13,22 @@ LL |     let _ = Foo { bar.into(), bat: -1, . };
    |             while parsing this struct
 
 error: expected identifier, found `.`
-  --> $DIR/issue-52496.rs:8:40
+  --> $DIR/issue-52496.rs:9:40
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
    |             ---                        ^ expected identifier
    |             |
    |             while parsing this struct
+
+error[E0308]: mismatched types
+  --> $DIR/issue-52496.rs:4:24
+   |
+LL |     let _ = Foo { bar: .5, baz: 42 };
+   |                        ^^ expected f64, found f32
+help: change the type of the numeric literal from `f32` to `f64`
+   |
+LL |     let _ = Foo { bar: .5f64, baz: 42 };
+   |                        ^^^^^
 
 error[E0063]: missing field `bat` in initializer of `Foo`
   --> $DIR/issue-52496.rs:4:13
@@ -29,22 +37,22 @@ LL |     let _ = Foo { bar: .5, baz: 42 };
    |             ^^^ missing `bat`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-52496.rs:8:19
+  --> $DIR/issue-52496.rs:9:19
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
    |                   ^^^ expected f64, found f32
 help: you can cast an `f32` to `f64` in a lossless way
    |
-LL |     let _ = Foo { bar: bar.into().into(), bat: -1, . };
-   |                   ^^^^^^^^^^^^^^^
+LL |     let _ = Foo { bar.into().into(), bat: -1, . };
+   |                   ^^^^^^^^^^
 
 error[E0063]: missing field `baz` in initializer of `Foo`
-  --> $DIR/issue-52496.rs:8:13
+  --> $DIR/issue-52496.rs:9:13
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
    |             ^^^ missing `baz`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors occurred: E0063, E0308.
 For more information about an error, try `rustc --explain E0063`.
