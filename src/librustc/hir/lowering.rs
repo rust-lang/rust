@@ -1826,7 +1826,11 @@ impl<'a> LoweringContext<'a> {
                         struct_span_err!(self.sess, data.span, E0214, "{}", msg)
                             .span_label(data.span, "only traits may use parentheses")
                             .emit();
-                        (hir::GenericArgs::none(), false)
+                        (self.lower_angle_bracketed_parameter_data(
+                            &data.as_angle_bracketed_args(),
+                            param_mode,
+                            itctx).0,
+                         false)
                     }
                 },
             }

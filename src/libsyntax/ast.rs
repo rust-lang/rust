@@ -192,6 +192,16 @@ pub struct ParenthesisedArgs {
     pub output: Option<P<Ty>>,
 }
 
+impl ParenthesisedArgs {
+    pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
+        AngleBracketedArgs {
+            span: self.span,
+            args: self.inputs.iter().cloned().map(|input| GenericArg::Type(input)).collect(),
+            bindings: vec![],
+        }
+    }
+}
+
 // hack to ensure that we don't try to access the private parts of `NodeId` in this module
 mod node_id_inner {
     use rustc_data_structures::indexed_vec::Idx;

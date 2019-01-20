@@ -4,13 +4,6 @@ error[E0214]: parenthesized parameters may only be used with a trait
 LL |     let v: Vec(&str) = vec!["foo"];
    |               ^^^^^^ only traits may use parentheses
 
-error[E0107]: wrong number of type arguments: expected 1, found 0
-  --> $DIR/E0214.rs:2:12
-   |
-LL |     let v: Vec(&str) = vec!["foo"];
-   |            ^^^^^^^^^ expected 1 type argument
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors occurred: E0107, E0214.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0214`.
