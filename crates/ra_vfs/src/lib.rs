@@ -20,7 +20,7 @@ use std::{
     cmp::Reverse,
     ffi::OsStr,
     fmt, fs, mem,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::Arc,
     thread,
 };
@@ -29,30 +29,37 @@ use crossbeam_channel::Receiver;
 use ra_arena::{impl_arena_id, Arena, RawId};
 use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
-use thread_worker::WorkerHandle;
 use walkdir::DirEntry;
 
 pub use crate::io::TaskResult as VfsTask;
-pub use crate::watcher::{Watcher, WatcherChange};
+pub use crate::watcher::WatcherChange;
 
 /// `RootFilter` is a predicate that checks if a file can belong to a root. If
 /// several filters match a file (nested dirs), the most nested one wins.
-struct RootFilter {
+pub(crate) struct RootFilter {
     root: PathBuf,
-    file_filter: fn(&Path) -> bool,
+    filter: fn(RootEntry) -> bool,
+}
+
+pub(crate) struct RootEntry<'a, 'b> {
+    root: &'a Path,
+    path: &'b Path,
 }
 
 impl RootFilter {
     fn new(root: PathBuf) -> RootFilter {
         RootFilter {
             root,
-            file_filter: has_rs_extension,
+            filter: default_filter,
         }
     }
     /// Check if this root can contain `path`. NB: even if this returns
     /// true, the `path` might actually be conained in some nested root.
-    fn can_contain(&self, path: &Path) -> Option<RelativePathBuf> {
-        if !(self.file_filter)(path) {
+    pub(crate) fn can_contain(&self, path: &Path) -> Option<RelativePathBuf> {
+        if !(self.filter)(RootEntry {
+            root: &self.root,
+            path,
+        }) {
             return None;
         }
         let path = path.strip_prefix(&self.root).ok()?;
@@ -60,8 +67,17 @@ impl RootFilter {
     }
 }
 
-pub(crate) fn has_rs_extension(p: &Path) -> bool {
-    p.extension() == Some(OsStr::new("rs"))
+pub(crate) fn default_filter(entry: RootEntry) -> bool {
+    if entry.path.is_dir() {
+        // first component relative to root is "target"
+        entry
+            .path
+            .strip_prefix(entry.root)
+            .map(|p| p.components().next() != Some(Component::Normal(OsStr::new("target"))))
+            .unwrap_or(false)
+    } else {
+        entry.path.extension() == Some(OsStr::new("rs"))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -80,13 +96,11 @@ struct VfsFileData {
 }
 
 pub struct Vfs {
-    roots: Arena<VfsRoot, RootFilter>,
+    roots: Arena<VfsRoot, Arc<RootFilter>>,
     files: Arena<VfsFile, VfsFileData>,
     root2files: FxHashMap<VfsRoot, FxHashSet<VfsFile>>,
     pending_changes: Vec<VfsChange>,
     worker: io::Worker,
-    worker_handle: WorkerHandle,
-    watcher: Option<Watcher>,
 }
 
 impl fmt::Debug for Vfs {
@@ -97,41 +111,35 @@ impl fmt::Debug for Vfs {
 
 impl Vfs {
     pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
-        let (worker, worker_handle) = io::start();
-
-        let watcher = match Watcher::start(worker.inp.clone()) {
-            Ok(watcher) => Some(watcher),
-            Err(e) => {
-                log::error!("could not start watcher: {}", e);
-                None
-            }
-        };
+        let worker = io::Worker::start();
 
         let mut res = Vfs {
             roots: Arena::default(),
             files: Arena::default(),
             root2files: FxHashMap::default(),
             worker,
-            worker_handle,
-            watcher,
             pending_changes: Vec::new(),
         };
 
         // A hack to make nesting work.
         roots.sort_by_key(|it| Reverse(it.as_os_str().len()));
         for (i, path) in roots.iter().enumerate() {
-            let root = res.roots.alloc(RootFilter::new(path.clone()));
+            let root_filter = Arc::new(RootFilter::new(path.clone()));
+
+            let root = res.roots.alloc(root_filter.clone());
             res.root2files.insert(root, Default::default());
+
             let nested = roots[..i]
                 .iter()
                 .filter(|it| it.starts_with(path))
                 .map(|it| it.clone())
                 .collect::<Vec<_>>();
+
             let filter = move |entry: &DirEntry| {
-                if entry.file_type().is_file() {
-                    has_rs_extension(entry.path())
+                if entry.file_type().is_dir() && nested.iter().any(|it| it == entry.path()) {
+                    false
                 } else {
-                    nested.iter().all(|it| it != entry.path())
+                    root_filter.can_contain(entry.path()).is_some()
                 }
             };
             let task = io::Task::AddRoot {
@@ -139,10 +147,7 @@ impl Vfs {
                 path: path.clone(),
                 filter: Box::new(filter),
             };
-            res.worker.inp.send(task).unwrap();
-            if let Some(ref mut watcher) = res.watcher {
-                watcher.watch(path);
-            }
+            res.worker.sender().send(task).unwrap();
         }
         let roots = res.roots.iter().map(|(id, _)| id).collect();
         (res, roots)
@@ -194,7 +199,7 @@ impl Vfs {
     }
 
     pub fn task_receiver(&self) -> &Receiver<io::TaskResult> {
-        &self.worker.out
+        self.worker.receiver()
     }
 
     pub fn handle_task(&mut self, task: io::TaskResult) {
@@ -225,19 +230,35 @@ impl Vfs {
                 self.pending_changes.push(change);
             }
             io::TaskResult::HandleChange(change) => match &change {
+                watcher::WatcherChange::Create(path) if path.is_dir() => {
+                    if let Some((root, _path, _file)) = self.find_root(&path) {
+                        let root_filter = self.roots[root].clone();
+                        let filter =
+                            move |entry: &DirEntry| root_filter.can_contain(entry.path()).is_some();
+                        self.worker
+                            .sender()
+                            .send(io::Task::Watch {
+                                dir: path.to_path_buf(),
+                                filter: Box::new(filter),
+                            })
+                            .unwrap()
+                    }
+                }
                 watcher::WatcherChange::Create(path)
                 | watcher::WatcherChange::Remove(path)
                 | watcher::WatcherChange::Write(path) => {
                     if self.should_handle_change(&path) {
-                        self.worker.inp.send(io::Task::LoadChange(change)).unwrap()
+                        self.worker
+                            .sender()
+                            .send(io::Task::LoadChange(change))
+                            .unwrap()
                     }
                 }
                 watcher::WatcherChange::Rescan => {
                     // TODO we should reload all files
                 }
             },
-            io::TaskResult::LoadChange(None) => {}
-            io::TaskResult::LoadChange(Some(change)) => match change {
+            io::TaskResult::LoadChange(change) => match change {
                 io::WatcherChangeData::Create { path, text }
                 | io::WatcherChangeData::Write { path, text } => {
                     if let Some((root, path, file)) = self.find_root(&path) {
@@ -256,6 +277,7 @@ impl Vfs {
                     }
                 }
             },
+            io::TaskResult::NoOp => {}
         }
     }
 
@@ -359,11 +381,7 @@ impl Vfs {
 
     /// Sutdown the VFS and terminate the background watching thread.
     pub fn shutdown(self) -> thread::Result<()> {
-        if let Some(watcher) = self.watcher {
-            let _ = watcher.shutdown();
-        }
-        let _ = self.worker.shutdown();
-        self.worker_handle.shutdown()
+        self.worker.shutdown()
     }
 
     fn add_file(

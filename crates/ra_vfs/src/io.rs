@@ -1,13 +1,20 @@
 use std::{
     fmt, fs,
     path::{Path, PathBuf},
+    sync::Arc,
+    thread,
 };
 
+use crossbeam_channel::{Receiver, Sender};
+use parking_lot::Mutex;
 use relative_path::RelativePathBuf;
 use thread_worker::WorkerHandle;
 use walkdir::{DirEntry, WalkDir};
 
-use crate::{has_rs_extension, watcher::WatcherChange, VfsRoot};
+use crate::{
+    watcher::{Watcher, WatcherChange},
+    VfsRoot,
+};
 
 pub(crate) enum Task {
     AddRoot {
@@ -17,6 +24,10 @@ pub(crate) enum Task {
     },
     HandleChange(WatcherChange),
     LoadChange(WatcherChange),
+    Watch {
+        dir: PathBuf,
+        filter: Box<Fn(&DirEntry) -> bool + Send>,
+    },
 }
 
 #[derive(Debug)]
@@ -35,7 +46,8 @@ pub enum WatcherChangeData {
 pub enum TaskResult {
     AddRoot(AddRootResult),
     HandleChange(WatcherChange),
-    LoadChange(Option<WatcherChangeData>),
+    LoadChange(WatcherChangeData),
+    NoOp,
 }
 
 impl fmt::Debug for TaskResult {
@@ -44,21 +56,74 @@ impl fmt::Debug for TaskResult {
     }
 }
 
-pub(crate) type Worker = thread_worker::Worker<Task, TaskResult>;
-
-pub(crate) fn start() -> (Worker, WorkerHandle) {
-    thread_worker::spawn("vfs", 128, |input_receiver, output_sender| {
-        input_receiver
-            .into_iter()
-            .map(handle_task)
-            .try_for_each(|it| output_sender.send(it))
-            .unwrap()
-    })
+pub(crate) struct Worker {
+    worker: thread_worker::Worker<Task, TaskResult>,
+    worker_handle: WorkerHandle,
+    watcher: Arc<Mutex<Option<Watcher>>>,
 }
 
-fn handle_task(task: Task) -> TaskResult {
+impl Worker {
+    pub(crate) fn start() -> Worker {
+        let watcher = Arc::new(Mutex::new(None));
+        let watcher_clone = watcher.clone();
+        let (worker, worker_handle) =
+            thread_worker::spawn("vfs", 128, move |input_receiver, output_sender| {
+                let res = input_receiver
+                    .into_iter()
+                    .map(|t| handle_task(t, &watcher_clone))
+                    .try_for_each(|it| output_sender.send(it));
+                res.unwrap()
+            });
+        match Watcher::start(worker.inp.clone()) {
+            Ok(w) => {
+                watcher.lock().replace(w);
+            }
+            Err(e) => log::error!("could not start watcher: {}", e),
+        };
+        Worker {
+            worker,
+            worker_handle,
+            watcher,
+        }
+    }
+
+    pub(crate) fn sender(&self) -> &Sender<Task> {
+        &self.worker.inp
+    }
+
+    pub(crate) fn receiver(&self) -> &Receiver<TaskResult> {
+        &self.worker.out
+    }
+
+    pub(crate) fn shutdown(self) -> thread::Result<()> {
+        if let Some(watcher) = self.watcher.lock().take() {
+            let _ = watcher.shutdown();
+        }
+        self.worker_handle.shutdown()
+    }
+}
+
+fn watch(
+    watcher: &Arc<Mutex<Option<Watcher>>>,
+    dir: &Path,
+    filter_entry: impl Fn(&DirEntry) -> bool,
+    emit_for_existing: bool,
+) {
+    let mut watcher = watcher.lock();
+    let watcher = match *watcher {
+        Some(ref mut w) => w,
+        None => {
+            // watcher dropped or couldn't start
+            return;
+        }
+    };
+    watcher.watch_recursive(dir, filter_entry, emit_for_existing)
+}
+
+fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> TaskResult {
     match task {
         Task::AddRoot { root, path, filter } => {
+            watch(watcher, &path, &*filter, false);
             log::debug!("loading {} ...", path.as_path().display());
             let files = load_root(path.as_path(), &*filter);
             log::debug!("... loaded {}", path.as_path().display());
@@ -70,8 +135,14 @@ fn handle_task(task: Task) -> TaskResult {
         }
         Task::LoadChange(change) => {
             log::debug!("loading {:?} ...", change);
-            let data = load_change(change);
-            TaskResult::LoadChange(data)
+            match load_change(change) {
+                Some(data) => TaskResult::LoadChange(data),
+                None => TaskResult::NoOp,
+            }
+        }
+        Task::Watch { dir, filter } => {
+            watch(watcher, &dir, &*filter, true);
+            TaskResult::NoOp
         }
     }
 }
@@ -90,9 +161,6 @@ fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePa
             continue;
         }
         let path = entry.path();
-        if !has_rs_extension(path) {
-            continue;
-        }
         let text = match fs::read_to_string(path) {
             Ok(text) => text,
             Err(e) => {
@@ -109,6 +177,9 @@ fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePa
 fn load_change(change: WatcherChange) -> Option<WatcherChangeData> {
     let data = match change {
         WatcherChange::Create(path) => {
+            if path.is_dir() {
+                return None;
+            }
             let text = match fs::read_to_string(&path) {
                 Ok(text) => text,
                 Err(e) => {
