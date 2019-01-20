@@ -1,0 +1,49 @@
+Created: 2019-01-20T04:00:48.207433+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "crate",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "crate::"
+        ),
+        insert_text_format: PlainText,
+        source_range: [16; 30),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "self",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [16; 30),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "super",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "super::"
+        ),
+        insert_text_format: PlainText,
+        source_range: [16; 30),
+        text_edit: None
+    }
+]

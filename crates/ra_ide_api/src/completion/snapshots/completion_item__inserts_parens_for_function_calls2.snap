@@ -1,0 +1,36 @@
+Created: 2019-01-20T04:00:48.255317+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Reference,
+        label: "main",
+        kind: Some(
+            Function
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "main()$0"
+        ),
+        insert_text_format: Snippet,
+        source_range: [72; 77),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Reference,
+        label: "with_args",
+        kind: Some(
+            Function
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "with_args($0)"
+        ),
+        insert_text_format: Snippet,
+        source_range: [72; 77),
+        text_edit: None
+    }
+]

@@ -12,7 +12,7 @@ use crate::{db, FilePosition};
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
-pub(super) struct CompletionContext<'a> {
+pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
     pub(super) offset: TextUnit,
     pub(super) leaf: &'a SyntaxNode,
@@ -63,6 +63,17 @@ impl<'a> CompletionContext<'a> {
         };
         ctx.fill(original_file, position.offset);
         Some(ctx)
+    }
+
+    // The range of the identifier that is being completed.
+    // This is purely advisory and can be used, for example, to highlight this range in the editor.
+    // Clients are expected to ignore this field.
+    pub(crate) fn source_range(&self) -> TextRange {
+        match self.leaf.kind() {
+            // workaroud when completion is triggered by trigger characters.
+            DOT | COLONCOLON => TextRange::from_to(self.offset, self.offset),
+            _ => self.leaf.range(),
+        }
     }
 
     fn fill(&mut self, original_file: &'a SourceFile, offset: TextUnit) {

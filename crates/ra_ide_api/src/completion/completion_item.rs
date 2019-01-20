@@ -1,6 +1,8 @@
 use hir::PerNs;
 
-use crate::completion::CompletionContext;
+use crate::completion::completion_context::CompletionContext;
+use ra_syntax::TextRange;
+use ra_text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -11,15 +13,13 @@ pub struct CompletionItem {
     /// completion.
     completion_kind: CompletionKind,
     label: String,
+    kind: Option<CompletionItemKind>,
     detail: Option<String>,
     lookup: Option<String>,
-    snippet: Option<String>,
-    kind: Option<CompletionItemKind>,
-}
-
-pub enum InsertText {
-    PlainText { text: String },
-    Snippet { text: String },
+    insert_text: Option<String>,
+    insert_text_format: InsertTextFormat,
+    source_range: TextRange,
+    text_edit: Option<TextEdit>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,7 +40,7 @@ pub enum CompletionItemKind {
     Method,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) enum CompletionKind {
     /// Parser-based keyword completion.
     Keyword,
@@ -51,16 +51,29 @@ pub(crate) enum CompletionKind {
     Snippet,
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum InsertTextFormat {
+    PlainText,
+    Snippet,
+}
+
 impl CompletionItem {
-    pub(crate) fn new(completion_kind: CompletionKind, label: impl Into<String>) -> Builder {
+    pub(crate) fn new(
+        completion_kind: CompletionKind,
+        replace_range: TextRange,
+        label: impl Into<String>,
+    ) -> Builder {
         let label = label.into();
         Builder {
+            source_range: replace_range,
             completion_kind,
             label,
+            insert_text: None,
+            insert_text_format: InsertTextFormat::PlainText,
             detail: None,
             lookup: None,
-            snippet: None,
             kind: None,
+            text_edit: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -78,30 +91,39 @@ impl CompletionItem {
             .map(|it| it.as_str())
             .unwrap_or(self.label())
     }
-    /// What is inserted.
-    pub fn insert_text(&self) -> InsertText {
-        match &self.snippet {
-            None => InsertText::PlainText {
-                text: self.label.clone(),
-            },
-            Some(it) => InsertText::Snippet { text: it.clone() },
+
+    pub fn insert_text_format(&self) -> InsertTextFormat {
+        self.insert_text_format.clone()
+    }
+    pub fn insert_text(&self) -> String {
+        match &self.insert_text {
+            Some(t) => t.clone(),
+            None => self.label.clone(),
         }
     }
-
     pub fn kind(&self) -> Option<CompletionItemKind> {
         self.kind
+    }
+    pub fn take_text_edit(&mut self) -> Option<TextEdit> {
+        self.text_edit.take()
+    }
+    pub fn source_range(&self) -> TextRange {
+        self.source_range
     }
 }
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
 pub(crate) struct Builder {
+    source_range: TextRange,
     completion_kind: CompletionKind,
     label: String,
+    insert_text: Option<String>,
+    insert_text_format: InsertTextFormat,
     detail: Option<String>,
     lookup: Option<String>,
-    snippet: Option<String>,
     kind: Option<CompletionItemKind>,
+    text_edit: Option<TextEdit>,
 }
 
 impl Builder {
@@ -111,24 +133,41 @@ impl Builder {
 
     pub(crate) fn build(self) -> CompletionItem {
         CompletionItem {
+            source_range: self.source_range,
             label: self.label,
             detail: self.detail,
+            insert_text_format: self.insert_text_format,
             lookup: self.lookup,
-            snippet: self.snippet,
             kind: self.kind,
             completion_kind: self.completion_kind,
+            text_edit: self.text_edit,
+            insert_text: self.insert_text,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
         self.lookup = Some(lookup.into());
         self
     }
-    pub(crate) fn snippet(mut self, snippet: impl Into<String>) -> Builder {
-        self.snippet = Some(snippet.into());
+    pub(crate) fn insert_text(mut self, insert_text: impl Into<String>) -> Builder {
+        self.insert_text = Some(insert_text.into());
         self
+    }
+    #[allow(unused)]
+    pub(crate) fn insert_text_format(mut self, insert_text_format: InsertTextFormat) -> Builder {
+        self.insert_text_format = insert_text_format;
+        self
+    }
+    pub(crate) fn snippet(mut self, snippet: impl Into<String>) -> Builder {
+        self.insert_text_format = InsertTextFormat::Snippet;
+        self.insert_text(snippet)
     }
     pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
         self.kind = Some(kind);
+        self
+    }
+    #[allow(unused)]
+    pub(crate) fn text_edit(mut self, edit: TextEdit) -> Builder {
+        self.text_edit = Some(edit);
         self
     }
     #[allow(unused)]
@@ -192,17 +231,18 @@ impl Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             if function.signature(ctx.db).params().is_empty() {
-                self.snippet = Some(format!("{}()$0", self.label));
+                self.insert_text = Some(format!("{}()$0", self.label));
             } else {
-                self.snippet = Some(format!("{}($0)", self.label));
+                self.insert_text = Some(format!("{}($0)", self.label));
             }
+            self.insert_text_format = InsertTextFormat::Snippet;
         }
         self.kind = Some(CompletionItemKind::Function);
         self
     }
 }
 
-impl Into<CompletionItem> for Builder {
+impl<'a> Into<CompletionItem> for Builder {
     fn into(self) -> CompletionItem {
         self.build()
     }
@@ -225,64 +265,29 @@ impl Completions {
     {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
-
-    #[cfg(test)]
-    pub(crate) fn assert_match(&self, expected: &str, kind: CompletionKind) {
-        let expected = normalize(expected);
-        let actual = self.debug_render(kind);
-        test_utils::assert_eq_text!(expected.as_str(), actual.as_str(),);
-
-        /// Normalize the textual representation of `Completions`:
-        /// replace `;` with newlines, normalize whitespace
-        fn normalize(expected: &str) -> String {
-            use ra_syntax::{tokenize, TextUnit, TextRange, SyntaxKind::SEMI};
-            let mut res = String::new();
-            for line in expected.trim().lines() {
-                let line = line.trim();
-                let mut start_offset: TextUnit = 0.into();
-                // Yep, we use rust tokenize in completion tests :-)
-                for token in tokenize(line) {
-                    let range = TextRange::offset_len(start_offset, token.len);
-                    start_offset += token.len;
-                    if token.kind == SEMI {
-                        res.push('\n');
-                    } else {
-                        res.push_str(&line[range]);
-                    }
-                }
-
-                res.push('\n');
-            }
-            res
-        }
-    }
-
-    #[cfg(test)]
-    fn debug_render(&self, kind: CompletionKind) -> String {
-        let mut res = String::new();
-        for c in self.buf.iter() {
-            if c.completion_kind == kind {
-                if let Some(lookup) = &c.lookup {
-                    res.push_str(lookup);
-                    res.push_str(&format!(" {:?}", c.label));
-                } else {
-                    res.push_str(&c.label);
-                }
-                if let Some(detail) = &c.detail {
-                    res.push_str(&format!(" {:?}", detail));
-                }
-                if let Some(snippet) = &c.snippet {
-                    res.push_str(&format!(" {:?}", snippet));
-                }
-                res.push('\n');
-            }
-        }
-        res
-    }
 }
 
 impl Into<Vec<CompletionItem>> for Completions {
     fn into(self) -> Vec<CompletionItem> {
         self.buf
     }
+}
+
+#[cfg(test)]
+pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind) {
+    use crate::mock_analysis::{single_file_with_position, analysis_and_position};
+    use crate::completion::completions;
+    use insta::assert_debug_snapshot_matches;
+    let (analysis, position) = if code.contains("//-") {
+        analysis_and_position(code)
+    } else {
+        single_file_with_position(code)
+    };
+    let completions = completions(&analysis.db, position).unwrap();
+    let completion_items: Vec<CompletionItem> = completions.into();
+    let kind_completions: Vec<CompletionItem> = completion_items
+        .into_iter()
+        .filter(|c| c.completion_kind == kind)
+        .collect();
+    assert_debug_snapshot_matches!(test_name, kind_completions);
 }

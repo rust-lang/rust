@@ -1,0 +1,81 @@
+Created: 2019-01-20T04:00:48.218272+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "if",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "if $0 {}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [24; 58),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "match",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "match $0 {}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [24; 58),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "while",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "while $0 {}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [24; 58),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "loop",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "loop {$0}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [24; 58),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "return",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "return;"
+        ),
+        insert_text_format: Snippet,
+        source_range: [24; 58),
+        text_edit: None
+    }
+]

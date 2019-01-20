@@ -1,0 +1,34 @@
+Created: 2019-01-20T04:00:48.244757+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Reference,
+        label: "quux",
+        kind: Some(
+            Function
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "quux()$0"
+        ),
+        insert_text_format: Snippet,
+        source_range: [100; 102),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Reference,
+        label: "Bar",
+        kind: Some(
+            Struct
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [100; 102),
+        text_edit: None
+    }
+]

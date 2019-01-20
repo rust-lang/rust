@@ -1,0 +1,36 @@
+Created: 2019-01-20T04:00:48.252281+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Snippet,
+        label: "pd",
+        kind: Some(
+            Snippet
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "eprintln!(\"$0 = {:?}\", $0);"
+        ),
+        insert_text_format: Snippet,
+        source_range: [16; 18),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Snippet,
+        label: "ppd",
+        kind: Some(
+            Snippet
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "eprintln!(\"$0 = {:#?}\", $0);"
+        ),
+        insert_text_format: Snippet,
+        source_range: [16; 18),
+        text_edit: None
+    }
+]

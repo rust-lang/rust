@@ -1,7 +1,7 @@
 use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionItemKind, CompletionContext, completion_item::Builder};
 
-fn snippet(label: &str, snippet: &str) -> Builder {
-    CompletionItem::new(CompletionKind::Snippet, label)
+fn snippet(ctx: &CompletionContext, label: &str, snippet: &str) -> Builder {
+    CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label)
         .snippet(snippet)
         .kind(CompletionItemKind::Snippet)
 }
@@ -10,8 +10,8 @@ pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     if !(ctx.is_trivial_path && ctx.function_syntax.is_some()) {
         return;
     }
-    snippet("pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
-    snippet("ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
+    snippet(ctx, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
+    snippet(ctx, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
 }
 
 pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
@@ -19,6 +19,7 @@ pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
     snippet(
+        ctx,
         "Test function",
         "\
 #[test]
@@ -29,45 +30,33 @@ fn ${1:feature}() {
     .lookup_by("tfn")
     .add_to(acc);
 
-    snippet("pub(crate)", "pub(crate) $0").add_to(acc);
+    snippet(ctx, "pub(crate)", "pub(crate) $0").add_to(acc);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{CompletionKind, check_completion};
-    fn check_snippet_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Snippet);
+    use crate::completion::CompletionKind;
+    use crate::completion::completion_item::check_completion;
+
+    fn check_snippet_completion(name: &str, code: &str) {
+        check_completion(name, code, CompletionKind::Snippet);
     }
 
     #[test]
     fn completes_snippets_in_expressions() {
-        check_snippet_completion(
-            r"fn foo(x: i32) { <|> }",
-            r##"
-            pd "eprintln!(\"$0 = {:?}\", $0);"
-            ppd "eprintln!(\"$0 = {:#?}\", $0);"
-            "##,
-        );
+        check_snippet_completion("snippets_in_expressions", r"fn foo(x: i32) { <|> }");
     }
 
     #[test]
     fn completes_snippets_in_items() {
-        // check_snippet_completion(r"
-        //     <|>
-        //     ",
-        //     r##"[CompletionItem { label: "Test function", lookup: None, snippet: Some("#[test]\nfn test_${1:feature}() {\n$0\n}"##,
-        // );
         check_snippet_completion(
+            "snippets_in_items",
             r"
             #[cfg(test)]
             mod tests {
                 <|>
             }
             ",
-            r##"
-            tfn "Test function" "#[test]\nfn ${1:feature}() {\n    $0\n}"
-            pub(crate) "pub(crate) $0"
-            "##,
         );
     }
 }

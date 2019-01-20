@@ -340,7 +340,11 @@ pub fn handle_completion(
         None => return Ok(None),
         Some(items) => items,
     };
-    let items = items.into_iter().map(|item| item.conv()).collect();
+    let line_index = world.analysis().file_line_index(position.file_id);
+    let items = items
+        .into_iter()
+        .map(|item| item.conv_with(&line_index))
+        .collect();
 
     Ok(Some(req::CompletionResponse::Array(items)))
 }

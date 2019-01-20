@@ -1,0 +1,19 @@
+Created: 2019-01-20T04:00:48.244260+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Reference,
+        label: "self",
+        kind: Some(
+            Binding
+        ),
+        detail: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [24; 26),
+        text_edit: None
+    }
+]
