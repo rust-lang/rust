@@ -26,6 +26,14 @@ fn test_match(x: bool) -> bool {
     }
 }
 
+#[allow(clippy::match_bool, clippy::needless_return)]
+fn test_match_with_unreachable(x: bool) -> bool {
+    match x {
+        true => return false,
+        false => unreachable!(),
+    }
+}
+
 #[allow(clippy::never_loop)]
 fn test_loop() -> bool {
     loop {
@@ -53,6 +61,15 @@ fn test_loop_with_nests() -> bool {
     }
 }
 
+#[allow(clippy::redundant_pattern_matching)]
+fn test_loop_with_if_let() -> bool {
+    loop {
+        if let Some(x) = Some(true) {
+            return x;
+        }
+    }
+}
+
 fn test_closure() {
     #[rustfmt::skip]
     let _ = || { true };
@@ -63,8 +80,10 @@ fn main() {
     let _ = test_end_of_fn();
     let _ = test_if_block();
     let _ = test_match(true);
+    let _ = test_match_with_unreachable(true);
     let _ = test_loop();
     let _ = test_loop_with_block();
     let _ = test_loop_with_nests();
+    let _ = test_loop_with_if_let();
     test_closure();
 }
