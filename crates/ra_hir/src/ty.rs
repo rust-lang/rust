@@ -688,9 +688,13 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
         Def::Struct(s) => (s.variant_data(db), s.generic_params(db)),
         Def::EnumVariant(ev) => (ev.variant_data(db), ev.parent_enum(db).generic_params(db)),
         // TODO: unions
+        Def::Enum(_) => {
+            // this can happen in (invalid) code, but enums don't have fields themselves
+            return None;
+        }
         _ => panic!(
-            "trying to get type for field in non-struct/variant {:?}",
-            def_id
+            "trying to get type for field {:?} in non-struct/variant {:?}",
+            field, def_id
         ),
     };
     let module = def_id.module(db);

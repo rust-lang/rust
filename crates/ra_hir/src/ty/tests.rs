@@ -507,6 +507,20 @@ fn test() -> i128 {
     );
 }
 
+#[test]
+fn no_panic_on_field_of_enum() {
+    check_inference(
+        r#"
+enum X {}
+
+fn test(x: X) {
+    x.some_field;
+}
+"#,
+        "no_panic_on_field_of_enum.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
