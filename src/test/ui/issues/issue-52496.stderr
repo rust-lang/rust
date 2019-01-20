@@ -1,8 +1,8 @@
-error: numeric float literals must have a significant
+error: float literals must have an integer part
   --> $DIR/issue-52496.rs:4:24
    |
 LL |     let _ = Foo { bar: .5, baz: 42 };
-   |                        ^^ help: numeric float literals must have a significant: `0.5`
+   |                        ^^ help: must have an integer part: `0.5`
 
 error: expected one of `,` or `}`, found `.`
   --> $DIR/issue-52496.rs:9:22

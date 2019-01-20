@@ -2,7 +2,7 @@ struct Foo { bar: f64, baz: i64, bat: i64 }
 
 fn main() {
     let _ = Foo { bar: .5, baz: 42 };
-    //~^ ERROR numeric float literals must have a significant
+    //~^ ERROR float literals must have an integer part
     //~| ERROR missing field `bat` in initializer of `Foo`
     //~| ERROR mismatched types
     let bar = 1.5f32;

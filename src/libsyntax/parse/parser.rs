@@ -2002,10 +2002,10 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let sp = lo.to(self.prev_span);
                     let mut err = self.diagnostic()
-                        .struct_span_err(sp, "numeric float literals must have a significant");
+                        .struct_span_err(sp, "float literals must have an integer part");
                     err.span_suggestion_with_applicability(
                         sp,
-                        "numeric float literals must have a significant",
+                        "must have an integer part",
                         format!("0.{}", val),
                         Applicability::MachineApplicable,
                     );
