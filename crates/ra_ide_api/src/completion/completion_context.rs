@@ -72,7 +72,7 @@ impl<'a> CompletionContext<'a> {
         match self.leaf.kind() {
             // workaroud when completion is triggered by trigger characters.
             DOT | COLONCOLON => TextRange::from_to(self.offset, self.offset),
-            _ => self.leaf.range()
+            _ => self.leaf.range(),
         }
     }
 
