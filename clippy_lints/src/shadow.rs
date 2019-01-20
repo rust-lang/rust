@@ -133,22 +133,22 @@ fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local, binding
     if higher::is_from_for_desugar(local) {
         return;
     }
-        let Local {
-            ref pat,
-            ref ty,
-            ref init,
-            span,
-            ..
-        } = *local;
-        if let Some(ref t) = *ty {
-            check_ty(cx, t, bindings)
-        }
-        if let Some(ref o) = *init {
-            check_expr(cx, o, bindings);
-            check_pat(cx, pat, Some(o), span, bindings);
-        } else {
-            check_pat(cx, pat, None, span, bindings);
-        }
+    let Local {
+        ref pat,
+        ref ty,
+        ref init,
+        span,
+        ..
+    } = *local;
+    if let Some(ref t) = *ty {
+        check_ty(cx, t, bindings)
+    }
+    if let Some(ref o) = *init {
+        check_expr(cx, o, bindings);
+        check_pat(cx, pat, Some(o), span, bindings);
+    } else {
+        check_pat(cx, pat, None, span, bindings);
+    }
 }
 
 fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {

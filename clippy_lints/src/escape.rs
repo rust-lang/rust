@@ -121,20 +121,20 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             let id = map.hir_to_node_id(cmt.hir_id);
             if let Some(Node::Stmt(st)) = map.find(map.get_parent_node(id)) {
                 if let StmtKind::Local(ref loc) = st.node {
-                        if let Some(ref ex) = loc.init {
-                            if let ExprKind::Box(..) = ex.node {
-                                if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                                    // let x = box (...)
-                                    self.set.insert(consume_pat.id);
-                                }
-                                // TODO Box::new
-                                // TODO vec![]
-                                // TODO "foo".to_owned() and friends
+                    if let Some(ref ex) = loc.init {
+                        if let ExprKind::Box(..) = ex.node {
+                            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
+                                // let x = box (...)
+                                self.set.insert(consume_pat.id);
                             }
+                            // TODO Box::new
+                            // TODO vec![]
+                            // TODO "foo".to_owned() and friends
                         }
                     }
                 }
             }
+        }
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
                 // let y = x where x is known

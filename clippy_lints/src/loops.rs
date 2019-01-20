@@ -1971,11 +1971,11 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
         return None;
     }
     if let StmtKind::Local(ref local) = block.stmts[0].node {
-            if let Some(ref expr) = local.init {
-                Some(expr)
-            } else {
-                None
-            }
+        if let Some(ref expr) = local.init {
+            Some(expr)
+        } else {
+            None
+        }
     } else {
         None
     }

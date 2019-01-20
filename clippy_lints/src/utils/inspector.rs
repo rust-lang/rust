@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     println!("init expression:");
                     print_expr(cx, e, 0);
                 }
-            }
+            },
             hir::StmtKind::Item(_) => println!("item decl"),
             hir::StmtKind::Expr(ref e) | hir::StmtKind::Semi(ref e) => print_expr(cx, e, 0),
         }
