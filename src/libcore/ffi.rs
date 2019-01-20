@@ -67,7 +67,7 @@ impl fmt::Debug for VaListImpl {
 }
 
 /// AArch64 ABI implementation of a `va_list`. See the
-/// [Aarch64 Procedure Call Standard] for more details.
+/// [AArch64 Procedure Call Standard] for more details.
 ///
 /// [AArch64 Procedure Call Standard]:
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf

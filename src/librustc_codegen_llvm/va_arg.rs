@@ -108,12 +108,12 @@ pub(super) fn emit_va_arg(
             emit_ptr_va_arg(bx, addr, target_ty, false,
                             Align::from_bytes(4).unwrap(), true)
         }
-        // Windows Aarch64
+        // Windows AArch64
         ("aarch64", true) => {
             emit_ptr_va_arg(bx, addr, target_ty, false,
                             Align::from_bytes(8).unwrap(), false)
         }
-        // iOS Aarch64
+        // iOS AArch64
         ("aarch64", _) if target.target_os == "ios" => {
             emit_ptr_va_arg(bx, addr, target_ty, false,
                             Align::from_bytes(8).unwrap(), true)
