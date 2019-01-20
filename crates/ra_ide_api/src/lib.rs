@@ -388,8 +388,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.db
-            .catch_canceled(|db| goto_definition::goto_definition(db, position))
+        self.with_db(|db| goto_definition::goto_definition(db, position))
     }
 
     /// Finds all usages of the reference at point.
@@ -404,8 +403,7 @@ impl Analysis {
 
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
-        self.db
-            .catch_canceled(|db| call_info::call_info(db, position))
+        self.with_db(|db| call_info::call_info(db, position))
     }
 
     /// Returns a `mod name;` declaration which created the current module.
@@ -420,33 +418,28 @@ impl Analysis {
 
     /// Returns the root file of the given crate.
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
-        Ok(self.db.crate_graph().crate_root(crate_id))
+        self.with_db(|db| db.crate_graph().crate_root(crate_id))
     }
 
     /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
-        self.db
-            .catch_canceled(|db| runnables::runnables(db, file_id))
+        self.with_db(|db| runnables::runnables(db, file_id))
     }
 
     /// Computes syntax highlighting for the given file.
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        self.db
-            .catch_canceled(|db| syntax_highlighting::highlight(db, file_id))
+        self.with_db(|db| syntax_highlighting::highlight(db, file_id))
     }
 
     /// Computes completions at the given position.
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let completions = self
-            .db
-            .catch_canceled(|db| completion::completions(db, position))?;
-        Ok(completions.map(|it| it.into()))
+        self.with_db(|db| completion::completions(db, position).map(Into::into))
     }
 
     /// Computes assists (aks code actons aka intentions) for the given
     /// position.
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<SourceChange>> {
-        Ok(self.db.assists(frange))
+        self.with_db(|db| db.assists(frange))
     }
 
     /// Computes the set of diagnostics for the given file.
