@@ -466,6 +466,7 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
     match lit {
        token::Byte(i) => (true, Some(LitKind::Byte(byte_lit(&i.as_str()).0))),
        token::Char(i) => (true, Some(LitKind::Char(char_lit(&i.as_str(), diag).0))),
+       token::Err(i) => (true, Some(LitKind::Err(i))),
 
         // There are some valid suffixes for integer and float literals,
         // so all the handling is done internally.

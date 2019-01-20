@@ -646,6 +646,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
         token::Literal(token::Byte(i), suf) => return mk_lit!("Byte", suf, i),
         token::Literal(token::Char(i), suf) => return mk_lit!("Char", suf, i),
+        token::Literal(token::Err(_i), _suf) => return cx.expr(sp, ast::ExprKind::Err),
         token::Literal(token::Integer(i), suf) => return mk_lit!("Integer", suf, i),
         token::Literal(token::Float(i), suf) => return mk_lit!("Float", suf, i),
         token::Literal(token::Str_(i), suf) => return mk_lit!("Str_", suf, i),

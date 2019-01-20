@@ -224,6 +224,7 @@ pub fn token_to_string(tok: &Token) -> String {
             let mut out = match lit {
                 token::Byte(b)           => format!("b'{}'", b),
                 token::Char(c)           => format!("'{}'", c),
+                token::Err(c)            => format!("'{}'", c),
                 token::Float(c)          |
                 token::Integer(c)        => c.to_string(),
                 token::Str_(s)           => format!("\"{}\"", s),
@@ -603,6 +604,14 @@ pub trait PrintState<'a> {
         }
         match lit.node {
             ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
+            ast::LitKind::Err(st) => {
+                let st = st.as_str().escape_debug();
+                let mut res = String::with_capacity(st.len() + 2);
+                res.push('\'');
+                res.push_str(&st);
+                res.push('\'');
+                self.writer().word(res)
+            }
             ast::LitKind::Byte(byte) => {
                 let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));

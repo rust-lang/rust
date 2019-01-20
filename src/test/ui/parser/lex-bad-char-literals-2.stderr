@@ -1,8 +1,13 @@
-error: character literal may only contain one codepoint: 'nope'
+error: character literal may only contain one codepoint
   --> $DIR/lex-bad-char-literals-2.rs:3:5
    |
-LL |     'nope' //~ ERROR: character literal may only contain one codepoint: 'nope'
+LL |     'nope' //~ ERROR: character literal may only contain one codepoint
    |     ^^^^^^
 
-error: aborting due to previous error
+error[E0601]: `main` function not found in crate `lex_bad_char_literals_2`
+   |
+   = note: consider adding a `main` function to `$DIR/lex-bad-char-literals-2.rs`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.
