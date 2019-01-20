@@ -8,7 +8,7 @@ use lsp_types::{
     WorkspaceEdit
 };
 use ra_ide_api::{
-    FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity,
+    FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity, Cancelable,
 };
 use ra_syntax::{AstNode, TextUnit};
 use rustc_hash::FxHashMap;
@@ -40,9 +40,13 @@ pub fn handle_extend_selection(
         .into_iter()
         .map_conv_with(&line_index)
         .map(|range| FileRange { file_id, range })
-        .map(|frange| world.analysis().extend_selection(frange))
-        .map_conv_with(&line_index)
-        .collect();
+        .map(|frange| {
+            world
+                .analysis()
+                .extend_selection(frange)
+                .map(|it| it.conv_with(&line_index))
+        })
+        .collect::<Cancelable<Vec<_>>>()?;
     Ok(req::ExtendSelectionResult { selections })
 }
 

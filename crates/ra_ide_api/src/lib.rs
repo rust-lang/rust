@@ -310,8 +310,8 @@ impl Analysis {
     }
 
     /// Selects the next syntactic nodes encopasing the range.
-    pub fn extend_selection(&self, frange: FileRange) -> TextRange {
-        extend_selection::extend_selection(&self.db, frange)
+    pub fn extend_selection(&self, frange: FileRange) -> Cancelable<TextRange> {
+        self.with_db(|db| extend_selection::extend_selection(db, frange))
     }
 
     /// Returns position of the mathcing brace (all types of braces are
