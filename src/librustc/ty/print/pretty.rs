@@ -205,6 +205,15 @@ pub trait PrettyPrinter:
         self.print_def_path(def_id, substs, iter::empty())
     }
 
+    fn in_binder<T>(
+        self: PrintCx<'_, '_, 'tcx, Self>,
+        value: &ty::Binder<T>,
+    ) -> Result<Self, Self::Error>
+        where T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>
+    {
+        value.skip_binder().print(self)
+    }
+
     /// Print `<...>` around what `f` prints.
     fn generic_delimiters<'gcx, 'tcx>(
         self: PrintCx<'_, 'gcx, 'tcx, Self>,
@@ -784,6 +793,15 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
         Ok(printer)
     }
 
+    fn in_binder<T>(
+        self: PrintCx<'_, '_, 'tcx, Self>,
+        value: &ty::Binder<T>,
+    ) -> Result<Self, Self::Error>
+        where T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>
+    {
+        self.pretty_in_binder(value)
+    }
+
     fn generic_delimiters<'gcx, 'tcx>(
         mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
         f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
@@ -1125,7 +1143,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 p!(write(" "), print(witness), write("]"))
             },
             ty::GeneratorWitness(types) => {
-                nest!(|cx| cx.pretty_in_binder(&types))
+                nest!(|cx| cx.in_binder(&types))
             }
             ty::Closure(did, substs) => {
                 let upvar_tys = substs.upvar_tys(did, self.tcx);
@@ -1257,9 +1275,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             })
         };
 
-        // NOTE(eddyb) this must be below `start_or_continue`'s definition
-        // as that also has a `define_scoped_cx` and that kind of shadowing
-        // is disallowed (name resolution thinks `scoped_cx!` is ambiguous).
         define_scoped_cx!(self);
 
         let old_region_index = self.config.region_index;
@@ -1302,10 +1317,43 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         result
     }
 
+    fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
+    where T: TypeFoldable<'tcx>
+    {
+
+        struct LateBoundRegionNameCollector(FxHashSet<InternedString>);
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
+            fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+                match *r {
+                    ty::ReLateBound(_, ty::BrNamed(_, name)) => {
+                        self.0.insert(name);
+                    },
+                    _ => {},
+                }
+                r.super_visit_with(self)
+            }
+        }
+
+        let mut collector = LateBoundRegionNameCollector(Default::default());
+        value.visit_with(&mut collector);
+        self.config.used_region_names = Some(collector.0);
+        self.config.region_index = 0;
+    }
+
     fn is_name_used(&self, name: &InternedString) -> bool {
         match self.config.used_region_names {
             Some(ref names) => names.contains(name),
             None => false,
         }
+    }
+}
+
+impl<T, P: PrettyPrinter> Print<'tcx, P> for ty::Binder<T>
+    where T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>
+{
+    type Output = P;
+    type Error = P::Error;
+    fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
+        cx.in_binder(self)
     }
 }

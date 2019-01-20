@@ -775,28 +775,6 @@ BraceStructLiftImpl! {
     }
 }
 
-// FIXME(eddyb) this is like what some of the macros above generate,
-// except that macros *also* generate a foldable impl, which we don't
-// want (with it we'd risk bypassing `fold_region` / `fold_const`).
-impl<'tcx> Lift<'tcx> for ty::RegionKind {
-    type Lifted = ty::RegionKind;
-    fn lift_to_tcx<'b, 'gcx>(&self, _: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        Some(self.clone())
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for ty::LazyConst<'a> {
-    type Lifted = ty::LazyConst<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        match self {
-            ty::LazyConst::Evaluated(v) => Some(ty::LazyConst::Evaluated(tcx.lift(v)?)),
-            ty::LazyConst::Unevaluated(def_id, substs) => {
-                Some(ty::LazyConst::Unevaluated(*def_id, tcx.lift(substs)?))
-            }
-        }
-    }
-}
-
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for ty::Const<'a> {
         type Lifted = ty::Const<'tcx>;

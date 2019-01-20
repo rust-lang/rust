@@ -1,6 +1,6 @@
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId};
-use crate::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::subst::{Subst, SubstsRef};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -15,19 +15,6 @@ pub use self::pretty::*;
 
 // FIXME(eddyb) this module uses `pub(crate)` for things used only
 // from `ppaux` - when that is removed, they can be re-privatized.
-
-struct LateBoundRegionNameCollector(FxHashSet<InternedString>);
-impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        match *r {
-            ty::ReLateBound(_, ty::BrNamed(_, name)) => {
-                self.0.insert(name);
-            },
-            _ => {},
-        }
-        r.super_visit_with(self)
-    }
-}
 
 #[derive(Default)]
 pub(crate) struct PrintConfig {
@@ -66,14 +53,6 @@ impl<'a, 'gcx, 'tcx, P> PrintCx<'a, 'gcx, 'tcx, P> {
 
     pub(crate) fn with_tls_tcx<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
         ty::tls::with(|tcx| PrintCx::with(tcx, printer, f))
-    }
-    fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
-    where T: TypeFoldable<'tcx>
-    {
-        let mut collector = LateBoundRegionNameCollector(Default::default());
-        value.visit_with(&mut collector);
-        self.config.used_region_names = Some(collector.0);
-        self.config.region_index = 0;
     }
 }
 
@@ -320,5 +299,29 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
         ty::GeneratorWitness(..) |
         ty::Never |
         ty::Float(_) => None,
+    }
+}
+
+impl<P: Printer> Print<'tcx, P> for ty::RegionKind {
+    type Output = P::Region;
+    type Error = P::Error;
+    fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
+        cx.print_region(self)
+    }
+}
+
+impl<P: Printer> Print<'tcx, P> for ty::Region<'_> {
+    type Output = P::Region;
+    type Error = P::Error;
+    fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
+        cx.print_region(self)
+    }
+}
+
+impl<P: Printer> Print<'tcx, P> for Ty<'tcx> {
+    type Output = P::Type;
+    type Error = P::Error;
+    fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
+        cx.print_type(self)
     }
 }

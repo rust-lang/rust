@@ -1,7 +1,7 @@
 use crate::hir;
 use crate::hir::def::Namespace;
 use crate::ty::subst::{Kind, UnpackedKind};
-use crate::ty::{self, ParamConst, Ty};
+use crate::ty::{self, ParamConst, Ty, TyCtxt};
 use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print};
 use crate::mir::interpret::ConstValue;
 
@@ -10,13 +10,60 @@ use std::iter;
 
 use rustc_target::spec::abi::Abi;
 
+pub trait LiftAndPrintToFmt<'tcx> {
+    fn lift_and_print_to_fmt(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result;
+}
+
+impl<T> LiftAndPrintToFmt<'tcx> for T
+    where T: ty::Lift<'tcx>,
+          for<'a, 'b> <T as ty::Lift<'tcx>>::Lifted:
+            Print<'tcx, FmtPrinter<&'a mut fmt::Formatter<'b>>, Error = fmt::Error>
+{
+    fn lift_and_print_to_fmt(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        PrintCx::with(tcx, FmtPrinter::new(f, Namespace::TypeNS), |cx| {
+            cx.tcx.lift(self).expect("could not lift for printing").print(cx)?;
+            Ok(())
+        })
+    }
+}
+
+// HACK(eddyb) this is separate because `ty::RegionKind` doesn't need lifting.
+impl LiftAndPrintToFmt<'tcx> for ty::RegionKind {
+    fn lift_and_print_to_fmt(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        PrintCx::with(tcx, FmtPrinter::new(f, Namespace::TypeNS), |cx| {
+            self.print(cx)?;
+            Ok(())
+        })
+    }
+}
+
 macro_rules! define_print {
-    ([$($target:ty),+] $vars:tt $def:tt) => {
-        $(define_print!($target, $vars $def);)+
+    (<$($T:ident),*> $target:ty) => {
+        impl<$($T),*> fmt::Display for $target
+            where Self: for<'a> LiftAndPrintToFmt<'a>
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                ty::tls::with(|tcx| self.lift_and_print_to_fmt(tcx, f))
+            }
+        }
     };
 
-    ($target:ty, ($self:ident, $cx:ident) { display $disp:block }) => {
-        impl<P: PrettyPrinter> Print<'tcx, P> for $target {
+    (<$($T:ident),*> $target:ty, ($self:ident, $cx:ident) { display $disp:block }) => {
+        impl<$($T,)* P: PrettyPrinter> Print<'tcx, P> for $target
+            where $($T: Print<'tcx, P, Output = P, Error = P::Error>),*
+        {
             type Output = P;
             type Error = fmt::Error;
             fn print(&$self, $cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
@@ -29,14 +76,15 @@ macro_rules! define_print {
             }
         }
 
-        impl fmt::Display for $target {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
-                    cx.tcx.lift(self).expect("could not lift for printing").print(cx)?;
-                    Ok(())
-                })
-            }
-        }
+        define_print!(<$($T),*> $target);
+    };
+
+    ($target:ty) => {
+        define_print!(<> $target);
+    };
+
+    ($target:ty, ($self:ident, $cx:ident) { display $disp:block }) => {
+        define_print!(<> $target, ($self, $cx) { display $disp });
     };
 }
 
@@ -172,11 +220,7 @@ define_print! {
 }
 
 define_print! {
-    ty::RegionKind, (self, cx) {
-        display {
-            return cx.print_region(self);
-        }
-    }
+    ty::RegionKind
 }
 
 define_print! {
@@ -215,34 +259,8 @@ define_print! {
     }
 }
 
-// The generic impl doesn't work yet because projections are not
-// normalized under HRTB.
-/*impl<T> fmt::Display for ty::Binder<T>
-    where T: fmt::Display + for<'a> ty::Lift<'a>,
-          for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(|cx| cx.pretty_in_binder(cx.tcx.lift(self)
-            .expect("could not lift for printing")))
-    }
-}*/
-
 define_print! {
-    [
-        ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
-        ty::Binder<ty::TraitRef<'tcx>>,
-        ty::Binder<ty::FnSig<'tcx>>,
-        ty::Binder<ty::TraitPredicate<'tcx>>,
-        ty::Binder<ty::SubtypePredicate<'tcx>>,
-        ty::Binder<ty::ProjectionPredicate<'tcx>>,
-        ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
-        ty::Binder<ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>>
-    ]
-    (self, cx) {
-        display {
-            nest!(|cx| cx.pretty_in_binder(self))
-        }
-    }
+    <T> ty::Binder<T>
 }
 
 define_print! {
@@ -254,11 +272,7 @@ define_print! {
 }
 
 define_print! {
-    Ty<'tcx>, (self, cx) {
-        display {
-            return cx.print_type(self);
-        }
-    }
+    Ty<'tcx>
 }
 
 define_print! {
@@ -309,13 +323,8 @@ define_print! {
     }
 }
 
-// Similar problem to `Binder<T>`, can't define a generic impl.
 define_print! {
-    [
-        ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
-        ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
-    ]
-    (self, cx) {
+    <T, U> ty::OutlivesPredicate<T, U>, (self, cx) {
         display {
             p!(print(self.0), write(" : "), print(self.1))
         }
