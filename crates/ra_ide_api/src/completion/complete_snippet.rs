@@ -1,7 +1,7 @@
 use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionItemKind, CompletionContext, completion_item::Builder};
 
 fn snippet(ctx: &CompletionContext, label: &str, snippet: &str) -> Builder {
-    CompletionItem::new(CompletionKind::Snippet, ctx.leaf_range(), label)
+    CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label)
         .snippet(snippet)
         .kind(CompletionItemKind::Snippet)
 }

@@ -9,26 +9,26 @@ use crate::completion::{CompletionContext, CompletionItem, Completions, Completi
 
 pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt
-    let leaf_range = ctx.leaf_range();
+    let source_range = ctx.source_range();
     match (ctx.use_item_syntax.as_ref(), ctx.path_prefix.as_ref()) {
         (Some(_), None) => {
-            CompletionItem::new(CompletionKind::Keyword, leaf_range, "crate")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "crate")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("crate::")
                 .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, leaf_range, "self")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "self")
                 .kind(CompletionItemKind::Keyword)
                 .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, leaf_range, "super")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "super")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("super::")
                 .add_to(acc);
         }
         (Some(_), Some(_)) => {
-            CompletionItem::new(CompletionKind::Keyword, leaf_range, "self")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "self")
                 .kind(CompletionItemKind::Keyword)
                 .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, leaf_range, "super")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "super")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("super::")
                 .add_to(acc);
@@ -38,7 +38,7 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 }
 
 fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
-    CompletionItem::new(CompletionKind::Keyword, ctx.leaf_range(), kw)
+    CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
         .kind(CompletionItemKind::Keyword)
         .snippet(snippet)
         .build()

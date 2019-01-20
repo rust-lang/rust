@@ -31,7 +31,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
         .for_each(|(name, res)| {
             CompletionItem::new(
                 CompletionKind::Reference,
-                ctx.leaf_range(),
+                ctx.source_range(),
                 name.to_string(),
             )
             .from_resolution(ctx, res)
@@ -52,7 +52,7 @@ fn complete_fn(
         .for_each(|entry| {
             CompletionItem::new(
                 CompletionKind::Reference,
-                ctx.leaf_range(),
+                ctx.source_range(),
                 entry.name().to_string(),
             )
             .kind(CompletionItemKind::Binding)

@@ -2,6 +2,7 @@ use hir::PerNs;
 
 use crate::completion::completion_context::CompletionContext;
 use ra_syntax::TextRange;
+use ra_text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -17,8 +18,8 @@ pub struct CompletionItem {
     lookup: Option<String>,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
-    replace_range: TextRange,
-    delete_range: Option<TextRange>,
+    source_range: TextRange,
+    text_edit: Option<TextEdit>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,7 +65,7 @@ impl CompletionItem {
     ) -> Builder {
         let label = label.into();
         Builder {
-            replace_range,
+            source_range: replace_range,
             completion_kind,
             label,
             insert_text: None,
@@ -72,7 +73,7 @@ impl CompletionItem {
             detail: None,
             lookup: None,
             kind: None,
-            delete_range: None,
+            text_edit: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -103,18 +104,18 @@ impl CompletionItem {
     pub fn kind(&self) -> Option<CompletionItemKind> {
         self.kind
     }
-    pub fn delete_range(&self) -> Option<TextRange> {
-        self.delete_range
+    pub fn take_text_edit(&mut self) -> Option<TextEdit> {
+        self.text_edit.take()
     }
-    pub fn replace_range(&self) -> TextRange {
-        self.replace_range
+    pub fn source_range(&self) -> TextRange {
+        self.source_range
     }
 }
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
 pub(crate) struct Builder {
-    replace_range: TextRange,
+    source_range: TextRange,
     completion_kind: CompletionKind,
     label: String,
     insert_text: Option<String>,
@@ -122,7 +123,7 @@ pub(crate) struct Builder {
     detail: Option<String>,
     lookup: Option<String>,
     kind: Option<CompletionItemKind>,
-    delete_range: Option<TextRange>,
+    text_edit: Option<TextEdit>,
 }
 
 impl Builder {
@@ -132,14 +133,14 @@ impl Builder {
 
     pub(crate) fn build(self) -> CompletionItem {
         CompletionItem {
-            replace_range: self.replace_range,
+            source_range: self.source_range,
             label: self.label,
             detail: self.detail,
             insert_text_format: self.insert_text_format,
             lookup: self.lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
-            delete_range: self.delete_range,
+            text_edit: self.text_edit,
             insert_text: self.insert_text,
         }
     }
@@ -162,6 +163,11 @@ impl Builder {
     }
     pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
         self.kind = Some(kind);
+        self
+    }
+    #[allow(unused)]
+    pub(crate) fn text_edit(mut self, edit: TextEdit) -> Builder {
+        self.text_edit = Some(edit);
         self
     }
     #[allow(unused)]

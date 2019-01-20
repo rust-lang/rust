@@ -17,7 +17,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             for (name, res) in module_scope.entries() {
                 CompletionItem::new(
                     CompletionKind::Reference,
-                    ctx.leaf_range(),
+                    ctx.source_range(),
                     name.to_string(),
                 )
                 .from_resolution(ctx, res)
@@ -30,7 +30,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 .for_each(|(variant_name, _variant)| {
                     CompletionItem::new(
                         CompletionKind::Reference,
-                        ctx.leaf_range(),
+                        ctx.source_range(),
                         variant_name.to_string(),
                     )
                     .kind(CompletionItemKind::EnumVariant)

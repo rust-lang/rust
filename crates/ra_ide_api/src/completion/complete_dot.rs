@@ -31,7 +31,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                         for field in s.fields(ctx.db) {
                             CompletionItem::new(
                                 CompletionKind::Reference,
-                                ctx.leaf_range(),
+                                ctx.source_range(),
                                 field.name().to_string(),
                             )
                             .kind(CompletionItemKind::Field)
@@ -45,9 +45,13 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             }
             Ty::Tuple(fields) => {
                 for (i, _ty) in fields.iter().enumerate() {
-                    CompletionItem::new(CompletionKind::Reference, ctx.leaf_range(), i.to_string())
-                        .kind(CompletionItemKind::Field)
-                        .add_to(acc);
+                    CompletionItem::new(
+                        CompletionKind::Reference,
+                        ctx.source_range(),
+                        i.to_string(),
+                    )
+                    .kind(CompletionItemKind::Field)
+                    .add_to(acc);
                 }
             }
             _ => {}
@@ -61,7 +65,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
         if sig.has_self_param() {
             CompletionItem::new(
                 CompletionKind::Reference,
-                ctx.leaf_range(),
+                ctx.source_range(),
                 sig.name().to_string(),
             )
             .from_function(ctx, func)

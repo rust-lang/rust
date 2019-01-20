@@ -65,7 +65,10 @@ impl<'a> CompletionContext<'a> {
         Some(ctx)
     }
 
-    pub(crate) fn leaf_range(&self) -> TextRange {
+    // The range of the identifier that is being completed.
+    // This is purely advisory and can be used, for example, to highlight this range in the editor.
+    // Clients are expected to ignore this field.
+    pub(crate) fn source_range(&self) -> TextRange {
         self.leaf.range()
     }
 

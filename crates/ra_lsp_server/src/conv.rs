@@ -13,7 +13,6 @@ use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 
 use crate::{req, server_world::ServerWorld, Result};
-use ra_text_edit::TextEditBuilder;
 
 pub trait Conv {
     type Output;
@@ -79,13 +78,11 @@ impl ConvWith for CompletionItem {
     type Ctx = LineIndex;
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
-        let atom_text_edit = AtomTextEdit::replace(self.replace_range(), self.insert_text());
+    fn conv_with(mut self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
+        let atom_text_edit = AtomTextEdit::replace(self.source_range(), self.insert_text());
         let text_edit = (&atom_text_edit).conv_with(ctx);
-        let additional_text_edits = if let Some(delete_range) = self.delete_range() {
-            let mut builder = TextEditBuilder::default();
-            builder.delete(delete_range);
-            Some(builder.finish().conv_with(ctx))
+        let additional_text_edits = if let Some(edit) = self.take_text_edit() {
+            Some(edit.conv_with(ctx))
         } else {
             None
         };
