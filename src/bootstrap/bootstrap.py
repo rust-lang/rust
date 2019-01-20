@@ -230,6 +230,9 @@ def default_build_triple():
         err = "unknown OS type: {}".format(ostype)
         sys.exit(err)
 
+    if cputype == 'powerpc' and ostype == 'unknown-freebsd':
+        cputype = subprocess.check_output(
+              ['uname', '-p']).strip().decode(default_encoding)
     cputype_mapper = {
         'BePC': 'i686',
         'aarch64': 'aarch64',
