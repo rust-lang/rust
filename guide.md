@@ -3,9 +3,11 @@
 ## About the guide
 
 This guide describes the current start of the rust-analyzer as of 2019-01-20
-(commit hash guide-2019-01). Its purpose is to
-document various problems and architectural solutions related to the problem of
-building IDE-first compiler.
+(git tag [guide-2019-01]). Its purpose is to document various problems and
+architectural solutions related to the problem of building IDE-first compiler
+for Rust.
+
+[guide-2019-01]: https://github.com/rust-analyzer/rust-analyzer/tree/guide-2019-01
 
 ## The big picture
 
