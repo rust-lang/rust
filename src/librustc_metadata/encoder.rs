@@ -1213,6 +1213,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Impl(..) |
                 hir::ItemKind::Existential(..) |
+                hir::ItemKind::TraitAlias(..) |
                 hir::ItemKind::Trait(..) => Some(self.encode_generics(def_id)),
                 _ => None,
             },
