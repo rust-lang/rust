@@ -2,7 +2,7 @@
 
 ## About the guide
 
-This guide describes the current state of `rust-analyzer` as of 2019-01-20
+This guide describes the current state of rust-analyzer as of 2019-01-20
 (git tag [guide-2019-01]). Its purpose is to document various problems and
 architectural solutions related to the problem of building IDE-first compiler
 for Rust.
@@ -11,7 +11,7 @@ for Rust.
 
 ## The big picture
 
-On the highest possible level, rust analyzer is a stateful component. A client may
+On the highest possible level, rust-analyzer is a stateful component. A client may
 apply changes to the analyzer (new contents of `foo.rs` file is "fn main() {}")
 and it may ask semantic questions about the current state (what is the
 definition of the identifier with offset 92 in file `bar.rs`?). Two important
@@ -117,7 +117,7 @@ Yet another problem is that we really-really want to avoid doing IO, but with
 Rust the set of "input" files is not necessary known up-front. In theory, you
 can have `#[path="/dev/random"] mod foo;`.
 
-To solve (or explicitly refuse to solve) these problems rust analyzer uses the
+To solve (or explicitly refuse to solve) these problems rust-analyzer uses the
 concept of source root. Roughly speaking, source roots is a contents of a
 directory on a file systems, like `/home/matklad/projects/rustraytracer/**.rs`.
 
@@ -282,11 +282,11 @@ The first step of building the model is parsing the source code.
 
 An important property of the Rust language is that each file can be parsed in
 isolation. Unlike, say, `C++`, an `include` can't change the meaning of the
-syntax. For this reason, Rust analyzer can build a syntax tree for each "source
+syntax. For this reason, rust-analyzer can build a syntax tree for each "source
 file", which could then be reused by several semantic models if this file
 happens to be a part of several crates.
 
-Rust analyzer uses a similar representation of syntax trees to that of `Roslyn`
+Rust-analyzer uses a similar representation of syntax trees to that of `Roslyn`
 and Swift's new [libsyntax]. Swift's docs give an excellent overview of the
 approach, so I skip this part here and instead outline the main characteristics
 of the syntax trees:
@@ -333,7 +333,7 @@ declarations and recursively process child modules. This is handled by the
 
 [`module_tree_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L116-L123
 
-First, rust analyzer builds a module tree for all crates in a source root
+First, rust-analyzer builds a module tree for all crates in a source root
 simultaneously. The main reason for this is historical (`module_tree` predates
 `CrateGraph`), but this approach also enables accounting for files which are not
 part of any crate. That is, if you create a file but do not include it as a
@@ -493,7 +493,7 @@ Naturally, name resolution [uses] this stable projection query.
 
 ## Type inference
 
-First of all, implementation of type inference in rust analyzer was spearheaded
+First of all, implementation of type inference in rust-analyzer was spearheaded
 by [@flodiebold]. [#327] was an awesome Christmas present, thank you, Florian!
 
 Type inference runs on per-function granularity and uses the patterns we've
@@ -518,7 +518,7 @@ construct a mapping from `ExprId`s to types.
 
 ## Tying it all together: completion
 
-To conclude the overview of the rust analyzer, let's trace the request for
+To conclude the overview of the rust-analyzer, let's trace the request for
 (type-inference powered!) code completion!
 
 We start by [receiving a message] from the language client. We decode the
