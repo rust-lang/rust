@@ -51,7 +51,7 @@ mod tests {
             }
         ",
         );
-        let r = analysis.extend_selection(frange);
+        let r = analysis.extend_selection(frange).unwrap();
         assert_eq!(r, TextRange::from_to(51.into(), 56.into()));
     }
 }

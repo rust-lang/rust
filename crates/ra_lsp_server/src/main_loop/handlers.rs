@@ -8,7 +8,7 @@ use lsp_types::{
     WorkspaceEdit
 };
 use ra_ide_api::{
-    FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity,
+    FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity, Cancelable,
 };
 use ra_syntax::{AstNode, TextUnit};
 use rustc_hash::FxHashMap;
@@ -40,9 +40,13 @@ pub fn handle_extend_selection(
         .into_iter()
         .map_conv_with(&line_index)
         .map(|range| FileRange { file_id, range })
-        .map(|frange| world.analysis().extend_selection(frange))
-        .map_conv_with(&line_index)
-        .collect();
+        .map(|frange| {
+            world
+                .analysis()
+                .extend_selection(frange)
+                .map(|it| it.conv_with(&line_index))
+        })
+        .collect::<Cancelable<Vec<_>>>()?;
     Ok(req::ExtendSelectionResult { selections })
 }
 
@@ -51,7 +55,6 @@ pub fn handle_find_matching_brace(
     params: req::FindMatchingBraceParams,
 ) -> Result<Vec<Position>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_syntax(file_id);
     let line_index = world.analysis().file_line_index(file_id);
     let res = params
         .offsets
@@ -60,7 +63,7 @@ pub fn handle_find_matching_brace(
         .map(|offset| {
             world
                 .analysis()
-                .matching_brace(&file, offset)
+                .matching_brace(FilePosition { file_id, offset })
                 .unwrap_or(offset)
         })
         .map_conv_with(&line_index)
@@ -315,7 +318,7 @@ pub fn handle_completion(
         let mut res = false;
         if let Some(ctx) = params.context {
             if ctx.trigger_character.unwrap_or_default() == ":" {
-                let source_file = world.analysis().file_syntax(position.file_id);
+                let source_file = world.analysis().parse(position.file_id);
                 let syntax = source_file.syntax();
                 let text = syntax.text();
                 if let Some(next_char) = text.char_at(position.offset) {
