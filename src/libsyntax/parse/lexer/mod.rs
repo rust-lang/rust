@@ -1456,9 +1456,8 @@ impl<'a> StringReader<'a> {
                         }
                     }
 
-                    self.err_span_(start_with_quote, pos,
-                        "character literal may only contain one codepoint");
-                    self.bump();
+                    self.fatal_span_verbose(start_with_quote, pos,
+                        String::from("character literal may only contain one codepoint")).raise();
                 }
 
                 let id = if valid {
