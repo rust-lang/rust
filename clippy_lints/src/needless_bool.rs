@@ -67,16 +67,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use self::Expression::*;
         if let ExprKind::If(ref pred, ref then_block, Some(ref else_expr)) = e.node {
+
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
                 let snip = Sugg::hir_with_applicability(cx, pred, "<predicate>", &mut applicability);
                 let snip = if not { !snip } else { snip };
 
-                let hint = if ret {
+                let mut hint = if ret {
                     format!("return {}", snip)
                 } else {
                     snip.to_string()
                 };
+
+                if parent_node_is_if_expr(&e, &cx) {
+                    hint = format!("{{ {} }}", hint);
+                }
 
                 span_lint_and_sugg(
                     cx,
@@ -117,6 +122,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
             }
         }
     }
+}
+
+fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool {
+    let parent_id = cx.tcx.hir().get_parent_node(expr.id);
+    let parent_node = cx.tcx.hir().get(parent_id);
+
+    if let rustc::hir::Node::Expr(e) = parent_node {
+        if let ExprKind::If(_,_,_) = e.node {
+           return true;
+        }
+    }
+
+    false
 }
 
 #[derive(Copy, Clone)]
