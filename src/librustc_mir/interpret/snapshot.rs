@@ -314,13 +314,14 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     stmt: usize,
 }
 
-impl_stable_hash_for!(impl<'tcx, 'mir: 'tcx> for struct Frame<'mir, 'tcx> {
+impl_stable_hash_for!(impl<'mir, 'tcx: 'mir> for struct Frame<'mir, 'tcx> {
     mir,
     instance,
     span,
     return_to_block,
     return_place -> (return_place.as_ref().map(|r| &**r)),
     locals,
+    local_layouts -> _,
     block,
     stmt,
     extra,
@@ -339,6 +340,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             return_to_block,
             return_place,
             locals,
+            local_layouts: _,
             block,
             stmt,
             extra: _,

@@ -72,6 +72,7 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
     ecx.stack.push(interpret::Frame {
         block: mir::START_BLOCK,
         locals: IndexVec::new(),
+        local_layouts: IndexVec::new(),
         instance,
         span,
         mir,
