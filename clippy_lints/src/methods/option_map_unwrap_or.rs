@@ -1,15 +1,45 @@
 use crate::utils::paths;
 use crate::utils::{is_copy, match_type, snippet, span_lint, span_note_and_lint};
-use rustc::hir;
+use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
+use rustc::hir::{self, *};
+use rustc::hir::def_id::DefId;
 use rustc::lint::LateContext;
+use rustc_data_structures::fx::FxHashSet;
 
 use super::OPTION_MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
-pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
+pub(super) fn lint<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &hir::Expr,
+    map_args: &'tcx [hir::Expr],
+    unwrap_args: &'tcx [hir::Expr],
+) {
     // lint if the caller of `map()` is an `Option`
-    let unwrap_ty = cx.tables.expr_ty(&unwrap_args[1]);
-    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) && is_copy(cx, unwrap_ty) {
+    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
+
+        if !is_copy(cx, cx.tables.expr_ty(&unwrap_args[1])) {
+            // Do not lint if the `map` argument uses identifiers in the `map`
+            // argument that are also used in the `unwrap_or` argument
+
+            let mut unwrap_visitor = UnwrapVisitor {
+                cx,
+                identifiers: FxHashSet::default(),
+            };
+            unwrap_visitor.visit_expr(&unwrap_args[1]);
+
+            let mut map_expr_visitor = MapExprVisitor {
+                cx,
+                identifiers: unwrap_visitor.identifiers,
+                found_identifier: false,
+            };
+            map_expr_visitor.visit_expr(&map_args[1]);
+
+            if map_expr_visitor.found_identifier {
+                return;
+            }
+        }
+
         // get snippets for args to map() and unwrap_or()
         let map_snippet = snippet(cx, map_args[1].span, "..");
         let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
@@ -45,5 +75,45 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, map_args: &[hir::
         } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
         };
+    }
+}
+
+struct UnwrapVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    identifiers: FxHashSet<DefId>,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
+    fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
+        if let Some(def_id) = path.def.opt_def_id() {
+            self.identifiers.insert(def_id);
+        }
+        walk_path(self, path);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.hir())
+    }
+}
+
+struct MapExprVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    identifiers: FxHashSet<DefId>,
+    found_identifier: bool,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
+    fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
+        if let Some(def_id) = path.def.opt_def_id() {
+            if self.identifiers.contains(&def_id) {
+                self.found_identifier = true;
+                return;
+            }
+        }
+        walk_path(self, path);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }
