@@ -304,7 +304,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         );
                         if let Some(suggestion) = suggestion {
                             // enum variant
-                            err.help(&format!("did you mean `{}`?", suggestion));
+                            err.span_suggestion_with_applicability(
+                                item_name.span,
+                                "did you mean",
+                                suggestion.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
                         }
                         err
                     }
@@ -440,7 +445,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
-                    err.help(&format!("did you mean `{}`?", lev_candidate.ident));
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "did you mean",
+                        lev_candidate.ident.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
                 err.emit();
             }

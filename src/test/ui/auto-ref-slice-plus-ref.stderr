@@ -2,12 +2,11 @@ error[E0599]: no method named `test_mut` found for type `std::vec::Vec<{integer}
   --> $DIR/auto-ref-slice-plus-ref.rs:7:7
    |
 LL |     a.test_mut(); //~ ERROR no method named `test_mut` found
-   |       ^^^^^^^^
+   |       ^^^^^^^^ help: did you mean: `get_mut`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `test_mut`, perhaps you need to implement it:
            candidate #1: `MyIter`
-   = help: did you mean `get_mut`?
 
 error[E0599]: no method named `test` found for type `std::vec::Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:8:7
