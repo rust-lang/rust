@@ -2149,7 +2149,27 @@ impl<'a> Parser<'a> {
                            enable_warning: bool)
                            -> PResult<'a, ()> {
         loop {
-            segments.push(self.parse_path_segment(style, enable_warning)?);
+            let segment = self.parse_path_segment(style, enable_warning)?;
+            if style == PathStyle::Expr {
+                // In order to check for trailing angle brackets, we must have finished
+                // recursing (`parse_path_segment` can indirectly call this function),
+                // that is, the next token must be the highlighted part of the below example:
+                //
+                // `Foo::<Bar as Baz<T>>::Qux`
+                //                      ^ here
+                //
+                // As opposed to the below highlight (if we had only finished the first
+                // recursion):
+                //
+                // `Foo::<Bar as Baz<T>>::Qux`
+                //                     ^ here
+                //
+                // `PathStyle::Expr` is only provided at the root invocation and never in
+                // `parse_path_segment` to recurse and therefore can be checked to maintain
+                // this invariant.
+                self.check_trailing_angle_brackets(&segment, token::ModSep);
+            }
+            segments.push(segment);
 
             if self.is_import_coupler() || !self.eat(&token::ModSep) {
                 return Ok(());
@@ -2757,7 +2777,7 @@ impl<'a> Parser<'a> {
     // Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         let segment = self.parse_path_segment(PathStyle::Expr, true)?;
-        self.check_trailing_angle_brackets(&segment);
+        self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
 
         Ok(match self.token {
             token::OpenDelim(token::Paren) => {
@@ -2793,15 +2813,19 @@ impl<'a> Parser<'a> {
     /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
     ///                                                        ^^ help: remove extra angle brackets
     /// ```
-    fn check_trailing_angle_brackets(&mut self, segment: &PathSegment) {
-        // This function is intended to be invoked from `parse_dot_suffix` where there are two
+    fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: token::Token) {
+        // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
-        // - A field access (eg. `x.foo`)
-        // - A method call (eg. `x.foo()`)
+        // 1. A specific token is expected after the path segment.
+        //    eg. `x.foo(`, `x.foo::<u32>(` (parenthesis - method call),
+        //        `Foo::`, or `Foo::<Bar>::` (mod sep - continued path).
+        // 2. No specific token is expected after the path segment.
+        //    eg. `x.foo` (field access)
         //
-        // This function is called after parsing `.foo` and before parsing any parenthesis (if
-        // present). This includes any angle bracket arguments, such as `.foo::<u32>`.
+        // This function is called after parsing `.foo` and before parsing the token `end` (if
+        // present). This includes any angle bracket arguments, such as `.foo::<u32>` or
+        // `Foo::<Bar>`.
 
         // We only care about trailing angle brackets if we previously parsed angle bracket
         // arguments. This helps stop us incorrectly suggesting that extra angle brackets be
@@ -2836,43 +2860,47 @@ impl<'a> Parser<'a> {
         // actual operators and not trailing characters - ie `x.foo >> 3`).
         let mut position = 0;
 
-        // The first tokens we will encounter are shift right tokens (`>>`) since pairs of `>`
-        // characters will have been grouped together by the tokenizer.
+        // We can encounter `>` or `>>` tokens in any order, so we need to keep track of how
+        // many of each (so we can correctly pluralize our error messages) and continue to
+        // advance.
         let mut number_of_shr = 0;
-        while self.look_ahead(position, |t| *t == token::BinOp(token::BinOpToken::Shr)) {
-            number_of_shr += 1;
+        let mut number_of_gt = 0;
+        while self.look_ahead(position, |t| {
+            trace!("check_trailing_angle_brackets: t={:?}", t);
+            if *t == token::BinOp(token::BinOpToken::Shr) {
+                number_of_shr += 1;
+                true
+            } else if *t == token::Gt {
+                number_of_gt += 1;
+                true
+            } else {
+                false
+            }
+        }) {
             position += 1;
         }
 
-        // Afterwards, there will be at most one `>` character remaining (more than one and it'd
-        // have shown up as a `>>`).
-        let encountered_gt = self.look_ahead(position, |t| *t == token::Gt);
-        if encountered_gt {
-            position += 1;
-        }
-
-        // If we didn't find any trailing `>>` characters or a trailing `>`, then we have
-        // nothing to error about.
+        // If we didn't find any trailing `>` characters, then we have nothing to error about.
         debug!(
-            "check_trailing_angle_brackets: encountered_gt={:?} number_of_shr={:?}",
-            encountered_gt, number_of_shr,
+            "check_trailing_angle_brackets: number_of_gt={:?} number_of_shr={:?}",
+            number_of_gt, number_of_shr,
         );
-        if !encountered_gt && number_of_shr < 1 {
+        if number_of_gt < 1 && number_of_shr < 1 {
             return;
         }
 
-        // Finally, double check that we have a left parenthesis next as otherwise this is the
-        // field case.
-        if self.look_ahead(position, |t| *t == token::OpenDelim(token::Paren)) {
-            // Eat from where we started until the left parenthesis so that parsing can continue
+        // Finally, double check that we have our end token as otherwise this is the
+        // second case.
+        if self.look_ahead(position, |t| {
+            trace!("check_trailing_angle_brackets: t={:?}", t);
+            *t == end
+        }) {
+            // Eat from where we started until the end token so that parsing can continue
             // as if we didn't have those extra angle brackets.
-            self.eat_to_tokens(&[&token::OpenDelim(token::Paren)]);
+            self.eat_to_tokens(&[&end]);
             let span = lo.until(self.span);
 
-            // We needn't check `encountered_gt` to determine if we should pluralize "bracket".
-            // `encountered_gt` can only represent a single `>` character, if `number_of_shr >= 1`
-            // then there is either `>>` or `>>>` - in either case a plural is warranted.
-            let plural = number_of_shr >= 1;
+            let plural = number_of_gt > 1 || number_of_shr >= 1;
             self.diagnostic()
                 .struct_span_err(
                     span,
