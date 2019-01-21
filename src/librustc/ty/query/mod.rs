@@ -283,7 +283,7 @@ define_queries! { <'tcx>
     TypeChecking {
         [] fn typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
 
-        [no_hash] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
+        [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
     },
 
     Other {
