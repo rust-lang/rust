@@ -436,6 +436,26 @@ pub unsafe fn _mm_setr_pi8(
     mem::transmute(i8x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
 }
 
+/// Empty the MMX state, which marks the x87 FPU registers as available for use
+/// by x87 instructions. This instruction must be used at the end of all MMX
+/// technology procedures.
+#[inline]
+#[target_feature(enable = "mmx")]
+#[cfg_attr(test, assert_instr(emms))]
+pub unsafe fn _mm_empty() {
+    emms()
+}
+
+/// Empty the MMX state, which marks the x87 FPU registers as available for use
+/// by x87 instructions. This instruction must be used at the end of all MMX
+/// technology procedures.
+#[inline]
+#[target_feature(enable = "mmx")]
+#[cfg_attr(test, assert_instr(emms))]
+pub unsafe fn _m_empty() {
+    emms()
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.mmx.padd.b"]
@@ -488,6 +508,8 @@ extern "C" {
     fn punpckhdq(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.punpckldq"]
     fn punpckldq(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.emms"]
+    fn emms();
 }
 
 #[cfg(test)]
@@ -728,5 +750,15 @@ mod tests {
         let r = _mm_setr_pi32(0, 1);
 
         assert_eq_m64(r, _mm_unpacklo_pi32(a, b));
+    }
+
+    #[simd_test(enable = "mmx")]
+    unsafe fn test_mm_empty() {
+        _mm_empty();
+    }
+
+    #[simd_test(enable = "mmx")]
+    unsafe fn test_m_empty() {
+        _m_empty();
     }
 }
