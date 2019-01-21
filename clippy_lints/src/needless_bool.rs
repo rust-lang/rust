@@ -129,7 +129,7 @@ fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool
     let parent_node = cx.tcx.hir().get(parent_id);
 
     if let rustc::hir::Node::Expr(e) = parent_node {
-        if let ExprKind::If(_,_,_) = e.node {
+        if let ExprKind::If(_, _, _) = e.node {
             return true;
         }
     }
