@@ -91,9 +91,14 @@ impl Watcher {
             match res {
                 Ok(entry) => {
                     if entry.path().is_dir() {
-                        match self.watcher.watch(dir, RecursiveMode::NonRecursive) {
-                            Ok(()) => log::debug!("watching \"{}\"", dir.display()),
-                            Err(e) => log::warn!("could not watch \"{}\": {}", dir.display(), e),
+                        match self
+                            .watcher
+                            .watch(entry.path(), RecursiveMode::NonRecursive)
+                        {
+                            Ok(()) => log::debug!("watching \"{}\"", entry.path().display()),
+                            Err(e) => {
+                                log::warn!("could not watch \"{}\": {}", entry.path().display(), e)
+                            }
                         }
                     }
                     if emit_for_contents && entry.depth() > 0 {
