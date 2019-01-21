@@ -162,5 +162,23 @@ error: unnecessary structure name repetition
 LL |                     Bar { foo: Foo {} }
    |                     ^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 26 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:290:13
+   |
+LL |             nested::A::fun_1();
+   |             ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:291:13
+   |
+LL |             nested::A::A;
+   |             ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:293:13
+   |
+LL |             nested::A {};
+   |             ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 29 previous errors
 

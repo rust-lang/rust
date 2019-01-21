@@ -7,7 +7,7 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintC
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax_pos::{symbol::keywords::SelfUpper, Span};
+use syntax_pos::symbol::keywords::SelfUpper;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.
@@ -55,7 +55,13 @@ impl LintPass for UseSelf {
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_use_self_lint(cx: &LateContext<'_, '_>, span: Span) {
+fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
+    // path segments only include actual path, no methods or fields
+    let last_path_span = path.segments.last().expect(SEGMENTS_MSG).ident.span;
+    // `to()` doesn't shorten span, so we shorten it with `until(..)`
+    // and then include it with `to(..)`
+    let span = path.span.until(last_path_span).to(last_path_span);
+
     span_lint_and_sugg(
         cx,
         USE_SELF,
@@ -92,7 +98,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
                         };
 
                         if !is_self_ty {
-                            span_use_self_lint(self.cx, path.span);
+                            span_use_self_lint(self.cx, path);
                         }
                     }
                 }
@@ -221,10 +227,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
         if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
             if self.item_path.def == path.def {
-                span_use_self_lint(self.cx, path.segments.first().expect(SEGMENTS_MSG).ident.span);
+                span_use_self_lint(self.cx, path);
             } else if let Def::StructCtor(ctor_did, CtorKind::Fn) = path.def {
                 if self.item_path.def.opt_def_id() == self.cx.tcx.parent_def_id(ctor_did) {
-                    span_use_self_lint(self.cx, path.span);
+                    span_use_self_lint(self.cx, path);
                 }
             }
         }

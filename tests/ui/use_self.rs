@@ -274,3 +274,23 @@ mod issue3410 {
         fn a(_: Vec<A>) {}
     }
 }
+
+#[allow(clippy::no_effect)]
+mod rustfix {
+    mod nested {
+        pub struct A {}
+    }
+
+    impl nested::A {
+        const A: bool = true;
+
+        fn fun_1() {}
+
+        fn fun_2() {
+            nested::A::fun_1();
+            nested::A::A;
+
+            nested::A {};
+        }
+    }
+}
