@@ -31,6 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 use dep_graph::DepGraph;
+use errors::Applicability;
 use hir::{self, ParamName};
 use hir::HirVec;
 use hir::map::{DefKey, DefPathData, Definitions};
@@ -1806,7 +1807,7 @@ impl<'a> LoweringContext<'a> {
         explicit_owner: Option<NodeId>,
     ) -> hir::PathSegment {
         let (mut generic_args, infer_types) = if let Some(ref generic_args) = segment.args {
-            let msg = "parenthesized parameters may only be used with a trait";
+            let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
@@ -1823,10 +1824,25 @@ impl<'a> LoweringContext<'a> {
                         (hir::GenericArgs::none(), true)
                     }
                     ParenthesizedGenericArgs::Err => {
-                        struct_span_err!(self.sess, data.span, E0214, "{}", msg)
-                            .span_label(data.span, "only traits may use parentheses")
-                            .emit();
-                        (hir::GenericArgs::none(), true)
+                        let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
+                        err.span_label(data.span, "only `Fn` traits may use parentheses");
+                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
+                            // Do not suggest going from `Trait()` to `Trait<>`
+                            if data.inputs.len() > 0 {
+                                err.span_suggestion_with_applicability(
+                                    data.span,
+                                    "use angle brackets instead",
+                                    format!("<{}>", &snippet[1..snippet.len() - 1]),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        };
+                        err.emit();
+                        (self.lower_angle_bracketed_parameter_data(
+                            &data.as_angle_bracketed_args(),
+                            param_mode,
+                            itctx).0,
+                         false)
                     }
                 },
             }

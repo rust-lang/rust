@@ -2176,11 +2176,11 @@ impl<'a> Parser<'a> {
               style != PathStyle::Mod && self.check(&token::ModSep)
                                       && self.look_ahead(1, |t| is_args_start(t)) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-            let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
                 self.diagnostic().struct_span_warn(self.prev_span, "unnecessary path disambiguator")
                                  .span_label(self.prev_span, "try removing `::`").emit();
             }
+            let lo = self.span;
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
