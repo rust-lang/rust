@@ -449,8 +449,13 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
         // At least one value is excluded. Get the bits.
         let value = try_validation!(value.not_undef(),
-            value, self.path,
-            format!("something in the range {:?}", layout.valid_range));
+            value,
+            self.path,
+            format!(
+                "something {}",
+                wrapping_range_format(&layout.valid_range, max_hi),
+            )
+        );
         let bits = match value {
             Scalar::Ptr(ptr) => {
                 if lo == 1 && hi == max_hi {

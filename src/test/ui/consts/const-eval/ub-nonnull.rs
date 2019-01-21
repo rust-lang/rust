@@ -13,6 +13,13 @@ const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
 const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
+union Transmute {
+    uninit: (),
+    out: NonZeroU8,
+}
+const UNINIT: NonZeroU8 = unsafe { Transmute { uninit: () }.out };
+//~^ ERROR it is undefined behavior to use this value
+
 // Also test other uses of rustc_layout_scalar_valid_range_start
 
 #[rustc_layout_scalar_valid_range_start(10)]
