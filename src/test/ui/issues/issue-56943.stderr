@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-56943.rs:6:29
+   |
+LL |     let _: issue_56943::S = issue_56943::S2;
+   |                             ^^^^^^^^^^^^^^^ expected struct `issue_56943::S`, found struct `issue_56943::S2`
+   |
+   = note: expected type `issue_56943::S`
+              found type `issue_56943::S2`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
