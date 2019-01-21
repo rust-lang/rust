@@ -8,7 +8,7 @@
 //!
 //! You can test out this program via:
 //!
-//!     echo test | cargo +nightly run --release --example hex -p stdsimd
+//!     echo test | cargo +nightly run --release hex
 //!
 //! and you should see `746573740a` get printed out.
 
@@ -28,11 +28,10 @@
 )]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[macro_use]
-extern crate stdsimd;
+#[macro_use(is_x86_feature_detected)]
+extern crate std_detect;
 
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-extern crate stdsimd;
+extern crate core_arch;
 
 #[cfg(test)]
 #[macro_use]
@@ -42,9 +41,9 @@ use std::io::{self, Read};
 use std::str;
 
 #[cfg(target_arch = "x86")]
-use stdsimd::arch::x86::*;
+use core_arch::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
-use stdsimd::arch::x86_64::*;
+use core_arch::arch::x86_64::*;
 
 fn main() {
     let mut input = Vec::new();
@@ -290,8 +289,9 @@ mod benches {
         len: usize,
         f: for<'a> unsafe fn(&[u8], &'a mut [u8]) -> Result<&'a str, usize>,
     ) {
-        let input = rand::thread_rng()
-            .gen_iter::<u8>()
+        let mut rng = rand::thread_rng();
+        let input = std::iter::repeat(())
+            .map(|()| rng.gen::<u8>())
             .take(len)
             .collect::<Vec<_>>();
         let mut dst = vec![0; input.len() * 2];

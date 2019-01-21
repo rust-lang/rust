@@ -1,7 +1,9 @@
 [workspace]
 members = [
   "crates/stdsimd-verify",
-  "crates/stdsimd",
+  "crates/core_arch",
+  "crates/std_detect",
+  "examples/"
 ]
 exclude = [
   "crates/wasm-assert-instr-tests"

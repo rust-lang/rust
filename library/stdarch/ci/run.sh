@@ -60,9 +60,9 @@ cargo_test() {
     cmd="$cmd ${subcmd} --target=$TARGET $1"
     if [ "$NOSTD" = "1" ]
     then
-        cmd="$cmd -p coresimd"
+        cmd="$cmd -p core_arch"
     else
-        cmd="$cmd -p coresimd -p stdsimd"
+        cmd="$cmd -p core_arch -p std_detect -p stdsimd_examples"
     fi
     cmd="$cmd -- $2"
     if [ "$NORUN" != "1" ]
@@ -109,4 +109,12 @@ case ${TARGET} in
         ;;
     *)
         ;;
+
 esac
+
+# Test examples
+(
+    cd examples
+    cargo test
+    echo test | cargo run --release hex
+)

@@ -11,8 +11,9 @@ and `libstd`.
 The easiest way to use it is just to import it via `use std::arch`. 
 
 The `std::arch` component for `x86` is available in stable Rust. The `std::arch`
-components for other architectures and the `std::simd` component require nightly
-Rust.
+components for other architectures requires nightly Rust. The `std::simd`
+component now lives in the
+[`packed_simd`](https://github.com/rust-lang-nursery/packed_simd) crate.
 
 Using `stdsimd` master branch is not recommended. It requires nightly Rust, it
 only works with particular Rust nightly versions, and it can (and does) break
@@ -21,7 +22,8 @@ often. If you need to use `stdsimd` master branch, you can add it to your
 
 ```toml
 #[dependencies]
-stdsimd = { git = "https://github.com/rust-lang-nursery/stdsimd.git" }
+core_arch = { git = "https://github.com/rust-lang-nursery/stdsimd.git" }
+std_detect = { git = "https://github.com/rust-lang-nursery/stdsimd.git" }
 ```
 
 # Documentation

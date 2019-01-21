@@ -1,0 +1,32 @@
+[package]
+name = "std_detect"
+version = "0.1.3"
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Andrew Gallant <jamslam@gmail.com>",
+    "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
+]
+description = "SIMD support in Rust's standard library."
+documentation = "https://docs.rs/stdsimd"
+homepage = "https://github.com/rust-lang-nursery/stdsimd"
+repository = "https://github.com/rust-lang-nursery/stdsimd"
+readme = "README.md"
+keywords = ["std", "run-time", "feature", "detection"]
+categories = ["hardware-support"]
+license = "MIT/Apache-2.0"
+
+[badges]
+travis-ci = { repository = "rust-lang-nursery/stdsimd" }
+appveyor = { repository = "rust-lang-nursery/stdsimd"  }
+is-it-maintained-issue-resolution = { repository = "rust-lang-nursery/stdsimd" }
+is-it-maintained-open-issues = { repository = "rust-lang-nursery/stdsimd" }
+maintenance = { status = "experimental" }
+
+[dependencies]
+libc = "0.2"
+cfg-if = "0.1"
+
+[dev-dependencies]
+core_arch = { version = "0.1.3", path = "../core_arch" }
+auxv = "0.3.3"
+cupid = "0.6.0"

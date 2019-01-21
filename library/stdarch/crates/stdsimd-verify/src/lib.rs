@@ -13,12 +13,12 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn x86_functions(input: TokenStream) -> TokenStream {
-    functions(input, &["../coresimd/x86", "../coresimd/x86_64"])
+    functions(input, &["core_arch/src/x86", "core_arch/src/x86_64"])
 }
 
 #[proc_macro]
 pub fn arm_functions(input: TokenStream) -> TokenStream {
-    functions(input, &["../coresimd/arm", "../coresimd/aarch64"])
+    functions(input, &["core_arch/src/arm", "core_arch/src/aarch64"])
 }
 
 fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {

@@ -3,11 +3,11 @@
 #![feature(stdsimd)]
 #![cfg(target_arch = "wasm32")]
 
-extern crate stdsimd;
+extern crate core_arch;
 
 use std::ptr;
 
-use stdsimd::arch::wasm32::*;
+use core_arch::arch::wasm32::*;
 
 static mut HEAD: *mut *mut u8 = 0 as _;
 
