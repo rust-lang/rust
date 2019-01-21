@@ -52,6 +52,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libstd/path.rs",
     "src/libstd/f32.rs",
     "src/libstd/f64.rs",
+    // Integration test for platform-specific run-time feature detection:
+    "src/libstd/tests/run-time-detect.rs" ,
     "src/libstd/sys_common/mod.rs",
     "src/libstd/sys_common/net.rs",
     "src/libterm", // Not sure how to make this crate portable, but test crate needs it.

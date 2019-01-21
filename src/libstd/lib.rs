@@ -358,6 +358,9 @@ pub mod prelude;
 // Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
+#[stable(feature = "simd_arch", since = "1.27.0")]
+#[doc(no_inline)]
+pub use core::arch;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -489,29 +492,22 @@ mod memchr;
 // compiler
 pub mod rt;
 
-// Pull in the `stdsimd` crate directly into libstd. This is the same as
-// libcore's arch/simd modules where the source of truth here is in a different
-// repository, but we pull things in here manually to get it into libstd.
+// Pull in the `std_detect` crate directly into libstd. The contents of
+// `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
 //
-// Note that the #[cfg] here is intended to do two things. First it allows us to
-// change the rustc implementation of intrinsics in stage0 by not compiling simd
-// intrinsics in stage0. Next it doesn't compile anything in test mode as
-// stdsimd has tons of its own tests which we don't want to run.
-#[path = "../stdsimd/stdsimd/mod.rs"]
+// `std_detect` depends on libstd, but the contents of this module are
+// set up in such a way that directly pulling it here works such that the
+// crate uses the this crate as its libstd.
+#[path = "../stdsimd/crates/std_detect/src/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
-mod stdsimd;
+mod std_detect;
 
-// A "fake" module needed by the `stdsimd` module to compile, not actually
-// exported though.
-mod coresimd {
-    pub use core::arch;
-}
-
-#[stable(feature = "simd_arch", since = "1.27.0")]
+#[doc(hidden)]
+#[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
-pub use stdsimd::arch;
+pub use std_detect::detect;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
