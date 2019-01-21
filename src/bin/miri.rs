@@ -24,6 +24,7 @@ use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc::hir::def_id::LOCAL_CRATE;
 use syntax::ast;
 
 struct MiriCompilerCalls {
@@ -113,8 +114,8 @@ fn after_analysis<'a, 'tcx>(
 
     let tcx = state.tcx.unwrap();
 
-    let (entry_node_id, _, _) = state.session.entry_fn.borrow().expect("no main function found!");
-    let entry_def_id = tcx.hir().local_def_id(entry_node_id);
+
+    let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
 
     miri::eval_main(tcx, entry_def_id, validate);
 

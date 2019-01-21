@@ -6,6 +6,7 @@ extern crate test;
 
 use self::miri::eval_main;
 use self::rustc_driver::{driver, Compilation};
+use rustc::hir::def_id::LOCAL_CRATE;
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::test::Bencher;
@@ -44,10 +45,9 @@ pub fn run(filename: &str, bencher: &mut Bencher) {
         state.session.abort_if_errors();
 
         let tcx = state.tcx.unwrap();
-        let (entry_node_id, _, _) = state.session.entry_fn.borrow().expect(
+        let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect(
             "no main or start function found",
         );
-        let entry_def_id = tcx.hir().local_def_id(entry_node_id);
 
         bencher.borrow_mut().iter(|| {
             eval_main(tcx, entry_def_id, false);
