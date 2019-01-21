@@ -177,7 +177,10 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     root_path = page.root_path,
     css_class = page.css_class,
     logo      = if layout.logo.is_empty() {
-        String::new()
+        format!("<a href='{}{}/index.html'>\
+                 <img src='{static_root_path}rust-logo{suffix}.png' alt='logo' width='100'></a>",
+                static_root_path=static_root_path,
+                suffix=page.resource_suffix)
     } else {
         format!("<a href='{}{}/index.html'>\
                  <img src='{}' alt='logo' width='100'></a>",
@@ -188,7 +191,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     description = page.description,
     keywords = page.keywords,
     favicon   = if layout.favicon.is_empty() {
-        String::new()
+        format!(r#"<link rel="shortcut icon" href="{static_root_path}favicon{suffix}.ico">"#,
+                static_root_path=static_root_path,
+                suffix=page.resource_suffix)
     } else {
         format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
     },

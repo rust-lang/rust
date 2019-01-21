@@ -789,6 +789,14 @@ fn write_shared(
         themes.insert(theme.to_owned());
     }
 
+    if (*cx.shared).layout.logo.is_empty() {
+        write(cx.dst.join(&format!("rust-logo{}.png", cx.shared.resource_suffix)),
+              static_files::RUST_LOGO)?;
+    }
+    if (*cx.shared).layout.favicon.is_empty() {
+        write(cx.dst.join(&format!("favicon{}.ico", cx.shared.resource_suffix)),
+              static_files::RUST_FAVICON)?;
+    }
     write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           static_files::BRUSH_SVG)?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
@@ -2068,8 +2076,6 @@ impl Context {
         themes.push(PathBuf::from("settings.css"));
         let mut layout = self.shared.layout.clone();
         layout.krate = String::new();
-        layout.logo = String::new();
-        layout.favicon = String::new();
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
