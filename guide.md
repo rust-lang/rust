@@ -227,8 +227,8 @@ of type `V`. Queries come in two basic varieties:
 
 
 For further discussion, its important to understand one bit of "fairly
-intelligently". Suppose we have two functions, `f1` and `f2`, and one input, `z`.
-We call `f1(X)` which in turn calls `f2(Y)` which inspects `i(Z)`. `i(Z)`
+intelligently". Suppose we have two functions, `f1` and `f2`, and one input,
+`z`. We call `f1(X)` which in turn calls `f2(Y)` which inspects `i(Z)`. `i(Z)`
 returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that and
 returns `O`. Now, let's change `i` at `Z` to `V2` from `V1` and try to compute
 `f1(X)` again. Because `f1(X)` (transitively) depends on `i(Z)`, we can't just
@@ -236,7 +236,16 @@ reuse its value as is. However, if `f2(Y)` is *still* equal to `R1` (despite
 `i`'s change), we, in fact, *can* reuse `O` as result of `f1(X)`. And that's how
 salsa works: it recomputes results in *reverse* order, starting from inputs and
 progressing towards outputs, stopping as soon as it sees an intermediate value
-that hasn't changed.
+that hasn't changed. If this sounds confusing to you, don't worry: it is
+confusing. This illustration by @killercup might help:
+
+<img alt="step 1" src="https://user-images.githubusercontent.com/1711539/51460907-c5484780-1d6d-11e9-9cd2-d6f62bd746e0.png" width="50%">
+
+<img alt="step 2" src="https://user-images.githubusercontent.com/1711539/51460915-c9746500-1d6d-11e9-9a77-27d33a0c51b5.png" width="50%">
+
+<img alt="step 3" src="https://user-images.githubusercontent.com/1711539/51460920-cda08280-1d6d-11e9-8d96-a782aa57a4d4.png" width="50%">
+
+<img alt="step 4" src="https://user-images.githubusercontent.com/1711539/51460927-d1340980-1d6d-11e9-851e-13c149d5c406.png" width="50%">
 
 ## Salsa Input Queries
 
