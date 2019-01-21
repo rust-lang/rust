@@ -89,8 +89,8 @@ pointers or two element tuples) or `ByRef`, which is used for anything else and
 refers to a virtual allocation. These allocations can be accessed via the
 methods on `tcx.interpret_interner`.
 
-If you are expecting a numeric result, you can use `unwrap_u64` (panics on
-anything that can't be representad as a `u64`) or `to_raw_bits` which results
+If you are expecting a numeric result, you can use `unwrap_usize` (panics on
+anything that can't be representad as a `u64`) or `assert_usize` which results
 in an `Option<u128>` yielding the `Scalar` if possible.
 
 ## Allocations
