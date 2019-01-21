@@ -33,6 +33,9 @@ quickcheck = "0.7"
 rand = "0.6"
 cupid = "0.6.0"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rand = { version = "0.6", features = ["wasm-bindgen"] }
+
 [[example]]
 name = "hex"
 path = "../../examples/hex.rs"
