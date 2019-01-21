@@ -1,5 +1,5 @@
 use rustc_target::spec::abi::{self, Abi};
-use ast::{AngleBracketedArgs, ParenthesisedArgs, AttrStyle, BareFnTy};
+use ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
 use ast::{GenericBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, AnonConst, Arg, Arm, Guard, Attribute, BindingMode, TraitItemKind};
@@ -2203,7 +2203,7 @@ impl<'a> Parser<'a> {
                 } else {
                     None
                 };
-                ParenthesisedArgs { inputs, output, span }.into()
+                ParenthesizedArgs { inputs, output, span }.into()
             };
 
             PathSegment { ident, args, id: ast::DUMMY_NODE_ID }
