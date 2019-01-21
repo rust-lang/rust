@@ -1,4 +1,4 @@
-Created: 2019-01-19T13:50:41.824939+00:00
+Created: 2019-01-21T05:19:05.341730+00:00
 Creator: insta@0.1.4
 Source: crates/ra_ide_api/src/completion/completion_item.rs
 
@@ -9,18 +9,16 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         kind: None,
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [78; 78),
-                insert: "!not"
-            }
+        insert_text: Some(
+            "!not"
         ),
-        additional_text_edits: Some(
+        insert_text_format: Snippet,
+        source_range: [76; 78),
+        text_edit: Some(
             TextEdit {
                 atoms: [
                     AtomTextEdit {
-                        delete: [72; 78),
+                        delete: [72; 76),
                         insert: ""
                     }
                 ]
@@ -33,18 +31,16 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         kind: None,
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [78; 78),
-                insert: "if bar {$0}"
-            }
+        insert_text: Some(
+            "if bar {$0}"
         ),
-        additional_text_edits: Some(
+        insert_text_format: Snippet,
+        source_range: [76; 78),
+        text_edit: Some(
             TextEdit {
                 atoms: [
                     AtomTextEdit {
-                        delete: [72; 78),
+                        delete: [72; 76),
                         insert: ""
                     }
                 ]
@@ -57,18 +53,16 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         kind: None,
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [78; 78),
-                insert: "match bar {\n${1:_} => {$0\\},\n}"
-            }
+        insert_text: Some(
+            "match bar {\n${1:_} => {$0\\},\n}"
         ),
-        additional_text_edits: Some(
+        insert_text_format: Snippet,
+        source_range: [76; 78),
+        text_edit: Some(
             TextEdit {
                 atoms: [
                     AtomTextEdit {
-                        delete: [72; 78),
+                        delete: [72; 76),
                         insert: ""
                     }
                 ]
@@ -81,18 +75,16 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
         kind: None,
         detail: None,
         lookup: None,
-        insert_text_format: Snippet,
-        text_edit: Some(
-            AtomTextEdit {
-                delete: [78; 78),
-                insert: "while bar {\n$0\n}"
-            }
+        insert_text: Some(
+            "while bar {\n$0\n}"
         ),
-        additional_text_edits: Some(
+        insert_text_format: Snippet,
+        source_range: [76; 78),
+        text_edit: Some(
             TextEdit {
                 atoms: [
                     AtomTextEdit {
-                        delete: [72; 78),
+                        delete: [72; 76),
                         insert: ""
                     }
                 ]

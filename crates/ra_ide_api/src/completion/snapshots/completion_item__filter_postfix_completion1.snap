@@ -1,0 +1,94 @@
+Created: 2019-01-21T05:12:32.815475+00:00
+Creator: insta@0.1.4
+Source: crates/ra_ide_api/src/completion/completion_item.rs
+
+[
+    CompletionItem {
+        completion_kind: Postfix,
+        label: "not",
+        kind: None,
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "!not"
+        ),
+        insert_text_format: Snippet,
+        source_range: [76; 76),
+        text_edit: Some(
+            TextEdit {
+                atoms: [
+                    AtomTextEdit {
+                        delete: [72; 76),
+                        insert: ""
+                    }
+                ]
+            }
+        )
+    },
+    CompletionItem {
+        completion_kind: Postfix,
+        label: "if",
+        kind: None,
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "if bar {$0}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [76; 76),
+        text_edit: Some(
+            TextEdit {
+                atoms: [
+                    AtomTextEdit {
+                        delete: [72; 76),
+                        insert: ""
+                    }
+                ]
+            }
+        )
+    },
+    CompletionItem {
+        completion_kind: Postfix,
+        label: "match",
+        kind: None,
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "match bar {\n${1:_} => {$0\\},\n}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [76; 76),
+        text_edit: Some(
+            TextEdit {
+                atoms: [
+                    AtomTextEdit {
+                        delete: [72; 76),
+                        insert: ""
+                    }
+                ]
+            }
+        )
+    },
+    CompletionItem {
+        completion_kind: Postfix,
+        label: "while",
+        kind: None,
+        detail: None,
+        lookup: None,
+        insert_text: Some(
+            "while bar {\n$0\n}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [76; 76),
+        text_edit: Some(
+            TextEdit {
+                atoms: [
+                    AtomTextEdit {
+                        delete: [72; 76),
+                        insert: ""
+                    }
+                ]
+            }
+        )
+    }
+]

@@ -7,6 +7,7 @@ mod complete_keyword;
 mod complete_snippet;
 mod complete_path;
 mod complete_scope;
+mod complete_postfix;
 
 use ra_db::SyntaxDatabase;
 
@@ -57,6 +58,6 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     complete_path::complete_path(&mut acc, &ctx);
     complete_scope::complete_scope(&mut acc, &ctx);
     complete_dot::complete_dot(&mut acc, &ctx);
-
+    complete_postfix::complete_postfix(&mut acc, &ctx);
     Some(acc)
 }
