@@ -602,6 +602,8 @@ impl Step for DebuggerScripts {
             // gdb debugger scripts
             builder.install(&builder.src.join("src/etc/rust-gdb"), &sysroot.join("bin"),
                     0o755);
+            builder.install(&builder.src.join("src/etc/rust-gdbgui"), &sysroot.join("bin"),
+                    0o755);
 
             cp_debugger_script("gdb_load_rust_pretty_printers.py");
             cp_debugger_script("gdb_rust_pretty_printing.py");
