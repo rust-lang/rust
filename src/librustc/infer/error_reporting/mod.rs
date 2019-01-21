@@ -485,11 +485,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn note_error_origin(&self, err: &mut DiagnosticBuilder<'tcx>, cause: &ObligationCause<'tcx>) {
+    fn note_error_origin(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
+    ) {
         match cause.code {
             ObligationCauseCode::MatchExpressionArmPattern { span, ty } => {
                 if ty.is_suggestable() {  // don't show type `_`
                     err.span_label(span, format!("this match expression has type `{}`", ty));
+                }
+                if let Some(ty::error::ExpectedFound { found, .. }) = exp_found {
+                    if ty.is_box() && ty.boxed_ty() == found {
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "consider dereferencing the boxed value",
+                                format!("*{}", snippet),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    }
                 }
             }
             ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
@@ -1013,7 +1030,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, &cause);
+        self.note_error_origin(diag, &cause, exp_found);
     }
 
     /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,

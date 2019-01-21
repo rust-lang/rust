@@ -463,11 +463,11 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[unstable(feature = "try_from", issue = "33417")]
-impl<T, U> TryFrom<U> for T where T: From<U> {
+impl<T, U> TryFrom<U> for T where U: Into<T> {
     type Error = !;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {
-        Ok(T::from(value))
+        Ok(U::into(value))
     }
 }
 

@@ -454,12 +454,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         false
     }
 
-    pub fn check_for_cast(&self,
-                      err: &mut DiagnosticBuilder<'tcx>,
-                      expr: &hir::Expr,
-                      checked_ty: Ty<'tcx>,
-                      expected_ty: Ty<'tcx>)
-                      -> bool {
+    pub fn check_for_cast(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        checked_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
         let parent_id = self.tcx.hir().get_parent_node(expr.id);
         if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Shouldn't suggest `.into()` on `const`s.
@@ -487,17 +488,40 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // For now, don't suggest casting with `as`.
         let can_cast = false;
 
+        let mut prefix = String::new();
+        if let Some(hir::Node::Expr(hir::Expr {
+            node: hir::ExprKind::Struct(_, fields, _),
+            ..
+        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.id)) {
+            // `expr` is a literal field for a struct, only suggest if appropriate
+            for field in fields {
+                if field.expr.id == expr.id && field.is_shorthand {
+                    // This is a field literal
+                    prefix = format!("{}: ", field.ident);
+                    break;
+                }
+            }
+            if &prefix == "" {
+                // Likely a field was meant, but this field wasn't found. Do not suggest anything.
+                return false;
+            }
+        }
+
         let needs_paren = expr.precedence().order() < (PREC_POSTFIX as i8);
 
         if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
             let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
-            let cast_suggestion = format!("{}{}{} as {}",
-                                          if needs_paren { "(" } else { "" },
-                                          src,
-                                          if needs_paren { ")" } else { "" },
-                                          expected_ty);
+            let cast_suggestion = format!(
+                "{}{}{}{} as {}",
+                prefix,
+                if needs_paren { "(" } else { "" },
+                src,
+                if needs_paren { ")" } else { "" },
+                expected_ty,
+            );
             let into_suggestion = format!(
-                "{}{}{}.into()",
+                "{}{}{}{}.into()",
+                prefix,
                 if needs_paren { "(" } else { "" },
                 src,
                 if needs_paren { ")" } else { "" },

@@ -2176,11 +2176,11 @@ impl<'a> Parser<'a> {
               style != PathStyle::Mod && self.check(&token::ModSep)
                                       && self.look_ahead(1, |t| is_args_start(t)) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-            let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
                 self.diagnostic().struct_span_warn(self.prev_span, "unnecessary path disambiguator")
                                  .span_label(self.prev_span, "try removing `::`").emit();
             }
+            let lo = self.span;
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
@@ -4483,13 +4483,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Emit an expected item after attributes error.
-    fn expected_item_err(&self, attrs: &[Attribute]) {
+    fn expected_item_err(&mut self, attrs: &[Attribute]) -> PResult<'a,  ()> {
         let message = match attrs.last() {
             Some(&Attribute { is_sugared_doc: true, .. }) => "expected item after doc comment",
             _ => "expected item after attributes",
         };
 
-        self.span_err(self.prev_span, message);
+        let mut err = self.diagnostic().struct_span_err(self.prev_span, message);
+        if attrs.last().unwrap().is_sugared_doc {
+            err.span_label(self.prev_span, "this doc comment doesn't document anything");
+        }
+        Err(err)
     }
 
     /// Parse a statement. This stops just before trailing semicolons on everything but items.
@@ -7636,7 +7640,7 @@ impl<'a> Parser<'a> {
             }
             None => {
                 if !attrs.is_empty()  {
-                    self.expected_item_err(&attrs);
+                    self.expected_item_err(&attrs)?;
                 }
 
                 self.unexpected()
@@ -7699,7 +7703,7 @@ impl<'a> Parser<'a> {
         }
 
         if !attributes_allowed && !attrs.is_empty() {
-            self.expected_item_err(&attrs);
+            self.expected_item_err(&attrs)?;
         }
         Ok(None)
     }
