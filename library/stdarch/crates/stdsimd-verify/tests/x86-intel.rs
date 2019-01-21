@@ -128,7 +128,7 @@ fn verify_all_signatures() {
     let xml = include_bytes!("../x86-intel.xml");
 
     let xml = &xml[..];
-    let data: Data = serde_xml_rs::deserialize(xml).expect("failed to deserialize xml");
+    let data: Data = serde_xml_rs::from_reader(xml).expect("failed to deserialize xml");
     let mut map = HashMap::new();
     for intrinsic in &data.intrinsics {
         map.entry(&intrinsic.name[..])
