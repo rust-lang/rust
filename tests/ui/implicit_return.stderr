@@ -31,31 +31,31 @@ LL |         false => { true },
    |                    ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:32:9
+  --> $DIR/implicit_return.rs:40:9
    |
 LL |         break true;
    |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:40:13
+  --> $DIR/implicit_return.rs:48:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:49:13
+  --> $DIR/implicit_return.rs:57:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:58:18
+  --> $DIR/implicit_return.rs:75:18
    |
 LL |     let _ = || { true };
    |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:59:16
+  --> $DIR/implicit_return.rs:76:16
    |
 LL |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
