@@ -17,6 +17,10 @@ fn main() {
     i - 2 + 2 - i;
     -i;
 
+    // no error, overflows are checked by `overflowing_literals`
+    -1;
+    -(-1);
+
     i & 1; // no wrapping
     i | 1;
     i ^ 1;
