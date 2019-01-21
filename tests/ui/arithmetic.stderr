@@ -25,8 +25,14 @@ error: integer arithmetic detected
 LL |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
 
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:18:5
+   |
+LL |     -i;
+   |     ^^
+
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:28:5
+  --> $DIR/arithmetic.rs:32:5
    |
 LL |     f * 2.0;
    |     ^^^^^^^
@@ -34,34 +40,34 @@ LL |     f * 2.0;
    = note: `-D clippy::float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:30:5
+  --> $DIR/arithmetic.rs:34:5
    |
 LL |     1.0 + f;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:31:5
+  --> $DIR/arithmetic.rs:35:5
    |
 LL |     f * 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:32:5
+  --> $DIR/arithmetic.rs:36:5
    |
 LL |     f / 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:33:5
+  --> $DIR/arithmetic.rs:37:5
    |
 LL |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:34:5
+  --> $DIR/arithmetic.rs:38:5
    |
 LL |     -f;
    |     ^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
