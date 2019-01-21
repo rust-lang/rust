@@ -4,6 +4,9 @@ This document describes the high-level architecture of rust-analyzer.
 If you want to familiarize yourself with the code base, you are just
 in the right place!
 
+See also the [guide](./guide.md), which walks through a particular snapshot of
+rust-analyzer code base.
+
 ## The Big Picture
 
 ![](https://user-images.githubusercontent.com/1711539/50114578-e8a34280-0255-11e9-902c-7cfc70747966.png)
