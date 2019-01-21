@@ -5,25 +5,19 @@ LL | struct Foo;
    | ----------- method `bat` not found for this
 ...
 LL |     f.bat(1.0); //~ ERROR no method named
-   |       ^^^
-   |
-   = help: did you mean `bar`?
+   |       ^^^ help: did you mean: `bar`
 
 error[E0599]: no method named `is_emtpy` found for type `std::string::String` in the current scope
   --> $DIR/suggest-methods.rs:21:15
    |
 LL |     let _ = s.is_emtpy(); //~ ERROR no method named
-   |               ^^^^^^^^
-   |
-   = help: did you mean `is_empty`?
+   |               ^^^^^^^^ help: did you mean: `is_empty`
 
 error[E0599]: no method named `count_eos` found for type `u32` in the current scope
   --> $DIR/suggest-methods.rs:25:19
    |
 LL |     let _ = 63u32.count_eos(); //~ ERROR no method named
-   |                   ^^^^^^^^^
-   |
-   = help: did you mean `count_zeros`?
+   |                   ^^^^^^^^^ help: did you mean: `count_zeros`
 
 error[E0599]: no method named `count_o` found for type `u32` in the current scope
   --> $DIR/suggest-methods.rs:28:19

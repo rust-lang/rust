@@ -51,20 +51,18 @@ error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the
    |
 LL |     let xe3 = XE::Empty3; //~ ERROR no variant named `Empty3` found for type
    |               ----^^^^^^
-   |               |
+   |               |   |
+   |               |   help: did you mean: `XEmpty3`
    |               variant not found in `empty_struct::XE`
-   |
-   = help: did you mean `XEmpty3`?
 
 error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:23:19
    |
 LL |     let xe3 = XE::Empty3(); //~ ERROR no variant named `Empty3` found for type
    |               ----^^^^^^
-   |               |
+   |               |   |
+   |               |   help: did you mean: `XEmpty3`
    |               variant not found in `empty_struct::XE`
-   |
-   = help: did you mean `XEmpty3`?
 
 error: aborting due to 8 previous errors
 

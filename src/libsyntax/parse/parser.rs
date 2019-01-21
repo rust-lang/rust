@@ -7271,9 +7271,16 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             if self.eat_keyword(keywords::Mut) {
                 let prev_span = self.prev_span;
-                self.diagnostic().struct_span_err(prev_span, "const globals cannot be mutable")
-                                 .help("did you mean to declare a static?")
-                                 .emit();
+                let mut err = self.diagnostic()
+                    .struct_span_err(prev_span, "const globals cannot be mutable");
+                err.span_label(prev_span, "cannot be mutable");
+                err.span_suggestion_with_applicability(
+                    const_span,
+                    "you might want to declare a static instead",
+                    "static".to_owned(),
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None)?;
             let prev_span = self.prev_span;
