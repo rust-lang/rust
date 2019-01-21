@@ -2757,6 +2757,8 @@ impl<'a> Parser<'a> {
     // Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         let segment = self.parse_path_segment(PathStyle::Expr, true)?;
+        self.check_trailing_angle_brackets(&segment);
+
         Ok(match self.token {
             token::OpenDelim(token::Paren) => {
                 // Method call `expr.f()`
@@ -2782,6 +2784,101 @@ impl<'a> Parser<'a> {
                 self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), ThinVec::new())
             }
         })
+    }
+
+    /// This function checks if there are trailing angle brackets and produces
+    /// a diagnostic to suggest removing them.
+    ///
+    /// ```ignore (diagnostic)
+    /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
+    ///                                                        ^^ help: remove extra angle brackets
+    /// ```
+    fn check_trailing_angle_brackets(&mut self, segment: &PathSegment) {
+        // This function is intended to be invoked from `parse_dot_suffix` where there are two
+        // cases:
+        //
+        // - A field access (eg. `x.foo`)
+        // - A method call (eg. `x.foo()`)
+        //
+        // This function is called after parsing `.foo` and before parsing any parenthesis (if
+        // present). This includes any angle bracket arguments, such as `.foo::<u32>`.
+
+        // We only care about trailing angle brackets if we previously parsed angle bracket
+        // arguments. This helps stop us incorrectly suggesting that extra angle brackets be
+        // removed in this case:
+        //
+        // `x.foo >> (3)` (where `x.foo` is a `u32` for example)
+        //
+        // This case is particularly tricky as we won't notice it just looking at the tokens -
+        // it will appear the same (in terms of upcoming tokens) as below (since the `::<u32>` will
+        // have already been parsed):
+        //
+        // `x.foo::<u32>>>(3)`
+        let parsed_angle_bracket_args = segment.args
+            .as_ref()
+            .map(|args| args.is_angle_bracketed())
+            .unwrap_or(false);
+
+        debug!(
+            "check_trailing_angle_brackets: parsed_angle_bracket_args={:?}",
+            parsed_angle_bracket_args,
+        );
+        if !parsed_angle_bracket_args {
+            return;
+        }
+
+        // Keep the span at the start so we can highlight the sequence of `>` characters to be
+        // removed.
+        let lo = self.span;
+
+        // We need to look-ahead to see if we have `>` characters without moving the cursor forward
+        // (since we might have the field access case and the characters we're eating are
+        // actual operators and not trailing characters - ie `x.foo >> 3`).
+        let mut position = 0;
+
+        // The first tokens we will encounter are shift right tokens (`>>`) since pairs of `>`
+        // characters will have been grouped together by the tokenizer.
+        let mut number_of_shr = 0;
+        while self.look_ahead(position, |t| *t == token::BinOp(token::BinOpToken::Shr)) {
+            number_of_shr += 1;
+            position += 1;
+        }
+
+        // Afterwards, there will be at most one `>` character remaining (more than one and it'd
+        // have shown up as a `>>`).
+        let encountered_gt = self.look_ahead(position, |t| *t == token::Gt);
+        if encountered_gt {
+            position += 1;
+        }
+
+        // If we didn't find any trailing `>>` characters or a trailing `>`, then we have
+        // nothing to error about.
+        debug!(
+            "check_trailing_angle_brackets: encountered_gt={:?} number_of_shr={:?}",
+            encountered_gt, number_of_shr,
+        );
+        if !encountered_gt && number_of_shr < 1 {
+            return;
+        }
+
+        // Finally, double check that we have a left parenthesis next as otherwise this is the
+        // field case.
+        if self.look_ahead(position, |t| *t == token::OpenDelim(token::Paren)) {
+            // Eat from where we started until the left parenthesis so that parsing can continue
+            // as if we didn't have those extra angle brackets.
+            self.eat_to_tokens(&[&token::OpenDelim(token::Paren)]);
+            let span = lo.until(self.span);
+
+            self.diagnostic()
+                .struct_span_err(span, "unmatched angle bracket")
+                .span_suggestion_with_applicability(
+                    span,
+                    "remove extra angle bracket",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
