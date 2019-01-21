@@ -4,7 +4,7 @@
 // run-pass
 
 #![feature(public_private_dependencies)]
-#![deny(external_private_dependency)]
+#![deny(exported_private_dependencies)]
 
 pub struct PublicType {
     pub field: Option<u8>

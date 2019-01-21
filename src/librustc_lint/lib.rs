@@ -230,7 +230,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(EXTERNAL_PRIVATE_DEPENDENCY),
+            id: LintId::of(EXPORTED_PRIVATE_DEPENDENCIES),
             reference: "issue #44663 <https://github.com/rust-lang/rust/issues/44663>",
             edition: None,
         },

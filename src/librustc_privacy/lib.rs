@@ -1496,7 +1496,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.lint_node(lint::builtin::EXTERNAL_PRIVATE_DEPENDENCY,
+            self.tcx.lint_node(lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                                self.item_id,
                                self.span,
                                &format!("{} `{}` from private dependency '{}' in public \
@@ -1726,9 +1726,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
 fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
-    let public_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_public.iter().flat_map(|c| {
-        tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
-    }).collect();
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
@@ -1764,6 +1761,11 @@ fn privacy_access_levels<'tcx>(
     for &module in krate.modules.keys() {
         queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
     }
+
+    let public_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_public.iter().flat_map(|c| {
+        tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
+    }).collect();
+
 
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.

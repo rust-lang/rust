@@ -9,7 +9,7 @@
 
 // Without ![feature(public_private_dependencies)],
 // this should do nothing/
-#![deny(external_private_dependency)]
+#![deny(exported_private_dependencies)]
 
 extern crate pub_dep;
 
