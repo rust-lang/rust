@@ -33,7 +33,7 @@ fn postfix_snippet(ctx: &CompletionContext, label: &str, snippet: &str) -> Build
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some(dot_receiver) = ctx.dot_receiver {
         let receiver_text = dot_receiver.syntax().text().to_string();
-        postfix_snippet(ctx, "not", "!not").add_to(acc);
+        postfix_snippet(ctx, "not", &format!("!{}", receiver_text)).add_to(acc);
         postfix_snippet(ctx, "if", &format!("if {} {{$0}}", receiver_text)).add_to(acc);
         postfix_snippet(
             ctx,
@@ -50,8 +50,8 @@ mod tests {
     use crate::completion::completion_item::CompletionKind;
     use crate::completion::completion_item::check_completion;
 
-    fn check_snippet_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Postfix);
+    fn check_snippet_completion(test_name: &str, code: &str) {
+        check_completion(test_name, code, CompletionKind::Postfix);
     }
 
     #[test]
