@@ -99,7 +99,6 @@ matrix:
         - shellcheck ci/*.sh
   allow_failures:
     # FIXME https://github.com/rust-lang/libc/issues/1170
-    - name: "x86_64-linux-android - no assert_instr"
     - name: "arm-linux-androideabi - no assert_instr"
     - name: "aarch64-linux-android - no assert_instr"
     # clippy changes enough from time to time that it breaks relatively

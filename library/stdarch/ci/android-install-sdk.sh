@@ -47,12 +47,12 @@ esac;
 
 # --no_https avoids
 # javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: No trusted certificate found
-echo "yes" | \
-    ./sdk/tools/bin/sdkmanager --no_https \
-        "emulator" \
-        "platform-tools" \
-        "platforms;android-24" \
-        "system-images;android-24;default;$abi"
+yes | ./sdk/tools/bin/sdkmanager --licenses --no_https
+yes | ./sdk/tools/bin/sdkmanager --no_https \
+    "emulator" \
+    "platform-tools" \
+    "platforms;android-24" \
+    "system-images;android-24;default;$abi"
 
 echo "no" |
     ./sdk/tools/bin/avdmanager create avd \
