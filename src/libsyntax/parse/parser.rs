@@ -2695,6 +2695,21 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            let mut recovery_field = None;
+            if let token::Ident(ident, _) = self.token {
+                if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
+                    // Use in case of error after field-looking code: `S { foo: () with a }`
+                    let mut ident = ident.clone();
+                    ident.span = self.span;
+                    recovery_field = Some(ast::Field {
+                        ident,
+                        span: self.span,
+                        expr: self.mk_expr(self.span, ExprKind::Err, ThinVec::new()),
+                        is_shorthand: false,
+                        attrs: ThinVec::new(),
+                    });
+                }
+            }
             let mut parsed_field = None;
             match self.parse_field() {
                 Ok(f) => parsed_field = Some(f),
@@ -2716,11 +2731,14 @@ impl<'a> Parser<'a> {
 
             match self.expect_one_of(&[token::Comma],
                                      &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => if let Some(f) = parsed_field {
-                    // only include the field if there's no parse error
+                Ok(()) => if let Some(f) = parsed_field.or(recovery_field) {
+                    // only include the field if there's no parse error for the field name
                     fields.push(f);
                 }
                 Err(mut e) => {
+                    if let Some(f) = recovery_field {
+                        fields.push(f);
+                    }
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
