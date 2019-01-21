@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.669112954+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [10; 11) 't': [unknown]
 [21; 26) '{ t }': [unknown]
 [23; 24) 't': [unknown]
@@ -12,3 +16,4 @@
 [90; 92) 'id': fn(T) -> T
 [90; 95) 'id(1)': T
 [93; 94) '1': T
+

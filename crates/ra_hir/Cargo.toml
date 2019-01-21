@@ -19,3 +19,4 @@ test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
 flexi_logger = "0.10.0"
+insta = "0.1.4"

@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.666200994+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [11; 201) '{     ...o"#; }': ()
 [17; 21) '5i32': i32
 [27; 34) '"hello"': &str
@@ -10,3 +14,4 @@
 [104; 108) 'true': bool
 [114; 182) 'r#"   ...    "#': &str
 [188; 198) 'br#"yolo"#': &[u8]
+

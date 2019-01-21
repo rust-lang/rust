@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.672467086+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [53; 57) 'self': A<[unknown]>
 [65; 87) '{     ...     }': [unknown]
 [75; 79) 'self': A<[unknown]>
@@ -27,3 +31,4 @@
 [244; 245) 'z': T
 [254; 255) 'b': A<T>
 [254; 259) 'b.x()': i128
+
