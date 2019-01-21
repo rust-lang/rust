@@ -10,13 +10,6 @@ use std::{
 };
 use walkdir::{DirEntry, WalkDir};
 
-pub(crate) struct Watcher {
-    watcher: RecommendedWatcher,
-    thread: thread::JoinHandle<()>,
-    bomb: DropBomb,
-    sender: Sender<io::Task>,
-}
-
 #[derive(Debug)]
 pub enum WatcherChange {
     Create(PathBuf),
@@ -60,6 +53,13 @@ fn handle_change_event(
 }
 
 const WATCHER_DELAY: Duration = Duration::from_millis(250);
+
+pub(crate) struct Watcher {
+    watcher: RecommendedWatcher,
+    thread: thread::JoinHandle<()>,
+    bomb: DropBomb,
+    sender: Sender<io::Task>,
+}
 
 impl Watcher {
     pub(crate) fn start(

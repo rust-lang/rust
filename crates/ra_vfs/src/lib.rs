@@ -14,7 +14,6 @@
 //! which are watched for changes. Typically, there will be a root for each
 //! Cargo package.
 mod io;
-mod watcher;
 
 use std::{
     cmp::Reverse,
@@ -32,7 +31,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use walkdir::DirEntry;
 
 pub use crate::io::TaskResult as VfsTask;
-pub use crate::watcher::WatcherChange;
+use io::{Task, TaskResult, WatcherChange, WatcherChangeData, Worker};
 
 /// `RootFilter` is a predicate that checks if a file can belong to a root. If
 /// several filters match a file (nested dirs), the most nested one wins.
@@ -100,7 +99,7 @@ pub struct Vfs {
     files: Arena<VfsFile, VfsFileData>,
     root2files: FxHashMap<VfsRoot, FxHashSet<VfsFile>>,
     pending_changes: Vec<VfsChange>,
-    worker: io::Worker,
+    worker: Worker,
 }
 
 impl fmt::Debug for Vfs {
@@ -204,7 +203,7 @@ impl Vfs {
 
     pub fn handle_task(&mut self, task: io::TaskResult) {
         match task {
-            io::TaskResult::AddRoot(task) => {
+            TaskResult::AddRoot(task) => {
                 let mut files = Vec::new();
                 // While we were scanning the root in the backgound, a file might have
                 // been open in the editor, so we need to account for that.
@@ -229,38 +228,35 @@ impl Vfs {
                 };
                 self.pending_changes.push(change);
             }
-            io::TaskResult::HandleChange(change) => match &change {
-                watcher::WatcherChange::Create(path) if path.is_dir() => {
+            TaskResult::HandleChange(change) => match &change {
+                WatcherChange::Create(path) if path.is_dir() => {
                     if let Some((root, _path, _file)) = self.find_root(&path) {
                         let root_filter = self.roots[root].clone();
                         let filter =
                             move |entry: &DirEntry| root_filter.can_contain(entry.path()).is_some();
                         self.worker
                             .sender()
-                            .send(io::Task::Watch {
+                            .send(Task::Watch {
                                 dir: path.to_path_buf(),
                                 filter: Box::new(filter),
                             })
                             .unwrap()
                     }
                 }
-                watcher::WatcherChange::Create(path)
-                | watcher::WatcherChange::Remove(path)
-                | watcher::WatcherChange::Write(path) => {
+                WatcherChange::Create(path)
+                | WatcherChange::Remove(path)
+                | WatcherChange::Write(path) => {
                     if self.should_handle_change(&path) {
-                        self.worker
-                            .sender()
-                            .send(io::Task::LoadChange(change))
-                            .unwrap()
+                        self.worker.sender().send(Task::LoadChange(change)).unwrap()
                     }
                 }
-                watcher::WatcherChange::Rescan => {
+                WatcherChange::Rescan => {
                     // TODO we should reload all files
                 }
             },
-            io::TaskResult::LoadChange(change) => match change {
-                io::WatcherChangeData::Create { path, text }
-                | io::WatcherChangeData::Write { path, text } => {
+            TaskResult::LoadChange(change) => match change {
+                WatcherChangeData::Create { path, text }
+                | WatcherChangeData::Write { path, text } => {
                     if let Some((root, path, file)) = self.find_root(&path) {
                         if let Some(file) = file {
                             self.do_change_file(file, text, false);
@@ -269,7 +265,7 @@ impl Vfs {
                         }
                     }
                 }
-                io::WatcherChangeData::Remove { path } => {
+                WatcherChangeData::Remove { path } => {
                     if let Some((root, path, file)) = self.find_root(&path) {
                         if let Some(file) = file {
                             self.do_remove_file(root, path, file, false);
@@ -277,7 +273,7 @@ impl Vfs {
                     }
                 }
             },
-            io::TaskResult::NoOp => {}
+            TaskResult::NoOp => {}
         }
     }
 

@@ -11,10 +11,11 @@ use relative_path::RelativePathBuf;
 use thread_worker::WorkerHandle;
 use walkdir::{DirEntry, WalkDir};
 
-use crate::{
-    watcher::{Watcher, WatcherChange},
-    VfsRoot,
-};
+mod watcher;
+use watcher::Watcher;
+pub use watcher::WatcherChange;
+
+use crate::VfsRoot;
 
 pub(crate) enum Task {
     AddRoot {
@@ -22,6 +23,7 @@ pub(crate) enum Task {
         path: PathBuf,
         filter: Box<Fn(&DirEntry) -> bool + Send>,
     },
+    /// this variant should only be created by the watcher
     HandleChange(WatcherChange),
     LoadChange(WatcherChange),
     Watch {
