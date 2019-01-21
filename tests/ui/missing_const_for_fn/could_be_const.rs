@@ -10,14 +10,14 @@ struct Game {
 impl Game {
     // Could be const
     pub fn new() -> Self {
-        Self {
-            guess: 42,
-        }
+        Self { guess: 42 }
     }
 }
 
 // Could be const
-fn one() -> i32 { 1 }
+fn one() -> i32 {
+    1
+}
 
 // Could also be const
 fn two() -> i32 {
@@ -32,7 +32,9 @@ fn string() -> String {
 }
 
 // Could be const
-unsafe fn four() -> i32 { 4 }
+unsafe fn four() -> i32 {
+    4
+}
 
 // Could also be const
 fn generic<T>(t: T) -> T {

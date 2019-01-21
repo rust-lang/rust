@@ -8,16 +8,22 @@
 struct Game;
 
 // This should not be linted because it's already const
-const fn already_const() -> i32 { 32 }
+const fn already_const() -> i32 {
+    32
+}
 
 impl Game {
     // This should not be linted because it's already const
-    pub const fn already_const() -> i32 { 32 }
+    pub const fn already_const() -> i32 {
+        32
+    }
 }
 
 // Allowing on this function, because it would lint, which we don't want in this case.
 #[allow(clippy::missing_const_for_fn)]
-fn random() -> u32 { 42 }
+fn random() -> u32 {
+    42
+}
 
 // We should not suggest to make this function `const` because `random()` is non-const
 fn random_caller() -> u32 {
@@ -30,7 +36,7 @@ static Y: u32 = 0;
 // refer to a static variable
 fn get_y() -> u32 {
     Y
-        //~^ ERROR E0013
+    //~^ ERROR E0013
 }
 
 // Also main should not be suggested to be made const
@@ -52,4 +58,6 @@ trait Foo {
 
 // Don't lint custom entrypoints either
 #[start]
-fn init(num: isize, something: *const *const u8) -> isize { 1 }
+fn init(num: isize, something: *const *const u8) -> isize {
+    1
+}

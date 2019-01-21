@@ -2,19 +2,19 @@ error: this could be a const_fn
   --> $DIR/could_be_const.rs:12:5
    |
 LL | /     pub fn new() -> Self {
-LL | |         Self {
-LL | |             guess: 42,
-LL | |         }
+LL | |         Self { guess: 42 }
 LL | |     }
    | |_____^
    |
    = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
 
 error: this could be a const_fn
-  --> $DIR/could_be_const.rs:20:1
+  --> $DIR/could_be_const.rs:18:1
    |
-LL | fn one() -> i32 { 1 }
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL | / fn one() -> i32 {
+LL | |     1
+LL | | }
+   | |_^
 
 error: this could be a const_fn
   --> $DIR/could_be_const.rs:23:1
@@ -36,11 +36,13 @@ LL | | }
 error: this could be a const_fn
   --> $DIR/could_be_const.rs:35:1
    |
-LL | unsafe fn four() -> i32 { 4 }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / unsafe fn four() -> i32 {
+LL | |     4
+LL | | }
+   | |_^
 
 error: this could be a const_fn
-  --> $DIR/could_be_const.rs:38:1
+  --> $DIR/could_be_const.rs:40:1
    |
 LL | / fn generic<T>(t: T) -> T {
 LL | |     t

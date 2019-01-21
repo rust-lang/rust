@@ -354,11 +354,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 ///
 /// This is either the usual `main` function or a custom function with the `#[start]` attribute.
 pub fn is_entrypoint_fn(fn_name: &str, attrs: &[ast::Attribute]) -> bool {
-
-    let is_custom_entrypoint = attrs.iter().any(|attr| {
-        attr.path.segments.len() == 1
-            && attr.path.segments[0].ident.to_string() == "start"
-    });
+    let is_custom_entrypoint = attrs
+        .iter()
+        .any(|attr| attr.path.segments.len() == 1 && attr.path.segments[0].ident.to_string() == "start");
 
     is_custom_entrypoint || fn_name == "main"
 }

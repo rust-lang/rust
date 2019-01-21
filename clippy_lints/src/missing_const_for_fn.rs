@@ -1,13 +1,13 @@
 use rustc::hir;
-use rustc::hir::{Body, FnDecl, Constness};
 use rustc::hir::intravisit::FnKind;
+use rustc::hir::{Body, Constness, FnDecl};
 // use rustc::mir::*;
-use syntax::ast::{NodeId, Attribute};
-use syntax_pos::Span;
+use crate::utils::{is_entrypoint_fn, span_lint};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
-use crate::utils::{span_lint, is_entrypoint_fn};
+use syntax::ast::{Attribute, NodeId};
+use syntax_pos::Span;
 
 /// **What it does:**
 ///
@@ -26,8 +26,12 @@ use crate::utils::{span_lint, is_entrypoint_fn};
 /// Also, the lint only runs one pass over the code. Consider these two non-const functions:
 ///
 /// ```rust
-/// fn a() -> i32 { 0 }
-/// fn b() -> i32 { a() }
+/// fn a() -> i32 {
+///     0
+/// }
+/// fn b() -> i32 {
+///     a()
+/// }
 /// ```
 ///
 /// When running Clippy, the lint will only suggest to make `a` const, because `b` at this time
@@ -38,9 +42,7 @@ use crate::utils::{span_lint, is_entrypoint_fn};
 ///
 /// ```rust
 /// fn new() -> Self {
-///     Self {
-///         random_number: 42
-///     }
+///     Self { random_number: 42 }
 /// }
 /// ```
 ///
@@ -48,9 +50,7 @@ use crate::utils::{span_lint, is_entrypoint_fn};
 ///
 /// ```rust
 /// const fn new() -> Self {
-///     Self {
-///         random_number: 42
-///     }
+///     Self { random_number: 42 }
 /// }
 /// ```
 declare_clippy_lint! {
@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         _: &FnDecl,
         _: &Body,
         span: Span,
-        node_id: NodeId
+        node_id: NodeId,
     ) {
         // Perform some preliminary checks that rule out constness on the Clippy side. This way we
         // can skip the actual const check and return early.
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
                     return;
                 }
             },
-            _ => return
+            _ => return,
         }
 
         let def_id = cx.tcx.hir().local_def_id(node_id);
@@ -115,9 +115,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
 
 fn can_be_const_fn(name: &str, header: hir::FnHeader, attrs: &[Attribute]) -> bool {
     // Main and custom entrypoints can't be `const`
-    if is_entrypoint_fn(name, attrs) { return false }
+    if is_entrypoint_fn(name, attrs) {
+        return false;
+    }
 
     // We don't have to lint on something that's already `const`
-    if header.constness == Constness::Const { return false }
+    if header.constness == Constness::Const {
+        return false;
+    }
     true
 }
