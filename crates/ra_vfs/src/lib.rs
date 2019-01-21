@@ -28,7 +28,6 @@ use crossbeam_channel::Receiver;
 use ra_arena::{impl_arena_id, Arena, RawId};
 use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
-use walkdir::DirEntry;
 
 pub use crate::io::TaskResult as VfsTask;
 use io::{Task, TaskResult, WatcherChange, WatcherChangeData, Worker};
@@ -128,23 +127,17 @@ impl Vfs {
             let root = res.roots.alloc(root_filter.clone());
             res.root2files.insert(root, Default::default());
 
-            let nested = roots[..i]
+            let nested_roots = roots[..i]
                 .iter()
                 .filter(|it| it.starts_with(path))
                 .map(|it| it.clone())
                 .collect::<Vec<_>>();
 
-            let filter = move |entry: &DirEntry| {
-                if entry.file_type().is_dir() && nested.iter().any(|it| it == entry.path()) {
-                    false
-                } else {
-                    root_filter.can_contain(entry.path()).is_some()
-                }
-            };
             let task = io::Task::AddRoot {
                 root,
                 path: path.clone(),
-                filter: Box::new(filter),
+                root_filter,
+                nested_roots,
             };
             res.worker.sender().send(task).unwrap();
         }
@@ -232,13 +225,11 @@ impl Vfs {
                 WatcherChange::Create(path) if path.is_dir() => {
                     if let Some((root, _path, _file)) = self.find_root(&path) {
                         let root_filter = self.roots[root].clone();
-                        let filter =
-                            move |entry: &DirEntry| root_filter.can_contain(entry.path()).is_some();
                         self.worker
                             .sender()
                             .send(Task::Watch {
                                 dir: path.to_path_buf(),
-                                filter: Box::new(filter),
+                                root_filter,
                             })
                             .unwrap()
                     }

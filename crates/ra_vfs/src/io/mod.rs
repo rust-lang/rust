@@ -9,26 +9,27 @@ use crossbeam_channel::{Receiver, Sender};
 use parking_lot::Mutex;
 use relative_path::RelativePathBuf;
 use thread_worker::WorkerHandle;
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 mod watcher;
 use watcher::Watcher;
 pub use watcher::WatcherChange;
 
-use crate::VfsRoot;
+use crate::{RootFilter, VfsRoot};
 
 pub(crate) enum Task {
     AddRoot {
         root: VfsRoot,
         path: PathBuf,
-        filter: Box<Fn(&DirEntry) -> bool + Send>,
+        root_filter: Arc<RootFilter>,
+        nested_roots: Vec<PathBuf>,
     },
     /// this variant should only be created by the watcher
     HandleChange(WatcherChange),
     LoadChange(WatcherChange),
     Watch {
         dir: PathBuf,
-        filter: Box<Fn(&DirEntry) -> bool + Send>,
+        root_filter: Arc<RootFilter>,
     },
 }
 
@@ -109,7 +110,7 @@ impl Worker {
 fn watch(
     watcher: &Arc<Mutex<Option<Watcher>>>,
     dir: &Path,
-    filter_entry: impl Fn(&DirEntry) -> bool,
+    filter_entry: &RootFilter,
     emit_for_existing: bool,
 ) {
     let mut watcher = watcher.lock();
@@ -125,10 +126,19 @@ fn watch(
 
 fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> TaskResult {
     match task {
-        Task::AddRoot { root, path, filter } => {
-            watch(watcher, &path, &*filter, false);
+        Task::AddRoot {
+            root,
+            path,
+            root_filter,
+            nested_roots,
+        } => {
+            watch(watcher, &path, &*root_filter, false);
             log::debug!("loading {} ...", path.as_path().display());
-            let files = load_root(path.as_path(), &*filter);
+            let files = load_root(
+                path.as_path(),
+                root_filter.as_ref(),
+                nested_roots.as_slice(),
+            );
             log::debug!("... loaded {}", path.as_path().display());
             TaskResult::AddRoot(AddRootResult { root, files })
         }
@@ -143,16 +153,27 @@ fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> TaskResult 
                 None => TaskResult::NoOp,
             }
         }
-        Task::Watch { dir, filter } => {
-            watch(watcher, &dir, &*filter, true);
+        Task::Watch { dir, root_filter } => {
+            watch(watcher, &dir, root_filter.as_ref(), true);
             TaskResult::NoOp
         }
     }
 }
 
-fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePathBuf, String)> {
+fn load_root(
+    root: &Path,
+    root_filter: &RootFilter,
+    nested_roots: &[PathBuf],
+) -> Vec<(RelativePathBuf, String)> {
     let mut res = Vec::new();
-    for entry in WalkDir::new(root).into_iter().filter_entry(filter) {
+    for entry in WalkDir::new(root).into_iter().filter_entry(|entry| {
+        if entry.file_type().is_dir() && nested_roots.iter().any(|it| it == entry.path()) {
+            // do not load files of a nested root
+            false
+        } else {
+            root_filter.can_contain(entry.path()).is_some()
+        }
+    }) {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {

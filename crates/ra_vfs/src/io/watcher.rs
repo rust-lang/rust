@@ -1,4 +1,4 @@
-use crate::io;
+use crate::{io, RootFilter};
 use crossbeam_channel::Sender;
 use drop_bomb::DropBomb;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
@@ -8,7 +8,7 @@ use std::{
     thread,
     time::Duration,
 };
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub enum WatcherChange {
@@ -83,13 +83,11 @@ impl Watcher {
         })
     }
 
-    pub fn watch_recursive(
-        &mut self,
-        dir: &Path,
-        filter_entry: impl Fn(&DirEntry) -> bool,
-        emit_for_contents: bool,
-    ) {
-        for res in WalkDir::new(dir).into_iter().filter_entry(filter_entry) {
+    pub fn watch_recursive(&mut self, dir: &Path, filter: &RootFilter, emit_for_contents: bool) {
+        for res in WalkDir::new(dir)
+            .into_iter()
+            .filter_entry(|entry| filter.can_contain(entry.path()).is_some())
+        {
             match res {
                 Ok(entry) => {
                     if entry.path().is_dir() {
