@@ -1,12 +1,13 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/closures-in-loops.rs:8:9
    |
+LL | fn repreated_move(x: String) {
+   |                   - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+LL |     for i in 0..10 {
 LL |         || x; //~ ERROR
    |         ^^ - use occurs due to use in closure
    |         |
    |         value moved into closure here, in previous iteration of loop
-   |
-   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/closures-in-loops.rs:15:16
