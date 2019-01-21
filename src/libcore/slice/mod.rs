@@ -1783,7 +1783,7 @@ impl<T> [T] {
     /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
     /// a[1..5].rotate_left(1);
     /// assert_eq!(a, ['a', 'c', 'd', 'e', 'b', 'f']);
-   /// ```
+    /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
     pub fn rotate_left(&mut self, mid: usize) {
         assert!(mid <= self.len());
@@ -2249,6 +2249,77 @@ impl<T> [T] {
              from_raw_parts_mut(mut_ptr as *mut U, us_len),
              from_raw_parts_mut(mut_ptr.add(rest.len() - ts_len), ts_len))
         }
+    }
+
+    /// Checks if the elements of this slice are sorted.
+    ///
+    /// That is, for each element `a` and its following element `b`, `a <= b` must hold. If the
+    /// slice yields exactly zero or one element, `true` is returned.
+    ///
+    /// Note that if `Self::Item` is only `PartialOrd`, but not `Ord`, the above definition
+    /// implies that this function returns `false` if any two consecutive items are not
+    /// comparable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_sorted)]
+    /// let empty: [i32; 0] = [];
+    ///
+    /// assert!([1, 2, 2, 9].is_sorted());
+    /// assert!(![1, 3, 2, 4].is_sorted());
+    /// assert!([0].is_sorted());
+    /// assert!(empty.is_sorted());
+    /// assert!(![0.0, 1.0, std::f32::NAN].is_sorted());
+    /// ```
+    #[inline]
+    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    pub fn is_sorted(&self) -> bool
+    where
+        T: PartialOrd,
+    {
+        self.is_sorted_by(|a, b| a.partial_cmp(b))
+    }
+
+    /// Checks if the elements of this slice are sorted using the given comparator function.
+    ///
+    /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
+    /// function to determine the ordering of two elements. Apart from that, it's equivalent to
+    /// [`is_sorted`]; see its documentation for more information.
+    ///
+    /// [`is_sorted`]: #method.is_sorted
+    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    pub fn is_sorted_by<F>(&self, mut compare: F) -> bool
+    where
+        F: FnMut(&T, &T) -> Option<Ordering>
+    {
+        self.iter().is_sorted_by(|a, b| compare(*a, *b))
+    }
+
+    /// Checks if the elements of this slice are sorted using the given key extraction function.
+    ///
+    /// Instead of comparing the slice's elements directly, this function compares the keys of the
+    /// elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see its
+    /// documentation for more information.
+    ///
+    /// [`is_sorted`]: #method.is_sorted
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_sorted)]
+    ///
+    /// assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
+    /// assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
+    /// ```
+    #[inline]
+    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    pub fn is_sorted_by_key<F, K>(&self, mut f: F) -> bool
+    where
+        F: FnMut(&T) -> K,
+        K: PartialOrd
+    {
+        self.is_sorted_by(|a, b| f(a).partial_cmp(&f(b)))
     }
 }
 
@@ -2773,7 +2844,13 @@ macro_rules! len {
 
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
-    (struct $name:ident -> $ptr:ty, $elem:ty, $raw_mut:tt, $( $mut_:tt )*) => {
+    (
+        struct $name:ident -> $ptr:ty,
+        $elem:ty,
+        $raw_mut:tt,
+        {$( $mut_:tt )*},
+        {$($extra:tt)*}
+    ) => {
         impl<'a, T> $name<'a, T> {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
@@ -2950,6 +3027,8 @@ macro_rules! iterator {
                         i
                     })
             }
+
+            $($extra)*
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -3087,7 +3166,17 @@ impl<'a, T> Iter<'a, T> {
     }
 }
 
-iterator!{struct Iter -> *const T, &'a T, const, /* no mut */}
+iterator!{struct Iter -> *const T, &'a T, const, {/* no mut */}, {
+    fn is_sorted_by<F>(self, mut compare: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+    {
+        self.as_slice().windows(2).all(|w| {
+            compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
+        })
+    }
+}}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
@@ -3188,7 +3277,7 @@ impl<'a, T> IterMut<'a, T> {
     }
 }
 
-iterator!{struct IterMut -> *mut T, &'a mut T, mut, mut}
+iterator!{struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.

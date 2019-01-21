@@ -2235,3 +2235,16 @@ fn test_monad_laws_associativity() {
     assert_eq!((0..10).flat_map(f).flat_map(g).sum::<usize>(),
                 (0..10).flat_map(|x| f(x).flat_map(g)).sum::<usize>());
 }
+
+#[test]
+fn test_is_sorted() {
+    assert!([1, 2, 2, 9].iter().is_sorted());
+    assert!(![1, 3, 2].iter().is_sorted());
+    assert!([0].iter().is_sorted());
+    assert!(std::iter::empty::<i32>().is_sorted());
+    assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    assert!([-2, -1, 0, 3].iter().is_sorted());
+    assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
+    assert!(!["c", "bb", "aaa"].iter().is_sorted());
+    assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
+}

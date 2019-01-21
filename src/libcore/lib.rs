@@ -79,6 +79,7 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
+#![feature(is_sorted)]
 #![feature(iter_once_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
