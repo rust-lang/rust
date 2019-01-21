@@ -26,6 +26,7 @@ const EXCEPTIONS: &[&str] = &[
     "mdbook",             // MPL2, mdbook
     "openssl",            // BSD+advertising clause, cargo, mdbook
     "pest",               // MPL2, mdbook via handlebars
+    "arrayref",           // BSD-2-Clause, mdbook via handlebars via pest
     "thread-id",          // Apache-2.0, mdbook
     "toml-query",         // MPL-2.0, mdbook
     "is-match",           // MPL-2.0, mdbook

@@ -23,7 +23,7 @@ use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr, $book_ver:expr;)+) => {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -49,6 +49,7 @@ macro_rules! book {
                 builder.ensure(Rustbook {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
+                    version: $book_ver,
                 })
             }
         }
@@ -56,19 +57,32 @@ macro_rules! book {
     }
 }
 
+// NOTE: When adding a book here, make sure to ALSO build the book by
+// adding a build step in `src/bootstrap/builder.rs`!
 book!(
-    Nomicon, "src/doc/nomicon", "nomicon";
-    Reference, "src/doc/reference", "reference";
-    EditionGuide, "src/doc/edition-guide", "edition-guide";
-    RustdocBook, "src/doc/rustdoc", "rustdoc";
-    RustcBook, "src/doc/rustc", "rustc";
-    RustByExample, "src/doc/rust-by-example", "rust-by-example";
+    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook1;
+    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
+    Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
+    RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
+    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook1;
 );
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+enum RustbookVersion {
+    MdBook1,
+
+    /// Note: Currently no books use mdBook v2, but we want the option
+    /// to be available
+    #[allow(dead_code)]
+    MdBook2,
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct Rustbook {
     target: Interned<String>,
     name: Interned<String>,
+    version: RustbookVersion,
 }
 
 impl Step for Rustbook {
@@ -90,6 +104,7 @@ impl Step for Rustbook {
             target: self.target,
             name: self.name,
             src: INTERNER.intern_path(src),
+            version: self.version,
         });
     }
 }
@@ -122,6 +137,7 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: builder.md_doc_out(self.target),
+            version: RustbookVersion::MdBook1,
         })
     }
 }
@@ -175,6 +191,7 @@ struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
     src: Interned<PathBuf>,
+    version: RustbookVersion,
 }
 
 impl Step for RustbookSrc {
@@ -205,11 +222,19 @@ impl Step for RustbookSrc {
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
+
+        let vers = match self.version {
+            RustbookVersion::MdBook1 => "1",
+            RustbookVersion::MdBook2 => "2",
+        };
+
         builder.run(rustbook_cmd
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
-                       .arg(out));
+                       .arg(out)
+                       .arg("-m")
+                       .arg(vers));
     }
 }
 
@@ -255,6 +280,7 @@ impl Step for TheBook {
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(name.to_string()),
+            version: RustbookVersion::MdBook1,
         });
 
         // building older edition redirects
@@ -263,18 +289,21 @@ impl Step for TheBook {
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
+            version: RustbookVersion::MdBook1,
         });
 
         let source_name = format!("{}/second-edition", name);
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
+            version: RustbookVersion::MdBook1,
         });
 
         let source_name = format!("{}/2018-edition", name);
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
+            version: RustbookVersion::MdBook1,
         });
 
         // build the version info page and CSS
