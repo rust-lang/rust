@@ -40,10 +40,10 @@ LL |     Foo::<i32>::bar(&true); //~ ERROR is not satisfied
    |     ^^^^^^^^^^^^^^^ the trait `Foo<i32>` is not implemented for `bool`
    |
    = help: the following implementations were found:
+             <bool as Foo<bool>>
+             <bool as Foo<i8>>
              <bool as Foo<u16>>
              <bool as Foo<u32>>
-             <bool as Foo<u64>>
-             <bool as Foo<u8>>
            and 2 others
 note: required by `Foo::bar`
   --> $DIR/issue-39802-show-5-trait-impls.rs:2:5

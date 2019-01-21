@@ -8,7 +8,7 @@ LL |     f1.foo(1usize);
              <Bar as Foo<i16>>
              <Bar as Foo<i32>>
              <Bar as Foo<i8>>
-             <Bar as Foo<u8>>
+             <Bar as Foo<u16>>
            and 2 others
 
 error: aborting due to previous error
