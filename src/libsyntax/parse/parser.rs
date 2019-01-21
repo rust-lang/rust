@@ -2869,11 +2869,18 @@ impl<'a> Parser<'a> {
             self.eat_to_tokens(&[&token::OpenDelim(token::Paren)]);
             let span = lo.until(self.span);
 
+            // We needn't check `encountered_gt` to determine if we should pluralize "bracket".
+            // `encountered_gt` can only represent a single `>` character, if `number_of_shr >= 1`
+            // then there is either `>>` or `>>>` - in either case a plural is warranted.
+            let plural = number_of_shr >= 1;
             self.diagnostic()
-                .struct_span_err(span, "unmatched angle bracket")
+                .struct_span_err(
+                    span,
+                    &format!("unmatched angle bracket{}", if plural { "s" } else { "" }),
+                )
                 .span_suggestion_with_applicability(
                     span,
-                    "remove extra angle bracket",
+                    &format!("remove extra angle bracket{}", if plural { "s" } else { "" }),
                     String::new(),
                     Applicability::MachineApplicable,
                 )
