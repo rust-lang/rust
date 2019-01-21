@@ -67,7 +67,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use self::Expression::*;
         if let ExprKind::If(ref pred, ref then_block, Some(ref else_expr)) = e.node {
-
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
                 let snip = Sugg::hir_with_applicability(cx, pred, "<predicate>", &mut applicability);
