@@ -1199,7 +1199,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
-                let reason_label = "expected because of this statement";
                 let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
@@ -1244,9 +1243,19 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         // as prior return coercions would not be relevant (#57664).
                         let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
                         let parent = fcx.tcx.hir().get(fcx.tcx.hir().get_parent_node(parent_id));
-                        if fcx.get_node_fn_decl(parent).is_some() && !pointing_at_return_type {
+                        if let (Some((fn_decl, _, _)), false) = (
+                            fcx.get_node_fn_decl(parent),
+                            pointing_at_return_type,
+                        ) {
                             if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                                db.span_label(*sp, reason_label);
+                                db.span_label(
+                                    fn_decl.output.span(),
+                                    "expected because this return type...",
+                                );
+                                db.span_label(*sp, format!(
+                                    "...is found to be `{}` here",
+                                    fcx.resolve_type_vars_with_obligations(expected),
+                                ));
                             }
                         }
                     }
@@ -1254,16 +1263,26 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db = fcx.report_mismatched_types(cause, expected, found, err);
                         let _id = fcx.tcx.hir().get_parent_node(_id);
                         let mut pointing_at_return_type = false;
+                        let mut return_sp = None;
                         if let Some((fn_decl, can_suggest)) = fcx.get_fn_decl(_id) {
                             pointing_at_return_type = fcx.suggest_missing_return_type(
                                 &mut db, &fn_decl, expected, found, can_suggest);
+                            if !pointing_at_return_type {
+                                return_sp = Some(fn_decl.output.span()); // `impl Trait` return type
+                            }
                         }
                         if let (Some(sp), false) = (
                             fcx.ret_coercion_span.borrow().as_ref(),
                             pointing_at_return_type,
                         ) {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
+                            if let Some(return_sp) = return_sp {
+                                db.span_label(return_sp, "expected because this return type...");
+                                db.span_label( *sp, format!(
+                                    "...is found to be `{}` here",
+                                    fcx.resolve_type_vars_with_obligations(expected),
+                                ));
+                            } else if !sp.overlaps(cause.span) {
+                                db.span_label(*sp, "expected because of this statement");
                             }
                         }
                     }

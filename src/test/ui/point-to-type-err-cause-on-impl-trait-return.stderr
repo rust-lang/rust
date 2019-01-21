@@ -1,8 +1,11 @@
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:5:5
    |
+LL | fn foo() -> impl std::fmt::Display {
+   |             ---------------------- expected because this return type...
+LL |     if false {
 LL |         return 0i32;
-   |                ---- expected because of this statement
+   |                ---- ...is found to be `i32` here
 LL |     }
 LL |     1u32
    |     ^^^^ expected i32, found u32
@@ -13,8 +16,11 @@ LL |     1u32
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:13:16
    |
+LL | fn bar() -> impl std::fmt::Display {
+   |             ---------------------- expected because this return type...
+LL |     if false {
 LL |         return 0i32;
-   |                ---- expected because of this statement
+   |                ---- ...is found to be `i32` here
 LL |     } else {
 LL |         return 1u32;
    |                ^^^^ expected i32, found u32
@@ -25,10 +31,12 @@ LL |         return 1u32;
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:19:5
    |
+LL |   fn baz() -> impl std::fmt::Display {
+   |               ---------------------- expected because this return type...
 LL | /     if false {
 LL | |     //~^ ERROR mismatched types
 LL | |         return 0i32;
-   | |                ---- expected because of this statement
+   | |                ---- ...is found to be `i32` here
 LL | |     } else {
 LL | |         1u32
 LL | |     }
