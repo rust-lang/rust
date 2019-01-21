@@ -18,7 +18,12 @@ pub struct CompletionItem {
     lookup: Option<String>,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
+    /// Where completion occurs. `source_range` must contain the completion offset.
+    /// `insert_text` should start with what `source_range` points to, or VSCode
+    /// will filter out the completion silently.
     source_range: TextRange,
+    /// Additional text edit, ranges in `text_edit` must never intersect with `source_range`.
+    /// Or VSCode will drop it silently.
     text_edit: Option<TextEdit>,
 }
 
@@ -49,6 +54,7 @@ pub(crate) enum CompletionKind {
     /// "Secret sauce" completions.
     Magic,
     Snippet,
+    Postfix,
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
