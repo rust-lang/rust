@@ -22,4 +22,4 @@ hir = { path = "../ra_hir", package = "ra_hir" }
 test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
-insta = "0.1.4"
+insta = "0.4.0"
