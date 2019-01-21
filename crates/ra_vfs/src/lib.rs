@@ -17,16 +17,15 @@ mod io;
 
 use std::{
     cmp::Reverse,
-    ffi::OsStr,
     fmt, fs, mem,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
     sync::Arc,
     thread,
 };
 
 use crossbeam_channel::Receiver;
 use ra_arena::{impl_arena_id, Arena, RawId};
-use relative_path::RelativePathBuf;
+use relative_path::{Component, RelativePath, RelativePathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 pub use crate::io::TaskResult as VfsTask;
@@ -36,12 +35,7 @@ use io::{Task, TaskResult, WatcherChange, WatcherChangeData, Worker};
 /// several filters match a file (nested dirs), the most nested one wins.
 pub(crate) struct RootFilter {
     root: PathBuf,
-    filter: fn(RootEntry) -> bool,
-}
-
-pub(crate) struct RootEntry<'a, 'b> {
-    root: &'a Path,
-    path: &'b Path,
+    filter: fn(&Path, &RelativePath) -> bool,
 }
 
 impl RootFilter {
@@ -54,27 +48,20 @@ impl RootFilter {
     /// Check if this root can contain `path`. NB: even if this returns
     /// true, the `path` might actually be conained in some nested root.
     pub(crate) fn can_contain(&self, path: &Path) -> Option<RelativePathBuf> {
-        if !(self.filter)(RootEntry {
-            root: &self.root,
-            path,
-        }) {
+        let rel_path = path.strip_prefix(&self.root).ok()?;
+        let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+        if !(self.filter)(path, rel_path.as_relative_path()) {
             return None;
         }
-        let path = path.strip_prefix(&self.root).ok()?;
-        RelativePathBuf::from_path(path).ok()
+        Some(rel_path)
     }
 }
 
-pub(crate) fn default_filter(entry: RootEntry) -> bool {
-    if entry.path.is_dir() {
-        // first component relative to root is "target"
-        entry
-            .path
-            .strip_prefix(entry.root)
-            .map(|p| p.components().next() != Some(Component::Normal(OsStr::new("target"))))
-            .unwrap_or(false)
+pub(crate) fn default_filter(path: &Path, rel_path: &RelativePath) -> bool {
+    if path.is_dir() {
+        rel_path.components().next() != Some(Component::Normal("target"))
     } else {
-        entry.path.extension() == Some(OsStr::new("rs"))
+        rel_path.extension() == Some("rs")
     }
 }
 
