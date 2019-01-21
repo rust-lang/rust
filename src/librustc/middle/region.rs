@@ -1268,8 +1268,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if let hir::BodyOwnerKind::Fn = self.tcx.hir().body_owner_kind(owner_id) {
-            self.visit_expr(&body.value);
+        if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
+            self.visit_expr(&body.value)
         } else {
             // Only functions have an outer terminating (drop) scope, while
             // temporaries in constant initializers may be 'static, but only

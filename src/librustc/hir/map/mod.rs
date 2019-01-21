@@ -455,11 +455,20 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(_) => {
                 BodyOwnerKind::Const
             }
+            Node::Variant(&Spanned { node: VariantKind { data: VariantData::Tuple(..), .. }, .. }) |
+            Node::StructCtor(..) |
+            Node::Item(&Item { node: ItemKind::Fn(..), .. }) |
+            Node::TraitItem(&TraitItem { node: TraitItemKind::Method(..), .. }) |
+            Node::ImplItem(&ImplItem { node: ImplItemKind::Method(..), .. }) => {
+                BodyOwnerKind::Fn
+            }
             Node::Item(&Item { node: ItemKind::Static(_, m, _), .. }) => {
                 BodyOwnerKind::Static(m)
             }
-            // Default to function if it's not a constant or static.
-            _ => BodyOwnerKind::Fn
+            Node::Expr(&Expr { node: ExprKind::Closure(..), .. }) => {
+                BodyOwnerKind::Closure
+            }
+            node => bug!("{:#?} is not a body node", node),
         }
     }
 

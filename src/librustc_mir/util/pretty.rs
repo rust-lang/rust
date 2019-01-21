@@ -573,6 +573,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> i
     let body_owner_kind = tcx.hir().body_owner_kind(id);
     match (body_owner_kind, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in", i)?,
+        (hir::BodyOwnerKind::Closure, _) |
         (hir::BodyOwnerKind::Fn, _) => write!(w, "fn")?,
         (hir::BodyOwnerKind::Const, _) => write!(w, "const")?,
         (hir::BodyOwnerKind::Static(hir::MutImmutable), _) => write!(w, "static")?,
@@ -585,6 +586,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> i
     })?;
 
     match (body_owner_kind, src.promoted) {
+        (hir::BodyOwnerKind::Closure, None) |
         (hir::BodyOwnerKind::Fn, None) => {
             write!(w, "(")?;
 

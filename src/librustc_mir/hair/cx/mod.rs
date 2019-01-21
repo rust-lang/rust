@@ -61,6 +61,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
             hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
+            hir::BodyOwnerKind::Closure |
             hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 

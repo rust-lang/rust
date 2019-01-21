@@ -1152,6 +1152,7 @@ impl MirPass for QualifyAndPromoteConstants {
         let id = tcx.hir().as_local_node_id(def_id).unwrap();
         let mut const_promoted_temps = None;
         let mode = match tcx.hir().body_owner_kind(id) {
+            hir::BodyOwnerKind::Closure => Mode::Fn,
             hir::BodyOwnerKind::Fn => {
                 if tcx.is_const_fn(def_id) {
                     Mode::ConstFn

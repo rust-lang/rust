@@ -1,8 +1,8 @@
 error[E0658]: casting pointers to integers in statics is unstable (see issue #51910)
-  --> $DIR/issue-17458.rs:1:19
+  --> $DIR/issue-17458.rs:1:28
    |
-LL | static X: usize = 0 as *const usize as usize;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | static X: usize = unsafe { 0 as *const usize as usize };
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 
