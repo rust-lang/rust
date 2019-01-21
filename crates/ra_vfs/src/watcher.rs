@@ -87,7 +87,7 @@ impl Watcher {
         &mut self,
         dir: &Path,
         filter_entry: impl Fn(&DirEntry) -> bool,
-        emit_for_existing: bool,
+        emit_for_contents: bool,
     ) {
         for res in WalkDir::new(dir).into_iter().filter_entry(filter_entry) {
             match res {
@@ -98,7 +98,7 @@ impl Watcher {
                             Err(e) => log::warn!("could not watch \"{}\": {}", dir.display(), e),
                         }
                     }
-                    if emit_for_existing {
+                    if emit_for_contents && entry.depth() > 0 {
                         // emit as create because we haven't seen it yet
                         if let Err(e) =
                             self.sender

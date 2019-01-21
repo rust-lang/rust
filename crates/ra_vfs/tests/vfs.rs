@@ -40,9 +40,6 @@ fn test_vfs_works() -> std::io::Result<()> {
         fs::write(file_path, text)?
     }
 
-    let gitignore = dir.path().join("a/.gitignore");
-    fs::write(gitignore, "/target").unwrap();
-
     let a_root = dir.path().join("a");
     let b_root = dir.path().join("a/b");
 

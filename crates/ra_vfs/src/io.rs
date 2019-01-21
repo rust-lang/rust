@@ -68,11 +68,11 @@ impl Worker {
         let watcher_clone = watcher.clone();
         let (worker, worker_handle) =
             thread_worker::spawn("vfs", 128, move |input_receiver, output_sender| {
-                let res = input_receiver
+                input_receiver
                     .into_iter()
                     .map(|t| handle_task(t, &watcher_clone))
-                    .try_for_each(|it| output_sender.send(it));
-                res.unwrap()
+                    .try_for_each(|it| output_sender.send(it))
+                    .unwrap()
             });
         match Watcher::start(worker.inp.clone()) {
             Ok(w) => {
@@ -99,6 +99,7 @@ impl Worker {
         if let Some(watcher) = self.watcher.lock().take() {
             let _ = watcher.shutdown();
         }
+        let _ = self.worker.shutdown();
         self.worker_handle.shutdown()
     }
 }
