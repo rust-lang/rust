@@ -1134,7 +1134,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         self.unify(&ty, expected);
 
-        let substs = ty.substs().expect("adt should have substs");
+        let substs = ty.substs().unwrap_or_else(Substs::empty);
 
         for (i, &subpat) in subpats.iter().enumerate() {
             let expected_ty = fields
@@ -1155,7 +1155,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         self.unify(&ty, expected);
 
-        let substs = ty.substs().expect("adt should have substs");
+        let substs = ty.substs().unwrap_or_else(Substs::empty);
 
         for subpat in subpats {
             let matching_field = fields.iter().find(|field| field.name() == &subpat.name);
@@ -1403,7 +1403,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 spread,
             } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
-                let substs = ty.substs().expect("adt should have substs");
+                let substs = ty.substs().unwrap_or_else(Substs::empty);
                 for field in fields {
                     let field_ty = if let Some(def_id) = def_id {
                         self.db

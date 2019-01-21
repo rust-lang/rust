@@ -521,6 +521,22 @@ fn test(x: X) {
     );
 }
 
+#[test]
+fn bug_585() {
+    check_inference(
+        r#"
+fn test() {
+    X {};
+    match x {
+        A::B {} => (),
+        A::Y() => (),
+    }
+}
+"#,
+        "bug_585.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
