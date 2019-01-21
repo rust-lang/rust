@@ -6,19 +6,19 @@
 //! @BurntSushi.
 //!
 //! In a nutshell, you give a set of strings to the `fst`, and it builds a
-//! finite state machine describing this set of strtings. The strings which
+//! finite state machine describing this set of strings. The strings which
 //! could fuzzy-match a pattern can also be described by a finite state machine.
 //! What is freakingly cool is that you can now traverse both state machines in
 //! lock-step to enumerate the strings which are both in the input set and
-//! fuzz-match the query. Or, more formally, given two langauges described by
+//! fuzz-match the query. Or, more formally, given two languages described by
 //! fsts, one can build an product fst which describes the intersection of the
 //! languages.
 //!
 //! `fst` does not support cheap updating of the index, but it supports unioning
 //! of state machines. So, to account for changing source code, we build an fst
 //! for each library (which is assumed to never change) and an fst for each rust
-//! file in the current workspace, and run a query aginst the union of all
-//! thouse fsts.
+//! file in the current workspace, and run a query against the union of all
+//! those fsts.
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
