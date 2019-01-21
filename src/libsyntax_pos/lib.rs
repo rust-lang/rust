@@ -732,7 +732,7 @@ impl MultiSpan {
         span_labels
     }
 
-    /// Returns wether any of the span labels is displayable.
+    /// Returns whether any of the span labels is displayable.
     pub fn has_span_labels(&self) -> bool {
         self.span_labels.iter().any(|(sp, _)| !sp.is_dummy())
     }
