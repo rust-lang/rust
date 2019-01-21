@@ -1,0 +1,59 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-57741.rs:20:9
+   |
+LL |     let y = match x {
+   |                   -
+   |                   |
+   |                   this match expression has type `std::boxed::Box<T>`
+   |                   help: consider dereferencing the boxed value: `*x`
+LL |         T::A(a) | T::B(a) => a,
+   |         ^^^^^^^ expected struct `std::boxed::Box`, found enum `T`
+   |
+   = note: expected type `std::boxed::Box<T>`
+              found type `T`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-57741.rs:20:19
+   |
+LL |     let y = match x {
+   |                   -
+   |                   |
+   |                   this match expression has type `std::boxed::Box<T>`
+   |                   help: consider dereferencing the boxed value: `*x`
+LL |         T::A(a) | T::B(a) => a,
+   |                   ^^^^^^^ expected struct `std::boxed::Box`, found enum `T`
+   |
+   = note: expected type `std::boxed::Box<T>`
+              found type `T`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-57741.rs:27:9
+   |
+LL |     let y = match x {
+   |                   -
+   |                   |
+   |                   this match expression has type `std::boxed::Box<S>`
+   |                   help: consider dereferencing the boxed value: `*x`
+LL |         S::A { a } | S::B { b: a } => a,
+   |         ^^^^^^^^^^ expected struct `std::boxed::Box`, found enum `S`
+   |
+   = note: expected type `std::boxed::Box<S>`
+              found type `S`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-57741.rs:27:22
+   |
+LL |     let y = match x {
+   |                   -
+   |                   |
+   |                   this match expression has type `std::boxed::Box<S>`
+   |                   help: consider dereferencing the boxed value: `*x`
+LL |         S::A { a } | S::B { b: a } => a,
+   |                      ^^^^^^^^^^^^^ expected struct `std::boxed::Box`, found enum `S`
+   |
+   = note: expected type `std::boxed::Box<S>`
+              found type `S`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

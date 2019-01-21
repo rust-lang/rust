@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-57741-1.rs:14:9
+   |
+LL |     let y = match x {
+   |                   - this match expression has type `std::boxed::Box<u32>`
+LL |         S::A { a } | S::B { b: a } => a,
+   |         ^^^^^^^^^^ expected struct `std::boxed::Box`, found enum `S`
+   |
+   = note: expected type `std::boxed::Box<u32>`
+              found type `S`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-57741-1.rs:14:22
+   |
+LL |     let y = match x {
+   |                   - this match expression has type `std::boxed::Box<u32>`
+LL |         S::A { a } | S::B { b: a } => a,
+   |                      ^^^^^^^^^^^^^ expected struct `std::boxed::Box`, found enum `S`
+   |
+   = note: expected type `std::boxed::Box<u32>`
+              found type `S`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
