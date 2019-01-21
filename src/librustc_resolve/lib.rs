@@ -1546,9 +1546,7 @@ pub struct Resolver<'a> {
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
 
-    pub make_glob_map: bool,
-    /// Maps imports to the names of items actually imported (this actually maps
-    /// all imports, but only glob imports are actually interesting).
+    /// Maps glob imports to the names of items actually imported.
     pub glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
@@ -1795,7 +1793,6 @@ impl<'a> Resolver<'a> {
                cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               make_glob_map: MakeGlobMap,
                crate_loader: &'a mut CrateLoader<'a>,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
@@ -1879,7 +1876,6 @@ impl<'a> Resolver<'a> {
             extern_module_map: FxHashMap::default(),
             binding_parent_modules: FxHashMap::default(),
 
-            make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: Default::default(),
 
             used_imports: FxHashSet::default(),
@@ -1989,14 +1985,15 @@ impl<'a> Resolver<'a> {
             used.set(true);
             directive.used.set(true);
             self.used_imports.insert((directive.id, ns));
-            self.add_to_glob_map(directive.id, ident);
+            self.add_to_glob_map(&directive, ident);
             self.record_use(ident, ns, binding, false);
         }
     }
 
-    fn add_to_glob_map(&mut self, id: NodeId, ident: Ident) {
-        if self.make_glob_map {
-            self.glob_map.entry(id).or_default().insert(ident.name);
+    #[inline]
+    fn add_to_glob_map(&mut self, directive: &ImportDirective<'_>, ident: Ident) {
+        if directive.is_glob() {
+            self.glob_map.entry(directive.id).or_default().insert(ident.name);
         }
     }
 
@@ -3321,7 +3318,12 @@ impl<'a> Resolver<'a> {
             if let Some(def) = def {
                 match (def, source) {
                     (Def::Macro(..), _) => {
-                        err.span_label(span, format!("did you mean `{}!(...)`?", path_str));
+                        err.span_suggestion_with_applicability(
+                            span,
+                            "use `!` to invoke the macro",
+                            format!("{}!", path_str),
+                            Applicability::MaybeIncorrect,
+                        );
                         return (err, candidates);
                     }
                     (Def::TyAlias(..), PathSource::Trait(_)) => {
@@ -3333,13 +3335,22 @@ impl<'a> Resolver<'a> {
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
-                            err.span_label(parent.span, format!("did you mean `{}::{}`?",
-                                                                 path_str, ident));
+                            err.span_suggestion_with_applicability(
+                                parent.span,
+                                "use the path separator to refer to an item",
+                                format!("{}::{}", path_str, ident),
+                                Applicability::MaybeIncorrect,
+                            );
                             return (err, candidates);
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
-                            err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
-                                                                 path_str, segment.ident));
+                            let span = parent.span.with_hi(segment.ident.span.hi());
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "use the path separator to refer to an item",
+                                format!("{}::{}", path_str, segment.ident),
+                                Applicability::MaybeIncorrect,
+                            );
                             return (err, candidates);
                         }
                         _ => {}
@@ -3390,6 +3401,29 @@ impl<'a> Resolver<'a> {
                                 Ok(ref snippet) if snippet == "{" => true,
                                 _ => false,
                             };
+                            // In case this could be a struct literal that needs to be surrounded
+                            // by parenthesis, find the appropriate span.
+                            let mut i = 0;
+                            let mut closing_brace = None;
+                            loop {
+                                sp = sm.next_point(sp);
+                                match sm.span_to_snippet(sp) {
+                                    Ok(ref snippet) => {
+                                        if snippet == "}" {
+                                            let sp = span.to(sp);
+                                            if let Ok(snippet) = sm.span_to_snippet(sp) {
+                                                closing_brace = Some((sp, snippet));
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    _ => break,
+                                }
+                                i += 1;
+                                if i > 100 { // The bigger the span the more likely we're
+                                    break;   // incorrect. Bound it to 100 chars long.
+                                }
+                            }
                             match source {
                                 PathSource::Expr(Some(parent)) => {
                                     match parent.node {
@@ -3416,11 +3450,20 @@ impl<'a> Resolver<'a> {
                                     }
                                 },
                                 PathSource::Expr(None) if followed_by_brace == true => {
-                                    err.span_label(
-                                        span,
-                                        format!("did you mean `({} {{ /* fields */ }})`?",
-                                                path_str),
-                                    );
+                                    if let Some((sp, snippet)) = closing_brace {
+                                        err.span_suggestion_with_applicability(
+                                            sp,
+                                            "surround the struct literal with parenthesis",
+                                            format!("({})", snippet),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    } else {
+                                        err.span_label(
+                                            span,
+                                            format!("did you mean `({} {{ /* fields */ }})`?",
+                                                    path_str),
+                                        );
+                                    }
                                     return (err, candidates);
                                 },
                                 _ => {
@@ -4598,7 +4641,7 @@ impl<'a> Resolver<'a> {
                 let import_id = match binding.kind {
                     NameBindingKind::Import { directive, .. } => {
                         self.maybe_unused_trait_imports.insert(directive.id);
-                        self.add_to_glob_map(directive.id, trait_name);
+                        self.add_to_glob_map(&directive, trait_name);
                         Some(directive.id)
                     }
                     _ => None,
@@ -4823,8 +4866,13 @@ impl<'a> Resolver<'a> {
                 } else if ident.span.rust_2018() {
                     let msg = "relative paths are not supported in visibilities on 2018 edition";
                     self.session.struct_span_err(ident.span, msg)
-                                .span_suggestion(path.span, "try", format!("crate::{}", path))
-                                .emit();
+                        .span_suggestion_with_applicability(
+                            path.span,
+                            "try",
+                            format!("crate::{}", path),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
                     return ty::Visibility::Public;
                 } else {
                     let ctxt = ident.span.ctxt();
@@ -5303,12 +5351,6 @@ fn module_to_string(module: Module) -> Option<String> {
 
 fn err_path_resolution() -> PathResolution {
     PathResolution::new(Def::Err)
-}
-
-#[derive(PartialEq,Copy, Clone)]
-pub enum MakeGlobMap {
-    Yes,
-    No,
 }
 
 #[derive(Copy, Clone, Debug)]

@@ -13,7 +13,7 @@ extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
 
-use rustc::hir::{self, Node, PatKind};
+use rustc::hir::{self, Node, PatKind, AssociatedItemKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -22,12 +22,12 @@ use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TraitRef, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
-use rustc::ty::query::Providers;
+use rustc::ty::query::{Providers, queries};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use syntax::ast::{self, CRATE_NODE_ID, Ident};
+use syntax::ast::{self, DUMMY_NODE_ID, Ident};
 use syntax::attr;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
@@ -548,7 +548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                         let mut reach = self.reach(trait_item_ref.id.node_id, item_level);
                         reach.generics().predicates();
 
-                        if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
+                        if trait_item_ref.kind == AssociatedItemKind::Type &&
                            !trait_item_ref.defaultness.has_value() {
                             // No type to visit.
                         } else {
@@ -782,6 +782,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
+        // Don't visit nested modules, since we run a separate visitor walk
+        // for each module in `privacy_access_levels`
+    }
+
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let orig_tables = mem::replace(&mut self.tables, self.tcx.body_tables(body));
         let body = self.tcx.hir().body(body);
@@ -915,6 +920,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     /// module and so forth, so supply a crate for doing a deep walk.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
+    }
+
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
+        // Don't visit nested modules, since we run a separate visitor walk
+        // for each module in `privacy_access_levels`
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
@@ -1333,11 +1343,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         if self.item_is_public(&impl_item_ref.id.node_id, &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
-                                hir::AssociatedItemKind::Const => {
+                                AssociatedItemKind::Const => {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
-                                hir::AssociatedItemKind::Method { has_self: false } => {
+                                AssociatedItemKind::Method { has_self: false } => {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
@@ -1558,6 +1568,24 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             in_assoc_ty: false,
         }
     }
+
+    fn check_trait_or_impl_item(&self, node_id: ast::NodeId, assoc_item_kind: AssociatedItemKind,
+                                defaultness: hir::Defaultness, vis: ty::Visibility) {
+        let mut check = self.check(node_id, vis);
+
+        let (check_ty, is_assoc_ty) = match assoc_item_kind {
+            AssociatedItemKind::Const | AssociatedItemKind::Method { .. } => (true, false),
+            AssociatedItemKind::Type => (defaultness.has_value(), true),
+            // `ty()` for existential types is the underlying type,
+            // it's not a part of interface, so we skip it.
+            AssociatedItemKind::Existential => (false, true),
+        };
+        check.in_assoc_ty = is_assoc_ty;
+        check.generics().predicates();
+        if check_ty {
+            check.ty();
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
@@ -1592,16 +1620,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.id, item_visibility).generics().predicates();
 
                 for trait_item_ref in trait_item_refs {
-                    let mut check = self.check(trait_item_ref.id.node_id, item_visibility);
-                    check.in_assoc_ty = trait_item_ref.kind == hir::AssociatedItemKind::Type;
-                    check.generics().predicates();
-
-                    if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
-                       !trait_item_ref.defaultness.has_value() {
-                        // No type to visit.
-                    } else {
-                        check.ty();
-                    }
+                    self.check_trait_or_impl_item(trait_item_ref.id.node_id, trait_item_ref.kind,
+                                                  trait_item_ref.defaultness, item_visibility);
                 }
             }
             hir::ItemKind::TraitAlias(..) => {
@@ -1647,9 +1667,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                     } else {
                         impl_vis
                     };
-                    let mut check = self.check(impl_item.id, impl_item_vis);
-                    check.in_assoc_ty = impl_item_ref.kind == hir::AssociatedItemKind::Type;
-                    check.generics().predicates().ty();
+                    self.check_trait_or_impl_item(impl_item_ref.id.node_id, impl_item_ref.kind,
+                                                  impl_item_ref.defaultness, impl_item_vis);
                 }
             }
         }
@@ -1659,6 +1678,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         privacy_access_levels,
+        check_mod_privacy,
         ..*providers
     };
 }
@@ -1667,34 +1687,43 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
     tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
-fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   krate: CrateNum)
-                                   -> Lrc<AccessLevels> {
-    assert_eq!(krate, LOCAL_CRATE);
-
-    let krate = tcx.hir().krate();
+fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
         tcx,
         tables: &empty_tables,
-        current_item: CRATE_NODE_ID,
+        current_item: DUMMY_NODE_ID,
         empty_tables: &empty_tables,
     };
-    intravisit::walk_crate(&mut visitor, krate);
+    let (module, span, node_id) = tcx.hir().get_module(module_def_id);
+    intravisit::walk_mod(&mut visitor, module, node_id);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
     let mut visitor = TypePrivacyVisitor {
         tcx,
         tables: &empty_tables,
-        current_item: DefId::local(CRATE_DEF_INDEX),
+        current_item: module_def_id,
         in_body: false,
-        span: krate.span,
+        span,
         empty_tables: &empty_tables,
     };
-    intravisit::walk_crate(&mut visitor, krate);
+    intravisit::walk_mod(&mut visitor, module, node_id);
+}
+
+fn privacy_access_levels<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    krate: CrateNum,
+) -> Lrc<AccessLevels> {
+    assert_eq!(krate, LOCAL_CRATE);
+
+    let krate = tcx.hir().krate();
+
+    for &module in krate.modules.keys() {
+        queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
+    }
 
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.

@@ -135,10 +135,11 @@ impl CodeSuggestion {
             if let Some(line) = line_opt {
                 if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
                     let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
-                    buf.push_str(match hi_opt {
-                        Some(hi) => &line[lo..hi],
-                        None => &line[lo..],
-                    });
+                    match hi_opt {
+                        Some(hi) if hi > lo => buf.push_str(&line[lo..hi]),
+                        Some(_) => (),
+                        None => buf.push_str(&line[lo..]),
+                    }
                 }
                 if let None = hi_opt {
                     buf.push('\n');

@@ -10,14 +10,16 @@ pub fn check(path: &Path, bad: &mut bool) {
         &mut |file_path| {
             if let Some(ext) = file_path.extension() {
                 if ext == "stderr" || ext == "stdout" {
-                    // Test output filenames have the format:
+                    // Test output filenames have one of the formats:
+                    // ```
                     // $testname.stderr
                     // $testname.$mode.stderr
                     // $testname.$revision.stderr
                     // $testname.$revision.$mode.stderr
+                    // ```
                     //
                     // For now, just make sure that there is a corresponding
-                    // $testname.rs file.
+                    // `$testname.rs` file.
                     let testname = file_path
                         .file_name()
                         .unwrap()

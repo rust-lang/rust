@@ -983,6 +983,9 @@ pub struct GlobalCtxt<'tcx> {
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
+    /// A map of glob use to a set of names it actually imports. Currently only
+    /// used in save-analysis.
+    glob_map: FxHashMap<DefId, FxHashSet<ast::Name>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<ast::Name, bool>,
@@ -1232,6 +1235,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .into_iter()
                     .map(|(id, sp)| (hir.local_def_id(id), sp))
                     .collect(),
+            glob_map: resolutions.glob_map.into_iter().map(|(id, names)| {
+                (hir.local_def_id(id), names)
+            }).collect(),
             extern_prelude: resolutions.extern_prelude,
             hir_map: hir,
             def_path_hash_to_def_id,
@@ -2971,6 +2977,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.maybe_unused_extern_crates = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(tcx.maybe_unused_extern_crates.clone())
+    };
+    providers.names_imported_by_glob_use = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        Lrc::new(tcx.glob_map.get(&id).cloned().unwrap_or_default())
     };
 
     providers.stability_index = |tcx, cnum| {

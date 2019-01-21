@@ -21,6 +21,8 @@ use std::cell::Cell;
 use std::ptr;
 use rustc_data_structures::sync::Lrc;
 
+use errors::Applicability;
+
 use syntax::ast::{Name, Ident};
 use syntax::attr;
 
@@ -345,7 +347,12 @@ impl<'a> Resolver<'a> {
                 let module = if orig_name.is_none() && ident.name == keywords::SelfLower.name() {
                     self.session
                         .struct_span_err(item.span, "`extern crate self;` requires renaming")
-                        .span_suggestion(item.span, "try", "extern crate self as name;".into())
+                        .span_suggestion_with_applicability(
+                            item.span,
+                            "try",
+                            "extern crate self as name;".into(),
+                            Applicability::HasPlaceholders,
+                        )
                         .emit();
                     return;
                 } else if orig_name == Some(keywords::SelfLower.name()) {
@@ -672,6 +679,9 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 module.populated.set(true);
+            }
+            Def::TraitAlias(..) => {
+                self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Struct(..) | Def::Union(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));

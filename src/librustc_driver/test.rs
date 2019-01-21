@@ -18,7 +18,6 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_lint;
 use rustc_metadata::cstore::CStore;
-use rustc_resolve::MakeGlobMap;
 use rustc_target::spec::abi::Abi;
 use syntax;
 use syntax::ast;
@@ -134,7 +133,6 @@ fn test_env_with_pool<F>(
             None,
             "test",
             None,
-            MakeGlobMap::No,
             |_| Ok(()),
         ).expect("phase 2 aborted")
     };

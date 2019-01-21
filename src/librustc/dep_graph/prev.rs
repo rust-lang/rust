@@ -19,14 +19,11 @@ impl PreviousDepGraph {
     }
 
     #[inline]
-    pub fn edges_from(&self,
-                      dep_node: &DepNode)
-                      -> Option<(&[SerializedDepNodeIndex], SerializedDepNodeIndex)> {
-        self.index
-            .get(dep_node)
-            .map(|&node_index| {
-                (self.data.edge_targets_from(node_index), node_index)
-            })
+    pub fn edge_targets_from(
+        &self,
+        dep_node_index: SerializedDepNodeIndex
+    ) -> &[SerializedDepNodeIndex] {
+        self.data.edge_targets_from(dep_node_index)
     }
 
     #[inline]

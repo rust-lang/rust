@@ -41,10 +41,9 @@ fn demand_y<'x, 'y>(_cell_x: &Cell<&'x u32>, _cell_y: &Cell<&'y u32>, _y: &'y u3
 #[rustc_regions]
 fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-
         // Only works if 'x: 'y:
         demand_y(x, y, x.get())
-        //~^ ERROR unsatisfied lifetime constraints
+        //~^ ERROR lifetime may not live long enough
     });
 }
 

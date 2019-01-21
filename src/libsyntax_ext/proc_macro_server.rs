@@ -269,7 +269,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
         };
 
         let tree = tokenstream::TokenTree::Token(span, token);
-        TokenStream::Tree(tree, if joint { Joint } else { NonJoint })
+        TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
     }
 }
 

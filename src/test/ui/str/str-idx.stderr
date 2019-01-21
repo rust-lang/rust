@@ -5,6 +5,8 @@ LL |     let c: u8 = s[4]; //~ ERROR the type `str` cannot be indexed by `{integ
    |                 ^^^^ `str` cannot be indexed by `{integer}`
    |
    = help: the trait `std::ops::Index<{integer}>` is not implemented for `str`
+   = note: you can use `.chars().nth()` or `.bytes().nth()`
+           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error: aborting due to previous error
 

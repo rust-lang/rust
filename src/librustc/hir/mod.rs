@@ -10,16 +10,17 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
+use errors::FatalError;
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 use mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
-use syntax::source_map::{self, Spanned};
+use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
+use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
@@ -141,17 +142,6 @@ pub const DUMMY_HIR_ID: HirId = HirId {
 };
 
 pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
-pub struct Label {
-    pub ident: Ident,
-}
-
-impl fmt::Debug for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "label({:?})", self.ident)
-    }
-}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
@@ -1144,45 +1134,41 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<StmtKind>;
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct Stmt {
+    pub id: NodeId,
+    pub node: StmtKind,
+    pub span: Span,
+}
 
-impl fmt::Debug for StmtKind {
+impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Sadness.
-        let spanned = source_map::dummy_spanned(self.clone());
-        write!(f,
-               "stmt({}: {})",
-               spanned.node.id(),
-               print::to_string(print::NO_ANN, |s| s.print_stmt(&spanned)))
+        write!(f, "stmt({}: {})", self.id,
+               print::to_string(print::NO_ANN, |s| s.print_stmt(self)))
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum StmtKind {
-    /// Could be an item or a local (let) binding:
-    Decl(P<Decl>, NodeId),
+    /// A local (let) binding:
+    Local(P<Local>),
+    /// An item binding:
+    Item(P<ItemId>),
 
     /// Expr without trailing semi-colon (must have unit type):
-    Expr(P<Expr>, NodeId),
+    Expr(P<Expr>),
 
     /// Expr with trailing semi-colon (may have any type):
-    Semi(P<Expr>, NodeId),
+    Semi(P<Expr>),
 }
 
 impl StmtKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            StmtKind::Decl(ref d, _) => d.node.attrs(),
-            StmtKind::Expr(ref e, _) |
-            StmtKind::Semi(ref e, _) => &e.attrs,
-        }
-    }
-
-    pub fn id(&self) -> NodeId {
-        match *self {
-            StmtKind::Decl(_, id) |
-            StmtKind::Expr(_, id) |
-            StmtKind::Semi(_, id) => id,
+            StmtKind::Local(ref l) => &l.attrs,
+            StmtKind::Item(_) => &[],
+            StmtKind::Expr(ref e) |
+            StmtKind::Semi(ref e) => &e.attrs,
         }
     }
 }
@@ -1199,32 +1185,6 @@ pub struct Local {
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
     pub source: LocalSource,
-}
-
-pub type Decl = Spanned<DeclKind>;
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum DeclKind {
-    /// A local (let) binding:
-    Local(P<Local>),
-    /// An item binding:
-    Item(ItemId),
-}
-
-impl DeclKind {
-    pub fn attrs(&self) -> &[Attribute] {
-        match *self {
-            DeclKind::Local(ref l) => &l.attrs,
-            DeclKind::Item(_) => &[]
-        }
-    }
-
-    pub fn is_local(&self) -> bool {
-        match *self {
-            DeclKind::Local(_) => true,
-            _ => false,
-        }
-    }
 }
 
 /// represents one arm of a 'match'
@@ -1466,7 +1426,7 @@ pub enum ExprKind {
     /// A unary operation (For example: `!x`, `*x`)
     Unary(UnOp, P<Expr>),
     /// A literal (For example: `1`, `"foo"`)
-    Lit(P<Lit>),
+    Lit(Lit),
     /// A cast (`foo as f64`)
     Cast(P<Expr>, P<Ty>),
     Type(P<Expr>, P<Ty>),
@@ -2064,6 +2024,20 @@ pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
     pub hir_ref_id: HirId,
+}
+
+impl TraitRef {
+    /// Get the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
+    pub fn trait_def_id(&self) -> DefId {
+        match self.path.def {
+            Def::Trait(did) => did,
+            Def::TraitAlias(did) => did,
+            Def::Err => {
+                FatalError.raise();
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

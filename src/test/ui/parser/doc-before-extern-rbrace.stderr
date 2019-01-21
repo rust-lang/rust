@@ -2,7 +2,7 @@ error: expected item after doc comment
   --> $DIR/doc-before-extern-rbrace.rs:2:5
    |
 LL |     /// hi
-   |     ^^^^^^
+   |     ^^^^^^ this doc comment doesn't document anything
 
 error: aborting due to previous error
 

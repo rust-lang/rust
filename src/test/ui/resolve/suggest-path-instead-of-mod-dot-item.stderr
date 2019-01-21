@@ -4,15 +4,15 @@ error[E0423]: expected value, found module `a`
 LL |     a.I
    |     ^--
    |     |
-   |     did you mean `a::I`?
+   |     help: use the path separator to refer to an item: `a::I`
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:22:5
    |
 LL |     a.g()
-   |     ^----
+   |     ^--
    |     |
-   |     did you mean `a::g(...)`?
+   |     help: use the path separator to refer to an item: `a::g`
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:27:5
@@ -20,16 +20,21 @@ error[E0423]: expected value, found module `a`
 LL |     a.b.J
    |     ^--
    |     |
-   |     did you mean `a::b`?
+   |     help: use the path separator to refer to an item: `a::b`
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:32:5
    |
 LL |     a::b.J
-   |     ^^^---
-   |     |  |
-   |     |  help: a constant with a similar name exists: `I`
-   |     did you mean `a::b::J`?
+   |     ^^^^
+help: a constant with a similar name exists
+   |
+LL |     a::I.J
+   |        ^
+help: use the path separator to refer to an item
+   |
+LL |     a::b::J
+   |
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:37:5
@@ -37,7 +42,7 @@ error[E0423]: expected value, found module `a`
 LL |     a.b.f();
    |     ^--
    |     |
-   |     did you mean `a::b`?
+   |     help: use the path separator to refer to an item: `a::b`
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:40:12
@@ -51,10 +56,15 @@ error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:45:5
    |
 LL |     a::b.f()
-   |     ^^^-----
-   |     |  |
-   |     |  help: a constant with a similar name exists: `I`
-   |     did you mean `a::b::f(...)`?
+   |     ^^^^
+help: a constant with a similar name exists
+   |
+LL |     a::I.f()
+   |        ^
+help: use the path separator to refer to an item
+   |
+LL |     a::b::f()
+   |     ^^^^^^^
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:50:5

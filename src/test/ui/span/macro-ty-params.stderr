@@ -1,14 +1,14 @@
 error: generic arguments in macro path
-  --> $DIR/macro-ty-params.rs:10:8
+  --> $DIR/macro-ty-params.rs:10:10
    |
 LL |     foo::<T>!(); //~ ERROR generic arguments in macro path
-   |        ^^^^^
+   |          ^^^
 
 error: generic arguments in macro path
-  --> $DIR/macro-ty-params.rs:11:8
+  --> $DIR/macro-ty-params.rs:11:10
    |
 LL |     foo::<>!(); //~ ERROR generic arguments in macro path
-   |        ^^^^
+   |          ^^
 
 error: unexpected generic arguments in path
   --> $DIR/macro-ty-params.rs:12:8

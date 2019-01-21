@@ -13,7 +13,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         return
     }
     for entry in t!(path.read_dir(), path).map(|e| t!(e)) {
-        // Look for `Cargo.toml` with a sibling `src/lib.rs` or `lib.rs`
+        // Look for `Cargo.toml` with a sibling `src/lib.rs` or `lib.rs`.
         if entry.file_name().to_str() == Some("Cargo.toml") {
             if path.join("src/lib.rs").is_file() {
                 verify(&entry.path(), &path.join("src/lib.rs"), bad)
@@ -27,8 +27,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     }
 }
 
-// Verify that the dependencies in Cargo.toml at `tomlfile` are sync'd with the
-// `extern crate` annotations in the lib.rs at `libfile`.
+/// Verifies that the dependencies in Cargo.toml at `tomlfile` are synced with
+/// the `extern crate` annotations in the lib.rs at `libfile`.
 fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
     let toml = t!(fs::read_to_string(&tomlfile));
     let librs = t!(fs::read_to_string(&libfile));
@@ -37,14 +37,16 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
         return
     }
 
-    // "Poor man's TOML parser", just assume we use one syntax for now
+    // "Poor man's TOML parser" -- just assume we use one syntax for now.
     //
     // We just look for:
     //
-    //      [dependencies]
-    //      name = ...
-    //      name2 = ...
-    //      name3 = ...
+    // ````
+    // [dependencies]
+    // name = ...
+    // name2 = ...
+    // name3 = ...
+    // ```
     //
     // If we encounter a line starting with `[` then we assume it's the end of
     // the dependency section and bail out.
@@ -63,14 +65,14 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
             continue
         }
 
-        // Don't worry about depending on core/std but not saying `extern crate
-        // core/std`, that's intentional.
+        // Don't worry about depending on core/std while not writing `extern crate
+        // core/std` -- that's intentional.
         if krate == "core" || krate == "std" {
             continue
         }
 
-        // This is intentional, this dependency just makes the crate available
-        // for others later on. Cover cases
+        // This is intentional -- this dependency just makes the crate available
+        // for others later on.
         let whitelisted = krate.starts_with("panic");
         if toml.contains("name = \"std\"") && whitelisted {
             continue

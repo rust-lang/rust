@@ -164,6 +164,7 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
 impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Str(value, style),
+    Err(value),
     ByteStr(value),
     Byte(value),
     Char(value),
@@ -258,7 +259,7 @@ for tokenstream::TokenTree {
             tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
                 span.hash_stable(hcx, hasher);
                 std_hash::Hash::hash(&delim, hasher);
-                for sub_tt in tts.stream().trees() {
+                for sub_tt in tts.trees() {
                     sub_tt.hash_stable(hcx, hasher);
                 }
             }
@@ -329,6 +330,7 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
             match *lit {
                 token::Lit::Byte(val) |
                 token::Lit::Char(val) |
+                token::Lit::Err(val) |
                 token::Lit::Integer(val) |
                 token::Lit::Float(val) |
                 token::Lit::Str_(val) |

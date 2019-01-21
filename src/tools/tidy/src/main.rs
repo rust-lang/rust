@@ -1,4 +1,4 @@
-//! Tidy checks source code in this repository
+//! Tidy checks source code in this repository.
 //!
 //! This program runs all of the various tidy checks for style, cleanliness,
 //! etc. This is run by default on `make check` and as part of the auto

@@ -516,7 +516,7 @@ recursion limit (which can be set via the `recursion_limit` attribute).
 For a somewhat artificial example:
 
 ```compile_fail,E0055
-#![recursion_limit="2"]
+#![recursion_limit="5"]
 
 struct Foo;
 
@@ -526,9 +526,9 @@ impl Foo {
 
 fn main() {
     let foo = Foo;
-    let ref_foo = &&Foo;
+    let ref_foo = &&&&&Foo;
 
-    // error, reached the recursion limit while auto-dereferencing `&&Foo`
+    // error, reached the recursion limit while auto-dereferencing `&&&&&Foo`
     ref_foo.foo();
 }
 ```

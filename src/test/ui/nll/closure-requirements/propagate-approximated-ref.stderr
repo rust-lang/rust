@@ -3,10 +3,9 @@ note: External requirements
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ ERROR unsatisfied lifetime constraints
+LL | |         //~^ ERROR lifetime may not live long enough
 LL | |     });
    | |_____^
    |
@@ -24,17 +23,17 @@ note: No external requirements
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |
 LL | |         // Only works if 'x: 'y:
-...  |
+LL | |         demand_y(x, y, x.get())
+LL | |         //~^ ERROR lifetime may not live long enough
 LL | |     });
 LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_ref[317d]::supply[0]) with substs []
 
-error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-ref.rs:46:9
+error: lifetime may not live long enough
+  --> $DIR/propagate-approximated-ref.rs:45:9
    |
 LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |           --  -- lifetime `'b` defined here

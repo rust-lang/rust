@@ -123,7 +123,8 @@ pub fn parse_pretty(sess: &Session,
                 sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
                                      `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
                                      `identified`, `expanded,identified`, `everybody_loops`, \
-                                     `hir`, `hir,identified`, `hir,typed`, or `mir`; got {}",
+                                     `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
+                                     `mir` or `mir-cfg`; got {}",
                                     name));
             } else {
                 sess.fatal(&format!("argument to `pretty` must be one of `normal`, `expanded`, \
@@ -190,7 +191,6 @@ impl PpSourceMode {
         sess: &'tcx Session,
         cstore: &'tcx CStore,
         hir_map: &hir_map::Map<'tcx>,
-        analysis: &ty::CrateAnalysis,
         resolutions: &Resolutions,
         output_filenames: &OutputFilenames,
         id: &str,
@@ -223,12 +223,11 @@ impl PpSourceMode {
                                                                  sess,
                                                                  cstore,
                                                                  hir_map.clone(),
-                                                                 analysis.clone(),
                                                                  resolutions.clone(),
                                                                  &mut arenas,
                                                                  id,
                                                                  output_filenames,
-                                                                 |tcx, _, _, _| {
+                                                                 |tcx, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -959,7 +958,6 @@ pub fn print_after_parsing(sess: &Session,
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 cstore: &'tcx CStore,
                                                 hir_map: &hir_map::Map<'tcx>,
-                                                analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
                                                 input: &Input,
                                                 krate: &ast::Crate,
@@ -972,7 +970,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
         print_with_analysis(sess,
                             cstore,
                             hir_map,
-                            analysis,
                             resolutions,
                             crate_name,
                             output_filenames,
@@ -1010,7 +1007,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1033,7 +1029,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1048,7 +1043,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1081,7 +1075,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1103,13 +1096,12 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 }
 
 // In an ideal world, this would be a public function called by the driver after
-// analsysis is performed. However, we want to call `phase_3_run_analysis_passes`
+// analysis is performed. However, we want to call `phase_3_run_analysis_passes`
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        cstore: &'a CStore,
                                        hir_map: &hir_map::Map<'tcx>,
-                                       analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
                                        output_filenames: &OutputFilenames,
@@ -1134,12 +1126,11 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      sess,
                                                      cstore,
                                                      hir_map.clone(),
-                                                     analysis.clone(),
                                                      resolutions.clone(),
                                                      &mut arenas,
                                                      crate_name,
                                                      output_filenames,
-                                                     |tcx, _, _, _| {
+                                                     |tcx, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

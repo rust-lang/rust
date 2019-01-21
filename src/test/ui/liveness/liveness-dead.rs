@@ -27,4 +27,13 @@ fn f5(mut x: i32) {
     x = 4; //~ ERROR: value assigned to `x` is never read
 }
 
+// #22630
+fn f6() {
+    let mut done = false;
+    while !done {
+        done = true; // no error
+        continue;
+    }
+}
+
 fn main() {}

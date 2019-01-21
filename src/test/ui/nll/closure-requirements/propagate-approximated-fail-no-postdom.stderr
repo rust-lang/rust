@@ -16,7 +16,7 @@ LL | |         },
    = note: late-bound region is '_#5r
    = note: late-bound region is '_#6r
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/propagate-approximated-fail-no-postdom.rs:46:13
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {

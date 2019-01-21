@@ -238,19 +238,6 @@ impl<'a> StringReader<'a> {
         sr
     }
 
-    pub fn new_without_err(sess: &'a ParseSess,
-                           source_file: Lrc<syntax_pos::SourceFile>,
-                           override_span: Option<Span>,
-                           prepend_error_text: &str) -> Result<Self, ()> {
-        let mut sr = StringReader::new_raw(sess, source_file, override_span);
-        if sr.advance_token().is_err() {
-            eprintln!("{}", prepend_error_text);
-            sr.emit_fatal_errors();
-            return Err(());
-        }
-        Ok(sr)
-    }
-
     pub fn new_or_buffered_errs(sess: &'a ParseSess,
                                 source_file: Lrc<syntax_pos::SourceFile>,
                                 override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
@@ -1408,9 +1395,10 @@ impl<'a> StringReader<'a> {
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        self.fatal_span_verbose(start_with_quote, self.next_pos,
-                                String::from("character literal may only contain one codepoint"))
-                            .raise();
+                        self.err_span_(start_with_quote, self.next_pos,
+                                "character literal may only contain one codepoint");
+                        self.bump();
+                        return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
 
                     }
 
@@ -1445,7 +1433,7 @@ impl<'a> StringReader<'a> {
                                     format!("\"{}\"", &self.src[start..end]),
                                     Applicability::MachineApplicable
                                 ).emit();
-                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
+                            return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
                         }
                         if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
                             // Only attempt to infer single line string literals. If we encounter

@@ -6,7 +6,7 @@ use std::str::FromStr;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPath;
 
-use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
 use lint;
 use middle::cstore;
@@ -649,14 +649,14 @@ impl Options {
     }
 }
 
-// The type of entry function, so
-// users can have their own entry
-// functions
-#[derive(Copy, Clone, PartialEq)]
+// The type of entry function, so users can have their own entry functions
+#[derive(Copy, Clone, PartialEq, Hash, Debug)]
 pub enum EntryFnType {
     Main,
     Start,
 }
+
+impl_stable_hash_via_hash!(EntryFnType);
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
 pub enum CrateType {
@@ -808,13 +808,16 @@ macro_rules! options {
         pub const parse_cross_lang_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
+        pub const parse_merge_functions: Option<&str> =
+            Some("one of: `disabled`, `trampolines`, or `aliases`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, Sanitizer, LtoCli, CrossLangLto};
-        use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
+        use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
+        use std::str::FromStr;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -1044,6 +1047,14 @@ macro_rules! options {
                 None => CrossLangLto::LinkerPluginAuto,
                 Some(path) => CrossLangLto::LinkerPlugin(PathBuf::from(path)),
             };
+            true
+        }
+
+        fn parse_merge_functions(slot: &mut Option<MergeFunctions>, v: Option<&str>) -> bool {
+            match v.and_then(|s| MergeFunctions::from_str(s).ok()) {
+                Some(mergefunc) => *slot = Some(mergefunc),
+                _ => return false,
+            }
             true
         }
     }
@@ -1342,10 +1353,15 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "Present the input source, unstable (and less-pretty) variants;
         valid types are any of the types for `--pretty`, as well as:
+        `expanded`, `expanded,identified`,
+        `expanded,hygiene` (with internal representations),
         `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+        `flowgraph,unlabelled=<nodeid>` (unlabelled graphviz formatted flowgraph for node),
         `everybody_loops` (all function bodies replaced with `loop {}`),
-        `hir` (the HIR), `hir,identified`, or
-        `hir,typed` (HIR with types for each node)."),
+        `hir` (the HIR), `hir,identified`,
+        `hir,typed` (HIR with types for each node),
+        `hir-tree` (dump the raw HIR),
+        `mir` (the MIR), or `mir-cfg` (graphviz formatted MIR)"),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
@@ -1376,6 +1392,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "whether to use the PLT when calling into shared libraries;
           only has effect for PIC code on systems with ELF binaries
           (default: PLT is disabled if full relro is enabled)"),
+    merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
+        "control the operation of the MergeFunctions LLVM pass, taking
+         the same values as the target option of the same name"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -2394,7 +2413,7 @@ mod dep_tracking {
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
                 Passes, Sanitizer, LtoCli, CrossLangLto};
     use syntax::feature_gate::UnstableFeatures;
-    use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
+    use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
 
     pub trait DepTrackingHash {
@@ -2437,12 +2456,14 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
+    impl_dep_tracking_hash_via_hash!(Option<MergeFunctions>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(Option<cstore::NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
+    impl_dep_tracking_hash_via_hash!(MergeFunctions);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
     impl_dep_tracking_hash_via_hash!(RelroLevel);
     impl_dep_tracking_hash_via_hash!(Passes);
@@ -2528,7 +2549,7 @@ mod tests {
     use std::iter::FromIterator;
     use std::path::PathBuf;
     use super::{Externs, OutputType, OutputTypes};
-    use rustc_target::spec::{PanicStrategy, RelroLevel};
+    use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
     use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;
@@ -3182,6 +3203,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.cross_lang_lto = CrossLangLto::LinkerPluginAuto;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.merge_functions = Some(MergeFunctions::Disabled);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 

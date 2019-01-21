@@ -15,7 +15,7 @@ use rustc_target::spec::abi::Abi;
 use source_map::{dummy_spanned, respan, Spanned};
 use symbol::{keywords, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::{ThinTokenStream, TokenStream};
+use tokenstream::TokenStream;
 use ThinVec;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -190,6 +190,16 @@ pub struct ParenthesisedArgs {
 
     /// `C`
     pub output: Option<P<Ty>>,
+}
+
+impl ParenthesisedArgs {
+    pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
+        AngleBracketedArgs {
+            span: self.span,
+            args: self.inputs.iter().cloned().map(|input| GenericArg::Type(input)).collect(),
+            bindings: vec![],
+        }
+    }
 }
 
 // hack to ensure that we don't try to access the private parts of `NodeId` in this module
@@ -1216,7 +1226,7 @@ pub type Mac = Spanned<Mac_>;
 pub struct Mac_ {
     pub path: Path,
     pub delim: MacDelimiter,
-    pub tts: ThinTokenStream,
+    pub tts: TokenStream,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
@@ -1228,13 +1238,13 @@ pub enum MacDelimiter {
 
 impl Mac_ {
     pub fn stream(&self) -> TokenStream {
-        self.tts.stream()
+        self.tts.clone()
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MacroDef {
-    pub tokens: ThinTokenStream,
+    pub tokens: TokenStream,
     pub legacy: bool,
 }
 
@@ -1285,6 +1295,8 @@ pub enum LitKind {
     FloatUnsuffixed(Symbol),
     /// A boolean literal.
     Bool(bool),
+    /// A recovered character literal that contains mutliple `char`s, most likely a typo.
+    Err(Symbol),
 }
 
 impl LitKind {
@@ -1321,6 +1333,7 @@ impl LitKind {
             | LitKind::ByteStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
+            | LitKind::Err(..)
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::FloatUnsuffixed(..)
             | LitKind::Bool(..) => true,

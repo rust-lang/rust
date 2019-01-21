@@ -646,6 +646,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
         token::Literal(token::Byte(i), suf) => return mk_lit!("Byte", suf, i),
         token::Literal(token::Char(i), suf) => return mk_lit!("Char", suf, i),
+        token::Literal(token::Err(_i), _suf) => return cx.expr(sp, ast::ExprKind::Err),
         token::Literal(token::Integer(i), suf) => return mk_lit!("Integer", suf, i),
         token::Literal(token::Float(i), suf) => return mk_lit!("Float", suf, i),
         token::Literal(token::Str_(i), suf) => return mk_lit!("Str_", suf, i),
@@ -748,7 +749,7 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, quoted: bool) -> Vec<ast::Stmt
         },
         TokenTree::Delimited(span, delim, ref tts) => {
             let mut stmts = statements_mk_tt(cx, &TokenTree::open_tt(span.open, delim), false);
-            stmts.extend(statements_mk_tts(cx, tts.stream()));
+            stmts.extend(statements_mk_tts(cx, tts.clone()));
             stmts.extend(statements_mk_tt(cx, &TokenTree::close_tt(span.close, delim), false));
             stmts
         }

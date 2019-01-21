@@ -466,6 +466,7 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
     match lit {
        token::Byte(i) => (true, Some(LitKind::Byte(byte_lit(&i.as_str()).0))),
        token::Char(i) => (true, Some(LitKind::Char(char_lit(&i.as_str(), diag).0))),
+       token::Err(i) => (true, Some(LitKind::Err(i))),
 
         // There are some valid suffixes for integer and float literals,
         // so all the handling is done internally.
@@ -817,7 +818,7 @@ mod tests {
                 )
                 if name_macro_rules.name == "macro_rules"
                 && name_zip.name == "zip" => {
-                    let tts = &macro_tts.stream().trees().collect::<Vec<_>>();
+                    let tts = &macro_tts.trees().collect::<Vec<_>>();
                     match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                         (
                             3,
@@ -826,7 +827,7 @@ mod tests {
                             Some(&TokenTree::Delimited(_, second_delim, ref second_tts)),
                         )
                         if macro_delim == token::Paren => {
-                            let tts = &first_tts.stream().trees().collect::<Vec<_>>();
+                            let tts = &first_tts.trees().collect::<Vec<_>>();
                             match (tts.len(), tts.get(0), tts.get(1)) {
                                 (
                                     2,
@@ -836,7 +837,7 @@ mod tests {
                                 if first_delim == token::Paren && ident.name == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                             }
-                            let tts = &second_tts.stream().trees().collect::<Vec<_>>();
+                            let tts = &second_tts.trees().collect::<Vec<_>>();
                             match (tts.len(), tts.get(0), tts.get(1)) {
                                 (
                                     2,

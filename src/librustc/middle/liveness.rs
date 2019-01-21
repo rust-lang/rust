@@ -100,6 +100,7 @@ use self::VarKind::*;
 use hir::def::*;
 use hir::Node;
 use ty::{self, TyCtxt};
+use ty::query::{Providers, queries};
 use lint;
 use errors::Applicability;
 use util::nodemap::{NodeMap, HirIdMap, HirIdSet};
@@ -114,8 +115,9 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
-use hir::{Expr, HirId};
 use hir;
+use hir::{Expr, HirId};
+use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
@@ -179,9 +181,22 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
+fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
+}
+
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir().krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
+    for &module in tcx.hir().krate().modules.keys() {
+        queries::check_mod_liveness::ensure(tcx, tcx.hir().local_def_id(module));
+    }
     tcx.sess.abort_if_errors();
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers {
+        check_mod_liveness,
+        ..*providers
+    };
 }
 
 impl fmt::Debug for LiveNode {
@@ -911,16 +926,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
-        // if there is a `break` or `again` at the top level, then it's
-        // effectively a return---this only occurs in `for` loops,
-        // where the body is really a closure.
-
         debug!("compute: using id for body, {}", self.ir.tcx.hir().node_to_pretty_string(body.id));
-
-        let exit_ln = self.s.exit_ln;
-
-        self.break_ln.insert(body.id, exit_ln);
-        self.cont_ln.insert(body.id, exit_ln);
 
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
@@ -956,44 +962,29 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode)
                               -> LiveNode {
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => {
-                self.propagate_through_decl(&decl, succ)
-            }
+            hir::StmtKind::Local(ref local) => {
+                // Note: we mark the variable as defined regardless of whether
+                // there is an initializer.  Initially I had thought to only mark
+                // the live variable as defined if it was initialized, and then we
+                // could check for uninit variables just by scanning what is live
+                // at the start of the function. But that doesn't work so well for
+                // immutable variables defined in a loop:
+                //     loop { let x; x = 5; }
+                // because the "assignment" loops back around and generates an error.
+                //
+                // So now we just check that variables defined w/o an
+                // initializer are not live at the point of their
+                // initialization, which is mildly more complex than checking
+                // once at the func header but otherwise equivalent.
 
-            hir::StmtKind::Expr(ref expr, _) | hir::StmtKind::Semi(ref expr, _) => {
+                let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
+                self.define_bindings_in_pat(&local.pat, succ)
+            }
+            hir::StmtKind::Item(..) => succ,
+            hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
                 self.propagate_through_expr(&expr, succ)
             }
         }
-    }
-
-    fn propagate_through_decl(&mut self, decl: &hir::Decl, succ: LiveNode)
-                              -> LiveNode {
-        match decl.node {
-            hir::DeclKind::Local(ref local) => {
-                self.propagate_through_local(&local, succ)
-            }
-            hir::DeclKind::Item(_) => succ,
-        }
-    }
-
-    fn propagate_through_local(&mut self, local: &hir::Local, succ: LiveNode)
-                               -> LiveNode {
-        // Note: we mark the variable as defined regardless of whether
-        // there is an initializer.  Initially I had thought to only mark
-        // the live variable as defined if it was initialized, and then we
-        // could check for uninit variables just by scanning what is live
-        // at the start of the function. But that doesn't work so well for
-        // immutable variables defined in a loop:
-        //     loop { let x; x = 5; }
-        // because the "assignment" loops back around and generates an error.
-        //
-        // So now we just check that variables defined w/o an
-        // initializer are not live at the point of their
-        // initialization, which is mildly more complex than checking
-        // once at the func header but otherwise equivalent.
-
-        let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
-        self.define_bindings_in_pat(&local.pat, succ)
     }
 
     fn propagate_through_exprs(&mut self, exprs: &[Expr], succ: LiveNode)
@@ -1024,18 +1015,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&e, succ)
             }
 
-            hir::ExprKind::Closure(.., blk_id, _, _) => {
+            hir::ExprKind::Closure(..) => {
                 debug!("{} is an ExprKind::Closure",
                        self.ir.tcx.hir().node_to_pretty_string(expr.id));
-
-                // The next-node for a break is the successor of the entire
-                // loop. The next-node for a continue is the top of this loop.
-                let node = self.live_node(expr.hir_id, expr.span);
-
-                let break_ln = succ;
-                let cont_ln = node;
-                self.break_ln.insert(blk_id.node_id, break_ln);
-                self.cont_ln.insert(blk_id.node_id, cont_ln);
 
                 // the construction of a closure itself is not important,
                 // but we have to consider the closed over variables.
@@ -1407,15 +1389,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, self.ir.tcx.hir().node_to_pretty_string(body.id));
 
-        let break_ln = succ;
-        let cont_ln = ln;
-        self.break_ln.insert(expr.id, break_ln);
-        self.cont_ln.insert(expr.id, cont_ln);
+
+        self.break_ln.insert(expr.id, succ);
 
         let cond_ln = match kind {
             LoopLoop => ln,
             WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
         };
+
+        self.cont_ln.insert(expr.id, cond_ln);
+
         let body_ln = self.propagate_through_block(body, cond_ln);
 
         // repeat until fixed point is reached:

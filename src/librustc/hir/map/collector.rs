@@ -426,7 +426,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_stmt(&mut self, stmt: &'hir Stmt) {
-        let id = stmt.node.id();
+        let id = stmt.id;
         self.insert(stmt.span, id, Node::Stmt(stmt));
 
         self.with_parent(id, |this| {

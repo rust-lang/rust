@@ -211,9 +211,18 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 }
 
-/// A struct to represent both where to emit formatting strings to and how they
-/// should be formatted. A mutable version of this is passed to all formatting
-/// traits.
+/// Configuration for formatting.
+///
+/// A `Formatter` represents various options related to formatting. Users do not
+/// construct `Formatter`s directly; a mutable reference to one is passed to
+/// the `fmt` method of all formatting traits, like [`Debug`] and [`Display`].
+///
+/// To interact with a `Formatter`, you'll call various methods to change the
+/// various options related to formatting. For examples, please see the
+/// documentation of the methods defined on `Formatter` below.
+///
+/// [`Debug`]: trait.Debug.html
+/// [`Display`]: trait.Display.html
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {

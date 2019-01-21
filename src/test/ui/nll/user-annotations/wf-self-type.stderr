@@ -1,11 +1,11 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/wf-self-type.rs:12:5
    |
 LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
    |            --  -- lifetime `'b` defined here
    |            |
    |            lifetime `'a` defined here
-LL |     Foo::xmute(u) //~ ERROR unsatisfied lifetime constraints
+LL |     Foo::xmute(u) //~ ERROR lifetime may not live long enough
    |     ^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
 
 error: aborting due to previous error

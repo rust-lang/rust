@@ -6,7 +6,7 @@ use syntax;
 use syntax::ast::{self, Ident, NodeId};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
-use syntax_pos::{self, DUMMY_SP};
+use syntax_pos::DUMMY_SP;
 
 use std::ops::Range;
 
@@ -16,6 +16,7 @@ use html::markdown::markdown_links;
 
 use clean::*;
 use passes::{look_for_tests, Pass};
+use super::span_of_attrs;
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass =
     Pass::early("collect-intra-doc-links", collect_intra_doc_links,
@@ -440,28 +441,11 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     None
 }
 
-pub fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
-    if attrs.doc_strings.is_empty() {
-        return DUMMY_SP;
-    }
-    let start = attrs.doc_strings[0].span();
-    let end = attrs.doc_strings.last().expect("No doc strings provided").span();
-    start.to(end)
-}
-
 /// Reports a resolution failure diagnostic.
 ///
-/// Ideally we can report the diagnostic with the actual span in the source where the link failure
-/// occurred. However, there's a mismatch between the span in the source code and the span in the
-/// markdown, so we have to do a bit of work to figure out the correspondence.
-///
-/// It's not too hard to find the span for sugared doc comments (`///` and `/**`), because the
-/// source will match the markdown exactly, excluding the comment markers. However, it's much more
-/// difficult to calculate the spans for unsugared docs, because we have to deal with escaping and
-/// other source features. So, we attempt to find the exact source span of the resolution failure
-/// in sugared docs, but use the span of the documentation attributes themselves for unsugared
-/// docs. Because this span might be overly large, we display the markdown line containing the
-/// failure as a note.
+/// If we cannot find the exact source span of the resolution failure, we use the span of the
+/// documentation attributes themselves. This is a little heavy-handed, so we display the markdown
+/// line containing the failure as a note as well.
 fn resolution_failure(
     cx: &DocContext,
     attrs: &Attributes,
@@ -473,54 +457,7 @@ fn resolution_failure(
     let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
     let mut diag = if let Some(link_range) = link_range {
-        let src = cx.sess().source_map().span_to_snippet(sp);
-        let is_all_sugared_doc = attrs.doc_strings.iter().all(|frag| match frag {
-            DocFragment::SugaredDoc(..) => true,
-            _ => false,
-        });
-
-        if let (Ok(src), true) = (src, is_all_sugared_doc) {
-            // The number of markdown lines up to and including the resolution failure.
-            let num_lines = dox[..link_range.start].lines().count();
-
-            // We use `split_terminator('\n')` instead of `lines()` when counting bytes to ensure
-            // that DOS-style line endings do not cause the spans to be calculated incorrectly.
-            let mut src_lines = src.split_terminator('\n');
-            let mut md_lines = dox.split_terminator('\n').take(num_lines).peekable();
-
-            // The number of bytes from the start of the source span to the resolution failure that
-            // are *not* part of the markdown, like comment markers.
-            let mut extra_src_bytes = 0;
-
-            while let Some(md_line) = md_lines.next() {
-                loop {
-                    let source_line = src_lines
-                        .next()
-                        .expect("could not find markdown line in source");
-
-                    match source_line.find(md_line) {
-                        Some(offset) => {
-                            extra_src_bytes += if md_lines.peek().is_some() {
-                                source_line.len() - md_line.len()
-                            } else {
-                                offset
-                            };
-                            break;
-                        }
-                        None => {
-                            // Since this is a source line that doesn't include a markdown line,
-                            // we have to count the newline that we split from earlier.
-                            extra_src_bytes += source_line.len() + 1;
-                        }
-                    }
-                }
-            }
-
-            let sp = sp.from_inner_byte_pos(
-                link_range.start + extra_src_bytes,
-                link_range.end + extra_src_bytes,
-            );
-
+        if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
             let mut diag = cx.tcx.struct_span_lint_node(
                 lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
                 NodeId::from_u32(0),

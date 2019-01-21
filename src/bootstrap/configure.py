@@ -64,6 +64,10 @@ o("lldb", "rust.lldb", "build lldb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use_libcxx", "build LLVM with libc++")
 
+o("cflags", "llvm.cflags", "build LLVM with these extra compiler flags")
+o("cxxflags", "llvm.cxxflags", "build LLVM with these extra compiler flags")
+o("ldflags", "llvm.ldflags", "build LLVM with these extra linker flags")
+
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
 o("optimize", "rust.optimize", "build optimized rust code")

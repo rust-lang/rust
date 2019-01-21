@@ -286,6 +286,7 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
+#![feature(renamed_spin_loop)]
 #![feature(rustc_private)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]

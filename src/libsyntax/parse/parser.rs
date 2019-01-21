@@ -46,7 +46,7 @@ use print::pprust;
 use ptr::P;
 use parse::PResult;
 use ThinVec;
-use tokenstream::{self, DelimSpan, ThinTokenStream, TokenTree, TokenStream};
+use tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use symbol::{Symbol, keywords};
 
 use std::borrow::Cow;
@@ -280,17 +280,17 @@ struct TokenCursorFrame {
 /// on the parser.
 #[derive(Clone)]
 enum LastToken {
-    Collecting(Vec<TokenStream>),
-    Was(Option<TokenStream>),
+    Collecting(Vec<TreeAndJoint>),
+    Was(Option<TreeAndJoint>),
 }
 
 impl TokenCursorFrame {
-    fn new(sp: DelimSpan, delim: DelimToken, tts: &ThinTokenStream) -> Self {
+    fn new(sp: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
         TokenCursorFrame {
             delim: delim,
             span: sp,
             open_delim: delim == token::NoDelim,
-            tree_cursor: tts.stream().into_trees(),
+            tree_cursor: tts.clone().into_trees(),
             close_delim: delim == token::NoDelim,
             last_token: LastToken::Was(None),
         }
@@ -2176,11 +2176,11 @@ impl<'a> Parser<'a> {
               style != PathStyle::Mod && self.check(&token::ModSep)
                                       && self.look_ahead(1, |t| is_args_start(t)) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-            let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
                 self.diagnostic().struct_span_warn(self.prev_span, "unnecessary path disambiguator")
                                  .span_label(self.prev_span, "try removing `::`").emit();
             }
+            let lo = self.span;
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
@@ -2330,7 +2330,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, ThinTokenStream)> {
+    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, TokenStream)> {
         let delim = match self.token {
             token::OpenDelim(delim) => delim,
             _ => {
@@ -2350,7 +2350,7 @@ impl<'a> Parser<'a> {
             token::Brace => MacDelimiter::Brace,
             token::NoDelim => self.bug("unexpected no delimiter"),
         };
-        Ok((delim, tts.stream().into()))
+        Ok((delim, tts.into()))
     }
 
     /// At the bottom (top?) of the precedence hierarchy,
@@ -4063,12 +4063,13 @@ impl<'a> Parser<'a> {
 
         if let Some(mut err) = delayed_err {
             if let Some(etc_span) = etc_span {
-                err.multipart_suggestion(
+                err.multipart_suggestion_with_applicability(
                     "move the `..` to the end of the field list",
                     vec![
                         (etc_span, String::new()),
                         (self.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
                     ],
+                    Applicability::MachineApplicable,
                 );
             }
             err.emit();
@@ -4482,13 +4483,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Emit an expected item after attributes error.
-    fn expected_item_err(&self, attrs: &[Attribute]) {
+    fn expected_item_err(&mut self, attrs: &[Attribute]) -> PResult<'a,  ()> {
         let message = match attrs.last() {
             Some(&Attribute { is_sugared_doc: true, .. }) => "expected item after doc comment",
             _ => "expected item after attributes",
         };
 
-        self.span_err(self.prev_span, message);
+        let mut err = self.diagnostic().struct_span_err(self.prev_span, message);
+        if attrs.last().unwrap().is_sugared_doc {
+            err.span_label(self.prev_span, "this doc comment doesn't document anything");
+        }
+        Err(err)
     }
 
     /// Parse a statement. This stops just before trailing semicolons on everything but items.
@@ -4641,7 +4646,7 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident()?;
                 let tokens = if self.check(&token::OpenDelim(token::Brace)) {
                     match self.parse_token_tree() {
-                        TokenTree::Delimited(_, _, tts) => tts.stream(),
+                        TokenTree::Delimited(_, _, tts) => tts,
                         _ => unreachable!(),
                     }
                 } else if self.check(&token::OpenDelim(token::Paren)) {
@@ -5234,22 +5239,13 @@ impl<'a> Parser<'a> {
                     kind: ast::GenericParamKind::Lifetime,
                 });
                 if let Some(sp) = seen_ty_param {
-                    let param_span = self.prev_span;
-                    let ate_comma = self.eat(&token::Comma);
-                    let remove_sp = if ate_comma {
-                        param_span.until(self.span)
-                    } else {
-                        last_comma_span.unwrap_or(param_span).to(param_span)
-                    };
-                    bad_lifetime_pos.push(param_span);
-
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(param_span) {
+                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
+                    bad_lifetime_pos.push(self.prev_span);
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
                         suggestions.push((remove_sp, String::new()));
-                        suggestions.push((sp.shrink_to_lo(), format!("{}, ", snippet)));
-                    }
-                    if ate_comma {
-                        last_comma_span = Some(self.prev_span);
-                        continue
+                        suggestions.push((
+                            sp.shrink_to_lo(),
+                            format!("{}, ", snippet)));
                     }
                 }
             } else if self.check_ident() {
@@ -6913,7 +6909,11 @@ impl<'a> Parser<'a> {
 
             let mut err = self.struct_span_err(fixed_name_sp, error_msg);
             err.span_label(fixed_name_sp, "dash-separated idents are not valid");
-            err.multipart_suggestion(suggestion_msg, replacement);
+            err.multipart_suggestion_with_applicability(
+                suggestion_msg,
+                replacement,
+                Applicability::MachineApplicable,
+            );
             err.emit();
         }
         Ok(ident)
@@ -7640,7 +7640,7 @@ impl<'a> Parser<'a> {
             }
             None => {
                 if !attrs.is_empty()  {
-                    self.expected_item_err(&attrs);
+                    self.expected_item_err(&attrs)?;
                 }
 
                 self.unexpected()
@@ -7703,7 +7703,7 @@ impl<'a> Parser<'a> {
         }
 
         if !attributes_allowed && !attrs.is_empty() {
-            self.expected_item_err(&attrs);
+            self.expected_item_err(&attrs)?;
         }
         Ok(None)
     }
@@ -7766,7 +7766,7 @@ impl<'a> Parser<'a> {
             &mut self.token_cursor.stack[prev].last_token
         };
 
-        // Pull our the toekns that we've collected from the call to `f` above
+        // Pull out the tokens that we've collected from the call to `f` above.
         let mut collected_tokens = match *last_token {
             LastToken::Collecting(ref mut v) => mem::replace(v, Vec::new()),
             LastToken::Was(_) => panic!("our vector went away?"),
@@ -7785,10 +7785,9 @@ impl<'a> Parser<'a> {
         // call. In that case we need to record all the tokens we collected in
         // our parent list as well. To do that we push a clone of our stream
         // onto the previous list.
-        let stream = collected_tokens.into_iter().collect::<TokenStream>();
         match prev_collecting {
             Some(mut list) => {
-                list.push(stream.clone());
+                list.extend(collected_tokens.iter().cloned());
                 list.extend(extra_token);
                 *last_token = LastToken::Collecting(list);
             }
@@ -7797,7 +7796,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok((ret?, stream))
+        Ok((ret?, TokenStream::new(collected_tokens)))
     }
 
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {

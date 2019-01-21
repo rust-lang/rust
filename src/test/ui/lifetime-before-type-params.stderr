@@ -1,0 +1,47 @@
+error: lifetime parameters must be declared prior to type parameters
+  --> $DIR/lifetime-before-type-params.rs:2:13
+   |
+LL | fn first<T, 'a, 'b>() {}
+   |             ^^  ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | fn first<'a, 'b, T>() {}
+   |          ^^^ ^^^ --
+
+error: lifetime parameters must be declared prior to type parameters
+  --> $DIR/lifetime-before-type-params.rs:4:18
+   |
+LL | fn second<'a, T, 'b>() {}
+   |                  ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | fn second<'a, 'b, T>() {}
+   |               ^^^ --
+
+error: lifetime parameters must be declared prior to type parameters
+  --> $DIR/lifetime-before-type-params.rs:6:16
+   |
+LL | fn third<T, U, 'a>() {}
+   |                ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | fn third<'a, T, U>() {}
+   |          ^^^    --
+
+error: lifetime parameters must be declared prior to type parameters
+  --> $DIR/lifetime-before-type-params.rs:8:18
+   |
+LL | fn fourth<'a, T, 'b, U, 'c, V>() {}
+   |                  ^^     ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | fn fourth<'a, 'b, 'c, T, U, V>() {}
+   |               ^^^ ^^^ -- --
+
+error[E0601]: `main` function not found in crate `lifetime_before_type_params`
+   |
+   = note: consider adding a `main` function to `$DIR/lifetime-before-type-params.rs`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

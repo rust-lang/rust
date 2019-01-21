@@ -169,7 +169,7 @@ pub use core::ffi::c_void;
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
-           issue = "27745")]
+           issue = "44930")]
 pub use core::ffi::VaList;
 
 mod c_str;
