@@ -1,11 +1,8 @@
 use std::sync::Arc;
 use std::fmt::Write;
-use std::path::{PathBuf, Path};
-use std::fs;
 
 use ra_db::{SyntaxDatabase, salsa::Database};
 use ra_syntax::ast::{self, AstNode};
-use test_utils::{project_dir, assert_eq_text, read_text};
 
 use crate::{
     source_binder,
@@ -13,14 +10,13 @@ use crate::{
 };
 
 // These tests compare the inference results for all expressions in a file
-// against snapshots of the expected results. If you change something and these
-// tests fail expectedly, you can update the comparison files by deleting them
-// and running the tests again. Similarly, to add a new test, just write the
-// test here in the same pattern and it will automatically write the snapshot.
+// against snapshots of the expected results using insta. Run the tests with
+// INSTA_UPDATE=1 to update the snapshots.
 
 #[test]
 fn infer_basics() {
     check_inference(
+        "infer_basics",
         r#"
 fn test(a: u32, b: isize, c: !, d: &str) {
     a;
@@ -32,13 +28,13 @@ fn test(a: u32, b: isize, c: !, d: &str) {
     "test";
     1.0f32;
 }"#,
-        "basics.txt",
     );
 }
 
 #[test]
 fn infer_let() {
     check_inference(
+        "infer_let",
         r#"
 fn test() {
     let a = 1isize;
@@ -46,13 +42,13 @@ fn test() {
     let c = b;
 }
 }"#,
-        "let.txt",
     );
 }
 
 #[test]
 fn infer_paths() {
     check_inference(
+        "infer_paths",
         r#"
 fn a() -> u32 { 1 }
 
@@ -65,13 +61,13 @@ fn test() {
     b::c();
 }
 }"#,
-        "paths.txt",
     );
 }
 
 #[test]
 fn infer_struct() {
     check_inference(
+        "infer_struct",
         r#"
 struct A {
     b: B,
@@ -88,13 +84,13 @@ fn test() {
     a.c;
 }
 "#,
-        "struct.txt",
     );
 }
 
 #[test]
 fn infer_enum() {
     check_inference(
+        "infer_enum",
         r#"
 enum E {
   V1 { field: u32 },
@@ -104,13 +100,13 @@ fn test() {
   E::V1 { field: 1 };
   E::V2;
 }"#,
-        "enum.txt",
     );
 }
 
 #[test]
 fn infer_refs() {
     check_inference(
+        "infer_refs",
         r#"
 fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
     a;
@@ -126,13 +122,13 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
     *d;
 }
 "#,
-        "refs_and_ptrs.txt",
     );
 }
 
 #[test]
 fn infer_literals() {
     check_inference(
+        "infer_literals",
         r##"
 fn test() {
     5i32;
@@ -152,13 +148,13 @@ fn test() {
     br#"yolo"#;
 }
 "##,
-        "literals.txt",
     );
 }
 
 #[test]
 fn infer_unary_op() {
     check_inference(
+        "infer_unary_op",
         r#"
 enum SomeType {}
 
@@ -175,13 +171,13 @@ fn test(x: SomeType) {
     -"hello";
 }
 "#,
-        "unary_op.txt",
     );
 }
 
 #[test]
 fn infer_backwards() {
     check_inference(
+        "infer_backwards",
         r#"
 fn takes_u32(x: u32) {}
 
@@ -196,13 +192,13 @@ fn test() -> &mut &f64 {
     &mut &c
 }
 "#,
-        "backwards.txt",
     );
 }
 
 #[test]
 fn infer_self() {
     check_inference(
+        "infer_self",
         r#"
 struct S;
 
@@ -215,13 +211,13 @@ impl S {
     }
 }
 "#,
-        "self.txt",
     );
 }
 
 #[test]
 fn infer_binary_op() {
     check_inference(
+        "infer_binary_op",
         r#"
 fn f(x: bool) -> i32 {
     0i32
@@ -242,13 +238,13 @@ fn test() -> bool {
     ten < 3
 }
 "#,
-        "binary_op.txt",
     );
 }
 
 #[test]
 fn infer_field_autoderef() {
     check_inference(
+        "infer_field_autoderef",
         r#"
 struct A {
     b: B,
@@ -273,25 +269,25 @@ fn test2(a1: *const A, a2: *mut A) {
     a2.b;
 }
 "#,
-        "field_autoderef.txt",
     );
 }
 
 #[test]
-fn infer_bug_484() {
+fn bug_484() {
     check_inference(
+        "bug_484",
         r#"
 fn test() {
    let x = if true {};
 }
 "#,
-        "bug_484.txt",
     );
 }
 
 #[test]
 fn infer_inherent_method() {
     check_inference(
+        "infer_inherent_method",
         r#"
 struct A;
 
@@ -311,13 +307,13 @@ fn test(a: A) {
     a.bar(1);
 }
 "#,
-        "inherent_method.txt",
     );
 }
 
 #[test]
 fn infer_tuple() {
     check_inference(
+        "infer_tuple",
         r#"
 fn test(x: &str, y: isize) {
     let a: (u32, &str) = (1, "a");
@@ -328,13 +324,13 @@ fn test(x: &str, y: isize) {
     let f = (e, "d");
 }
 "#,
-        "tuple.txt",
     );
 }
 
 #[test]
 fn infer_array() {
     check_inference(
+        "infer_array",
         r#"
 fn test(x: &str, y: isize) {
     let a = [x];
@@ -354,13 +350,13 @@ fn test(x: &str, y: isize) {
     let x: [u8; 0] = [];
 }
 "#,
-        "array.txt",
     );
 }
 
 #[test]
 fn infer_pattern() {
     check_inference(
+        "infer_pattern",
         r#"
 fn test(x: &i32) {
     let y = x;
@@ -384,13 +380,13 @@ fn test(x: &i32) {
     let k = mut_ref_to_x;
 }
 "#,
-        "pattern.txt",
     );
 }
 
 #[test]
 fn infer_adt_pattern() {
     check_inference(
+        "infer_adt_pattern",
         r#"
 enum E {
     A { x: usize },
@@ -414,13 +410,13 @@ fn test() {
     d;
 }
 "#,
-        "adt_pattern.txt",
     );
 }
 
 #[test]
 fn infer_struct_generics() {
     check_inference(
+        "infer_struct_generics",
         r#"
 struct A<T> {
     x: T,
@@ -434,13 +430,13 @@ fn test(a1: A<u32>, i: i32) {
     a3.x;
 }
 "#,
-        "struct_generics.txt",
     );
 }
 
 #[test]
 fn infer_generics_in_patterns() {
     check_inference(
+        "infer_generics_in_patterns",
         r#"
 struct A<T> {
     x: T,
@@ -460,13 +456,13 @@ fn test(a1: A<u32>, o: Option<u64>) {
     };
 }
 "#,
-        "generics_in_patterns.txt",
     );
 }
 
 #[test]
 fn infer_function_generics() {
     check_inference(
+        "infer_function_generics",
         r#"
 fn id<T>(t: T) -> T { t }
 
@@ -476,13 +472,13 @@ fn test() {
     let x: u64 = id(1);
 }
 "#,
-        "function_generics.txt",
     );
 }
 
 #[test]
 fn infer_generic_chain() {
     check_inference(
+        "infer_generic_chain",
         r#"
 struct A<T> {
     x: T,
@@ -503,13 +499,13 @@ fn test() -> i128 {
      b.x()
 }
 "#,
-        "generic_chain.txt",
     );
 }
 
 #[test]
 fn no_panic_on_field_of_enum() {
     check_inference(
+        "no_panic_on_field_of_enum",
         r#"
 enum X {}
 
@@ -517,13 +513,13 @@ fn test(x: X) {
     x.some_field;
 }
 "#,
-        "no_panic_on_field_of_enum.txt",
     );
 }
 
 #[test]
 fn bug_585() {
     check_inference(
+        "bug_585",
         r#"
 fn test() {
     X {};
@@ -533,7 +529,6 @@ fn test() {
     }
 }
 "#,
-        "bug_585.txt",
     );
 }
 
@@ -581,19 +576,10 @@ fn infer(content: &str) -> String {
     acc
 }
 
-fn check_inference(content: &str, data_file: impl AsRef<Path>) {
-    let data_file_path = test_data_dir().join(data_file);
+fn check_inference(name: &str, content: &str) {
     let result = infer(content);
 
-    if !data_file_path.exists() {
-        println!("File with expected result doesn't exist, creating...\n");
-        println!("{}\n{}", content, result);
-        fs::write(&data_file_path, &result).unwrap();
-        panic!("File {:?} with expected result was created", data_file_path);
-    }
-
-    let expected = read_text(&data_file_path);
-    assert_eq_text!(&expected, &result);
+    insta::assert_snapshot_matches!(&name, &result);
 }
 
 fn ellipsize(mut text: String, max_len: usize) -> String {
@@ -612,10 +598,6 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
     }
     text.replace_range(prefix_len..text.len() - suffix_len, ellipsis);
     text
-}
-
-fn test_data_dir() -> PathBuf {
-    project_dir().join("crates/ra_hir/src/ty/tests/data")
 }
 
 #[test]

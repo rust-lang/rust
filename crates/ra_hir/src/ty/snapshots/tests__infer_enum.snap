@@ -1,0 +1,9 @@
+Created: 2019-01-21T21:48:20.662949719+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
+[48; 82) '{   E:...:V2; }': ()
+[52; 70) 'E::V1 ...d: 1 }': E
+[67; 68) '1': u32
+[74; 79) 'E::V2': E
+

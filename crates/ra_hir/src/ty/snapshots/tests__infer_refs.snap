@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.674183006+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [9; 10) 'a': &u32
 [18; 19) 'b': &mut u32
 [31; 32) 'c': *const u32
@@ -21,3 +25,4 @@
 [138; 139) 'd': *mut u32
 [145; 147) '*d': u32
 [146; 147) 'd': *mut u32
+

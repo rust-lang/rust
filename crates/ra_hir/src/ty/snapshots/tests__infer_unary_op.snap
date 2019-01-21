@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.676213204+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [27; 28) 'x': SomeType
 [40; 197) '{     ...lo"; }': ()
 [50; 51) 'b': bool
@@ -26,3 +30,4 @@
 [179; 180) 'x': SomeType
 [186; 194) '-"hello"': [unknown]
 [187; 194) '"hello"': &str
+

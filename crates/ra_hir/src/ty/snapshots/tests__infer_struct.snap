@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.677495622+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [72; 154) '{     ...a.c; }': ()
 [82; 83) 'c': [unknown]
 [86; 87) 'C': [unknown]
@@ -14,3 +18,4 @@
 [139; 142) 'a.b': B
 [148; 149) 'a': A
 [148; 151) 'a.c': C
+

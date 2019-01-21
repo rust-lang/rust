@@ -1,3 +1,7 @@
+Created: 2019-01-21T21:48:20.662874226+00:00
+Creator: insta@0.1.4
+Source: crates/ra_hir/src/ty/tests.rs
+
 [9; 10) 'a': u32
 [17; 18) 'b': isize
 [27; 28) 'c': !
@@ -11,3 +15,4 @@
 [88; 94) '1isize': isize
 [100; 106) '"test"': &str
 [112; 118) '1.0f32': f32
+
