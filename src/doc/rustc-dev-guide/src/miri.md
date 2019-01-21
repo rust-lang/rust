@@ -55,18 +55,18 @@ Before the evaluation, a virtual memory location (in this case essentially a
 `vec![u8; 4]` or `vec![u8; 8]`) is created for storing the evaluation result.
 
 At the start of the evaluation, `_0` and `_1` are
-`Value::ByVal(PrimVal::Undef)`. When the initialization of `_1` is invoked, the
+`ConstValue::Scalar(Scalar::Undef)`. When the initialization of `_1` is invoked, the
 value of the `FOO` constant is required, and triggers another call to
 `tcx.const_eval`, which will not be shown here. If the evaluation of FOO is
 successful, 42 will be subtracted by its value `4096` and the result stored in
-`_1` as `Value::ByValPair(PrimVal::Bytes(4054), PrimVal::Bytes(0))`. The first
+`_1` as `ConstValue::ScalarPair(Scalar::Bytes(4054), Scalar::Bytes(0))`. The first
 part of the pair is the computed value, the second part is a bool that's true if
 an overflow happened.
 
 The next statement asserts that said boolean is `0`. In case the assertion
 fails, its error message is used for reporting a compile-time error.
 
-Since it does not fail, `Value::ByVal(PrimVal::Bytes(4054))` is stored in the
+Since it does not fail, `ConstValue::Scalar(Scalar::Bytes(4054))` is stored in the
 virtual memory was allocated before the evaluation. `_0` always refers to that
 location directly.
 
@@ -75,7 +75,7 @@ After the evaluation is done, the virtual memory allocation is interned into the
 miri, but just extract the value from the interned allocation.
 
 The `tcx.const_eval` function has one additional feature: it will not return a
-`ByRef(interned_allocation_id)`, but a `ByVal(computed_value)` if possible. This
+`ByRef(interned_allocation_id)`, but a `Scalar(computed_value)` if possible. This
 makes using the result much more convenient, as no further queries need to be
 executed in order to get at something as simple as a `usize`.
 
@@ -83,15 +83,15 @@ executed in order to get at something as simple as a `usize`.
 
 Miri's core datastructures can be found in
 [librustc/mir/interpret](https://github.com/rust-lang/rust/blob/master/src/librustc/mir/interpret).
-This is mainly the error enum and the `Value` and `PrimVal` types. A `Value` can
-be either `ByVal` (a single `PrimVal`), `ByValPair` (two `PrimVal`s, usually fat
+This is mainly the error enum and the `ConstValue` and `Scalar` types. A `ConstValue` can
+be either `Scalar` (a single `Scalar`), `ScalarPair` (two `Scalar`s, usually fat
 pointers or two element tuples) or `ByRef`, which is used for anything else and
 refers to a virtual allocation. These allocations can be accessed via the
 methods on `tcx.interpret_interner`.
 
 If you are expecting a numeric result, you can use `unwrap_u64` (panics on
 anything that can't be representad as a `u64`) or `to_raw_bits` which results
-in an `Option<u128>` yielding the `ByVal` if possible.
+in an `Option<u128>` yielding the `Scalar` if possible.
 
 ## Allocations
 
@@ -113,7 +113,7 @@ to a pointer to `b`.
 Although the main entry point to constant evaluation is the `tcx.const_eval`
 query, there are additional functions in
 [librustc_mir/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html)
-that allow accessing the fields of a `Value` (`ByRef` or otherwise). You should
+that allow accessing the fields of a `ConstValue` (`ByRef` or otherwise). You should
 never have to access an `Allocation` directly except for translating it to the
 compilation target (at the moment just LLVM).
 
