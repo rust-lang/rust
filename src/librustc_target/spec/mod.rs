@@ -367,6 +367,7 @@ supported_targets! {
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("i686-unknown-freebsd", i686_unknown_freebsd),
+    ("powerpc64-unknown-freebsd", powerpc64_unknown_freebsd),
     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
 
     ("i686-unknown-dragonfly", i686_unknown_dragonfly),
