@@ -462,9 +462,6 @@ declare_features! (
 
     // #[optimize(X)]
     (active, optimize_attribute, "1.34.0", Some(54882), None),
-
-    // Allows using the 'leaked private dependencies' lint
-    (active, public_private_dependencies, "1.32.0", Some(44663), None),
 );
 
 declare_features! (
