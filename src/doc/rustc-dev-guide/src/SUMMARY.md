@@ -20,6 +20,7 @@
 - [The Rustc Driver](./rustc-driver.md)
     - [Rustdoc](./rustdoc.md)
 - [Queries: demand-driven compilation](./query.md)
+    - [The Query Evaluation Model in Detail](./query-evaluation-model-in-detail.md)
     - [Incremental compilation](./incremental-compilation.md)
     - [Debugging and Testing](./incrcomp-debugging.md)
 - [The parser](./the-parser.md)

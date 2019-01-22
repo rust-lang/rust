@@ -35,6 +35,12 @@ will in turn demand information about that crate, starting from the
 However, that vision is not fully realized. Still, big chunks of the
 compiler (for example, generating MIR) work exactly like this.
 
+### The Query Evaluation Model in Detail
+
+The [Query Evaluation Model in Detail](query-evaluation-model-in-detail.html)
+chapter gives a more in-depth description of what queries are and how they work.
+If you intend to write a query of your own, this is a good read.
+
 ### Invoking queries
 
 To invoke a query is simple. The tcx ("type context") offers a method
@@ -44,60 +50,6 @@ query, you would just do this:
 ```rust,ignore
 let ty = tcx.type_of(some_def_id);
 ```
-
-### Cycles between queries
-
-A cycle is when a query becomes stuck in a loop e.g. query A generates query B
-which generates query A again.
-
-Currently, cycles during query execution should always result in a
-compilation error. Typically, they arise because of illegal programs
-that contain cyclic references they shouldn't (though sometimes they
-arise because of compiler bugs, in which case we need to factor our
-queries in a more fine-grained fashion to avoid them).
-
-However, it is nonetheless often useful to *recover* from a cycle
-(after reporting an error, say) and try to soldier on, so as to give a
-better user experience. In order to recover from a cycle, you don't
-get to use the nice method-call-style syntax. Instead, you invoke
-using the `try_get` method, which looks roughly like this:
-
-```rust,ignore
-use ty::queries;
-...
-match queries::type_of::try_get(tcx, DUMMY_SP, self.did) {
-  Ok(result) => {
-    // no cycle occurred! You can use `result`
-  }
-  Err(err) => {
-    // A cycle occurred! The error value `err` is a `DiagnosticBuilder`,
-    // meaning essentially an "in-progress", not-yet-reported error message.
-    // See below for more details on what to do here.
-  }
-}
-```
-
-So, if you get back an `Err` from `try_get`, then a cycle *did* occur. This
-means that you must ensure that a compiler error message is reported. You can
-do that in two ways:
-
-The simplest is to invoke `err.emit()`. This will emit the cycle error to the
-user.
-
-However, often cycles happen because of an illegal program, and you
-know at that point that an error either already has been reported or
-will be reported due to this cycle by some other bit of code. In that
-case, you can invoke `err.cancel()` to not emit any error. It is
-traditional to then invoke:
-
-```rust,ignore
-tcx.sess.delay_span_bug(some_span, "some message")
-```
-
-`delay_span_bug()` is a helper that says: we expect a compilation
-error to have happened or to happen in the future; so, if compilation
-ultimately succeeds, make an ICE with the message `"some
-message"`. This is basically just a precaution in case you are wrong.
 
 ### How the compiler executes a query
 
