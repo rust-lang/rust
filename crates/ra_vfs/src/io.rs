@@ -132,7 +132,7 @@ fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> TaskResult 
             root_filter,
             nested_roots,
         } => {
-            watch(watcher, &path, &*root_filter, false);
+            watch(watcher, &path, root_filter.as_ref(), false);
             log::debug!("loading {} ...", path.as_path().display());
             let files = load_root(
                 path.as_path(),

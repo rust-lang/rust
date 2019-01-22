@@ -59,7 +59,15 @@ impl RootFilter {
 
 pub(crate) fn default_filter(path: &Path, rel_path: &RelativePath) -> bool {
     if path.is_dir() {
-        rel_path.components().next() != Some(Component::Normal("target"))
+        for (i, c) in rel_path.components().enumerate() {
+            if let Component::Normal(c) = c {
+                // hardcoded for now
+                if (i == 0 && c == "target") || c == ".git" || c == "node_modules" {
+                    return false;
+                }
+            }
+        }
+        true
     } else {
         rel_path.extension() == Some("rs")
     }
