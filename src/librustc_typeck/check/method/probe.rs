@@ -506,15 +506,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self_ty.value.value.sty {
             ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
-                    self.fcx.probe(|_| {
-                        let InferOk { value: self_ty, obligations: _ } =
-                            self.fcx.probe_instantiate_query_response(
-                                self.span, &self.orig_steps_var_values, self_ty)
-                            .unwrap_or_else(|_| {
-                                span_bug!(self.span, "{:?} was applicable but now isn't?", self_ty)
-                            });
-                        self.assemble_inherent_candidates_from_object(self_ty);
-                    });
+                    let InferOk { value: instantiated_self_ty, obligations: _ } =
+                        self.fcx.probe_instantiate_query_response(
+                            self.span, &self.orig_steps_var_values, self_ty)
+                        .unwrap_or_else(|_| {
+                            span_bug!(self.span, "{:?} was applicable but now isn't?", self_ty)
+                        });
+                    self.assemble_inherent_candidates_from_object(instantiated_self_ty);
                     self.assemble_inherent_impl_candidates_for_type(p.def_id());
                 }
             }
