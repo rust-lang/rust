@@ -51,6 +51,11 @@ pub static LICENSE_APACHE: &'static [u8] = include_bytes!("static/LICENSE-APACHE
 /// The contents of `LICENSE-MIT.txt`, the text of the MIT License.
 pub static LICENSE_MIT: &'static [u8] = include_bytes!("static/LICENSE-MIT.txt");
 
+/// The contents of `rust-logo.png`, the default icon of the documentation.
+pub static RUST_LOGO: &'static [u8] = include_bytes!("static/rust-logo.png");
+/// The contents of `favicon.ico`, the default favicon of the documentation.
+pub static RUST_FAVICON: &'static [u8] = include_bytes!("static/favicon.ico");
+
 /// The built-in themes given to every documentation site.
 pub mod themes {
     /// The "light" theme, selected by default when no setting is available. Used as the basis for
