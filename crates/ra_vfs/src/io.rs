@@ -55,7 +55,12 @@ pub enum TaskResult {
 
 impl fmt::Debug for TaskResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("TaskResult { ... }")
+        match self {
+            TaskResult::AddRoot(..) => f.write_str("TaskResult::AddRoot(..)"),
+            TaskResult::HandleChange(c) => write!(f, "TaskResult::HandleChange({:?})", c),
+            TaskResult::LoadChange(c) => write!(f, "TaskResult::LoadChange({:?})", c),
+            TaskResult::NoOp => f.write_str("TaskResult::NoOp"),
+        }
     }
 }
 

@@ -1,12 +1,13 @@
 use std::{collections::HashSet, fs};
 
-// use flexi_logger::Logger;
+use flexi_logger::Logger;
 use ra_vfs::{Vfs, VfsChange};
 use tempfile::tempdir;
 
 fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
     for _ in 0..num_tasks {
         let task = vfs.task_receiver().recv().unwrap();
+        log::debug!("{:?}", task);
         vfs.handle_task(task);
     }
 }
@@ -25,7 +26,7 @@ macro_rules! assert_match {
 
 #[test]
 fn test_vfs_works() -> std::io::Result<()> {
-    // Logger::with_str("vfs=debug,ra_vfs=debug").start().unwrap();
+    Logger::with_str("vfs=debug,ra_vfs=debug").start().unwrap();
 
     let files = [
         ("a/foo.rs", "hello"),
@@ -114,21 +115,21 @@ fn test_vfs_works() -> std::io::Result<()> {
         assert_eq!(path, "spam.rs")
     );
 
-    fs::create_dir_all(dir.path().join("a/c")).unwrap();
-    fs::write(dir.path().join("a/c/new.rs"), "new hello").unwrap();
+    fs::create_dir_all(dir.path().join("a/sub1/sub2")).unwrap();
+    fs::write(dir.path().join("a/sub1/sub2/new.rs"), "new hello").unwrap();
     process_tasks(&mut vfs, 4);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::AddFile { text, path, .. }],
         {
             assert_eq!(text.as_str(), "new hello");
-            assert_eq!(path, "c/new.rs");
+            assert_eq!(path, "sub1/sub2/new.rs");
         }
     );
 
     fs::rename(
-        &dir.path().join("a/c/new.rs"),
-        &dir.path().join("a/c/new1.rs"),
+        &dir.path().join("a/sub1/sub2/new.rs"),
+        &dir.path().join("a/sub1/sub2/new1.rs"),
     )
     .unwrap();
     process_tasks(&mut vfs, 4);
@@ -142,18 +143,18 @@ fn test_vfs_works() -> std::io::Result<()> {
             ..
         }],
         {
-            assert_eq!(removed_path, "c/new.rs");
-            assert_eq!(added_path, "c/new1.rs");
+            assert_eq!(removed_path, "sub1/sub2/new.rs");
+            assert_eq!(added_path, "sub1/sub2/new1.rs");
             assert_eq!(text.as_str(), "new hello");
         }
     );
 
-    fs::remove_file(&dir.path().join("a/c/new1.rs")).unwrap();
+    fs::remove_file(&dir.path().join("a/sub1/sub2/new1.rs")).unwrap();
     process_tasks(&mut vfs, 2);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::RemoveFile { path, .. }],
-        assert_eq!(path, "c/new1.rs")
+        assert_eq!(path, "sub1/sub2/new1.rs")
     );
 
     fs::create_dir_all(dir.path().join("a/target")).unwrap();

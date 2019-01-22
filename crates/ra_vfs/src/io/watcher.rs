@@ -100,16 +100,18 @@ impl Watcher {
                                 log::warn!("could not watch \"{}\": {}", entry.path().display(), e)
                             }
                         }
-                    }
-                    if emit_for_contents && entry.depth() > 0 {
-                        // emit as create because we haven't seen it yet
-                        if let Err(e) =
-                            self.sender
-                                .send(io::Task::HandleChange(WatcherChange::Create(
-                                    entry.path().to_path_buf(),
-                                )))
-                        {
-                            log::warn!("watcher error: {}", e)
+                    } else {
+                        if emit_for_contents && entry.depth() > 0 {
+                            // emit only for files otherwise we will cause watch_recursive to be called again with a dir that we are already watching
+                            // emit as create because we haven't seen it yet
+                            if let Err(e) =
+                                self.sender
+                                    .send(io::Task::HandleChange(WatcherChange::Create(
+                                        entry.path().to_path_buf(),
+                                    )))
+                            {
+                                log::warn!("watcher error: {}", e)
+                            }
                         }
                     }
                 }
