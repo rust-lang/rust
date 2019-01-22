@@ -22,16 +22,44 @@ LL |     s[1..2] = bot();
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: the left-hand-side of an assignment must have a statically known size
 
-error[E0277]: the type `str` cannot be mutably indexed by `usize`
+error[E0277]: the type `str` cannot be indexed by `usize`
   --> $DIR/str-mut-idx.rs:7:5
    |
 LL |     s[1usize] = bot();
-   |     ^^^^^^^^^ `str` cannot be mutably indexed by `usize`
+   |     ^^^^^^^^^ string indices are ranges of `usize`
    |
-   = help: the trait `std::ops::IndexMut<usize>` is not implemented for `str`
+   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `usize`
+   = note: required because of the requirements on the impl of `std::ops::Index<usize>` for `str`
+
+error[E0277]: the type `str` cannot be indexed by `{integer}`
+  --> $DIR/str-mut-idx.rs:9:7
+   |
+LL |     s.get_mut(1);
+   |       ^^^^^^^ string indices are ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
-error: aborting due to 3 previous errors
+error[E0277]: the type `str` cannot be indexed by `{integer}`
+  --> $DIR/str-mut-idx.rs:11:7
+   |
+LL |     s.get_unchecked_mut(1);
+   |       ^^^^^^^^^^^^^^^^^ string indices are ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
+   = note: you can use `.chars().nth()` or `.bytes().nth()`
+           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+
+error[E0277]: the type `str` cannot be indexed by `char`
+  --> $DIR/str-mut-idx.rs:13:5
+   |
+LL |     s['c'];
+   |     ^^^^^^ string indices are ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `char`
+   = note: required because of the requirements on the impl of `std::ops::Index<char>` for `str`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
