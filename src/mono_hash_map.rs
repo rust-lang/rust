@@ -18,8 +18,11 @@ use crate::AllocMap;
 pub struct MonoHashMap<K: Hash + Eq, V>(RefCell<FxHashMap<K, Box<V>>>);
 
 impl<K: Hash + Eq, V> MonoHashMap<K, V> {
-    pub fn values<T>(&self, f: impl FnOnce(&mut dyn Iterator<Item=&V>) -> T) -> T {
-        f(&mut self.0.borrow().values().map(|v| &**v))
+    /// This function exists for priroda to be able to iterate over all evaluator memory
+    ///
+    /// The memory of constants does not show up in this list.
+    pub fn iter<T>(&self, f: impl FnOnce(&mut dyn Iterator<Item=(&K, &V)>) -> T) -> T {
+        f(&mut self.0.borrow().iter().map(|(k, v)| (k, &**v)))
     }
 }
 
