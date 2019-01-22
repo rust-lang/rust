@@ -60,7 +60,7 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
     let last_path_span = path.segments.last().expect(SEGMENTS_MSG).ident.span;
     // `to()` doesn't shorten span, so we shorten it with `until(..)`
     // and then include it with `to(..)`
-    let span = path.span.until(last_path_span).to(last_path_span);
+    let span = path.span.with_hi(last_path_span.hi());
 
     span_lint_and_sugg(
         cx,
