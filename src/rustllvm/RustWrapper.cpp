@@ -576,6 +576,25 @@ static DISubprogram::DISPFlags fromRust(LLVMRustDISPFlags SPFlags) {
 }
 #endif
 
+enum class LLVMRustDebugEmissionKind {
+  NoDebug,
+  FullDebug,
+  LineTablesOnly,
+};
+
+static DICompileUnit::DebugEmissionKind fromRust(LLVMRustDebugEmissionKind Kind) {
+  switch (Kind) {
+  case LLVMRustDebugEmissionKind::NoDebug:
+    return DICompileUnit::DebugEmissionKind::NoDebug;
+  case LLVMRustDebugEmissionKind::FullDebug:
+    return DICompileUnit::DebugEmissionKind::FullDebug;
+  case LLVMRustDebugEmissionKind::LineTablesOnly:
+    return DICompileUnit::DebugEmissionKind::LineTablesOnly;
+  default:
+    report_fatal_error("bad DebugEmissionKind.");
+  }
+}
+
 extern "C" uint32_t LLVMRustDebugMetadataVersion() {
   return DEBUG_METADATA_VERSION;
 }
@@ -616,11 +635,13 @@ extern "C" void LLVMRustDIBuilderFinalize(LLVMRustDIBuilderRef Builder) {
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMRustDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, bool isOptimized, const char *Flags,
-    unsigned RuntimeVer, const char *SplitName) {
+    unsigned RuntimeVer, const char *SplitName,
+    LLVMRustDebugEmissionKind Kind) {
   auto *File = unwrapDI<DIFile>(FileRef);
 
   return wrap(Builder->createCompileUnit(Lang, File, Producer, isOptimized,
-                                         Flags, RuntimeVer, SplitName));
+                                         Flags, RuntimeVer, SplitName,
+                                         fromRust(Kind)));
 }
 
 extern "C" LLVMMetadataRef

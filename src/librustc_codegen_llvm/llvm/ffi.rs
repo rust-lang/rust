@@ -2,7 +2,7 @@ use super::debuginfo::{
     DIBuilder, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
     DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
     DIGlobalVariableExpression, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
-    DINameSpace, DIFlags, DISPFlags,
+    DINameSpace, DIFlags, DISPFlags, DebugEmissionKind,
 };
 
 use libc::{c_uint, c_int, size_t, c_char};
@@ -603,6 +603,26 @@ pub mod debuginfo {
             const SPFlagLocalToUnit       = (1 << 2);
             const SPFlagDefinition        = (1 << 3);
             const SPFlagOptimized         = (1 << 4);
+        }
+    }
+
+    /// LLVMRustDebugEmissionKind
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    pub enum DebugEmissionKind {
+        NoDebug,
+        FullDebug,
+        LineTablesOnly,
+    }
+
+    impl DebugEmissionKind {
+        pub fn from_generic(kind: rustc::session::config::DebugInfo) -> Self {
+            use rustc::session::config::DebugInfo;
+            match kind {
+                DebugInfo::None => DebugEmissionKind::NoDebug,
+                DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,
+                DebugInfo::Full => DebugEmissionKind::FullDebug,
+            }
         }
     }
 }
@@ -1381,7 +1401,8 @@ extern "C" {
                                               isOptimized: bool,
                                               Flags: *const c_char,
                                               RuntimeVer: c_uint,
-                                              SplitName: *const c_char)
+                                              SplitName: *const c_char,
+                                              kind: DebugEmissionKind)
                                               -> &'a DIDescriptor;
 
     pub fn LLVMRustDIBuilderCreateFile(Builder: &DIBuilder<'a>,
