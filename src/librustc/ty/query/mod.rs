@@ -228,7 +228,7 @@ define_queries! { <'tcx>
 
         /// Fetch the MIR for a given def-id right after it's built - this includes
         /// unreachable code.
-        [no_hash] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+        [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
         /// Fetch the MIR for a given def-id up till the point where it is
         /// ready for const evaluation.
@@ -240,7 +240,7 @@ define_queries! { <'tcx>
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
-        [] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
+        [no_hash] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
     },
 
     TypeChecking {
