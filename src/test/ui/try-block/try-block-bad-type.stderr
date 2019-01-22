@@ -6,10 +6,10 @@ LL |         Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>`
    |
    = help: the following implementations were found:
              <i32 as std::convert::From<bool>>
+             <i32 as std::convert::From<core::num::NonZeroI32>>
              <i32 as std::convert::From<i16>>
              <i32 as std::convert::From<i8>>
-             <i32 as std::convert::From<u16>>
-             <i32 as std::convert::From<u8>>
+           and 2 others
    = note: required by `std::convert::From::from`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == &str`

@@ -471,7 +471,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_similar_impl_candidates(&self,
-                                      mut impl_candidates: Vec<ty::TraitRef<'tcx>>,
+                                      impl_candidates: Vec<ty::TraitRef<'tcx>>,
                                       err: &mut DiagnosticBuilder<'_>)
     {
         if impl_candidates.is_empty() {
@@ -497,14 +497,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         });
 
         // Sort impl candidates so that ordering is consistent for UI tests.
-        let normalized_impl_candidates = &mut impl_candidates[0..end]
+        let mut normalized_impl_candidates = impl_candidates
             .iter()
             .map(normalize)
             .collect::<Vec<String>>();
+
+        // Sort before taking the `..end` range,
+        // because the ordering of `impl_candidates` may not be deterministic:
+        // https://github.com/rust-lang/rust/pull/57475#issuecomment-455519507
         normalized_impl_candidates.sort();
 
         err.help(&format!("the following implementations were found:{}{}",
-                          normalized_impl_candidates.join(""),
+                          normalized_impl_candidates[..end].join(""),
                           if len > 5 {
                               format!("\nand {} others", len - 4)
                           } else {
