@@ -15,6 +15,7 @@ pub struct CompletionItem {
     label: String,
     kind: Option<CompletionItemKind>,
     detail: Option<String>,
+    documentation: Option<String>,
     lookup: Option<String>,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -77,6 +78,7 @@ impl CompletionItem {
             insert_text: None,
             insert_text_format: InsertTextFormat::PlainText,
             detail: None,
+            documentation: None,
             lookup: None,
             kind: None,
             text_edit: None,
@@ -89,6 +91,10 @@ impl CompletionItem {
     /// Short one-line additional information, like a type
     pub fn detail(&self) -> Option<&str> {
         self.detail.as_ref().map(|it| it.as_str())
+    }
+    /// A doc-comment
+    pub fn documentation(&self) -> Option<&str> {
+        self.documentation.as_ref().map(|it| it.as_str())
     }
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
@@ -127,6 +133,7 @@ pub(crate) struct Builder {
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
     detail: Option<String>,
+    documentation: Option<String>,
     lookup: Option<String>,
     kind: Option<CompletionItemKind>,
     text_edit: Option<TextEdit>,
@@ -142,6 +149,7 @@ impl Builder {
             source_range: self.source_range,
             label: self.label,
             detail: self.detail,
+            documentation: self.documentation,
             insert_text_format: self.insert_text_format,
             lookup: self.lookup,
             kind: self.kind,
@@ -182,6 +190,14 @@ impl Builder {
     }
     pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
         self.detail = detail.map(Into::into);
+        self
+    }
+    #[allow(unused)]
+    pub(crate) fn documentation(self, docs: impl Into<String>) -> Builder {
+        self.set_documentation(Some(docs))
+    }
+    pub(crate) fn set_documentation(mut self, docs: Option<impl Into<String>>) -> Builder {
+        self.documentation = docs.map(Into::into);
         self
     }
     pub(super) fn from_resolution(
@@ -243,6 +259,10 @@ impl Builder {
             }
             self.insert_text_format = InsertTextFormat::Snippet;
         }
+        if let Some(docs) = function.docs(ctx.db) {
+            self.documentation = Some(docs);
+        }
+
         self.kind = Some(CompletionItemKind::Function);
         self
     }

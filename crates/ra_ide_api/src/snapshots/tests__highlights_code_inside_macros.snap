@@ -1,7 +1,9 @@
-Created: 2019-01-15T11:15:20.732523231+00:00
-Creator: insta@0.1.4
-Source: crates/ra_ide_api/src/syntax_highlighting.rs
-
+---
+created: "2019-01-22T14:45:01.043047100+00:00"
+creator: insta@0.4.0
+expression: "&highlights"
+source: "crates\\ra_ide_api\\src\\syntax_highlighting.rs"
+---
 [
     HighlightedRange {
         range: [13; 15),

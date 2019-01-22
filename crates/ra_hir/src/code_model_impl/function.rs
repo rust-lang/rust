@@ -72,6 +72,7 @@ impl FnSignature {
         } else {
             TypeRef::unit()
         };
+
         let sig = FnSignature {
             name,
             params,

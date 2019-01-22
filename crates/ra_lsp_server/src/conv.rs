@@ -1,6 +1,6 @@
 use lsp_types::{
-    self, CreateFile, DocumentChangeOperation, DocumentChanges, Location, LocationLink,
-    Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    self, CreateFile, Documentation, DocumentChangeOperation, DocumentChanges, Location, LocationLink,
+    MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
     WorkspaceEdit,
 };
@@ -87,6 +87,13 @@ impl ConvWith for CompletionItem {
             None
         };
 
+        let documentation = self.documentation().map(|value| {
+            Documentation::MarkupContent(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: value.to_string(),
+            })
+        });
+
         let mut res = lsp_types::CompletionItem {
             label: self.label().to_string(),
             detail: self.detail().map(|it| it.to_string()),
@@ -94,6 +101,7 @@ impl ConvWith for CompletionItem {
             kind: self.kind().map(|it| it.conv()),
             text_edit: Some(text_edit),
             additional_text_edits,
+            documentation: documentation,
             ..Default::default()
         };
         res.insert_text_format = Some(match self.insert_text_format() {

@@ -1,7 +1,9 @@
-Created: 2019-01-15T11:15:21.073858657+00:00
-Creator: insta@0.1.4
-Source: crates/ra_ide_api_light/src/lib.rs
-
+---
+created: "2019-01-22T14:45:01.959724300+00:00"
+creator: insta@0.4.0
+expression: hls
+source: "crates\\ra_ide_api_light\\src\\lib.rs"
+---
 [
     HighlightedRange {
         range: [1; 11),
