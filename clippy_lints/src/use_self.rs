@@ -56,10 +56,15 @@ impl LintPass for UseSelf {
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
+    // path segments only include actual path, no methods or fields
+    let last_path_span = path.segments.last().expect(SEGMENTS_MSG).ident.span;
+    // only take path up to the end of last_path_span
+    let span = path.span.with_hi(last_path_span.hi());
+
     span_lint_and_sugg(
         cx,
         USE_SELF,
-        path.span,
+        span,
         "unnecessary structure name repetition",
         "use the applicable keyword",
         "Self".to_owned(),
