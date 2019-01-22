@@ -1006,28 +1006,30 @@ pub fn write(output: &mut dyn Write, args: Arguments) -> Result {
         curarg: args.args.iter(),
     };
 
-    let mut pieces = args.pieces.iter();
+    let mut idx = 0;
 
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(pieces.by_ref()) {
+            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
                 (arg.formatter)(arg.value, &mut formatter)?;
+                idx += 1;
             }
         }
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in fmt.iter().zip(pieces.by_ref()) {
+            for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
                 formatter.run(arg)?;
+                idx += 1;
             }
         }
     }
 
     // There can be only one trailing string piece left.
-    if let Some(piece) = pieces.next() {
+    if let Some(piece) = args.pieces.get(idx) {
         formatter.buf.write_str(*piece)?;
     }
 

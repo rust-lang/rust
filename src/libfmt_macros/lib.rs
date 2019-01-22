@@ -72,6 +72,15 @@ pub enum Position<'a> {
     ArgumentNamed(&'a str),
 }
 
+impl Position<'_> {
+    pub fn index(&self) -> Option<usize> {
+        match self {
+            ArgumentIs(i) | ArgumentImplicitlyIs(i) => Some(*i),
+            _ => None,
+        }
+    }
+}
+
 /// Enum of alignments which are supported.
 #[derive(Copy, Clone, PartialEq)]
 pub enum Alignment {
