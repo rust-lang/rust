@@ -6,7 +6,7 @@ use crate::utils::{is_entrypoint_fn, span_lint};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
-use syntax::ast::{Attribute, NodeId};
+use syntax::ast::NodeId;
 use syntax_pos::Span;
 
 /// **What it does:**
@@ -82,25 +82,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         span: Span,
         node_id: NodeId,
     ) {
+        let def_id = cx.tcx.hir().local_def_id(node_id);
+
+        if is_entrypoint_fn(cx, def_id) {
+            return;
+        }
+
         // Perform some preliminary checks that rule out constness on the Clippy side. This way we
         // can skip the actual const check and return early.
         match kind {
-            FnKind::ItemFn(name, _generics, header, _vis, attrs) => {
-                if !can_be_const_fn(&name.as_str(), header, attrs) {
+            FnKind::ItemFn(_, _, header, ..) => {
+                if already_const(header) {
                     return;
                 }
             },
-            FnKind::Method(ident, sig, _vis, attrs) => {
-                let header = sig.header;
-                let name = ident.name.as_str();
-                if !can_be_const_fn(&name, header, attrs) {
+            FnKind::Method(_, sig, ..) => {
+                if already_const(sig.header) {
                     return;
                 }
             },
             _ => return,
         }
 
-        let def_id = cx.tcx.hir().local_def_id(node_id);
         let mir = cx.tcx.optimized_mir(def_id);
 
         if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id, &mir) {
@@ -113,15 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
     }
 }
 
-fn can_be_const_fn(name: &str, header: hir::FnHeader, attrs: &[Attribute]) -> bool {
-    // Main and custom entrypoints can't be `const`
-    if is_entrypoint_fn(name, attrs) {
-        return false;
-    }
-
-    // We don't have to lint on something that's already `const`
-    if header.constness == Constness::Const {
-        return false;
-    }
-    true
+// We don't have to lint on something that's already `const`
+fn already_const(header: hir::FnHeader) -> bool {
+    header.constness == Constness::Const
 }

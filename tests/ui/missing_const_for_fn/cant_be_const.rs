@@ -39,10 +39,10 @@ fn get_y() -> u32 {
     //~^ ERROR E0013
 }
 
-// Also main should not be suggested to be made const
-fn main() {
-    // We should also be sure to not lint on closures
-    let add_one_v2 = |x: u32| -> u32 { x + 1 };
+// Don't lint entrypoint functions
+#[start]
+fn init(num: isize, something: *const *const u8) -> isize {
+    1
 }
 
 trait Foo {
@@ -54,10 +54,4 @@ trait Foo {
     fn g() -> u32 {
         33
     }
-}
-
-// Don't lint custom entrypoints either
-#[start]
-fn init(num: isize, something: *const *const u8) -> isize {
-    1
 }
