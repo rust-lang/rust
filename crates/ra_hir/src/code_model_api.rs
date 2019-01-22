@@ -366,28 +366,6 @@ impl Function {
             Some(comments)
         }
     }
-
-    pub fn label(&self, db: &impl HirDatabase) -> Option<String> {
-        let def_loc = self.def_id.loc(db);
-        let syntax = db.file_item(def_loc.source_item_id);
-        let node = ast::FnDef::cast(&syntax).expect("fn def should point to FnDef node");
-
-        let label: String = if let Some(body) = node.body() {
-            let body_range = body.syntax().range();
-            let label: String = node
-                .syntax()
-                .children()
-                .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
-                .filter(|child| ast::Comment::cast(child).is_none()) // Filter out comments
-                .map(|node| node.text().to_string())
-                .collect();
-            label
-        } else {
-            node.syntax().text().to_string()
-        };
-
-        Some(label.trim().to_owned())
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

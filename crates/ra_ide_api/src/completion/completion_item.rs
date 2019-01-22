@@ -1,7 +1,10 @@
 use hir::PerNs;
 
 use crate::completion::completion_context::CompletionContext;
-use ra_syntax::TextRange;
+use ra_syntax::{
+    ast::{self, AstNode},
+    TextRange
+};
 use ra_text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -263,7 +266,7 @@ impl Builder {
             self.documentation = Some(docs);
         }
 
-        if let Some(label) = function.label(ctx.db) {
+        if let Some(label) = function_label(ctx, function) {
             self.detail = Some(label);
         }
 
@@ -301,6 +304,26 @@ impl Into<Vec<CompletionItem>> for Completions {
     fn into(self) -> Vec<CompletionItem> {
         self.buf
     }
+}
+
+fn function_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
+    let node = function.source(ctx.db).1;
+
+    let label: String = if let Some(body) = node.body() {
+        let body_range = body.syntax().range();
+        let label: String = node
+            .syntax()
+            .children()
+            .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
+            .filter(|child| ast::Comment::cast(child).is_none()) // Filter out comments
+            .map(|node| node.text().to_string())
+            .collect();
+        label
+    } else {
+        node.syntax().text().to_string()
+    };
+
+    Some(label.trim().to_owned())
 }
 
 #[cfg(test)]
