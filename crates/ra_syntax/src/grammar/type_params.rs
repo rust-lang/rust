@@ -118,7 +118,7 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
             }
 
             if !comma {
-                p.error("expected comma")
+                p.error("expected comma");
             }
         }
     }
@@ -143,7 +143,6 @@ fn where_predicate(p: &mut Parser) {
         }
         IMPL_KW => {
             p.error("expected lifetime or type");
-            return;
         }
         _ => {
             types::type_(p);
