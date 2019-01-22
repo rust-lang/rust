@@ -4,7 +4,7 @@
 # in liblibc. This scrapes the list of triples to document from `src/lib.rs`
 # which has a bunch of `html_root_url` directives we pick up.
 
-set -e
+set -ex
 
 rm -rf target/doc
 mkdir -p target/doc
@@ -41,7 +41,7 @@ dox i686 i686-unknown-linux-gnu
 dox x86_64 x86_64-unknown-linux-gnu
 dox arm armv7-unknown-linux-gnueabihf
 dox aarch64 aarch64-unknown-linux-gnu
-# dox powerpc powerpc-unknown-linux-gnu
+dox powerpc powerpc-unknown-linux-gnu
 dox powerpc64le powerpc64le-unknown-linux-gnu
 dox mips mips-unknown-linux-gnu
 dox mips64 mips64-unknown-linux-gnuabi64

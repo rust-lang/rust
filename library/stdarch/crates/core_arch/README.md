@@ -36,19 +36,17 @@ are:
 * [Documentation - aarch64][aarch64]
 * [Documentation - powerpc][powerpc]
 * [Documentation - powerpc64][powerpc64]
-* [Documentation - nvptx][nvptx]
 * [How to get started][contrib]
 * [How to help implement intrinsics][help-implement]
 
 [contrib]: https://github.com/rust-lang-nursery/stdsimd/blob/master/CONTRIBUTING.md
 [help-implement]: https://github.com/rust-lang-nursery/stdsimd/issues/40
-[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/
-[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
-[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/
-[aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/
-[powerpc]: https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/
-[powerpc64]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/
-[nvptx]: https://rust-lang-nursery.github.io/stdsimd/nvptx/stdsimd/
+[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/core_arch/
+[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/core_arch/
+[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/core_arch/
+[aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/core_arch/
+[powerpc]: https://rust-lang-nursery.github.io/stdsimd/powerpc/core_arch/
+[powerpc64]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/core_arch/
 
 # License
 
@@ -57,6 +55,12 @@ the Apache License (Version 2.0), with portions covered by various BSD-like
 licenses.
 
 See LICENSE-APACHE, and LICENSE-MIT for details.
+
+# Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in `core_arch` by you, as defined in the Apache-2.0 license,
+shall be dual licensed as above, without any additional terms or conditions.
 
 [travis]: https://travis-ci.org/rust-lang-nursery/stdsimd
 [Travis-CI Status]: https://travis-ci.org/rust-lang-nursery/stdsimd.svg?branch=master

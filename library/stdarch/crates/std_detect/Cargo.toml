@@ -7,7 +7,7 @@ authors = [
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
 description = "SIMD support in Rust's standard library."
-documentation = "https://docs.rs/stdsimd"
+documentation = "https://docs.rs/std_detect"
 homepage = "https://github.com/rust-lang-nursery/stdsimd"
 repository = "https://github.com/rust-lang-nursery/stdsimd"
 readme = "README.md"
