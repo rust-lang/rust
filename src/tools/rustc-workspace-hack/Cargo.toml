@@ -45,6 +45,7 @@ features = [
   "sspi",
   "synchapi",
   "sysinfoapi",
+  "threadpoollegacyapiset",
   "timezoneapi",
   "userenv",
   "winbase",
