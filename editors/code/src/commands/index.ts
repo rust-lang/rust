@@ -1,3 +1,4 @@
+import * as analyzerStatus from './analyzer_status';
 import * as applySourceChange from './apply_source_change';
 import * as extendSelection from './extend_selection';
 import * as joinLines from './join_lines';
@@ -8,6 +9,7 @@ import * as runnables from './runnables';
 import * as syntaxTree from './syntaxTree';
 
 export {
+    analyzerStatus,
     applySourceChange,
     extendSelection,
     joinLines,

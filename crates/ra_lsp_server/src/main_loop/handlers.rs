@@ -23,6 +23,10 @@ use crate::{
     LspError, Result,
 };
 
+pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
+    Ok(world.status())
+}
+
 pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
     let res = world.analysis().syntax_tree(id);

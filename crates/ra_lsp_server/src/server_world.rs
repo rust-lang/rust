@@ -264,4 +264,19 @@ impl ServerWorld {
             .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
         Ok(url)
     }
+
+    pub fn status(&self) -> String {
+        let mut res = String::new();
+        if self.workspaces.is_empty() {
+            res.push_str("no workspaces\n")
+        } else {
+            res.push_str("workspaces:\n");
+            for w in self.workspaces.iter() {
+                res += &format!("{} packages loaded\n", w.cargo.packages().count());
+            }
+        }
+        res.push_str("\nanalysis:\n");
+        res.push_str(&self.analysis.status());
+        res
+    }
 }

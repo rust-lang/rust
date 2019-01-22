@@ -45,6 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     // Commands are requests from vscode to the language server
+    registerCommand('ra-lsp.analyzerStatus', commands.analyzerStatus.handle);
     registerCommand('ra-lsp.syntaxTree', commands.syntaxTree.handle);
     registerCommand('ra-lsp.extendSelection', commands.extendSelection.handle);
     registerCommand('ra-lsp.matchingBrace', commands.matchingBrace.handle);
