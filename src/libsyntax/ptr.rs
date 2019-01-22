@@ -101,6 +101,7 @@ impl<T: 'static> P<T> {
                 // Recreate self from the raw pointer.
                 Some(P { ptr: Box::from_raw(p) })
             } else {
+                drop(Box::from_raw(p));
                 None
             }
         }
