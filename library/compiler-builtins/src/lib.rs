@@ -16,7 +16,6 @@
 #![feature(abi_unadjusted)]
 #![feature(linkage)]
 #![feature(lang_items)]
-#![feature(cfg_target_vendor)]
 #![allow(unused_features)]
 #![no_builtins]
 #![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
