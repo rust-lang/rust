@@ -285,6 +285,7 @@ fn on_request(
         sender,
     };
     let req = pool_dispatcher
+        .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
         .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?

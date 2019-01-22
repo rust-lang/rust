@@ -94,6 +94,10 @@
             {
                 "command": "ra-lsp.run",
                 "title": "Rust Run"
+            },
+            {
+                "command": "ra-lsp.analyzerStatus",
+                "title": "Status of rust-analyzer (debug)"
             }
         ],
         "keybindings": [

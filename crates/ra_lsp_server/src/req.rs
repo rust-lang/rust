@@ -11,6 +11,14 @@ pub use lsp_types::{
     TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
 };
 
+pub enum AnalyzerStatus {}
+
+impl Request for AnalyzerStatus {
+    type Params = ();
+    type Result = String;
+    const METHOD: &'static str = "ra/analyzerStatus";
+}
+
 pub enum SyntaxTree {}
 
 impl Request for SyntaxTree {

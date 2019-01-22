@@ -15,6 +15,7 @@ pub mod mock_analysis;
 mod symbol_index;
 mod navigation_target;
 
+mod status;
 mod completion;
 mod runnables;
 mod goto_definition;
@@ -293,6 +294,11 @@ pub struct Analysis {
 }
 
 impl Analysis {
+    /// Debug info about the current state of the analysis
+    pub fn status(&self) -> String {
+        status::status(&*self.db)
+    }
+
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Arc<String> {
         self.db.file_text(file_id)
