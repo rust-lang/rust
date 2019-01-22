@@ -65,7 +65,7 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir().get_parent(id);
     match cx.tcx.hir().body_owner_kind(parent_id) {
-        hir::BodyOwnerKind::Fn => false,
+        hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure => false,
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(..) => true,
     }
 }

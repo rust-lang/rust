@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                 }
                 self.const_span = Some(body_span);
             },
-            hir::BodyOwnerKind::Fn => (),
+            hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure => (),
         }
     }
 
