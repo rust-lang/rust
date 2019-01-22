@@ -457,36 +457,30 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
-    ///
-    /// When you know the layout of the local in advance, you can pass it as last argument
-    pub fn access_local(
+    fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         assert_ne!(local, mir::RETURN_PLACE);
         let op = *frame.locals[local].access()?;
-        let layout = from_known_layout(layout,
-                    || self.layout_of_local(frame, local))?;
+        let layout = self.layout_of_local(frame, local)?;
         Ok(OpTy { op, layout })
     }
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
-    // avoid allocations.  If you already know the layout, you can pass it in
-    // to avoid looking it up again.
+    // avoid allocations.
     fn eval_place_to_op(
         &self,
         mir_place: &mir::Place<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         let op = match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
-            Local(local) => self.access_local(self.frame(), local, layout)?,
+            Local(local) => self.access_local(self.frame(), local)?,
 
             Projection(ref proj) => {
-                let op = self.eval_place_to_op(&proj.base, None)?;
+                let op = self.eval_place_to_op(&proj.base)?;
                 self.operand_projection(op, &proj.elem)?
             }
 
@@ -510,7 +504,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // FIXME: do some more logic on `move` to invalidate the old location
             Copy(ref place) |
             Move(ref place) =>
-                self.eval_place_to_op(place, layout)?,
+                self.eval_place_to_op(place)?,
 
             Constant(ref constant) => {
                 let layout = from_known_layout(layout, || {

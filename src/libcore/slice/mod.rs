@@ -2383,7 +2383,6 @@ impl [u8] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
 impl<T, I> ops::Index<I> for [T]
     where I: SliceIndex<[T]>
 {
@@ -2396,7 +2395,6 @@ impl<T, I> ops::Index<I> for [T]
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
 impl<T, I> ops::IndexMut<I> for [T]
     where I: SliceIndex<[T]>
 {
@@ -2447,7 +2445,19 @@ mod private_slice_index {
 
 /// A helper trait used for indexing operations.
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
+#[rustc_on_unimplemented(
+    on(
+        T = "str",
+        label = "string indices are ranges of `usize`",
+    ),
+    on(
+        all(any(T = "str", T = "&str", T = "std::string::String"), _Self="{integer}"),
+        note="you can use `.chars().nth()` or `.bytes().nth()`
+see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
+    ),
+    message = "the type `{T}` cannot be indexed by `{Self}`",
+    label = "slice indices are of type `usize` or ranges of `usize`",
+)]
 pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
     #[stable(feature = "slice_get_slice", since = "1.28.0")]

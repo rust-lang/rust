@@ -1,5 +1,5 @@
 error[E0609]: no field `opts` on type `*const Session`
-  --> $DIR/parenthesised-deref-suggestion.rs:7:30
+  --> $DIR/parenthesized-deref-suggestion.rs:7:30
    |
 LL |     (sess as *const Session).opts; //~ ERROR no field `opts` on type `*const Session`
    |                              ^^^^
@@ -9,7 +9,7 @@ LL |     (*(sess as *const Session)).opts; //~ ERROR no field `opts` on type `*c
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0609]: no field `0` on type `[u32; 1]`
-  --> $DIR/parenthesised-deref-suggestion.rs:10:21
+  --> $DIR/parenthesized-deref-suggestion.rs:10:21
    |
 LL |     (x as [u32; 1]).0; //~ ERROR no field `0` on type `[u32; 1]`
    |     ----------------^
