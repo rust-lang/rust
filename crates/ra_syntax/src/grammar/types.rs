@@ -37,10 +37,10 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
 }
 
 pub(super) fn is_type_start(p: &mut Parser) -> bool {
-    match p.current() {
-        L_PAREN | EXCL | STAR | L_BRACK | AMP | UNDERSCORE | FN_KW | FOR_KW | IMPL_KW | DYN_KW
-        | L_ANGLE => true,
-        _ => paths::is_path_start(p),
+    if TYPE_FIRST.contains(p.current()) {
+        true
+    } else {
+        paths::is_path_start(p)
     }
 }
 
