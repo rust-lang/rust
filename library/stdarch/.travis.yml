@@ -89,7 +89,7 @@ matrix:
     - name: "clippy"
       install: true
       script: |
-        if rustup component add clippy-preview; then
+        if rustup component add clippy-preview ; then
             cargo clippy --all -- -D clippy::pedantic
         fi
     - name: "Shellcheck"
@@ -97,9 +97,7 @@ matrix:
       script:
         - shellcheck --version
         - shellcheck ci/*.sh
-  allow_failures:
-   - name: "clippy"
- 
+
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile

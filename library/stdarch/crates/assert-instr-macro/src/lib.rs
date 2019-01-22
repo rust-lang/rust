@@ -173,7 +173,7 @@ impl syn::parse::Parse for Invoc {
             println!("{:?}", input.cursor().token_stream());
             return Err(input.error("expected an instruction"));
         }
-        if instr.len() == 0 {
+        if instr.is_empty() {
             return Err(input.error("expected an instruction before comma"));
         }
         let mut args = Vec::new();

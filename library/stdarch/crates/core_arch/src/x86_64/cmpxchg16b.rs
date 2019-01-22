@@ -5,7 +5,7 @@ use stdsimd_test::assert_instr;
 
 /// Compare and exchange 16 bytes (128 bits) of data atomically.
 ///
-/// This intrinsic corresponds to the `cmpxchg16b` instruction on x86_64
+/// This intrinsic corresponds to the `cmpxchg16b` instruction on `x86_64`
 /// processors. It performs an atomic compare-and-swap, updating the `ptr`
 /// memory location to `val` if the current value in memory equals `old`.
 ///

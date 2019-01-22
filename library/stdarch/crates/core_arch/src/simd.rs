@@ -12,12 +12,12 @@ macro_rules! simd_ty {
         impl $id {
             #[inline]
             pub(crate) const fn new($($elem_name: $elem_ty),*) -> Self {
-                $id($($elem_name),*)
+                Self($($elem_name),*)
             }
 
             #[inline]
             pub(crate) const fn splat(value: $ety) -> Self {
-                $id($({
+                Self($({
                     #[allow(non_camel_case_types, dead_code)]
                     struct $elem_name;
                     value
@@ -48,12 +48,12 @@ macro_rules! simd_m_ty {
 
             #[inline]
             pub(crate) const fn new($($elem_name: bool),*) -> Self {
-                $id($(Self::bool_to_internal($elem_name)),*)
+                Self($(Self::bool_to_internal($elem_name)),*)
             }
 
             #[inline]
             pub(crate) const fn splat(value: bool) -> Self {
-                $id($({
+                Self($({
                     #[allow(non_camel_case_types, dead_code)]
                     struct $elem_name;
                     Self::bool_to_internal(value)

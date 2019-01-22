@@ -1,13 +1,17 @@
 //! `cpuid` intrinsics
 
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
 /// Result of the `cpuid` instruction.
+#[cfg_attr(
+    feature = "cargo-clippy",
+    // the derived impl of Debug for CpuidResult is not #[inline] and that's OK.
+    allow(clippy::missing_inline_in_public_items)
+)]
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub struct CpuidResult {
     /// EAX register.

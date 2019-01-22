@@ -9,7 +9,7 @@ extern "unadjusted" {
     fn llvm_subborrow_u64(a: u8, b: u64, c: u64) -> (u8, u64);
 }
 
-/// Add unsigned 64-bit integers a and b with unsigned 8-bit carry-in c_in
+/// Add unsigned 64-bit integers a and b with unsigned 8-bit carry-in `c_in`
 /// (carry flag), and store the unsigned 64-bit result in out, and the carry-out
 /// is returned (carry or overflow flag).
 #[inline]
@@ -21,7 +21,7 @@ pub unsafe fn _addcarry_u64(c_in: u8, a: u64, b: u64, out: &mut u64) -> u8 {
     a
 }
 
-/// Add unsigned 64-bit integers a and b with unsigned 8-bit carry-in c_in
+/// Add unsigned 64-bit integers a and b with unsigned 8-bit carry-in `c_in`
 /// (carry or overflow flag), and store the unsigned 64-bit result in out, and
 /// the carry-out is returned (carry or overflow flag).
 #[inline]
@@ -33,7 +33,7 @@ pub unsafe fn _addcarryx_u64(c_in: u8, a: u64, b: u64, out: &mut u64) -> u8 {
     _addcarry_u64(c_in, a, b, out)
 }
 
-/// Add unsigned 64-bit integers a and b with unsigned 8-bit carry-in c_in
+/// Add unsigned 64-bit integers a and b with unsigned 8-bit carry-in `c_in`
 /// (carry or overflow flag), and store the unsigned 64-bit result in out, and
 /// the carry-out is returned (carry or overflow flag).
 #[inline]

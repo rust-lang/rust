@@ -32,7 +32,7 @@ pub(crate) struct Initializer(u64);
 
 impl Default for Initializer {
     fn default() -> Self {
-        Initializer(0)
+        Self(0)
     }
 }
 
@@ -77,6 +77,10 @@ struct Cache(AtomicU64);
 #[cfg(target_pointer_width = "64")]
 impl Cache {
     /// Creates an uninitialized cache.
+    #[cfg_attr(
+        feature = "cargo-clippy",
+        allow(clippy::declare_interior_mutable_const)
+    )]
     const fn uninitialized() -> Self {
         const X: AtomicU64 = AtomicU64::new(u64::max_value());
         Self(X)

@@ -22,6 +22,7 @@
         clippy::option_unwrap_used,
         clippy::shadow_reuse,
         clippy::cast_possible_wrap,
+        clippy::cast_ptr_alignment,
         clippy::cast_sign_loss,
         clippy::missing_docs_in_private_items
     )
