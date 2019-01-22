@@ -668,6 +668,11 @@ impl MultiSpan {
         &self.primary_spans
     }
 
+    /// Returns whether any of the primary spans is displayable.
+    pub fn has_primary_spans(&self) -> bool {
+        self.primary_spans.iter().any(|sp| !sp.is_dummy())
+    }
+
     /// Returns `true` if this contains only a dummy primary span with any hygienic context.
     pub fn is_dummy(&self) -> bool {
         let mut is_dummy = true;
@@ -725,6 +730,11 @@ impl MultiSpan {
         }
 
         span_labels
+    }
+
+    /// Returns whether any of the span labels is displayable.
+    pub fn has_span_labels(&self) -> bool {
+        self.span_labels.iter().any(|(sp, _)| !sp.is_dummy())
     }
 }
 
