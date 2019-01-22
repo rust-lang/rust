@@ -10,17 +10,17 @@ mod use_self {
     struct Foo {}
 
     impl Foo {
-        fn new() -> Foo {
-            Foo {}
+        fn new() -> Self {
+            Self {}
         }
-        fn test() -> Foo {
-            Foo::new()
+        fn test() -> Self {
+            Self::new()
         }
     }
 
     impl Default for Foo {
-        fn default() -> Foo {
-            Foo::new()
+        fn default() -> Self {
+            Self::new()
         }
     }
 }
@@ -85,29 +85,29 @@ mod traits {
     struct Bad;
 
     impl SelfTrait for Bad {
-        fn refs(p1: &Bad) -> &Bad {
+        fn refs(p1: &Self) -> &Self {
             p1
         }
 
-        fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+        fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self {
             p1
         }
 
-        fn mut_refs(p1: &mut Bad) -> &mut Bad {
+        fn mut_refs(p1: &mut Self) -> &mut Self {
             p1
         }
 
-        fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
+        fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
 
-        fn vals(_: Bad) -> Bad {
-            Bad::default()
+        fn vals(_: Self) -> Self {
+            Self::default()
         }
     }
 
     impl Mul for Bad {
-        type Output = Bad;
+        type Output = Self;
 
-        fn mul(self, rhs: Bad) -> Bad {
+        fn mul(self, rhs: Self) -> Self {
             rhs
         }
     }
@@ -199,7 +199,7 @@ mod existential {
     struct Foo;
 
     impl Foo {
-        fn bad(foos: &[Self]) -> impl Iterator<Item = &Foo> {
+        fn bad(foos: &[Self]) -> impl Iterator<Item = &Self> {
             foos.iter()
         }
 
@@ -214,7 +214,7 @@ mod tuple_structs {
 
     impl TS {
         pub fn ts() -> Self {
-            TS(0)
+            Self(0)
         }
     }
 }
@@ -222,8 +222,8 @@ mod tuple_structs {
 mod macros {
     macro_rules! use_self_expand {
         () => {
-            fn new() -> Foo {
-                Foo {}
+            fn new() -> Self {
+                Self {}
             }
         };
     }
@@ -245,8 +245,8 @@ mod nesting {
             }
 
             impl Bar {
-                fn bar() -> Bar {
-                    Bar { foo: Foo {} }
+                fn bar() -> Self {
+                    Self { foo: Foo {} }
                 }
             }
         }
@@ -290,10 +290,10 @@ mod rustfix {
         fn fun_1() {}
 
         fn fun_2() {
-            nested::A::fun_1();
-            nested::A::A;
+            Self::fun_1();
+            Self::A;
 
-            nested::A {};
+            Self {};
         }
     }
 }
