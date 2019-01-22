@@ -1,5 +1,3 @@
-use std::cmp::{max, min};
-
 use ra_db::SyntaxDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TextUnit, TextRange,
@@ -107,15 +105,13 @@ impl<'a> FnCallNode<'a> {
 
 impl CallInfo {
     fn new(node: &ast::FnDef) -> Option<Self> {
-        let mut doc = None;
-
-        // Strip the body out for the label.
-        let mut label: String = if let Some(body) = node.body() {
+        let label: String = if let Some(body) = node.body() {
             let body_range = body.syntax().range();
             let label: String = node
                 .syntax()
                 .children()
-                .filter(|child| !child.range().is_subrange(&body_range))
+                .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
+                .filter(|child| ast::Comment::cast(child).is_none()) // Filter out doc comments
                 .map(|node| node.text().to_string())
                 .collect();
             label
@@ -123,16 +119,9 @@ impl CallInfo {
             node.syntax().text().to_string()
         };
 
-        if let Some((comment_range, docs)) = extract_doc_comments(node) {
-            let comment_range = comment_range
-                .checked_sub(node.syntax().range().start())
-                .unwrap();
-            let start = comment_range.start().to_usize();
-            let end = comment_range.end().to_usize();
-
-            // Remove the comment from the label
-            label.replace_range(start..end, "");
-
+        let mut doc = None;
+        let docs = node.doc_comment_text();
+        if !docs.is_empty() {
             // Massage markdown
             let mut processed_lines = Vec::new();
             let mut in_code_block = false;
@@ -150,9 +139,7 @@ impl CallInfo {
                 processed_lines.push(line);
             }
 
-            if !processed_lines.is_empty() {
-                doc = Some(processed_lines.join("\n"));
-            }
+            doc = Some(processed_lines.join("\n"));
         }
 
         Some(CallInfo {
@@ -162,26 +149,6 @@ impl CallInfo {
             active_parameter: None,
         })
     }
-}
-
-fn extract_doc_comments(node: &ast::FnDef) -> Option<(TextRange, String)> {
-    if node.doc_comments().count() == 0 {
-        return None;
-    }
-
-    let comment_text = node.doc_comment_text();
-
-    let (begin, end) = node
-        .doc_comments()
-        .map(|comment| comment.syntax().range())
-        .map(|range| (range.start().to_usize(), range.end().to_usize()))
-        .fold((std::usize::MAX, std::usize::MIN), |acc, range| {
-            (min(acc.0, range.0), max(acc.1, range.1))
-        });
-
-    let range = TextRange::from_to(TextUnit::from_usize(begin), TextUnit::from_usize(end));
-
-    Some((range, comment_text))
 }
 
 fn param_list(node: &ast::FnDef) -> Vec<String> {
