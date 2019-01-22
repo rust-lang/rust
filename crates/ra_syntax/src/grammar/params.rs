@@ -79,7 +79,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             let la1 = p.nth(1);
             let la2 = p.nth(2);
             let la3 = p.nth(3);
-            if la0 == IDENT && la1 == COLON
+            if (la0 == IDENT || la0 == UNDERSCORE) && la1 == COLON
                 || la0 == AMP && la1 == IDENT && la2 == COLON
                 || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON
             {
