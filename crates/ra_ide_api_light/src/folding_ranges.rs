@@ -63,7 +63,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
         NAMED_FIELD_DEF_LIST | FIELD_PAT_LIST | ITEM_LIST | EXTERN_ITEM_LIST | USE_TREE_LIST
-        | BLOCK | ENUM_VARIANT_LIST => Some(FoldKind::Block),
+        | BLOCK | ENUM_VARIANT_LIST | TOKEN_TREE => Some(FoldKind::Block),
         _ => None,
     }
 }
@@ -294,4 +294,15 @@ fn main() <fold>{
         do_check(text, folds);
     }
 
+    #[test]
+    fn test_folds_macros() {
+        let text = r#"
+macro_rules! foo <fold>{
+    ($($tt:tt)*) => { $($tt)* }
+}</fold>
+"#;
+
+        let folds = &[FoldKind::Block];
+        do_check(text, folds);
+    }
 }
