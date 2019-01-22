@@ -184,6 +184,8 @@ To see logs from the language server, set `RUST_LOG=info` env variable. To see
 all communication between the server and the client, use
 `RUST_LOG=gen_lsp_server=debug` (this will print quite a bit of stuff).
 
+There's `Status of rust-analyzer` command which prints common high-level debug info.
+
 To run tests, just `cargo test`.
 
 To work on the VS Code extension, launch code inside `editors/code` and use `F5` to
