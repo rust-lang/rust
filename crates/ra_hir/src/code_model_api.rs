@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, FileId};
-use ra_syntax::{ast, TreeArc, SyntaxNode};
+use ra_syntax::{ast::{self, AstNode, DocCommentsOwner}, TreeArc, SyntaxNode};
 
 use crate::{
     Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
@@ -297,7 +297,6 @@ pub struct FnSignature {
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub(crate) has_self_param: bool,
-    pub(crate) documentation: String,
 }
 
 impl FnSignature {
@@ -317,10 +316,6 @@ impl FnSignature {
     /// can be called as a method.
     pub fn has_self_param(&self) -> bool {
         self.has_self_param
-    }
-
-    pub fn documentation(&self) -> &String {
-        &self.documentation
     }
 }
 
@@ -356,6 +351,20 @@ impl Function {
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
         db.generic_params(self.def_id)
+    }
+
+    pub fn docs(&self, db: &impl HirDatabase) -> Option<String> {
+        let def_loc = self.def_id.loc(db);
+        let syntax = db.file_item(def_loc.source_item_id);
+        let fn_def = ast::FnDef::cast(&syntax).expect("fn def should point to FnDef node");
+
+        // doc_comment_text unconditionally returns a String
+        let comments = fn_def.doc_comment_text();
+        if comments.is_empty() {
+            None
+        } else {
+            Some(comments)
+        }
     }
 }
 

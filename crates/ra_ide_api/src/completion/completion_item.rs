@@ -259,9 +259,8 @@ impl Builder {
             }
             self.insert_text_format = InsertTextFormat::Snippet;
         }
-        let sig = function.signature(ctx.db);
-        if !sig.documentation().is_empty() {
-            self.documentation = Some(sig.documentation().clone());
+        if let Some(docs) = function.docs(ctx.db) {
+            self.documentation = Some(docs);
         }
 
         self.kind = Some(CompletionItemKind::Function);
