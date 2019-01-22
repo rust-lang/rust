@@ -109,7 +109,7 @@ impl<T: ?Sized> Deref for &mut T {
 /// then:
 ///
 /// * In mutable contexts, `*x` on non-pointer types is equivalent to
-///   `*Deref::deref(&x)`.
+///   `*DerefMut::deref_mut(&mut x)`.
 /// * Values of type `&mut T` are coerced to values of type `&mut U`
 /// * `T` implicitly implements all the (mutable) methods of the type `U`.
 ///
