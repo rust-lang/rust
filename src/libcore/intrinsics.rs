@@ -729,6 +729,10 @@ extern "rust-intrinsic" {
     /// cause [undefined behavior][ub] with this function. `transmute` should be
     /// the absolute last resort.
     ///
+    /// `transmute` is re-exported by [core::mem](../mem/index.html) as
+    /// `core::mem::transmute`, which may be used without the `core_intrinsics`
+    /// feature flag.
+    ///
     /// The [nomicon](../../nomicon/transmutes.html) has additional
     /// documentation.
     ///
