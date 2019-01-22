@@ -126,7 +126,7 @@ fn is_where_predicate(p: &mut Parser) -> bool {
     match p.current() {
         LIFETIME => true,
         IMPL_KW => false,
-        _ => types::is_type_start(p),
+        token => types::TYPE_FIRST.contains(token),
     }
 }
 

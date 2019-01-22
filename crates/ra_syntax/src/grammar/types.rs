@@ -36,14 +36,6 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
     }
 }
 
-pub(super) fn is_type_start(p: &mut Parser) -> bool {
-    if TYPE_FIRST.contains(p.current()) {
-        true
-    } else {
-        paths::is_path_start(p)
-    }
-}
-
 pub(super) fn ascription(p: &mut Parser) {
     p.expect(COLON);
     type_(p)
