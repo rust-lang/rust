@@ -712,6 +712,7 @@ pub fn build_codegen_backend(builder: &Builder,
             if builder.is_rust_llvm(target) && backend != "emscripten" {
                 cargo.env("LLVM_RUSTLLVM", "1");
             }
+
             cargo.env("LLVM_CONFIG", &llvm_config);
             if backend != "emscripten" {
                 let target_config = builder.config.target_config.get(&target);

@@ -21,7 +21,7 @@ use crate::install;
 use crate::native;
 use crate::test;
 use crate::tool;
-use crate::util::{add_lib_path, exe, libdir};
+use crate::util::{self, add_lib_path, exe, libdir};
 use crate::{Build, DocTests, Mode, GitRepo};
 
 pub use crate::Compiler;
@@ -790,6 +790,13 @@ impl<'a> Builder<'a> {
         cargo
             .env("CARGO_TARGET_DIR", out_dir)
             .arg(cmd);
+
+        // See comment in librustc_llvm/build.rs for why this is necessary, largely llvm-config
+        // needs to not accidentally link to libLLVM in stage0/lib.
+        cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
+        if let Some(e) = env::var_os(util::dylib_path_var()) {
+            cargo.env("REAL_LIBRARY_PATH", e);
+        }
 
         if cmd != "install" {
             cargo.arg("--target")
