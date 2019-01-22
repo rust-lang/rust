@@ -20,7 +20,12 @@ pub struct MonoHashMap<K: Hash + Eq, V>(RefCell<FxHashMap<K, Box<V>>>);
 impl<K: Hash + Eq, V> MonoHashMap<K, V> {
     /// This function exists for priroda to be able to iterate over all evaluator memory
     ///
-    /// The memory of constants does not show up in this list.
+    /// The function is somewhat roundabout with the closure argument because internally the
+    /// `MonoHashMap` uses a `RefCell`. When iterating over the `HashMap` inside the `RefCell`,
+    /// we need to keep a borrow to the `HashMap` inside the iterator. The borrow is only alive
+    /// as long as the `Ref` returned by `RefCell::borrow()` is alive. So we can't return the
+    /// iterator, as that would drop the `Ref`. We can't return both, as it's not possible in Rust
+    /// to have a struct/tuple with a field that refers to another field.
     pub fn iter<T>(&self, f: impl FnOnce(&mut dyn Iterator<Item=(&K, &V)>) -> T) -> T {
         f(&mut self.0.borrow().iter().map(|(k, v)| (k, &**v)))
     }
