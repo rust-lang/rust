@@ -1,0 +1,68 @@
+`core_arch` - Rust's standard library `core::arch` module
+=======
+
+[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![Latest Version]][crates.io] [![docs]][docs.rs]
+
+
+The `core::arch` module implements architecture-dependent intrinsics (e.g. SIMD).
+
+# Usage 
+
+`core::arch` is available as part of `libcore` and it is re-exported by
+`libstd`. Prefer using it via `core::arch` or `std::arch` than via this crate.
+Unstable features are often available in nightly Rust via the
+`feature(stdsimd)`.
+
+Using `core::arch` via this crate requires nightly Rust, and it can (and does)
+break often. The only cases in which you should consider using it via this crate
+are:
+
+* if you need to re-compile `core::arch` yourself, e.g., with particular
+  target-features enabled that are not enabled for `libcore`/`libstd`. Note: if
+  you need to re-compile it for a non-standard target, please prefer using
+  `xargo` and re-compiling `libcore`/`libstd` as appropriate instead of using
+  this crate.
+  
+* using some features that might not be available even behind unstable Rust
+  features. We try to keep these to a minimum. If you need to use some of these
+  features, please open an issue so that we can expose them in nightly Rust and
+  you can use them from there.
+
+# Documentation
+
+* [Documentation - i686][i686]
+* [Documentation - x86\_64][x86_64]
+* [Documentation - arm][arm]
+* [Documentation - aarch64][aarch64]
+* [Documentation - powerpc][powerpc]
+* [Documentation - powerpc64][powerpc64]
+* [Documentation - nvptx][nvptx]
+* [How to get started][contrib]
+* [How to help implement intrinsics][help-implement]
+
+[contrib]: https://github.com/rust-lang-nursery/stdsimd/blob/master/CONTRIBUTING.md
+[help-implement]: https://github.com/rust-lang-nursery/stdsimd/issues/40
+[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/
+[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
+[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/
+[aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/
+[powerpc]: https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/
+[powerpc64]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/
+[nvptx]: https://rust-lang-nursery.github.io/stdsimd/nvptx/stdsimd/
+
+# License
+
+`core_arch` is primarily distributed under the terms of both the MIT license and
+the Apache License (Version 2.0), with portions covered by various BSD-like
+licenses.
+
+See LICENSE-APACHE, and LICENSE-MIT for details.
+
+[travis]: https://travis-ci.org/rust-lang-nursery/stdsimd
+[Travis-CI Status]: https://travis-ci.org/rust-lang-nursery/stdsimd.svg?branch=master
+[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
+[Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
+[Latest Version]: https://img.shields.io/crates/v/core_arch.svg
+[crates.io]: https://crates.io/crates/core_arch
+[docs]: https://docs.rs/core_arch/badge.svg
+[docs.rs]: https://docs.rs/core_arch/
