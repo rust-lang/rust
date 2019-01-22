@@ -44,6 +44,8 @@ pub fn simd_test(
         .map(String::from)
         .collect();
 
+    let mmx = target_features.iter().any(|s| s.starts_with("mmx"));
+
     let enable_feature = string(enable_feature);
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
@@ -102,6 +104,15 @@ pub fn simd_test(
         TokenStream::new()
     };
 
+    let emms = if mmx {
+        // note: if the test requires MMX we need to clear the FPU
+        // registers once the test finishes before interfacing with
+        // other x87 code:
+        quote! { unsafe { super::_mm_empty() }; }
+    } else {
+        TokenStream::new()
+    };
+
     let ret: TokenStream = quote_spanned! {
         proc_macro2::Span::call_site() =>
         #[allow(non_snake_case)]
@@ -109,7 +120,9 @@ pub fn simd_test(
         #maybe_ignore
         fn #name() {
             if #force_test | (#cfg_target_features) {
-                return unsafe { #name() };
+                let v = unsafe { #name() };
+                #emms
+                return v;
             } else {
                 ::stdsimd_test::assert_skip_test_ok(stringify!(#name));
             }
