@@ -263,6 +263,10 @@ impl Builder {
             self.documentation = Some(docs);
         }
 
+        if let Some(label) = function.label(ctx.db) {
+            self.detail = Some(label);
+        }
+
         self.kind = Some(CompletionItemKind::Function);
         self
     }

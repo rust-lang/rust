@@ -25,7 +25,9 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         kind: Some(
             Function
         ),
-        detail: None,
+        detail: Some(
+            "fn x() ->"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
