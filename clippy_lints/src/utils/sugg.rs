@@ -206,6 +206,17 @@ impl<'a> Sugg<'a> {
         make_unop("&mut *", self)
     }
 
+    /// Convenience method to transform suggestion into a return call
+    pub fn make_return(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("return {}", self)))
+    }
+
+    /// Convenience method to transform suggestion into a block
+    /// where the suggestion is a trailing expression
+    pub fn blockify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("{{ {} }}", self)))
+    }
+
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
     #[allow(dead_code)]
@@ -576,5 +587,23 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
         }
 
         self.span_suggestion_with_applicability(remove_span, msg, String::new(), applicability);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Sugg;
+    use std::borrow::Cow;
+
+    const SUGGESTION: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("function_call()"));
+
+    #[test]
+    fn make_return_transform_sugg_into_a_return_call() {
+        assert_eq!("return function_call()", SUGGESTION.make_return().to_string());
+    }
+
+    #[test]
+    fn blockify_transforms_sugg_into_a_block() {
+        assert_eq!("{ function_call() }", SUGGESTION.blockify().to_string());
     }
 }
