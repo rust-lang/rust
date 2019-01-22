@@ -2,7 +2,7 @@ mod scope;
 
 use std::sync::Arc;
 
-use ra_syntax::{TreeArc, ast::{self, NameOwner}};
+use ra_syntax::{TreeArc, ast::{self, NameOwner, DocCommentsOwner}};
 
 use crate::{
     DefId, HirDatabase, Name, AsName, Function, FnSignature, Module,
@@ -72,11 +72,15 @@ impl FnSignature {
         } else {
             TypeRef::unit()
         };
+
+        let comments = node.doc_comment_text();
+
         let sig = FnSignature {
             name,
             params,
             ret_type,
             has_self_param,
+            documentation: comments,
         };
         Arc::new(sig)
     }

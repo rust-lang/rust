@@ -297,6 +297,7 @@ pub struct FnSignature {
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub(crate) has_self_param: bool,
+    pub(crate) documentation: String,
 }
 
 impl FnSignature {
@@ -316,6 +317,10 @@ impl FnSignature {
     /// can be called as a method.
     pub fn has_self_param(&self) -> bool {
         self.has_self_param
+    }
+
+    pub fn documentation(&self) -> &String {
+        &self.documentation
     }
 }
 
