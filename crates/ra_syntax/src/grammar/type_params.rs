@@ -149,6 +149,11 @@ fn where_predicate(p: &mut Parser) {
             p.error("expected lifetime or type");
         }
         _ => {
+            // test where_pred_for
+            // fn test<F>()
+            // where
+            //    for<'a> F: Fn(&'a str)
+            // { }
             types::type_(p);
 
             if p.at(COLON) {
