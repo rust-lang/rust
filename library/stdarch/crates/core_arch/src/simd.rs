@@ -9,15 +9,16 @@ macro_rules! simd_ty {
         #[derive(Copy, Clone, Debug, PartialEq)]
         pub(crate) struct $id($(pub $elem_ty),*);
 
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy::use_self))]
         impl $id {
             #[inline]
             pub(crate) const fn new($($elem_name: $elem_ty),*) -> Self {
-                Self($($elem_name),*)
+                $id($($elem_name),*)
             }
 
             #[inline]
             pub(crate) const fn splat(value: $ety) -> Self {
-                Self($({
+                $id($({
                     #[allow(non_camel_case_types, dead_code)]
                     struct $elem_name;
                     value
@@ -40,6 +41,7 @@ macro_rules! simd_m_ty {
         #[derive(Copy, Clone, Debug, PartialEq)]
         pub(crate) struct $id($(pub $elem_ty),*);
 
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy::use_self))]
         impl $id {
             #[inline]
             const fn bool_to_internal(x: bool) -> $ety {
@@ -48,12 +50,12 @@ macro_rules! simd_m_ty {
 
             #[inline]
             pub(crate) const fn new($($elem_name: bool),*) -> Self {
-                Self($(Self::bool_to_internal($elem_name)),*)
+                $id($(Self::bool_to_internal($elem_name)),*)
             }
 
             #[inline]
             pub(crate) const fn splat(value: bool) -> Self {
-                Self($({
+                $id($({
                     #[allow(non_camel_case_types, dead_code)]
                     struct $elem_name;
                     Self::bool_to_internal(value)
