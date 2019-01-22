@@ -155,7 +155,6 @@
 //! [TCP]: net/struct.TcpStream.html
 //! [The Rust Prelude]: prelude/index.html
 //! [UDP]: net/struct.UdpSocket.html
-//! [`::std::env::args`]: env/fn.args.html
 //! [`Arc`]: sync/struct.Arc.html
 //! [owned slice]: boxed/index.html
 //! [`Cell`]: cell/struct.Cell.html
@@ -189,7 +188,6 @@
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/ch07-02-modules-and-use-to-control-scope-and-privacy.html#the-use-keyword-to-bring-paths-into-a-scope
-//! [crate root]: ../book/ch07-01-packages-and-crates-for-making-libraries-and-executables.html
 //! [crates.io]: https://crates.io
 //! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
