@@ -1,7 +1,9 @@
-Created: 2019-01-20T04:00:48.206357+00:00
-Creator: insta@0.1.4
-Source: crates/ra_ide_api/src/completion/completion_item.rs
-
+---
+created: "2019-01-22T14:45:00.620177400+00:00"
+creator: insta@0.4.0
+expression: kind_completions
+source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
+---
 [
     CompletionItem {
         completion_kind: Keyword,
@@ -10,6 +12,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "if $0 {}"
@@ -25,6 +28,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "match $0 {}"
@@ -40,6 +44,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "while $0 {}"
@@ -55,6 +60,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "loop {$0}"
@@ -70,6 +76,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "continue;"
@@ -85,6 +92,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "break;"
@@ -100,6 +108,7 @@ Source: crates/ra_ide_api/src/completion/completion_item.rs
             Keyword
         ),
         detail: None,
+        documentation: None,
         lookup: None,
         insert_text: Some(
             "return $0;"

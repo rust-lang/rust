@@ -1,7 +1,9 @@
-Created: 2019-01-21T21:50:17.870325361+00:00
-Creator: insta@0.1.4
-Source: crates/ra_hir/src/ty/tests.rs
-
+---
+created: "2019-01-22T14:45:00.052694700+00:00"
+creator: insta@0.4.0
+expression: "&result"
+source: "crates\\ra_hir\\src\\ty\\tests.rs"
+---
 [34; 38) 'self': &S
 [40; 61) '{     ...     }': ()
 [50; 54) 'self': &S

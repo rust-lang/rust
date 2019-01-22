@@ -1,13 +1,16 @@
-Created: 2019-01-20T04:00:48.203211+00:00
-Creator: insta@0.1.4
-Source: crates/ra_ide_api/src/completion/completion_item.rs
-
+---
+created: "2019-01-22T14:45:00.545423800+00:00"
+creator: insta@0.4.0
+expression: kind_completions
+source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
+---
 [
     CompletionItem {
         completion_kind: Magic,
         label: "file_id: FileId",
         kind: None,
         detail: None,
+        documentation: None,
         lookup: Some(
             "file_id"
         ),

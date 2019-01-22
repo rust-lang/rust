@@ -1,7 +1,9 @@
-Created: 2019-01-18T08:26:43.427092+00:00
-Creator: insta@0.1.4
-Source: crates/ra_ide_api/src/rename.rs
-
+---
+created: "2019-01-22T14:45:00.975229300+00:00"
+creator: insta@0.4.0
+expression: "&source_change"
+source: "crates\\ra_ide_api\\src\\rename.rs"
+---
 Some(
     SourceChange {
         label: "rename",
