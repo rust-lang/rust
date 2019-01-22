@@ -25,8 +25,8 @@ fn two() -> i32 {
     abc
 }
 
-// TODO: Why can this be const? because it's a zero sized type?
-// There is the `const_string_new` feature, but it seems that this already works in const fns?
+// FIXME: This is a false positive in the `is_min_const_fn` function.
+// At least until the `const_string_new` feature is stabilzed.
 fn string() -> String {
     String::new()
 }
@@ -41,12 +41,14 @@ fn generic<T>(t: T) -> T {
     t
 }
 
-// FIXME: This could be const but is currently not linted
+// FIXME: Depends on the `const_transmute` and `const_fn` feature gates.
+// In the future Clippy should be able to suggest this as const, too.
 fn sub(x: u32) -> usize {
     unsafe { transmute(&x) }
 }
 
-// FIXME: This could be const but is currently not linted
+// NOTE: This is currently not yet allowed to be const
+// Once implemented, Clippy should be able to suggest this as const, too.
 fn generic_arr<T: Copy>(t: [T; 1]) -> T {
     t[0]
 }

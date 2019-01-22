@@ -11,11 +11,11 @@ use syntax_pos::Span;
 
 /// **What it does:**
 ///
-/// Suggests the use of `const` in functions and methods where possible
+/// Suggests the use of `const` in functions and methods where possible.
 ///
 /// **Why is this bad?**
-/// Not using `const` is a missed optimization. Instead of having the function execute at runtime,
-/// when using `const`, it's evaluated at compiletime.
+///
+/// Not having the function const prevents callers of the function from being const as well.
 ///
 /// **Known problems:**
 ///
