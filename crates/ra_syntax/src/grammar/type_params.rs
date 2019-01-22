@@ -104,20 +104,34 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     }
     let m = p.start();
     p.bump();
-    loop {
-        if !(paths::is_path_start(p)
-            || p.current() == LIFETIME
-            || p.current() == FOR_KW
-            || p.current() == L_ANGLE)
-        {
+
+    while is_where_predicate(p) {
+        where_predicate(p);
+
+        let comma = p.eat(COMMA);
+
+        if is_where_clause_end(p) {
             break;
         }
-        where_predicate(p);
-        if p.current() != L_CURLY && p.current() != SEMI && p.current() != EQ {
-            p.expect(COMMA);
+
+        if !comma {
+            p.error("expected comma");
         }
     }
+
     m.complete(p, WHERE_CLAUSE);
+}
+
+fn is_where_predicate(p: &mut Parser) -> bool {
+    match p.current() {
+        LIFETIME => true,
+        IMPL_KW => false,
+        token => types::TYPE_FIRST.contains(token),
+    }
+}
+
+fn is_where_clause_end(p: &mut Parser) -> bool {
+    p.current() == L_CURLY || p.current() == SEMI || p.current() == EQ
 }
 
 fn where_predicate(p: &mut Parser) {
@@ -131,20 +145,17 @@ fn where_predicate(p: &mut Parser) {
                 p.error("expected colon");
             }
         }
+        IMPL_KW => {
+            p.error("expected lifetime or type");
+        }
         _ => {
             // test where_pred_for
             // fn test<F>()
             // where
             //    for<'a> F: Fn(&'a str)
             // { }
-            if p.at(FOR_KW) {
-                types::for_binder(p);
-            }
-            if paths::is_path_start(p) || p.at(L_ANGLE) {
-                types::path_type_(p, false);
-            } else {
-                p.error("expected a type");
-            }
+            types::type_(p);
+
             if p.at(COLON) {
                 bounds(p);
             } else {
