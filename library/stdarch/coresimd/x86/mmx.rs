@@ -456,6 +456,22 @@ pub unsafe fn _m_empty() {
     emms()
 }
 
+/// Copy 32-bit integer `a` to the lower elements of the return value, and zero
+/// the upper element of the return value.
+#[inline]
+#[target_feature(enable = "mmx")]
+pub unsafe fn _mm_cvtsi32_si64(a: i32) -> __m64 {
+    mem::transmute(i32x2::new(a, 0))
+}
+
+/// Return the lower 32-bit integer in `a`.
+#[inline]
+#[target_feature(enable = "mmx")]
+pub unsafe fn _mm_cvtsi64_si32(a: __m64) -> i32 {
+    let r: i32x2 = mem::transmute(a);
+    r.0
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.mmx.padd.b"]
@@ -760,5 +776,19 @@ mod tests {
     #[simd_test(enable = "mmx")]
     unsafe fn test_m_empty() {
         _m_empty();
+    }
+
+    #[simd_test(enable = "mmx")]
+    unsafe fn test_mm_cvtsi32_si64() {
+        let a = _mm_cvtsi32_si64(42);
+        let b = _mm_setr_pi32(42, 0);
+        assert_eq_m64(a, b);
+    }
+
+    #[simd_test(enable = "mmx")]
+    unsafe fn test_mm_cvtsi64_si32() {
+        let a = _mm_setr_pi32(42, 666);
+        let b = _mm_cvtsi64_si32(a);
+        assert_eq!(b, 42);
     }
 }
