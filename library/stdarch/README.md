@@ -13,6 +13,14 @@ View the README's of:
 The `std::simd` component now lives in the
 [`packed_simd`](https://github.com/rust-lang-nursery/packed_simd) crate.
 
+# How to do a release
+
+To do a release of the `core_arch` and `std_detect` crates, 
+
+* comment out the `dev-dependencies` in their `Cargo.toml` files (due to
+  https://github.com/rust-lang/cargo/issues/4242),
+* publish the crates.
+
 [travis]: https://travis-ci.org/rust-lang-nursery/stdsimd
 [Travis-CI Status]: https://travis-ci.org/rust-lang-nursery/stdsimd.svg?branch=master
 [appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
