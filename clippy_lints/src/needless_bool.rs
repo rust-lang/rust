@@ -70,16 +70,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
                 let snip = Sugg::hir_with_applicability(cx, pred, "<predicate>", &mut applicability);
-                let snip = if not { !snip } else { snip };
+                let mut snip = if not { !snip } else { snip };
 
-                let mut hint = if ret {
-                    format!("return {}", snip)
-                } else {
-                    snip.to_string()
-                };
+                if ret {
+                    snip = snip.make_return();
+                }
 
                 if parent_node_is_if_expr(&e, &cx) {
-                    hint = format!("{{ {} }}", hint);
+                    snip = snip.blockify()
                 }
 
                 span_lint_and_sugg(
@@ -88,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     e.span,
                     "this if-then-else expression returns a bool literal",
                     "you can reduce it to",
-                    hint,
+                    snip.to_string(),
                     applicability,
                 );
             };
