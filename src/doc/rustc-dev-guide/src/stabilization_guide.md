@@ -11,6 +11,8 @@ following steps.
 
 ## Documentation PRs
 
+<a name="updating-documentation"></a>
+
 If any documentation for this feature exists, it should be
 in the [`Unstable Book`], located at [`src/doc/unstable-book`].
 If it exists, the page for the feature gate should be removed.
