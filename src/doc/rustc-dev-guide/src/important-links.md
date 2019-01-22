@@ -7,6 +7,10 @@ changed.
 
 [Skip this file. Or read it; I'm a book, not a cop.](https://imgur.com/gallery/mSHi8)
 
-[1](https://forge.rust-lang.org/stabilization-guide.html)
-[2](https://rust-lang.github.io/rustc-guide/stabilization_guide.html#documentation-prs)
-[3](https://forge.rust-lang.org/stabilization-guide.html#updating-documentation)
+[link](https://forge.rust-lang.org/stabilization-guide.html)
+[link](https://forge.rust-lang.org/stabilization-guide.html#updating-documentation)
+[link](https://forge.rust-lang.org/stabilization-guide.html#documentation-prs)
+
+[link](https://rust-lang.github.io/rustc-guide/stabilization_guide.html)
+[link](https://rust-lang.github.io/rustc-guide/stabilization_guide.html#updating-documentation)
+[link](https://rust-lang.github.io/rustc-guide/stabilization_guide.html#documentation-prs)
