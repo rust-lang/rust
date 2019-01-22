@@ -105,25 +105,29 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     let m = p.start();
     p.bump();
 
-    if is_where_clause_end(p) {
-        // Empty where clause
-    } else {
-        loop {
-            where_predicate(p);
+    while is_where_predicate(p) {
+        where_predicate(p);
 
-            let comma = p.eat(COMMA);
+        let comma = p.eat(COMMA);
 
-            if is_where_clause_end(p) {
-                break;
-            }
+        if is_where_clause_end(p) {
+            break;
+        }
 
-            if !comma {
-                p.error("expected comma");
-            }
+        if !comma {
+            p.error("expected comma");
         }
     }
 
     m.complete(p, WHERE_CLAUSE);
+}
+
+fn is_where_predicate(p: &mut Parser) -> bool {
+    match p.current() {
+        LIFETIME => true,
+        IMPL_KW => false,
+        _ => types::is_type_start(p),
+    }
 }
 
 fn is_where_clause_end(p: &mut Parser) -> bool {
