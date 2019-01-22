@@ -177,6 +177,10 @@ impl SyntaxNode {
     pub fn children(&self) -> SyntaxNodeChildren {
         SyntaxNodeChildren(self.0.children())
     }
+
+    pub fn memory_size_of_subtree(&self) -> usize {
+        self.0.memory_size_of_subtree()
+    }
 }
 
 impl fmt::Debug for SyntaxNode {

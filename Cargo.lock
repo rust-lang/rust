@@ -826,7 +826,7 @@ dependencies = [
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_text_edit 0.1.0",
- "rowan 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rowan 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "text_unit 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1041,7 +1041,7 @@ dependencies = [
 
 [[package]]
 name = "rowan"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1685,7 +1685,7 @@ dependencies = [
 "checksum relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0e7790c7f1cc73d831d28dc5a7deb316a006e7848e6a7f467cdb10a0a9e0fb1c"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum ron 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d9cb28ade964585205aaca1f3d41a6297f72e1ad097b49c4bbde033ef86b38d7"
-"checksum rowan 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "660069534501214380ab070b979f4b41e8cf3a5279ae07d0e949675efbd595bd"
+"checksum rowan 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "acefc6f0bfd48f98b1d4424bf53c6b1c9dd379d69376e862ba3c44d29773602c"
 "checksum rustc-demangle 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "adacaae16d02b6ec37fdc7acfcddf365978de76d1983d3ee22afc260e1ca9619"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
