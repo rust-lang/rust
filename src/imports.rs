@@ -324,9 +324,8 @@ impl UseTree {
             attrs,
         };
 
-        let leading_modsep = context.config.edition() == Edition::Edition2018
-            && a.prefix.to_string().len() > 2
-            && a.prefix.to_string().starts_with("::");
+        let leading_modsep =
+            context.config.edition() == Edition::Edition2018 && a.prefix.is_global();
 
         let mut modsep = leading_modsep;
 
@@ -367,7 +366,15 @@ impl UseTree {
                 ));
             }
             UseTreeKind::Simple(ref rename, ..) => {
-                let name = rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned();
+                // If the path has leading double colons and is composed of only 2 segments, then we
+                // bypass the call to path_to_imported_ident which would get only the ident and
+                // lose the path root, e.g., `that` in `::that`.
+                // The span of `a.prefix` contains the leading colons.
+                let name = if a.prefix.segments.len() == 2 && leading_modsep {
+                    context.snippet(a.prefix.span).to_owned()
+                } else {
+                    rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned()
+                };
                 let alias = rename.and_then(|ident| {
                     if ident.name == "_" {
                         // for impl-only-use
