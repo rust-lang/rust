@@ -65,13 +65,14 @@ cargo_test() {
         cmd="$cmd -p core_arch -p std_detect -p stdsimd_examples"
     fi
     cmd="$cmd -- $2"
-    if [ "$NORUN" != "1" ]
-    then
-      if [ "$TARGET" != "wasm32-unknown-unknown" ]
-      then
-        cmd="$cmd --quiet"
-      fi
-    fi
+    # Un-commenting this disables the test output and shows only a summary:
+    #if [ "$NORUN" != "1" ]
+    #then
+    #  if [ "$TARGET" != "wasm32-unknown-unknown" ]
+    #  then
+    #    cmd="$cmd --quiet"
+    #  fi
+    #fi
     if [ "$CROSS" = "1" ]
     then
         cmd="$cmd --emit=asm"

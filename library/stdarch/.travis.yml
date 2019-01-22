@@ -98,15 +98,8 @@ matrix:
         - shellcheck --version
         - shellcheck ci/*.sh
   allow_failures:
-    # FIXME https://github.com/rust-lang/libc/issues/1170
-    - name: "arm-linux-androideabi - no assert_instr"
-    - name: "aarch64-linux-android - no assert_instr"
-    # clippy changes enough from time to time that it breaks relatively
-    # regularly
-    - name: "clippy"
-    # qemu seems to intermittently segfault...
-    - name: "powerpc-unknown-linux-gnu - no assert_instr"
-
+   - name: "clippy"
+ 
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
