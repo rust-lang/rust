@@ -259,7 +259,6 @@ impl Vfs {
                     }
                 }
             },
-            TaskResult::NoOp => {}
         }
     }
 

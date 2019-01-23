@@ -50,7 +50,6 @@ pub enum TaskResult {
     AddRoot(AddRootResult),
     HandleChange(WatcherChange),
     LoadChange(WatcherChangeData),
-    NoOp,
 }
 
 impl fmt::Debug for TaskResult {
@@ -59,7 +58,6 @@ impl fmt::Debug for TaskResult {
             TaskResult::AddRoot(..) => f.write_str("TaskResult::AddRoot(..)"),
             TaskResult::HandleChange(c) => write!(f, "TaskResult::HandleChange({:?})", c),
             TaskResult::LoadChange(c) => write!(f, "TaskResult::LoadChange({:?})", c),
-            TaskResult::NoOp => f.write_str("TaskResult::NoOp"),
         }
     }
 }
@@ -78,7 +76,7 @@ impl Worker {
             thread_worker::spawn("vfs", 128, move |input_receiver, output_sender| {
                 input_receiver
                     .into_iter()
-                    .map(|t| handle_task(t, &watcher_clone))
+                    .filter_map(|t| handle_task(t, &watcher_clone))
                     .try_for_each(|it| output_sender.send(it))
                     .unwrap()
             });
@@ -118,18 +116,12 @@ fn watch(
     filter_entry: &RootFilter,
     emit_for_existing: bool,
 ) {
-    let mut watcher = watcher.lock();
-    let watcher = match *watcher {
-        Some(ref mut w) => w,
-        None => {
-            // watcher dropped or couldn't start
-            return;
-        }
-    };
-    watcher.watch_recursive(dir, filter_entry, emit_for_existing)
+    if let Some(watcher) = watcher.lock().as_mut() {
+        watcher.watch_recursive(dir, filter_entry, emit_for_existing)
+    }
 }
 
-fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> TaskResult {
+fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> Option<TaskResult> {
     match task {
         Task::AddRoot {
             root,
@@ -145,22 +137,19 @@ fn handle_task(task: Task, watcher: &Arc<Mutex<Option<Watcher>>>) -> TaskResult 
                 nested_roots.as_slice(),
             );
             log::debug!("... loaded {}", path.as_path().display());
-            TaskResult::AddRoot(AddRootResult { root, files })
+            Some(TaskResult::AddRoot(AddRootResult { root, files }))
         }
         Task::HandleChange(change) => {
             // forward as is because Vfs has to decide if we should load it
-            TaskResult::HandleChange(change)
+            Some(TaskResult::HandleChange(change))
         }
         Task::LoadChange(change) => {
             log::debug!("loading {:?} ...", change);
-            match load_change(change) {
-                Some(data) => TaskResult::LoadChange(data),
-                None => TaskResult::NoOp,
-            }
+            load_change(change).map(TaskResult::LoadChange)
         }
         Task::Watch { dir, root_filter } => {
             watch(watcher, &dir, root_filter.as_ref(), true);
-            TaskResult::NoOp
+            None
         }
     }
 }

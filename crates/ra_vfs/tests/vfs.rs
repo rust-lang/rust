@@ -117,7 +117,7 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     fs::create_dir_all(dir.path().join("a/sub1/sub2")).unwrap();
     fs::write(dir.path().join("a/sub1/sub2/new.rs"), "new hello").unwrap();
-    process_tasks(&mut vfs, 4);
+    process_tasks(&mut vfs, 3);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::AddFile { text, path, .. }],
