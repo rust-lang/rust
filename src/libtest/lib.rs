@@ -6,7 +6,7 @@
 //! benchmarks themselves) should be done via the `#[test]` and
 //! `#[bench]` attributes.
 //!
-//! See the [Testing Chapter](../book/first-edition/testing.html) of the book for more details.
+//! See the [Testing Chapter](../book/ch11-00-testing.html) of the book for more details.
 
 // Currently, not much of this is meant for users. It is intended to
 // support the simplest interface possible for representing and
