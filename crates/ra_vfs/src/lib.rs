@@ -61,7 +61,7 @@ pub(crate) fn default_filter(path: &Path, rel_path: &RelativePath) -> bool {
     if path.is_dir() {
         for (i, c) in rel_path.components().enumerate() {
             if let Component::Normal(c) = c {
-                // hardcoded for now
+                // TODO hardcoded for now
                 if (i == 0 && c == "target") || c == ".git" || c == "node_modules" {
                     return false;
                 }
