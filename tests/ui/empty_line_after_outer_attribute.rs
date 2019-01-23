@@ -1,5 +1,5 @@
 #![warn(clippy::empty_line_after_outer_attr)]
-#![allow(clippy::assertions_on_constants::assertions_on_constants)]
+#![allow(clippy::assertions_on_constants)]
 // This should produce a warning
 #[crate_type = "lib"]
 

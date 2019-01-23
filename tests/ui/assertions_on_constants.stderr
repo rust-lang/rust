@@ -1,5 +1,5 @@
 error: assert!(true) will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:11:5
+  --> $DIR/assertions_on_constants.rs:2:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     assert!(true);
    = help: remove it
 
 error: assert!(false) should probably be replaced
-  --> $DIR/assertions_on_constants.rs:12:5
+  --> $DIR/assertions_on_constants.rs:3:5
    |
 LL |     assert!(false);
    |     ^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     assert!(false);
    = help: use panic!() or unreachable!()
 
 error: assert!(true) will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:13:5
+  --> $DIR/assertions_on_constants.rs:4:5
    |
 LL |     assert!(true, "true message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     assert!(true, "true message");
    = help: remove it
 
 error: assert!(false) should probably be replaced
-  --> $DIR/assertions_on_constants.rs:14:5
+  --> $DIR/assertions_on_constants.rs:5:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     assert!(false, "false message");
    = help: use panic!() or unreachable!()
 
 error: assert!(const: true) will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:17:5
+  --> $DIR/assertions_on_constants.rs:8:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     assert!(B);
    = help: remove it
 
 error: assert!(const: false) should probably be replaced
-  --> $DIR/assertions_on_constants.rs:20:5
+  --> $DIR/assertions_on_constants.rs:11:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^^

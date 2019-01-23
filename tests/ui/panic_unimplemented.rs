@@ -1,5 +1,5 @@
 #![warn(clippy::panic_params, clippy::unimplemented)]
-#![allow(clippy::assertions_on_constants::assertions_on_constants)]
+#![allow(clippy::assertions_on_constants)]
 fn missing() {
     if true {
         panic!("{}");
