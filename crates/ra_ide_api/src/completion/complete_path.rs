@@ -119,7 +119,13 @@ mod tests {
             "reference_completion",
             "
             //- /lib.rs
-            enum E { Foo, Bar(i32) }
+            /// An enum
+            enum E {
+                /// Foo Variant
+                Foo,
+                /// Bar Variant with i32
+                Bar(i32)
+            }
             fn foo() { let _ = E::<|> }
             ",
         );

@@ -1,5 +1,5 @@
 ---
-created: "2019-01-23T21:14:09.186661600+00:00"
+created: "2019-01-23T23:49:43.278245900+00:00"
 creator: insta@0.5.1
 expression: kind_completions
 source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
@@ -14,13 +14,13 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         detail: None,
         documentation: Some(
             Documentation(
-                "This is foo"
+                "Foo Variant"
             )
         ),
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [109; 109),
+        source_range: [116; 116),
         text_edit: None
     },
     CompletionItem {
@@ -32,13 +32,13 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         detail: None,
         documentation: Some(
             Documentation(
-                "Use when we need an `i32`"
+                "Bar Variant with i32"
             )
         ),
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [109; 109),
+        source_range: [116; 116),
         text_edit: None
     }
 ]
