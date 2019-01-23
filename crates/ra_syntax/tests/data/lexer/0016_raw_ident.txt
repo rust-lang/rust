@@ -1,2 +1,2 @@
-RAW_IDENT 11 "r#raw_ident"
+IDENT 11 "r#raw_ident"
 WHITESPACE 1 "\n"

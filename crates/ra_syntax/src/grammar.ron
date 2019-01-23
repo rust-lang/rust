@@ -102,7 +102,6 @@ Grammar(
     tokens: [
         "ERROR",
         "IDENT",
-        "RAW_IDENT",
         "UNDERSCORE",
         "WHITESPACE",
         "INT_NUMBER",
@@ -116,10 +115,6 @@ Grammar(
         "RAW_BYTE_STRING",
         "COMMENT",
         "SHEBANG",
-    ],
-    ident_tokens: [
-        "IDENT",
-        "RAW_IDENT",
     ],
     nodes: [
         "SOURCE_FILE",

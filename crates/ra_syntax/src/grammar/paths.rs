@@ -1,11 +1,11 @@
 use super::*;
 
 pub(super) const PATH_FIRST: TokenSet =
-    token_set![IDENT, RAW_IDENT, SELF_KW, SUPER_KW, CRATE_KW, COLONCOLON, L_ANGLE];
+    token_set![IDENT, SELF_KW, SUPER_KW, CRATE_KW, COLONCOLON, L_ANGLE];
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
     match p.current() {
-        IDENT | RAW_IDENT | SELF_KW | SUPER_KW | CRATE_KW | COLONCOLON => true,
+        IDENT | SELF_KW | SUPER_KW | CRATE_KW | COLONCOLON => true,
         _ => false,
     }
 }
@@ -70,7 +70,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             p.eat(COLONCOLON);
         }
         match p.current() {
-            IDENT | RAW_IDENT => {
+            IDENT => {
                 name_ref(p);
                 opt_path_type_args(p, mode);
             }

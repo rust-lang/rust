@@ -142,7 +142,7 @@ impl Attr {
     pub fn as_atom(&self) -> Option<SmolStr> {
         let tt = self.value()?;
         let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;
-        if attr.kind().is_ident() {
+        if attr.kind() == IDENT {
             Some(attr.leaf_text().unwrap().clone())
         } else {
             None
@@ -153,7 +153,7 @@ impl Attr {
         let tt = self.value()?;
         let (_bra, attr, args, _ket) = tt.syntax().children().collect_tuple()?;
         let args = TokenTree::cast(args)?;
-        if attr.kind().is_ident() {
+        if attr.kind() == IDENT {
             Some((attr.leaf_text().unwrap().clone(), args))
         } else {
             None

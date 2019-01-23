@@ -70,7 +70,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
         }
         let var = p.start();
         attributes::outer_attributes(p);
-        if p.current().is_ident() {
+        if p.at(IDENT) {
             name(p);
             match p.current() {
                 L_CURLY => named_field_def_list(p),
@@ -120,7 +120,7 @@ pub(crate) fn named_field_def_list(p: &mut Parser) {
         // }
         attributes::outer_attributes(p);
         opt_visibility(p);
-        if p.current().is_ident() {
+        if p.at(IDENT) {
             name(p);
             p.expect(COLON);
             types::type_(p);

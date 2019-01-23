@@ -48,7 +48,6 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(token_set![
     UNSAFE_KW,
     RETURN_KW,
     IDENT,
-    RAW_IDENT,
     SELF_KW,
     SUPER_KW,
     CRATE_KW,

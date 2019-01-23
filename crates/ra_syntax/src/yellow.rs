@@ -207,7 +207,7 @@ impl<'a> Iterator for SyntaxNodeChildren<'a> {
 fn has_short_text(kind: SyntaxKind) -> bool {
     use crate::SyntaxKind::*;
     match kind {
-        IDENT | RAW_IDENT | LIFETIME | INT_NUMBER | FLOAT_NUMBER => true,
+        IDENT | LIFETIME | INT_NUMBER | FLOAT_NUMBER => true,
         _ => false,
     }
 }

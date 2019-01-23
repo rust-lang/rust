@@ -3,7 +3,7 @@ SOURCE_FILE@[0; 15)
     FN_KW@[0; 2)
     WHITESPACE@[2; 3)
     NAME@[3; 8)
-      RAW_IDENT@[3; 8) "r#foo"
+      IDENT@[3; 8) "r#foo"
     PARAM_LIST@[8; 10)
       L_PAREN@[8; 9)
       R_PAREN@[9; 10)

@@ -112,7 +112,7 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     if p.nth(1) == POUND || p.nth(1) == R_ANGLE {
         return true;
     }
-    (p.nth(1) == LIFETIME || p.nth(1).is_ident())
+    (p.nth(1) == LIFETIME || p.nth(1) == IDENT)
         && (p.nth(2) == R_ANGLE || p.nth(2) == COMMA || p.nth(2) == COLON || p.nth(2) == EQ)
 }
 

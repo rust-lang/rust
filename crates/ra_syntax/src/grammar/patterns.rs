@@ -37,7 +37,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let la1 = p.nth(1);
     if la0 == REF_KW
         || la0 == MUT_KW
-        || (la0.is_ident() && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY))
+        || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY))
     {
         return Some(bind_pat(p, true));
     }
@@ -128,7 +128,7 @@ fn field_pat_list(p: &mut Parser) {
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
             DOTDOT => p.bump(),
-            IDENT | RAW_IDENT if p.nth(1) == COLON => field_pat(p),
+            IDENT if p.nth(1) == COLON => field_pat(p),
             L_CURLY => error_block(p, "expected ident"),
             _ => {
                 bind_pat(p, false);
@@ -143,7 +143,7 @@ fn field_pat_list(p: &mut Parser) {
 }
 
 fn field_pat(p: &mut Parser) {
-    assert!(p.current().is_ident());
+    assert!(p.at(IDENT));
     assert!(p.nth(1) == COLON);
 
     let m = p.start();

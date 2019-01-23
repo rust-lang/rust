@@ -99,11 +99,11 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         has_mods = true;
         abi(p);
     }
-    if p.current().is_ident() && p.at_contextual_kw("auto") && p.nth(1) == TRAIT_KW {
+    if p.at(IDENT) && p.at_contextual_kw("auto") && p.nth(1) == TRAIT_KW {
         p.bump_remap(AUTO_KW);
         has_mods = true;
     }
-    if p.current().is_ident() && p.at_contextual_kw("default") && p.nth(1) == IMPL_KW {
+    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == IMPL_KW {
         p.bump_remap(DEFAULT_KW);
         has_mods = true;
     }
@@ -202,7 +202,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             }
             STRUCT_DEF
         }
-        IDENT | RAW_IDENT if p.at_contextual_kw("union") && p.nth(1).is_ident() => {
+        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
             // union Foo {}
             // union Foo {
@@ -220,7 +220,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             use_item::use_item(p);
             USE_ITEM
         }
-        CONST_KW if (la.is_ident() || la == MUT_KW) => {
+        CONST_KW if (la == IDENT || la == MUT_KW) => {
             consts::const_def(p);
             CONST_DEF
         }
@@ -351,7 +351,7 @@ fn macro_call(p: &mut Parser) -> BlockLike {
 
 pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     p.expect(EXCL);
-    p.eat_one(&[IDENT, RAW_IDENT]);
+    p.eat(IDENT);
     match p.current() {
         L_CURLY => {
             token_tree(p);

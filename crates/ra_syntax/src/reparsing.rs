@@ -25,7 +25,7 @@ fn reparse_leaf<'node>(
 ) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
     let node = algo::find_covering_node(node, edit.delete);
     match node.kind() {
-        WHITESPACE | COMMENT | IDENT | RAW_IDENT | STRING | RAW_STRING => {
+        WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
             let text = get_text_after_edit(node, &edit);
             let tokens = tokenize(&text);
             let token = match tokens[..] {
@@ -33,7 +33,7 @@ fn reparse_leaf<'node>(
                 _ => return None,
             };
 
-            if token.kind.is_ident() && is_contextual_kw(&text) {
+            if token.kind == IDENT && is_contextual_kw(&text) {
                 return None;
             }
 

@@ -140,7 +140,7 @@ fn opt_fn_ret_type(p: &mut Parser) -> bool {
 }
 
 fn name_r(p: &mut Parser, recovery: TokenSet) {
-    if p.current().is_ident() {
+    if p.at(IDENT) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME);
@@ -154,7 +154,7 @@ fn name(p: &mut Parser) {
 }
 
 fn name_ref(p: &mut Parser) {
-    if p.current().is_ident() {
+    if p.at(IDENT) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME_REF);

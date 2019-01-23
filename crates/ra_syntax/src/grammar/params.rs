@@ -84,9 +84,9 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             // trait Foo {
             //     fn bar(_: u64);
             // }
-            if (la0.is_ident() || la0 == UNDERSCORE) && la1 == COLON
-                || la0 == AMP && la1.is_ident() && la2 == COLON
-                || la0 == AMP && la1 == MUT_KW && la2.is_ident() && la3 == COLON
+            if (la0 == IDENT || la0 == UNDERSCORE) && la1 == COLON
+                || la0 == AMP && la1 == IDENT && la2 == COLON
+                || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON
             {
                 patterns::pattern(p);
                 types::ascription(p);

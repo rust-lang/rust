@@ -281,7 +281,7 @@ fn postfix_expr(
             // }
             L_PAREN if allow_calls => call_expr(p, lhs),
             L_BRACK if allow_calls => index_expr(p, lhs),
-            DOT if p.nth(1).is_ident() && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON) => {
+            DOT if p.nth(1) == IDENT && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON) => {
                 method_call_expr(p, lhs)
             }
             DOT => field_expr(p, lhs),
@@ -332,7 +332,7 @@ fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     y.bar::<T>(1, 2,);
 // }
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(DOT) && p.nth(1).is_ident() && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON));
+    assert!(p.at(DOT) && p.nth(1) == IDENT && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON));
     let m = lhs.precede(p);
     p.bump();
     name_ref(p);
@@ -352,7 +352,7 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(DOT));
     let m = lhs.precede(p);
     p.bump();
-    if p.current().is_ident() {
+    if p.at(IDENT) {
         name_ref(p)
     } else if p.at(INT_NUMBER) {
         p.bump()
@@ -443,7 +443,7 @@ pub(crate) fn named_field_list(p: &mut Parser) {
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
-            IDENT | RAW_IDENT => {
+            IDENT => {
                 let m = p.start();
                 name_ref(p);
                 if p.eat(COLON) {

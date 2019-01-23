@@ -10,7 +10,7 @@ SOURCE_FILE@[0; 27)
       WHITESPACE@[10; 15)
       NAMED_FIELD_DEF@[15; 25)
         NAME@[15; 20)
-          RAW_IDENT@[15; 20) "r#foo"
+          IDENT@[15; 20) "r#foo"
         COLON@[20; 21)
         WHITESPACE@[21; 22)
         PATH_TYPE@[22; 25)

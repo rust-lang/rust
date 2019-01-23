@@ -74,13 +74,4 @@ impl SyntaxKind {
         };
         Some(tok)
     }
-
-    pub(crate) fn is_ident(&self) -> bool {
-        match self {
-{%- for kind in ident_tokens %}
-            | {{kind}}
-{%- endfor %} => true,
-            _ => false,
-        }
-    }
 }

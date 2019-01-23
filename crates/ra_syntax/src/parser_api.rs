@@ -100,14 +100,6 @@ impl<'t> Parser<'t> {
         true
     }
 
-    /// Consume the next token matching one of the `kinds`
-    pub(crate) fn eat_one<'k, K>(&mut self, kinds: K) -> bool
-    where
-        K: IntoIterator<Item = &'k SyntaxKind> + 'k,
-    {
-        kinds.into_iter().map(|k| self.eat(*k)).any(|eaten| eaten)
-    }
-
     /// Consume the next token if it is `kind` or emit an error
     /// otherwise.
     pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
