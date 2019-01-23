@@ -390,7 +390,7 @@ pub fn to_location_link(
         origin_selection_range: Some(target.range.conv_with(line_index)),
         target_uri,
         target_range,
-        target_selection_range: Some(target_selection_range),
+        target_selection_range: target_selection_range,
     };
     Ok(res)
 }
