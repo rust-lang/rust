@@ -394,6 +394,12 @@ impl Const {
     }
 }
 
+impl Docs for Const {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Static {
     pub(crate) def_id: DefId,
@@ -406,6 +412,12 @@ impl Static {
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
         def_id_to_ast(db, self.def_id)
+    }
+}
+
+impl Docs for Static {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -428,6 +440,12 @@ impl Trait {
     }
 }
 
+impl Docs for Trait {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Type {
     pub(crate) def_id: DefId,
@@ -444,5 +462,11 @@ impl Type {
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
         db.generic_params(self.def_id)
+    }
+}
+
+impl Docs for Type {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
     }
 }

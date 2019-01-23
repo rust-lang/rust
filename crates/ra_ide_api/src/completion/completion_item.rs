@@ -210,35 +210,35 @@ impl Builder {
         resolution: &hir::Resolution,
     ) -> Builder {
         let resolved = resolution.def_id.map(|d| d.resolve(ctx.db));
-        let kind = match resolved {
+        let (kind, docs) = match resolved {
             PerNs {
                 types: Some(hir::Def::Module(..)),
                 ..
-            } => CompletionItemKind::Module,
+            } => (CompletionItemKind::Module, None),
             PerNs {
-                types: Some(hir::Def::Struct(..)),
+                types: Some(hir::Def::Struct(s)),
                 ..
-            } => CompletionItemKind::Struct,
+            } => (CompletionItemKind::Struct, s.docs(ctx.db)),
             PerNs {
-                types: Some(hir::Def::Enum(..)),
+                types: Some(hir::Def::Enum(e)),
                 ..
-            } => CompletionItemKind::Enum,
+            } => (CompletionItemKind::Enum, e.docs(ctx.db)),
             PerNs {
-                types: Some(hir::Def::Trait(..)),
+                types: Some(hir::Def::Trait(t)),
                 ..
-            } => CompletionItemKind::Trait,
+            } => (CompletionItemKind::Trait, t.docs(ctx.db)),
             PerNs {
-                types: Some(hir::Def::Type(..)),
+                types: Some(hir::Def::Type(t)),
                 ..
-            } => CompletionItemKind::TypeAlias,
+            } => (CompletionItemKind::TypeAlias, t.docs(ctx.db)),
             PerNs {
-                values: Some(hir::Def::Const(..)),
+                values: Some(hir::Def::Const(c)),
                 ..
-            } => CompletionItemKind::Const,
+            } => (CompletionItemKind::Const, c.docs(ctx.db)),
             PerNs {
-                values: Some(hir::Def::Static(..)),
+                values: Some(hir::Def::Static(s)),
                 ..
-            } => CompletionItemKind::Static,
+            } => (CompletionItemKind::Static, s.docs(ctx.db)),
             PerNs {
                 values: Some(hir::Def::Function(function)),
                 ..
@@ -246,6 +246,8 @@ impl Builder {
             _ => return self,
         };
         self.kind = Some(kind);
+        self.documentation = docs;
+
         self
     }
 
