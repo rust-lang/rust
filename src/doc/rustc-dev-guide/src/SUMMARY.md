@@ -38,6 +38,7 @@
 - [Name resolution](./name-resolution.md)
 - [The HIR (High-level IR)](./hir.md)
     - [Lowering AST to HIR](./lowering.md)
+    - [Debugging](./hir-debugging.md)
 - [The `ty` module: representing types](./ty.md)
 - [Kinds](./kinds.md)
 - [Type inference](./type-inference.md)
@@ -68,6 +69,7 @@
     - [MIR visitor and traversal](./mir/visitor.md)
     - [MIR passes: getting the MIR for a function](./mir/passes.md)
     - [MIR optimizations](./mir/optimizations.md)
+    - [Debugging](./mir/debugging.md)
 - [The borrow checker](./borrow_check.md)
     - [Tracking moves and initialization](./borrow_check/moves_and_initialization.md)
       - [Move paths](./borrow_check/moves_and_initialization/move_paths.md)
@@ -78,6 +80,7 @@
 - [Parameter Environments](./param_env.md)
 - [Code Generation](./codegen.md)
   - [Updating LLVM](./codegen/updating-llvm.md)
+  - [Debugging LLVM](./codegen/debugging.md)
 - [Emitting Diagnostics](./diag.md)
 
 ---

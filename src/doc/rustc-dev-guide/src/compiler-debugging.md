@@ -1,7 +1,21 @@
 # Debugging the compiler
 [debugging]: #debugging
 
-Here are a few tips to debug the compiler:
+This chapter contains a few tips to debug the compiler. These tips aim to be
+useful no matter what you are working on.  Some of the other chapters have
+advice about specific parts of the compiler (e.g. the [Queries Debugging and
+Testing
+chapter](./incrcomp-debugging.html) or
+the [LLVM Debugging chapter](./codegen/debugging.md)).
+
+## `-Z` flags
+
+The compiler has a bunch of `-Z` flags. These are unstable flags that are only
+enabled on nightly. Many of them are useful for debugging. To get a full listing
+of `-Z` flags, use `-Z help`.
+
+One useful flag is `-Z verbose`, which generally enables printing more info that
+could be useful for debugging.
 
 ## Getting a backtrace
 [getting-a-backtrace]: #getting-a-backtrace
@@ -135,6 +149,9 @@ These crates are used in compiler for logging:
 * [log]
 * [env-logger]: check the link to see the full `RUST_LOG` syntax
 
+[log]: https://docs.rs/log/0.4.6/log/index.html
+[env-logger]: https://docs.rs/env_logger/0.4.3/env_logger/
+
 The compiler has a lot of `debug!` calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the
@@ -189,7 +206,7 @@ I also think that in some cases just setting it will not trigger a rebuild,
 so if you changed it and you already have a compiler built, you might
 want to call `x.py clean` to force one.
 
-### Logging etiquette
+### Logging etiquette and conventions
 
 Because calls to `debug!` are removed by default, in most cases, don't worry
 about adding "unnecessary" calls to `debug!` and leaving them in code you
@@ -197,9 +214,12 @@ commit - they won't slow down the performance of what we ship, and if they
 helped you pinning down a bug, they will probably help someone else with a
 different one.
 
-However, there are still a few concerns that you might care about:
+A loosely followed convention is to use `debug!("foo(...)")` at the _start_ of
+a function `foo` and `debug!("foo: ...")` _within_ the function. Another
+loosely followed convention is to use the `{:?}` format specifier for debug
+logs.
 
-### Expensive operations in logs
+One thing to be **careful** of is **expensive** operations in logs.
 
 If in the module `rustc::foo` you have a statement
 
@@ -210,9 +230,9 @@ debug!("{:?}", random_operation(tcx));
 Then if someone runs a debug `rustc` with `RUST_LOG=rustc::bar`, then
 `random_operation()` will run.
 
-This means that you should not put anything too expensive or likely
-to crash there - that would annoy anyone who wants to use logging for their own
-module. No-one will know it until someone tries to use logging to find *another* bug.
+This means that you should not put anything too expensive or likely to crash
+there - that would annoy anyone who wants to use logging for their own module.
+No-one will know it until someone tries to use logging to find *another* bug.
 
 ## Formatting Graphviz output (.dot files)
 [formatting-graphviz-output]: #formatting-graphviz-output
@@ -228,133 +248,6 @@ These all produce `.dot` files. To view these files, install graphviz (e.g.
 $ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
 $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ```
-
-## Debugging LLVM
-[debugging-llvm]: #debugging-llvm
-
-> NOTE: If you are looking for info about code generation, please see [this
-> chapter][codegen] instead.
-
-[codegen]: codegen.html
-
-This section is about debugging compiler bugs in code generation (e.g. why the
-compiler generated some piece of code or crashed in LLVM).  LLVM is a big
-project on its own that probably needs to have its own debugging document (not
-that I could find one). But here are some tips that are important in a rustc
-context:
-
-As a general rule, compilers generate lots of information from analyzing code.
-Thus, a useful first step is usually to find a minimal example. One way to do
-this is to
-
-1. create a new crate that reproduces the issue (e.g. adding whatever crate is
-at fault as a dependency, and using it from there)
-
-2. minimize the crate by removing external dependencies; that is, moving
-everything relevant to the new crate
-
-3. further minimize the issue by making the code shorter (there are tools that
-help with this like `creduce`)
-
-The official compilers (including nightlies) have LLVM assertions disabled,
-which means that LLVM assertion failures can show up as compiler crashes (not
-ICEs but "real" crashes) and other sorts of weird behavior. If you are
-encountering these, it is a good idea to try using a compiler with LLVM
-assertions enabled - either an "alt" nightly or a compiler you build yourself
-by setting `[llvm] assertions=true` in your config.toml - and see whether
-anything turns up.
-
-The rustc build process builds the LLVM tools into
-`./build/<host-triple>/llvm/bin`. They can be called directly.
-
-The default rustc compilation pipeline has multiple codegen units, which is
-hard to replicate manually and means that LLVM is called multiple times in
-parallel.  If you can get away with it (i.e. if it doesn't make your bug
-disappear), passing `-C codegen-units=1` to rustc will make debugging easier.
-
-To rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag. If
-you are building via cargo, use the `RUSTFLAGS` environment variable (e.g.
-`RUSTFLAGS='--emit=llvm-ir'`). This causes rustc to spit out LLVM IR into the
-target directory.
-
-`cargo llvm-ir [options] path` spits out the LLVM IR for a particular function
-at `path`. (`cargo install cargo-asm` installs `cargo asm` and `cargo
-llvm-ir`). `--build-type=debug` emits code for debug builds. There are also
-other useful options. Also, debug info in LLVM IR can clutter the output a lot:
-`RUSTFLAGS="-C debuginfo=0"` is really useful.
-
-`RUSTFLAGS="-C save-temps"` outputs LLVM bitcode (not the same as IR) at
-different stages during compilation, which is sometimes useful. One just needs
-to convert the bitcode files to `.ll` files using `llvm-dis` which should be in
-the target local compilation of rustc.
-
-If you want to play with the optimization pipeline, you can use the `opt` tool
-from `./build/<host-triple>/llvm/bin/` with the LLVM IR emitted by rustc.  Note
-that rustc emits different IR depending on whether `-O` is enabled, even
-without LLVM's optimizations, so if you want to play with the IR rustc emits,
-you should:
-
-```bash
-$ rustc +local my-file.rs --emit=llvm-ir -O -C no-prepopulate-passes \
-    -C codegen-units=1
-$ OPT=./build/$TRIPLE/llvm/bin/opt
-$ $OPT -S -O2 < my-file.ll > my
-```
-
-If you just want to get the LLVM IR during the LLVM pipeline, to e.g. see which
-IR causes an optimization-time assertion to fail, or to see when LLVM performs
-a particular optimization, you can pass the rustc flag `-C
-llvm-args=-print-after-all`, and possibly add `-C
-llvm-args='-filter-print-funcs=EXACT_FUNCTION_NAME` (e.g.  `-C
-llvm-args='-filter-print-funcs=_ZN11collections3str21_$LT$impl$u20$str$GT$\
-7replace17hbe10ea2e7c809b0bE'`).
-
-That produces a lot of output into standard error, so you'll want to pipe that
-to some file. Also, if you are using neither `-filter-print-funcs` nor `-C
-codegen-units=1`, then, because the multiple codegen units run in parallel, the
-printouts will mix together and you won't be able to read anything.
-
-If you want just the IR for a specific function (say, you want to see why it
-causes an assertion or doesn't optimize correctly), you can use `llvm-extract`,
-e.g.
-
-```bash
-$ ./build/$TRIPLE/llvm/bin/llvm-extract \
-    -func='_ZN11collections3str21_$LT$impl$u20$str$GT$7replace17hbe10ea2e7c809b0bE' \
-    -S \
-    < unextracted.ll \
-    > extracted.ll
-```
-
-### Filing LLVM bug reports
-
-When filing an LLVM bug report, you will probably want some sort of minimal
-working example that demonstrates the problem. The Godbolt compiler explorer is
-really helpful for this.
-
-1. Once you have some LLVM IR for the problematic code (see above), you can
-create a minimal working example with Godbolt. Go to
-[gcc.godbolt.org](https://gcc.godbolt.org).
-
-2. Choose `LLVM-IR` as programming language.
-
-3. Use `llc` to compile the IR to a particular target as is:
-    - There are some useful flags: `-mattr` enables target features, `-march=`
-      selects the target, `-mcpu=` selects the CPU, etc.
-    - Commands like `llc -march=help` output all architectures available, which
-      is useful because sometimes the Rust arch names and the LLVM names do not
-      match.
-    - If you have compiled rustc yourself somewhere, in the target directory
-      you have binaries for `llc`, `opt`, etc.
-
-4. If you want to optimize the LLVM-IR, you can use `opt` to see how the LLVM
-   optimizations transform it.
-
-5. Once you have a godbolt link demonstrating the issue, it is pretty easy to
-   fill in an LLVM bug.
-
-[log]: https://docs.rs/log/0.4.6/log/index.html
-[env-logger]: https://docs.rs/env_logger/0.4.3/env_logger/
 
 ## Narrowing (Bisecting) Regressions
 
