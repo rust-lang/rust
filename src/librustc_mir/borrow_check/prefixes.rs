@@ -17,25 +17,6 @@ pub trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: &Self) -> bool;
 }
 
-impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
-    fn is_prefix_of(&self, other: &Place<'tcx>) -> bool {
-        let mut cursor = other;
-        loop {
-            if self == cursor {
-                return true;
-            }
-
-            match *cursor {
-                Place::Promoted(_) |
-                Place::Local(_) | Place::Static(_) => return false,
-                Place::Projection(ref proj) => {
-                    cursor = &proj.base;
-                }
-            }
-        }
-    }
-}
-
 impl<'tcx> IsPrefixOf<'tcx> for NeoPlace<'tcx> {
     fn is_prefix_of(&self, other: &NeoPlace<'tcx>) -> bool {
         self.base == other.base

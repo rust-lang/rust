@@ -698,7 +698,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // we're not in the uninteresting case where `B` is a
             // prefix of `D`), then report this as a more interesting
             // destructor conflict.
-            if !borrow.borrowed_place.is_prefix_of(place_span.0) {
+            let borrowed_neo_place = self.infcx.tcx.as_new_place(&borrow.borrowed_place);
+            let other_neo_place = self.infcx.tcx.as_new_place(place_span.0);
+            if !borrowed_neo_place.is_prefix_of(&other_neo_place) {
                 self.report_borrow_conflicts_with_destructor(
                     context, borrow, place_span, kind, dropped_ty,
                 );
