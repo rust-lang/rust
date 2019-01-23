@@ -192,7 +192,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
         location: mir::Location,
     ) {
         if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
-            if borrowed_place.ignore_borrow(
+            let borrowed_neo_place = self.tcx.as_new_place(borrowed_place);
+            if borrowed_neo_place.ignore_borrow(
                 self.tcx, self.mir, &self.locals_state_at_exit) {
                 return;
             }

@@ -269,7 +269,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
                 self.kill_borrows_on_place(sets, lhs);
 
                 if let box mir::Rvalue::Ref(_, _, place) = rhs {
-                    if place.ignore_borrow(
+                    let neo_place = self.tcx.as_new_place(place);
+
+                    if neo_place.ignore_borrow(
                         self.tcx,
                         self.mir,
                         &self.borrow_set.locals_state_at_exit,
