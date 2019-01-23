@@ -5428,87 +5428,76 @@ impl<'a> Parser<'a> {
         //
         // In doing this, we have managed to work out how many unmatched leading left angle
         // brackets there are, but we cannot recover as the unmatched angle brackets have
-        // already been consumed. To remedy this, whenever `parse_generic_args` is invoked, we
-        // make a snapshot of the current parser state and invoke it on that and inspect
-        // the result:
-        //
-        // - If success (ie. when it found a matching `>` character) then the snapshot state
-        //   is kept (this is required to propagate the count upwards).
-        //
-        // - If error and in was in a recursive call, then the snapshot state is kept (this is
-        //   required to propagate the count upwards).
-        //
-        // - If error and this was the first invocation (before any recursion had taken place)
-        //   then we choose not to keep the snapshot state - that way we haven't actually
-        //   consumed any of the `<` characters, but can still inspect the count from the
-        //   snapshot to know how many `<` characters to remove. Using this information, we can
-        //   emit an error and consume the extra `<` characters before attempting to parse
-        //   the generic arguments again (this time hopefullt successfully as the unmatched `<`
-        //   characters are gone).
+        // already been consumed. To remedy this, we keep a snapshot of the parser state
+        // before we do the above. We can then inspect whether we ended up with a parsing error
+        // and unmatched left angle brackets and if so, restore the parser state before we
+        // consumed any `<` characters to emit an error and consume the erroneous tokens to
+        // recover by attempting to parse again.
         //
         // In practice, the recursion of this function is indirect and there will be other
         // locations that consume some `<` characters - as long as we update the count when
         // this happens, it isn't an issue.
-        let mut snapshot = self.clone();
+
+        let is_first_invocation = style == PathStyle::Expr;
+        // Take a snapshot before attempting to parse - we can restore this later.
+        let snapshot = if is_first_invocation {
+            Some(self.clone())
+        } else {
+            None
+        };
+
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
-        match snapshot.parse_generic_args() {
-            Ok(value) => {
-                debug!(
-                    "parse_generic_args_with_leading_angle_bracket_recovery: (snapshot success) \
-                     snapshot.count={:?}",
-                    snapshot.unmatched_angle_bracket_count,
-                );
-                mem::replace(self, snapshot);
-                Ok(value)
-            },
-            Err(mut e) => {
+        match self.parse_generic_args() {
+            Ok(value) => Ok(value),
+            Err(ref mut e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
+                // Cancel error from being unable to find `>`. We know the error
+                // must have been this due to a non-zero unmatched angle bracket
+                // count.
+                e.cancel();
+
+                // Swap `self` with our backup of the parser state before attempting to parse
+                // generic arguments.
+                let snapshot = mem::replace(self, snapshot.unwrap());
+
                 debug!(
                     "parse_generic_args_with_leading_angle_bracket_recovery: (snapshot failure) \
                      snapshot.count={:?}",
                     snapshot.unmatched_angle_bracket_count,
                 );
-                if style == PathStyle::Expr && snapshot.unmatched_angle_bracket_count > 0 {
-                    // Cancel error from being unable to find `>`. We know the error
-                    // must have been this due to a non-zero unmatched angle bracket
-                    // count.
-                    e.cancel();
 
-                    // Eat the unmatched angle brackets.
-                    for _ in 0..snapshot.unmatched_angle_bracket_count {
-                        self.eat_lt();
-                    }
-
-                    // Make a span over ${unmatched angle bracket count} characters.
-                    let span = lo.with_hi(
-                        lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count)
-                    );
-                    let plural = snapshot.unmatched_angle_bracket_count > 1;
-                    self.diagnostic()
-                        .struct_span_err(
-                            span,
-                            &format!(
-                                "unmatched angle bracket{}",
-                                if plural { "s" } else { "" }
-                            ),
-                        )
-                        .span_suggestion_with_applicability(
-                            span,
-                            &format!(
-                                "remove extra angle bracket{}",
-                                if plural { "s" } else { "" }
-                            ),
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-
-                    // Try again without unmatched angle bracket characters.
-                    self.parse_generic_args()
-                } else {
-                    mem::replace(self, snapshot);
-                    Err(e)
+                // Eat the unmatched angle brackets.
+                for _ in 0..snapshot.unmatched_angle_bracket_count {
+                    self.eat_lt();
                 }
+
+                // Make a span over ${unmatched angle bracket count} characters.
+                let span = lo.with_hi(
+                    lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count)
+                );
+                let plural = snapshot.unmatched_angle_bracket_count > 1;
+                self.diagnostic()
+                    .struct_span_err(
+                        span,
+                        &format!(
+                            "unmatched angle bracket{}",
+                            if plural { "s" } else { "" }
+                        ),
+                    )
+                    .span_suggestion_with_applicability(
+                        span,
+                        &format!(
+                            "remove extra angle bracket{}",
+                            if plural { "s" } else { "" }
+                        ),
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+
+                // Try again without unmatched angle bracket characters.
+                self.parse_generic_args()
             },
+            Err(e) => Err(e),
         }
     }
 
