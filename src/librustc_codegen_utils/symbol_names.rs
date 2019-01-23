@@ -512,7 +512,7 @@ impl Printer for SymbolPath {
 }
 
 impl PrettyPrinter for SymbolPath {
-    fn print_region_outputs_anything(
+    fn region_should_not_be_omitted(
         self: &PrintCx<'_, '_, '_, Self>,
         _region: ty::Region<'_>,
     ) -> bool {

@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for borrow expression due to 
 LL |         let mut f = || &mut x;
    |                        ^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime  as defined on the body at 7:21...
+note: first, the lifetime cannot outlive the lifetime '_ as defined on the body at 7:21...
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:21
    |
 LL |         let mut f = || &mut x;

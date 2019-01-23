@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                 let tymut_string = tymut.to_string();
                 if tymut_string == "_" ||         //unknown type name,
                    tymut_string.len() > 10 ||     //name longer than saying "reference",
-                   region.to_string() != ""       //... or a complex type
+                   region.to_string() != "'_"     //... or a complex type
                 {
                     format!("{}reference", match mutbl {
                         hir::Mutability::MutMutable => "mutable ",

@@ -222,14 +222,10 @@ pub trait PrettyPrinter:
         false
     }
 
-    // HACK(eddyb) Trying to print a lifetime might not print anything, which
-    // may need special handling in the caller (of `ty::RegionKind::print`).
-    // To avoid printing to a temporary string (which isn't even supported),
-    // the `print_region_outputs_anything` method can instead be used to
-    // determine this, ahead of time.
-    //
-    // NB: this must be kept in sync with the implementation of `print_region`.
-    fn print_region_outputs_anything(
+    /// Return `true` if the region should be printed in
+    /// optional positions, e.g. `&'a T` or `dyn Tr + 'b`.
+    /// This is typically the case for all non-`'_` regions.
+    fn region_should_not_be_omitted(
         self: &PrintCx<'_, '_, '_, Self>,
         region: ty::Region<'_>,
     ) -> bool;
@@ -497,7 +493,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             match substs[param.index as usize].unpack() {
                 UnpackedKind::Lifetime(r) => {
                     self.always_print_region_in_paths(r) ||
-                    self.print_region_outputs_anything(r)
+                    self.region_should_not_be_omitted(r)
                 }
                 _ => false,
             }
@@ -534,19 +530,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
 
             for arg in arg0.into_iter().chain(args) {
                 maybe_comma(&mut cx)?;
-
-                if let UnpackedKind::Lifetime(region) = arg.unpack() {
-                    if !cx.print_region_outputs_anything(region) {
-                        // This happens when the value of the region
-                        // parameter is not easily serialized. This may be
-                        // because the user omitted it in the first place,
-                        // or because it refers to some block in the code,
-                        // etc. I'm not sure how best to serialize this.
-                        p!(write("'_"));
-
-                        continue;
-                    }
-                }
 
                 p!(print(arg));
             }
@@ -822,7 +805,7 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
         *region != ty::ReErased
     }
 
-    fn print_region_outputs_anything(
+    fn region_should_not_be_omitted(
         self: &PrintCx<'_, '_, '_, Self>,
         region: ty::Region<'_>,
     ) -> bool {
@@ -902,8 +885,9 @@ impl<F: fmt::Write> FmtPrinter<F> {
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
             ty::ReEarlyBound(ref data) => {
-                if data.name != "'_" {
+                if data.name != "" {
                     p!(write("{}", data.name));
+                    return self.ok();
                 }
             }
             ty::ReLateBound(_, br) |
@@ -919,6 +903,7 @@ impl<F: fmt::Write> FmtPrinter<F> {
                 if let Some((region, counter)) = highlight.highlight_bound_region {
                     if br == region {
                         p!(write("'{}", counter));
+                        return self.ok();
                     }
                 }
             }
@@ -938,19 +923,32 @@ impl<F: fmt::Write> FmtPrinter<F> {
                         first_statement_index.index()
                     )),
                 }
+                return self.ok();
             }
             ty::ReVar(region_vid) if identify_regions => {
                 p!(write("{:?}", region_vid));
+                return self.ok();
             }
             ty::ReVar(_) => {}
             ty::ReScope(_) |
             ty::ReErased => {}
-            ty::ReStatic => p!(write("'static")),
-            ty::ReEmpty => p!(write("'<empty>")),
+            ty::ReStatic => {
+                p!(write("'static"));
+                return self.ok();
+            }
+            ty::ReEmpty => {
+                p!(write("'<empty>"));
+                return self.ok();
+            }
 
             // The user should never encounter these in unsubstituted form.
-            ty::ReClosureBound(vid) => p!(write("{:?}", vid)),
+            ty::ReClosureBound(vid) => {
+                p!(write("{:?}", vid));
+                return self.ok();
+            }
         }
+
+        p!(write("'_"));
 
         self.ok()
     }
@@ -978,7 +976,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             }
             ty::Ref(r, ty, mutbl) => {
                 p!(write("&"));
-                if self.print_region_outputs_anything(r) {
+                if self.region_should_not_be_omitted(r) {
                     p!(print(r), write(" "));
                 }
                 p!(print(ty::TypeAndMut { ty, mutbl }))
@@ -1027,7 +1025,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 nest!(|cx| cx.print_def_path(def.did, Some(substs), iter::empty()));
             }
             ty::Dynamic(data, r) => {
-                let print_r = self.print_region_outputs_anything(r);
+                let print_r = self.region_should_not_be_omitted(r);
                 if print_r {
                     p!(write("("));
                 }
