@@ -251,7 +251,6 @@ impl DefKind {
             SyntaxKind::MODULE => PerNs::types(DefKind::Module),
             SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
             SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
-            // These define items, but don't have their own DefKinds yet:
             SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),
             SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Type),
             SyntaxKind::CONST_DEF => PerNs::values(DefKind::Const),
