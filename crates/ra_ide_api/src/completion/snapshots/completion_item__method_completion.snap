@@ -1,5 +1,5 @@
 ---
-created: "2019-01-22T14:45:00.546394900+00:00"
+created: "2019-01-22T15:38:19.541947400+00:00"
 creator: insta@0.4.0
 expression: kind_completions
 source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
@@ -11,7 +11,9 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         kind: Some(
             Method
         ),
-        detail: None,
+        detail: Some(
+            "fn the_method(&self)"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
