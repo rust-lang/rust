@@ -43,7 +43,7 @@ pub use crate::{
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     yellow::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
-    ptr::SyntaxNodePtr,
+    ptr::{SyntaxNodePtr, AstPtr},
 };
 
 use ra_text_edit::AtomTextEdit;
