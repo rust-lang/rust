@@ -502,25 +502,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 _ => false,
             }
         });
-
-        // Don't print args that are the defaults of their respective parameters.
-        let num_supplied_defaults = if self.tcx.sess.verbose() {
-            0
-        } else {
-            params.iter().rev().take_while(|param| {
-                match param.kind {
-                    ty::GenericParamDefKind::Lifetime => false,
-                    ty::GenericParamDefKind::Type { has_default, .. } => {
-                        has_default && substs[param.index as usize] == Kind::from(
-                            self.tcx.type_of(param.def_id).subst(self.tcx, substs)
-                        )
-                    }
-                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
-                }
-            }).count()
-        };
-
-        let params = &params[..params.len() - num_supplied_defaults];
         let mut args = params.iter().map(|param| {
             substs[param.index as usize]
         }).filter(|arg| {
@@ -657,8 +638,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             })?;
             if visible_path_success {
                 return if let (Some(generics), Some(substs)) = (generics, substs) {
-                    let has_own_self = generics.has_self && generics.parent_count == 0;
-                    let params = &generics.params[has_own_self as usize..];
+                    let params = self.generic_params_to_print(generics, substs);
                     self.path_generic_args(|cx| cx.ok(), params, substs, projections)
                 } else {
                     self.ok()

@@ -14,7 +14,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found fn item
    |
    = note: expected type `()`
-              found type `fn() {<i8 as Foo<ReStatic, ReStatic, u32>>::bar::<ReStatic, char>}`
+              found type `fn() {<i8 as Foo<ReStatic, ReStatic>>::bar::<ReStatic, char>}`
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:33:17

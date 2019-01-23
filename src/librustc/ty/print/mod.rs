@@ -1,7 +1,7 @@
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
-use crate::ty::subst::{Subst, SubstsRef};
+use crate::ty::subst::{Kind, Subst, SubstsRef};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -129,7 +129,7 @@ pub trait Printer: Sized {
     ) -> Result<Self::Path, Self::Error>;
 }
 
-impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
+impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
     pub fn default_print_def_path(
         self,
         def_id: DefId,
@@ -197,14 +197,37 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                 };
 
                 if let (Some(generics), Some(substs)) = (generics, substs) {
-                    let has_own_self = generics.has_self && generics.parent_count == 0;
-                    let params = &generics.params[has_own_self as usize..];
+                    let params = self.generic_params_to_print(generics, substs);
                     self.path_generic_args(print_path, params, substs, projections)
                 } else {
                     print_path(self)
                 }
             }
         }
+    }
+
+    pub fn generic_params_to_print(
+        &self,
+        generics: &'a ty::Generics,
+        substs: SubstsRef<'tcx>,
+    ) -> &'a [ty::GenericParamDef] {
+        // Don't print args for `Self` parameters (of traits).
+        let has_own_self = generics.has_self && generics.parent_count == 0;
+        let params = &generics.params[has_own_self as usize..];
+
+        // Don't print args that are the defaults of their respective parameters.
+        let num_supplied_defaults = params.iter().rev().take_while(|param| {
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime => false,
+                ty::GenericParamDefKind::Type { has_default, .. } => {
+                    has_default && substs[param.index as usize] == Kind::from(
+                        self.tcx.type_of(param.def_id).subst(self.tcx, substs)
+                    )
+                }
+                ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
+            }
+        }).count();
+        &params[..params.len() - num_supplied_defaults]
     }
 
     fn default_print_impl_path(
