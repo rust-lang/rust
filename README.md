@@ -29,6 +29,8 @@ $ cargo run --package ra_cli parse < crates/ra_syntax/src/lib.rs
 $ cargo run --package ra_cli symbols < crates/ra_syntax/src/lib.rs
 
 # install the language server
+$ cargo install-lsp
+or
 $ cargo install --path crates/ra_lsp_server
 ```
 
