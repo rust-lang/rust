@@ -6,6 +6,7 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
+use std::mem;
 use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
@@ -20,9 +21,73 @@ use errors::Applicability;
 
 struct AstValidator<'a> {
     session: &'a Session,
+
+    // Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
+    // Nested `impl Trait` _is_ allowed in associated type position,
+    // e.g `impl Iterator<Item=impl Debug>`
+    outer_impl_trait: Option<Span>,
+
+    // Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
+    // or `Foo::Bar<impl Trait>`
+    is_impl_trait_banned: bool,
 }
 
 impl<'a> AstValidator<'a> {
+    fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_impl_trait_banned, true);
+        f(self);
+        self.is_impl_trait_banned = old;
+    }
+
+    fn with_impl_trait(&mut self, outer_impl_trait: Option<Span>, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.outer_impl_trait, outer_impl_trait);
+        f(self);
+        self.outer_impl_trait = old;
+    }
+
+    // Mirrors visit::walk_ty, but tracks relevant state
+    fn walk_ty(&mut self, t: &'a Ty) {
+        match t.node {
+            TyKind::ImplTrait(..) => {
+                self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
+            }
+            TyKind::Path(ref qself, ref path) => {
+                // We allow these:
+                //  - `Option<impl Trait>`
+                //  - `option::Option<impl Trait>`
+                //  - `option::Option<T>::Foo<impl Trait>
+                //
+                // But not these:
+                //  - `<impl Trait>::Foo`
+                //  - `option::Option<impl Trait>::Foo`.
+                //
+                // To implement this, we disallow `impl Trait` from `qself`
+                // (for cases like `<impl Trait>::Foo>`)
+                // but we allow `impl Trait` in `GenericArgs`
+                // iff there are no more PathSegments.
+                if let Some(ref qself) = *qself {
+                    // `impl Trait` in `qself` is always illegal
+                    self.with_banned_impl_trait(|this| this.visit_ty(&qself.ty));
+                }
+
+                // Note that there should be a call to visit_path here,
+                // so if any logic is added to process `Path`s a call to it should be
+                // added both in visit_path and here. This code mirrors visit::walk_path.
+                for (i, segment) in path.segments.iter().enumerate() {
+                    // Allow `impl Trait` iff we're on the final path segment
+                    if i == path.segments.len() - 1 {
+                        self.visit_path_segment(path.span, segment);
+                    } else {
+                        self.with_banned_impl_trait(|this| {
+                            this.visit_path_segment(path.span, segment)
+                        });
+                    }
+                }
+            }
+            _ => visit::walk_ty(self, t),
+        }
+    }
+
     fn err_handler(&self) -> &errors::Handler {
         &self.session.diagnostic()
     }
@@ -267,6 +332,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             TyKind::ImplTrait(_, ref bounds) => {
+                if self.is_impl_trait_banned {
+                    struct_span_err!(self.session, ty.span, E0667,
+                        "`impl Trait` is not allowed in path parameters").emit();
+                }
+
+                if let Some(outer_impl_trait) = self.outer_impl_trait {
+                    struct_span_err!(self.session, ty.span, E0666,
+                                    "nested `impl Trait` is not allowed")
+                        .span_label(outer_impl_trait, "outer `impl Trait`")
+                        .span_label(ty.span, "nested `impl Trait` here")
+                        .emit();
+
+                }
                 if !bounds.iter()
                           .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
@@ -275,7 +353,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             _ => {}
         }
 
-        visit::walk_ty(self, ty)
+        self.walk_ty(ty)
     }
 
     fn visit_label(&mut self, label: &'a Label) {
@@ -414,6 +492,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_foreign_item(self, fi)
     }
 
+    // Mirrors visit::walk_generic_args, but tracks relevant state
+    fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
+        match *generic_args {
+            GenericArgs::AngleBracketed(ref data) => {
+                walk_list!(self, visit_generic_arg, &data.args);
+                // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                // are allowed to contain nested `impl Trait`.
+                self.with_impl_trait(None, |this| {
+                    walk_list!(this, visit_assoc_type_binding, &data.bindings);
+                });
+            }
+            GenericArgs::Parenthesized(ref data) => {
+                walk_list!(self, visit_ty, &data.inputs);
+                if let Some(ref type_) = data.output {
+                    // `-> Foo` syntax is essentially an associated type binding,
+                    // so it is also allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
+                }
+            }
+        }
+    }
+
     fn visit_generics(&mut self, generics: &'a Generics) {
         let mut seen_non_lifetime_param = false;
         let mut seen_default = None;
@@ -490,148 +590,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-// Bans nested `impl Trait`, e.g., `impl Into<impl Debug>`.
-// Nested `impl Trait` _is_ allowed in associated type position,
-// e.g `impl Iterator<Item=impl Debug>`
-struct NestedImplTraitVisitor<'a> {
-    session: &'a Session,
-    outer_impl_trait: Option<Span>,
-}
-
-impl<'a> NestedImplTraitVisitor<'a> {
-    fn with_impl_trait<F>(&mut self, outer_impl_trait: Option<Span>, f: F)
-        where F: FnOnce(&mut NestedImplTraitVisitor<'a>)
-    {
-        let old_outer_impl_trait = self.outer_impl_trait;
-        self.outer_impl_trait = outer_impl_trait;
-        f(self);
-        self.outer_impl_trait = old_outer_impl_trait;
-    }
-}
-
-
-impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
-    fn visit_ty(&mut self, t: &'a Ty) {
-        if let TyKind::ImplTrait(..) = t.node {
-            if let Some(outer_impl_trait) = self.outer_impl_trait {
-                struct_span_err!(self.session, t.span, E0666,
-                                 "nested `impl Trait` is not allowed")
-                    .span_label(outer_impl_trait, "outer `impl Trait`")
-                    .span_label(t.span, "nested `impl Trait` here")
-                    .emit();
-
-            }
-            self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t));
-        } else {
-            visit::walk_ty(self, t);
-        }
-    }
-    fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
-        match *generic_args {
-            GenericArgs::AngleBracketed(ref data) => {
-                for arg in &data.args {
-                    self.visit_generic_arg(arg)
-                }
-                for type_binding in &data.bindings {
-                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
-                    // are allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
-                }
-            }
-            GenericArgs::Parenthesized(ref data) => {
-                for type_ in &data.inputs {
-                    self.visit_ty(type_);
-                }
-                if let Some(ref type_) = data.output {
-                    // `-> Foo` syntax is essentially an associated type binding,
-                    // so it is also allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
-                }
-            }
-        }
-    }
-
-    fn visit_mac(&mut self, _mac: &Spanned<Mac_>) {
-        // covered in AstValidator
-    }
-}
-
-// Bans `impl Trait` in path projections like `<impl Iterator>::Item` or `Foo::Bar<impl Trait>`.
-struct ImplTraitProjectionVisitor<'a> {
-    session: &'a Session,
-    is_banned: bool,
-}
-
-impl<'a> ImplTraitProjectionVisitor<'a> {
-    fn with_ban<F>(&mut self, f: F)
-        where F: FnOnce(&mut ImplTraitProjectionVisitor<'a>)
-    {
-        let old_is_banned = self.is_banned;
-        self.is_banned = true;
-        f(self);
-        self.is_banned = old_is_banned;
-    }
-}
-
-impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
-    fn visit_ty(&mut self, t: &'a Ty) {
-        match t.node {
-            TyKind::ImplTrait(..) => {
-                if self.is_banned {
-                    struct_span_err!(self.session, t.span, E0667,
-                        "`impl Trait` is not allowed in path parameters").emit();
-                }
-            }
-            TyKind::Path(ref qself, ref path) => {
-                // We allow these:
-                //  - `Option<impl Trait>`
-                //  - `option::Option<impl Trait>`
-                //  - `option::Option<T>::Foo<impl Trait>
-                //
-                // But not these:
-                //  - `<impl Trait>::Foo`
-                //  - `option::Option<impl Trait>::Foo`.
-                //
-                // To implement this, we disallow `impl Trait` from `qself`
-                // (for cases like `<impl Trait>::Foo>`)
-                // but we allow `impl Trait` in `GenericArgs`
-                // iff there are no more PathSegments.
-                if let Some(ref qself) = *qself {
-                    // `impl Trait` in `qself` is always illegal
-                    self.with_ban(|this| this.visit_ty(&qself.ty));
-                }
-
-                for (i, segment) in path.segments.iter().enumerate() {
-                    // Allow `impl Trait` iff we're on the final path segment
-                    if i == path.segments.len() - 1 {
-                        visit::walk_path_segment(self, path.span, segment);
-                    } else {
-                        self.with_ban(|this|
-                            visit::walk_path_segment(this, path.span, segment));
-                    }
-                }
-            }
-            _ => visit::walk_ty(self, t),
-        }
-    }
-
-    fn visit_mac(&mut self, _mac: &Spanned<Mac_>) {
-        // covered in AstValidator
-    }
-}
-
 pub fn check_crate(session: &Session, krate: &Crate) {
-    visit::walk_crate(
-        &mut NestedImplTraitVisitor {
-            session,
-            outer_impl_trait: None,
-        }, krate);
-
-    visit::walk_crate(
-        &mut ImplTraitProjectionVisitor {
-            session,
-            is_banned: false,
-        }, krate);
-
-    visit::walk_crate(&mut AstValidator { session }, krate)
+    visit::walk_crate(&mut AstValidator {
+        session,
+        outer_impl_trait: None,
+        is_impl_trait_banned: false,
+    }, krate)
 }
