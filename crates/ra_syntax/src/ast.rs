@@ -334,6 +334,13 @@ impl PathSegment {
         };
         Some(res)
     }
+
+    pub fn has_colon_colon(&self) -> bool {
+        match self.syntax.first_child().map(|s| s.kind()) {
+            Some(COLONCOLON) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Path {

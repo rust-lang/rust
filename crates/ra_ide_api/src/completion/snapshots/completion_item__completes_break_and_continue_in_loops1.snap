@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:45:00.620177400+00:00"
+created: "2019-01-23T05:27:32.197434+00:00"
 creator: insta@0.4.0
 expression: kind_completions
-source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
+source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
     CompletionItem {
@@ -18,7 +18,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "if $0 {}"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     },
     CompletionItem {
@@ -34,7 +34,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "match $0 {}"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     },
     CompletionItem {
@@ -50,7 +50,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "while $0 {}"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     },
     CompletionItem {
@@ -66,7 +66,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "loop {$0}"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     },
     CompletionItem {
@@ -82,7 +82,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "continue;"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     },
     CompletionItem {
@@ -98,7 +98,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "break;"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     },
     CompletionItem {
@@ -114,7 +114,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "return $0;"
         ),
         insert_text_format: Snippet,
-        source_range: [54; 56),
+        source_range: [55; 55),
         text_edit: None
     }
 ]

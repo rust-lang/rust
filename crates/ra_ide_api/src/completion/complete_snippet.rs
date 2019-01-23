@@ -10,6 +10,7 @@ pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     if !(ctx.is_trivial_path && ctx.function_syntax.is_some()) {
         return;
     }
+
     snippet(ctx, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
     snippet(ctx, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
 }
@@ -45,6 +46,18 @@ mod tests {
     #[test]
     fn completes_snippets_in_expressions() {
         check_snippet_completion("snippets_in_expressions", r"fn foo(x: i32) { <|> }");
+    }
+
+    #[test]
+    fn should_not_complete_snippets_in_path() {
+        check_snippet_completion(
+            "should_not_complete_snippets_in_path",
+            r"fn foo(x: i32) { ::foo<|> }",
+        );
+        check_snippet_completion(
+            "should_not_complete_snippets_in_path2",
+            r"fn foo(x: i32) { ::<|> }",
+        );
     }
 
     #[test]

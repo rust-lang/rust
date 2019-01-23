@@ -21,7 +21,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) function_syntax: Option<&'a ast::FnDef>,
     pub(super) use_item_syntax: Option<&'a ast::UseItem>,
     pub(super) is_param: bool,
-    /// A single-indent path, like `foo`.
+    /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial, path, the prefix (qualifier).
     pub(super) path_prefix: Option<hir::Path>,
@@ -66,13 +66,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     // The range of the identifier that is being completed.
-    // This is purely advisory and can be used, for example, to highlight this range in the editor.
-    // Clients are expected to ignore this field.
     pub(crate) fn source_range(&self) -> TextRange {
         match self.leaf.kind() {
             // workaroud when completion is triggered by trigger characters.
-            DOT | COLONCOLON => TextRange::from_to(self.offset, self.offset),
-            _ => self.leaf.range(),
+            IDENT => self.leaf.range(),
+            _ => TextRange::offset_len(self.offset, 0.into()),
         }
     }
 
