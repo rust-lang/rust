@@ -4,8 +4,10 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
-use ra_db::LocalSyntaxPtr;
-use ra_syntax::ast::{self, AstNode, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor};
+use ra_syntax::{
+    SyntaxNodePtr, AstNode,
+    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor}
+};
 
 use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
 use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
@@ -38,10 +40,10 @@ pub struct Body {
 #[derive(Debug, Eq, PartialEq)]
 pub struct BodySyntaxMapping {
     body: Arc<Body>,
-    expr_syntax_mapping: FxHashMap<LocalSyntaxPtr, ExprId>,
-    expr_syntax_mapping_back: ArenaMap<ExprId, LocalSyntaxPtr>,
-    pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
-    pat_syntax_mapping_back: ArenaMap<PatId, LocalSyntaxPtr>,
+    expr_syntax_mapping: FxHashMap<SyntaxNodePtr, ExprId>,
+    expr_syntax_mapping_back: ArenaMap<ExprId, SyntaxNodePtr>,
+    pat_syntax_mapping: FxHashMap<SyntaxNodePtr, PatId>,
+    pat_syntax_mapping_back: ArenaMap<PatId, SyntaxNodePtr>,
 }
 
 impl Body {
@@ -71,31 +73,31 @@ impl Index<PatId> for Body {
 }
 
 impl BodySyntaxMapping {
-    pub fn expr_syntax(&self, expr: ExprId) -> Option<LocalSyntaxPtr> {
+    pub fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
         self.expr_syntax_mapping_back.get(expr).cloned()
     }
 
-    pub fn syntax_expr(&self, ptr: LocalSyntaxPtr) -> Option<ExprId> {
+    pub fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
         self.expr_syntax_mapping.get(&ptr).cloned()
     }
 
     pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_syntax_mapping
-            .get(&LocalSyntaxPtr::new(node.syntax()))
+            .get(&SyntaxNodePtr::new(node.syntax()))
             .cloned()
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Option<LocalSyntaxPtr> {
+    pub fn pat_syntax(&self, pat: PatId) -> Option<SyntaxNodePtr> {
         self.pat_syntax_mapping_back.get(pat).cloned()
     }
 
-    pub fn syntax_pat(&self, ptr: LocalSyntaxPtr) -> Option<PatId> {
+    pub fn syntax_pat(&self, ptr: SyntaxNodePtr) -> Option<PatId> {
         self.pat_syntax_mapping.get(&ptr).cloned()
     }
 
     pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_syntax_mapping
-            .get(&LocalSyntaxPtr::new(node.syntax()))
+            .get(&SyntaxNodePtr::new(node.syntax()))
             .cloned()
     }
 
@@ -440,10 +442,10 @@ pub(crate) fn body_hir(db: &impl HirDatabase, def_id: DefId) -> Arc<Body> {
 struct ExprCollector {
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
-    expr_syntax_mapping: FxHashMap<LocalSyntaxPtr, ExprId>,
-    expr_syntax_mapping_back: ArenaMap<ExprId, LocalSyntaxPtr>,
-    pat_syntax_mapping: FxHashMap<LocalSyntaxPtr, PatId>,
-    pat_syntax_mapping_back: ArenaMap<PatId, LocalSyntaxPtr>,
+    expr_syntax_mapping: FxHashMap<SyntaxNodePtr, ExprId>,
+    expr_syntax_mapping_back: ArenaMap<ExprId, SyntaxNodePtr>,
+    pat_syntax_mapping: FxHashMap<SyntaxNodePtr, PatId>,
+    pat_syntax_mapping_back: ArenaMap<PatId, SyntaxNodePtr>,
 }
 
 impl ExprCollector {
@@ -458,14 +460,14 @@ impl ExprCollector {
         }
     }
 
-    fn alloc_expr(&mut self, expr: Expr, syntax_ptr: LocalSyntaxPtr) -> ExprId {
+    fn alloc_expr(&mut self, expr: Expr, syntax_ptr: SyntaxNodePtr) -> ExprId {
         let id = self.exprs.alloc(expr);
         self.expr_syntax_mapping.insert(syntax_ptr, id);
         self.expr_syntax_mapping_back.insert(id, syntax_ptr);
         id
     }
 
-    fn alloc_pat(&mut self, pat: Pat, syntax_ptr: LocalSyntaxPtr) -> PatId {
+    fn alloc_pat(&mut self, pat: Pat, syntax_ptr: SyntaxNodePtr) -> PatId {
         let id = self.pats.alloc(pat);
         self.pat_syntax_mapping.insert(syntax_ptr, id);
         self.pat_syntax_mapping_back.insert(id, syntax_ptr);
@@ -481,7 +483,7 @@ impl ExprCollector {
     }
 
     fn collect_expr(&mut self, expr: &ast::Expr) -> ExprId {
-        let syntax_ptr = LocalSyntaxPtr::new(expr.syntax());
+        let syntax_ptr = SyntaxNodePtr::new(expr.syntax());
         match expr.kind() {
             ast::ExprKind::IfExpr(e) => {
                 if let Some(pat) = e.condition().and_then(|c| c.pat()) {
@@ -643,9 +645,9 @@ impl ExprCollector {
                                 // field shorthand
                                 let id = self.exprs.alloc(Expr::Path(Path::from_name_ref(nr)));
                                 self.expr_syntax_mapping
-                                    .insert(LocalSyntaxPtr::new(nr.syntax()), id);
+                                    .insert(SyntaxNodePtr::new(nr.syntax()), id);
                                 self.expr_syntax_mapping_back
-                                    .insert(id, LocalSyntaxPtr::new(nr.syntax()));
+                                    .insert(id, SyntaxNodePtr::new(nr.syntax()));
                                 id
                             } else {
                                 self.exprs.alloc(Expr::Missing)
@@ -806,7 +808,7 @@ impl ExprCollector {
         let tail = block.expr().map(|e| self.collect_expr(e));
         self.alloc_expr(
             Expr::Block { statements, tail },
-            LocalSyntaxPtr::new(block.syntax()),
+            SyntaxNodePtr::new(block.syntax()),
         )
     }
 
@@ -883,7 +885,7 @@ impl ExprCollector {
             // TODO: implement
             ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
-        let syntax_ptr = LocalSyntaxPtr::new(pat.syntax());
+        let syntax_ptr = SyntaxNodePtr::new(pat.syntax());
         self.alloc_pat(pattern, syntax_ptr)
     }
 
@@ -919,7 +921,7 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
         let mut params = Vec::new();
 
         if let Some(self_param) = param_list.self_param() {
-            let self_param = LocalSyntaxPtr::new(
+            let self_param = SyntaxNodePtr::new(
                 self_param
                     .self_kw()
                     .expect("self param without self keyword")

@@ -1,6 +1,5 @@
 //! ra_db defines basic database traits. The concrete DB is defined by ra_ide_api.
 mod cancellation;
-mod syntax_ptr;
 mod input;
 mod loc2id;
 pub mod mock;
@@ -12,7 +11,6 @@ use ra_syntax::{TextUnit, TextRange, SourceFile, TreeArc};
 pub use ::salsa as salsa;
 pub use crate::{
     cancellation::Canceled,
-    syntax_ptr::LocalSyntaxPtr,
     input::{
         FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency,
         FileTextQuery, FileSourceRootQuery, SourceRootQuery, LocalRootsQuery, LibraryRootsQuery, CrateGraphQuery,

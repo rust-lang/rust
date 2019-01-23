@@ -35,6 +35,7 @@ mod syntax_kinds;
 pub mod utils;
 mod validation;
 mod yellow;
+mod ptr;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use crate::{
@@ -42,6 +43,7 @@ pub use crate::{
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     yellow::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
+    ptr::SyntaxNodePtr,
 };
 
 use ra_text_edit::AtomTextEdit;

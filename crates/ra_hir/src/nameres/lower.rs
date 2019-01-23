@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    SyntaxKind, AstNode, SourceFile, TreeArc,
+    SyntaxKind, AstNode, SourceFile, TreeArc, SyntaxNodePtr,
     ast::{self, ModuleItemOwner},
 };
-use ra_db::{SourceRootId, LocalSyntaxPtr};
+use ra_db::{SourceRootId};
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 
 use crate::{
@@ -72,13 +72,13 @@ pub struct LoweredModule {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImportSourceMap {
-    map: ArenaMap<ImportId, LocalSyntaxPtr>,
+    map: ArenaMap<ImportId, SyntaxNodePtr>,
 }
 
 impl ImportSourceMap {
     fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
         self.map
-            .insert(import, LocalSyntaxPtr::new(segment.syntax()))
+            .insert(import, SyntaxNodePtr::new(segment.syntax()))
     }
 
     pub fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
@@ -87,7 +87,7 @@ impl ImportSourceMap {
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
-        ast::PathSegment::cast(&self.map[import].resolve(file))
+        ast::PathSegment::cast(self.map[import].to_node(file))
             .unwrap()
             .to_owned()
     }

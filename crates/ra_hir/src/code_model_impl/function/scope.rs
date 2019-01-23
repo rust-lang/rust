@@ -3,12 +3,11 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
-    AstNode, SyntaxNode, TextUnit, TextRange,
+    AstNode, SyntaxNode, TextUnit, TextRange, SyntaxNodePtr,
     algo::generate,
     ast,
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
-use ra_db::LocalSyntaxPtr;
 
 use crate::{Name, AsName, expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping}};
 
@@ -126,7 +125,7 @@ pub struct ScopesWithSyntaxMapping {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeEntryWithSyntax {
     name: Name,
-    ptr: LocalSyntaxPtr,
+    ptr: SyntaxNodePtr,
 }
 
 impl ScopeEntryWithSyntax {
@@ -134,7 +133,7 @@ impl ScopeEntryWithSyntax {
         &self.name
     }
 
-    pub fn ptr(&self) -> LocalSyntaxPtr {
+    pub fn ptr(&self) -> SyntaxNodePtr {
         self.ptr
     }
 }
@@ -169,7 +168,7 @@ impl ScopesWithSyntaxMapping {
 
     // XXX: during completion, cursor might be outside of any particular
     // expression. Try to figure out the correct scope...
-    fn adjust(&self, ptr: LocalSyntaxPtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
+    fn adjust(&self, ptr: SyntaxNodePtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
         let r = ptr.range();
         let child_scopes = self
             .scopes
@@ -212,7 +211,7 @@ impl ScopesWithSyntaxMapping {
 
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
-        let name_ptr = LocalSyntaxPtr::new(pat.syntax());
+        let name_ptr = SyntaxNodePtr::new(pat.syntax());
         fn_def
             .syntax()
             .descendants()
@@ -230,7 +229,7 @@ impl ScopesWithSyntaxMapping {
 
     fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
         node.ancestors()
-            .map(LocalSyntaxPtr::new)
+            .map(SyntaxNodePtr::new)
             .filter_map(|ptr| self.syntax_mapping.syntax_expr(ptr))
             .find_map(|it| self.scopes.scope_for(it))
     }

@@ -9,9 +9,8 @@
 /// those yet, so all macros are string based at the moment!
 use std::sync::Arc;
 
-use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
-    TextRange, TextUnit, SourceFile, AstNode, SyntaxNode, TreeArc,
+    TextRange, TextUnit, SourceFile, AstNode, SyntaxNode, TreeArc, SyntaxNodePtr,
     ast::{self, NameOwner},
 };
 
@@ -80,7 +79,7 @@ impl MacroDef {
         let file = SourceFile::parse(&text);
         let match_expr = file.syntax().descendants().find_map(ast::MatchExpr::cast)?;
         let match_arg = match_expr.expr()?;
-        let ptr = LocalSyntaxPtr::new(match_arg.syntax());
+        let ptr = SyntaxNodePtr::new(match_arg.syntax());
         let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
         let ranges_map = vec![(src_range, match_arg.syntax().range())];
         let res = MacroExpansion {
@@ -94,7 +93,7 @@ impl MacroDef {
         let text = format!(r"fn dummy() {{ {}; }}", input.text);
         let file = SourceFile::parse(&text);
         let array_expr = file.syntax().descendants().find_map(ast::ArrayExpr::cast)?;
-        let ptr = LocalSyntaxPtr::new(array_expr.syntax());
+        let ptr = SyntaxNodePtr::new(array_expr.syntax());
         let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
         let ranges_map = vec![(src_range, array_expr.syntax().range())];
         let res = MacroExpansion {
@@ -119,7 +118,7 @@ impl MacroDef {
         let file = SourceFile::parse(&text);
         let trait_def = file.syntax().descendants().find_map(ast::TraitDef::cast)?;
         let name = trait_def.name()?;
-        let ptr = LocalSyntaxPtr::new(trait_def.syntax());
+        let ptr = SyntaxNodePtr::new(trait_def.syntax());
         let ranges_map = vec![(src_range, name.syntax().range())];
         let res = MacroExpansion {
             text,
@@ -146,7 +145,7 @@ pub struct MacroExpansion {
     /// Implementation detail: internally, a macro is expanded to the whole file,
     /// even if it is an expression. This `ptr` selects the actual expansion from
     /// the expanded file.
-    ptr: LocalSyntaxPtr,
+    ptr: SyntaxNodePtr,
 }
 
 impl MacroExpansion {
@@ -157,7 +156,7 @@ impl MacroExpansion {
     }
 
     pub fn syntax(&self) -> TreeArc<SyntaxNode> {
-        self.ptr.resolve(&self.file())
+        self.ptr.to_node(&self.file()).to_owned()
     }
     /// Maps range in the source code to the range in the expanded code.
     pub fn map_range_forward(&self, src_range: TextRange) -> Option<TextRange> {

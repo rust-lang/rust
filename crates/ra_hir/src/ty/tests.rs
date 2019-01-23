@@ -562,7 +562,7 @@ fn infer(content: &str) -> String {
         // sort ranges for consistency
         types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
         for (syntax_ptr, ty) in &types {
-            let node = syntax_ptr.resolve(&source_file);
+            let node = syntax_ptr.to_node(&source_file);
             write!(
                 acc,
                 "{} '{}': {}\n",

@@ -27,13 +27,13 @@ use std::{
 
 use fst::{self, Streamer};
 use ra_syntax::{
-    SyntaxNode, SourceFile, SmolStr, TreeArc, AstNode,
+    SyntaxNode, SyntaxNodePtr, SourceFile, SmolStr, TreeArc, AstNode,
     algo::{visit::{visitor, Visitor}, find_covering_node},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
 };
 use ra_db::{
-    SourceRootId, FilesDatabase, LocalSyntaxPtr,
+    SourceRootId, FilesDatabase,
     salsa::{self, ParallelDatabase},
 };
 use rayon::prelude::*;
@@ -62,7 +62,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
 
     for (name, text_range) in hir::source_binder::macro_symbols(db, file_id) {
         let node = find_covering_node(source_file.syntax(), text_range);
-        let ptr = LocalSyntaxPtr::new(node);
+        let ptr = SyntaxNodePtr::new(node);
         symbols.push(FileSymbol { file_id, name, ptr })
     }
 
@@ -196,13 +196,13 @@ fn is_type(kind: SyntaxKind) -> bool {
 pub(crate) struct FileSymbol {
     pub(crate) file_id: FileId,
     pub(crate) name: SmolStr,
-    pub(crate) ptr: LocalSyntaxPtr,
+    pub(crate) ptr: SyntaxNodePtr,
 }
 
-fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, LocalSyntaxPtr)> {
-    fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, LocalSyntaxPtr)> {
+fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr)> {
+    fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, SyntaxNodePtr)> {
         let name = node.name()?.text().clone();
-        let ptr = LocalSyntaxPtr::new(node.syntax());
+        let ptr = SyntaxNodePtr::new(node.syntax());
         Some((name, ptr))
     }
     visitor()
