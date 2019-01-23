@@ -43,7 +43,7 @@ impl Instant {
     }
 
     pub const fn zero() -> Instant {
-        Instant { t: 0 }
+        Instant { t: Duration::from_secs(0) }
     }
 
     pub fn sub_instant(&self, other: &Instant) -> Duration {
