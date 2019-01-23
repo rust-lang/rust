@@ -1,4 +1,4 @@
-use hir::PerNs;
+use hir::{Docs, Documentation, PerNs};
 
 use crate::completion::completion_context::CompletionContext;
 use ra_syntax::{
@@ -19,7 +19,7 @@ pub struct CompletionItem {
     label: String,
     kind: Option<CompletionItemKind>,
     detail: Option<String>,
-    documentation: Option<String>,
+    documentation: Option<Documentation>,
     lookup: Option<String>,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -98,7 +98,7 @@ impl CompletionItem {
     }
     /// A doc-comment
     pub fn documentation(&self) -> Option<&str> {
-        self.documentation.as_ref().map(|it| it.as_str())
+        self.documentation.as_ref().map(|it| it.contents())
     }
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
@@ -137,7 +137,7 @@ pub(crate) struct Builder {
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
     detail: Option<String>,
-    documentation: Option<String>,
+    documentation: Option<Documentation>,
     lookup: Option<String>,
     kind: Option<CompletionItemKind>,
     text_edit: Option<TextEdit>,
@@ -197,10 +197,10 @@ impl Builder {
         self
     }
     #[allow(unused)]
-    pub(crate) fn documentation(self, docs: impl Into<String>) -> Builder {
+    pub(crate) fn documentation(self, docs: Documentation) -> Builder {
         self.set_documentation(Some(docs))
     }
-    pub(crate) fn set_documentation(mut self, docs: Option<impl Into<String>>) -> Builder {
+    pub(crate) fn set_documentation(mut self, docs: Option<Documentation>) -> Builder {
         self.documentation = docs.map(Into::into);
         self
     }
@@ -265,6 +265,7 @@ impl Builder {
             }
             self.insert_text_format = InsertTextFormat::Snippet;
         }
+
         if let Some(docs) = function.docs(ctx.db) {
             self.documentation = Some(docs);
         }

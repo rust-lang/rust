@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use ra_db::{CrateId, FileId};
-use ra_syntax::{ast::{self, AstNode, DocCommentsOwner}, TreeArc, SyntaxNode};
+use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
     Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
@@ -14,6 +14,7 @@ use crate::{
     adt::VariantData,
     generics::GenericParams,
     code_model_impl::def_id_to_ast,
+    docs::{Documentation, Docs, docs_from_ast}
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -208,6 +209,12 @@ impl Struct {
     }
 }
 
+impl Docs for Struct {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Enum {
     pub(crate) def_id: DefId,
@@ -236,6 +243,12 @@ impl Enum {
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
         db.generic_params(self.def_id)
+    }
+}
+
+impl Docs for Enum {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -278,6 +291,12 @@ impl EnumVariant {
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
         def_id_to_ast(db, self.def_id)
+    }
+}
+
+impl Docs for EnumVariant {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -352,19 +371,11 @@ impl Function {
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
         db.generic_params(self.def_id)
     }
+}
 
-    pub fn docs(&self, db: &impl HirDatabase) -> Option<String> {
-        let def_loc = self.def_id.loc(db);
-        let syntax = db.file_item(def_loc.source_item_id);
-        let fn_def = ast::FnDef::cast(&syntax).expect("fn def should point to FnDef node");
-
-        // doc_comment_text unconditionally returns a String
-        let comments = fn_def.doc_comment_text();
-        if comments.is_empty() {
-            None
-        } else {
-            Some(comments)
-        }
+impl Docs for Function {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
     }
 }
 
