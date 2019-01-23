@@ -13,20 +13,34 @@ LL | #![deny(unused_doc_comments)]
 error: doc comment not used by rustdoc
   --> $DIR/useless_comment.rs:7:5
    |
-LL |     /// b //~ doc comment not used by rustdoc
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     /// multi-line //~ doc comment not used by rustdoc
+LL | |     /// doc comment
+LL | |     /// that is unused
+   | |______________________^
 
 error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:9:9
+  --> $DIR/useless_comment.rs:11:9
    |
 LL |         /// c //~ ERROR doc comment not used by rustdoc
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:14:5
+  --> $DIR/useless_comment.rs:16:5
    |
 LL |     /// foo //~ ERROR doc comment not used by rustdoc
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: doc comment not used by rustdoc
+  --> $DIR/useless_comment.rs:19:5
+   |
+LL |     #[doc = "foo"] //~ ERROR doc comment not used by rustdoc
+   |     ^^^^^^^^^^^^^^
+
+error: doc comment not used by rustdoc
+  --> $DIR/useless_comment.rs:20:5
+   |
+LL |     #[doc = "bar"] //~ ERROR doc comment not used by rustdoc
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 
