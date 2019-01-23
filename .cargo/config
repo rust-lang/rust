@@ -1,8 +1,10 @@
 [alias]
 # Automatically generates the ast and syntax kinds files
 gen-syntax   = "run --package tools --bin tools -- gen-syntax"
-# Extracts the tests from 
+# Extracts the tests from
 gen-tests    = "run --package tools --bin tools -- gen-tests"
+# Installs ra_lsp_server
+install-lsp = "install --path crates/ra_lsp_server --force"
 # Installs the visual studio code extension
 install-code = "run --package tools --bin tools -- install-code"
 # Formats the full repository or installs the git hook to do it automatically.
