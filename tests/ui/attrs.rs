@@ -1,5 +1,5 @@
 #![warn(clippy::inline_always, clippy::deprecated_semver)]
-
+#![allow(clippy::assertions_on_constants)]
 #[inline(always)]
 fn test_attr_lint() {
     assert!(true)

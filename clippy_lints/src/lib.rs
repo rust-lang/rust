@@ -78,6 +78,7 @@ mod utils;
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
 pub mod arithmetic;
+pub mod assertions_on_constants;
 pub mod assign_ops;
 pub mod attrs;
 pub mod bit_mask;
@@ -477,6 +478,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box redundant_clone::RedundantClone);
     reg.register_late_lint_pass(box slow_vector_initialization::Pass);
     reg.register_late_lint_pass(box types::RefToMut);
+    reg.register_late_lint_pass(box assertions_on_constants::AssertionsOnConstants);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -554,6 +556,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::all", Some("clippy"), vec![
         approx_const::APPROX_CONSTANT,
+        assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_CFG_ATTR,
@@ -776,6 +779,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     ]);
 
     reg.register_lint_group("clippy::style", Some("clippy_style"), vec![
+        assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
         assign_ops::ASSIGN_OP_PATTERN,
         attrs::UNKNOWN_CLIPPY_LINTS,
         bit_mask::VERBOSE_BIT_MASK,

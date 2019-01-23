@@ -1,3 +1,5 @@
+#![allow(clippy::assertions_on_constants)]
+
 use std::fs::{self, DirEntry};
 use std::path::Path;
 
