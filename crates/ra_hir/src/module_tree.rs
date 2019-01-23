@@ -131,6 +131,17 @@ impl ModuleTree {
         let (res, _) = self.mods.iter().find(|(_, m)| m.source == source)?;
         Some(res)
     }
+
+    fn alloc_mod(&mut self, data: ModuleData) -> ModuleId {
+        self.mods.alloc(data)
+    }
+
+    fn alloc_link(&mut self, data: LinkData) -> LinkId {
+        let owner = data.owner;
+        let id = self.links.alloc(data);
+        self.mods[owner].children.push(id);
+        id
+    }
 }
 
 impl ModuleId {
@@ -198,18 +209,6 @@ impl LinkId {
     }
 }
 
-impl ModuleTree {
-    fn push_mod(&mut self, data: ModuleData) -> ModuleId {
-        self.mods.alloc(data)
-    }
-    fn push_link(&mut self, data: LinkData) -> LinkId {
-        let owner = data.owner;
-        let id = self.links.alloc(data);
-        self.mods[owner].children.push(id);
-        id
-    }
-}
-
 fn modules(root: &impl ast::ModuleItemOwner) -> impl Iterator<Item = (Name, &ast::Module)> {
     root.items()
         .filter_map(|item| match item.kind() {
@@ -266,13 +265,13 @@ fn build_subtree(
     source: SourceItemId,
 ) -> ModuleId {
     visited.insert(source);
-    let id = tree.push_mod(ModuleData {
+    let id = tree.alloc_mod(ModuleData {
         source,
         parent,
         children: Vec::new(),
     });
     for sub in db.submodules(source).iter() {
-        let link = tree.push_link(LinkData {
+        let link = tree.alloc_link(LinkData {
             source: sub.source,
             name: sub.name.clone(),
             owner: id,
