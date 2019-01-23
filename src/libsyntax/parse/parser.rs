@@ -100,6 +100,7 @@ pub enum PathStyle {
 enum SemiColonMode {
     Break,
     Ignore,
+    Comma,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1988,6 +1989,44 @@ impl<'a> Parser<'a> {
 
                 result.unwrap()
             }
+            token::Dot if self.look_ahead(1, |t| match t {
+                token::Literal(parse::token::Lit::Integer(_) , _) => true,
+                _ => false,
+            }) => { // recover from `let x = .4;`
+                let lo = self.span;
+                self.bump();
+                if let token::Literal(
+                    parse::token::Lit::Integer(val),
+                    suffix,
+                ) = self.token {
+                    let suffix = suffix.and_then(|s| {
+                        let s = s.as_str().get();
+                        if ["f32", "f64"].contains(&s) {
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    }).unwrap_or("");
+                    self.bump();
+                    let sp = lo.to(self.prev_span);
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "float literals must have an integer part");
+                    err.span_suggestion_with_applicability(
+                        sp,
+                        "must have an integer part",
+                        format!("0.{}{}", val, suffix),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    return Ok(match suffix {
+                        "f32" => ast::LitKind::Float(val, ast::FloatTy::F32),
+                        "f64" => ast::LitKind::Float(val, ast::FloatTy::F64),
+                        _ => ast::LitKind::FloatUnsuffixed(val),
+                    });
+                } else {
+                    unreachable!();
+                };
+            }
             _ => { return self.unexpected_last(&self.token); }
         };
 
@@ -2656,8 +2695,24 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            let mut recovery_field = None;
+            if let token::Ident(ident, _) = self.token {
+                if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
+                    // Use in case of error after field-looking code: `S { foo: () with a }`
+                    let mut ident = ident.clone();
+                    ident.span = self.span;
+                    recovery_field = Some(ast::Field {
+                        ident,
+                        span: self.span,
+                        expr: self.mk_expr(self.span, ExprKind::Err, ThinVec::new()),
+                        is_shorthand: false,
+                        attrs: ThinVec::new(),
+                    });
+                }
+            }
+            let mut parsed_field = None;
             match self.parse_field() {
-                Ok(f) => fields.push(f),
+                Ok(f) => parsed_field = Some(f),
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
@@ -2666,19 +2721,28 @@ impl<'a> Parser<'a> {
                     // what comes next as additional fields, rather than
                     // bailing out until next `}`.
                     if self.token != token::Comma {
-                        self.recover_stmt();
-                        break;
+                        self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
+                        if self.token != token::Comma {
+                            break;
+                        }
                     }
                 }
             }
 
             match self.expect_one_of(&[token::Comma],
                                      &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => {}
+                Ok(()) => if let Some(f) = parsed_field.or(recovery_field) {
+                    // only include the field if there's no parse error for the field name
+                    fields.push(f);
+                }
                 Err(mut e) => {
+                    if let Some(f) = recovery_field {
+                        fields.push(f);
+                    }
+                    e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
-                    self.recover_stmt();
-                    break;
+                    self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
+                    self.eat(&token::Comma);
                 }
             }
         }
@@ -4542,13 +4606,13 @@ impl<'a> Parser<'a> {
                 token::CloseDelim(token::DelimToken::Brace) => {
                     if brace_depth == 0 {
                         debug!("recover_stmt_ return - close delim {:?}", self.token);
-                        return;
+                        break;
                     }
                     brace_depth -= 1;
                     self.bump();
                     if in_block && bracket_depth == 0 && brace_depth == 0 {
                         debug!("recover_stmt_ return - block end {:?}", self.token);
-                        return;
+                        break;
                     }
                 }
                 token::CloseDelim(token::DelimToken::Bracket) => {
@@ -4560,7 +4624,7 @@ impl<'a> Parser<'a> {
                 }
                 token::Eof => {
                     debug!("recover_stmt_ return - Eof");
-                    return;
+                    break;
                 }
                 token::Semi => {
                     self.bump();
@@ -4568,7 +4632,17 @@ impl<'a> Parser<'a> {
                        brace_depth == 0 &&
                        bracket_depth == 0 {
                         debug!("recover_stmt_ return - Semi");
-                        return;
+                        break;
+                    }
+                }
+                token::Comma => {
+                    if break_on_semi == SemiColonMode::Comma &&
+                       brace_depth == 0 &&
+                       bracket_depth == 0 {
+                        debug!("recover_stmt_ return - Semi");
+                        break;
+                    } else {
+                        self.bump();
                     }
                 }
                 _ => {
