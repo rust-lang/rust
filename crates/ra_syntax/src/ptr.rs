@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange,
     algo::generate,
@@ -34,6 +36,38 @@ impl SyntaxNodePtr {
 
     pub fn kind(self) -> SyntaxKind {
         self.kind
+    }
+}
+
+/// Like `SyntaxNodePtr`, but remembers the type of node
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct AstPtr<N: AstNode> {
+    ptr: SyntaxNodePtr,
+    _ty: PhantomData<N>,
+}
+
+impl<N: AstNode> Copy for AstPtr<N> {}
+impl<N: AstNode> Clone for AstPtr<N> {
+    fn clone(&self) -> AstPtr<N> {
+        *self
+    }
+}
+
+impl<N: AstNode> AstPtr<N> {
+    pub fn new(node: &N) -> AstPtr<N> {
+        AstPtr {
+            ptr: SyntaxNodePtr::new(node.syntax()),
+            _ty: PhantomData,
+        }
+    }
+
+    pub fn to_node(self, source_file: &SourceFile) -> &N {
+        let syntax_node = self.ptr.to_node(source_file);
+        N::cast(syntax_node).unwrap()
+    }
+
+    pub fn syntax_node_ptr(self) -> SyntaxNodePtr {
+        self.ptr
     }
 }
 
