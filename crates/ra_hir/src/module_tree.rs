@@ -62,14 +62,26 @@ impl Submodule {
             file_items: &SourceFileItems,
             root: &impl ast::ModuleItemOwner,
         ) -> Vec<Submodule> {
-            modules(root)
-                .map(|(name, m)| Submodule {
-                    name,
-                    is_declaration: m.has_semi(),
-                    source: SourceItemId {
-                        file_id,
-                        item_id: Some(file_items.id_of(file_id, m.syntax())),
-                    },
+            root.items()
+                .filter_map(|item| match item.kind() {
+                    ast::ModuleItemKind::Module(m) => Some(m),
+                    _ => None,
+                })
+                .filter_map(|module| {
+                    let name = module.name()?.as_name();
+                    if !module.has_semi() && module.item_list().is_none() {
+                        tested_by!(name_res_works_for_broken_modules);
+                        return None;
+                    }
+                    let sub = Submodule {
+                        name,
+                        is_declaration: module.has_semi(),
+                        source: SourceItemId {
+                            file_id,
+                            item_id: Some(file_items.id_of(file_id, module.syntax())),
+                        },
+                    };
+                    Some(sub)
                 })
                 .collect()
         }
@@ -207,22 +219,6 @@ impl LinkId {
         let syntax_node = db.file_item(tree.links[self].source);
         ast::Module::cast(&syntax_node).unwrap().to_owned()
     }
-}
-
-fn modules(root: &impl ast::ModuleItemOwner) -> impl Iterator<Item = (Name, &ast::Module)> {
-    root.items()
-        .filter_map(|item| match item.kind() {
-            ast::ModuleItemKind::Module(m) => Some(m),
-            _ => None,
-        })
-        .filter_map(|module| {
-            let name = module.name()?.as_name();
-            if !module.has_semi() && module.item_list().is_none() {
-                tested_by!(name_res_works_for_broken_modules);
-                return None;
-            }
-            Some((name, module))
-        })
 }
 
 fn create_module_tree<'a>(db: &impl HirDatabase, source_root: SourceRootId) -> ModuleTree {
