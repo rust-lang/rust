@@ -7,11 +7,9 @@
 //! primitives](#primitives), [standard macros](#macros), [I/O] and
 //! [multithreading], among [many other things][other].
 //!
-//! `std` is available to all Rust crates by default, just as if each one
-//! contained an `extern crate std;` import at the [crate root]. Therefore the
+//! `std` is available to all Rust crates by default. Therefore the
 //! standard library can be accessed in [`use`] statements through the path
-//! `std`, as in [`use std::env`], or in expressions through the absolute path
-//! `::std`, as in [`::std::env::args`].
+//! `std`, as in [`use std::env`].
 //!
 //! # How to read this documentation
 //!
@@ -157,7 +155,6 @@
 //! [TCP]: net/struct.TcpStream.html
 //! [The Rust Prelude]: prelude/index.html
 //! [UDP]: net/struct.UdpSocket.html
-//! [`::std::env::args`]: env/fn.args.html
 //! [`Arc`]: sync/struct.Arc.html
 //! [owned slice]: boxed/index.html
 //! [`Cell`]: cell/struct.Cell.html
@@ -191,7 +188,6 @@
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/ch07-02-modules-and-use-to-control-scope-and-privacy.html#the-use-keyword-to-bring-paths-into-a-scope
-//! [crate root]: ../book/ch07-01-packages-and-crates-for-making-libraries-and-executables.html
 //! [crates.io]: https://crates.io
 //! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
