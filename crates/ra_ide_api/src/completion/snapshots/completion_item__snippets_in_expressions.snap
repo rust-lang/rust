@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:45:00.944312600+00:00"
+created: "2019-01-23T05:27:32.430450+00:00"
 creator: insta@0.4.0
 expression: kind_completions
-source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
+source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
     CompletionItem {
@@ -18,7 +18,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "eprintln!(\"$0 = {:?}\", $0);"
         ),
         insert_text_format: Snippet,
-        source_range: [16; 18),
+        source_range: [17; 17),
         text_edit: None
     },
     CompletionItem {
@@ -34,7 +34,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "eprintln!(\"$0 = {:#?}\", $0);"
         ),
         insert_text_format: Snippet,
-        source_range: [16; 18),
+        source_range: [17; 17),
         text_edit: None
     }
 ]

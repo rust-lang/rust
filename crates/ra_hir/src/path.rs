@@ -38,6 +38,8 @@ pub enum PathKind {
     Self_,
     Super,
     Crate,
+    // Absolute path
+    Abs,
 }
 
 impl Path {
@@ -57,6 +59,11 @@ impl Path {
         let mut segments = Vec::new();
         loop {
             let segment = path.segment()?;
+
+            if segment.has_colon_colon() {
+                kind = PathKind::Abs;
+            }
+
             match segment.kind()? {
                 ast::PathSegmentKind::Name(name) => {
                     let args = segment

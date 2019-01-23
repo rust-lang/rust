@@ -143,6 +143,10 @@ impl Module {
                         return PerNs::none();
                     }
                 }
+                PathKind::Abs => {
+                    // TODO: absolute use is not supported
+                    return PerNs::none();
+                }
             }
             .def_id,
         );

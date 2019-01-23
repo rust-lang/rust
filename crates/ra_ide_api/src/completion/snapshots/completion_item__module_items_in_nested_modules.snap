@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T15:38:19.896002200+00:00"
+created: "2019-01-23T07:42:59.657837+00:00"
 creator: insta@0.4.0
 expression: kind_completions
-source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
+source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
     CompletionItem {
@@ -20,7 +20,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
             "quux()$0"
         ),
         insert_text_format: Snippet,
-        source_range: [100; 102),
+        source_range: [101; 101),
         text_edit: None
     },
     CompletionItem {
@@ -34,7 +34,7 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [100; 102),
+        source_range: [101; 101),
         text_edit: None
     }
 ]

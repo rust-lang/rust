@@ -15,7 +15,8 @@
 //! so that the results of name resolution can be preserved unless the module
 //! structure itself is modified.
 pub(crate) mod lower;
-use lower::*;
+
+use crate::nameres::lower::*;
 
 use std::sync::Arc;
 
@@ -59,7 +60,7 @@ impl ModuleScope {
 pub struct Resolution {
     /// None for unresolved
     pub def_id: PerNs<DefId>,
-    /// ident by whitch this is imported into local scope.
+    /// ident by which this is imported into local scope.
     pub import: Option<ImportId>,
 }
 
@@ -317,6 +318,10 @@ where
                 }
             }
             PathKind::Crate => module_id.crate_root(&self.module_tree),
+            PathKind::Abs => {
+                // TODO: absolute use is not supported for now
+                return false;
+            }
         };
 
         for (i, segment) in import.path.segments.iter().enumerate() {
