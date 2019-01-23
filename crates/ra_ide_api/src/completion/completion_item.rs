@@ -257,7 +257,8 @@ impl Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
-            if function.signature(ctx.db).params().is_empty() {
+            let sig = function.signature(ctx.db);
+            if sig.params().is_empty() || sig.has_self_param() && sig.params().len() == 1 {
                 self.insert_text = Some(format!("{}()$0", self.label));
             } else {
                 self.insert_text = Some(format!("{}($0)", self.label));
@@ -374,6 +375,18 @@ mod tests {
             fn main() { with_<|> }
             ",
         );
+        check_reference_completion(
+            "inserts_parens_for_function_calls3",
+            r"
+            struct S {}
+            impl S {
+                fn foo(&self) {}
+            }
+            fn bar(s: &S) {
+                s.f<|>
+            }
+            ",
+        )
     }
 
     #[test]
