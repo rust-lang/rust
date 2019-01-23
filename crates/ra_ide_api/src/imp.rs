@@ -153,7 +153,7 @@ impl db::RootDatabase {
                 source_binder::function_from_child_node(db, position.file_id, name_ref.syntax())?;
             let scope = descr.scopes(db);
             let resolved = scope.resolve_local_name(name_ref)?;
-            let resolved = resolved.ptr().resolve(source_file);
+            let resolved = resolved.ptr().to_node(source_file);
             let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
             Some((binding, descr))
         }

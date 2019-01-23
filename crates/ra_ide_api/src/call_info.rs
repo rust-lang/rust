@@ -23,8 +23,8 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         .into_iter()
         .find(|it| it.ptr.kind() == FN_DEF)?;
     let fn_file = db.source_file(symbol.file_id);
-    let fn_def = symbol.ptr.resolve(&fn_file);
-    let fn_def = ast::FnDef::cast(&fn_def).unwrap();
+    let fn_def = symbol.ptr.to_node(&fn_file);
+    let fn_def = ast::FnDef::cast(fn_def).unwrap();
     let mut call_info = CallInfo::new(fn_def)?;
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters.len();
