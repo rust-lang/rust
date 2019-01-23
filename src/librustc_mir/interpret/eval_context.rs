@@ -282,12 +282,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
-    pub fn monomorphize_in_frame<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    pub(super) fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
         &self,
         t: T,
     ) -> EvalResult<'tcx, T> {
         match self.stack.last() {
-            Some(frame) => Ok(self.monomorphize(t, frame.instance.substs)),
+            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)),
             None => if t.needs_subst() {
                 err!(TooGeneric).into()
             } else {
@@ -296,7 +296,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
-    pub fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    fn monomorphize_with_substs<T: TypeFoldable<'tcx> + Subst<'tcx>>(
         &self,
         t: T,
         substs: &'tcx Substs<'tcx>
@@ -315,7 +315,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         let cell = &frame.local_layouts[local];
         if cell.get().is_none() {
             let local_ty = frame.mir.local_decls[local].ty;
-            let local_ty = self.monomorphize(local_ty, frame.instance.substs);
+            let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
             let layout = self.layout_of(local_ty)?;
             cell.set(Some(layout));
         }
