@@ -190,16 +190,19 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
 }
 
 fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
-    match (c, ptr.current()) {
+    let is_raw = match (c, ptr.current()) {
         ('r', Some('#')) => {
             ptr.bump();
+            true
         }
         ('_', Some(c)) if !is_ident_continue(c) => return UNDERSCORE,
-        _ => {}
-    }
+        _ => false,
+    };
     ptr.bump_while(is_ident_continue);
-    if let Some(kind) = SyntaxKind::from_keyword(ptr.current_token_text()) {
-        return kind;
+    if !is_raw {
+        if let Some(kind) = SyntaxKind::from_keyword(ptr.current_token_text()) {
+            return kind;
+        }
     }
     IDENT
 }
