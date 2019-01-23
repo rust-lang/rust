@@ -17,4 +17,4 @@ ra_text_edit = { path = "../ra_text_edit" }
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
 proptest = "0.8.7"
-insta = "0.4.0"
+insta = "0.5.1"
