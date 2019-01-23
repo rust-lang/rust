@@ -802,27 +802,50 @@ impl LintPass for UnusedDocComment {
 }
 
 impl UnusedDocComment {
-    fn warn_if_doc<'a, 'tcx,
-                   I: Iterator<Item=&'a ast::Attribute>,
-                   C: LintContext<'tcx>>(&self, mut attrs: I, cx: &C) {
-        if let Some(attr) = attrs.find(|a| a.is_value_str() && a.check_name("doc")) {
-            cx.struct_span_lint(UNUSED_DOC_COMMENTS, attr.span, "doc comment not used by rustdoc")
-              .emit();
+    fn warn_if_doc(&self, cx: &EarlyContext, attrs: &[ast::Attribute]) {
+        let mut attrs = attrs.into_iter().peekable();
+
+        // Accumulate a single span for sugared doc comments.
+        let mut sugared_span: Option<Span> = None;
+
+        while let Some(attr) = attrs.next() {
+            if attr.is_sugared_doc {
+                sugared_span = Some(
+                    sugared_span.map_or_else(
+                        || attr.span,
+                        |span| span.with_hi(attr.span.hi()),
+                    ),
+                );
+            }
+
+            if attrs.peek().map(|next_attr| next_attr.is_sugared_doc).unwrap_or_default() {
+                continue;
+            }
+
+            let span = sugared_span.take().unwrap_or_else(|| attr.span);
+
+            if attr.name() == "doc" {
+                cx.struct_span_lint(
+                    UNUSED_DOC_COMMENTS,
+                    span,
+                    "doc comment not used by rustdoc",
+                ).emit();
+            }
         }
     }
 }
 
 impl EarlyLintPass for UnusedDocComment {
     fn check_local(&mut self, cx: &EarlyContext<'_>, decl: &ast::Local) {
-        self.warn_if_doc(decl.attrs.iter(), cx);
+        self.warn_if_doc(cx, &decl.attrs);
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        self.warn_if_doc(arm.attrs.iter(), cx);
+        self.warn_if_doc(cx, &arm.attrs);
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        self.warn_if_doc(expr.attrs.iter(), cx);
+        self.warn_if_doc(cx, &expr.attrs);
     }
 }
 
