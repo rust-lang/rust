@@ -131,7 +131,8 @@ impl ModuleTree {
         source_root: SourceRootId,
     ) -> Arc<ModuleTree> {
         db.check_canceled();
-        let res = create_module_tree(db, source_root);
+        let mut res = ModuleTree::default();
+        res.init(db, source_root);
         Arc::new(res)
     }
 
@@ -142,6 +143,85 @@ impl ModuleTree {
     pub(crate) fn find_module_by_source(&self, source: SourceItemId) -> Option<ModuleId> {
         let (res, _) = self.mods.iter().find(|(_, m)| m.source == source)?;
         Some(res)
+    }
+
+    fn init(&mut self, db: &impl HirDatabase, source_root: SourceRootId) {
+        let mut roots = FxHashMap::default();
+        let mut visited = FxHashSet::default();
+
+        let source_root = db.source_root(source_root);
+        for &file_id in source_root.files.values() {
+            let source = SourceItemId {
+                file_id: file_id.into(),
+                item_id: None,
+            };
+            if visited.contains(&source) {
+                continue; // TODO: use explicit crate_roots here
+            }
+            assert!(!roots.contains_key(&file_id));
+            let module_id =
+                self.init_subtree(db, &source_root, &mut visited, &mut roots, None, source);
+            roots.insert(file_id, module_id);
+        }
+    }
+
+    fn init_subtree(
+        &mut self,
+        db: &impl HirDatabase,
+        source_root: &SourceRoot,
+        visited: &mut FxHashSet<SourceItemId>,
+        roots: &mut FxHashMap<FileId, ModuleId>,
+        parent: Option<LinkId>,
+        source: SourceItemId,
+    ) -> ModuleId {
+        visited.insert(source);
+        let id = self.alloc_mod(ModuleData {
+            source,
+            parent,
+            children: Vec::new(),
+        });
+        for sub in db.submodules(source).iter() {
+            let link = self.alloc_link(LinkData {
+                source: sub.source,
+                name: sub.name.clone(),
+                owner: id,
+                points_to: Vec::new(),
+                problem: None,
+            });
+
+            let (points_to, problem) = if sub.is_declaration {
+                let (points_to, problem) = resolve_submodule(db, source.file_id, &sub.name);
+                let points_to = points_to
+                    .into_iter()
+                    .map(|file_id| match roots.remove(&file_id) {
+                        Some(module_id) => {
+                            self.mods[module_id].parent = Some(link);
+                            module_id
+                        }
+                        None => self.init_subtree(
+                            db,
+                            source_root,
+                            visited,
+                            roots,
+                            Some(link),
+                            SourceItemId {
+                                file_id: file_id.into(),
+                                item_id: None,
+                            },
+                        ),
+                    })
+                    .collect::<Vec<_>>();
+                (points_to, problem)
+            } else {
+                let points_to =
+                    self.init_subtree(db, source_root, visited, roots, Some(link), sub.source);
+                (vec![points_to], None)
+            };
+
+            self.links[link].points_to = points_to;
+            self.links[link].problem = problem;
+        }
+        id
     }
 
     fn alloc_mod(&mut self, data: ModuleData) -> ModuleId {
@@ -219,103 +299,6 @@ impl LinkId {
         let syntax_node = db.file_item(tree.links[self].source);
         ast::Module::cast(&syntax_node).unwrap().to_owned()
     }
-}
-
-fn create_module_tree<'a>(db: &impl HirDatabase, source_root: SourceRootId) -> ModuleTree {
-    let mut tree = ModuleTree::default();
-
-    let mut roots = FxHashMap::default();
-    let mut visited = FxHashSet::default();
-
-    let source_root = db.source_root(source_root);
-    for &file_id in source_root.files.values() {
-        let source = SourceItemId {
-            file_id: file_id.into(),
-            item_id: None,
-        };
-        if visited.contains(&source) {
-            continue; // TODO: use explicit crate_roots here
-        }
-        assert!(!roots.contains_key(&file_id));
-        let module_id = build_subtree(
-            db,
-            &source_root,
-            &mut tree,
-            &mut visited,
-            &mut roots,
-            None,
-            source,
-        );
-        roots.insert(file_id, module_id);
-    }
-    tree
-}
-
-fn build_subtree(
-    db: &impl HirDatabase,
-    source_root: &SourceRoot,
-    tree: &mut ModuleTree,
-    visited: &mut FxHashSet<SourceItemId>,
-    roots: &mut FxHashMap<FileId, ModuleId>,
-    parent: Option<LinkId>,
-    source: SourceItemId,
-) -> ModuleId {
-    visited.insert(source);
-    let id = tree.alloc_mod(ModuleData {
-        source,
-        parent,
-        children: Vec::new(),
-    });
-    for sub in db.submodules(source).iter() {
-        let link = tree.alloc_link(LinkData {
-            source: sub.source,
-            name: sub.name.clone(),
-            owner: id,
-            points_to: Vec::new(),
-            problem: None,
-        });
-
-        let (points_to, problem) = if sub.is_declaration {
-            let (points_to, problem) = resolve_submodule(db, source.file_id, &sub.name);
-            let points_to = points_to
-                .into_iter()
-                .map(|file_id| match roots.remove(&file_id) {
-                    Some(module_id) => {
-                        tree.mods[module_id].parent = Some(link);
-                        module_id
-                    }
-                    None => build_subtree(
-                        db,
-                        source_root,
-                        tree,
-                        visited,
-                        roots,
-                        Some(link),
-                        SourceItemId {
-                            file_id: file_id.into(),
-                            item_id: None,
-                        },
-                    ),
-                })
-                .collect::<Vec<_>>();
-            (points_to, problem)
-        } else {
-            let points_to = build_subtree(
-                db,
-                source_root,
-                tree,
-                visited,
-                roots,
-                Some(link),
-                sub.source,
-            );
-            (vec![points_to], None)
-        };
-
-        tree.links[link].points_to = points_to;
-        tree.links[link].problem = problem;
-    }
-    id
 }
 
 fn resolve_submodule(
