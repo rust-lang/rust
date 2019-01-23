@@ -1,9 +1,9 @@
 use ra_db::{SourceRootId, LocationIntener, FileId};
-use ra_syntax::{TreeArc, SyntaxKind, SyntaxNode, SourceFile, AstNode, ast};
+use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, PerNs, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
+    HirDatabase, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
     Module, Trait, Type, Static, Const,
     module_tree::ModuleId,
 };
@@ -235,23 +235,6 @@ impl DefId {
 impl DefLoc {
     pub(crate) fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
         db.as_ref().loc2id(&self)
-    }
-}
-
-impl DefKind {
-    pub(crate) fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
-        match kind {
-            SyntaxKind::FN_DEF => PerNs::values(DefKind::Function),
-            SyntaxKind::MODULE => PerNs::types(DefKind::Module),
-            SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
-            SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
-            // These define items, but don't have their own DefKinds yet:
-            SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),
-            SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Type),
-            SyntaxKind::CONST_DEF => PerNs::values(DefKind::Const),
-            SyntaxKind::STATIC_DEF => PerNs::values(DefKind::Static),
-            _ => PerNs::none(),
-        }
     }
 }
 

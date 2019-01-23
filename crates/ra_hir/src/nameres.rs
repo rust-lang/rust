@@ -21,7 +21,6 @@ use crate::nameres::lower::*;
 use std::sync::Arc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use ra_syntax::SyntaxKind::*;
 use ra_db::SourceRootId;
 
 use crate::{
@@ -235,27 +234,12 @@ where
             }
         }
         // Populate explicitly declared items, except modules
-        for item in input.items.iter() {
-            if item.kind == MODULE {
-                continue;
-            }
-            // depending on the item kind, the location can define something in
-            // the values namespace, the types namespace, or both
-            let kind = DefKind::for_syntax_kind(item.kind);
-            let def_id = kind.map(|k| {
-                let def_loc = DefLoc {
-                    kind: k,
-                    source_root_id: self.source_root,
-                    module_id,
-                    source_item_id: item.id,
-                };
-                def_loc.id(self.db)
-            });
+        for (name, &def_id) in input.declarations.iter() {
             let resolution = Resolution {
                 def_id,
                 import: None,
             };
-            module_items.items.insert(item.name.clone(), resolution);
+            module_items.items.insert(name.clone(), resolution);
         }
 
         // Populate modules

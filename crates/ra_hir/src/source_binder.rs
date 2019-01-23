@@ -146,9 +146,10 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
     let mut res = Vec::new();
 
     for macro_call_id in items
-        .items
+        .declarations
         .iter()
-        .filter_map(|it| it.id.file_id.as_macro_call_id())
+        .filter_map(|(_, it)| it.take_types())
+        .filter_map(|it| it.loc(db).source_item_id.file_id.as_macro_call_id())
     {
         if let Some(exp) = db.expand_macro_invocation(macro_call_id) {
             let loc = macro_call_id.loc(db);
