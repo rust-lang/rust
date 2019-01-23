@@ -1,0 +1,22 @@
+SOURCE_FILE@[0; 27)
+  STRUCT_DEF@[0; 27)
+    STRUCT_KW@[0; 6)
+    WHITESPACE@[6; 7)
+    NAME@[7; 8)
+      IDENT@[7; 8) "S"
+    WHITESPACE@[8; 9)
+    NAMED_FIELD_DEF_LIST@[9; 27)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 15)
+      NAMED_FIELD_DEF@[15; 25)
+        NAME@[15; 20)
+          IDENT@[15; 20) "r#foo"
+        COLON@[20; 21)
+        WHITESPACE@[21; 22)
+        PATH_TYPE@[22; 25)
+          PATH@[22; 25)
+            PATH_SEGMENT@[22; 25)
+              NAME_REF@[22; 25)
+                IDENT@[22; 25) "u32"
+      WHITESPACE@[25; 26)
+      R_CURLY@[26; 27)
