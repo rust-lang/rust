@@ -140,6 +140,20 @@ pub enum GenericArgs {
 }
 
 impl GenericArgs {
+    pub fn is_parenthesized(&self) -> bool {
+        match *self {
+            Parenthesized(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_angle_bracketed(&self) -> bool {
+        match *self {
+            AngleBracketed(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn span(&self) -> Span {
         match *self {
             AngleBracketed(ref data) => data.span,
