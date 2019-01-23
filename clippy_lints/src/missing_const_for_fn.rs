@@ -1,8 +1,7 @@
+use crate::utils::{is_entrypoint_fn, span_lint};
 use rustc::hir;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::{Body, Constness, FnDecl};
-// use rustc::mir::*;
-use crate::utils::{is_entrypoint_fn, span_lint};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
