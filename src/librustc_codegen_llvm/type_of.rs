@@ -55,7 +55,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::Str => {
             let mut name = String::with_capacity(32);
             let printer = DefPathBasedNames::new(cx.tcx, true, true);
-            printer.push_type_name(layout.ty, &mut name);
+            printer.push_type_name(layout.ty, &mut name, false);
             if let (&ty::Adt(def, _), &layout::Variants::Single { index })
                  = (&layout.ty.sty, &layout.variants)
             {

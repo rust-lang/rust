@@ -13,7 +13,7 @@ pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
+               self.to_string(cx.tcx(), true),
                self.to_raw_string(),
                cx.codegen_unit().name());
 
@@ -45,7 +45,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         }
 
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
+               self.to_string(cx.tcx(), true),
                self.to_raw_string(),
                cx.codegen_unit().name());
     }
@@ -57,7 +57,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         visibility: Visibility
     ) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
+               self.to_string(cx.tcx(), true),
                self.to_raw_string(),
                cx.codegen_unit().name());
 
@@ -76,7 +76,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx()),
+               self.to_string(cx.tcx(), true),
                self.to_raw_string(),
                cx.codegen_unit().name());
     }
