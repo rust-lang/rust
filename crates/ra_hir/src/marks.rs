@@ -1,1 +1,3 @@
-test_utils::mark!(name_res_works_for_broken_modules);
+use test_utils::mark;
+
+mark!(name_res_works_for_broken_modules);

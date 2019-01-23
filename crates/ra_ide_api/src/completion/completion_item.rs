@@ -3,9 +3,10 @@ use hir::PerNs;
 use crate::completion::completion_context::CompletionContext;
 use ra_syntax::{
     ast::{self, AstNode},
-    TextRange
+    TextRange,
 };
 use ra_text_edit::TextEdit;
+use test_utils::tested_by;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -255,6 +256,7 @@ impl Builder {
     ) -> Builder {
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
+            tested_by!(inserts_parens_for_function_calls);
             if function.signature(ctx.db).params().is_empty() {
                 self.insert_text = Some(format!("{}()$0", self.label));
             } else {
@@ -343,4 +345,61 @@ pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind
         .filter(|c| c.completion_kind == kind)
         .collect();
     assert_debug_snapshot_matches!(test_name, kind_completions);
+}
+
+#[cfg(test)]
+mod tests {
+    use test_utils::covers;
+
+    use super::*;
+
+    fn check_reference_completion(code: &str, expected_completions: &str) {
+        check_completion(code, expected_completions, CompletionKind::Reference);
+    }
+
+    #[test]
+    fn inserts_parens_for_function_calls() {
+        covers!(inserts_parens_for_function_calls);
+        check_reference_completion(
+            "inserts_parens_for_function_calls1",
+            r"
+            fn no_args() {}
+            fn main() { no_<|> }
+            ",
+        );
+        check_reference_completion(
+            "inserts_parens_for_function_calls2",
+            r"
+            fn with_args(x: i32, y: String) {}
+            fn main() { with_<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn dont_render_function_parens_in_use_item() {
+        check_reference_completion(
+            "dont_render_function_parens_in_use_item",
+            "
+            //- /lib.rs
+            mod m { pub fn foo() {} }
+            use crate::m::f<|>;
+            ",
+        )
+    }
+
+    #[test]
+    fn dont_render_function_parens_if_already_call() {
+        check_reference_completion(
+            "dont_render_function_parens_if_already_call",
+            "
+            //- /lib.rs
+            fn frobnicate() {}
+            fn main() {
+                frob<|>();
+            }
+            ",
+        )
+    }
+
 }
