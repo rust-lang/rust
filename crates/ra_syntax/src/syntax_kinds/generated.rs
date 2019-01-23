@@ -105,6 +105,7 @@ pub enum SyntaxKind {
     UNION_KW,
     ERROR,
     IDENT,
+    RAW_IDENT,
     UNDERSCORE,
     WHITESPACE,
     INT_NUMBER,
@@ -368,6 +369,7 @@ impl SyntaxKind {
             UNION_KW => &SyntaxInfo { name: "UNION_KW" },
             ERROR => &SyntaxInfo { name: "ERROR" },
             IDENT => &SyntaxInfo { name: "IDENT" },
+            RAW_IDENT => &SyntaxInfo { name: "RAW_IDENT" },
             UNDERSCORE => &SyntaxInfo { name: "UNDERSCORE" },
             WHITESPACE => &SyntaxInfo { name: "WHITESPACE" },
             INT_NUMBER => &SyntaxInfo { name: "INT_NUMBER" },
@@ -562,5 +564,13 @@ impl SyntaxKind {
             _ => return None,
         };
         Some(tok)
+    }
+
+    pub(crate) fn is_ident(&self) -> bool {
+        match self {
+            | IDENT
+            | RAW_IDENT => true,
+            _ => false,
+        }
     }
 }

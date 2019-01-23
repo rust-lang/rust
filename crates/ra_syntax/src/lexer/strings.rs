@@ -5,7 +5,8 @@ use crate::lexer::ptr::Ptr;
 pub(crate) fn is_string_literal_start(c: char, c1: Option<char>, c2: Option<char>) -> bool {
     match (c, c1, c2) {
         ('r', Some('"'), _)
-        | ('r', Some('#'), _)
+        | ('r', Some('#'), Some('"'))
+        | ('r', Some('#'), Some('#'))
         | ('b', Some('"'), _)
         | ('b', Some('\''), _)
         | ('b', Some('r'), Some('"'))

@@ -15,7 +15,7 @@ fn type_param_list(p: &mut Parser) {
     while !p.at(EOF) && !p.at(R_ANGLE) {
         match p.current() {
             LIFETIME => lifetime_param(p),
-            IDENT => type_param(p),
+            IDENT | RAW_IDENT => type_param(p),
             _ => p.err_and_bump("expected type parameter"),
         }
         if !p.at(R_ANGLE) && !p.expect(COMMA) {
@@ -37,7 +37,7 @@ fn lifetime_param(p: &mut Parser) {
 }
 
 fn type_param(p: &mut Parser) {
-    assert!(p.at(IDENT));
+    assert!(p.current().is_ident());
     let m = p.start();
     name(p);
     if p.at(COLON) {

@@ -190,19 +190,24 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
 }
 
 fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
-    let is_single_letter = match ptr.current() {
-        None => true,
-        Some(c) if !is_ident_continue(c) => true,
+    let is_raw = match (c, ptr.current()) {
+        ('r', Some('#')) => {
+            ptr.bump();
+            true
+        }
+        ('_', Some(c)) if !is_ident_continue(c) => return UNDERSCORE,
         _ => false,
     };
-    if is_single_letter {
-        return if c == '_' { UNDERSCORE } else { IDENT };
-    }
+
     ptr.bump_while(is_ident_continue);
-    if let Some(kind) = SyntaxKind::from_keyword(ptr.current_token_text()) {
+
+    if is_raw {
+        RAW_IDENT
+    } else if let Some(kind) = SyntaxKind::from_keyword(ptr.current_token_text()) {
         return kind;
+    } else {
+        IDENT
     }
-    IDENT
 }
 
 fn scan_literal_suffix(ptr: &mut Ptr) {

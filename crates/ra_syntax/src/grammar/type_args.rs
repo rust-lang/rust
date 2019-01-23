@@ -34,7 +34,7 @@ fn type_arg(p: &mut Parser) {
             p.bump();
             m.complete(p, LIFETIME_ARG);
         }
-        IDENT if p.nth(1) == EQ => {
+        IDENT | RAW_IDENT if p.nth(1) == EQ => {
             name_ref(p);
             p.bump();
             types::type_(p);
