@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHashSet};
 use arrayvec::ArrayVec;
 use relative_path::RelativePathBuf;
-use ra_db::{FileId, SourceRootId, SourceRoot};
+use ra_db::{FileId, SourceRoot, CrateId};
 use ra_syntax::{
     SyntaxNode, TreeArc,
     algo::generate,
@@ -126,13 +126,10 @@ struct LinkData {
 }
 
 impl ModuleTree {
-    pub(crate) fn module_tree_query(
-        db: &impl HirDatabase,
-        source_root: SourceRootId,
-    ) -> Arc<ModuleTree> {
+    pub(crate) fn module_tree_query(db: &impl HirDatabase, crate_id: CrateId) -> Arc<ModuleTree> {
         db.check_canceled();
         let mut res = ModuleTree::default();
-        res.init(db, source_root);
+        res.init_crate(db, crate_id);
         Arc::new(res)
     }
 
@@ -145,24 +142,21 @@ impl ModuleTree {
         Some(res)
     }
 
-    fn init(&mut self, db: &impl HirDatabase, source_root: SourceRootId) {
+    fn init_crate(&mut self, db: &impl HirDatabase, crate_id: CrateId) {
+        let crate_graph = db.crate_graph();
+        let file_id = crate_graph.crate_root(crate_id);
+        let source_root_id = db.file_source_root(file_id);
+
         let mut roots = FxHashMap::default();
         let mut visited = FxHashSet::default();
 
-        let source_root = db.source_root(source_root);
-        for &file_id in source_root.files.values() {
-            let source = SourceItemId {
-                file_id: file_id.into(),
-                item_id: None,
-            };
-            if visited.contains(&source) {
-                continue; // TODO: use explicit crate_roots here
-            }
-            assert!(!roots.contains_key(&file_id));
-            let module_id =
-                self.init_subtree(db, &source_root, &mut visited, &mut roots, None, source);
-            roots.insert(file_id, module_id);
-        }
+        let source_root = db.source_root(source_root_id);
+        let source = SourceItemId {
+            file_id: file_id.into(),
+            item_id: None,
+        };
+        let module_id = self.init_subtree(db, &source_root, &mut visited, &mut roots, None, source);
+        roots.insert(file_id, module_id);
     }
 
     fn init_subtree(

@@ -64,9 +64,9 @@ fn get_def_id(
         ..same_file_loc.source_item_id
     };
     let loc = DefLoc {
+        module: same_file_loc.module,
         kind: expected_kind,
         source_item_id,
-        ..*same_file_loc
     };
     loc.id(db)
 }

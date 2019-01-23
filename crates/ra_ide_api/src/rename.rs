@@ -57,7 +57,6 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-
     if let Some(module) = module_from_declaration(db, position.file_id, &ast_module) {
         let (file_id, module_source) = module.definition_source(db);
         match module_source {
@@ -223,11 +222,15 @@ mod tests {
     fn test_rename_mod() {
         let (analysis, position) = analysis_and_position(
             "
-        //- /bar.rs
-        mod fo<|>o;
-        //- /bar/foo.rs
-        // emtpy
-    ",
+            //- /lib.rs
+            mod bar;
+
+            //- /bar.rs
+            mod foo<|>;
+
+            //- /bar/foo.rs
+            // emtpy
+            ",
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
@@ -238,11 +241,11 @@ mod tests {
     fn test_rename_mod_in_dir() {
         let (analysis, position) = analysis_and_position(
             "
-        //- /lib.rs
-        mod fo<|>o;
-        //- /foo/mod.rs
-        // emtpy
-    ",
+            //- /lib.rs
+            mod fo<|>o;
+            //- /foo/mod.rs
+            // emtpy
+            ",
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();

@@ -35,10 +35,6 @@ impl MockDatabase {
         let file_id = db.add_file(WORKSPACE, &mut source_root, "/main.rs", text);
         db.query_mut(ra_db::SourceRootQuery)
             .set(WORKSPACE, Arc::new(source_root.clone()));
-
-        let mut crate_graph = CrateGraph::default();
-        crate_graph.add_crate_root(file_id);
-        db.set_crate_graph(crate_graph);
         (db, source_root, file_id)
     }
 
@@ -97,6 +93,8 @@ impl MockDatabase {
         text: &str,
     ) -> FileId {
         assert!(path.starts_with('/'));
+        let is_crate_root = path == "/lib.rs" || path == "/main.rs";
+
         let path = RelativePathBuf::from_path(&path[1..]).unwrap();
         let file_id = FileId(self.file_counter);
         self.file_counter += 1;
@@ -107,6 +105,12 @@ impl MockDatabase {
         self.query_mut(ra_db::FileSourceRootQuery)
             .set(file_id, source_root_id);
         source_root.files.insert(path, file_id);
+
+        if is_crate_root {
+            let mut crate_graph = CrateGraph::default();
+            crate_graph.add_crate_root(file_id);
+            self.set_crate_graph(crate_graph);
+        }
         file_id
     }
 
@@ -202,6 +206,7 @@ salsa::database_storage! {
             fn file_relative_path() for ra_db::FileRelativePathQuery;
             fn file_source_root() for ra_db::FileSourceRootQuery;
             fn source_root() for ra_db::SourceRootQuery;
+            fn source_root_crates() for ra_db::SourceRootCratesQuery;
             fn local_roots() for ra_db::LocalRootsQuery;
             fn library_roots() for ra_db::LibraryRootsQuery;
             fn crate_graph() for ra_db::CrateGraphQuery;

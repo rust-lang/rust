@@ -1,52 +1,33 @@
-use ra_db::{SourceRootId, FileId};
-use ra_syntax::{ast, SyntaxNode, AstNode, TreeArc};
+use ra_db::FileId;
+use ra_syntax::{ast, SyntaxNode, TreeArc};
 
 use crate::{
-    Module, ModuleSource, Problem,
-    Crate, DefId, DefLoc, DefKind, Name, Path, PathKind, PerNs, Def,
+    Module, ModuleSource, Problem, ModuleDef,
+    Crate, Name, Path, PathKind, PerNs, Def,
     module_tree::ModuleId,
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
 };
 
 impl Module {
-    pub(crate) fn new(def_id: DefId) -> Self {
-        crate::code_model_api::Module { def_id }
-    }
-
-    pub(crate) fn from_module_id(
-        db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> Self {
-        let module_tree = db.module_tree(source_root_id);
-        let def_loc = DefLoc {
-            kind: DefKind::Module,
-            source_root_id,
+    fn with_module_id(&self, module_id: ModuleId) -> Module {
+        Module {
             module_id,
-            source_item_id: module_id.source(&module_tree),
-        };
-        let def_id = def_loc.id(db);
-        Module::new(def_id)
+            krate: self.krate,
+        }
     }
 
     pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Option<Name> {
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        let link = loc.module_id.parent_link(&module_tree)?;
+        let module_tree = db.module_tree(self.krate);
+        let link = self.module_id.parent_link(&module_tree)?;
         Some(link.name(&module_tree).clone())
     }
 
     pub(crate) fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
-        let loc = self.def_id.loc(db);
-        let file_id = loc.source_item_id.file_id.as_original_file();
-        let syntax_node = db.file_item(loc.source_item_id);
-        let module_source = if let Some(source_file) = ast::SourceFile::cast(&syntax_node) {
-            ModuleSource::SourceFile(source_file.to_owned())
-        } else {
-            let module = ast::Module::cast(&syntax_node).unwrap();
-            ModuleSource::Module(module.to_owned())
-        };
+        let module_tree = db.module_tree(self.krate);
+        let source = self.module_id.source(&module_tree);
+        let module_source = ModuleSource::from_source_item_id(db, source);
+        let file_id = source.file_id.as_original_file();
         (file_id, module_source)
     }
 
@@ -54,9 +35,8 @@ impl Module {
         &self,
         db: &impl HirDatabase,
     ) -> Option<(FileId, TreeArc<ast::Module>)> {
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        let link = loc.module_id.parent_link(&module_tree)?;
+        let module_tree = db.module_tree(self.krate);
+        let link = self.module_id.parent_link(&module_tree)?;
         let file_id = link
             .owner(&module_tree)
             .source(&module_tree)
@@ -71,85 +51,67 @@ impl Module {
         db: &impl HirDatabase,
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
-        let loc = self.def_id.loc(db);
-        let source_map = db.lower_module_source_map(loc.source_root_id, loc.module_id);
+        let source_map = db.lower_module_source_map(self.clone());
         let (_, source) = self.definition_source(db);
         source_map.get(&source, import)
     }
 
-    pub(crate) fn krate_impl(&self, db: &impl HirDatabase) -> Option<Crate> {
-        let root = self.crate_root(db);
-        let loc = root.def_id.loc(db);
-        let file_id = loc.source_item_id.file_id.as_original_file();
-
-        let crate_graph = db.crate_graph();
-        let crate_id = crate_graph.crate_id_for_crate_root(file_id)?;
-        Some(Crate::new(crate_id))
+    pub(crate) fn krate_impl(&self, _db: &impl HirDatabase) -> Option<Crate> {
+        Some(Crate::new(self.krate))
     }
 
     pub(crate) fn crate_root_impl(&self, db: &impl HirDatabase) -> Module {
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        let module_id = loc.module_id.crate_root(&module_tree);
-        Module::from_module_id(db, loc.source_root_id, module_id)
+        let module_tree = db.module_tree(self.krate);
+        let module_id = self.module_id.crate_root(&module_tree);
+        self.with_module_id(module_id)
     }
 
     /// Finds a child module with the specified name.
     pub(crate) fn child_impl(&self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        let child_id = loc.module_id.child(&module_tree, name)?;
-        Some(Module::from_module_id(db, loc.source_root_id, child_id))
+        let module_tree = db.module_tree(self.krate);
+        let child_id = self.module_id.child(&module_tree, name)?;
+        Some(self.with_module_id(child_id))
     }
 
     /// Iterates over all child modules.
     pub(crate) fn children_impl(&self, db: &impl HirDatabase) -> impl Iterator<Item = Module> {
-        // FIXME this should be implementable without collecting into a vec, but
-        // it's kind of hard since the iterator needs to keep a reference to the
-        // module tree.
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        let children = loc
+        let module_tree = db.module_tree(self.krate);
+        let children = self
             .module_id
             .children(&module_tree)
-            .map(|(_, module_id)| Module::from_module_id(db, loc.source_root_id, module_id))
+            .map(|(_, module_id)| self.with_module_id(module_id))
             .collect::<Vec<_>>();
         children.into_iter()
     }
 
     pub(crate) fn parent_impl(&self, db: &impl HirDatabase) -> Option<Module> {
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        let parent_id = loc.module_id.parent(&module_tree)?;
-        Some(Module::from_module_id(db, loc.source_root_id, parent_id))
+        let module_tree = db.module_tree(self.krate);
+        let parent_id = self.module_id.parent(&module_tree)?;
+        Some(self.with_module_id(parent_id))
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub(crate) fn scope_impl(&self, db: &impl HirDatabase) -> ModuleScope {
-        let loc = self.def_id.loc(db);
-        let item_map = db.item_map(loc.source_root_id);
-        item_map.per_module[&loc.module_id].clone()
+        let item_map = db.item_map(self.krate);
+        item_map.per_module[&self.module_id].clone()
     }
 
-    pub(crate) fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
-        let mut curr_per_ns = PerNs::types(
-            match path.kind {
-                PathKind::Crate => self.crate_root(db),
-                PathKind::Self_ | PathKind::Plain => self.clone(),
-                PathKind::Super => {
-                    if let Some(p) = self.parent(db) {
-                        p
-                    } else {
-                        return PerNs::none();
-                    }
-                }
-                PathKind::Abs => {
-                    // TODO: absolute use is not supported
+    pub(crate) fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
+        let mut curr_per_ns: PerNs<ModuleDef> = PerNs::types(match path.kind {
+            PathKind::Crate => self.crate_root(db).into(),
+            PathKind::Self_ | PathKind::Plain => self.clone().into(),
+            PathKind::Super => {
+                if let Some(p) = self.parent(db) {
+                    p.into()
+                } else {
                     return PerNs::none();
                 }
             }
-            .def_id,
-        );
+            PathKind::Abs => {
+                // TODO: absolute use is not supported
+                return PerNs::none();
+            }
+        });
 
         for segment in path.segments.iter() {
             let curr = match curr_per_ns.as_ref().take_types() {
@@ -164,31 +126,38 @@ impl Module {
                 }
             };
             // resolve segment in curr
-            curr_per_ns = match curr.resolve(db) {
-                Def::Module(m) => {
+
+            curr_per_ns = match curr {
+                ModuleDef::Module(m) => {
                     let scope = m.scope(db);
                     match scope.get(&segment.name) {
-                        Some(r) => r.def_id,
+                        Some(r) => r.def_id.clone(),
                         None => PerNs::none(),
                     }
                 }
-                Def::Enum(e) => {
-                    // enum variant
-                    let matching_variant = e
-                        .variants(db)
-                        .into_iter()
-                        .find(|(n, _variant)| n == &segment.name);
+                ModuleDef::Def(def) => {
+                    match def.resolve(db) {
+                        Def::Enum(e) => {
+                            // enum variant
+                            let matching_variant = e
+                                .variants(db)
+                                .into_iter()
+                                .find(|(n, _variant)| n == &segment.name);
 
-                    match matching_variant {
-                        Some((_n, variant)) => PerNs::both(variant.def_id(), e.def_id()),
-                        None => PerNs::none(),
+                            match matching_variant {
+                                Some((_n, variant)) => {
+                                    PerNs::both(variant.def_id().into(), e.def_id().into())
+                                }
+                                None => PerNs::none(),
+                            }
+                        }
+                        _ => {
+                            // could be an inherent method call in UFCS form
+                            // (`Struct::method`), or some other kind of associated
+                            // item... Which we currently don't handle (TODO)
+                            PerNs::none()
+                        }
                     }
-                }
-                _ => {
-                    // could be an inherent method call in UFCS form
-                    // (`Struct::method`), or some other kind of associated
-                    // item... Which we currently don't handle (TODO)
-                    PerNs::none()
                 }
             };
         }
@@ -199,8 +168,7 @@ impl Module {
         &self,
         db: &impl HirDatabase,
     ) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
-        let loc = self.def_id.loc(db);
-        let module_tree = db.module_tree(loc.source_root_id);
-        loc.module_id.problems(&module_tree, db)
+        let module_tree = db.module_tree(self.krate);
+        self.module_id.problems(&module_tree, db)
     }
 }

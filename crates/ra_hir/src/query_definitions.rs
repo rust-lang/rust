@@ -7,11 +7,11 @@ use rustc_hash::FxHashMap;
 use ra_syntax::{
     AstNode, SyntaxNode, TreeArc,
 };
-use ra_db::SourceRootId;
+use ra_db::{CrateId};
 
 use crate::{
     SourceFileItems, SourceItemId, DefId, HirFileId,
-    FnScopes,
+    FnScopes, Module,
     db::HirDatabase,
     nameres::{ItemMap, Resolver},
 };
@@ -41,15 +41,23 @@ pub(super) fn file_item(
     }
 }
 
-pub(super) fn item_map(db: &impl HirDatabase, source_root: SourceRootId) -> Arc<ItemMap> {
+pub(super) fn item_map(db: &impl HirDatabase, crate_id: CrateId) -> Arc<ItemMap> {
     let start = Instant::now();
-    let module_tree = db.module_tree(source_root);
+    let module_tree = db.module_tree(crate_id);
     let input = module_tree
         .modules()
-        .map(|id| (id, db.lower_module_module(source_root, id)))
+        .map(|module_id| {
+            (
+                module_id,
+                db.lower_module_module(Module {
+                    krate: crate_id,
+                    module_id,
+                }),
+            )
+        })
         .collect::<FxHashMap<_, _>>();
 
-    let resolver = Resolver::new(db, &input, source_root, module_tree);
+    let resolver = Resolver::new(db, &input, crate_id);
     let res = resolver.resolve();
     let elapsed = start.elapsed();
     log::info!("item_map: {:?}", elapsed);

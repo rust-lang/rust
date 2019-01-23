@@ -1,11 +1,10 @@
-use ra_db::{SourceRootId, LocationIntener, FileId};
+use ra_db::{LocationIntener, FileId};
 use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
     HirDatabase, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
     Module, Trait, Type, Static, Const,
-    module_tree::ModuleId,
 };
 
 #[derive(Debug, Default)]
@@ -110,10 +109,9 @@ impl From<MacroCallId> for HirFileId {
 pub struct MacroCallId(RawId);
 impl_arena_id!(MacroCallId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
-    pub(crate) source_root_id: SourceRootId,
-    pub(crate) module_id: ModuleId,
+    pub(crate) module: Module,
     pub(crate) source_item_id: SourceItemId,
 }
 
@@ -139,14 +137,12 @@ impl_arena_id!(DefId);
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DefLoc {
     pub(crate) kind: DefKind,
-    pub(crate) source_root_id: SourceRootId,
-    pub(crate) module_id: ModuleId,
+    pub(crate) module: Module,
     pub(crate) source_item_id: SourceItemId,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
-    Module,
     Function,
     Struct,
     Enum,
@@ -177,10 +173,6 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Module => {
-                let module = Module::from_module_id(db, loc.source_root_id, loc.module_id);
-                Def::Module(module)
-            }
             DefKind::Function => {
                 let function = Function::new(self);
                 Def::Function(function)
@@ -221,8 +213,7 @@ impl DefId {
 
     /// For a module, returns that module; for any other def, returns the containing module.
     pub fn module(self, db: &impl HirDatabase) -> Module {
-        let loc = self.loc(db);
-        Module::from_module_id(db, loc.source_root_id, loc.module_id)
+        self.loc(db).module
     }
 
     /// Returns the containing crate.
@@ -232,8 +223,7 @@ impl DefId {
 
     /// Returns the containing impl block, if this is an impl item.
     pub fn impl_block(self, db: &impl HirDatabase) -> Option<ImplBlock> {
-        let loc = self.loc(db);
-        let module_impls = db.impls_in_module(loc.source_root_id, loc.module_id);
+        let module_impls = db.impls_in_module(self.loc(db).module);
         ImplBlock::containing(module_impls, self)
     }
 }

@@ -3,14 +3,12 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::ast::{self, AstNode};
-use ra_db::{SourceRootId};
 
 use crate::{
     DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
-    Function, HirInterner,
+    Function, HirFileId, HirInterner,
     db::HirDatabase,
     type_ref::TypeRef,
-    module_tree::ModuleId,
 };
 
 use crate::code_model_api::{Module, ModuleSource};
@@ -67,13 +65,13 @@ pub struct ImplData {
 impl ImplData {
     pub(crate) fn from_ast(
         db: &impl AsRef<HirInterner>,
+        file_id: HirFileId,
         file_items: &SourceFileItems,
-        module: &Module,
+        module: Module,
         node: &ast::ImplBlock,
     ) -> Self {
         let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
-        let module_loc = module.def_id.loc(db);
         let items = if let Some(item_list) = node.item_list() {
             item_list
                 .impl_items()
@@ -85,13 +83,13 @@ impl ImplData {
                     };
                     let item_id = file_items.id_of_unchecked(item_node.syntax());
                     let source_item_id = SourceItemId {
-                        file_id: module_loc.source_item_id.file_id,
+                        file_id,
                         item_id: Some(item_id),
                     };
                     let def_loc = DefLoc {
+                        module,
                         kind,
                         source_item_id,
-                        ..module_loc
                     };
                     let def_id = def_loc.id(db);
                     match item_node.kind() {
@@ -168,6 +166,7 @@ impl ModuleImplBlocks {
 
     fn collect(&mut self, db: &impl HirDatabase, module: Module) {
         let (file_id, module_source) = module.definition_source(db);
+        let file_id: HirFileId = file_id.into();
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
             ModuleSource::Module(node) => node
@@ -176,10 +175,11 @@ impl ModuleImplBlocks {
                 .syntax(),
         };
 
-        let source_file_items = db.file_items(file_id.into());
+        let source_file_items = db.file_items(file_id);
 
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
-            let impl_block = ImplData::from_ast(db, &source_file_items, &module, impl_block_ast);
+            let impl_block =
+                ImplData::from_ast(db, file_id, &source_file_items, module, impl_block_ast);
             let id = self.impls.alloc(impl_block);
             for impl_item in &self.impls[id].items {
                 self.impls_by_def.insert(impl_item.def_id(), id);
@@ -188,13 +188,8 @@ impl ModuleImplBlocks {
     }
 }
 
-pub(crate) fn impls_in_module(
-    db: &impl HirDatabase,
-    source_root_id: SourceRootId,
-    module_id: ModuleId,
-) -> Arc<ModuleImplBlocks> {
+pub(crate) fn impls_in_module(db: &impl HirDatabase, module: Module) -> Arc<ModuleImplBlocks> {
     let mut result = ModuleImplBlocks::new();
-    let module = Module::from_module_id(db, source_root_id, module_id);
     result.collect(db, module);
     Arc::new(result)
 }

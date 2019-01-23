@@ -16,19 +16,19 @@
 //! structure itself is modified.
 pub(crate) mod lower;
 
-use crate::nameres::lower::*;
-
 use std::sync::Arc;
 
+use ra_db::CrateId;
 use rustc_hash::{FxHashMap, FxHashSet};
-use ra_db::SourceRootId;
 
 use crate::{
-    DefId, DefLoc, DefKind,
+    Module, ModuleDef,
     Path, PathKind,
     HirDatabase, Crate,
     Name,
     module_tree::{ModuleId, ModuleTree},
+//FIXME: deglobify
+    nameres::lower::*,
 };
 
 /// `ItemMap` is the result of name resolution. It contains, for each
@@ -58,7 +58,7 @@ impl ModuleScope {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolution {
     /// None for unresolved
-    pub def_id: PerNs<DefId>,
+    pub def_id: PerNs<ModuleDef>,
     /// ident by which this is imported into local scope.
     pub import: Option<ImportId>,
 }
@@ -152,7 +152,7 @@ impl<T> PerNs<T> {
 pub(crate) struct Resolver<'a, DB> {
     db: &'a DB,
     input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
-    source_root: SourceRootId,
+    krate: CrateId,
     module_tree: Arc<ModuleTree>,
     processed_imports: FxHashSet<(ModuleId, ImportId)>,
     result: ItemMap,
@@ -165,13 +165,13 @@ where
     pub(crate) fn new(
         db: &'a DB,
         input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
-        source_root: SourceRootId,
-        module_tree: Arc<ModuleTree>,
+        krate: CrateId,
     ) -> Resolver<'a, DB> {
+        let module_tree = db.module_tree(krate);
         Resolver {
             db,
             input,
-            source_root,
+            krate,
             module_tree,
             processed_imports: FxHashSet::default(),
             result: ItemMap::default(),
@@ -210,7 +210,7 @@ where
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db) {
-                        let def_id = module.def_id;
+                        let def_id = module.into();
                         self.add_module_item(
                             &mut module_items,
                             dep.name.clone(),
@@ -244,20 +244,22 @@ where
 
         // Populate modules
         for (name, module_id) in module_id.children(&self.module_tree) {
-            let def_loc = DefLoc {
-                kind: DefKind::Module,
-                source_root_id: self.source_root,
+            let module = Module {
                 module_id,
-                source_item_id: module_id.source(&self.module_tree),
+                krate: self.krate,
             };
-            let def_id = def_loc.id(self.db);
-            self.add_module_item(&mut module_items, name, PerNs::types(def_id));
+            self.add_module_item(&mut module_items, name, PerNs::types(module.into()));
         }
 
         self.result.per_module.insert(module_id, module_items);
     }
 
-    fn add_module_item(&self, module_items: &mut ModuleScope, name: Name, def_id: PerNs<DefId>) {
+    fn add_module_item(
+        &self,
+        module_items: &mut ModuleScope,
+        name: Name,
+        def_id: PerNs<ModuleDef>,
+    ) {
         let resolution = Resolution {
             def_id,
             import: None,
@@ -329,17 +331,11 @@ where
                     );
                     return false;
                 };
-                curr = match type_def_id.loc(self.db) {
-                    DefLoc {
-                        kind: DefKind::Module,
-                        module_id: target_module_id,
-                        source_root_id,
-                        ..
-                    } => {
-                        if source_root_id == self.source_root {
-                            target_module_id
+                curr = match type_def_id {
+                    ModuleDef::Module(module) => {
+                        if module.krate == self.krate {
+                            module.module_id
                         } else {
-                            let module = crate::code_model_api::Module::new(type_def_id);
                             let path = Path {
                                 segments: import.path.segments[i + 1..].iter().cloned().collect(),
                                 kind: PathKind::Crate,
@@ -359,7 +355,7 @@ where
                                     "resolved import {:?} ({:?}) cross-source root to {:?}",
                                     last_segment.name,
                                     import,
-                                    def_id.map(|did| did.loc(self.db))
+                                    def_id,
                                 );
                                 return true;
                             } else {
@@ -372,7 +368,7 @@ where
                         log::debug!(
                             "path segment {:?} resolved to non-module {:?}, but is not last",
                             segment.name,
-                            type_def_id.loc(self.db)
+                            type_def_id,
                         );
                         return true; // this resolved to a non-module, so the path won't ever resolve
                     }
@@ -382,7 +378,7 @@ where
                     "resolved import {:?} ({:?}) within source root to {:?}",
                     segment.name,
                     import,
-                    def_id.map(|did| did.loc(self.db))
+                    def_id,
                 );
                 self.update(module_id, |items| {
                     let res = Resolution {

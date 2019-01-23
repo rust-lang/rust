@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_db::{FilesDatabase, CrateGraph, SourceRootId, salsa::Database};
+use ra_db::{CrateGraph, SourceRootId, salsa::Database};
 use relative_path::RelativePath;
 use test_utils::{assert_eq_text, covers};
 
@@ -13,10 +13,10 @@ use crate::{
 
 fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let (db, pos) = MockDatabase::with_position(fixture);
-    let source_root = db.file_source_root(pos.file_id);
     let module = crate::source_binder::module_from_position(&db, pos).unwrap();
-    let module_id = module.def_id.loc(&db).module_id;
-    (db.item_map(source_root), module_id)
+    let krate = module.krate(&db).unwrap();
+    let module_id = module.module_id;
+    (db.item_map(krate.crate_id), module_id)
 }
 
 fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
@@ -238,14 +238,13 @@ fn item_map_across_crates() {
 
     db.set_crate_graph(crate_graph);
 
-    let source_root = db.file_source_root(main_id);
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
-    let module_id = module.def_id.loc(&db).module_id;
-    let item_map = db.item_map(source_root);
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate.crate_id);
 
     check_module_item_map(
         &item_map,
-        module_id,
+        module.module_id,
         "
             Baz: t v
             test_crate: t
@@ -292,12 +291,12 @@ fn import_across_source_roots() {
     db.set_crate_graph(crate_graph);
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
-    let module_id = module.def_id.loc(&db).module_id;
-    let item_map = db.item_map(source_root);
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate.crate_id);
 
     check_module_item_map(
         &item_map,
-        module_id,
+        module.module_id,
         "
             C: t v
             test_crate: t
@@ -333,14 +332,13 @@ fn reexport_across_crates() {
 
     db.set_crate_graph(crate_graph);
 
-    let source_root = db.file_source_root(main_id);
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
-    let module_id = module.def_id.loc(&db).module_id;
-    let item_map = db.item_map(source_root);
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate.crate_id);
 
     check_module_item_map(
         &item_map,
-        module_id,
+        module.module_id,
         "
             Baz: t v
             test_crate: t
@@ -350,10 +348,11 @@ fn reexport_across_crates() {
 
 fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
     let (mut db, pos) = MockDatabase::with_position(initial);
-    let source_root = db.file_source_root(pos.file_id);
+    let module = crate::source_binder::module_from_file_id(&db, pos.file_id).unwrap();
+    let krate = module.krate(&db).unwrap();
     {
         let events = db.log_executed(|| {
-            db.item_map(source_root);
+            db.item_map(krate.crate_id);
         });
         assert!(format!("{:?}", events).contains("item_map"))
     }
@@ -362,7 +361,7 @@ fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
 
     {
         let events = db.log_executed(|| {
-            db.item_map(source_root);
+            db.item_map(krate.crate_id);
         });
         assert!(
             !format!("{:?}", events).contains("item_map"),

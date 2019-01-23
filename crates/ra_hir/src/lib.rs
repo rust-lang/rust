@@ -52,7 +52,7 @@ pub use self::{
 pub use self::code_model_api::{
     Crate, CrateDependency,
     Def,
-    Module, ModuleSource, Problem,
+    Module, ModuleDef, ModuleSource, Problem,
     Struct, Enum, EnumVariant,
     Function, FnSignature, ScopeEntryWithSyntax,
     StructField,

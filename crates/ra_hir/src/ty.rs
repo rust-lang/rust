@@ -32,7 +32,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     Def, DefId, Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
-    FnSignature, FnScopes,
+    FnSignature, FnScopes, ModuleDef,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
@@ -382,8 +382,8 @@ impl Ty {
 
         // Resolve in module (in type namespace)
         let resolved = match module.resolve_path(db, path).take_types() {
-            Some(r) => r,
-            None => return Ty::Unknown,
+            Some(ModuleDef::Def(r)) => r,
+            None | Some(ModuleDef::Module(_)) => return Ty::Unknown,
         };
         let ty = db.type_for_def(resolved);
         let substs = Ty::substs_from_path(db, module, impl_block, generics, path, resolved);
@@ -663,10 +663,6 @@ pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> T
 pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Ty {
     let def = def_id.resolve(db);
     match def {
-        Def::Module(..) => {
-            log::debug!("trying to get type for module {:?}", def_id);
-            Ty::Unknown
-        }
         Def::Function(f) => type_for_fn(db, f),
         Def::Struct(s) => type_for_struct(db, s),
         Def::Enum(e) => type_for_enum(db, e),
@@ -1063,7 +1059,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let resolved = self.module.resolve_path(self.db, &path).take_values()?;
+        let resolved = match self.module.resolve_path(self.db, &path).take_values()? {
+            ModuleDef::Def(it) => it,
+            ModuleDef::Module(_) => return None,
+        };
         let ty = self.db.type_for_def(resolved);
         let ty = self.insert_type_vars(ty);
         Some(ty)
@@ -1075,7 +1074,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let def_id = match self.module.resolve_path(self.db, &path).take_types() {
-            Some(def_id) => def_id,
+            Some(ModuleDef::Def(def_id)) => def_id,
             _ => return (Ty::Unknown, None),
         };
         // TODO remove the duplication between here and `Ty::from_path`?
@@ -1216,6 +1215,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .module
                 .resolve_path(self.db, &path)
                 .take_values()
+                .and_then(|module_def| match module_def {
+                    ModuleDef::Def(it) => Some(it),
+                    ModuleDef::Module(_) => None,
+                })
                 .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved)),
             Pat::Bind {
                 mode,

@@ -14,13 +14,14 @@ use crate::{
     adt::VariantData,
     generics::GenericParams,
     code_model_impl::def_id_to_ast,
-    docs::{Documentation, Docs, docs_from_ast}
+    docs::{Documentation, Docs, docs_from_ast},
+    module_tree::ModuleId,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
 /// root module.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Crate {
     pub(crate) crate_id: CrateId,
 }
@@ -45,7 +46,6 @@ impl Crate {
 
 #[derive(Debug)]
 pub enum Def {
-    Module(Module),
     Struct(Struct),
     Enum(Enum),
     EnumVariant(EnumVariant),
@@ -57,9 +57,29 @@ pub enum Def {
     Item,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
-    pub(crate) def_id: DefId,
+    pub(crate) krate: CrateId,
+    pub(crate) module_id: ModuleId,
+}
+
+/// The defs which can be visible in the module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModuleDef {
+    Module(Module),
+    Def(DefId),
+}
+
+impl Into<ModuleDef> for Module {
+    fn into(self) -> ModuleDef {
+        ModuleDef::Module(self)
+    }
+}
+
+impl Into<ModuleDef> for DefId {
+    fn into(self) -> ModuleDef {
+        ModuleDef::Def(self)
+    }
 }
 
 pub enum ModuleSource {
@@ -149,7 +169,7 @@ impl Module {
         self.scope_impl(db)
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
         self.resolve_path_impl(db, path)
     }
 

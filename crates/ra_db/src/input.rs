@@ -160,6 +160,7 @@ pub trait FilesDatabase: salsa::Database {
     /// Contents of the source root.
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<Vec<CrateId>>;
     /// The set of "local" (that is, from the current workspace) roots.
     /// Files in local roots are assumed to change frequently.
     #[salsa::input]
@@ -171,6 +172,17 @@ pub trait FilesDatabase: salsa::Database {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
+}
+
+fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {
+    let root = db.source_root(id);
+    let graph = db.crate_graph();
+    let res = root
+        .files
+        .values()
+        .filter_map(|&it| graph.crate_id_for_crate_root(it))
+        .collect::<Vec<_>>();
+    Arc::new(res)
 }
 
 #[cfg(test)]

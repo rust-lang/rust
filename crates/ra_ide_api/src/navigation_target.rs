@@ -97,7 +97,17 @@ impl NavigationTarget {
     }
 
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
-    pub(crate) fn from_def(db: &RootDatabase, def: Def) -> Option<NavigationTarget> {
+    pub(crate) fn from_def(
+        db: &RootDatabase,
+        module_def: hir::ModuleDef,
+    ) -> Option<NavigationTarget> {
+        let def = match module_def {
+            hir::ModuleDef::Def(def_id) => def_id.resolve(db),
+            hir::ModuleDef::Module(module) => {
+                return Some(NavigationTarget::from_module(db, module));
+            }
+        };
+
         let res = match def {
             Def::Struct(s) => {
                 let (file_id, node) = s.source(db);
@@ -131,7 +141,6 @@ impl NavigationTarget {
                 let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
-            Def::Module(m) => NavigationTarget::from_module(db, m),
             Def::Item => return None,
         };
         Some(res)

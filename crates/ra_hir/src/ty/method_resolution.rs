@@ -6,8 +6,6 @@ use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 
-use ra_db::SourceRootId;
-
 use crate::{
     HirDatabase, DefId, module_tree::ModuleId, Module, Crate, Name, Function,
     impl_block::{ImplId, ImplBlock, ImplItem},
@@ -37,7 +35,7 @@ impl TyFingerprint {
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateImplBlocks {
     /// To make sense of the ModuleIds, we need the source root.
-    source_root_id: SourceRootId,
+    krate: Crate,
     impls: FxHashMap<TyFingerprint, Vec<(ModuleId, ImplId)>>,
 }
 
@@ -53,14 +51,17 @@ impl CrateImplBlocks {
             .into_iter()
             .flat_map(|i| i.iter())
             .map(move |(module_id, impl_id)| {
-                let module_impl_blocks = db.impls_in_module(self.source_root_id, *module_id);
+                let module = Module {
+                    krate: self.krate.crate_id,
+                    module_id: *module_id,
+                };
+                let module_impl_blocks = db.impls_in_module(module);
                 ImplBlock::from_id(module_impl_blocks, *impl_id)
             })
     }
 
-    fn collect_recursive(&mut self, db: &impl HirDatabase, module: Module) {
-        let module_id = module.def_id.loc(db).module_id;
-        let module_impl_blocks = db.impls_in_module(self.source_root_id, module_id);
+    fn collect_recursive(&mut self, db: &impl HirDatabase, module: &Module) {
+        let module_impl_blocks = db.impls_in_module(module.clone());
 
         for (impl_id, impl_data) in module_impl_blocks.impls.iter() {
             let impl_block = ImplBlock::from_id(Arc::clone(&module_impl_blocks), impl_id);
@@ -81,13 +82,13 @@ impl CrateImplBlocks {
                     self.impls
                         .entry(target_ty_fp)
                         .or_insert_with(Vec::new)
-                        .push((module_id, impl_id));
+                        .push((module.module_id, impl_id));
                 }
             }
         }
 
         for child in module.children(db) {
-            self.collect_recursive(db, child);
+            self.collect_recursive(db, &child);
         }
     }
 
@@ -95,15 +96,12 @@ impl CrateImplBlocks {
         db: &impl HirDatabase,
         krate: Crate,
     ) -> Arc<CrateImplBlocks> {
-        let crate_graph = db.crate_graph();
-        let file_id = crate_graph.crate_root(krate.crate_id);
-        let source_root_id = db.file_source_root(file_id);
         let mut crate_impl_blocks = CrateImplBlocks {
-            source_root_id,
+            krate: krate.clone(),
             impls: FxHashMap::default(),
         };
         if let Some(module) = krate.root_module(db) {
-            crate_impl_blocks.collect_recursive(db, module);
+            crate_impl_blocks.collect_recursive(db, &module);
         }
         Arc::new(crate_impl_blocks)
     }

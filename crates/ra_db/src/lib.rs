@@ -13,7 +13,7 @@ pub use crate::{
     cancellation::Canceled,
     input::{
         FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency,
-        FileTextQuery, FileSourceRootQuery, SourceRootQuery, LocalRootsQuery, LibraryRootsQuery, CrateGraphQuery,
+        FileTextQuery, FileSourceRootQuery, SourceRootQuery, SourceRootCratesQuery, LocalRootsQuery, LibraryRootsQuery, CrateGraphQuery,
         FileRelativePathQuery
     },
     loc2id::LocationIntener,

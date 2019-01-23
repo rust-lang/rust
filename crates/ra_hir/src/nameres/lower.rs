@@ -4,14 +4,13 @@ use ra_syntax::{
     SyntaxKind, AstNode, SourceFile, TreeArc, AstPtr,
     ast::{self, ModuleItemOwner, NameOwner},
 };
-use ra_db::SourceRootId;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use rustc_hash::FxHashMap;
 
 use crate::{
     SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
-    HirFileId, MacroCallLoc, AsName, PerNs, DefId, DefKind, DefLoc,
-    module_tree::ModuleId
+    HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc,
+    ModuleDef, Module,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -32,7 +31,7 @@ pub(super) struct ImportData {
 /// can avoid redoing name resolution.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct LoweredModule {
-    pub(crate) declarations: FxHashMap<Name, PerNs<DefId>>,
+    pub(crate) declarations: FxHashMap<Name, PerNs<ModuleDef>>,
     pub(super) imports: Arena<ImportId, ImportData>,
 }
 
@@ -59,37 +58,31 @@ impl ImportSourceMap {
 impl LoweredModule {
     pub(crate) fn lower_module_module_query(
         db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
+        module: Module,
     ) -> Arc<LoweredModule> {
-        db.lower_module(source_root_id, module_id).0
+        db.lower_module(module).0
     }
 
     pub(crate) fn lower_module_source_map_query(
         db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
+        module: Module,
     ) -> Arc<ImportSourceMap> {
-        db.lower_module(source_root_id, module_id).1
+        db.lower_module(module).1
     }
 
     pub(crate) fn lower_module_query(
         db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
+        module: Module,
     ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>) {
-        let module_tree = db.module_tree(source_root_id);
-        let source = module_id.source(&module_tree);
-        let file_id = source.file_id;
-        let source = ModuleSource::from_source_item_id(db, source);
+        let (file_id, source) = module.definition_source(db);
+        let file_id: HirFileId = file_id.into();
         let mut source_map = ImportSourceMap::default();
         let mut res = LoweredModule::default();
         match source {
             ModuleSource::SourceFile(it) => res.fill(
                 &mut source_map,
                 db,
-                source_root_id,
-                module_id,
+                module,
                 file_id,
                 &mut it.items_with_macros(),
             ),
@@ -98,8 +91,7 @@ impl LoweredModule {
                     res.fill(
                         &mut source_map,
                         db,
-                        source_root_id,
-                        module_id,
+                        module,
                         file_id,
                         &mut item_list.items_with_macros(),
                     )
@@ -113,8 +105,7 @@ impl LoweredModule {
         &mut self,
         source_map: &mut ImportSourceMap,
         db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
+        module: Module,
         file_id: HirFileId,
         items: &mut Iterator<Item = ast::ItemOrMacro>,
     ) {
@@ -123,21 +114,12 @@ impl LoweredModule {
         for item in items {
             match item {
                 ast::ItemOrMacro::Item(it) => {
-                    self.add_def_id(
-                        source_map,
-                        db,
-                        source_root_id,
-                        module_id,
-                        file_id,
-                        &file_items,
-                        it,
-                    );
+                    self.add_def_id(source_map, db, module, file_id, &file_items, it);
                 }
                 ast::ItemOrMacro::Macro(macro_call) => {
                     let item_id = file_items.id_of_unchecked(macro_call.syntax());
                     let loc = MacroCallLoc {
-                        source_root_id,
-                        module_id,
+                        module,
                         source_item_id: SourceItemId {
                             file_id,
                             item_id: Some(item_id),
@@ -148,15 +130,7 @@ impl LoweredModule {
                     let file_items = db.file_items(file_id);
                     //FIXME: expand recursively
                     for item in db.hir_source_file(file_id).items() {
-                        self.add_def_id(
-                            source_map,
-                            db,
-                            source_root_id,
-                            module_id,
-                            file_id,
-                            &file_items,
-                            item,
-                        );
+                        self.add_def_id(source_map, db, module, file_id, &file_items, item);
                     }
                 }
             }
@@ -167,8 +141,7 @@ impl LoweredModule {
         &mut self,
         source_map: &mut ImportSourceMap,
         db: &impl HirDatabase,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
+        module: Module,
         file_id: HirFileId,
         file_items: &SourceFileItems,
         item: &ast::ModuleItem,
@@ -199,7 +172,7 @@ impl LoweredModule {
             }
         };
         if let Some(name) = name {
-            let def_id = assign_def_id(db, source_root_id, module_id, file_id, file_items, item);
+            let def_id = assign_def_id(db, module, file_id, file_items, item);
             self.declarations.insert(name.as_name(), def_id);
         }
     }
@@ -219,12 +192,11 @@ impl LoweredModule {
 
 fn assign_def_id(
     db: &impl HirDatabase,
-    source_root_id: SourceRootId,
-    module_id: ModuleId,
+    module: Module,
     file_id: HirFileId,
     file_items: &SourceFileItems,
     item: &ast::ModuleItem,
-) -> PerNs<DefId> {
+) -> PerNs<ModuleDef> {
     // depending on the item kind, the location can define something in
     // the values namespace, the types namespace, or both
     let kind = DefKind::for_syntax_kind(item.syntax().kind());
@@ -232,14 +204,13 @@ fn assign_def_id(
         let item_id = file_items.id_of_unchecked(item.syntax());
         let def_loc = DefLoc {
             kind: k,
-            source_root_id,
-            module_id,
+            module,
             source_item_id: SourceItemId {
                 file_id,
                 item_id: Some(item_id),
             },
         };
-        def_loc.id(db)
+        def_loc.id(db).into()
     });
     def_id
 }
@@ -248,7 +219,6 @@ impl DefKind {
     fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
         match kind {
             SyntaxKind::FN_DEF => PerNs::values(DefKind::Function),
-            SyntaxKind::MODULE => PerNs::types(DefKind::Module),
             SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
             SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
             SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),

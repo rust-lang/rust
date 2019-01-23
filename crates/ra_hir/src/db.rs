@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
 use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
-use ra_db::{SourceRootId, SyntaxDatabase, salsa};
+use ra_db::{SyntaxDatabase, CrateId, salsa};
 
 use crate::{
-    HirInterner, DefId, MacroCallId, Name, HirFileId,
-    SourceFileItems, SourceItemId, Crate,
+    DefId, MacroCallId, Name, HirFileId,
+    SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
     FnSignature, FnScopes,
     macros::MacroExpansion,
-    module_tree::{ModuleId, ModuleTree},
+    module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks},
     adt::{StructData, EnumData, EnumVariantData},
@@ -56,38 +56,22 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn submodules(&self, source: SourceItemId) -> Arc<Vec<crate::module_tree::Submodule>>;
 
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_query)]
-    fn lower_module(
-        &self,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
+    fn lower_module(&self, module: Module) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
 
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_module_query)]
-    fn lower_module_module(
-        &self,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> Arc<LoweredModule>;
+    fn lower_module_module(&self, module: Module) -> Arc<LoweredModule>;
 
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_source_map_query)]
-    fn lower_module_source_map(
-        &self,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> Arc<ImportSourceMap>;
+    fn lower_module_source_map(&self, module: Module) -> Arc<ImportSourceMap>;
 
     #[salsa::invoke(query_definitions::item_map)]
-    fn item_map(&self, source_root_id: SourceRootId) -> Arc<ItemMap>;
+    fn item_map(&self, crate_id: CrateId) -> Arc<ItemMap>;
 
     #[salsa::invoke(crate::module_tree::ModuleTree::module_tree_query)]
-    fn module_tree(&self, source_root_id: SourceRootId) -> Arc<ModuleTree>;
+    fn module_tree(&self, crate_id: CrateId) -> Arc<ModuleTree>;
 
     #[salsa::invoke(crate::impl_block::impls_in_module)]
-    fn impls_in_module(
-        &self,
-        source_root_id: SourceRootId,
-        module_id: ModuleId,
-    ) -> Arc<ModuleImplBlocks>;
+    fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
