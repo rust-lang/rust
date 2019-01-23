@@ -5,10 +5,9 @@ LL | pub enum SomeEnum {
    | ----------------- variant `A` not found here
 LL |     B = SomeEnum::A,
    |         ----------^
-   |         |
+   |         |         |
+   |         |         help: did you mean: `B`
    |         variant not found in `SomeEnum`
-   |
-   = help: did you mean `B`?
 
 error: aborting due to previous error
 
