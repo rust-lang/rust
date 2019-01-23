@@ -20,11 +20,12 @@ in isolation with `./x.py test src/tools/tidy`.
 
 ### Copyright notice
 
-Some existing files begin with a copyright and license notice. Please omit this
-notice for new files licensed under the standard terms (dual MIT/Apache-2.0).
-For existing files, the year at the top is not meaningful: copyright
-protections are in fact automatic from the moment of authorship. We do not
-typically edit the years on existing files.
+In the past, files begin with a copyright and license notice. Please **omit**
+this notice for new files licensed under the standard terms (dual
+MIT/Apache-2.0).
+
+All of the copyright notices should be gone by now, but if you come across one
+in the rust-lang/rust repo, feel free to open a PR to remove it.
 
 ## Line length
 
