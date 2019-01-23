@@ -414,10 +414,6 @@ kbd {
 	color: #999;
 }
 
-.impl-items code {
-	background-color: rgba(0, 0, 0, 0);
-}
-
 #sidebar-toggle {
 	background-color: #F1F1F1;
 }
