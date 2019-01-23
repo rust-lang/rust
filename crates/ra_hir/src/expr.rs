@@ -27,6 +27,9 @@ impl_arena_id!(ExprId);
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
+    // TODO: this should be more general, consts & statics also have bodies
+    /// The Function of the item this body belongs to
+    owner: Function,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -63,10 +66,24 @@ impl Body {
         self.body_expr
     }
 
-    #[allow(unused_variables)]
-    pub fn resolver_for_expr(&self, expr_id: ExprId) -> Resolver {
-        unimplemented!()
+    pub fn owner(&self) -> Function {
+        self.owner
     }
+}
+
+// needs arbitrary_self_types to be a method... or maybe move to the def?
+#[allow(dead_code)]
+pub fn resolver_for_expr(body: Arc<Body>, db: &impl HirDatabase, expr_id: ExprId) -> Resolver {
+    let mut r = body.owner.resolver(db);
+    if !body.params.is_empty() {
+        r = r.push_function_params(Arc::clone(&body));
+    }
+    let scopes = db.expr_scopes(body.owner);
+    let scope_chain = scopes.scope_chain_for(expr_id).collect::<Vec<_>>();
+    for scope in scope_chain.into_iter().rev() {
+        r = r.push_expr_scope(Arc::clone(&scopes), scope);
+    }
+    r
 }
 
 impl Index<ExprId> for Body {
@@ -453,23 +470,29 @@ pub(crate) fn body_hir(db: &impl HirDatabase, func: Function) -> Arc<Body> {
 }
 
 struct ExprCollector {
+    owner: Function,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     expr_syntax_mapping: FxHashMap<SyntaxNodePtr, ExprId>,
     expr_syntax_mapping_back: ArenaMap<ExprId, SyntaxNodePtr>,
     pat_syntax_mapping: FxHashMap<SyntaxNodePtr, PatId>,
     pat_syntax_mapping_back: ArenaMap<PatId, SyntaxNodePtr>,
+    params: Vec<PatId>,
+    body_expr: Option<ExprId>,
 }
 
 impl ExprCollector {
-    fn new() -> Self {
+    fn new(owner: Function) -> Self {
         ExprCollector {
+            owner,
             exprs: Arena::default(),
             pats: Arena::default(),
             expr_syntax_mapping: FxHashMap::default(),
             expr_syntax_mapping_back: ArenaMap::default(),
             pat_syntax_mapping: FxHashMap::default(),
             pat_syntax_mapping_back: ArenaMap::default(),
+            params: Vec::new(),
+            body_expr: None,
         }
     }
 
@@ -907,10 +930,7 @@ impl ExprCollector {
                 });
                 fields.extend(iter);
 
-                Pat::Struct {
-                    path: path,
-                    args: fields,
-                }
+                Pat::Struct { path, args: fields }
             }
 
             // TODO: implement
@@ -928,12 +948,48 @@ impl ExprCollector {
         }
     }
 
-    fn into_body_syntax_mapping(self, params: Vec<PatId>, body_expr: ExprId) -> BodySyntaxMapping {
+    fn collect_fn_body(&mut self, node: &ast::FnDef) {
+        if let Some(param_list) = node.param_list() {
+            if let Some(self_param) = param_list.self_param() {
+                let self_param = SyntaxNodePtr::new(
+                    self_param
+                        .self_kw()
+                        .expect("self param without self keyword")
+                        .syntax(),
+                );
+                let param_pat = self.alloc_pat(
+                    Pat::Bind {
+                        name: Name::self_param(),
+                        mode: BindingAnnotation::Unannotated,
+                        subpat: None,
+                    },
+                    self_param,
+                );
+                self.params.push(param_pat);
+            }
+
+            for param in param_list.params() {
+                let pat = if let Some(pat) = param.pat() {
+                    pat
+                } else {
+                    continue;
+                };
+                let param_pat = self.collect_pat(pat);
+                self.params.push(param_pat);
+            }
+        };
+
+        let body = self.collect_block_opt(node.body());
+        self.body_expr = Some(body);
+    }
+
+    fn into_body_syntax_mapping(self) -> BodySyntaxMapping {
         let body = Body {
+            owner: self.owner,
             exprs: self.exprs,
             pats: self.pats,
-            params,
-            body_expr,
+            params: self.params,
+            body_expr: self.body_expr.expect("A body should have been collected"),
         };
         BodySyntaxMapping {
             body: Arc::new(body),
@@ -945,49 +1001,18 @@ impl ExprCollector {
     }
 }
 
-pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
-    let mut collector = ExprCollector::new();
+pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, func: Function) -> Arc<BodySyntaxMapping> {
+    let mut collector = ExprCollector::new(func);
 
-    let params = if let Some(param_list) = node.param_list() {
-        let mut params = Vec::new();
+    // TODO: consts, etc.
+    collector.collect_fn_body(&func.source(db).1);
 
-        if let Some(self_param) = param_list.self_param() {
-            let self_param = SyntaxNodePtr::new(
-                self_param
-                    .self_kw()
-                    .expect("self param without self keyword")
-                    .syntax(),
-            );
-            let param = collector.alloc_pat(
-                Pat::Bind {
-                    name: Name::self_param(),
-                    mode: BindingAnnotation::Unannotated,
-                    subpat: None,
-                },
-                self_param,
-            );
-            params.push(param);
-        }
-
-        for param in param_list.params() {
-            let pat = if let Some(pat) = param.pat() {
-                pat
-            } else {
-                continue;
-            };
-            params.push(collector.collect_pat(pat));
-        }
-        params
-    } else {
-        Vec::new()
-    };
-
-    let body = collector.collect_block_opt(node.body());
-    collector.into_body_syntax_mapping(params, body)
+    Arc::new(collector.into_body_syntax_mapping())
 }
 
-pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, func: Function) -> Arc<BodySyntaxMapping> {
-    let (_, fn_def) = func.source(db);
-    let body_syntax_mapping = collect_fn_body_syntax(&fn_def);
-    Arc::new(body_syntax_mapping)
+#[cfg(test)]
+pub(crate) fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> BodySyntaxMapping {
+    let mut collector = ExprCollector::new(function);
+    collector.collect_fn_body(node);
+    collector.into_body_syntax_mapping()
 }

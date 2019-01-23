@@ -338,6 +338,7 @@ pub struct ReferenceDescriptor {
 mod tests {
     use ra_syntax::{SourceFile, algo::find_node_at_offset};
     use test_utils::{extract_offset, assert_eq_text};
+    use ra_arena::ArenaId;
 
     use crate::expr;
 
@@ -356,7 +357,10 @@ mod tests {
         let file = SourceFile::parse(&code);
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
-        let body_hir = expr::collect_fn_body_syntax(fn_def);
+        let irrelevant_function = Function {
+            id: crate::ids::FunctionId::from_raw(0.into()),
+        };
+        let body_hir = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),
@@ -456,7 +460,10 @@ mod tests {
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
-        let body_hir = expr::collect_fn_body_syntax(fn_def);
+        let irrelevant_function = Function {
+            id: crate::ids::FunctionId::from_raw(0.into()),
+        };
+        let body_hir = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),

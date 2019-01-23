@@ -184,9 +184,9 @@ impl Module {
         self.problems_impl(db)
     }
 
-    #[allow(unused_variables)]
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
-        unimplemented!()
+        let item_map = db.item_map(self.krate);
+        Resolver::default().push_module_scope(item_map, self.module_id)
     }
 }
 
@@ -479,6 +479,24 @@ impl Function {
 
     pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
+    }
+
+    // TODO move to a more general type for 'body-having' items
+    /// Builds a resolver for code inside this item.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self
+            .impl_block(db)
+            .map(|ib| ib.resolver(db))
+            .unwrap_or_else(|| self.module(db).resolver(db));
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() {
+            r.push_generic_params_scope(p)
+        } else {
+            r
+        };
+        r
     }
 }
 

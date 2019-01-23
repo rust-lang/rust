@@ -15,7 +15,7 @@ use crate::{
     path::Path,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Resolver {
     scopes: Vec<Scope>, // maybe a 'linked list' of scopes? or allow linking a Resolver to a parent Resolver? that's an optimization that might not be necessary, though
 }
@@ -85,6 +85,36 @@ impl Resolver {
     pub(crate) fn push_scope(mut self, scope: Scope) -> Resolver {
         self.scopes.push(scope);
         self
+    }
+
+    pub(crate) fn push_generic_params_scope(self, params: Arc<GenericParams>) -> Resolver {
+        self.push_scope(Scope::GenericParams(params))
+    }
+
+    pub(crate) fn push_impl_block_scope(self, impl_block: ImplBlock) -> Resolver {
+        self.push_scope(Scope::ImplBlockScope(impl_block))
+    }
+
+    pub(crate) fn push_module_scope(self, item_map: Arc<ItemMap>, module_id: ModuleId) -> Resolver {
+        self.push_scope(Scope::ModuleScope(ModuleItemMap {
+            item_map,
+            module_id,
+        }))
+    }
+
+    pub(crate) fn push_expr_scope(
+        self,
+        expr_scopes: Arc<ExprScopes>,
+        scope_id: ScopeId,
+    ) -> Resolver {
+        self.push_scope(Scope::ExprScope(ExprScope {
+            expr_scopes,
+            scope_id,
+        }))
+    }
+
+    pub(crate) fn push_function_params(self, body: Arc<Body>) -> Resolver {
+        self.push_scope(Scope::FunctionParams(body))
     }
 
     pub(crate) fn pop_scope(mut self) -> Resolver {
