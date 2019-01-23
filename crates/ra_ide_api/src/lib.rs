@@ -26,6 +26,9 @@ mod syntax_highlighting;
 mod parent_module;
 mod rename;
 
+#[cfg(test)]
+mod marks;
+
 use std::{fmt, sync::Arc};
 
 use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};

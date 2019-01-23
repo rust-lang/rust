@@ -175,21 +175,4 @@ mod tests {
         check_reference_completion("self_in_methods", r"impl S { fn foo(&self) { <|> } }")
     }
 
-    #[test]
-    fn inserts_parens_for_function_calls() {
-        check_reference_completion(
-            "inserts_parens_for_function_calls1",
-            r"
-            fn no_args() {}
-            fn main() { no_<|> }
-            ",
-        );
-        check_reference_completion(
-            "inserts_parens_for_function_calls2",
-            r"
-            fn with_args(x: i32, y: String) {}
-            fn main() { with_<|> }
-            ",
-        );
-    }
 }

@@ -121,30 +121,4 @@ mod tests {
             ",
         );
     }
-
-    #[test]
-    fn dont_render_function_parens_in_use_item() {
-        check_reference_completion(
-            "dont_render_function_parens_in_use_item",
-            "
-            //- /lib.rs
-            mod m { pub fn foo() {} }
-            use crate::m::f<|>;
-            ",
-        )
-    }
-
-    #[test]
-    fn dont_render_function_parens_if_already_call() {
-        check_reference_completion(
-            "dont_render_function_parens_if_already_call",
-            "
-            //- /lib.rs
-            fn frobnicate() {}
-            fn main() {
-                frob<|>();
-            }
-            ",
-        )
-    }
 }

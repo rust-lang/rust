@@ -8,8 +8,6 @@
 pub mod db;
 #[cfg(test)]
 mod mock;
-#[cfg(test)]
-mod marks;
 mod query_definitions;
 mod path;
 pub mod source_binder;
@@ -28,6 +26,9 @@ mod generics;
 
 mod code_model_api;
 mod code_model_impl;
+
+#[cfg(test)]
+mod marks;
 
 use crate::{
     db::HirDatabase,
