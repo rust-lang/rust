@@ -8,7 +8,7 @@
 pub mod db;
 #[cfg(test)]
 mod mock;
-#[macro_use]
+#[cfg(test)]
 mod marks;
 mod query_definitions;
 mod path;
