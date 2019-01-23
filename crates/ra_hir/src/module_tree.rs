@@ -10,6 +10,7 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner},
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
+use test_utils::tested_by;
 
 use crate::{Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource};
 

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ra_db::{FilesDatabase, CrateGraph, SourceRootId, salsa::Database};
 use relative_path::RelativePath;
-use test_utils::assert_eq_text;
+use test_utils::{assert_eq_text, covers};
 
 use crate::{
     ItemMap, Resolution,

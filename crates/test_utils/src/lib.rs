@@ -1,5 +1,10 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+#[macro_use]
+pub mod marks;
+
+use std::{
+    fs,
+    path::{Path, PathBuf}
+};
 
 use text_unit::{TextRange, TextUnit};
 use serde_json::Value;
