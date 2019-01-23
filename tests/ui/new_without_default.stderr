@@ -1,5 +1,5 @@
 error: you should consider deriving a `Default` implementation for `Foo`
-  --> $DIR/new_without_default.rs:17:5
+  --> $DIR/new_without_default.rs:8:5
    |
 LL | /     pub fn new() -> Foo {
 LL | |         Foo
@@ -13,7 +13,7 @@ LL | #[derive(Default)]
    |
 
 error: you should consider deriving a `Default` implementation for `Bar`
-  --> $DIR/new_without_default.rs:25:5
+  --> $DIR/new_without_default.rs:16:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Bar
@@ -25,7 +25,7 @@ LL | #[derive(Default)]
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> $DIR/new_without_default.rs:89:5
+  --> $DIR/new_without_default.rs:80:5
    |
 LL | /     pub fn new() -> LtKo<'c> {
 LL | |         unimplemented!()

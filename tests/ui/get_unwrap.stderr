@@ -1,5 +1,5 @@
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:42:17
+  --> $DIR/get_unwrap.rs:33:17
    |
 LL |         let _ = boxed_slice.get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
@@ -7,73 +7,73 @@ LL |         let _ = boxed_slice.get(1).unwrap();
    = note: `-D clippy::get-unwrap` implied by `-D warnings`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:43:17
+  --> $DIR/get_unwrap.rs:34:17
    |
 LL |         let _ = some_slice.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_slice[0]`
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:44:17
+  --> $DIR/get_unwrap.rs:35:17
    |
 LL |         let _ = some_vec.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vec[0]`
 
 error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:45:17
+  --> $DIR/get_unwrap.rs:36:17
    |
 LL |         let _ = some_vecdeque.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vecdeque[0]`
 
 error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:46:17
+  --> $DIR/get_unwrap.rs:37:17
    |
 LL |         let _ = some_hashmap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_hashmap[&1]`
 
 error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:47:17
+  --> $DIR/get_unwrap.rs:38:17
    |
 LL |         let _ = some_btreemap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:50:21
+  --> $DIR/get_unwrap.rs:41:21
    |
 LL |         let _: u8 = *boxed_slice.get(1).unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `boxed_slice[1]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:55:9
+  --> $DIR/get_unwrap.rs:46:9
    |
 LL |         *boxed_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `boxed_slice[0]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:56:9
+  --> $DIR/get_unwrap.rs:47:9
    |
 LL |         *some_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_slice[0]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:57:9
+  --> $DIR/get_unwrap.rs:48:9
    |
 LL |         *some_vec.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0]`
 
 error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:58:9
+  --> $DIR/get_unwrap.rs:49:9
    |
 LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vecdeque[0]`
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:67:17
+  --> $DIR/get_unwrap.rs:58:17
    |
 LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0..1]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:68:17
+  --> $DIR/get_unwrap.rs:59:17
    |
 LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0..1]`

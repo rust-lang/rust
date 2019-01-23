@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! checks for attributes
 
 use crate::utils::get_attr;
@@ -131,8 +122,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         match stmt.node {
-            hir::StmtKind::Decl(ref decl, _) => print_decl(cx, decl),
-            hir::StmtKind::Expr(ref e, _) | hir::StmtKind::Semi(ref e, _) => print_expr(cx, e, 0),
+            hir::StmtKind::Local(ref local) => {
+                println!("local variable of type {}", cx.tables.node_id_to_type(local.hir_id));
+                println!("pattern:");
+                print_pat(cx, &local.pat, 0);
+                if let Some(ref e) = local.init {
+                    println!("init expression:");
+                    print_expr(cx, e, 0);
+                }
+            },
+            hir::StmtKind::Item(_) => println!("item decl"),
+            hir::StmtKind::Expr(ref e) | hir::StmtKind::Semi(ref e) => print_expr(cx, e, 0),
         }
     }
     // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
@@ -146,21 +146,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 fn has_attr(attrs: &[Attribute]) -> bool {
     get_attr(attrs, "dump").count() > 0
-}
-
-fn print_decl(cx: &LateContext<'_, '_>, decl: &hir::Decl) {
-    match decl.node {
-        hir::DeclKind::Local(ref local) => {
-            println!("local variable of type {}", cx.tables.node_id_to_type(local.hir_id));
-            println!("pattern:");
-            print_pat(cx, &local.pat, 0);
-            if let Some(ref e) = local.init {
-                println!("init expression:");
-                print_expr(cx, e, 0);
-            }
-        },
-        hir::DeclKind::Item(_) => println!("item decl"),
-    }
 }
 
 #[allow(clippy::similar_names)]

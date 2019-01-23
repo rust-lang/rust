@@ -1,13 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 #![allow(clippy::float_cmp)]
 
 use crate::utils::{clip, sext, unsext};
@@ -24,6 +14,7 @@ use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
+use syntax_pos::symbol::Symbol;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -48,6 +39,8 @@ pub enum Constant {
     Repeat(Box<Constant>, u64),
     /// a tuple of constants
     Tuple(Vec<Constant>),
+    /// a literal with syntax error
+    Err(Symbol),
 }
 
 impl PartialEq for Constant {
@@ -113,6 +106,9 @@ impl Hash for Constant {
                 c.hash(state);
                 l.hash(state);
             },
+            Constant::Err(ref s) => {
+                s.hash(state);
+            },
         }
     }
 }
@@ -165,6 +161,7 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
+        LitKind::Err(s) => Constant::Err(s),
     }
 }
 

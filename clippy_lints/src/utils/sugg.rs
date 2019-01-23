@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
@@ -213,6 +204,17 @@ impl<'a> Sugg<'a> {
     /// set of parentheses around the deref.
     pub fn mut_addr_deref(self) -> Sugg<'static> {
         make_unop("&mut *", self)
+    }
+
+    /// Convenience method to transform suggestion into a return call
+    pub fn make_return(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("return {}", self)))
+    }
+
+    /// Convenience method to transform suggestion into a block
+    /// where the suggestion is a trailing expression
+    pub fn blockify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("{{ {} }}", self)))
     }
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
@@ -585,5 +587,23 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
         }
 
         self.span_suggestion_with_applicability(remove_span, msg, String::new(), applicability);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Sugg;
+    use std::borrow::Cow;
+
+    const SUGGESTION: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("function_call()"));
+
+    #[test]
+    fn make_return_transform_sugg_into_a_return_call() {
+        assert_eq!("return function_call()", SUGGESTION.make_return().to_string());
+    }
+
+    #[test]
+    fn blockify_transforms_sugg_into_a_block() {
+        assert_eq!("{ function_call() }", SUGGESTION.blockify().to_string());
     }
 }

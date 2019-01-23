@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains paths to types and functions Clippy needs to know
 //! about.
 
@@ -35,6 +26,7 @@ pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleE
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
 pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 pub const EARLY_CONTEXT: [&str; 4] = ["rustc", "lint", "context", "EarlyContext"];
+pub const FMT_ARGUMENTS_NEWV1: [&str; 4] = ["core", "fmt", "Arguments", "new_v1"];
 pub const FMT_ARGUMENTS_NEWV1FORMATTED: [&str; 4] = ["core", "fmt", "Arguments", "new_v1_formatted"];
 pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_TRAIT: [&str; 3] = ["core", "convert", "From"];

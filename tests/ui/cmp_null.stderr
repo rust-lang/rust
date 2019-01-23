@@ -1,5 +1,5 @@
 error: Comparing with null is better expressed by the .is_null() method
-  --> $DIR/cmp_null.rs:18:8
+  --> $DIR/cmp_null.rs:9:8
    |
 LL |     if p == ptr::null() {
    |        ^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     if p == ptr::null() {
    = note: `-D clippy::cmp-null` implied by `-D warnings`
 
 error: Comparing with null is better expressed by the .is_null() method
-  --> $DIR/cmp_null.rs:23:8
+  --> $DIR/cmp_null.rs:14:8
    |
 LL |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^

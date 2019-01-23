@@ -1,11 +1,4 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// run-rustfix
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
@@ -264,6 +257,7 @@ mod nesting {
     }
     impl Enum {
         fn method() {
+            #[allow(unused_imports)]
             use self::Enum::*; // Issue 3425
             static STATIC: Enum = Enum::A; // Can't use Self as type
         }
@@ -281,5 +275,25 @@ mod issue3410 {
 
     impl Trait<Vec<A>> for Vec<B> {
         fn a(_: Vec<A>) {}
+    }
+}
+
+#[allow(clippy::no_effect, path_statements)]
+mod rustfix {
+    mod nested {
+        pub struct A {}
+    }
+
+    impl nested::A {
+        const A: bool = true;
+
+        fn fun_1() {}
+
+        fn fun_2() {
+            nested::A::fun_1();
+            nested::A::A;
+
+            nested::A {};
+        }
     }
 }

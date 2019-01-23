@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
@@ -1157,7 +1148,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
-    fn extract_format_args(arg: &hir::Expr) -> Option<&hir::HirVec<hir::Expr>> {
+    fn extract_format_args(arg: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr)> {
         let arg = match &arg.node {
             hir::ExprKind::AddrOf(_, expr) => expr,
             hir::ExprKind::MethodCall(method_name, _, args)
@@ -1170,8 +1161,8 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
 
         if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg.node {
             if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
-                if let hir::ExprKind::Call(_, ref format_args) = inner_args[0].node {
-                    return Some(format_args);
+                if let hir::ExprKind::Call(_, format_args) = &inner_args[0].node {
+                    return Some((&format_args[0], &format_args[1]));
                 }
             }
         }
@@ -1183,17 +1174,19 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         cx: &LateContext<'_, '_>,
         a: &hir::Expr,
         applicability: &mut Applicability,
-    ) -> String {
+    ) -> Vec<String> {
         if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node {
             if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node {
                 if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node {
-                    return snippet_with_applicability(cx, format_arg_expr_tup[0].span, "..", applicability)
-                        .into_owned();
+                    return format_arg_expr_tup
+                        .iter()
+                        .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
+                        .collect();
                 }
             }
         };
 
-        snippet(cx, a.span, "..").into_owned()
+        unreachable!()
     }
 
     fn check_general_case(
@@ -1242,14 +1235,11 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         };
         let span_replace_word = method_span.with_hi(span.hi());
 
-        if let Some(format_args) = extract_format_args(arg) {
+        if let Some((fmt_spec, fmt_args)) = extract_format_args(arg) {
             let mut applicability = Applicability::MachineApplicable;
-            let args_len = format_args.len();
-            let args: Vec<String> = format_args
-                .into_iter()
-                .take(args_len - 1)
-                .map(|a| generate_format_arg_snippet(cx, a, &mut applicability))
-                .collect();
+            let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
+
+            args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
 
             let sugg = args.join(", ");
 
@@ -1346,12 +1336,10 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                         _ => {},
                     },
                     hir::Node::Stmt(stmt) => {
-                        if let hir::StmtKind::Decl(ref decl, _) = stmt.node {
-                            if let hir::DeclKind::Local(ref loc) = decl.node {
-                                if let hir::PatKind::Ref(..) = loc.pat.node {
-                                    // let ref y = *x borrows x, let ref y = x.clone() does not
-                                    return;
-                                }
+                        if let hir::StmtKind::Local(ref loc) = stmt.node {
+                            if let hir::PatKind::Ref(..) = loc.pat.node {
+                                // let ref y = *x borrows x, let ref y = x.clone() does not
+                                return;
                             }
                         }
                     },

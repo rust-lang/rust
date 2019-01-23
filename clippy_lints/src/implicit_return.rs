@@ -1,14 +1,5 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
-use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl};
+use crate::utils::{in_macro, is_expn_of, snippet_opt, span_lint_and_then};
+use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, MatchSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
@@ -90,15 +81,31 @@ impl Pass {
                     Self::expr_match(cx, else_expr);
                 }
             },
-            ExprKind::Match(_, arms, ..) => {
-                for arm in arms {
-                    Self::expr_match(cx, &arm.body);
+            ExprKind::Match(.., arms, source) => {
+                let check_all_arms = match source {
+                    MatchSource::IfLetDesugar {
+                        contains_else_clause: has_else,
+                    } => *has_else,
+                    _ => true,
+                };
+
+                if check_all_arms {
+                    for arm in arms {
+                        Self::expr_match(cx, &arm.body);
+                    }
+                } else {
+                    Self::expr_match(cx, &arms.first().expect("if let doesn't have a single arm").body);
                 }
             },
             // skip if it already has a return statement
             ExprKind::Ret(..) => (),
             // everything else is missing `return`
-            _ => Self::lint(cx, expr.span, expr.span, "add `return` as shown"),
+            _ => {
+                // make sure it's not just an unreachable expression
+                if is_expn_of(expr.span, "unreachable").is_none() {
+                    Self::lint(cx, expr.span, expr.span, "add `return` as shown")
+                }
+            },
         }
     }
 }

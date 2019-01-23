@@ -1,5 +1,5 @@
 error: digit groups should be smaller
-  --> $DIR/large_digit_groups.rs:24:9
+  --> $DIR/large_digit_groups.rs:16:9
    |
 LL |         0b1_10110_i64,
    |         ^^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
@@ -7,34 +7,34 @@ LL |         0b1_10110_i64,
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
 error: digit groups should be smaller
-  --> $DIR/large_digit_groups.rs:25:9
+  --> $DIR/large_digit_groups.rs:17:9
    |
 LL |         0x1_23456_78901_usize,
    |         ^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
 
 error: digit groups should be smaller
-  --> $DIR/large_digit_groups.rs:26:9
+  --> $DIR/large_digit_groups.rs:18:9
    |
 LL |         1_23456_f32,
    |         ^^^^^^^^^^^ help: consider: `123_456_f32`
 
 error: digit groups should be smaller
-  --> $DIR/large_digit_groups.rs:27:9
+  --> $DIR/large_digit_groups.rs:19:9
    |
 LL |         1_23456.12_f32,
    |         ^^^^^^^^^^^^^^ help: consider: `123_456.12_f32`
 
 error: digit groups should be smaller
-  --> $DIR/large_digit_groups.rs:28:9
+  --> $DIR/large_digit_groups.rs:20:9
    |
-LL |         1_23456.12345_f32,
-   |         ^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_45_f32`
+LL |         1_23456.12345_f64,
+   |         ^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_45_f64`
 
 error: digit groups should be smaller
-  --> $DIR/large_digit_groups.rs:29:9
+  --> $DIR/large_digit_groups.rs:21:9
    |
-LL |         1_23456.12345_6_f32,
-   |         ^^^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_456_f32`
+LL |         1_23456.12345_6_f64,
+   |         ^^^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_456_f64`
 
 error: aborting due to 6 previous errors
 

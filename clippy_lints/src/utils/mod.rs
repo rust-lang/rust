@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::reexport::*;
 use if_chain::if_chain;
 use matches::matches;
@@ -73,9 +64,25 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 /// ```
 pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir().get_parent(id);
-    match cx.tcx.hir().body_owner_kind(parent_id) {
-        hir::BodyOwnerKind::Fn => false,
-        hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(..) => true,
+    match cx.tcx.hir().get(parent_id) {
+        Node::Item(&Item {
+            node: ItemKind::Const(..),
+            ..
+        })
+        | Node::TraitItem(&TraitItem {
+            node: TraitItemKind::Const(..),
+            ..
+        })
+        | Node::ImplItem(&ImplItem {
+            node: ImplItemKind::Const(..),
+            ..
+        })
+        | Node::AnonConst(_)
+        | Node::Item(&Item {
+            node: ItemKind::Static(..),
+            ..
+        }) => true,
+        _ => false,
     }
 }
 

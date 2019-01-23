@@ -1,3 +1,5 @@
+// run-rustfix
+#![allow(clippy::useless_vec)]
 #![warn(clippy::into_iter_on_ref)]
 #![deny(clippy::into_iter_on_array)]
 

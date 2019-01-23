@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:25:13
+  --> $DIR/reference.rs:16:13
    |
 LL |     let b = *&a;
    |             ^^^ help: try this: `a`
@@ -7,61 +7,61 @@ LL |     let b = *&a;
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:27:13
+  --> $DIR/reference.rs:18:13
    |
 LL |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try this: `get_number()`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:32:13
+  --> $DIR/reference.rs:23:13
    |
 LL |     let b = *&bytes[1..2][0];
    |             ^^^^^^^^^^^^^^^^ help: try this: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:36:13
+  --> $DIR/reference.rs:27:13
    |
 LL |     let b = *&(a);
    |             ^^^^^ help: try this: `(a)`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:38:13
+  --> $DIR/reference.rs:29:13
    |
 LL |     let b = *(&a);
    |             ^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:41:13
+  --> $DIR/reference.rs:32:13
    |
 LL |     let b = *((&a));
    |             ^^^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:43:13
+  --> $DIR/reference.rs:34:13
    |
 LL |     let b = *&&a;
    |             ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:45:14
+  --> $DIR/reference.rs:36:14
    |
 LL |     let b = **&aref;
    |              ^^^^^^ help: try this: `aref`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:49:14
+  --> $DIR/reference.rs:40:14
    |
 LL |     let b = **&&a;
    |              ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:53:17
+  --> $DIR/reference.rs:44:17
    |
 LL |         let y = *&mut x;
    |                 ^^^^^^^ help: try this: `x`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:60:18
+  --> $DIR/reference.rs:51:18
    |
 LL |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try this: `&mut x`

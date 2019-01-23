@@ -1,5 +1,5 @@
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:16:5
+  --> $DIR/int_plus_one.rs:7:5
    |
 LL |     x >= y + 1;
    |     ^^^^^^^^^^
@@ -11,7 +11,7 @@ LL |     x > y;
    |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:17:5
+  --> $DIR/int_plus_one.rs:8:5
    |
 LL |     y + 1 <= x;
    |     ^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     y < x;
    |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:19:5
+  --> $DIR/int_plus_one.rs:10:5
    |
 LL |     x - 1 >= y;
    |     ^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     x > y;
    |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:20:5
+  --> $DIR/int_plus_one.rs:11:5
    |
 LL |     y <= x - 1;
    |     ^^^^^^^^^^

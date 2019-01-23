@@ -1,5 +1,5 @@
 error: zero-width space detected
-  --> $DIR/unicode.rs:12:12
+  --> $DIR/unicode.rs:3:12
    |
 LL |     print!("Here >​< is a ZWS, and ​another");
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     print!("Here >​< is a ZWS, and ​another");
            ""Here >/u{200B}< is a ZWS, and /u{200B}another""
 
 error: non-nfc unicode sequence detected
-  --> $DIR/unicode.rs:18:12
+  --> $DIR/unicode.rs:9:12
    |
 LL |     print!("̀àh?");
    |            ^^^^^
@@ -19,7 +19,7 @@ LL |     print!("̀àh?");
            ""̀àh?""
 
 error: literal non-ASCII character detected
-  --> $DIR/unicode.rs:24:12
+  --> $DIR/unicode.rs:15:12
    |
 LL |     print!("Üben!");
    |            ^^^^^^^

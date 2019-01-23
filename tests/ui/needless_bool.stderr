@@ -1,5 +1,5 @@
 error: this if-then-else expression will always return true
-  --> $DIR/needless_bool.rs:40:5
+  --> $DIR/needless_bool.rs:31:5
    |
 LL | /     if x {
 LL | |         true
@@ -11,7 +11,7 @@ LL | |     };
    = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:45:5
+  --> $DIR/needless_bool.rs:36:5
    |
 LL | /     if x {
 LL | |         false
@@ -21,7 +21,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:50:5
+  --> $DIR/needless_bool.rs:41:5
    |
 LL | /     if x {
 LL | |         true
@@ -31,7 +31,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:55:5
+  --> $DIR/needless_bool.rs:46:5
    |
 LL | /     if x {
 LL | |         false
@@ -41,7 +41,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `!x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:60:5
+  --> $DIR/needless_bool.rs:51:5
    |
 LL | /     if x && y {
 LL | |         false
@@ -51,7 +51,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `!(x && y)`
 
 error: this if-then-else expression will always return true
-  --> $DIR/needless_bool.rs:83:5
+  --> $DIR/needless_bool.rs:74:5
    |
 LL | /     if x {
 LL | |         return true;
@@ -61,7 +61,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:92:5
+  --> $DIR/needless_bool.rs:83:5
    |
 LL | /     if x {
 LL | |         return false;
@@ -71,7 +71,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:101:5
+  --> $DIR/needless_bool.rs:92:5
    |
 LL | /     if x {
 LL | |         return true;
@@ -81,7 +81,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:110:5
+  --> $DIR/needless_bool.rs:101:5
    |
 LL | /     if x && y {
 LL | |         return true;
@@ -91,7 +91,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return x && y`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:119:5
+  --> $DIR/needless_bool.rs:110:5
    |
 LL | /     if x {
 LL | |         return false;
@@ -101,7 +101,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return !x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:128:5
+  --> $DIR/needless_bool.rs:119:5
    |
 LL | /     if x && y {
 LL | |         return false;
@@ -111,7 +111,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return !(x && y)`
 
 error: equality checks against true are unnecessary
-  --> $DIR/needless_bool.rs:136:8
+  --> $DIR/needless_bool.rs:127:8
    |
 LL |     if x == true {};
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
@@ -119,22 +119,33 @@ LL |     if x == true {};
    = note: `-D clippy::bool-comparison` implied by `-D warnings`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/needless_bool.rs:140:8
+  --> $DIR/needless_bool.rs:131:8
    |
 LL |     if x == false {};
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: equality checks against true are unnecessary
-  --> $DIR/needless_bool.rs:150:8
+  --> $DIR/needless_bool.rs:141:8
    |
 LL |     if x == true {};
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/needless_bool.rs:151:8
+  --> $DIR/needless_bool.rs:142:8
    |
 LL |     if x == false {};
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
-error: aborting due to 15 previous errors
+error: this if-then-else expression returns a bool literal
+  --> $DIR/needless_bool.rs:151:12
+   |
+LL |       } else if returns_bool() {
+   |  ____________^
+LL | |         false
+LL | |     } else {
+LL | |         true
+LL | |     };
+   | |_____^ help: you can reduce it to: `{ !returns_bool() }`
+
+error: aborting due to 16 previous errors
 

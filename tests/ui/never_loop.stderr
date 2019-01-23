@@ -1,5 +1,5 @@
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:19:5
+  --> $DIR/never_loop.rs:10:5
    |
 LL | /     loop {
 LL | |         // clippy::never_loop
@@ -13,7 +13,7 @@ LL | |     }
    = note: #[deny(clippy::never_loop)] on by default
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:41:5
+  --> $DIR/never_loop.rs:32:5
    |
 LL | /     loop {
 LL | |         // never loops
@@ -23,7 +23,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:61:5
+  --> $DIR/never_loop.rs:52:5
    |
 LL | /     loop {
 LL | |         // never loops
@@ -35,7 +35,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:63:9
+  --> $DIR/never_loop.rs:54:9
    |
 LL | /         while i == 0 {
 LL | |             // never loops
@@ -44,7 +44,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:75:9
+  --> $DIR/never_loop.rs:66:9
    |
 LL | /         loop {
 LL | |             // never loops
@@ -56,7 +56,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:111:5
+  --> $DIR/never_loop.rs:102:5
    |
 LL | /     while let Some(y) = x {
 LL | |         // never loops
@@ -65,7 +65,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:118:5
+  --> $DIR/never_loop.rs:109:5
    |
 LL | /     for x in 0..10 {
 LL | |         // never loops
@@ -77,7 +77,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:166:5
+  --> $DIR/never_loop.rs:157:5
    |
 LL | /     'outer: while a {
 LL | |         // never loops
@@ -89,7 +89,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:181:9
+  --> $DIR/never_loop.rs:172:9
    |
 LL | /         while false {
 LL | |             break 'label;

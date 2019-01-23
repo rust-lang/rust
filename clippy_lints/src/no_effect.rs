@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
 use rustc::hir::def::Def;
 use rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
@@ -113,7 +104,7 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
-        if let StmtKind::Semi(ref expr, _) = stmt.node {
+        if let StmtKind::Semi(ref expr) = stmt.node {
             if has_no_effect(cx, expr) {
                 span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
             } else if let Some(reduced) = reduce_expression(cx, expr) {

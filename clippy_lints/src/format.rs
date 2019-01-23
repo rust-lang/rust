@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::paths;
 use crate::utils::{
     in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet,
@@ -62,12 +53,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 ExprKind::Call(ref fun, ref args) => {
                     if_chain! {
                         if let ExprKind::Path(ref qpath) = fun.node;
-                        if args.len() == 3;
                         if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
-                        if match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1FORMATTED);
+                        let new_v1 = match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
+                        let new_v1_fmt = match_def_path(
+                            cx.tcx,
+                            fun_def_id,
+                            &paths::FMT_ARGUMENTS_NEWV1FORMATTED
+                        );
+                        if new_v1 || new_v1_fmt;
                         if check_single_piece(&args[0]);
                         if let Some(format_arg) = get_single_string_arg(cx, &args[1]);
-                        if check_unformatted(&args[2]);
+                        if new_v1 || check_unformatted(&args[2]);
                         if let ExprKind::AddrOf(_, ref format_arg) = format_arg.node;
                         then {
                             let (message, sugg) = if_chain! {

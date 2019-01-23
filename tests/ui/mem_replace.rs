@@ -1,4 +1,4 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2019 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+#![allow(unused_imports)]
 #![warn(clippy::all, clippy::style, clippy::mem_replace_option_with_none)]
 
 use std::mem;

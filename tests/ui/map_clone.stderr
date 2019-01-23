@@ -1,5 +1,5 @@
 error: You are using an explicit closure for cloning elements
-  --> $DIR/map_clone.rs:14:22
+  --> $DIR/map_clone.rs:8:22
    |
 LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![5_i8; 6].iter().cloned()`
@@ -7,16 +7,22 @@ LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    = note: `-D clippy::map-clone` implied by `-D warnings`
 
 error: You are using an explicit closure for cloning elements
-  --> $DIR/map_clone.rs:15:26
+  --> $DIR/map_clone.rs:9:26
    |
 LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
 
 error: You are using an explicit closure for cloning elements
-  --> $DIR/map_clone.rs:16:23
+  --> $DIR/map_clone.rs:10:23
    |
 LL |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![42, 43].iter().cloned()`
 
-error: aborting due to 3 previous errors
+error: You are needlessly cloning iterator elements
+  --> $DIR/map_clone.rs:22:29
+   |
+LL |     let _ = std::env::args().map(|v| v.clone());
+   |                             ^^^^^^^^^^^^^^^^^^^ help: Remove the map call
+
+error: aborting due to 4 previous errors
 

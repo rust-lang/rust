@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::{get_item_name, in_macro, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
@@ -40,10 +31,10 @@ use syntax::source_map::{Span, Spanned};
 /// ```
 /// instead use
 /// ```rust
-/// if x.len().is_empty() {
+/// if x.is_empty() {
 ///     ..
 /// }
-/// if !y.len().is_empty() {
+/// if !y.is_empty() {
 ///     ..
 /// }
 /// ```
@@ -124,8 +115,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
                     check_cmp(cx, expr.span, left, right, "", 1); // len < 1
                     check_cmp(cx, expr.span, right, left, "!", 0); // 0 < len
                 },
-                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
-                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
+                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len >= 1
+                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 <= len
                 _ => (),
             }
         }

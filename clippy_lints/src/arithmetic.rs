@@ -1,12 +1,4 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+use crate::consts::constant_simple;
 use crate::utils::span_lint;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -103,8 +95,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
             hir::ExprKind::Unary(hir::UnOp::UnNeg, arg) => {
                 let ty = cx.tables.expr_ty(arg);
                 if ty.is_integral() {
-                    span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
-                    self.expr_span = Some(expr.span);
+                    if constant_simple(cx, cx.tables, expr).is_none() {
+                        span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
+                        self.expr_span = Some(expr.span);
+                    }
                 } else if ty.is_floating_point() {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
                     self.expr_span = Some(expr.span);
@@ -134,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                 }
                 self.const_span = Some(body_span);
             },
-            hir::BodyOwnerKind::Fn => (),
+            hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure => (),
         }
     }
 

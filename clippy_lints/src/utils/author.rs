@@ -1,19 +1,10 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
 use crate::utils::get_attr;
 use rustc::hir;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::{BindingAnnotation, DeclKind, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc::hir::{BindingAnnotation, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashMap;
@@ -269,6 +260,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 match lit.node {
                     LitKind::Bool(val) => println!("    if let LitKind::Bool({:?}) = {}.node;", val, lit_pat),
                     LitKind::Char(c) => println!("    if let LitKind::Char({:?}) = {}.node;", c, lit_pat),
+                    LitKind::Err(val) => println!("    if let LitKind::Err({}) = {}.node;", val, lit_pat),
                     LitKind::Byte(b) => println!("    if let LitKind::Byte({}) = {}.node;", b, lit_pat),
                     // FIXME: also check int type
                     LitKind::Int(i, _) => println!("    if let LitKind::Int({}, _) = {}.node;", i, lit_pat),
@@ -634,35 +626,26 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         print!("    if let StmtKind::");
         let current = format!("{}.node", self.current);
         match s.node {
-            // Could be an item or a local (let) binding:
-            StmtKind::Decl(ref decl, _) => {
-                let decl_pat = self.next("decl");
-                println!("Decl(ref {}, _) = {}", decl_pat, current);
-                print!("    if let DeclKind::");
-                let current = format!("{}.node", decl_pat);
-                match decl.node {
-                    // A local (let) binding:
-                    DeclKind::Local(ref local) => {
-                        let local_pat = self.next("local");
-                        println!("Local(ref {}) = {};", local_pat, current);
-                        if let Some(ref init) = local.init {
-                            let init_pat = self.next("init");
-                            println!("    if let Some(ref {}) = {}.init", init_pat, local_pat);
-                            self.current = init_pat;
-                            self.visit_expr(init);
-                        }
-                        self.current = format!("{}.pat", local_pat);
-                        self.visit_pat(&local.pat);
-                    },
-                    // An item binding:
-                    DeclKind::Item(_) => {
-                        println!("Item(item_id) = {};", current);
-                    },
+            // A local (let) binding:
+            StmtKind::Local(ref local) => {
+                let local_pat = self.next("local");
+                println!("Local(ref {}) = {};", local_pat, current);
+                if let Some(ref init) = local.init {
+                    let init_pat = self.next("init");
+                    println!("    if let Some(ref {}) = {}.init", init_pat, local_pat);
+                    self.current = init_pat;
+                    self.visit_expr(init);
                 }
+                self.current = format!("{}.pat", local_pat);
+                self.visit_pat(&local.pat);
+            },
+            // An item binding:
+            StmtKind::Item(_) => {
+                println!("Item(item_id) = {};", current);
             },
 
             // Expr without trailing semi-colon (must have unit type):
-            StmtKind::Expr(ref e, _) => {
+            StmtKind::Expr(ref e) => {
                 let e_pat = self.next("e");
                 println!("Expr(ref {}, _) = {}", e_pat, current);
                 self.current = e_pat;
@@ -670,7 +653,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             },
 
             // Expr with trailing semi-colon (may have any type):
-            StmtKind::Semi(ref e, _) => {
+            StmtKind::Semi(ref e) => {
                 let e_pat = self.next("e");
                 println!("Semi(ref {}, _) = {}", e_pat, current);
                 self.current = e_pat;

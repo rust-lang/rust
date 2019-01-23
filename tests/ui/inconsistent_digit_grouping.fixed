@@ -1,0 +1,15 @@
+// run-rustfix
+#[warn(clippy::inconsistent_digit_grouping)]
+#[allow(unused_variables, clippy::excessive_precision)]
+fn main() {
+    let good = (
+        123,
+        1_234,
+        1_2345_6789,
+        123_f32,
+        1_234.12_f32,
+        1_234.123_4_f32,
+        1.123_456_7_f32,
+    );
+    let bad = (123_456, 12_345_678, 1_234_567, 1_234.567_8_f32, 1.234_567_8_f32);
+}

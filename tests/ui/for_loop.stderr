@@ -1,5 +1,5 @@
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:50:14
+  --> $DIR/for_loop.rs:41:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL |     for <item> in &vec {
    |         ^^^^^^    ^^^^
 
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:59:14
+  --> $DIR/for_loop.rs:50:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     for <item> in &vec {
    |         ^^^^^^    ^^^^
 
 error: the loop variable `j` is only used to index `STATIC`.
-  --> $DIR/for_loop.rs:64:14
+  --> $DIR/for_loop.rs:55:14
    |
 LL |     for j in 0..4 {
    |              ^^^^
@@ -31,7 +31,7 @@ LL |     for <item> in &STATIC {
    |         ^^^^^^    ^^^^^^^
 
 error: the loop variable `j` is only used to index `CONST`.
-  --> $DIR/for_loop.rs:68:14
+  --> $DIR/for_loop.rs:59:14
    |
 LL |     for j in 0..4 {
    |              ^^^^
@@ -41,7 +41,7 @@ LL |     for <item> in &CONST {
    |         ^^^^^^    ^^^^^^
 
 error: the loop variable `i` is used to index `vec`
-  --> $DIR/for_loop.rs:72:14
+  --> $DIR/for_loop.rs:63:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     for (i, <item>) in vec.iter().enumerate() {
    |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec2`.
-  --> $DIR/for_loop.rs:80:14
+  --> $DIR/for_loop.rs:71:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL |     for <item> in vec2.iter().take(vec.len()) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:84:14
+  --> $DIR/for_loop.rs:75:14
    |
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL |     for <item> in vec.iter().skip(5) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:88:14
+  --> $DIR/for_loop.rs:79:14
    |
 LL |     for i in 0..MAX_LEN {
    |              ^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     for <item> in vec.iter().take(MAX_LEN) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:92:14
+  --> $DIR/for_loop.rs:83:14
    |
 LL |     for i in 0..=MAX_LEN {
    |              ^^^^^^^^^^^
@@ -91,7 +91,7 @@ LL |     for <item> in vec.iter().take(MAX_LEN + 1) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:96:14
+  --> $DIR/for_loop.rs:87:14
    |
 LL |     for i in 5..10 {
    |              ^^^^^
@@ -101,7 +101,7 @@ LL |     for <item> in vec.iter().take(10).skip(5) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:100:14
+  --> $DIR/for_loop.rs:91:14
    |
 LL |     for i in 5..=10 {
    |              ^^^^^^
@@ -111,7 +111,7 @@ LL |     for <item> in vec.iter().take(10 + 1).skip(5) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is used to index `vec`
-  --> $DIR/for_loop.rs:104:14
+  --> $DIR/for_loop.rs:95:14
    |
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |     for (i, <item>) in vec.iter().enumerate().skip(5) {
    |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is used to index `vec`
-  --> $DIR/for_loop.rs:108:14
+  --> $DIR/for_loop.rs:99:14
    |
 LL |     for i in 5..10 {
    |              ^^^^^
@@ -131,7 +131,7 @@ LL |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
    |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:112:14
+  --> $DIR/for_loop.rs:103:14
    |
 LL |     for i in 10..0 {
    |              ^^^^^
@@ -143,7 +143,7 @@ LL |     for i in (0..10).rev() {
    |              ^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:116:14
+  --> $DIR/for_loop.rs:107:14
    |
 LL |     for i in 10..=0 {
    |              ^^^^^^
@@ -153,7 +153,7 @@ LL |     for i in (0...10).rev() {
    |              ^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:120:14
+  --> $DIR/for_loop.rs:111:14
    |
 LL |     for i in MAX_LEN..0 {
    |              ^^^^^^^^^^
@@ -163,13 +163,13 @@ LL |     for i in (0..MAX_LEN).rev() {
    |              ^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:124:14
+  --> $DIR/for_loop.rs:115:14
    |
 LL |     for i in 5..5 {
    |              ^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:149:14
+  --> $DIR/for_loop.rs:140:14
    |
 LL |     for i in 10..5 + 4 {
    |              ^^^^^^^^^
@@ -179,7 +179,7 @@ LL |     for i in (5 + 4..10).rev() {
    |              ^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:153:14
+  --> $DIR/for_loop.rs:144:14
    |
 LL |     for i in (5 + 2)..(3 - 1) {
    |              ^^^^^^^^^^^^^^^^
@@ -189,13 +189,13 @@ LL |     for i in ((3 - 1)..(5 + 2)).rev() {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:157:14
+  --> $DIR/for_loop.rs:148:14
    |
 LL |     for i in (5 + 2)..(8 - 1) {
    |              ^^^^^^^^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:179:15
+  --> $DIR/for_loop.rs:170:15
    |
 LL |     for _v in vec.iter() {}
    |               ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
@@ -203,13 +203,13 @@ LL |     for _v in vec.iter() {}
    = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:181:15
+  --> $DIR/for_loop.rs:172:15
    |
 LL |     for _v in vec.iter_mut() {}
    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods`
-  --> $DIR/for_loop.rs:184:15
+  --> $DIR/for_loop.rs:175:15
    |
 LL |     for _v in out_vec.into_iter() {}
    |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `out_vec`
@@ -217,67 +217,67 @@ LL |     for _v in out_vec.into_iter() {}
    = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:187:15
+  --> $DIR/for_loop.rs:178:15
    |
 LL |     for _v in array.into_iter() {}
    |               ^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&array`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:192:15
+  --> $DIR/for_loop.rs:183:15
    |
 LL |     for _v in [1, 2, 3].iter() {}
    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:196:15
+  --> $DIR/for_loop.rs:187:15
    |
 LL |     for _v in [0; 32].iter() {}
    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:201:15
+  --> $DIR/for_loop.rs:192:15
    |
 LL |     for _v in ll.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&ll`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:204:15
+  --> $DIR/for_loop.rs:195:15
    |
 LL |     for _v in vd.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&vd`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:207:15
+  --> $DIR/for_loop.rs:198:15
    |
 LL |     for _v in bh.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bh`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:210:15
+  --> $DIR/for_loop.rs:201:15
    |
 LL |     for _v in hm.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&hm`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:213:15
+  --> $DIR/for_loop.rs:204:15
    |
 LL |     for _v in bt.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bt`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:216:15
+  --> $DIR/for_loop.rs:207:15
    |
 LL |     for _v in hs.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&hs`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:219:15
+  --> $DIR/for_loop.rs:210:15
    |
 LL |     for _v in bs.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bs`
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
-  --> $DIR/for_loop.rs:221:15
+  --> $DIR/for_loop.rs:212:15
    |
 LL |     for _v in vec.iter().next() {}
    |               ^^^^^^^^^^^^^^^^^
@@ -285,7 +285,7 @@ LL |     for _v in vec.iter().next() {}
    = note: `-D clippy::iter-next-loop` implied by `-D warnings`
 
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
-  --> $DIR/for_loop.rs:228:5
+  --> $DIR/for_loop.rs:219:5
    |
 LL |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -293,7 +293,7 @@ LL |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
    = note: `-D clippy::unused-collect` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:372:14
+  --> $DIR/for_loop.rs:363:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
@@ -301,31 +301,31 @@ LL |     for i in 0..src.len() {
    = note: `-D clippy::manual-memcpy` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:377:14
+  --> $DIR/for_loop.rs:368:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[10..(src.len() + 10)].clone_from_slice(&src[..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:382:14
+  --> $DIR/for_loop.rs:373:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[10..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:387:14
+  --> $DIR/for_loop.rs:378:14
    |
 LL |     for i in 11..src.len() {
    |              ^^^^^^^^^^^^^ help: try replacing the loop by: `dst[11..src.len()].clone_from_slice(&src[(11 - 10)..(src.len() - 10)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:392:14
+  --> $DIR/for_loop.rs:383:14
    |
 LL |     for i in 0..dst.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst.clone_from_slice(&src[..dst.len()])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:405:14
+  --> $DIR/for_loop.rs:396:14
    |
 LL |     for i in 10..256 {
    |              ^^^^^^^
@@ -336,31 +336,31 @@ LL |     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256]) {
    |
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:417:14
+  --> $DIR/for_loop.rs:408:14
    |
 LL |     for i in 10..LOOP_OFFSET {
    |              ^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[(10 + LOOP_OFFSET)..(LOOP_OFFSET + LOOP_OFFSET)].clone_from_slice(&src[(10 - some_var)..(LOOP_OFFSET - some_var)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:430:14
+  --> $DIR/for_loop.rs:421:14
    |
 LL |     for i in 0..src_vec.len() {
    |              ^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst_vec[..src_vec.len()].clone_from_slice(&src_vec[..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:459:14
+  --> $DIR/for_loop.rs:450:14
    |
 LL |     for i in from..from + src.len() {
    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + src.len()].clone_from_slice(&src[0..(from + src.len() - from)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:463:14
+  --> $DIR/for_loop.rs:454:14
    |
 LL |     for i in from..from + 3 {
    |              ^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + 3].clone_from_slice(&src[0..(from + 3 - from)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:470:14
+  --> $DIR/for_loop.rs:461:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`

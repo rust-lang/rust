@@ -1,5 +1,5 @@
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:13:19
+  --> $DIR/unnecessary_fold.rs:8:19
    |
 LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
@@ -7,28 +7,28 @@ LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:15:19
+  --> $DIR/unnecessary_fold.rs:10:19
    |
 LL |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.all(|x| x > 2)`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:17:19
+  --> $DIR/unnecessary_fold.rs:12:24
    |
-LL |     let _ = (0..3).fold(0, |acc, x| acc + x);
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum()`
+LL |     let _: i32 = (0..3).fold(0, |acc, x| acc + x);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:19:19
+  --> $DIR/unnecessary_fold.rs:14:24
    |
-LL |     let _ = (0..3).fold(1, |acc, x| acc * x);
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product()`
+LL |     let _: i32 = (0..3).fold(1, |acc, x| acc * x);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:24:34
+  --> $DIR/unnecessary_fold.rs:19:40
    |
-LL |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
+LL |     let _: bool = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 
 error: aborting due to 5 previous errors
 

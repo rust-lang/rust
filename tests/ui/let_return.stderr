@@ -1,24 +1,24 @@
 error: returning the result of a let binding from a block. Consider returning the expression directly.
-  --> $DIR/let_return.rs:16:5
+  --> $DIR/let_return.rs:7:5
    |
 LL |     x
    |     ^
    |
    = note: `-D clippy::let-and-return` implied by `-D warnings`
 note: this expression can be directly returned
-  --> $DIR/let_return.rs:15:13
+  --> $DIR/let_return.rs:6:13
    |
 LL |     let x = 5;
    |             ^
 
 error: returning the result of a let binding from a block. Consider returning the expression directly.
-  --> $DIR/let_return.rs:22:9
+  --> $DIR/let_return.rs:13:9
    |
 LL |         x
    |         ^
    |
 note: this expression can be directly returned
-  --> $DIR/let_return.rs:21:17
+  --> $DIR/let_return.rs:12:17
    |
 LL |         let x = 5;
    |                 ^

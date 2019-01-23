@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::ptr::get_spans;
 use crate::utils::{
     get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths, snippet,
@@ -377,8 +368,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                         Node::Stmt(s) => {
                             // `let <pat> = x;`
                             if_chain! {
-                                if let StmtKind::Decl(ref decl, _) = s.node;
-                                if let DeclKind::Local(ref local) = decl.node;
+                                if let StmtKind::Local(ref local) = s.node;
                                 then {
                                     self.spans_need_deref
                                         .entry(vid)

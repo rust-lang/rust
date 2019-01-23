@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::paths;
 use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use if_chain::if_chain;
@@ -140,9 +131,10 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.node {
-                        hir::StmtKind::Decl(ref d, _) => Some(d.span),
-                        hir::StmtKind::Expr(ref e, _) => Some(e.span),
-                        hir::StmtKind::Semi(_, _) => Some(inner_stmt.span),
+                        hir::StmtKind::Local(ref local) => Some(local.span),
+                        hir::StmtKind::Expr(ref e) => Some(e.span),
+                        hir::StmtKind::Semi(..) => Some(inner_stmt.span),
+                        hir::StmtKind::Item(..) => None,
                     }
                 },
                 _ => {
@@ -259,7 +251,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
 
-        if let hir::StmtKind::Semi(ref expr, _) = stmt.node {
+        if let hir::StmtKind::Semi(ref expr) = stmt.node {
             if let Some(arglists) = method_chain_args(expr, &["map"]) {
                 lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }

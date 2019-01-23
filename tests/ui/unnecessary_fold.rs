@@ -1,11 +1,6 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// run-rustfix
+
+#![allow(dead_code)]
 
 /// Calls which should trigger the `UNNECESSARY_FOLD` lint
 fn unnecessary_fold() {
@@ -14,14 +9,14 @@ fn unnecessary_fold() {
     // Can be replaced by .all
     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
     // Can be replaced by .sum
-    let _ = (0..3).fold(0, |acc, x| acc + x);
+    let _: i32 = (0..3).fold(0, |acc, x| acc + x);
     // Can be replaced by .product
-    let _ = (0..3).fold(1, |acc, x| acc * x);
+    let _: i32 = (0..3).fold(1, |acc, x| acc * x);
 }
 
 /// Should trigger the `UNNECESSARY_FOLD` lint, with an error span including exactly `.fold(...)`
 fn unnecessary_fold_span_for_multi_element_chain() {
-    let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+    let _: bool = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
 }
 
 /// Calls which should not trigger the `UNNECESSARY_FOLD` lint

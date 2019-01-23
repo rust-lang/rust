@@ -1,5 +1,5 @@
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enums_clike.rs:17:5
+  --> $DIR/enums_clike.rs:8:5
    |
 LL |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
@@ -7,16 +7,34 @@ LL |     X = 0x1_0000_0000,
    = note: `-D clippy::enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enums_clike.rs:24:5
+  --> $DIR/enums_clike.rs:15:5
    |
 LL |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enums_clike.rs:27:5
+  --> $DIR/enums_clike.rs:18:5
    |
 LL |     A = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
+
+error: Clike enum variant discriminant is not portable to 32-bit targets
+  --> $DIR/enums_clike.rs:25:5
+   |
+LL |     Z = 0xFFFF_FFFF,
+   |     ^^^^^^^^^^^^^^^
+
+error: Clike enum variant discriminant is not portable to 32-bit targets
+  --> $DIR/enums_clike.rs:26:5
+   |
+LL |     A = 0x1_0000_0000,
+   |     ^^^^^^^^^^^^^^^^^
+
+error: Clike enum variant discriminant is not portable to 32-bit targets
+  --> $DIR/enums_clike.rs:28:5
+   |
+LL |     C = (std::i32::MIN as isize) - 1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:34:5
@@ -26,24 +44,6 @@ LL |     Z = 0xFFFF_FFFF,
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:35:5
-   |
-LL |     A = 0x1_0000_0000,
-   |     ^^^^^^^^^^^^^^^^^
-
-error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enums_clike.rs:37:5
-   |
-LL |     C = (std::i32::MIN as isize) - 1,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enums_clike.rs:43:5
-   |
-LL |     Z = 0xFFFF_FFFF,
-   |     ^^^^^^^^^^^^^^^
-
-error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enums_clike.rs:44:5
    |
 LL |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^

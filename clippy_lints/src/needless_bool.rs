@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Checks for needless boolean results of if-else expressions
 //!
 //! This lint is **warn** by default
@@ -79,13 +70,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
                 let snip = Sugg::hir_with_applicability(cx, pred, "<predicate>", &mut applicability);
-                let snip = if not { !snip } else { snip };
+                let mut snip = if not { !snip } else { snip };
 
-                let hint = if ret {
-                    format!("return {}", snip)
-                } else {
-                    snip.to_string()
-                };
+                if ret {
+                    snip = snip.make_return();
+                }
+
+                if parent_node_is_if_expr(&e, &cx) {
+                    snip = snip.blockify()
+                }
 
                 span_lint_and_sugg(
                     cx,
@@ -93,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     e.span,
                     "this if-then-else expression returns a bool literal",
                     "you can reduce it to",
-                    hint,
+                    snip.to_string(),
                     applicability,
                 );
             };
@@ -126,6 +119,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
             }
         }
     }
+}
+
+fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool {
+    let parent_id = cx.tcx.hir().get_parent_node(expr.id);
+    let parent_node = cx.tcx.hir().get(parent_id);
+
+    if let rustc::hir::Node::Expr(e) = parent_node {
+        if let ExprKind::If(_, _, _) = e.node {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[derive(Copy, Clone)]
@@ -276,7 +282,7 @@ fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         (&[], Some(e)) => fetch_bool_expr(&**e),
         (&[ref e], None) => {
-            if let StmtKind::Semi(ref e, _) = e.node {
+            if let StmtKind::Semi(ref e) = e.node {
                 if let ExprKind::Ret(_) = e.node {
                     fetch_bool_expr(&**e)
                 } else {

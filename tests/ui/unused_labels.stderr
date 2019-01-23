@@ -1,5 +1,5 @@
 error: unused label `'label`
-  --> $DIR/unused_labels.rs:14:5
+  --> $DIR/unused_labels.rs:5:5
    |
 LL | /     'label: for i in 1..2 {
 LL | |         if i > 4 {
@@ -11,7 +11,7 @@ LL | |     }
    = note: `-D clippy::unused-label` implied by `-D warnings`
 
 error: unused label `'a`
-  --> $DIR/unused_labels.rs:28:5
+  --> $DIR/unused_labels.rs:19:5
    |
 LL | /     'a: loop {
 LL | |         break;
@@ -19,7 +19,7 @@ LL | |     }
    | |_____^
 
 error: unused label `'same_label_in_two_fns`
-  --> $DIR/unused_labels.rs:41:5
+  --> $DIR/unused_labels.rs:32:5
    |
 LL | /     'same_label_in_two_fns: loop {
 LL | |         let _ = 1;

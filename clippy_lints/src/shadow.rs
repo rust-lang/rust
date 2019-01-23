@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::reexport::*;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
 use rustc::hir::intravisit::FnKind;
@@ -124,8 +115,9 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, binding
     let len = bindings.len();
     for stmt in &block.stmts {
         match stmt.node {
-            StmtKind::Decl(ref decl, _) => check_decl(cx, decl, bindings),
-            StmtKind::Expr(ref e, _) | StmtKind::Semi(ref e, _) => check_expr(cx, e, bindings),
+            StmtKind::Local(ref local) => check_local(cx, local, bindings),
+            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => check_expr(cx, e, bindings),
+            StmtKind::Item(..) => {},
         }
     }
     if let Some(ref o) = block.expr {
@@ -134,30 +126,28 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, binding
     bindings.truncate(len);
 }
 
-fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: &mut Vec<(Name, Span)>) {
-    if in_external_macro(cx.sess(), decl.span) {
+fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local, bindings: &mut Vec<(Name, Span)>) {
+    if in_external_macro(cx.sess(), local.span) {
         return;
     }
-    if higher::is_from_for_desugar(decl) {
+    if higher::is_from_for_desugar(local) {
         return;
     }
-    if let DeclKind::Local(ref local) = decl.node {
-        let Local {
-            ref pat,
-            ref ty,
-            ref init,
-            span,
-            ..
-        } = **local;
-        if let Some(ref t) = *ty {
-            check_ty(cx, t, bindings)
-        }
-        if let Some(ref o) = *init {
-            check_expr(cx, o, bindings);
-            check_pat(cx, pat, Some(o), span, bindings);
-        } else {
-            check_pat(cx, pat, None, span, bindings);
-        }
+    let Local {
+        ref pat,
+        ref ty,
+        ref init,
+        span,
+        ..
+    } = *local;
+    if let Some(ref t) = *ty {
+        check_ty(cx, t, bindings)
+    }
+    if let Some(ref o) = *init {
+        check_expr(cx, o, bindings);
+        check_pat(cx, pat, Some(o), span, bindings);
+    } else {
+        check_pat(cx, pat, None, span, bindings);
     }
 }
 

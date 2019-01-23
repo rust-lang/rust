@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq,
@@ -80,17 +71,16 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
-            if let StmtKind::Decl(ref tmp, _) = w[0].node;
-            if let DeclKind::Local(ref tmp) = tmp.node;
+            if let StmtKind::Local(ref tmp) = w[0].node;
             if let Some(ref tmp_init) = tmp.init;
             if let PatKind::Binding(_, _, ident, None) = tmp.pat.node;
 
             // foo() = bar();
-            if let StmtKind::Semi(ref first, _) = w[1].node;
+            if let StmtKind::Semi(ref first) = w[1].node;
             if let ExprKind::Assign(ref lhs1, ref rhs1) = first.node;
 
             // bar() = t;
-            if let StmtKind::Semi(ref second, _) = w[2].node;
+            if let StmtKind::Semi(ref second) = w[2].node;
             if let ExprKind::Assign(ref lhs2, ref rhs2) = second.node;
             if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.node;
             if rhs2.segments.len() == 1;
@@ -169,8 +159,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
 fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(2) {
         if_chain! {
-            if let StmtKind::Semi(ref first, _) = w[0].node;
-            if let StmtKind::Semi(ref second, _) = w[1].node;
+            if let StmtKind::Semi(ref first) = w[0].node;
+            if let StmtKind::Semi(ref second) = w[1].node;
             if !differing_macro_contexts(first.span, second.span);
             if let ExprKind::Assign(ref lhs0, ref rhs0) = first.node;
             if let ExprKind::Assign(ref lhs1, ref rhs1) = second.node;

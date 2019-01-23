@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! checks for attributes
 
 use crate::reexport::*;
@@ -341,9 +332,12 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 // https://github.com/rust-lang/rust/pull/56992
                                 CheckLintNameResult::NoLint(None) => (),
                                 _ => {
-                                    db.span_suggestion(lint.span,
-                                                       "lowercase the lint name",
-                                                       name_lower);
+                                    db.span_suggestion_with_applicability(
+                                        lint.span,
+                                        "lowercase the lint name",
+                                        name_lower,
+                                        Applicability::MaybeIncorrect,
+                                    );
                                 }
                             }
                         }
@@ -382,8 +376,9 @@ fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
 fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.node {
-            StmtKind::Decl(_, _) => true,
-            StmtKind::Expr(expr, _) | StmtKind::Semi(expr, _) => is_relevant_expr(tcx, tables, expr),
+            StmtKind::Local(_) => true,
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(tcx, tables, expr),
+            _ => false,
         }
     } else {
         block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
@@ -520,18 +515,17 @@ impl EarlyLintPass for CfgAttrPass {
             // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
             if skip_item.name() == "rustfmt_skip" || skip_item.name() == "skip";
+            // Only lint outer attributes, because custom inner attributes are unstable
+            // Tracking issue: https://github.com/rust-lang/rust/issues/54726
+            if let AttrStyle::Outer = attr.style;
             then {
-                let attr_style = match attr.style {
-                    AttrStyle::Outer => "#[",
-                    AttrStyle::Inner => "#![",
-                };
                 span_lint_and_sugg(
                     cx,
                     DEPRECATED_CFG_ATTR,
                     attr.span,
                     "`cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes",
                     "use",
-                    format!("{}rustfmt::skip]", attr_style),
+                    "#[rustfmt::skip]".to_string(),
                     Applicability::MachineApplicable,
                 );
             }

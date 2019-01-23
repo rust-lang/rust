@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -98,14 +89,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     }
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
-            StmtKind::Expr(ref e, _) | StmtKind::Semi(ref e, _) => DivergenceVisitor { cx }.maybe_walk_expr(e),
-            StmtKind::Decl(ref d, _) => {
-                if let DeclKind::Local(ref local) = d.node {
-                    if let Local { init: Some(ref e), .. } = **local {
-                        DivergenceVisitor { cx }.visit_expr(e);
-                    }
+            StmtKind::Local(ref local) => {
+                if let Local { init: Some(ref e), .. } = **local {
+                    DivergenceVisitor { cx }.visit_expr(e);
                 }
             },
+            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => DivergenceVisitor { cx }.maybe_walk_expr(e),
+            StmtKind::Item(..) => {},
         }
     }
 }
@@ -278,18 +268,14 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
 
 fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
     match stmt.node {
-        StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => check_expr(vis, expr),
-        StmtKind::Decl(ref decl, _) => {
-            // If the declaration is of a local variable, check its initializer
-            // expression if it has one. Otherwise, keep going.
-            let local = match decl.node {
-                DeclKind::Local(ref local) => Some(local),
-                _ => None,
-            };
-            local
-                .and_then(|local| local.init.as_ref())
-                .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr))
-        },
+        StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => check_expr(vis, expr),
+        // If the declaration is of a local variable, check its initializer
+        // expression if it has one. Otherwise, keep going.
+        StmtKind::Local(ref local) => local
+            .init
+            .as_ref()
+            .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),
+        _ => StopEarly::KeepGoing,
     }
 }
 

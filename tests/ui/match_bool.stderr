@@ -1,5 +1,5 @@
 error: this boolean expression can be simplified
-  --> $DIR/match_bool.rs:38:11
+  --> $DIR/match_bool.rs:29:11
    |
 LL |     match test && test {
    |           ^^^^^^^^^^^^ help: try: `test`
@@ -7,7 +7,7 @@ LL |     match test && test {
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-  --> $DIR/match_bool.rs:13:5
+  --> $DIR/match_bool.rs:4:5
    |
 LL | /     match test {
 LL | |         true => 0,
@@ -18,7 +18,7 @@ LL | |     };
    = note: `-D clippy::match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-  --> $DIR/match_bool.rs:19:5
+  --> $DIR/match_bool.rs:10:5
    |
 LL | /     match option == 1 {
 LL | |         true => 1,
@@ -27,7 +27,7 @@ LL | |     };
    | |_____^ help: consider using an if/else expression: `if option == 1 { 1 } else { 0 }`
 
 error: you seem to be trying to match on a boolean expression
-  --> $DIR/match_bool.rs:24:5
+  --> $DIR/match_bool.rs:15:5
    |
 LL | /     match test {
 LL | |         true => (),
@@ -44,7 +44,7 @@ LL | };
    |
 
 error: you seem to be trying to match on a boolean expression
-  --> $DIR/match_bool.rs:31:5
+  --> $DIR/match_bool.rs:22:5
    |
 LL | /     match test {
 LL | |         false => {
@@ -61,7 +61,7 @@ LL | };
    |
 
 error: you seem to be trying to match on a boolean expression
-  --> $DIR/match_bool.rs:38:5
+  --> $DIR/match_bool.rs:29:5
    |
 LL | /     match test && test {
 LL | |         false => {
@@ -78,7 +78,7 @@ LL | };
    |
 
 error: equal expressions as operands to `&&`
-  --> $DIR/match_bool.rs:38:11
+  --> $DIR/match_bool.rs:29:11
    |
 LL |     match test && test {
    |           ^^^^^^^^^^^^
@@ -86,7 +86,7 @@ LL |     match test && test {
    = note: #[deny(clippy::eq_op)] on by default
 
 error: you seem to be trying to match on a boolean expression
-  --> $DIR/match_bool.rs:45:5
+  --> $DIR/match_bool.rs:36:5
    |
 LL | /     match test {
 LL | |         false => {

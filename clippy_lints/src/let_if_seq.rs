@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::{snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir;
@@ -77,10 +68,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
         while let Some(stmt) = it.next() {
             if_chain! {
                 if let Some(expr) = it.peek();
-                if let hir::StmtKind::Decl(ref decl, _) = stmt.node;
-                if let hir::DeclKind::Local(ref decl) = decl.node;
-                if let hir::PatKind::Binding(mode, canonical_id, ident, None) = decl.pat.node;
-                if let hir::StmtKind::Expr(ref if_, _) = expr.node;
+                if let hir::StmtKind::Local(ref local) = stmt.node;
+                if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.node;
+                if let hir::StmtKind::Expr(ref if_) = expr.node;
                 if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.node;
                 if !used_in_expr(cx, canonical_id, cond);
                 if let hir::ExprKind::Block(ref then, _) = then.node;
@@ -93,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                         if let hir::ExprKind::Block(ref else_, _) = else_.node {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)
-                            } else if let Some(ref default) = decl.init {
+                            } else if let Some(ref default) = local.init {
                                 (true, &**default)
                             } else {
                                 continue;
@@ -101,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                         } else {
                             continue;
                         }
-                    } else if let Some(ref default) = decl.init {
+                    } else if let Some(ref default) = local.init {
                         (false, &**default)
                     } else {
                         continue;
@@ -178,7 +168,7 @@ fn check_assign<'a, 'tcx>(
     if_chain! {
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
-        if let hir::StmtKind::Semi(ref expr, _) = expr.node;
+        if let hir::StmtKind::Semi(ref expr) = expr.node;
         if let hir::ExprKind::Assign(ref var, ref value) = expr.node;
         if let hir::ExprKind::Path(ref qpath) = var.node;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, var.hir_id);

@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
@@ -14,7 +5,7 @@ use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::ast::*;
 use syntax::parse::{parser, token};
-use syntax::tokenstream::{ThinTokenStream, TokenStream};
+use syntax::tokenstream::TokenStream;
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -270,9 +261,9 @@ impl EarlyLintPass for Pass {
 /// ```rust,ignore
 /// (Some("string to write: {}"), Some(buf))
 /// ```
-fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
+fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
     use fmt_macros::*;
-    let tts = TokenStream::from(tts.clone());
+    let tts = tts.clone();
     let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false);
     let mut expr: Option<Expr> = None;
     if is_write {

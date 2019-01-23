@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc::hir::def::Def;
@@ -148,7 +139,7 @@ impl Pass {
         if_chain! {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
-            if let StmtKind::Semi(ref expr, _) = expr.node;
+            if let StmtKind::Semi(ref expr) = expr.node;
             if let ExprKind::Ret(ref ret_expr) = expr.node;
             if let &Some(ref ret_expr) = ret_expr;
 

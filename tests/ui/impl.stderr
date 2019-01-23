@@ -1,5 +1,5 @@
 error: Multiple implementations of this structure
-  --> $DIR/impl.rs:19:1
+  --> $DIR/impl.rs:10:1
    |
 LL | / impl MyStruct {
 LL | |     fn second() {}
@@ -8,7 +8,7 @@ LL | | }
    |
    = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
 note: First implementation here
-  --> $DIR/impl.rs:15:1
+  --> $DIR/impl.rs:6:1
    |
 LL | / impl MyStruct {
 LL | |     fn first() {}
@@ -16,7 +16,7 @@ LL | | }
    | |_^
 
 error: Multiple implementations of this structure
-  --> $DIR/impl.rs:33:5
+  --> $DIR/impl.rs:24:5
    |
 LL | /     impl super::MyStruct {
 LL | |         fn third() {}
@@ -24,7 +24,7 @@ LL | |     }
    | |_____^
    |
 note: First implementation here
-  --> $DIR/impl.rs:15:1
+  --> $DIR/impl.rs:6:1
    |
 LL | / impl MyStruct {
 LL | |     fn first() {}

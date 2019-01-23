@@ -1,12 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![warn(clippy::needless_bool)]
 
 use std::cell::Cell;
@@ -149,4 +140,17 @@ fn needless_bool3(x: bool) {
 
     if x == true {};
     if x == false {};
+}
+
+fn needless_bool_in_the_suggestion_wraps_the_predicate_of_if_else_statement_in_brackets() {
+    let b = false;
+    let returns_bool = || false;
+
+    let x = if b {
+        true
+    } else if returns_bool() {
+        false
+    } else {
+        true
+    };
 }
