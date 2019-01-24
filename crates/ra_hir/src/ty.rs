@@ -31,7 +31,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
-    FnSignature, FnScopes, ModuleDef, Crate,
+    FnSignature, FnScopes, ModuleDef, AdtDef,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
@@ -159,23 +159,6 @@ pub struct Substs(Arc<[Ty]>);
 impl Substs {
     pub fn empty() -> Substs {
         Substs(Arc::new([]))
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum AdtDef {
-    Struct(Struct),
-    Enum(Enum),
-}
-impl_froms!(AdtDef: Struct, Enum);
-
-impl AdtDef {
-    fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
-        match self {
-            AdtDef::Struct(s) => s.module(db),
-            AdtDef::Enum(e) => e.module(db),
-        }
-        .krate(db)
     }
 }
 

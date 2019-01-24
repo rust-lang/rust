@@ -55,10 +55,11 @@ pub use self::{
     ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
     macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{ItemMap, PerNs, Namespace, Resolution},
-    ty::{Ty, AdtDef},
+    ty::Ty,
     impl_block::{ImplBlock, ImplItem},
     code_model_impl::function::{FnScopes, ScopesWithSyntaxMapping},
-    docs::{Docs, Documentation}
+    docs::{Docs, Documentation},
+    adt::AdtDef,
 };
 
 pub use self::code_model_api::{

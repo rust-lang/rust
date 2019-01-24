@@ -3,16 +3,31 @@
 
 use std::sync::Arc;
 
-use ra_syntax::{
-    ast::{self, NameOwner, StructFlavor}
-};
+use ra_syntax::ast::{self, NameOwner, StructFlavor};
 
 use crate::{
-    Name, AsName, Struct, Enum, EnumVariant,
+    Name, AsName, Struct, Enum, EnumVariant, Crate,
     HirDatabase,
     type_ref::TypeRef,
     ids::LocationCtx,
 };
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AdtDef {
+    Struct(Struct),
+    Enum(Enum),
+}
+impl_froms!(AdtDef: Struct, Enum);
+
+impl AdtDef {
+    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+        match self {
+            AdtDef::Struct(s) => s.module(db),
+            AdtDef::Enum(e) => e.module(db),
+        }
+        .krate(db)
+    }
+}
 
 impl Struct {
     pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
