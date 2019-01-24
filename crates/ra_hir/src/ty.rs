@@ -745,7 +745,6 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
         TypableDef::Struct(s) => type_for_struct(db, s),
         TypableDef::Enum(e) => type_for_enum(db, e),
         TypableDef::Def(def_id) => match def_id.resolve(db) {
-            Def::Enum(e) => type_for_enum(db, e),
             Def::EnumVariant(ev) => type_for_enum_variant(db, ev),
             _ => {
                 log::debug!(
@@ -787,10 +786,6 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def: VariantDef, field: Name
                 def_id.module(db),
             ),
             // TODO: unions
-            Def::Enum(_) => {
-                // this can happen in (invalid) code, but enums don't have fields themselves
-                return None;
-            }
             _ => panic!(
                 "trying to get type for field {:?} in non-struct/variant {:?}",
                 field, def_id

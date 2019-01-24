@@ -47,8 +47,6 @@ impl Crate {
 
 #[derive(Debug)]
 pub enum Def {
-    Struct(Struct),
-    Enum(Enum),
     EnumVariant(EnumVariant),
     Const(Const),
     Static(Static),
