@@ -14,7 +14,6 @@ use syntax::symbol::InternedString;
 
 use std::cell::Cell;
 use std::fmt::{self, Write as _};
-use std::iter;
 use std::ops::{Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
@@ -177,6 +176,7 @@ pub trait PrettyPrinter:
         Path = Self,
         Region = Self,
         Type = Self,
+        DynExistential = Self,
     > +
     fmt::Write
 {
@@ -195,7 +195,7 @@ pub trait PrettyPrinter:
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.print_def_path(def_id, substs, iter::empty())
+        self.print_def_path(def_id, substs)
     }
 
     fn in_binder<T>(
@@ -211,14 +211,13 @@ pub trait PrettyPrinter:
     fn comma_sep<T>(
         mut self: PrintCx<'_, '_, 'tcx, Self>,
         mut elems: impl Iterator<Item = T>,
-        comma: &str,
     ) -> Result<Self, Self::Error>
         where T: Print<'tcx, Self, Output = Self, Error = Self::Error>
     {
         if let Some(first) = elems.next() {
             self = self.nest(|cx| first.print(cx))?;
             for elem in elems {
-                self.write_str(comma)?;
+                self.write_str(", ")?;
                 self = self.nest(|cx| elem.print(cx))?;
             }
         }
@@ -272,7 +271,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         let mut s = String::new();
         let _ = PrintCx::new(self, FmtPrinter::new(&mut s, ns))
-            .print_def_path(def_id, None, iter::empty());
+            .print_def_path(def_id, None);
         s
     }
 }
@@ -317,7 +316,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }) => {
                     debug!("try_print_visible_def_path: def_id={:?}", def_id);
                     return Ok((if !span.is_dummy() {
-                        self.print_def_path(def_id, None, iter::empty())?
+                        self.print_def_path(def_id, None)?
                     } else {
                         self.path_crate(cnum)?
                     }, true));
@@ -485,33 +484,6 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             cx.ok()
         })
     }
-
-    pub fn pretty_path_generic_args(
-        mut self,
-        print_prefix: impl FnOnce(
-            PrintCx<'_, 'gcx, 'tcx, P>,
-        ) -> Result<P::Path, P::Error>,
-        mut args: impl Iterator<Item = Kind<'tcx>>,
-        mut projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
-    ) -> Result<P::Path, P::Error> {
-        self = self.nest(print_prefix)?;
-
-        let arg0 = args.next();
-        let projection0 = projections.next();
-        if arg0.is_none() && projection0.is_none() {
-            return self.ok();
-        }
-        let args = arg0.into_iter().chain(args);
-        let projections = projection0.into_iter().chain(projections);
-
-        self.generic_delimiters(|mut cx| {
-            cx = cx.nest(|cx| cx.comma_sep(args, ", "))?;
-            if arg0.is_some() && projection0.is_some() {
-                write!(cx, ", ")?;
-            }
-            cx.comma_sep(projections, ", ")
-        })
-    }
 }
 
 // HACK(eddyb) boxed to avoid moving around a large struct by-value.
@@ -570,12 +542,12 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
     type Path = Self;
     type Region = Self;
     type Type = Self;
+    type DynExistential = Self;
 
     fn print_def_path(
         mut self: PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
         // FIXME(eddyb) avoid querying `tcx.generics_of` and `tcx.def_key`
         // both here and in `default_print_def_path`.
@@ -590,7 +562,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             if visible_path_success {
                 return if let (Some(generics), Some(substs)) = (generics, substs) {
                     let args = self.generic_args_to_print(generics, substs);
-                    self.path_generic_args(|cx| cx.ok(), args, projections)
+                    self.path_generic_args(|cx| cx.ok(), args)
                 } else {
                     self.ok()
                 };
@@ -615,13 +587,13 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
                 let span = self.tcx.def_span(def_id);
                 return self.path_append(
-                    |cx| cx.print_def_path(parent_def_id, None, iter::empty()),
+                    |cx| cx.print_def_path(parent_def_id, None),
                     &format!("<impl at {:?}>", span),
                 );
             }
         }
 
-        self.default_print_def_path(def_id, substs, projections)
+        self.default_print_def_path(def_id, substs)
     }
 
     fn print_region(
@@ -636,6 +608,13 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
         self.pretty_print_type(ty)
+    }
+
+    fn print_dyn_existential(
+        self: PrintCx<'_, '_, 'tcx, Self>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    ) -> Result<Self::DynExistential, Self::Error> {
+        self.pretty_print_dyn_existential(predicates)
     }
 
     fn path_crate(
@@ -703,27 +682,33 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         Ok(path)
     }
     fn path_generic_args<'gcx, 'tcx>(
-        self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, Self>,
         ) -> Result<Self::Path, Self::Error>,
-        args: impl Iterator<Item = Kind<'tcx>> + Clone,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+        args: &[Kind<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
+        self = self.nest(print_prefix)?;
+
         // Don't print `'_` if there's no unerased regions.
-        let print_regions = args.clone().any(|arg| {
+        let print_regions = args.iter().any(|arg| {
             match arg.unpack() {
                 UnpackedKind::Lifetime(r) => *r != ty::ReErased,
                 _ => false,
             }
         });
-        let args = args.filter(|arg| {
+        let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
                 UnpackedKind::Lifetime(_) => print_regions,
                 _ => true,
             }
         });
-        self.pretty_path_generic_args(print_prefix, args, projections)
+
+        if args.clone().next().is_some() {
+            self.generic_delimiters(|cx| cx.comma_sep(args))
+        } else {
+            self.ok()
+        }
     }
 }
 
@@ -745,7 +730,7 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
         substs: Option<SubstsRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
         let was_in_value = std::mem::replace(&mut self.in_value, true);
-        let mut path = self.print_def_path(def_id, substs, iter::empty())?;
+        let mut path = self.print_def_path(def_id, substs)?;
         path.in_value = was_in_value;
 
         Ok(path)
@@ -995,7 +980,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }
             }
             ty::Adt(def, substs) => {
-                nest!(|cx| cx.print_def_path(def.did, Some(substs), iter::empty()));
+                nest!(|cx| cx.print_def_path(def.did, Some(substs)));
             }
             ty::Dynamic(data, r) => {
                 let print_r = self.region_should_not_be_omitted(r);
@@ -1008,7 +993,7 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
                 }
             }
             ty::Foreign(def_id) => {
-                nest!(|cx| cx.print_def_path(def_id, None, iter::empty()));
+                nest!(|cx| cx.print_def_path(def_id, None));
             }
             ty::Projection(ref data) => p!(print(data)),
             ty::UnnormalizedProjection(ref data) => {
@@ -1179,6 +1164,105 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
             ty::Slice(ty) => {
                 p!(write("["), print(ty), write("]"))
             }
+        }
+
+        self.ok()
+    }
+
+    fn pretty_print_dyn_existential(
+        mut self,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    ) -> Result<P::DynExistential, P::Error> {
+        define_scoped_cx!(self);
+
+        // Generate the main trait ref, including associated types.
+        let mut first = true;
+
+        if let Some(principal) = predicates.principal() {
+            nest!(|cx| cx.print_def_path(principal.def_id, None));
+
+            let mut resugared = false;
+
+            // Special-case `Fn(...) -> ...` and resugar it.
+            let fn_trait_kind = self.tcx.lang_items().fn_trait_kind(principal.def_id);
+            if !self.tcx.sess.verbose() && fn_trait_kind.is_some() {
+                if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
+                    let mut projections = predicates.projection_bounds();
+                    if let (Some(proj), None) = (projections.next(), projections.next()) {
+                        nest!(|cx| cx.pretty_fn_sig(args, false, proj.ty));
+                        resugared = true;
+                    }
+                }
+            }
+
+            // HACK(eddyb) this duplicates `FmtPrinter`'s `path_generic_args`,
+            // in order to place the projections inside the `<...>`.
+            if !resugared {
+                // Use a type that can't appear in defaults of type parameters.
+                let dummy_self = self.tcx.mk_infer(ty::FreshTy(0));
+                let principal = principal.with_self_ty(self.tcx, dummy_self);
+
+                let args = self.generic_args_to_print(
+                    self.tcx.generics_of(principal.def_id),
+                    principal.substs,
+                );
+
+                // Don't print `'_` if there's no unerased regions.
+                let print_regions = args.iter().any(|arg| {
+                    match arg.unpack() {
+                        UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                        _ => false,
+                    }
+                });
+                let mut args = args.iter().cloned().filter(|arg| {
+                    match arg.unpack() {
+                        UnpackedKind::Lifetime(_) => print_regions,
+                        _ => true,
+                    }
+                });
+                let mut projections = predicates.projection_bounds();
+
+                let arg0 = args.next();
+                let projection0 = projections.next();
+                if arg0.is_some() || projection0.is_some() {
+                    let args = arg0.into_iter().chain(args);
+                    let projections = projection0.into_iter().chain(projections);
+
+                    nest!(|cx| cx.generic_delimiters(|mut cx| {
+                        cx = cx.nest(|cx| cx.comma_sep(args))?;
+                        if arg0.is_some() && projection0.is_some() {
+                            write!(cx, ", ")?;
+                        }
+                        cx.comma_sep(projections)
+                    }));
+                }
+            }
+            first = false;
+        }
+
+        // Builtin bounds.
+        // FIXME(eddyb) avoid printing twice (needed to ensure
+        // that the auto traits are sorted *and* printed via cx).
+        let mut auto_traits: Vec<_> = predicates.auto_traits().map(|did| {
+            (self.tcx.def_path_str(did), did)
+        }).collect();
+
+        // The auto traits come ordered by `DefPathHash`. While
+        // `DefPathHash` is *stable* in the sense that it depends on
+        // neither the host nor the phase of the moon, it depends
+        // "pseudorandomly" on the compiler version and the target.
+        //
+        // To avoid that causing instabilities in compiletest
+        // output, sort the auto-traits alphabetically.
+        auto_traits.sort();
+
+        for (_, def_id) in auto_traits {
+            if !first {
+                p!(write(" + "));
+            }
+            first = false;
+
+            nest!(|cx| cx.print_def_path(def_id, None));
         }
 
         self.ok()
@@ -1399,6 +1483,7 @@ macro_rules! define_print_and_forward_display {
 
 forward_display_to_print!(ty::RegionKind);
 forward_display_to_print!(Ty<'tcx>);
+forward_display_to_print!(&'tcx ty::List<ty::ExistentialPredicate<'tcx>>);
 forward_display_to_print!(<T> ty::Binder<T>);
 
 define_print_and_forward_display! {
@@ -1411,70 +1496,6 @@ define_print_and_forward_display! {
 
 define_print_and_forward_display! {
     (self, cx):
-
-    &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
-        // Generate the main trait ref, including associated types.
-        let mut first = true;
-
-        if let Some(principal) = self.principal() {
-            let mut resugared_principal = false;
-
-            // Special-case `Fn(...) -> ...` and resugar it.
-            let fn_trait_kind = cx.tcx.lang_items().fn_trait_kind(principal.def_id);
-            if !cx.tcx.sess.verbose() && fn_trait_kind.is_some() {
-                if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
-                    let mut projections = self.projection_bounds();
-                    if let (Some(proj), None) = (projections.next(), projections.next()) {
-                        nest!(|cx| cx.print_def_path(principal.def_id, None, iter::empty()));
-                        nest!(|cx| cx.pretty_fn_sig(args, false, proj.ty));
-                        resugared_principal = true;
-                    }
-                }
-            }
-
-            if !resugared_principal {
-                // Use a type that can't appear in defaults of type parameters.
-                let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
-                let principal = principal.with_self_ty(cx.tcx, dummy_self);
-                nest!(|cx| cx.print_def_path(
-                    principal.def_id,
-                    Some(principal.substs),
-                    self.projection_bounds(),
-                ));
-            }
-            first = false;
-        }
-
-        // Builtin bounds.
-        // FIXME(eddyb) avoid printing twice (needed to ensure
-        // that the auto traits are sorted *and* printed via cx).
-        let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
-            (cx.tcx.def_path_str(did), did)
-        }).collect();
-
-        // The auto traits come ordered by `DefPathHash`. While
-        // `DefPathHash` is *stable* in the sense that it depends on
-        // neither the host nor the phase of the moon, it depends
-        // "pseudorandomly" on the compiler version and the target.
-        //
-        // To avoid that causing instabilities in compiletest
-        // output, sort the auto-traits alphabetically.
-        auto_traits.sort();
-
-        for (_, def_id) in auto_traits {
-            if !first {
-                p!(write(" + "));
-            }
-            first = false;
-
-            nest!(|cx| cx.print_def_path(def_id, None, iter::empty()));
-        }
-    }
-
-    ty::ExistentialProjection<'tcx> {
-        let name = cx.tcx.associated_item(self.item_def_id).ident;
-        p!(write("{}=", name), print(self.ty))
-    }
 
     &'tcx ty::List<Ty<'tcx>> {
         p!(write("{{"));
@@ -1494,12 +1515,25 @@ define_print_and_forward_display! {
     }
 
     ty::ExistentialTraitRef<'tcx> {
+        // Use a type that can't appear in defaults of type parameters.
         let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
-
-        let trait_ref = *ty::Binder::bind(*self)
-            .with_self_ty(cx.tcx, dummy_self)
-            .skip_binder();
+        let trait_ref = self.with_self_ty(cx.tcx, dummy_self);
         p!(print(trait_ref))
+    }
+
+    ty::ExistentialProjection<'tcx> {
+        let name = cx.tcx.associated_item(self.item_def_id).ident;
+        p!(write("{}=", name), print(self.ty))
+    }
+
+    ty::ExistentialPredicate<'tcx> {
+        match *self {
+            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
+            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
+            ty::ExistentialPredicate::AutoTrait(def_id) => {
+                nest!(|cx| cx.print_def_path(def_id, None))
+            }
+        }
     }
 
     ty::FnSig<'tcx> {
@@ -1531,7 +1565,7 @@ define_print_and_forward_display! {
     }
 
     ty::TraitRef<'tcx> {
-        nest!(|cx| cx.print_def_path(self.def_id, Some(self.substs), iter::empty()));
+        nest!(|cx| cx.print_def_path(self.def_id, Some(self.substs)));
     }
 
     ConstValue<'tcx> {
@@ -1575,7 +1609,7 @@ define_print_and_forward_display! {
     }
 
     ty::ProjectionTy<'tcx> {
-        nest!(|cx| cx.print_def_path(self.item_def_id, Some(self.substs), iter::empty()));
+        nest!(|cx| cx.print_def_path(self.item_def_id, Some(self.substs)));
     }
 
     ty::ClosureKind {
@@ -1596,7 +1630,7 @@ define_print_and_forward_display! {
             ty::Predicate::WellFormed(ty) => p!(print(ty), write(" well-formed")),
             ty::Predicate::ObjectSafe(trait_def_id) => {
                 p!(write("the trait `"));
-                nest!(|cx| cx.print_def_path(trait_def_id, None, iter::empty()));
+                nest!(|cx| cx.print_def_path(trait_def_id, None));
                 p!(write("` is object-safe"))
             }
             ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {

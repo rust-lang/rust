@@ -178,7 +178,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         PrintCx::with_tls_tcx(FmtPrinter::new(&mut *f, Namespace::ValueNS), |cx| {
             let substs = cx.tcx.lift(&self.substs).expect("could not lift for printing");
-            cx.print_def_path(self.def_id(), Some(substs), iter::empty())?;
+            cx.print_def_path(self.def_id(), Some(substs))?;
             Ok(())
         })?;
 

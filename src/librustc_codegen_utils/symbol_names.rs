@@ -92,7 +92,7 @@ use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::print::{PrettyPrinter, PrintCx, Printer};
+use rustc::ty::print::{PrettyPrinter, PrintCx, Printer, Print};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -106,7 +106,6 @@ use syntax_pos::symbol::Symbol;
 use log::debug;
 
 use std::fmt::{self, Write};
-use std::iter;
 use std::mem::{self, discriminant};
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -225,7 +224,7 @@ fn get_symbol_hash<'a, 'tcx>(
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     PrintCx::new(tcx, SymbolPath::new(tcx))
-        .print_def_path(def_id, None, iter::empty())
+        .print_def_path(def_id, None)
         .unwrap()
         .into_interned()
 }
@@ -409,6 +408,7 @@ impl Printer for SymbolPath {
     type Path = Self;
     type Region = Self;
     type Type = Self;
+    type DynExistential = Self;
 
     fn print_region(
         self: PrintCx<'_, '_, '_, Self>,
@@ -429,10 +429,25 @@ impl Printer for SymbolPath {
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::Closure(def_id, ty::ClosureSubsts { substs }) |
             ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
-                self.print_def_path(def_id, Some(substs), iter::empty())
+                self.print_def_path(def_id, Some(substs))
             }
             _ => self.pretty_print_type(ty),
         }
+    }
+
+    fn print_dyn_existential(
+        mut self: PrintCx<'_, '_, 'tcx, Self>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    ) -> Result<Self::DynExistential, Self::Error> {
+        let mut first = false;
+        for p in predicates {
+            if !first {
+                write!(self, "+")?;
+            }
+            first = false;
+            self = self.nest(|cx| p.print(cx))?;
+        }
+        self.ok()
     }
 
     fn path_crate(
@@ -499,20 +514,26 @@ impl Printer for SymbolPath {
         Ok(path)
     }
     fn path_generic_args<'gcx, 'tcx>(
-        self: PrintCx<'_, 'gcx, 'tcx, Self>,
+        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, Self>,
         ) -> Result<Self::Path, Self::Error>,
-        args: impl Iterator<Item = Kind<'tcx>> + Clone,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+        args: &[Kind<'tcx>],
     )  -> Result<Self::Path, Self::Error> {
-        let args = args.filter(|arg| {
+        self = self.nest(print_prefix)?;
+
+        let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
                 UnpackedKind::Lifetime(_) => false,
                 _ => true,
             }
         });
-        self.pretty_path_generic_args(print_prefix, args, projections)
+
+        if args.clone().next().is_some() {
+            self.generic_delimiters(|cx| cx.comma_sep(args))
+        } else {
+            self.ok()
+        }
     }
 }
 
@@ -522,6 +543,21 @@ impl PrettyPrinter for SymbolPath {
         _region: ty::Region<'_>,
     ) -> bool {
         false
+    }
+    fn comma_sep<T>(
+        mut self: PrintCx<'_, '_, 'tcx, Self>,
+        mut elems: impl Iterator<Item = T>,
+    ) -> Result<Self, Self::Error>
+        where T: Print<'tcx, Self, Output = Self, Error = Self::Error>
+    {
+        if let Some(first) = elems.next() {
+            self = self.nest(|cx| first.print(cx))?;
+            for elem in elems {
+                self.write_str(",")?;
+                self = self.nest(|cx| elem.print(cx))?;
+            }
+        }
+        self.ok()
     }
 
     fn generic_delimiters<'gcx, 'tcx>(

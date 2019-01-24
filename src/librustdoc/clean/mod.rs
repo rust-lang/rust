@@ -39,7 +39,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
-use std::iter::{self, FromIterator, once};
+use std::iter::{FromIterator, once};
 use std::rc::Rc;
 use std::str::FromStr;
 use std::cell::RefCell;
@@ -4235,6 +4235,7 @@ where F: Fn(DefId) -> Def {
         type Path = Vec<String>;
         type Region = ();
         type Type = ();
+        type DynExistential = ();
 
         fn print_region(
             self: PrintCx<'_, '_, '_, Self>,
@@ -4247,6 +4248,13 @@ where F: Fn(DefId) -> Def {
             self: PrintCx<'_, '_, 'tcx, Self>,
             _ty: Ty<'tcx>,
         ) -> Result<Self::Type, Self::Error> {
+            Ok(())
+        }
+
+        fn print_dyn_existential<'tcx>(
+            self: PrintCx<'_, '_, 'tcx, Self>,
+            _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        ) -> Result<Self::DynExistential, Self::Error> {
             Ok(())
         }
 
@@ -4304,15 +4312,14 @@ where F: Fn(DefId) -> Def {
             print_prefix: impl FnOnce(
                 PrintCx<'_, 'gcx, 'tcx, Self>,
             ) -> Result<Self::Path, Self::Error>,
-            _args: impl Iterator<Item = Kind<'tcx>> + Clone,
-            _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+            _args: &[Kind<'tcx>],
         ) -> Result<Self::Path, Self::Error> {
             print_prefix(self)
         }
     }
 
     let names = PrintCx::new(tcx, AbsolutePathPrinter)
-        .print_def_path(def_id, None, iter::empty())
+        .print_def_path(def_id, None)
         .unwrap();
 
     hir::Path {

@@ -2409,7 +2409,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let f = &mut *fmt;
                         PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::ValueNS), |cx| {
                             let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
-                            cx.print_def_path(variant_def.did, Some(substs), iter::empty())?;
+                            cx.print_def_path(variant_def.did, Some(substs))?;
                             Ok(())
                         })?;
 

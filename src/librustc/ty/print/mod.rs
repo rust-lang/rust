@@ -5,7 +5,6 @@ use crate::ty::subst::{Kind, Subst, SubstsRef};
 
 use rustc_data_structures::fx::FxHashSet;
 
-use std::iter;
 use std::ops::{Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
@@ -64,14 +63,14 @@ pub trait Printer: Sized {
     type Path;
     type Region;
     type Type;
+    type DynExistential;
 
     fn print_def_path(
         self: PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.default_print_def_path(def_id, substs, projections)
+        self.default_print_def_path(def_id, substs)
     }
     fn print_impl_path(
         self: PrintCx<'_, '_, 'tcx, Self>,
@@ -92,6 +91,11 @@ pub trait Printer: Sized {
         self: PrintCx<'_, '_, 'tcx, Self>,
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error>;
+
+    fn print_dyn_existential(
+        self: PrintCx<'_, '_, 'tcx, Self>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    ) -> Result<Self::DynExistential, Self::Error>;
 
     fn path_crate(
         self: PrintCx<'_, '_, '_, Self>,
@@ -123,8 +127,7 @@ pub trait Printer: Sized {
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, Self>,
         ) -> Result<Self::Path, Self::Error>,
-        args: impl Iterator<Item = Kind<'tcx>> + Clone,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+        args: &[Kind<'tcx>],
     ) -> Result<Self::Path, Self::Error>;
 }
 
@@ -133,7 +136,6 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
         self,
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<P::Path, P::Error> {
         debug!("default_print_def_path: def_id={:?}, substs={:?}", def_id, substs);
         let key = self.tcx.def_key(def_id);
@@ -175,10 +177,10 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
                             let trait_ref = ty::TraitRef::new(parent_def_id, substs);
                             cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
-                            cx.print_def_path(parent_def_id, substs, iter::empty())
+                            cx.print_def_path(parent_def_id, substs)
                         }
                     } else {
-                        cx.print_def_path(parent_def_id, None, iter::empty())
+                        cx.print_def_path(parent_def_id, None)
                     }
                 };
                 let print_path = |cx: PrintCx<'_, 'gcx, 'tcx, P>| {
@@ -197,7 +199,7 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
 
                 if let (Some(generics), Some(substs)) = (generics, substs) {
                     let args = self.generic_args_to_print(generics, substs);
-                    self.path_generic_args(print_path, args, projections)
+                    self.path_generic_args(print_path, args)
                 } else {
                     print_path(self)
                 }
@@ -209,13 +211,16 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
         &self,
         generics: &'tcx ty::Generics,
         substs: SubstsRef<'tcx>,
-    ) -> impl Iterator<Item = Kind<'tcx>> + Clone {
+    ) -> &'tcx [Kind<'tcx>] {
+        let mut own_params = generics.parent_count..generics.count();
+
         // Don't print args for `Self` parameters (of traits).
-        let has_own_self = generics.has_self && generics.parent_count == 0;
-        let params = &generics.params[has_own_self as usize..];
+        if generics.has_self && own_params.start == 0 {
+            own_params.start = 1;
+        }
 
         // Don't print args that are the defaults of their respective parameters.
-        let num_supplied_defaults = params.iter().rev().take_while(|param| {
+        own_params.end -= generics.params.iter().rev().take_while(|param| {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => false,
                 ty::GenericParamDefKind::Type { has_default, .. } => {
@@ -226,9 +231,8 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
                 ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
             }
         }).count();
-        params[..params.len() - num_supplied_defaults].iter().map(move |param| {
-            substs[param.index as usize]
-        })
+
+        &substs[own_params]
     }
 
     fn default_print_impl_path(
@@ -261,7 +265,7 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
             self.path_append_impl(
-                |cx| cx.print_def_path(parent_def_id, None, iter::empty()),
+                |cx| cx.print_def_path(parent_def_id, None),
                 self_ty,
                 impl_trait_ref,
             )
@@ -342,5 +346,13 @@ impl<P: Printer> Print<'tcx, P> for Ty<'tcx> {
     type Error = P::Error;
     fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
         cx.print_type(self)
+    }
+}
+
+impl<P: Printer> Print<'tcx, P> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
+    type Output = P::DynExistential;
+    type Error = P::Error;
+    fn print(&self, cx: PrintCx<'_, '_, 'tcx, P>) -> Result<Self::Output, Self::Error> {
+        cx.print_dyn_existential(self)
     }
 }
