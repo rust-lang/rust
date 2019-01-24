@@ -669,15 +669,6 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
-/// Return an iterator over timestamps of files in the directory at `path`.
-fn collect_timestamps(path: &PathBuf) -> impl Iterator<Item=FileTime> {
-    WalkDir::new(path)
-        .into_iter()
-        .map(|entry| entry.unwrap())
-        .filter(|entry| entry.file_type().is_file())
-        .map(|entry| mtime(entry.path()))
-}
-
 fn up_to_date(
     config: &Config,
     testpaths: &TestPaths,
@@ -700,13 +691,15 @@ fn up_to_date(
     let rust_src_dir = config
         .find_rust_src_root()
         .expect("Could not find Rust source root");
-    let stamp = mtime(&stamp_name);
-    let mut inputs = vec![mtime(&testpaths.file), mtime(&config.rustc_path)];
+    let stamp = Stamp::from_path(&stamp_name);
+    let mut inputs = vec![Stamp::from_path(&testpaths.file), Stamp::from_path(&config.rustc_path)];
     inputs.extend(
         props
             .aux
             .iter()
-            .map(|aux| mtime(&testpaths.file.parent().unwrap().join("auxiliary").join(aux))),
+            .map(|aux| {
+                Stamp::from_path(&testpaths.file.parent().unwrap().join("auxiliary").join(aux))
+            }),
     );
     // Relevant pretty printer files
     let pretty_printer_files = [
@@ -717,24 +710,47 @@ fn up_to_date(
         "src/etc/lldb_rust_formatters.py",
     ];
     inputs.extend(pretty_printer_files.iter().map(|pretty_printer_file| {
-        mtime(&rust_src_dir.join(pretty_printer_file))
+        Stamp::from_path(&rust_src_dir.join(pretty_printer_file))
     }));
-    inputs.extend(collect_timestamps(&config.run_lib_path));
+    inputs.extend(Stamp::from_dir(&config.run_lib_path));
     if let Some(ref rustdoc_path) = config.rustdoc_path {
-        inputs.push(mtime(&rustdoc_path));
-        inputs.push(mtime(&rust_src_dir.join("src/etc/htmldocck.py")));
+        inputs.push(Stamp::from_path(&rustdoc_path));
+        inputs.push(Stamp::from_path(&rust_src_dir.join("src/etc/htmldocck.py")));
     }
 
     // UI test files.
     inputs.extend(UI_EXTENSIONS.iter().map(|extension| {
         let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
-        mtime(path)
+        Stamp::from_path(path)
     }));
 
     // Compiletest itself.
-    inputs.extend(collect_timestamps(&rust_src_dir.join("src/tools/compiletest/")));
+    inputs.extend(Stamp::from_dir(&rust_src_dir.join("src/tools/compiletest/")));
 
-    inputs.iter().any(|input| *input > stamp)
+    inputs.iter().any(|input| input > &stamp)
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
+struct Stamp {
+    time: FileTime,
+    file: PathBuf,
+}
+
+impl Stamp {
+    fn from_path(p: &Path) -> Self {
+        Stamp {
+            time: mtime(&p),
+            file: p.into(),
+        }
+    }
+
+    fn from_dir(path: &Path) -> impl Iterator<Item=Stamp> {
+        WalkDir::new(path)
+            .into_iter()
+            .map(|entry| entry.unwrap())
+            .filter(|entry| entry.file_type().is_file())
+            .map(|entry| Stamp::from_path(entry.path()))
+    }
 }
 
 fn mtime(path: &Path) -> FileTime {
