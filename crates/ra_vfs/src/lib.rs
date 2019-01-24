@@ -18,6 +18,7 @@ mod io;
 use std::{
     cmp::Reverse,
     fmt, fs, mem,
+    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     sync::Arc,
     thread,
@@ -88,8 +89,38 @@ struct VfsFileData {
     text: Arc<String>,
 }
 
-pub struct Vfs {
+pub(crate) struct Roots {
     roots: Arena<VfsRoot, Arc<RootFilter>>,
+}
+
+impl Roots {
+    pub(crate) fn new() -> Roots {
+        Roots {
+            roots: Arena::default(),
+        }
+    }
+    pub(crate) fn find(&self, path: &Path) -> Option<(VfsRoot, RelativePathBuf)> {
+        self.roots
+            .iter()
+            .find_map(|(root, data)| data.can_contain(path).map(|it| (root, it)))
+    }
+}
+
+impl Deref for Roots {
+    type Target = Arena<VfsRoot, Arc<RootFilter>>;
+    fn deref(&self) -> &Self::Target {
+        &self.roots
+    }
+}
+
+impl DerefMut for Roots {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.roots
+    }
+}
+
+pub struct Vfs {
+    roots: Arc<Roots>,
     files: Arena<VfsFile, VfsFileData>,
     root2files: FxHashMap<VfsRoot, FxHashSet<VfsFile>>,
     pending_changes: Vec<VfsChange>,
@@ -103,26 +134,22 @@ impl fmt::Debug for Vfs {
 }
 
 impl Vfs {
-    pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
+    pub fn new(roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
+        let mut root_paths = roots;
         let worker = io::Worker::start();
 
-        let mut res = Vfs {
-            roots: Arena::default(),
-            files: Arena::default(),
-            root2files: FxHashMap::default(),
-            worker,
-            pending_changes: Vec::new(),
-        };
+        let mut roots = Roots::new();
+        let mut root2files = FxHashMap::default();
 
         // A hack to make nesting work.
-        roots.sort_by_key(|it| Reverse(it.as_os_str().len()));
-        for (i, path) in roots.iter().enumerate() {
+        root_paths.sort_by_key(|it| Reverse(it.as_os_str().len()));
+        for (i, path) in root_paths.iter().enumerate() {
             let root_filter = Arc::new(RootFilter::new(path.clone()));
 
-            let root = res.roots.alloc(root_filter.clone());
-            res.root2files.insert(root, Default::default());
+            let root = roots.alloc(root_filter.clone());
+            root2files.insert(root, Default::default());
 
-            let nested_roots = roots[..i]
+            let nested_roots = root_paths[..i]
                 .iter()
                 .filter(|it| it.starts_with(path))
                 .map(|it| it.clone())
@@ -134,10 +161,17 @@ impl Vfs {
                 root_filter,
                 nested_roots,
             };
-            res.worker.sender().send(task).unwrap();
+            worker.sender().send(task).unwrap();
         }
-        let roots = res.roots.iter().map(|(id, _)| id).collect();
-        (res, roots)
+        let res = Vfs {
+            roots: Arc::new(roots),
+            files: Arena::default(),
+            root2files,
+            worker,
+            pending_changes: Vec::new(),
+        };
+        let vfs_roots = res.roots.iter().map(|(id, _)| id).collect();
+        (res, vfs_roots)
     }
 
     pub fn root2path(&self, root: VfsRoot) -> PathBuf {
@@ -399,10 +433,7 @@ impl Vfs {
     }
 
     fn find_root(&self, path: &Path) -> Option<(VfsRoot, RelativePathBuf, Option<VfsFile>)> {
-        let (root, path) = self
-            .roots
-            .iter()
-            .find_map(|(root, data)| data.can_contain(path).map(|it| (root, it)))?;
+        let (root, path) = self.roots.find(&path)?;
         let file = self.root2files[&root]
             .iter()
             .map(|&it| it)
