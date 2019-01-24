@@ -11,7 +11,7 @@ use core::ops::{Drop, Generator, GeneratorState};
 #[doc(inline)]
 pub use core::future::*;
 
-/// Wrap a future in a generator.
+/// Wrap a generator in a future.
 ///
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
