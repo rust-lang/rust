@@ -13,9 +13,9 @@ use crate::{
 pub struct HirInterner {
     defs: LocationIntener<DefLoc, DefId>,
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
-    fns: LocationIntener<FunctionLoc, FunctionId>,
-    structs: LocationIntener<StructLoc, StructId>,
-    enums: LocationIntener<EnumLoc, EnumId>,
+    pub(crate) fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
+    pub(crate) structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
+    pub(crate) enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
 }
 
 impl HirInterner {
@@ -182,17 +182,9 @@ impl<N: AstNode> Clone for ItemLoc<N> {
 pub struct FunctionId(RawId);
 impl_arena_id!(FunctionId);
 
-pub(crate) type FunctionLoc = ItemLoc<ast::FnDef>;
-
 impl FunctionId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> FunctionLoc {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::FnDef> {
         db.as_ref().fns.id2loc(self)
-    }
-}
-
-impl FunctionLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> FunctionId {
-        db.as_ref().fns.loc2id(&self)
     }
 }
 
@@ -200,17 +192,9 @@ impl FunctionLoc {
 pub struct StructId(RawId);
 impl_arena_id!(StructId);
 
-pub(crate) type StructLoc = ItemLoc<ast::StructDef>;
-
 impl StructId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> StructLoc {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::StructDef> {
         db.as_ref().structs.id2loc(self)
-    }
-}
-
-impl StructLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> StructId {
-        db.as_ref().structs.loc2id(&self)
     }
 }
 
@@ -218,17 +202,9 @@ impl StructLoc {
 pub struct EnumId(RawId);
 impl_arena_id!(EnumId);
 
-pub(crate) type EnumLoc = ItemLoc<ast::EnumDef>;
-
 impl EnumId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> EnumLoc {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::EnumDef> {
         db.as_ref().enums.id2loc(self)
-    }
-}
-
-impl EnumLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> EnumId {
-        db.as_ref().enums.loc2id(&self)
     }
 }
 

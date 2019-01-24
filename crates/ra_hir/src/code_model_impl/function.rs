@@ -9,7 +9,7 @@ use crate::{
     type_ref::{TypeRef, Mutability},
     expr::Body,
     impl_block::ImplBlock,
-    ids::FunctionLoc,
+    ids::ItemLoc,
 };
 
 pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
@@ -21,8 +21,8 @@ impl Function {
         file_id: HirFileId,
         ast: &ast::FnDef,
     ) -> Function {
-        let loc: FunctionLoc = FunctionLoc::from_ast(db, module, file_id, ast);
-        let id = loc.id(db);
+        let loc = ItemLoc::from_ast(db, module, file_id, ast);
+        let id = db.as_ref().fns.loc2id(&loc);
         Function { id }
     }
 

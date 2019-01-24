@@ -13,7 +13,7 @@ use crate::{
     HirDatabase, DefKind,
     SourceItemId,
     type_ref::TypeRef,
-    ids::{StructLoc, EnumLoc},
+    ids::ItemLoc,
 };
 
 impl Struct {
@@ -23,8 +23,8 @@ impl Struct {
         file_id: HirFileId,
         ast: &ast::StructDef,
     ) -> Struct {
-        let loc: StructLoc = StructLoc::from_ast(db, module, file_id, ast);
-        let id = loc.id(db);
+        let loc = ItemLoc::from_ast(db, module, file_id, ast);
+        let id = db.as_ref().structs.loc2id(&loc);
         Struct { id }
     }
 
@@ -40,8 +40,8 @@ impl Enum {
         file_id: HirFileId,
         ast: &ast::EnumDef,
     ) -> Enum {
-        let loc: EnumLoc = EnumLoc::from_ast(db, module, file_id, ast);
-        let id = loc.id(db);
+        let loc = ItemLoc::from_ast(db, module, file_id, ast);
+        let id = db.as_ref().enums.loc2id(&loc);
         Enum { id }
     }
 }
