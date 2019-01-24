@@ -526,7 +526,11 @@ impl ast::NameOwner for ConstDef {}
 impl ast::TypeParamsOwner for ConstDef {}
 impl ast::AttrsOwner for ConstDef {}
 impl ast::DocCommentsOwner for ConstDef {}
-impl ConstDef {}
+impl ConstDef {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+}
 
 // ContinueExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3015,7 +3019,11 @@ impl ast::NameOwner for StaticDef {}
 impl ast::TypeParamsOwner for StaticDef {}
 impl ast::AttrsOwner for StaticDef {}
 impl ast::DocCommentsOwner for StaticDef {}
-impl StaticDef {}
+impl StaticDef {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+}
 
 // Stmt
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3491,7 +3499,11 @@ impl ast::NameOwner for TypeDef {}
 impl ast::TypeParamsOwner for TypeDef {}
 impl ast::AttrsOwner for TypeDef {}
 impl ast::DocCommentsOwner for TypeDef {}
-impl TypeDef {}
+impl TypeDef {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+}
 
 // TypeParam
 #[derive(Debug, PartialEq, Eq, Hash)]

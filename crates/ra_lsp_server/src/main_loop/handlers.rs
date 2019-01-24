@@ -136,7 +136,7 @@ pub fn handle_document_symbol(
     for symbol in world.analysis().file_structure(file_id) {
         let doc_symbol = DocumentSymbol {
             name: symbol.label,
-            detail: Some("".to_string()),
+            detail: symbol.detail,
             kind: symbol.kind.conv(),
             deprecated: None,
             range: symbol.node_range.conv_with(&line_index),

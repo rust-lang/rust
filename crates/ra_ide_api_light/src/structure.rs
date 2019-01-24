@@ -2,7 +2,7 @@ use crate::TextRange;
 
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    ast::{self, NameOwner},
+    ast::{self, NameOwner, TypeParamsOwner},
     AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
@@ -13,6 +13,7 @@ pub struct StructureNode {
     pub navigation_range: TextRange,
     pub node_range: TextRange,
     pub kind: SyntaxKind,
+    pub detail: Option<String>,
 }
 
 pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
@@ -40,6 +41,22 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     fn decl<N: NameOwner>(node: &N) -> Option<StructureNode> {
+        decl_with_detail(node, None)
+    }
+
+    fn decl_with_type_ref<N: NameOwner>(
+        node: &N,
+        type_ref: Option<&ast::TypeRef>,
+    ) -> Option<StructureNode> {
+        let detail = type_ref.map(|type_ref| {
+            let mut detail = String::new();
+            collapse_ws(type_ref.syntax(), &mut detail);
+            detail
+        });
+        decl_with_detail(node, detail)
+    }
+
+    fn decl_with_detail<N: NameOwner>(node: &N, detail: Option<String>) -> Option<StructureNode> {
         let name = node.name()?;
         Some(StructureNode {
             parent: None,
@@ -47,19 +64,50 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             navigation_range: name.syntax().range(),
             node_range: node.syntax().range(),
             kind: node.syntax().kind(),
+            detail,
         })
     }
 
+    fn collapse_ws(node: &SyntaxNode, output: &mut String) {
+        let mut can_insert_ws = false;
+        for line in node.text().chunks().flat_map(|chunk| chunk.lines()) {
+            let line = line.trim();
+            if line.is_empty() {
+                if can_insert_ws {
+                    output.push_str(" ");
+                    can_insert_ws = false;
+                }
+            } else {
+                output.push_str(line);
+                can_insert_ws = true;
+            }
+        }
+    }
+
     visitor()
-        .visit(decl::<ast::FnDef>)
+        .visit(|fn_def: &ast::FnDef| {
+            let mut detail = String::from("fn");
+            if let Some(type_param_list) = fn_def.type_param_list() {
+                collapse_ws(type_param_list.syntax(), &mut detail);
+            }
+            if let Some(param_list) = fn_def.param_list() {
+                collapse_ws(param_list.syntax(), &mut detail);
+            }
+            if let Some(ret_type) = fn_def.ret_type() {
+                detail.push_str(" ");
+                collapse_ws(ret_type.syntax(), &mut detail);
+            }
+
+            decl_with_detail(fn_def, Some(detail))
+        })
         .visit(decl::<ast::StructDef>)
-        .visit(decl::<ast::NamedFieldDef>)
+        .visit(|nfd: &ast::NamedFieldDef| decl_with_type_ref(nfd, nfd.type_ref()))
         .visit(decl::<ast::EnumDef>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)
-        .visit(decl::<ast::TypeDef>)
-        .visit(decl::<ast::ConstDef>)
-        .visit(decl::<ast::StaticDef>)
+        .visit(|td: &ast::TypeDef| decl_with_type_ref(td, td.type_ref()))
+        .visit(|cd: &ast::ConstDef| decl_with_type_ref(cd, cd.type_ref()))
+        .visit(|sd: &ast::StaticDef| decl_with_type_ref(sd, sd.type_ref()))
         .visit(|im: &ast::ImplBlock| {
             let target_type = im.target_type()?;
             let target_trait = im.target_trait();
@@ -78,6 +126,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 navigation_range: target_type.syntax().range(),
                 node_range: im.syntax().range(),
                 kind: im.syntax().kind(),
+                detail: None,
             };
             Some(node)
         })
@@ -98,7 +147,13 @@ struct Foo {
 }
 
 mod m {
-    fn bar() {}
+    fn bar1() {}
+    fn bar2<T>(t: T) -> T {}
+    fn bar3<A,
+        B>(a: A,
+        b: B) -> Vec<
+        u32
+    > {}
 }
 
 enum E { X, Y(i32) }
