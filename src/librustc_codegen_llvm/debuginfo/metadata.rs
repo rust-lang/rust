@@ -1164,7 +1164,10 @@ fn use_enum_fallback(cx: &CodegenCx) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
     // lower variant parts to PDB.
     return cx.sess().target.target.options.is_like_msvc
-        || llvm_util::get_major_version() < 7;
+        // LLVM version 7 did not release with an important bug fix;
+        // but the required patch is in the LLVM 8.  Rust LLVM reports
+        // 8 as well.
+        || llvm_util::get_major_version() < 8;
 }
 
 // Describes the members of an enum value: An enum is described as a union of

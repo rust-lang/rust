@@ -680,6 +680,7 @@ impl<'a> Resolver<'a> {
                 }
                 module.populated.set(true);
             }
+            Def::Existential(..) |
             Def::TraitAlias(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }

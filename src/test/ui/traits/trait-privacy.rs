@@ -1,5 +1,4 @@
 // compile-pass
-#![feature(get_type_id)]
 #![allow(dead_code)]
 mod foo {
     pub use self::bar::T;
@@ -18,7 +17,7 @@ fn g() {
 
 fn f() {
     let error = ::std::thread::spawn(|| {}).join().unwrap_err();
-    error.get_type_id(); // Regression test for #21670
+    error.type_id(); // Regression test for #21670
 }
 
 

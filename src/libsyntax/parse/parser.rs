@@ -100,6 +100,7 @@ pub enum PathStyle {
 enum SemiColonMode {
     Break,
     Ignore,
+    Comma,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1988,6 +1989,44 @@ impl<'a> Parser<'a> {
 
                 result.unwrap()
             }
+            token::Dot if self.look_ahead(1, |t| match t {
+                token::Literal(parse::token::Lit::Integer(_) , _) => true,
+                _ => false,
+            }) => { // recover from `let x = .4;`
+                let lo = self.span;
+                self.bump();
+                if let token::Literal(
+                    parse::token::Lit::Integer(val),
+                    suffix,
+                ) = self.token {
+                    let suffix = suffix.and_then(|s| {
+                        let s = s.as_str().get();
+                        if ["f32", "f64"].contains(&s) {
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    }).unwrap_or("");
+                    self.bump();
+                    let sp = lo.to(self.prev_span);
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "float literals must have an integer part");
+                    err.span_suggestion_with_applicability(
+                        sp,
+                        "must have an integer part",
+                        format!("0.{}{}", val, suffix),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    return Ok(match suffix {
+                        "f32" => ast::LitKind::Float(val, ast::FloatTy::F32),
+                        "f64" => ast::LitKind::Float(val, ast::FloatTy::F64),
+                        _ => ast::LitKind::FloatUnsuffixed(val),
+                    });
+                } else {
+                    unreachable!();
+                };
+            }
             _ => { return self.unexpected_last(&self.token); }
         };
 
@@ -2149,7 +2188,27 @@ impl<'a> Parser<'a> {
                            enable_warning: bool)
                            -> PResult<'a, ()> {
         loop {
-            segments.push(self.parse_path_segment(style, enable_warning)?);
+            let segment = self.parse_path_segment(style, enable_warning)?;
+            if style == PathStyle::Expr {
+                // In order to check for trailing angle brackets, we must have finished
+                // recursing (`parse_path_segment` can indirectly call this function),
+                // that is, the next token must be the highlighted part of the below example:
+                //
+                // `Foo::<Bar as Baz<T>>::Qux`
+                //                      ^ here
+                //
+                // As opposed to the below highlight (if we had only finished the first
+                // recursion):
+                //
+                // `Foo::<Bar as Baz<T>>::Qux`
+                //                     ^ here
+                //
+                // `PathStyle::Expr` is only provided at the root invocation and never in
+                // `parse_path_segment` to recurse and therefore can be checked to maintain
+                // this invariant.
+                self.check_trailing_angle_brackets(&segment, token::ModSep);
+            }
+            segments.push(segment);
 
             if self.is_import_coupler() || !self.eat(&token::ModSep) {
                 return Ok(());
@@ -2656,8 +2715,24 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            let mut recovery_field = None;
+            if let token::Ident(ident, _) = self.token {
+                if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
+                    // Use in case of error after field-looking code: `S { foo: () with a }`
+                    let mut ident = ident.clone();
+                    ident.span = self.span;
+                    recovery_field = Some(ast::Field {
+                        ident,
+                        span: self.span,
+                        expr: self.mk_expr(self.span, ExprKind::Err, ThinVec::new()),
+                        is_shorthand: false,
+                        attrs: ThinVec::new(),
+                    });
+                }
+            }
+            let mut parsed_field = None;
             match self.parse_field() {
-                Ok(f) => fields.push(f),
+                Ok(f) => parsed_field = Some(f),
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
@@ -2666,19 +2741,28 @@ impl<'a> Parser<'a> {
                     // what comes next as additional fields, rather than
                     // bailing out until next `}`.
                     if self.token != token::Comma {
-                        self.recover_stmt();
-                        break;
+                        self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
+                        if self.token != token::Comma {
+                            break;
+                        }
                     }
                 }
             }
 
             match self.expect_one_of(&[token::Comma],
                                      &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => {}
+                Ok(()) => if let Some(f) = parsed_field.or(recovery_field) {
+                    // only include the field if there's no parse error for the field name
+                    fields.push(f);
+                }
                 Err(mut e) => {
+                    if let Some(f) = recovery_field {
+                        fields.push(f);
+                    }
+                    e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
-                    self.recover_stmt();
-                    break;
+                    self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
+                    self.eat(&token::Comma);
                 }
             }
         }
@@ -2757,6 +2841,8 @@ impl<'a> Parser<'a> {
     // Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         let segment = self.parse_path_segment(PathStyle::Expr, true)?;
+        self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
+
         Ok(match self.token {
             token::OpenDelim(token::Paren) => {
                 // Method call `expr.f()`
@@ -2782,6 +2868,116 @@ impl<'a> Parser<'a> {
                 self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), ThinVec::new())
             }
         })
+    }
+
+    /// This function checks if there are trailing angle brackets and produces
+    /// a diagnostic to suggest removing them.
+    ///
+    /// ```ignore (diagnostic)
+    /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
+    ///                                                        ^^ help: remove extra angle brackets
+    /// ```
+    fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: token::Token) {
+        // This function is intended to be invoked after parsing a path segment where there are two
+        // cases:
+        //
+        // 1. A specific token is expected after the path segment.
+        //    eg. `x.foo(`, `x.foo::<u32>(` (parenthesis - method call),
+        //        `Foo::`, or `Foo::<Bar>::` (mod sep - continued path).
+        // 2. No specific token is expected after the path segment.
+        //    eg. `x.foo` (field access)
+        //
+        // This function is called after parsing `.foo` and before parsing the token `end` (if
+        // present). This includes any angle bracket arguments, such as `.foo::<u32>` or
+        // `Foo::<Bar>`.
+
+        // We only care about trailing angle brackets if we previously parsed angle bracket
+        // arguments. This helps stop us incorrectly suggesting that extra angle brackets be
+        // removed in this case:
+        //
+        // `x.foo >> (3)` (where `x.foo` is a `u32` for example)
+        //
+        // This case is particularly tricky as we won't notice it just looking at the tokens -
+        // it will appear the same (in terms of upcoming tokens) as below (since the `::<u32>` will
+        // have already been parsed):
+        //
+        // `x.foo::<u32>>>(3)`
+        let parsed_angle_bracket_args = segment.args
+            .as_ref()
+            .map(|args| args.is_angle_bracketed())
+            .unwrap_or(false);
+
+        debug!(
+            "check_trailing_angle_brackets: parsed_angle_bracket_args={:?}",
+            parsed_angle_bracket_args,
+        );
+        if !parsed_angle_bracket_args {
+            return;
+        }
+
+        // Keep the span at the start so we can highlight the sequence of `>` characters to be
+        // removed.
+        let lo = self.span;
+
+        // We need to look-ahead to see if we have `>` characters without moving the cursor forward
+        // (since we might have the field access case and the characters we're eating are
+        // actual operators and not trailing characters - ie `x.foo >> 3`).
+        let mut position = 0;
+
+        // We can encounter `>` or `>>` tokens in any order, so we need to keep track of how
+        // many of each (so we can correctly pluralize our error messages) and continue to
+        // advance.
+        let mut number_of_shr = 0;
+        let mut number_of_gt = 0;
+        while self.look_ahead(position, |t| {
+            trace!("check_trailing_angle_brackets: t={:?}", t);
+            if *t == token::BinOp(token::BinOpToken::Shr) {
+                number_of_shr += 1;
+                true
+            } else if *t == token::Gt {
+                number_of_gt += 1;
+                true
+            } else {
+                false
+            }
+        }) {
+            position += 1;
+        }
+
+        // If we didn't find any trailing `>` characters, then we have nothing to error about.
+        debug!(
+            "check_trailing_angle_brackets: number_of_gt={:?} number_of_shr={:?}",
+            number_of_gt, number_of_shr,
+        );
+        if number_of_gt < 1 && number_of_shr < 1 {
+            return;
+        }
+
+        // Finally, double check that we have our end token as otherwise this is the
+        // second case.
+        if self.look_ahead(position, |t| {
+            trace!("check_trailing_angle_brackets: t={:?}", t);
+            *t == end
+        }) {
+            // Eat from where we started until the end token so that parsing can continue
+            // as if we didn't have those extra angle brackets.
+            self.eat_to_tokens(&[&end]);
+            let span = lo.until(self.span);
+
+            let plural = number_of_gt > 1 || number_of_shr >= 1;
+            self.diagnostic()
+                .struct_span_err(
+                    span,
+                    &format!("unmatched angle bracket{}", if plural { "s" } else { "" }),
+                )
+                .span_suggestion_with_applicability(
+                    span,
+                    &format!("remove extra angle bracket{}", if plural { "s" } else { "" }),
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
@@ -4542,13 +4738,13 @@ impl<'a> Parser<'a> {
                 token::CloseDelim(token::DelimToken::Brace) => {
                     if brace_depth == 0 {
                         debug!("recover_stmt_ return - close delim {:?}", self.token);
-                        return;
+                        break;
                     }
                     brace_depth -= 1;
                     self.bump();
                     if in_block && bracket_depth == 0 && brace_depth == 0 {
                         debug!("recover_stmt_ return - block end {:?}", self.token);
-                        return;
+                        break;
                     }
                 }
                 token::CloseDelim(token::DelimToken::Bracket) => {
@@ -4560,7 +4756,7 @@ impl<'a> Parser<'a> {
                 }
                 token::Eof => {
                     debug!("recover_stmt_ return - Eof");
-                    return;
+                    break;
                 }
                 token::Semi => {
                     self.bump();
@@ -4568,7 +4764,17 @@ impl<'a> Parser<'a> {
                        brace_depth == 0 &&
                        bracket_depth == 0 {
                         debug!("recover_stmt_ return - Semi");
-                        return;
+                        break;
+                    }
+                }
+                token::Comma => {
+                    if break_on_semi == SemiColonMode::Comma &&
+                       brace_depth == 0 &&
+                       bracket_depth == 0 {
+                        debug!("recover_stmt_ return - Semi");
+                        break;
+                    } else {
+                        self.bump();
                     }
                 }
                 _ => {
@@ -7275,9 +7481,16 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             if self.eat_keyword(keywords::Mut) {
                 let prev_span = self.prev_span;
-                self.diagnostic().struct_span_err(prev_span, "const globals cannot be mutable")
-                                 .help("did you mean to declare a static?")
-                                 .emit();
+                let mut err = self.diagnostic()
+                    .struct_span_err(prev_span, "const globals cannot be mutable");
+                err.span_label(prev_span, "cannot be mutable");
+                err.span_suggestion_with_applicability(
+                    const_span,
+                    "you might want to declare a static instead",
+                    "static".to_owned(),
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None)?;
             let prev_span = self.prev_span;

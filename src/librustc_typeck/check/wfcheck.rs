@@ -608,8 +608,8 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
             if let ty::Opaque(def_id, substs) = ty.sty {
                 trace!("check_existential_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
-                // only check named existential types
-                if generics.parent.is_none() {
+                // only check named existential types defined in this crate
+                if generics.parent.is_none() && def_id.is_local() {
                     let opaque_node_id = tcx.hir().as_local_node_id(def_id).unwrap();
                     if may_define_existential_type(tcx, fn_def_id, opaque_node_id) {
                         trace!("check_existential_types may define. Generics: {:#?}", generics);

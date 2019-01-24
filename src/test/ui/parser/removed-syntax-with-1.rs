@@ -5,7 +5,6 @@ fn main() {
     }
 
     let a = S { foo: (), bar: () };
-    let b = S { foo: () with a };
+    let b = S { foo: () with a, bar: () };
     //~^ ERROR expected one of `,`, `.`, `?`, `}`, or an operator, found `with`
-    //~| ERROR missing field `bar` in initializer of `main::S`
 }

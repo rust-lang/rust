@@ -1,8 +1,11 @@
 error[E0308]: mismatched types
   --> $DIR/equality.rs:15:5
    |
+LL | fn two(x: bool) -> impl Foo {
+   |                    -------- expected because this return type...
+LL |     if x {
 LL |         return 1_i32;
-   |                ----- expected because of this statement
+   |                ----- ...is found to be `i32` here
 LL |     }
 LL |     0_u32
    |     ^^^^^ expected i32, found u32

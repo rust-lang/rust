@@ -81,12 +81,10 @@ pub trait Any: 'static {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_type_id)]
-    ///
     /// use std::any::{Any, TypeId};
     ///
     /// fn is_string(s: &dyn Any) -> bool {
-    ///     TypeId::of::<String>() == s.get_type_id()
+    ///     TypeId::of::<String>() == s.type_id()
     /// }
     ///
     /// fn main() {
@@ -94,15 +92,13 @@ pub trait Any: 'static {
     ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// }
     /// ```
-    #[unstable(feature = "get_type_id",
-               reason = "this method will likely be replaced by an associated static",
-               issue = "27745")]
-    fn get_type_id(&self) -> TypeId;
+    #[stable(feature = "get_type_id", since = "1.34.0")]
+    fn type_id(&self) -> TypeId;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: 'static + ?Sized > Any for T {
-    fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
+    fn type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -161,10 +157,10 @@ impl dyn Any {
         let t = TypeId::of::<T>();
 
         // Get TypeId of the type in the trait object
-        let boxed = self.get_type_id();
+        let concrete = self.type_id();
 
         // Compare both TypeIds on equality
-        t == boxed
+        t == concrete
     }
 
     /// Returns some reference to the boxed value if it is of type `T`, or

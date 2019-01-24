@@ -1199,7 +1199,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
-                let reason_label = "expected because of this statement";
                 let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
@@ -1209,63 +1208,20 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
-                        db = fcx.report_mismatched_types(cause, expected, found, err);
-
-                        let expr = expression.unwrap_or_else(|| {
-                            span_bug!(cause.span,
-                                      "supposed to be part of a block tail expression, but the \
-                                       expression is empty");
-                        });
-                        let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
-                            &mut db,
-                            expr,
+                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
+                        db = self.report_return_mismatched_types(
+                            cause,
                             expected,
                             found,
-                            cause.span,
-                            blk_id,
+                            err,
+                            fcx,
+                            parent_id,
+                            expression.map(|expr| (expr, blk_id)),
                         );
-                        // FIXME: replace with navigating up the chain until hitting an fn or
-                        // bailing if no "pass-through" Node is found, in order to provide a
-                        // suggestion when encountering something like:
-                        // ```
-                        // fn foo(a: bool) -> impl Debug {
-                        //     if a {
-                        //         bar()?;
-                        //     }
-                        //     {
-                        //         let x = unsafe { bar() };
-                        //         x
-                        //     }
-                        // }
-                        // ```
-                        //
-                        // Verify that this is a tail expression of a function, otherwise the
-                        // label pointing out the cause for the type coercion will be wrong
-                        // as prior return coercions would not be relevant (#57664).
-                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
-                        let parent = fcx.tcx.hir().get(fcx.tcx.hir().get_parent_node(parent_id));
-                        if fcx.get_node_fn_decl(parent).is_some() && !pointing_at_return_type {
-                            if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                                db.span_label(*sp, reason_label);
-                            }
-                        }
                     }
-                    ObligationCauseCode::ReturnType(_id) => {
-                        db = fcx.report_mismatched_types(cause, expected, found, err);
-                        let _id = fcx.tcx.hir().get_parent_node(_id);
-                        let mut pointing_at_return_type = false;
-                        if let Some((fn_decl, can_suggest)) = fcx.get_fn_decl(_id) {
-                            pointing_at_return_type = fcx.suggest_missing_return_type(
-                                &mut db, &fn_decl, expected, found, can_suggest);
-                        }
-                        if let (Some(sp), false) = (
-                            fcx.ret_coercion_span.borrow().as_ref(),
-                            pointing_at_return_type,
-                        ) {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
-                            }
-                        }
+                    ObligationCauseCode::ReturnType(id) => {
+                        db = self.report_return_mismatched_types(
+                            cause, expected, found, err, fcx, id, None);
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
@@ -1281,6 +1237,59 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 self.final_ty = Some(fcx.tcx.types.err);
             }
         }
+    }
+
+    fn report_return_mismatched_types<'a>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        err: TypeError<'tcx>,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        id: syntax::ast::NodeId,
+        expression: Option<(&'gcx hir::Expr, syntax::ast::NodeId)>,
+    ) -> DiagnosticBuilder<'a> {
+        let mut db = fcx.report_mismatched_types(cause, expected, found, err);
+
+        let mut pointing_at_return_type = false;
+        let mut return_sp = None;
+
+        // Verify that this is a tail expression of a function, otherwise the
+        // label pointing out the cause for the type coercion will be wrong
+        // as prior return coercions would not be relevant (#57664).
+        let parent_id = fcx.tcx.hir().get_parent_node(id);
+        let fn_decl = if let Some((expr, blk_id)) = expression {
+            pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
+                &mut db,
+                expr,
+                expected,
+                found,
+                cause.span,
+                blk_id,
+            );
+            let parent = fcx.tcx.hir().get(parent_id);
+            fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+        } else {
+            fcx.get_fn_decl(parent_id)
+        };
+
+        if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
+            if expression.is_none() {
+                pointing_at_return_type |= fcx.suggest_missing_return_type(
+                    &mut db, &fn_decl, expected, found, can_suggest);
+            }
+            if !pointing_at_return_type {
+                return_sp = Some(fn_decl.output.span()); // `impl Trait` return type
+            }
+        }
+        if let (Some(sp), Some(return_sp)) = (fcx.ret_coercion_span.borrow().as_ref(), return_sp) {
+            db.span_label(return_sp, "expected because this return type...");
+            db.span_label( *sp, format!(
+                "...is found to be `{}` here",
+                fcx.resolve_type_vars_with_obligations(expected),
+            ));
+        }
+        db
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
