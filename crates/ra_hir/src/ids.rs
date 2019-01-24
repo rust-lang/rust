@@ -5,7 +5,7 @@ use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def, Enum, EnumVariant, Crate,
+    HirDatabase, Def, EnumVariant, Crate,
     Module, Trait, Type, Static, Const,
 };
 
@@ -247,25 +247,22 @@ pub struct DefLoc {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
-    Struct,
-    Enum,
     EnumVariant,
     Const,
     Static,
     Trait,
     Type,
     Item,
-
-    /// The constructor of a struct. E.g. if we have `struct Foo(usize)`, the
-    /// name `Foo` needs to resolve to different types depending on whether we
-    /// are in the types or values namespace: As a type, `Foo` of course refers
-    /// to the struct `Foo`; as a value, `Foo` is a callable type with signature
-    /// `(usize) -> Foo`. The cleanest approach to handle this seems to be to
-    /// have different defs in the two namespaces.
-    ///
-    /// rustc does the same; note that it even creates a struct constructor if
-    /// the struct isn't a tuple struct (see `CtorKind::Fictive` in rustc).
-    StructCtor,
+    // /// The constructor of a struct. E.g. if we have `struct Foo(usize)`, the
+    // /// name `Foo` needs to resolve to different types depending on whether we
+    // /// are in the types or values namespace: As a type, `Foo` of course refers
+    // /// to the struct `Foo`; as a value, `Foo` is a callable type with signature
+    // /// `(usize) -> Foo`. The cleanest approach to handle this seems to be to
+    // /// have different defs in the two namespaces.
+    // ///
+    // /// rustc does the same; note that it even creates a struct constructor if
+    // /// the struct isn't a tuple struct (see `CtorKind::Fictive` in rustc).
+    // StructCtor,
 }
 
 impl DefId {
@@ -276,8 +273,6 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Struct => unreachable!(),
-            DefKind::Enum => Def::Enum(Enum::new(self)),
             DefKind::EnumVariant => Def::EnumVariant(EnumVariant::new(self)),
             DefKind::Const => {
                 let def = Const::new(self);
@@ -295,8 +290,6 @@ impl DefId {
                 let def = Type::new(self);
                 Def::Type(def)
             }
-
-            DefKind::StructCtor => Def::Item,
             DefKind::Item => Def::Item,
         }
     }

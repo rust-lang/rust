@@ -430,6 +430,13 @@ impl StructDef {
 }
 
 impl EnumVariant {
+    pub fn parent_enum(&self) -> &EnumDef {
+        self.syntax()
+            .parent()
+            .and_then(|it| it.parent())
+            .and_then(EnumDef::cast)
+            .expect("EnumVariants are always nested in Enums")
+    }
     pub fn flavor(&self) -> StructFlavor {
         StructFlavor::from_node(self)
     }

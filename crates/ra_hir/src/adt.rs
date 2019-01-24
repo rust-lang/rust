@@ -13,7 +13,7 @@ use crate::{
     HirDatabase, DefKind,
     SourceItemId,
     type_ref::TypeRef,
-    ids::{StructLoc},
+    ids::{StructLoc, EnumLoc},
 };
 
 impl Struct {
@@ -30,6 +30,19 @@ impl Struct {
 
     pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
         db.struct_data((*self).into()).variant_data.clone()
+    }
+}
+
+impl Enum {
+    pub(crate) fn from_ast(
+        db: &impl HirDatabase,
+        module: Module,
+        file_id: HirFileId,
+        ast: &ast::EnumDef,
+    ) -> Enum {
+        let loc: EnumLoc = EnumLoc::from_ast(db, module, file_id, ast);
+        let id = loc.id(db);
+        Enum { id }
     }
 }
 
@@ -55,20 +68,20 @@ impl StructData {
 
 fn get_def_id(
     db: &impl HirDatabase,
-    same_file_loc: &DefLoc,
+    module: Module,
+    file_id: HirFileId,
     node: &SyntaxNode,
     expected_kind: DefKind,
 ) -> DefId {
-    let file_id = same_file_loc.source_item_id.file_id;
     let file_items = db.file_items(file_id);
 
     let item_id = file_items.id_of(file_id, node);
     let source_item_id = SourceItemId {
+        file_id,
         item_id: Some(item_id),
-        ..same_file_loc.source_item_id
     };
     let loc = DefLoc {
-        module: same_file_loc.module,
+        module,
         kind: expected_kind,
         source_item_id,
     };
@@ -87,19 +100,22 @@ impl EnumData {
         EnumData { name, variants }
     }
 
-    pub(crate) fn enum_data_query(db: &impl HirDatabase, def_id: DefId) -> Arc<EnumData> {
-        let def_loc = def_id.loc(db);
-        assert!(def_loc.kind == DefKind::Enum);
-        let syntax = db.file_item(def_loc.source_item_id);
-        let enum_def = ast::EnumDef::cast(&syntax).expect("enum def should point to EnumDef node");
+    pub(crate) fn enum_data_query(db: &impl HirDatabase, e: Enum) -> Arc<EnumData> {
+        let (file_id, enum_def) = e.source(db);
+        let module = e.module(db);
         let variants = if let Some(vl) = enum_def.variant_list() {
             vl.variants()
                 .filter_map(|variant_def| {
                     let name = variant_def.name().map(|n| n.as_name());
 
                     name.map(|n| {
-                        let def_id =
-                            get_def_id(db, &def_loc, variant_def.syntax(), DefKind::EnumVariant);
+                        let def_id = get_def_id(
+                            db,
+                            module,
+                            file_id,
+                            variant_def.syntax(),
+                            DefKind::EnumVariant,
+                        );
                         (n, EnumVariant::new(def_id))
                     })
                 })
@@ -107,7 +123,7 @@ impl EnumData {
         } else {
             Vec::new()
         };
-        Arc::new(EnumData::new(enum_def, variants))
+        Arc::new(EnumData::new(&*enum_def, variants))
     }
 }
 
@@ -139,14 +155,10 @@ impl EnumVariantData {
         let syntax = db.file_item(def_loc.source_item_id);
         let variant_def = ast::EnumVariant::cast(&syntax)
             .expect("enum variant def should point to EnumVariant node");
-        let enum_node = syntax
-            .parent()
-            .expect("enum variant should have enum variant list ancestor")
-            .parent()
-            .expect("enum variant list should have enum ancestor");
-        let enum_def_id = get_def_id(db, &def_loc, enum_node, DefKind::Enum);
+        let enum_def = variant_def.parent_enum();
+        let e = Enum::from_ast(db, def_loc.module, def_loc.source_item_id.file_id, enum_def);
 
-        Arc::new(EnumVariantData::new(variant_def, Enum::new(enum_def_id)))
+        Arc::new(EnumVariantData::new(variant_def, e))
     }
 }
 

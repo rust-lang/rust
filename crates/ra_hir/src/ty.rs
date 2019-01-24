@@ -166,27 +166,28 @@ impl Substs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AdtDef {
     Struct(Struct),
-    Def(DefId), // Enum
+    Enum(Enum),
 }
 
 impl From<Struct> for AdtDef {
-    fn from(struct_: Struct) -> AdtDef {
-        AdtDef::Struct(struct_)
+    fn from(s: Struct) -> AdtDef {
+        AdtDef::Struct(s)
     }
 }
 
-impl From<DefId> for AdtDef {
-    fn from(def_id: DefId) -> AdtDef {
-        AdtDef::Def(def_id)
+impl From<Enum> for AdtDef {
+    fn from(e: Enum) -> AdtDef {
+        AdtDef::Enum(e)
     }
 }
 
 impl AdtDef {
     fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         match self {
-            AdtDef::Struct(s) => s.module(db).krate(db),
-            AdtDef::Def(def_id) => def_id.krate(db),
+            AdtDef::Struct(s) => s.module(db),
+            AdtDef::Enum(e) => e.module(db),
         }
+        .krate(db)
     }
 }
 
@@ -408,14 +409,16 @@ impl Ty {
         }
 
         // Resolve in module (in type namespace)
-        let resolved = match module.resolve_path(db, path).take_types() {
-            Some(ModuleDef::Def(r)) => r.into(),
-            Some(ModuleDef::Function(f)) => f.into(),
-            Some(ModuleDef::Struct(s)) => s.into(),
-            None | Some(ModuleDef::Module(_)) => return Ty::Unknown,
+        let typable: TypableDef = match module
+            .resolve_path(db, path)
+            .take_types()
+            .and_then(|it| it.into())
+        {
+            None => return Ty::Unknown,
+            Some(it) => it,
         };
-        let ty = db.type_for_def(resolved);
-        let substs = Ty::substs_from_path(db, module, impl_block, generics, path, resolved);
+        let ty = db.type_for_def(typable);
+        let substs = Ty::substs_from_path(db, module, impl_block, generics, path, typable);
         ty.apply_substs(substs)
     }
 
@@ -438,9 +441,8 @@ impl Ty {
         let (def_generics, segment) = match resolved {
             TypableDef::Function(func) => (func.generic_params(db), last),
             TypableDef::Struct(s) => (s.generic_params(db), last),
+            TypableDef::Enum(e) => (e.generic_params(db), last),
             TypableDef::Def(def_id) => match def_id.resolve(db) {
-                Def::Struct(s) => (s.generic_params(db), last),
-                Def::Enum(e) => (e.generic_params(db), last),
                 Def::Trait(t) => (t.generic_params(db), last),
                 Def::EnumVariant(ev) => {
                     // the generic args for an enum variant may be either specified
@@ -680,7 +682,7 @@ fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
 pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     let generics = s.generic_params(db);
     Ty::Adt {
-        def_id: s.def_id().into(),
+        def_id: s.into(),
         name: s.name(db).unwrap_or_else(Name::missing),
         substs: make_substs(&generics),
     }
@@ -696,6 +698,7 @@ pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> T
 pub enum TypableDef {
     Function(Function),
     Struct(Struct),
+    Enum(Enum),
     Def(DefId),
 }
 
@@ -706,8 +709,14 @@ impl From<Function> for TypableDef {
 }
 
 impl From<Struct> for TypableDef {
-    fn from(struct_: Struct) -> TypableDef {
-        TypableDef::Struct(struct_)
+    fn from(s: Struct) -> TypableDef {
+        TypableDef::Struct(s)
+    }
+}
+
+impl From<Enum> for TypableDef {
+    fn from(e: Enum) -> TypableDef {
+        TypableDef::Enum(e)
     }
 }
 
@@ -717,10 +726,24 @@ impl From<DefId> for TypableDef {
     }
 }
 
+impl From<ModuleDef> for Option<TypableDef> {
+    fn from(def: ModuleDef) -> Option<TypableDef> {
+        let res = match def {
+            ModuleDef::Def(r) => r.into(),
+            ModuleDef::Function(f) => f.into(),
+            ModuleDef::Struct(s) => s.into(),
+            ModuleDef::Enum(e) => e.into(),
+            ModuleDef::Module(_) => return None,
+        };
+        Some(res)
+    }
+}
+
 pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
     match def {
         TypableDef::Function(f) => type_for_fn(db, f),
         TypableDef::Struct(s) => type_for_struct(db, s),
+        TypableDef::Enum(e) => type_for_enum(db, e),
         TypableDef::Def(def_id) => match def_id.resolve(db) {
             Def::Enum(e) => type_for_enum(db, e),
             Def::EnumVariant(ev) => type_for_enum_variant(db, ev),
@@ -1134,12 +1157,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let typable = match self.module.resolve_path(self.db, &path).take_values()? {
-            ModuleDef::Def(it) => it.into(),
-            ModuleDef::Function(func) => func.into(),
-            ModuleDef::Struct(s) => s.into(),
-            ModuleDef::Module(_) => return None,
-        };
+        let typable: Option<TypableDef> = self
+            .module
+            .resolve_path(self.db, &path)
+            .take_values()?
+            .into();
+        let typable = typable?;
         let ty = self.db.type_for_def(typable);
         let ty = self.insert_type_vars(ty);
         Some(ty)
@@ -1150,11 +1173,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some(path) => path,
             None => return (Ty::Unknown, None),
         };
-        let def = match self.module.resolve_path(self.db, &path).take_types() {
-            Some(ModuleDef::Def(def_id)) => def_id.into(),
-            Some(ModuleDef::Function(func)) => func.into(),
-            Some(ModuleDef::Struct(s)) => s.into(),
-            None | Some(ModuleDef::Module(_)) => return (Ty::Unknown, None),
+        let typable: Option<TypableDef> = self
+            .module
+            .resolve_path(self.db, &path)
+            .take_types()
+            .and_then(|it| it.into());
+        let def = match typable {
+            None => return (Ty::Unknown, None),
+            Some(it) => it,
         };
         // TODO remove the duplication between here and `Ty::from_path`?
         // TODO provide generics of function
@@ -1182,6 +1208,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(s.into()))
             }
+            TypableDef::Enum(_) => (Ty::Unknown, None),
         }
     }
 
@@ -1300,6 +1327,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ModuleDef::Def(it) => Some(it.into()),
                     ModuleDef::Function(func) => Some(func.into()),
                     ModuleDef::Struct(s) => Some(s.into()),
+                    ModuleDef::Enum(e) => Some(e.into()),
                     ModuleDef::Module(_) => None,
                 })
                 .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved)),

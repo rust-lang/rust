@@ -16,7 +16,7 @@ use crate::{
     code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::{FunctionId, StructId},
+    ids::{FunctionId, StructId, EnumId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -69,30 +69,37 @@ pub enum ModuleDef {
     Module(Module),
     Function(Function),
     Struct(Struct),
+    Enum(Enum),
     Def(DefId),
 }
-
-impl Into<ModuleDef> for Module {
-    fn into(self) -> ModuleDef {
-        ModuleDef::Module(self)
+//FIXME: change to from
+impl From<Module> for ModuleDef {
+    fn from(it: Module) -> ModuleDef {
+        ModuleDef::Module(it)
     }
 }
 
-impl Into<ModuleDef> for Function {
-    fn into(self) -> ModuleDef {
-        ModuleDef::Function(self)
+impl From<Function> for ModuleDef {
+    fn from(it: Function) -> ModuleDef {
+        ModuleDef::Function(it)
     }
 }
 
-impl Into<ModuleDef> for Struct {
-    fn into(self) -> ModuleDef {
-        ModuleDef::Struct(self)
+impl From<Struct> for ModuleDef {
+    fn from(it: Struct) -> ModuleDef {
+        ModuleDef::Struct(it)
     }
 }
 
-impl Into<ModuleDef> for DefId {
-    fn into(self) -> ModuleDef {
-        ModuleDef::Def(self)
+impl From<Enum> for ModuleDef {
+    fn from(it: Enum) -> ModuleDef {
+        ModuleDef::Enum(it)
+    }
+}
+
+impl From<DefId> for ModuleDef {
+    fn from(it: DefId) -> ModuleDef {
+        ModuleDef::Def(it)
     }
 }
 
@@ -249,34 +256,30 @@ impl Docs for Struct {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Enum {
-    pub(crate) def_id: DefId,
+    pub(crate) id: EnumId,
 }
 
 impl Enum {
-    pub(crate) fn new(def_id: DefId) -> Self {
-        Enum { def_id }
-    }
-
-    pub fn def_id(&self) -> DefId {
-        self.def_id
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.loc(db).module
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.enum_data(self.def_id).name.clone()
+        db.enum_data(*self).name.clone()
     }
 
     pub fn variants(&self, db: &impl HirDatabase) -> Vec<(Name, EnumVariant)> {
-        db.enum_data(self.def_id).variants.clone()
+        db.enum_data(*self).variants.clone()
     }
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.loc(db).source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id.into())
+        db.generic_params((*self).into())
     }
 }
 

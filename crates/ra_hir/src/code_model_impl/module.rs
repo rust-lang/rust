@@ -3,7 +3,7 @@ use ra_syntax::{ast, SyntaxNode, TreeArc};
 
 use crate::{
     Module, ModuleSource, Problem, ModuleDef,
-    Crate, Name, Path, PathKind, PerNs, Def,
+    Crate, Name, Path, PathKind, PerNs,
     module_tree::ModuleId,
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
@@ -135,31 +135,25 @@ impl Module {
                         None => PerNs::none(),
                     }
                 }
-                ModuleDef::Function(_) | ModuleDef::Struct(_) => PerNs::none(),
-                ModuleDef::Def(def) => {
-                    match def.resolve(db) {
-                        Def::Enum(e) => {
-                            // enum variant
-                            let matching_variant = e
-                                .variants(db)
-                                .into_iter()
-                                .find(|(n, _variant)| n == &segment.name);
+                ModuleDef::Enum(e) => {
+                    // enum variant
+                    let matching_variant = e
+                        .variants(db)
+                        .into_iter()
+                        .find(|(n, _variant)| n == &segment.name);
 
-                            match matching_variant {
-                                Some((_n, variant)) => {
-                                    PerNs::both(variant.def_id().into(), e.def_id().into())
-                                }
-                                None => PerNs::none(),
-                            }
-                        }
-                        _ => {
-                            // could be an inherent method call in UFCS form
-                            // (`Struct::method`), or some other kind of associated
-                            // item... Which we currently don't handle (TODO)
-                            PerNs::none()
-                        }
+                    match matching_variant {
+                        Some((_n, variant)) => PerNs::both(variant.def_id().into(), (*e).into()),
+                        None => PerNs::none(),
                     }
                 }
+                ModuleDef::Function(_) | ModuleDef::Struct(_) => {
+                    // could be an inherent method call in UFCS form
+                    // (`Struct::method`), or some other kind of associated
+                    // item... Which we currently don't handle (TODO)
+                    PerNs::none()
+                }
+                ModuleDef::Def(_) => PerNs::none(),
             };
         }
         curr_per_ns

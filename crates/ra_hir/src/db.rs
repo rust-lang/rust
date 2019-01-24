@@ -8,7 +8,7 @@ use crate::{
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
     Function, FnSignature, FnScopes,
-    Struct,
+    Struct, Enum,
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
@@ -30,10 +30,10 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn fn_scopes(&self, func: Function) -> Arc<FnScopes>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
-    fn struct_data(&self, struct_: Struct) -> Arc<StructData>;
+    fn struct_data(&self, s: Struct) -> Arc<StructData>;
 
     #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
-    fn enum_data(&self, def_id: DefId) -> Arc<EnumData>;
+    fn enum_data(&self, e: Enum) -> Arc<EnumData>;
 
     #[salsa::invoke(crate::adt::EnumVariantData::enum_variant_data_query)]
     fn enum_variant_data(&self, def_id: DefId) -> Arc<EnumVariantData>;

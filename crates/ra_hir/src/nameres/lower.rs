@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
     HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc, Function,
-    ModuleDef, Module, Struct,
+    ModuleDef, Module, Struct, Enum,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -155,7 +155,14 @@ impl LoweredModule {
                 }
                 return;
             }
-            ast::ModuleItemKind::EnumDef(it) => it.name(),
+            ast::ModuleItemKind::EnumDef(it) => {
+                if let Some(name) = it.name() {
+                    let e = Enum::from_ast(db, module, file_id, it);
+                    let e: ModuleDef = e.into();
+                    self.declarations.insert(name.as_name(), PerNs::types(e));
+                }
+                return;
+            }
             ast::ModuleItemKind::FnDef(it) => {
                 if let Some(name) = it.name() {
                     let func = Function::from_ast(db, module, file_id, it);
@@ -233,8 +240,8 @@ impl DefKind {
     fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
         match kind {
             SyntaxKind::FN_DEF => unreachable!(),
-            SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
-            SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
+            SyntaxKind::STRUCT_DEF => unreachable!(),
+            SyntaxKind::ENUM_DEF => unreachable!(),
             SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),
             SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Type),
             SyntaxKind::CONST_DEF => PerNs::values(DefKind::Const),

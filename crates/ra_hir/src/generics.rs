@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
 
-use crate::{db::HirDatabase, DefId, Name, AsName, Function, Struct};
+use crate::{db::HirDatabase, DefId, Name, AsName, Function, Struct, Enum};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -26,6 +26,7 @@ pub struct GenericParams {
 pub enum GenericDef {
     Function(Function),
     Struct(Struct),
+    Enum(Enum),
     Def(DefId),
 }
 
@@ -36,8 +37,14 @@ impl From<Function> for GenericDef {
 }
 
 impl From<Struct> for GenericDef {
-    fn from(func: Struct) -> GenericDef {
-        GenericDef::Struct(func)
+    fn from(s: Struct) -> GenericDef {
+        GenericDef::Struct(s)
+    }
+}
+
+impl From<Enum> for GenericDef {
+    fn from(e: Enum) -> GenericDef {
+        GenericDef::Enum(e)
     }
 }
 
@@ -54,22 +61,13 @@ impl GenericParams {
     ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();
         match def {
-            GenericDef::Function(func) => {
-                let (_, fn_def) = func.source(db);
-                if let Some(type_param_list) = fn_def.type_param_list() {
-                    generics.fill(type_param_list)
-                }
-            }
-            GenericDef::Struct(s) => {
-                let (_, struct_def) = s.source(db);
-                if let Some(type_param_list) = struct_def.type_param_list() {
-                    generics.fill(type_param_list)
-                }
-            }
+            GenericDef::Function(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Struct(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Enum(it) => generics.fill(&*it.source(db).1),
             GenericDef::Def(def_id) => {
                 let (_file_id, node) = def_id.source(db);
                 if let Some(type_param_list) = node.children().find_map(ast::TypeParamList::cast) {
-                    generics.fill(type_param_list)
+                    generics.fill_params(type_param_list)
                 }
             }
         }
@@ -77,7 +75,13 @@ impl GenericParams {
         Arc::new(generics)
     }
 
-    fn fill(&mut self, params: &ast::TypeParamList) {
+    fn fill(&mut self, node: &impl TypeParamsOwner) {
+        if let Some(params) = node.type_param_list() {
+            self.fill_params(params)
+        }
+    }
+
+    fn fill_params(&mut self, params: &ast::TypeParamList) {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param
                 .name()
