@@ -94,7 +94,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
 use rustc::ty::print::{PrettyPrinter, PrintCx, Printer};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::SubstsRef;
+use rustc::ty::subst::{Kind, SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -503,11 +503,16 @@ impl Printer for SymbolPath {
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, Self>,
         ) -> Result<Self::Path, Self::Error>,
-        params: &[ty::GenericParamDef],
-        substs: SubstsRef<'tcx>,
+        args: impl Iterator<Item = Kind<'tcx>> + Clone,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     )  -> Result<Self::Path, Self::Error> {
-        self.pretty_path_generic_args(print_prefix, params, substs, projections)
+        let args = args.filter(|arg| {
+            match arg.unpack() {
+                UnpackedKind::Lifetime(_) => false,
+                _ => true,
+            }
+        });
+        self.pretty_path_generic_args(print_prefix, args, projections)
     }
 }
 

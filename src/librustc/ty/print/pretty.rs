@@ -207,20 +207,29 @@ pub trait PrettyPrinter:
         value.skip_binder().print(self)
     }
 
+    /// Print comma-separated elements.
+    fn comma_sep<T>(
+        mut self: PrintCx<'_, '_, 'tcx, Self>,
+        mut elems: impl Iterator<Item = T>,
+        comma: &str,
+    ) -> Result<Self, Self::Error>
+        where T: Print<'tcx, Self, Output = Self, Error = Self::Error>
+    {
+        if let Some(first) = elems.next() {
+            self = self.nest(|cx| first.print(cx))?;
+            for elem in elems {
+                self.write_str(comma)?;
+                self = self.nest(|cx| elem.print(cx))?;
+            }
+        }
+        self.ok()
+    }
+
     /// Print `<...>` around what `f` prints.
     fn generic_delimiters<'gcx, 'tcx>(
         self: PrintCx<'_, 'gcx, 'tcx, Self>,
         f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
     ) -> Result<Self, Self::Error>;
-
-    /// Return `true` if the region should be printed in path generic args
-    /// even when it's `'_`, such as in e.g. `Foo<'_, '_, '_>`.
-    fn always_print_region_in_paths(
-        self: &PrintCx<'_, '_, '_, Self>,
-        _region: ty::Region<'_>,
-    ) -> bool {
-        false
-    }
 
     /// Return `true` if the region should be printed in
     /// optional positions, e.g. `&'a T` or `dyn Tr + 'b`.
@@ -482,66 +491,25 @@ impl<'gcx, 'tcx, P: PrettyPrinter> PrintCx<'_, 'gcx, 'tcx, P> {
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, P>,
         ) -> Result<P::Path, P::Error>,
-        params: &[ty::GenericParamDef],
-        substs: SubstsRef<'tcx>,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+        mut args: impl Iterator<Item = Kind<'tcx>>,
+        mut projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<P::Path, P::Error> {
         self = self.nest(print_prefix)?;
 
-        // Don't print `'_` if there's no printed region.
-        let print_regions = params.iter().any(|param| {
-            match substs[param.index as usize].unpack() {
-                UnpackedKind::Lifetime(r) => {
-                    self.always_print_region_in_paths(r) ||
-                    self.region_should_not_be_omitted(r)
-                }
-                _ => false,
-            }
-        });
-        let mut args = params.iter().map(|param| {
-            substs[param.index as usize]
-        }).filter(|arg| {
-            match arg.unpack() {
-                UnpackedKind::Lifetime(_) => print_regions,
-                _ => true,
-            }
-        });
         let arg0 = args.next();
-
-        let mut projections = projections;
         let projection0 = projections.next();
-
         if arg0.is_none() && projection0.is_none() {
             return self.ok();
         }
+        let args = arg0.into_iter().chain(args);
+        let projections = projection0.into_iter().chain(projections);
 
         self.generic_delimiters(|mut cx| {
-            define_scoped_cx!(cx);
-
-            let mut empty = true;
-            let mut maybe_comma = |cx: &mut Self| {
-                if empty {
-                    empty = false;
-                    Ok(())
-                } else {
-                    write!(cx, ", ")
-                }
-            };
-
-            for arg in arg0.into_iter().chain(args) {
-                maybe_comma(&mut cx)?;
-
-                p!(print(arg));
+            cx = cx.nest(|cx| cx.comma_sep(args, ", "))?;
+            if arg0.is_some() && projection0.is_some() {
+                write!(cx, ", ")?;
             }
-
-            for projection in projection0.into_iter().chain(projections) {
-                maybe_comma(&mut cx)?;
-
-                p!(write("{}=", cx.tcx.associated_item(projection.item_def_id).ident),
-                   print(projection.ty));
-            }
-
-            cx.ok()
+            cx.comma_sep(projections, ", ")
         })
     }
 }
@@ -621,8 +589,8 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             })?;
             if visible_path_success {
                 return if let (Some(generics), Some(substs)) = (generics, substs) {
-                    let params = self.generic_params_to_print(generics, substs);
-                    self.path_generic_args(|cx| cx.ok(), params, substs, projections)
+                    let args = self.generic_args_to_print(generics, substs);
+                    self.path_generic_args(|cx| cx.ok(), args, projections)
                 } else {
                     self.ok()
                 };
@@ -739,11 +707,23 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, Self>,
         ) -> Result<Self::Path, Self::Error>,
-        params: &[ty::GenericParamDef],
-        substs: SubstsRef<'tcx>,
+        args: impl Iterator<Item = Kind<'tcx>> + Clone,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.pretty_path_generic_args(print_prefix, params, substs, projections)
+        // Don't print `'_` if there's no unerased regions.
+        let print_regions = args.clone().any(|arg| {
+            match arg.unpack() {
+                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                _ => false,
+            }
+        });
+        let args = args.filter(|arg| {
+            match arg.unpack() {
+                UnpackedKind::Lifetime(_) => print_regions,
+                _ => true,
+            }
+        });
+        self.pretty_path_generic_args(print_prefix, args, projections)
     }
 }
 
@@ -796,13 +776,6 @@ impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {
 
         write!(inner, ">")?;
         Ok(inner)
-    }
-
-    fn always_print_region_in_paths(
-        self: &PrintCx<'_, '_, '_, Self>,
-        region: ty::Region<'_>,
-    ) -> bool {
-        *region != ty::ReErased
     }
 
     fn region_should_not_be_omitted(
@@ -1496,6 +1469,11 @@ define_print_and_forward_display! {
 
             nest!(|cx| cx.print_def_path(def_id, None, iter::empty()));
         }
+    }
+
+    ty::ExistentialProjection<'tcx> {
+        let name = cx.tcx.associated_item(self.item_def_id).ident;
+        p!(write("{}=", name), print(self.ty))
     }
 
     &'tcx ty::List<Ty<'tcx>> {

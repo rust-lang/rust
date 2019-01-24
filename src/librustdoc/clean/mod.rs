@@ -20,7 +20,7 @@ use rustc::mir::interpret::GlobalId;
 use rustc::hir::{self, GenericArg, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::subst::{Kind, InternalSubsts, SubstsRef};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
@@ -4304,8 +4304,7 @@ where F: Fn(DefId) -> Def {
             print_prefix: impl FnOnce(
                 PrintCx<'_, 'gcx, 'tcx, Self>,
             ) -> Result<Self::Path, Self::Error>,
-            _params: &[ty::GenericParamDef],
-            _substs: SubstsRef<'tcx>,
+            _args: impl Iterator<Item = Kind<'tcx>> + Clone,
             _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
         ) -> Result<Self::Path, Self::Error> {
             print_prefix(self)

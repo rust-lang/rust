@@ -123,8 +123,7 @@ pub trait Printer: Sized {
         print_prefix: impl FnOnce(
             PrintCx<'_, 'gcx, 'tcx, Self>,
         ) -> Result<Self::Path, Self::Error>,
-        params: &[ty::GenericParamDef],
-        substs: SubstsRef<'tcx>,
+        args: impl Iterator<Item = Kind<'tcx>> + Clone,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Result<Self::Path, Self::Error>;
 }
@@ -197,8 +196,8 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
                 };
 
                 if let (Some(generics), Some(substs)) = (generics, substs) {
-                    let params = self.generic_params_to_print(generics, substs);
-                    self.path_generic_args(print_path, params, substs, projections)
+                    let args = self.generic_args_to_print(generics, substs);
+                    self.path_generic_args(print_path, args, projections)
                 } else {
                     print_path(self)
                 }
@@ -206,11 +205,11 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
         }
     }
 
-    pub fn generic_params_to_print(
+    pub fn generic_args_to_print(
         &self,
-        generics: &'a ty::Generics,
+        generics: &'tcx ty::Generics,
         substs: SubstsRef<'tcx>,
-    ) -> &'a [ty::GenericParamDef] {
+    ) -> impl Iterator<Item = Kind<'tcx>> + Clone {
         // Don't print args for `Self` parameters (of traits).
         let has_own_self = generics.has_self && generics.parent_count == 0;
         let params = &generics.params[has_own_self as usize..];
@@ -227,7 +226,9 @@ impl<P: Printer> PrintCx<'_, 'gcx, 'tcx, P> {
                 ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
             }
         }).count();
-        &params[..params.len() - num_supplied_defaults]
+        params[..params.len() - num_supplied_defaults].iter().map(move |param| {
+            substs[param.index as usize]
+        })
     }
 
     fn default_print_impl_path(
