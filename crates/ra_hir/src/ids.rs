@@ -5,7 +5,7 @@ use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def, Crate,
+    HirDatabase, Def,
     Module, Trait, Type, Static, Const,
 };
 
@@ -283,16 +283,6 @@ impl DefId {
         let loc = self.loc(db);
         let syntax = db.file_item(loc.source_item_id);
         (loc.source_item_id.file_id, syntax)
-    }
-
-    /// For a module, returns that module; for any other def, returns the containing module.
-    pub fn module(self, db: &impl HirDatabase) -> Module {
-        self.loc(db).module
-    }
-
-    /// Returns the containing crate.
-    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
     }
 }
 
