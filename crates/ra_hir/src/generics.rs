@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
+use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
-use crate::{db::HirDatabase, DefId, Name, AsName, Function, Struct, Enum};
+use crate::{db::HirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -27,15 +27,10 @@ pub enum GenericDef {
     Function(Function),
     Struct(Struct),
     Enum(Enum),
-    Def(DefId),
+    Trait(Trait),
+    Type(Type),
 }
-impl_froms!(GenericDef: Function, Struct, Enum);
-
-impl From<DefId> for GenericDef {
-    fn from(def_id: DefId) -> GenericDef {
-        GenericDef::Def(def_id)
-    }
-}
+impl_froms!(GenericDef: Function, Struct, Enum, Trait, Type);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -47,12 +42,8 @@ impl GenericParams {
             GenericDef::Function(it) => generics.fill(&*it.source(db).1),
             GenericDef::Struct(it) => generics.fill(&*it.source(db).1),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1),
-            GenericDef::Def(def_id) => {
-                let (_file_id, node) = def_id.source(db);
-                if let Some(type_param_list) = node.children().find_map(ast::TypeParamList::cast) {
-                    generics.fill_params(type_param_list)
-                }
-            }
+            GenericDef::Trait(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Type(it) => generics.fill(&*it.source(db).1),
         }
 
         Arc::new(generics)

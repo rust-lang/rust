@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    SyntaxKind, AstNode, SourceFile, TreeArc, AstPtr,
+    AstNode, SourceFile, TreeArc, AstPtr,
     ast::{self, ModuleItemOwner, NameOwner},
 };
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
-    HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc, Function,
-    ModuleDef, Module, Struct, Enum, Const, Static,
+    SourceItemId, Path, ModuleSource, HirDatabase, Name,
+    HirFileId, MacroCallLoc, AsName, PerNs, Function,
+    ModuleDef, Module, Struct, Enum, Const, Static, Trait, Type,
     ids::LocationCtx,
 };
 
@@ -115,7 +115,7 @@ impl LoweredModule {
         for item in items {
             match item {
                 ast::ItemOrMacro::Item(it) => {
-                    self.add_def_id(source_map, db, module, file_id, &file_items, it);
+                    self.add_def_id(source_map, db, module, file_id, it);
                 }
                 ast::ItemOrMacro::Macro(macro_call) => {
                     let item_id = file_items.id_of_unchecked(macro_call.syntax());
@@ -128,10 +128,9 @@ impl LoweredModule {
                     };
                     let id = loc.id(db);
                     let file_id = HirFileId::from(id);
-                    let file_items = db.file_items(file_id);
                     //FIXME: expand recursively
                     for item in db.hir_source_file(file_id).items() {
-                        self.add_def_id(source_map, db, module, file_id, &file_items, item);
+                        self.add_def_id(source_map, db, module, file_id, item);
                     }
                 }
             }
@@ -144,18 +143,16 @@ impl LoweredModule {
         db: &impl HirDatabase,
         module: Module,
         file_id: HirFileId,
-        file_items: &SourceFileItems,
         item: &ast::ModuleItem,
     ) {
         let ctx = LocationCtx::new(db, module, file_id);
-        let name = match item.kind() {
+        match item.kind() {
             ast::ModuleItemKind::StructDef(it) => {
                 if let Some(name) = it.name() {
                     let s = Struct { id: ctx.to_def(it) };
                     let s: ModuleDef = s.into();
                     self.declarations.insert(name.as_name(), PerNs::both(s, s));
                 }
-                return;
             }
             ast::ModuleItemKind::EnumDef(it) => {
                 if let Some(name) = it.name() {
@@ -163,7 +160,6 @@ impl LoweredModule {
                     let e: ModuleDef = e.into();
                     self.declarations.insert(name.as_name(), PerNs::types(e));
                 }
-                return;
             }
             ast::ModuleItemKind::FnDef(it) => {
                 if let Some(name) = it.name() {
@@ -171,21 +167,29 @@ impl LoweredModule {
                     self.declarations
                         .insert(name.as_name(), PerNs::values(func.into()));
                 }
-                return;
             }
-            ast::ModuleItemKind::TraitDef(it) => it.name(),
-            ast::ModuleItemKind::TypeDef(it) => it.name(),
+            ast::ModuleItemKind::TraitDef(it) => {
+                if let Some(name) = it.name() {
+                    let t = Trait { id: ctx.to_def(it) };
+                    self.declarations
+                        .insert(name.as_name(), PerNs::types(t.into()));
+                }
+            }
+            ast::ModuleItemKind::TypeDef(it) => {
+                if let Some(name) = it.name() {
+                    let t = Type { id: ctx.to_def(it) };
+                    self.declarations
+                        .insert(name.as_name(), PerNs::types(t.into()));
+                }
+            }
             ast::ModuleItemKind::ImplBlock(_) => {
                 // impls don't define items
-                return;
             }
             ast::ModuleItemKind::UseItem(it) => {
                 self.add_use_item(source_map, it);
-                return;
             }
             ast::ModuleItemKind::ExternCrateItem(_) => {
                 // TODO
-                return;
             }
             ast::ModuleItemKind::ConstDef(it) => {
                 if let Some(name) = it.name() {
@@ -193,7 +197,6 @@ impl LoweredModule {
                     self.declarations
                         .insert(name.as_name(), PerNs::values(c.into()));
                 }
-                return;
             }
             ast::ModuleItemKind::StaticDef(it) => {
                 if let Some(name) = it.name() {
@@ -201,17 +204,11 @@ impl LoweredModule {
                     self.declarations
                         .insert(name.as_name(), PerNs::values(s.into()));
                 }
-                return;
             }
             ast::ModuleItemKind::Module(_) => {
                 // modules are handled separately direclty by nameres
-                return;
             }
         };
-        if let Some(name) = name {
-            let def_id = assign_def_id(db, module, file_id, file_items, item);
-            self.declarations.insert(name.as_name(), def_id);
-        }
     }
 
     fn add_use_item(&mut self, source_map: &mut ImportSourceMap, item: &ast::UseItem) {
@@ -224,45 +221,5 @@ impl LoweredModule {
                 source_map.insert(import, segment)
             }
         })
-    }
-}
-
-fn assign_def_id(
-    db: &impl HirDatabase,
-    module: Module,
-    file_id: HirFileId,
-    file_items: &SourceFileItems,
-    item: &ast::ModuleItem,
-) -> PerNs<ModuleDef> {
-    // depending on the item kind, the location can define something in
-    // the values namespace, the types namespace, or both
-    let kind = DefKind::for_syntax_kind(item.syntax().kind());
-    let def_id = kind.map(|k| {
-        let item_id = file_items.id_of_unchecked(item.syntax());
-        let def_loc = DefLoc {
-            kind: k,
-            module,
-            source_item_id: SourceItemId {
-                file_id,
-                item_id: Some(item_id),
-            },
-        };
-        def_loc.id(db).into()
-    });
-    def_id
-}
-
-impl DefKind {
-    fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
-        match kind {
-            SyntaxKind::FN_DEF => unreachable!(),
-            SyntaxKind::STRUCT_DEF => unreachable!(),
-            SyntaxKind::ENUM_DEF => unreachable!(),
-            SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),
-            SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Type),
-            SyntaxKind::CONST_DEF => unreachable!(),
-            SyntaxKind::STATIC_DEF => unreachable!(),
-            _ => PerNs::none(),
-        }
     }
 }

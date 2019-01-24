@@ -145,10 +145,10 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
         .iter()
         .filter_map(|(_, it)| it.clone().take_types())
         .filter_map(|it| match it {
-            ModuleDef::Def(it) => Some(it),
+            ModuleDef::Trait(it) => Some(it),
             _ => None,
         })
-        .filter_map(|it| it.loc(db).source_item_id.file_id.as_macro_call_id())
+        .filter_map(|it| it.source(db).0.as_macro_call_id())
     {
         if let Some(exp) = db.expand_macro_invocation(macro_call_id) {
             let loc = macro_call_id.loc(db);

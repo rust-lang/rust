@@ -147,17 +147,12 @@ impl Module {
                         None => PerNs::none(),
                     }
                 }
-                ModuleDef::Function(_)
-                | ModuleDef::Struct(_)
-                | ModuleDef::Const(_)
-                | ModuleDef::Static(_)
-                | ModuleDef::EnumVariant(_) => {
+                _ => {
                     // could be an inherent method call in UFCS form
                     // (`Struct::method`), or some other kind of associated
                     // item... Which we currently don't handle (TODO)
                     PerNs::none()
                 }
-                ModuleDef::Def(_) => PerNs::none(),
             };
         }
         curr_per_ns

@@ -696,7 +696,9 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::Const(_)
             | ModuleDef::Static(_)
             | ModuleDef::Def(_)
-            | ModuleDef::Module(_) => return None,
+            | ModuleDef::Module(_)
+            | ModuleDef::Trait(_)
+            | ModuleDef::Type(_) => return None,
         };
         Some(res)
     }

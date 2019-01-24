@@ -3,7 +3,7 @@ use ra_syntax::{
     SyntaxNode, AstNode, SmolStr, TextRange, ast,
     SyntaxKind::{self, NAME},
 };
-use hir::{Def, ModuleSource};
+use hir::{ModuleSource};
 
 use crate::{FileSymbol, db::RootDatabase};
 
@@ -106,63 +106,60 @@ impl NavigationTarget {
         db: &RootDatabase,
         module_def: hir::ModuleDef,
     ) -> Option<NavigationTarget> {
-        let def = match module_def {
-            hir::ModuleDef::Def(def_id) => def_id.resolve(db),
-            hir::ModuleDef::Module(module) => {
-                return Some(NavigationTarget::from_module(db, module));
-            }
-            hir::ModuleDef::Function(func) => {
-                return Some(NavigationTarget::from_function(db, func));
-            }
+        match module_def {
+            hir::ModuleDef::Def(_) => return None,
+            hir::ModuleDef::Module(module) => Some(NavigationTarget::from_module(db, module)),
+            hir::ModuleDef::Function(func) => Some(NavigationTarget::from_function(db, func)),
             hir::ModuleDef::Struct(s) => {
                 let (file_id, node) = s.source(db);
-                return Some(NavigationTarget::from_named(
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
                     &*node,
-                ));
+                ))
             }
             hir::ModuleDef::Const(s) => {
                 let (file_id, node) = s.source(db);
-                return Some(NavigationTarget::from_named(
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
                     &*node,
-                ));
+                ))
             }
             hir::ModuleDef::Static(s) => {
                 let (file_id, node) = s.source(db);
-                return Some(NavigationTarget::from_named(
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
                     &*node,
-                ));
+                ))
             }
             hir::ModuleDef::Enum(e) => {
                 let (file_id, node) = e.source(db);
-                return Some(NavigationTarget::from_named(
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
                     &*node,
-                ));
+                ))
             }
             hir::ModuleDef::EnumVariant(var) => {
                 let (file_id, node) = var.source(db);
-                return Some(NavigationTarget::from_named(
+                Some(NavigationTarget::from_named(
                     file_id.original_file(db),
                     &*node,
-                ));
+                ))
             }
-        };
-
-        let res = match def {
-            Def::Trait(f) => {
-                let (file_id, node) = f.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            hir::ModuleDef::Trait(e) => {
+                let (file_id, node) = e.source(db);
+                Some(NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                ))
             }
-            Def::Type(f) => {
-                let (file_id, node) = f.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            hir::ModuleDef::Type(e) => {
+                let (file_id, node) = e.source(db);
+                Some(NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                ))
             }
-            Def::Item => return None,
-        };
-        Some(res)
+        }
     }
 
     #[cfg(test)]

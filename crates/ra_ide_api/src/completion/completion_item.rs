@@ -225,11 +225,9 @@ impl Builder {
             hir::ModuleDef::EnumVariant(it) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
             hir::ModuleDef::Const(it) => (CompletionItemKind::Const, it.docs(ctx.db)),
             hir::ModuleDef::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
-            hir::ModuleDef::Def(def_id) => match def_id.resolve(ctx.db) {
-                hir::Def::Trait(it) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-                hir::Def::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-                _ => return self,
-            },
+            hir::ModuleDef::Trait(it) => (CompletionItemKind::Trait, it.docs(ctx.db)),
+            hir::ModuleDef::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            hir::ModuleDef::Def(_) => return self,
         };
         self.kind = Some(kind);
         self.documentation = docs;

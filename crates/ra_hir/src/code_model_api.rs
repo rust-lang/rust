@@ -13,10 +13,9 @@ use crate::{
     ty::{InferenceResult, VariantDef},
     adt::VariantData,
     generics::GenericParams,
-    code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef, ConstId, StaticId},
+    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -47,8 +46,6 @@ impl Crate {
 
 #[derive(Debug)]
 pub enum Def {
-    Trait(Trait),
-    Type(Type),
     Item,
 }
 
@@ -68,6 +65,8 @@ pub enum ModuleDef {
     EnumVariant(EnumVariant),
     Const(Const),
     Static(Static),
+    Trait(Trait),
+    Type(Type),
     // Can't be directly declared, but can be imported.
     Def(DefId),
 }
@@ -78,7 +77,9 @@ impl_froms!(
     Enum,
     EnumVariant,
     Const,
-    Static
+    Static,
+    Trait,
+    Type
 );
 
 impl From<DefId> for ModuleDef {
@@ -428,22 +429,18 @@ impl Docs for Static {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Trait {
-    pub(crate) def_id: DefId,
+    pub(crate) id: TraitId,
 }
 
 impl Trait {
-    pub(crate) fn new(def_id: DefId) -> Trait {
-        Trait { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id.into())
+        db.generic_params((*self).into())
     }
 }
 
@@ -453,22 +450,18 @@ impl Docs for Trait {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Type {
-    pub(crate) def_id: DefId,
+    pub(crate) id: TypeId,
 }
 
 impl Type {
-    pub(crate) fn new(def_id: DefId) -> Type {
-        Type { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id.into())
+        db.generic_params((*self).into())
     }
 }
 

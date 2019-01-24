@@ -9,7 +9,7 @@ use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
     HirDatabase, Def,
-    Module, Trait, Type,
+    Module,
 };
 
 #[derive(Debug, Default)]
@@ -22,6 +22,8 @@ pub struct HirInterner {
     enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
     consts: LocationIntener<ItemLoc<ast::ConstDef>, ConstId>,
     statics: LocationIntener<ItemLoc<ast::StaticDef>, StaticId>,
+    traits: LocationIntener<ItemLoc<ast::TraitDef>, TraitId>,
+    types: LocationIntener<ItemLoc<ast::TypeDef>, TypeId>,
 }
 
 impl HirInterner {
@@ -279,6 +281,24 @@ impl AstItemDef<ast::StaticDef> for StaticId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TraitId(RawId);
+impl_arena_id!(TraitId);
+impl AstItemDef<ast::TraitDef> for TraitId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TraitDef>, Self> {
+        &interner.traits
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeId(RawId);
+impl_arena_id!(TypeId);
+impl AstItemDef<ast::TypeDef> for TypeId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TypeDef>, Self> {
+        &interner.types
+    }
+}
+
 /// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
 /// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -294,8 +314,6 @@ pub struct DefLoc {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
-    Trait,
-    Type,
     Item,
     // /// The constructor of a struct. E.g. if we have `struct Foo(usize)`, the
     // /// name `Foo` needs to resolve to different types depending on whether we
@@ -317,22 +335,8 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Trait => {
-                let def = Trait::new(self);
-                Def::Trait(def)
-            }
-            DefKind::Type => {
-                let def = Type::new(self);
-                Def::Type(def)
-            }
             DefKind::Item => Def::Item,
         }
-    }
-
-    pub(crate) fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<SyntaxNode>) {
-        let loc = self.loc(db);
-        let syntax = db.file_item(loc.source_item_id);
-        (loc.source_item_id.file_id, syntax)
     }
 }
 
