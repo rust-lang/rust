@@ -911,9 +911,6 @@ impl<'a> WasmLd<'a> {
         // For now we just never have an entry symbol
         cmd.arg("--no-entry");
 
-        // Make the default table accessible
-        cmd.arg("--export-table");
-
         // Rust code should never have warnings, and warnings are often
         // indicative of bugs, let's prevent them.
         cmd.arg("--fatal-warnings");
