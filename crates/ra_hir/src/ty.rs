@@ -24,14 +24,13 @@ use std::ops::Index;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use log;
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
 use ra_arena::map::ArenaMap;
 use join_to_string::join;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    Def, DefId, Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
+    Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes, ModuleDef, Crate,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
@@ -447,10 +446,6 @@ impl Ty {
                 };
                 (var.parent_enum(db).generic_params(db), segment)
             }
-            TypableDef::Def(def_id) => match def_id.resolve(db) {
-                Def::Trait(t) => (t.generic_params(db), last),
-                _ => return Substs::empty(),
-            },
         };
         // substs_from_path
         if let Some(generic_args) = &segment.args_and_bindings {
@@ -688,25 +683,17 @@ pub enum TypableDef {
     Struct(Struct),
     Enum(Enum),
     EnumVariant(EnumVariant),
-    Def(DefId),
 }
 impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant);
-
-impl From<DefId> for TypableDef {
-    fn from(func: DefId) -> TypableDef {
-        TypableDef::Def(func)
-    }
-}
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
         let res = match def {
-            ModuleDef::Def(r) => r.into(),
             ModuleDef::Function(f) => f.into(),
             ModuleDef::Struct(s) => s.into(),
             ModuleDef::Enum(e) => e.into(),
             ModuleDef::EnumVariant(v) => v.into(),
-            ModuleDef::Module(_) => return None,
+            ModuleDef::Def(_) | ModuleDef::Module(_) => return None,
         };
         Some(res)
     }
@@ -718,14 +705,6 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
         TypableDef::Struct(s) => type_for_struct(db, s),
         TypableDef::Enum(e) => type_for_enum(db, e),
         TypableDef::EnumVariant(v) => type_for_enum_variant(db, v),
-        TypableDef::Def(def_id) => {
-            log::debug!(
-                "trying to get type for item of unknown type {:?} {:?}",
-                def_id,
-                def
-            );
-            Ty::Unknown
-        }
     }
 }
 
@@ -1152,9 +1131,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::Def(_) | TypableDef::Enum(_) | TypableDef::Function(_) => {
-                (Ty::Unknown, None)
-            }
+            TypableDef::Enum(_) | TypableDef::Function(_) => (Ty::Unknown, None),
         }
     }
 
