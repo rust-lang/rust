@@ -1,7 +1,128 @@
 # Change Log
+
 All notable changes to this project will be documented in this file.
 
-## 0.0.212
+## Unreleased / In Rust Beta or Nightly
+
+[b2601be...master](https://github.com/rust-lang/rust-clippy/compare/b2601be...master)
+
+## Rust 1.32 (2019-01-17)
+
+[2e26fdc2...b2601be](https://github.com/rust-lang/rust-clippy/compare/2e26fdc2...b2601be)
+
+* New lints: [`slow_vector_initialization`], [`unsafe_vector_initialization`],
+  [`mem_discriminant_non_enum`], [`redundant_clone`], [`wildcard_dependencies`],
+  [`into_iter_on_ref`], [`into_iter_on_array`], [`deprecated_cfg_attr`],
+  [`mem_discriminant_non_enum`], [`cargo_common_metadata`]
+* Add support for `u128` and `i128` to integer related lints
+* Add float support to `mistyped_literal_suffixes`
+* Fix false positives in `use_self`
+* Fix false positives in `missing_comma`
+* Fix false positives in `new_ret_no_self`
+* Fix false positives in `possible_missing_comma`
+* Fix false positive in `integer_arithmetic` in constant items
+* Fix false positive in `needless_borrow`
+* Fix false positive in `out_of_bounds_indexing`
+* Fix false positive in `new_without_default_derive`
+* Fix false positive in `string_lit_as_bytes`
+* Fix false negative in `out_of_bounds_indexing`
+* Fix false negative in `use_self`. It will now also check existential types
+* Fix incorrect suggestion for `redundant_closure_call`
+* Fix various suggestions that contained expanded macros
+* Fix `bool_comparison` triggering 3 times on on on the same code
+* Expand `trivially_copy_pass_by_ref` to work on trait methods
+* Improve suggestion for `needless_range_loop`
+* Move `needless_pass_by_value` from `pedantic` group to `style`
+
+## Rust 1.31 (2018-12-06)
+
+[125907ad..2e26fdc2](https://github.com/rust-lang/rust-clippy/compare/125907ad..2e26fdc2)
+
+* Clippy has been relicensed under a dual MIT / Apache license.
+  See [#3093](https://github.com/rust-lang/rust-clippy/issues/3093) for more
+  information.
+* With Rust 1.31, Clippy is no longer available via crates.io. The recommended
+  installation method is via `rustup component add clippy`.
+* New lints: [`redundant_pattern_matching`], [`unnecessary_filter_map`],
+  [`unused_unit`], [`map_flatten`], [`mem_replace_option_with_none`]
+* Fix ICE in `if_let_redundant_pattern_matching`
+* Fix ICE in `needless_pass_by_value` when encountering a generic function
+  argument with a lifetime parameter
+* Fix ICE in `needless_range_loop`
+* Fix ICE in `single_char_pattern` when encountering a constant value
+* Fix false positive in `assign_op_pattern`
+* Fix false positive in `boxed_local` on trait implementations
+* Fix false positive in `cmp_owned`
+* Fix false positive in `collapsible_if` when conditionals have comments
+* Fix false positive in `double_parens`
+* Fix false positive in `excessive_precision`
+* Fix false positive in `explicit_counter_loop`
+* Fix false positive in `fn_to_numeric_cast_with_truncation`
+* Fix false positive in `map_clone`
+* Fix false positive in `new_ret_no_self`
+* Fix false positive in `new_without_default` when `new` is unsafe
+* Fix false positive in `type_complexity` when using extern types
+* Fix false positive in `useless_format`
+* Fix false positive in `wrong_self_convention`
+* Fix incorrect suggestion for `excessive_precision`
+* Fix incorrect suggestion for `expect_fun_call`
+* Fix incorrect suggestion for `get_unwrap`
+* Fix incorrect suggestion for `useless_format`
+* `fn_to_numeric_cast_with_truncation` lint can be disabled again
+* Improve suggestions for `manual_memcpy`
+* Improve help message for `needless_lifetimes`
+
+## Rust 1.30 (2018-10-25)
+
+[14207503...125907ad](https://github.com/rust-lang/rust-clippy/compare/14207503...125907ad)
+
+* Deprecate `assign_ops` lint
+* New lints: [`mistyped_literal_suffixes`], [`ptr_offset_with_cast`],
+  [`needless_collect`], [`copy_iterator`]
+* `cargo clippy -V` now includes the Clippy commit hash of the Rust
+  Clippy component
+* Fix ICE in `implicit_hasher`
+* Fix ICE when encountering `println!("{}" a);`
+* Fix ICE when encountering a macro call in match statements
+* Fix false positive in `default_trait_access`
+* Fix false positive in `trivially_copy_pass_by_ref`
+* Fix false positive in `similar_names`
+* Fix false positive in `redundant_field_name`
+* Fix false positive in `expect_fun_call`
+* Fix false negative in `identity_conversion`
+* Fix false negative in `explicit_counter_loop`
+* Fix `range_plus_one` suggestion and false negative
+* `print_with_newline` / `write_with_newline`: don't warn about string with several `\n`s in them
+* Fix `useless_attribute` to also whitelist `unused_extern_crates`
+* Fix incorrect suggestion for `single_char_pattern`
+* Improve suggestion for `identity_conversion` lint
+* Move `explicit_iter_loop` and `explicit_into_iter_loop` from `style` group to `pedantic`
+* Move `range_plus_one` and `range_minus_one` from `nursery` group to `complexity`
+* Move `shadow_unrelated` from `restriction` group to `pedantic`
+* Move `indexing_slicing` from `pedantic` group to `restriction`
+
+## Rust 1.29 (2018-09-13)
+
+[v0.0.212...14207503](https://github.com/rust-lang/rust-clippy/compare/v0.0.212...14207503)
+
+* :tada: :tada: **Rust 1.29 is the first stable Rust that includes a bundled Clippy** :tada:
+  :tada:
+  You can now run `rustup component add clippy-preview` and then `cargo
+  clippy` to run Clippy. This should put an end to the continuous nightly
+  upgrades for Clippy users.
+* Clippy now follows the Rust versioning scheme instead of its own
+* Fix ICE when encountering a `while let (..) = x.iter()` construct
+* Fix false positives in `use_self`
+* Fix false positive in `trivially_copy_pass_by_ref`
+* Fix false positive in `useless_attribute` lint
+* Fix false positive in `print_literal`
+* Fix `use_self` regressions
+* Improve lint message for `neg_cmp_op_on_partial_ord`
+* Improve suggestion highlight for `single_char_pattern`
+* Improve suggestions for various print/write macro lints
+* Improve website header
+
+## 0.0.212 (2018-07-10)
 * Rustup to *rustc 1.29.0-nightly (e06c87544 2018-07-06)*
 
 ## 0.0.211
@@ -31,7 +152,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.203
 * Rustup to *rustc 1.28.0-nightly (a3085756e 2018-05-19)*
-* clippy attributes are now of the form `clippy::cyclomatic_complexity` instead of `clippy(cyclomatic_complexity)`
+* Clippy attributes are now of the form `clippy::cyclomatic_complexity` instead of `clippy(cyclomatic_complexity)`
 
 ## 0.0.202
 * Rustup to *rustc 1.28.0-nightly (952f344cd 2018-05-18)*
