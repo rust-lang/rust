@@ -8,39 +8,15 @@ use ra_syntax::{
 };
 
 use crate::{
-    Name, AsName, Struct, Enum, EnumVariant, Module, HirFileId,
+    Name, AsName, Struct, Enum, EnumVariant,
     HirDatabase,
     type_ref::TypeRef,
-    ids::ItemLoc,
+    ids::LocationCtx,
 };
 
 impl Struct {
-    pub(crate) fn from_ast(
-        db: &impl HirDatabase,
-        module: Module,
-        file_id: HirFileId,
-        ast: &ast::StructDef,
-    ) -> Struct {
-        let loc = ItemLoc::from_ast(db, module, file_id, ast);
-        let id = db.as_ref().structs.loc2id(&loc);
-        Struct { id }
-    }
-
     pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
         db.struct_data((*self).into()).variant_data.clone()
-    }
-}
-
-impl Enum {
-    pub(crate) fn from_ast(
-        db: &impl HirDatabase,
-        module: Module,
-        file_id: HirFileId,
-        ast: &ast::EnumDef,
-    ) -> Enum {
-        let loc = ItemLoc::from_ast(db, module, file_id, ast);
-        let id = db.as_ref().enums.loc2id(&loc);
-        Enum { id }
     }
 }
 
@@ -64,19 +40,6 @@ impl StructData {
     }
 }
 
-impl EnumVariant {
-    pub(crate) fn from_ast(
-        db: &impl HirDatabase,
-        module: Module,
-        file_id: HirFileId,
-        ast: &ast::EnumVariant,
-    ) -> EnumVariant {
-        let loc = ItemLoc::from_ast(db, module, file_id, ast);
-        let id = db.as_ref().enum_variants.loc2id(&loc);
-        EnumVariant { id }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub(crate) name: Option<Name>,
@@ -92,11 +55,15 @@ impl EnumData {
     pub(crate) fn enum_data_query(db: &impl HirDatabase, e: Enum) -> Arc<EnumData> {
         let (file_id, enum_def) = e.source(db);
         let module = e.module(db);
+        let ctx = LocationCtx::new(db, module, file_id);
         let variants = if let Some(vl) = enum_def.variant_list() {
             vl.variants()
                 .filter_map(|variant_def| {
-                    let name = variant_def.name().map(|n| n.as_name());
-                    name.map(|n| (n, EnumVariant::from_ast(db, module, file_id, variant_def)))
+                    let name = variant_def.name()?.as_name();
+                    let var = EnumVariant {
+                        id: ctx.to_def(variant_def),
+                    };
+                    Some((name, var))
                 })
                 .collect()
         } else {
@@ -131,7 +98,10 @@ impl EnumVariantData {
     ) -> Arc<EnumVariantData> {
         let (file_id, variant_def) = var.source(db);
         let enum_def = variant_def.parent_enum();
-        let e = Enum::from_ast(db, var.module(db), file_id, enum_def);
+        let ctx = LocationCtx::new(db, var.module(db), file_id);
+        let e = Enum {
+            id: ctx.to_def(enum_def),
+        };
         Arc::new(EnumVariantData::new(&*variant_def, e))
     }
 }

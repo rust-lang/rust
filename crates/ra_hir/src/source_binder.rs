@@ -15,6 +15,7 @@ use ra_syntax::{
 use crate::{
     HirDatabase, Function, SourceItemId, ModuleDef,
     AsName, Module,
+    ids::LocationCtx,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -116,7 +117,10 @@ pub fn function_from_module(
 ) -> Function {
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
-    Function::from_ast(db, module, file_id, fn_def)
+    let ctx = LocationCtx::new(db, module, file_id);
+    Function {
+        id: ctx.to_def(fn_def),
+    }
 }
 
 pub fn function_from_child_node(

@@ -9,6 +9,7 @@ use crate::{
     Function, HirFileId,
     db::HirDatabase,
     type_ref::TypeRef,
+    ids::LocationCtx,
 };
 
 use crate::code_model_api::{Module, ModuleSource};
@@ -72,13 +73,14 @@ impl ImplData {
     ) -> Self {
         let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
+        let ctx = LocationCtx::new(db, module, file_id);
         let items = if let Some(item_list) = node.item_list() {
             item_list
                 .impl_items()
                 .map(|item_node| {
                     let kind = match item_node.kind() {
                         ast::ImplItemKind::FnDef(it) => {
-                            return ImplItem::Method(Function::from_ast(db, module, file_id, it));
+                            return ImplItem::Method(Function { id: ctx.to_def(it) });
                         }
                         ast::ImplItemKind::ConstDef(..) => DefKind::Item,
                         ast::ImplItemKind::TypeDef(..) => DefKind::Item,

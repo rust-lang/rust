@@ -11,6 +11,7 @@ use crate::{
     SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
     HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc, Function,
     ModuleDef, Module, Struct, Enum,
+    ids::LocationCtx,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -146,10 +147,11 @@ impl LoweredModule {
         file_items: &SourceFileItems,
         item: &ast::ModuleItem,
     ) {
+        let ctx = LocationCtx::new(db, module, file_id);
         let name = match item.kind() {
             ast::ModuleItemKind::StructDef(it) => {
                 if let Some(name) = it.name() {
-                    let s = Struct::from_ast(db, module, file_id, it);
+                    let s = Struct { id: ctx.to_def(it) };
                     let s: ModuleDef = s.into();
                     self.declarations.insert(name.as_name(), PerNs::both(s, s));
                 }
@@ -157,7 +159,7 @@ impl LoweredModule {
             }
             ast::ModuleItemKind::EnumDef(it) => {
                 if let Some(name) = it.name() {
-                    let e = Enum::from_ast(db, module, file_id, it);
+                    let e = Enum { id: ctx.to_def(it) };
                     let e: ModuleDef = e.into();
                     self.declarations.insert(name.as_name(), PerNs::types(e));
                 }
@@ -165,7 +167,7 @@ impl LoweredModule {
             }
             ast::ModuleItemKind::FnDef(it) => {
                 if let Some(name) = it.name() {
-                    let func = Function::from_ast(db, module, file_id, it);
+                    let func = Function { id: ctx.to_def(it) };
                     self.declarations
                         .insert(name.as_name(), PerNs::values(func.into()));
                 }

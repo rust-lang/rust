@@ -5,27 +5,15 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    HirDatabase, Name, AsName, Function, FnSignature, Module, HirFileId,
+    HirDatabase, Name, AsName, Function, FnSignature,
     type_ref::{TypeRef, Mutability},
     expr::Body,
     impl_block::ImplBlock,
-    ids::ItemLoc,
 };
 
 pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 
 impl Function {
-    pub(crate) fn from_ast(
-        db: &impl HirDatabase,
-        module: Module,
-        file_id: HirFileId,
-        ast: &ast::FnDef,
-    ) -> Function {
-        let loc = ItemLoc::from_ast(db, module, file_id, ast);
-        let id = db.as_ref().fns.loc2id(&loc);
-        Function { id }
-    }
-
     pub(crate) fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
         db.body_hir(*self)
     }

@@ -16,10 +16,10 @@ use crate::{
 pub struct HirInterner {
     defs: LocationIntener<DefLoc, DefId>,
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
-    pub(crate) fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
-    pub(crate) structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
-    pub(crate) enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
-    pub(crate) enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
+    fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
+    structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
+    enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
+    enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
 }
 
 impl HirInterner {
@@ -144,34 +144,6 @@ pub struct ItemLoc<N: AstNode> {
     _ty: PhantomData<N>,
 }
 
-impl<N: AstNode> ItemLoc<N> {
-    pub(crate) fn from_ast(
-        db: &impl HirDatabase,
-        module: Module,
-        file_id: HirFileId,
-        ast: &N,
-    ) -> ItemLoc<N> {
-        let items = db.file_items(file_id);
-        let raw = SourceItemId {
-            file_id,
-            item_id: Some(items.id_of(file_id, ast.syntax())),
-        };
-        ItemLoc {
-            module,
-            raw,
-            _ty: PhantomData,
-        }
-    }
-
-    pub(crate) fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<N>) {
-        let syntax = db.file_item(self.raw);
-        let ast = N::cast(&syntax)
-            .unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", self.raw))
-            .to_owned();
-        (self.raw.file_id, ast)
-    }
-}
-
 impl<N: AstNode> Clone for ItemLoc<N> {
     fn clone(&self) -> ItemLoc<N> {
         ItemLoc {
@@ -182,12 +154,54 @@ impl<N: AstNode> Clone for ItemLoc<N> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct LocationCtx<DB> {
+    db: DB,
+    module: Module,
+    file_id: HirFileId,
+}
+
+impl<'a, DB: HirDatabase> LocationCtx<&'a DB> {
+    pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
+        LocationCtx {
+            db,
+            module,
+            file_id,
+        }
+    }
+    pub(crate) fn to_def<N, DEF>(self, ast: &N) -> DEF
+    where
+        N: AstNode + Eq + Hash,
+        DEF: AstItemDef<N>,
+    {
+        DEF::from_ast(self, ast)
+    }
+}
+
 pub(crate) trait AstItemDef<N: AstNode + Eq + Hash>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
+    fn from_ast(ctx: LocationCtx<&impl HirDatabase>, ast: &N) -> Self {
+        let items = ctx.db.file_items(ctx.file_id);
+        let raw = SourceItemId {
+            file_id: ctx.file_id,
+            item_id: Some(items.id_of(ctx.file_id, ast.syntax())),
+        };
+        let loc = ItemLoc {
+            module: ctx.module,
+            raw,
+            _ty: PhantomData,
+        };
+
+        Self::interner(ctx.db.as_ref()).loc2id(&loc)
+    }
     fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<N>) {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
-        loc.source(db)
+        let syntax = db.file_item(loc.raw);
+        let ast = N::cast(&syntax)
+            .unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw))
+            .to_owned();
+        (loc.raw.file_id, ast)
     }
     fn module(self, db: &impl HirDatabase) -> Module {
         let int = Self::interner(db.as_ref());
