@@ -216,11 +216,21 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         self.frame().mir
     }
 
-    pub fn substs(&self) -> &'tcx Substs<'tcx> {
-        if let Some(frame) = self.stack.last() {
-            frame.instance.substs
-        } else {
-            Substs::empty()
+    pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+        &self,
+        substs: T,
+    ) -> EvalResult<'tcx, T> {
+        match self.stack.last() {
+            Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
+                frame.instance.substs,
+                self.param_env,
+                &substs,
+            )),
+            None => if substs.needs_subst() {
+                err!(TooGeneric).into()
+            } else {
+                Ok(substs)
+            },
         }
     }
 
@@ -230,13 +240,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         substs: &'tcx Substs<'tcx>
     ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
-        trace!("substs: {:#?}", self.substs());
         trace!("param_env: {:#?}", self.param_env);
-        let substs = self.tcx.subst_and_normalize_erasing_regions(
-            self.substs(),
-            self.param_env,
-            &substs,
-        );
+        let substs = self.subst_and_normalize_erasing_regions(substs)?;
+        trace!("substs: {:#?}", substs);
         ty::Instance::resolve(
             *self.tcx,
             self.param_env,
@@ -276,7 +282,21 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
-    pub fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    pub(super) fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+        &self,
+        t: T,
+    ) -> EvalResult<'tcx, T> {
+        match self.stack.last() {
+            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)),
+            None => if t.needs_subst() {
+                err!(TooGeneric).into()
+            } else {
+                Ok(t)
+            },
+        }
+    }
+
+    fn monomorphize_with_substs<T: TypeFoldable<'tcx> + Subst<'tcx>>(
         &self,
         t: T,
         substs: &'tcx Substs<'tcx>
@@ -295,7 +315,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         let cell = &frame.local_layouts[local];
         if cell.get().is_none() {
             let local_ty = frame.mir.local_decls[local].ty;
-            let local_ty = self.monomorphize(local_ty, frame.instance.substs);
+            let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
             let layout = self.layout_of(local_ty)?;
             cell.set(Some(layout));
         }

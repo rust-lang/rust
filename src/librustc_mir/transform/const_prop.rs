@@ -20,7 +20,7 @@ use rustc::ty::layout::{
 
 use interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
 use const_eval::{
-    CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_borrowck_eval_cx,
+    CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
     lazy_const_to_op,
 };
 use transform::{MirPass, MirSource};
@@ -110,9 +110,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source: MirSource,
     ) -> ConstPropagator<'a, 'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id);
-        let substs = Substs::identity_for_item(tcx, source.def_id);
-        let instance = Instance::new(source.def_id, substs);
-        let ecx = mk_borrowck_eval_cx(tcx, instance, mir, DUMMY_SP).unwrap();
+        let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id), param_env);
         ConstPropagator {
             ecx,
             mir,
