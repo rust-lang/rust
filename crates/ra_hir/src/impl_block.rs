@@ -77,7 +77,9 @@ impl ImplData {
                 .impl_items()
                 .map(|item_node| {
                     let kind = match item_node.kind() {
-                        ast::ImplItemKind::FnDef(..) => DefKind::Function,
+                        ast::ImplItemKind::FnDef(it) => {
+                            return ImplItem::Method(Function::from_ast(db, module, file_id, it));
+                        }
                         ast::ImplItemKind::ConstDef(..) => DefKind::Item,
                         ast::ImplItemKind::TypeDef(..) => DefKind::Item,
                     };
@@ -93,9 +95,7 @@ impl ImplData {
                     };
                     let def_id = def_loc.id(db);
                     match item_node.kind() {
-                        ast::ImplItemKind::FnDef(it) => {
-                            ImplItem::Method(Function::from_ast(db, module, file_id, it))
-                        }
+                        ast::ImplItemKind::FnDef(_) => unreachable!(),
                         ast::ImplItemKind::ConstDef(..) => ImplItem::Const(def_id),
                         ast::ImplItemKind::TypeDef(..) => ImplItem::Type(def_id),
                     }

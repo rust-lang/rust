@@ -209,7 +209,6 @@ pub struct DefLoc {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
-    Function,
     Struct,
     Enum,
     EnumVariant,
@@ -239,7 +238,6 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Function => unreachable!(),
             DefKind::Struct => {
                 let struct_def = Struct::new(self);
                 Def::Struct(struct_def)
