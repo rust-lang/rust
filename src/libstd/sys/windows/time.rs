@@ -11,6 +11,8 @@ const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct Instant {
+    // This duration is relative to an arbitrary microsecond epoch
+    // from the winapi QueryPerformanceCounter function.
     t: Duration,
 }
 
