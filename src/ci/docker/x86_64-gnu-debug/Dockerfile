@@ -8,6 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   python2.7 \
   python2.7-dev \
+  libxml2-dev \
+  libncurses-dev \
+  libedit-dev \
+  swig \
+  doxygen \
   git \
   cmake \
   sudo \
