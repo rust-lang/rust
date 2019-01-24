@@ -23,6 +23,7 @@ mod ty;
 mod impl_block;
 mod expr;
 mod generics;
+mod docs;
 
 mod code_model_api;
 mod code_model_impl;
@@ -45,6 +46,7 @@ pub use self::{
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},
     code_model_impl::function::{FnScopes, ScopesWithSyntaxMapping},
+    docs::{Docs, Documentation}
 };
 
 pub use self::code_model_api::{

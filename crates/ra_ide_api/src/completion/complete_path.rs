@@ -2,6 +2,8 @@ use crate::{
     completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
 
+use hir::Docs;
+
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let (path, module) = match (&ctx.path_prefix, &ctx.module) {
         (Some(path), Some(module)) => (path.clone(), module),
@@ -27,13 +29,14 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::Def::Enum(e) => {
             e.variants(ctx.db)
                 .into_iter()
-                .for_each(|(variant_name, _variant)| {
+                .for_each(|(variant_name, variant)| {
                     CompletionItem::new(
                         CompletionKind::Reference,
                         ctx.source_range(),
                         variant_name.to_string(),
                     )
                     .kind(CompletionItemKind::EnumVariant)
+                    .set_documentation(variant.docs(ctx.db))
                     .add_to(acc)
                 });
         }
@@ -116,7 +119,13 @@ mod tests {
             "reference_completion",
             "
             //- /lib.rs
-            enum E { Foo, Bar(i32) }
+            /// An enum
+            enum E {
+                /// Foo Variant
+                Foo,
+                /// Bar Variant with i32
+                Bar(i32)
+            }
             fn foo() { let _ = E::<|> }
             ",
         );

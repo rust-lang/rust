@@ -632,6 +632,7 @@ impl AstNode for EnumVariant {
 
 
 impl ast::NameOwner for EnumVariant {}
+impl ast::DocCommentsOwner for EnumVariant {}
 impl EnumVariant {
     pub fn expr(&self) -> Option<&Expr> {
         super::child_opt(self)
