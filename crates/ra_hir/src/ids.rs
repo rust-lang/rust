@@ -9,7 +9,7 @@ use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
     HirDatabase, Def,
-    Module, Trait, Type, Static, Const,
+    Module, Trait, Type,
 };
 
 #[derive(Debug, Default)]
@@ -20,6 +20,8 @@ pub struct HirInterner {
     structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
     enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
     enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
+    consts: LocationIntener<ItemLoc<ast::ConstDef>, ConstId>,
+    statics: LocationIntener<ItemLoc<ast::StaticDef>, StaticId>,
 }
 
 impl HirInterner {
@@ -246,6 +248,24 @@ impl AstItemDef<ast::EnumVariant> for EnumVariantId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ConstId(RawId);
+impl_arena_id!(ConstId);
+impl AstItemDef<ast::ConstDef> for ConstId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::ConstDef>, Self> {
+        &interner.consts
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StaticId(RawId);
+impl_arena_id!(StaticId);
+impl AstItemDef<ast::StaticDef> for StaticId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::StaticDef>, Self> {
+        &interner.statics
+    }
+}
+
 /// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
 /// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -261,8 +281,6 @@ pub struct DefLoc {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
-    Const,
-    Static,
     Trait,
     Type,
     Item,
@@ -286,14 +304,6 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Const => {
-                let def = Const::new(self);
-                Def::Const(def)
-            }
-            DefKind::Static => {
-                let def = Static::new(self);
-                Def::Static(def)
-            }
             DefKind::Trait => {
                 let def = Trait::new(self);
                 Def::Trait(def)

@@ -16,7 +16,7 @@ use crate::{
     code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef},
+    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef, ConstId, StaticId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -47,8 +47,6 @@ impl Crate {
 
 #[derive(Debug)]
 pub enum Def {
-    Const(Const),
-    Static(Static),
     Trait(Trait),
     Type(Type),
     Item,
@@ -67,11 +65,21 @@ pub enum ModuleDef {
     Function(Function),
     Struct(Struct),
     Enum(Enum),
-    // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
+    Const(Const),
+    Static(Static),
+    // Can't be directly declared, but can be imported.
     Def(DefId),
 }
-impl_froms!(ModuleDef: Module, Function, Struct, Enum, EnumVariant);
+impl_froms!(
+    ModuleDef: Module,
+    Function,
+    Struct,
+    Enum,
+    EnumVariant,
+    Const,
+    Static
+);
 
 impl From<DefId> for ModuleDef {
     fn from(it: DefId) -> ModuleDef {
@@ -386,18 +394,14 @@ impl Docs for Function {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Const {
-    pub(crate) def_id: DefId,
+    pub(crate) id: ConstId,
 }
 
 impl Const {
-    pub(crate) fn new(def_id: DefId) -> Const {
-        Const { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 }
 
@@ -407,18 +411,14 @@ impl Docs for Const {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Static {
-    pub(crate) def_id: DefId,
+    pub(crate) id: StaticId,
 }
 
 impl Static {
-    pub(crate) fn new(def_id: DefId) -> Static {
-        Static { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 }
 

@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
     HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc, Function,
-    ModuleDef, Module, Struct, Enum,
+    ModuleDef, Module, Struct, Enum, Const, Static,
     ids::LocationCtx,
 };
 
@@ -187,8 +187,22 @@ impl LoweredModule {
                 // TODO
                 return;
             }
-            ast::ModuleItemKind::ConstDef(it) => it.name(),
-            ast::ModuleItemKind::StaticDef(it) => it.name(),
+            ast::ModuleItemKind::ConstDef(it) => {
+                if let Some(name) = it.name() {
+                    let c = Const { id: ctx.to_def(it) };
+                    self.declarations
+                        .insert(name.as_name(), PerNs::values(c.into()));
+                }
+                return;
+            }
+            ast::ModuleItemKind::StaticDef(it) => {
+                if let Some(name) = it.name() {
+                    let s = Static { id: ctx.to_def(it) };
+                    self.declarations
+                        .insert(name.as_name(), PerNs::values(s.into()));
+                }
+                return;
+            }
             ast::ModuleItemKind::Module(_) => {
                 // modules are handled separately direclty by nameres
                 return;
@@ -246,8 +260,8 @@ impl DefKind {
             SyntaxKind::ENUM_DEF => unreachable!(),
             SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),
             SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Type),
-            SyntaxKind::CONST_DEF => PerNs::values(DefKind::Const),
-            SyntaxKind::STATIC_DEF => PerNs::values(DefKind::Static),
+            SyntaxKind::CONST_DEF => unreachable!(),
+            SyntaxKind::STATIC_DEF => unreachable!(),
             _ => PerNs::none(),
         }
     }

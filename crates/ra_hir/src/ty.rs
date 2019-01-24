@@ -693,7 +693,10 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::Struct(s) => s.into(),
             ModuleDef::Enum(e) => e.into(),
             ModuleDef::EnumVariant(v) => v.into(),
-            ModuleDef::Def(_) | ModuleDef::Module(_) => return None,
+            ModuleDef::Const(_)
+            | ModuleDef::Static(_)
+            | ModuleDef::Def(_)
+            | ModuleDef::Module(_) => return None,
         };
         Some(res)
     }

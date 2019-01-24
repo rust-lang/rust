@@ -43,6 +43,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Function(_)
         | hir::ModuleDef::Struct(_)
         | hir::ModuleDef::Def(_)
+        | hir::ModuleDef::Const(_)
+        | hir::ModuleDef::Static(_)
         | hir::ModuleDef::EnumVariant(_) => return,
     };
 }

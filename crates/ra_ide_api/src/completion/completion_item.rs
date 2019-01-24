@@ -223,11 +223,11 @@ impl Builder {
             hir::ModuleDef::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
             hir::ModuleDef::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
             hir::ModuleDef::EnumVariant(it) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
+            hir::ModuleDef::Const(it) => (CompletionItemKind::Const, it.docs(ctx.db)),
+            hir::ModuleDef::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
             hir::ModuleDef::Def(def_id) => match def_id.resolve(ctx.db) {
                 hir::Def::Trait(it) => (CompletionItemKind::Trait, it.docs(ctx.db)),
                 hir::Def::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-                hir::Def::Const(it) => (CompletionItemKind::Const, it.docs(ctx.db)),
-                hir::Def::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
                 _ => return self,
             },
         };

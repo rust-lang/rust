@@ -121,6 +121,20 @@ impl NavigationTarget {
                     &*node,
                 ));
             }
+            hir::ModuleDef::Const(s) => {
+                let (file_id, node) = s.source(db);
+                return Some(NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                ));
+            }
+            hir::ModuleDef::Static(s) => {
+                let (file_id, node) = s.source(db);
+                return Some(NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                ));
+            }
             hir::ModuleDef::Enum(e) => {
                 let (file_id, node) = e.source(db);
                 return Some(NavigationTarget::from_named(
@@ -143,14 +157,6 @@ impl NavigationTarget {
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Type(f) => {
-                let (file_id, node) = f.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
-            }
-            Def::Static(f) => {
-                let (file_id, node) = f.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
-            }
-            Def::Const(f) => {
                 let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
