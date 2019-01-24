@@ -2,13 +2,13 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    LocationIntener, BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId,
+    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId,
     salsa::{self, Database},
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
-use crate::{db, DefId, DefLoc, MacroCallId, MacroCallLoc};
+use crate::{db, HirInterner};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -16,7 +16,7 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
 pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
-    id_maps: Arc<IdMaps>,
+    interner: Arc<HirInterner>,
     file_counter: u32,
 }
 
@@ -123,12 +123,6 @@ impl MockDatabase {
     }
 }
 
-#[derive(Debug, Default)]
-struct IdMaps {
-    defs: LocationIntener<DefLoc, DefId>,
-    macros: LocationIntener<MacroCallLoc, MacroCallId>,
-}
-
 impl salsa::Database for MockDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<MockDatabase> {
         &self.runtime
@@ -147,7 +141,7 @@ impl Default for MockDatabase {
         let mut db = MockDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
-            id_maps: Default::default(),
+            interner: Default::default(),
             file_counter: 0,
         };
         db.query_mut(ra_db::CrateGraphQuery)
@@ -165,7 +159,7 @@ impl salsa::ParallelDatabase for MockDatabase {
         salsa::Snapshot::new(MockDatabase {
             events: Default::default(),
             runtime: self.runtime.snapshot(self),
-            id_maps: self.id_maps.clone(),
+            interner: Arc::clone(&self.interner),
             file_counter: self.file_counter,
         })
     }
@@ -173,14 +167,9 @@ impl salsa::ParallelDatabase for MockDatabase {
 
 impl BaseDatabase for MockDatabase {}
 
-impl AsRef<LocationIntener<DefLoc, DefId>> for MockDatabase {
-    fn as_ref(&self) -> &LocationIntener<DefLoc, DefId> {
-        &self.id_maps.defs
-    }
-}
-impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>> for MockDatabase {
-    fn as_ref(&self) -> &LocationIntener<MacroCallLoc, MacroCallId> {
-        &self.id_maps.macros
+impl AsRef<HirInterner> for MockDatabase {
+    fn as_ref(&self) -> &HirInterner {
+        &self.interner
     }
 }
 

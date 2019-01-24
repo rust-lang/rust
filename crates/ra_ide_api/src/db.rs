@@ -1,7 +1,7 @@
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 
 use ra_db::{
-    LocationIntener, BaseDatabase, FileId, Canceled,
+    BaseDatabase, FileId, Canceled,
     salsa::{self, Database},
 };
 
@@ -10,21 +10,7 @@ use crate::{symbol_index, LineIndex};
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
-    id_maps: Arc<IdMaps>,
-}
-
-#[derive(Default)]
-struct IdMaps {
-    defs: LocationIntener<hir::DefLoc, hir::DefId>,
-    macros: LocationIntener<hir::MacroCallLoc, hir::MacroCallId>,
-}
-
-impl fmt::Debug for IdMaps {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("IdMaps")
-            .field("n_defs", &self.defs.len())
-            .finish()
-    }
+    interner: Arc<hir::HirInterner>,
 }
 
 impl salsa::Database for RootDatabase {
@@ -40,7 +26,7 @@ impl Default for RootDatabase {
     fn default() -> RootDatabase {
         let mut db = RootDatabase {
             runtime: salsa::Runtime::default(),
-            id_maps: Default::default(),
+            interner: Default::default(),
         };
         db.query_mut(ra_db::CrateGraphQuery)
             .set((), Default::default());
@@ -56,22 +42,16 @@ impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
             runtime: self.runtime.snapshot(self),
-            id_maps: self.id_maps.clone(),
+            interner: Arc::clone(&self.interner),
         })
     }
 }
 
 impl BaseDatabase for RootDatabase {}
 
-impl AsRef<LocationIntener<hir::DefLoc, hir::DefId>> for RootDatabase {
-    fn as_ref(&self) -> &LocationIntener<hir::DefLoc, hir::DefId> {
-        &self.id_maps.defs
-    }
-}
-
-impl AsRef<LocationIntener<hir::MacroCallLoc, hir::MacroCallId>> for RootDatabase {
-    fn as_ref(&self) -> &LocationIntener<hir::MacroCallLoc, hir::MacroCallId> {
-        &self.id_maps.macros
+impl AsRef<hir::HirInterner> for RootDatabase {
+    fn as_ref(&self) -> &hir::HirInterner {
+        &self.interner
     }
 }
 

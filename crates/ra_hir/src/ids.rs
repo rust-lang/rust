@@ -8,6 +8,18 @@ use crate::{
     module_tree::ModuleId,
 };
 
+#[derive(Debug, Default)]
+pub struct HirInterner {
+    defs: LocationIntener<DefLoc, DefId>,
+    macros: LocationIntener<MacroCallLoc, MacroCallId>,
+}
+
+impl HirInterner {
+    pub fn len(&self) -> usize {
+        self.defs.len() + self.macros.len()
+    }
+}
+
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor
 /// (but for hir objects).
@@ -106,21 +118,15 @@ pub struct MacroCallLoc {
 }
 
 impl MacroCallId {
-    pub(crate) fn loc(
-        self,
-        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
-    ) -> MacroCallLoc {
-        db.as_ref().id2loc(self)
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> MacroCallLoc {
+        db.as_ref().macros.id2loc(self)
     }
 }
 
 impl MacroCallLoc {
     #[allow(unused)]
-    pub(crate) fn id(
-        &self,
-        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
-    ) -> MacroCallId {
-        db.as_ref().loc2id(&self)
+    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> MacroCallId {
+        db.as_ref().macros.loc2id(&self)
     }
 }
 
@@ -164,8 +170,8 @@ pub(crate) enum DefKind {
 }
 
 impl DefId {
-    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
-        db.as_ref().id2loc(self)
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> DefLoc {
+        db.as_ref().defs.id2loc(self)
     }
 
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
@@ -233,8 +239,8 @@ impl DefId {
 }
 
 impl DefLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
-        db.as_ref().loc2id(&self)
+    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> DefId {
+        db.as_ref().defs.loc2id(&self)
     }
 }
 

@@ -3,11 +3,11 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::ast::{self, AstNode};
-use ra_db::{LocationIntener, SourceRootId};
+use ra_db::{SourceRootId};
 
 use crate::{
     DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
-    Function,
+    Function, HirInterner,
     db::HirDatabase,
     type_ref::TypeRef,
     module_tree::ModuleId,
@@ -66,7 +66,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn from_ast(
-        db: &impl AsRef<LocationIntener<DefLoc, DefId>>,
+        db: &impl AsRef<HirInterner>,
         file_items: &SourceFileItems,
         module: &Module,
         node: &ast::ImplBlock,
