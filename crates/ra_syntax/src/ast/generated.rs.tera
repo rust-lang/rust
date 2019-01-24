@@ -48,6 +48,10 @@ impl AstNode for {{ node }} {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for {{ node }} {
+    type Owned = TreeArc<{{ node }}>;
     fn to_owned(&self) -> TreeArc<{{ node }}> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
@@ -79,6 +83,10 @@ impl AstNode for {{ node }} {
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for {{ node }} {
+    type Owned = TreeArc<{{ node }}>;
     fn to_owned(&self) -> TreeArc<{{ node }}> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
