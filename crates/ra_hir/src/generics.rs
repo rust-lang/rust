@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
 
-use crate::{db::HirDatabase, DefId, Name, AsName, Function};
+use crate::{db::HirDatabase, DefId, Name, AsName, Function, Struct};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -25,12 +25,19 @@ pub struct GenericParams {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDef {
     Function(Function),
+    Struct(Struct),
     Def(DefId),
 }
 
 impl From<Function> for GenericDef {
     fn from(func: Function) -> GenericDef {
         GenericDef::Function(func)
+    }
+}
+
+impl From<Struct> for GenericDef {
+    fn from(func: Struct) -> GenericDef {
+        GenericDef::Struct(func)
     }
 }
 
@@ -50,6 +57,12 @@ impl GenericParams {
             GenericDef::Function(func) => {
                 let (_, fn_def) = func.source(db);
                 if let Some(type_param_list) = fn_def.type_param_list() {
+                    generics.fill(type_param_list)
+                }
+            }
+            GenericDef::Struct(s) => {
+                let (_, struct_def) = s.source(db);
+                if let Some(type_param_list) = struct_def.type_param_list() {
                     generics.fill(type_param_list)
                 }
             }

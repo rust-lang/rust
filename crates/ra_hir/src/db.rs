@@ -8,10 +8,11 @@ use crate::{
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
     Function, FnSignature, FnScopes,
+    Struct,
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
-    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef},
+    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, VariantDef},
     adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
     generics::{GenericParams, GenericDef},
@@ -29,7 +30,7 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn fn_scopes(&self, func: Function) -> Arc<FnScopes>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
-    fn struct_data(&self, def_id: DefId) -> Arc<StructData>;
+    fn struct_data(&self, struct_: Struct) -> Arc<StructData>;
 
     #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
     fn enum_data(&self, def_id: DefId) -> Arc<EnumData>;
@@ -44,7 +45,7 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn type_for_def(&self, def: TypableDef) -> Ty;
 
     #[salsa::invoke(crate::ty::type_for_field)]
-    fn type_for_field(&self, def_id: DefId, field: Name) -> Option<Ty>;
+    fn type_for_field(&self, def: VariantDef, field: Name) -> Option<Ty>;
 
     #[salsa::invoke(query_definitions::file_items)]
     fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;

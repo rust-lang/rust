@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
     HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc, Function,
-    ModuleDef, Module,
+    ModuleDef, Module, Struct,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -147,7 +147,14 @@ impl LoweredModule {
         item: &ast::ModuleItem,
     ) {
         let name = match item.kind() {
-            ast::ModuleItemKind::StructDef(it) => it.name(),
+            ast::ModuleItemKind::StructDef(it) => {
+                if let Some(name) = it.name() {
+                    let s = Struct::from_ast(db, module, file_id, it);
+                    let s: ModuleDef = s.into();
+                    self.declarations.insert(name.as_name(), PerNs::both(s, s));
+                }
+                return;
+            }
             ast::ModuleItemKind::EnumDef(it) => it.name(),
             ast::ModuleItemKind::FnDef(it) => {
                 if let Some(name) = it.name() {

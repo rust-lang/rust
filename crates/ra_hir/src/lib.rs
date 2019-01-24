@@ -43,7 +43,7 @@ pub use self::{
     ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc, HirInterner},
     macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{ItemMap, PerNs, Namespace, Resolution},
-    ty::Ty,
+    ty::{Ty, AdtDef},
     impl_block::{ImplBlock, ImplItem},
     code_model_impl::function::{FnScopes, ScopesWithSyntaxMapping},
     docs::{Docs, Documentation}

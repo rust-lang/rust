@@ -1,4 +1,4 @@
-use hir::{Ty, Def};
+use hir::{Ty, Def, AdtDef};
 
 use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
 use crate::completion::completion_item::CompletionKind;
@@ -28,21 +28,24 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             Ty::Adt {
                 def_id, ref substs, ..
             } => {
-                match def_id.resolve(ctx.db) {
-                    Def::Struct(s) => {
-                        for field in s.fields(ctx.db) {
-                            CompletionItem::new(
-                                CompletionKind::Reference,
-                                ctx.source_range(),
-                                field.name().to_string(),
-                            )
-                            .kind(CompletionItemKind::Field)
-                            .set_detail(field.ty(ctx.db).map(|ty| ty.subst(substs).to_string()))
-                            .add_to(acc);
+                match def_id {
+                    AdtDef::Struct() => {}
+                    AdtDef::Def(def_id) => match def_id.resolve(ctx.db) {
+                        Def::Struct(s) => {
+                            for field in s.fields(ctx.db) {
+                                CompletionItem::new(
+                                    CompletionKind::Reference,
+                                    ctx.source_range(),
+                                    field.name().to_string(),
+                                )
+                                .kind(CompletionItemKind::Field)
+                                .set_detail(field.ty(ctx.db).map(|ty| ty.subst(substs).to_string()))
+                                .add_to(acc);
+                            }
                         }
-                    }
-                    // TODO unions
-                    _ => {}
+                        // TODO unions
+                        _ => {}
+                    },
                 }
             }
             Ty::Tuple(fields) => {

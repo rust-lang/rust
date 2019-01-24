@@ -5,7 +5,7 @@ use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def, Struct, Enum, EnumVariant, Crate,
+    HirDatabase, Def, Enum, EnumVariant, Crate,
     Module, Trait, Type, Static, Const,
 };
 
@@ -257,10 +257,7 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Struct => {
-                let struct_def = Struct::new(self);
-                Def::Struct(struct_def)
-            }
+            DefKind::Struct => unreachable!(),
             DefKind::Enum => Def::Enum(Enum::new(self)),
             DefKind::EnumVariant => Def::EnumVariant(EnumVariant::new(self)),
             DefKind::Const => {

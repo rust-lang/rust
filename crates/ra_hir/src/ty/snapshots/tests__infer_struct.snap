@@ -1,19 +1,19 @@
 ---
-created: "2019-01-22T14:45:00.058678600+00:00"
-creator: insta@0.4.0
+created: "2019-01-24T14:51:32.808861856+00:00"
+creator: insta@0.5.2
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
+source: crates/ra_hir/src/ty/tests.rs
 ---
 [72; 154) '{     ...a.c; }': ()
 [82; 83) 'c': [unknown]
-[86; 87) 'C': [unknown]
+[86; 87) 'C': C
 [86; 90) 'C(1)': [unknown]
 [88; 89) '1': i32
-[96; 97) 'B': [unknown]
+[96; 97) 'B': B
 [107; 108) 'a': A
 [114; 133) 'A { b:...C(1) }': A
 [121; 122) 'B': B
-[127; 128) 'C': [unknown]
+[127; 128) 'C': C
 [127; 131) 'C(1)': C
 [129; 130) '1': i32
 [139; 140) 'a': A

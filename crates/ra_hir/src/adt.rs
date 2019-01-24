@@ -9,19 +9,27 @@ use ra_syntax::{
 };
 
 use crate::{
-    DefId, DefLoc, Name, AsName, Struct, Enum, EnumVariant,
+    DefId, DefLoc, Name, AsName, Struct, Enum, EnumVariant, Module, HirFileId,
     HirDatabase, DefKind,
     SourceItemId,
     type_ref::TypeRef,
+    ids::{StructLoc},
 };
 
 impl Struct {
-    pub(crate) fn new(def_id: DefId) -> Self {
-        Struct { def_id }
+    pub(crate) fn from_ast(
+        db: &impl HirDatabase,
+        module: Module,
+        file_id: HirFileId,
+        ast: &ast::StructDef,
+    ) -> Struct {
+        let loc: StructLoc = StructLoc::from_ast(db, module, file_id, ast);
+        let id = loc.id(db);
+        Struct { id }
     }
 
     pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
-        db.struct_data(self.def_id).variant_data.clone()
+        db.struct_data((*self).into()).variant_data.clone()
     }
 }
 
@@ -39,13 +47,9 @@ impl StructData {
         StructData { name, variant_data }
     }
 
-    pub(crate) fn struct_data_query(db: &impl HirDatabase, def_id: DefId) -> Arc<StructData> {
-        let def_loc = def_id.loc(db);
-        assert!(def_loc.kind == DefKind::Struct);
-        let syntax = db.file_item(def_loc.source_item_id);
-        let struct_def =
-            ast::StructDef::cast(&syntax).expect("struct def should point to StructDef node");
-        Arc::new(StructData::new(struct_def))
+    pub(crate) fn struct_data_query(db: &impl HirDatabase, struct_: Struct) -> Arc<StructData> {
+        let (_, struct_def) = struct_.source(db);
+        Arc::new(StructData::new(&*struct_def))
     }
 }
 

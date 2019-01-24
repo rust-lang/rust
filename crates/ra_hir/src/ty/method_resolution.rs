@@ -7,16 +7,16 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    HirDatabase, DefId, module_tree::ModuleId, Module, Crate, Name, Function,
+    HirDatabase, module_tree::ModuleId, Module, Crate, Name, Function,
     impl_block::{ImplId, ImplBlock, ImplItem},
-    generics::GenericParams
+    generics::GenericParams,
+    ty::{AdtDef, Ty}
 };
-use super::Ty;
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TyFingerprint {
-    Adt(DefId),
+    Adt(AdtDef),
     // we'll also want to index impls for primitive types etc.
 }
 

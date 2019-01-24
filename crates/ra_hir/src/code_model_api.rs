@@ -10,13 +10,13 @@ use crate::{
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
     expr::BodySyntaxMapping,
-    ty::InferenceResult,
+    ty::{InferenceResult, VariantDef},
     adt::VariantData,
     generics::GenericParams,
     code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::FunctionId,
+    ids::{FunctionId, StructId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -68,6 +68,7 @@ pub struct Module {
 pub enum ModuleDef {
     Module(Module),
     Function(Function),
+    Struct(Struct),
     Def(DefId),
 }
 
@@ -80,6 +81,12 @@ impl Into<ModuleDef> for Module {
 impl Into<ModuleDef> for Function {
     fn into(self) -> ModuleDef {
         ModuleDef::Function(self)
+    }
+}
+
+impl Into<ModuleDef> for Struct {
+    fn into(self) -> ModuleDef {
+        ModuleDef::Struct(self)
     }
 }
 
@@ -187,7 +194,7 @@ impl Module {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructField {
-    parent: DefId,
+    parent: VariantDef,
     name: Name,
 }
 
@@ -201,38 +208,38 @@ impl StructField {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Struct {
-    pub(crate) def_id: DefId,
+    pub(crate) id: StructId,
 }
 
 impl Struct {
-    pub fn def_id(&self) -> DefId {
-        self.def_id
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.loc(db).module
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.struct_data(self.def_id).name.clone()
+        db.struct_data(*self).name.clone()
     }
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
-        db.struct_data(self.def_id)
+        db.struct_data(*self)
             .variant_data
             .fields()
             .iter()
             .map(|it| StructField {
-                parent: self.def_id,
+                parent: (*self).into(),
                 name: it.name.clone(),
             })
             .collect()
     }
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.loc(db).source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id.into())
+        db.generic_params((*self).into())
     }
 }
 
@@ -310,7 +317,7 @@ impl EnumVariant {
             .fields()
             .iter()
             .map(|it| StructField {
-                parent: self.def_id,
+                parent: self.def_id.into(),
                 name: it.name.clone(),
             })
             .collect()

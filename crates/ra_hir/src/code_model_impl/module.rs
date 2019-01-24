@@ -135,7 +135,7 @@ impl Module {
                         None => PerNs::none(),
                     }
                 }
-                ModuleDef::Function(_) => PerNs::none(),
+                ModuleDef::Function(_) | ModuleDef::Struct(_) => PerNs::none(),
                 ModuleDef::Def(def) => {
                     match def.resolve(db) {
                         Def::Enum(e) => {
