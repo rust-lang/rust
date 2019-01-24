@@ -25,10 +25,10 @@ fn main() {
 
     let error_code = 123_i32;
     let with_none_and_format: Option<i32> = None;
-    with_none_and_format.expect(&format!("Error {}: fake error", error_code));
+    with_none_and_format.unwrap_or_else(|| panic!("Error {}: fake error", error_code));
 
     let with_none_and_as_str: Option<i32> = None;
-    with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+    with_none_and_as_str.unwrap_or_else(|| panic!("Error {}: fake error", error_code));
 
     let with_ok: Result<(), ()> = Ok(());
     with_ok.expect("error");
@@ -38,10 +38,10 @@ fn main() {
 
     let error_code = 123_i32;
     let with_err_and_format: Result<(), ()> = Err(());
-    with_err_and_format.expect(&format!("Error {}: fake error", error_code));
+    with_err_and_format.unwrap_or_else(|_| panic!("Error {}: fake error", error_code));
 
     let with_err_and_as_str: Result<(), ()> = Err(());
-    with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+    with_err_and_as_str.unwrap_or_else(|_| panic!("Error {}: fake error", error_code));
 
     let with_dummy_type = Foo::new();
     with_dummy_type.expect("another test string");
@@ -53,7 +53,7 @@ fn main() {
     with_dummy_type_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
 
     //Issue #2937
-    Some("foo").expect(format!("{} {}", 1, 2).as_ref());
+    Some("foo").unwrap_or_else(|| panic!("{} {}", 1, 2));
 
     //Issue #2979 - this should not lint
     {
@@ -74,11 +74,11 @@ fn main() {
             "foo"
         }
 
-        Some("foo").expect(&get_string());
-        Some("foo").expect(get_string().as_ref());
-        Some("foo").expect(get_string().as_str());
+        Some("foo").unwrap_or_else(|| { panic!(get_string()) });
+        Some("foo").unwrap_or_else(|| { panic!(get_string()) });
+        Some("foo").unwrap_or_else(|| { panic!(get_string()) });
 
-        Some("foo").expect(get_static_str());
-        Some("foo").expect(get_non_static_str(&0));
+        Some("foo").unwrap_or_else(|| { panic!(get_static_str()) });
+        Some("foo").unwrap_or_else(|| { panic!(get_non_static_str(&0).to_string()) });
     }
 }

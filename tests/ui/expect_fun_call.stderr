@@ -1,5 +1,5 @@
 error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:27:26
+  --> $DIR/expect_fun_call.rs:28:26
    |
 LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
@@ -7,40 +7,58 @@ LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code
    = note: `-D clippy::expect-fun-call` implied by `-D warnings`
 
 error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:30:26
+  --> $DIR/expect_fun_call.rs:31:26
    |
 LL |     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:40:25
+  --> $DIR/expect_fun_call.rs:41:25
    |
 LL |     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:43:25
+  --> $DIR/expect_fun_call.rs:44:25
    |
 LL |     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:58:17
-   |
-LL |     Some("foo").expect({ &format!("error") });
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { let msg = { &format!("error") }; panic!(msg) }))`
-
-error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:59:17
-   |
-LL |     Some("foo").expect(format!("error").as_ref());
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("error"))`
-
-error: use of `expect` followed by a function call
-  --> $DIR/expect_fun_call.rs:61:17
+  --> $DIR/expect_fun_call.rs:56:17
    |
 LL |     Some("foo").expect(format!("{} {}", 1, 2).as_ref());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("{} {}", 1, 2))`
 
-error: aborting due to 7 previous errors
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:77:21
+   |
+LL |         Some("foo").expect(&get_string());
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { panic!(get_string()) })`
+
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:78:21
+   |
+LL |         Some("foo").expect(get_string().as_ref());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { panic!(get_string()) })`
+
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:79:21
+   |
+LL |         Some("foo").expect(get_string().as_str());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { panic!(get_string()) })`
+
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:81:21
+   |
+LL |         Some("foo").expect(get_static_str());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { panic!(get_static_str()) })`
+
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:82:21
+   |
+LL |         Some("foo").expect(get_non_static_str(&0));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { panic!(get_non_static_str(&0).to_string()) })`
+
+error: aborting due to 10 previous errors
 

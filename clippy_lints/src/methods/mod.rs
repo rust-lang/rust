@@ -1148,28 +1148,6 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
-    fn extract_format_args(arg: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr)> {
-        let arg = match &arg.node {
-            hir::ExprKind::AddrOf(_, expr) => expr,
-            hir::ExprKind::MethodCall(method_name, _, args)
-                if method_name.ident.name == "as_str" || method_name.ident.name == "as_ref" =>
-            {
-                &args[0]
-            },
-            _ => arg,
-        };
-
-        if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg.node {
-            if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
-                if let hir::ExprKind::Call(_, format_args) = &inner_args[0].node {
-                    return Some((&format_args[0], &format_args[1]));
-                }
-            }
-        }
-
-        None
-    }
-
     fn generate_format_arg_snippet(
         cx: &LateContext<'_, '_>,
         a: &hir::Expr,
@@ -1189,93 +1167,115 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         unreachable!()
     }
 
-    fn check_general_case(
-        cx: &LateContext<'_, '_>,
-        name: &str,
-        method_span: Span,
-        self_expr: &hir::Expr,
-        arg: &hir::Expr,
-        span: Span,
-    ) {
-        fn is_call(node: &hir::ExprKind) -> bool {
-            match node {
-                hir::ExprKind::AddrOf(_, expr) => {
-                    is_call(&expr.node)
-                },
-                hir::ExprKind::Call(..)
-                | hir::ExprKind::MethodCall(..)
-                // These variants are debatable or require further examination
-                | hir::ExprKind::If(..)
-                | hir::ExprKind::Match(..)
-                | hir::ExprKind::Block{ .. } => true,
-                _ => false,
+    fn is_call(node: &hir::ExprKind) -> bool {
+        match node {
+            hir::ExprKind::AddrOf(_, expr) => {
+                is_call(&expr.node)
+            },
+            hir::ExprKind::Call(..)
+            | hir::ExprKind::MethodCall(..)
+            // These variants are debatable or require further examination
+            | hir::ExprKind::If(..)
+            | hir::ExprKind::Match(..)
+            | hir::ExprKind::Block{ .. } => true,
+            _ => false,
+        }
+    }
+
+    if args.len() != 2 || name != "expect" || !is_call(&args[1].node) {
+        return;
+    }
+
+    let receiver_type = cx.tables.expr_ty(&args[0]);
+    let closure_args = if match_type(cx, receiver_type, &paths::OPTION) {
+        "||"
+    } else if match_type(cx, receiver_type, &paths::RESULT) {
+        "|_|"
+    } else {
+        return;
+    };
+
+    // Strip off `&`, `as_ref()` and `as_str()` until we're left with either a `String` or `&str`
+    // which we call `arg_root`.
+    let mut arg_root = &args[1];
+    loop {
+        arg_root = match &arg_root.node {
+            hir::ExprKind::AddrOf(_, expr) => expr,
+            hir::ExprKind::MethodCall(method_name, _, call_args) => {
+                if call_args.len() == 1
+                    && (method_name.ident.name == "as_str" || method_name.ident.name == "as_ref")
+                    && {
+                        let arg_type = cx.tables.expr_ty(&call_args[0]);
+                        let base_type = walk_ptrs_ty(arg_type);
+                        base_type.sty == ty::Str || match_type(cx, base_type, &paths::STRING)
+                    }
+                {
+                    &call_args[0]
+                } else {
+                    break;
+                }
+            },
+            _ => break,
+        };
+    }
+
+    let span_replace_word = method_span.with_hi(expr.span.hi());
+
+    let mut applicability = Applicability::MachineApplicable;
+
+    //Special handling for `format!` as arg_root
+    if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg_root.node {
+        if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
+            if let hir::ExprKind::Call(_, format_args) = &inner_args[0].node {
+                let fmt_spec = &format_args[0];
+                let fmt_args = &format_args[1];
+
+                let mut applicability = Applicability::MachineApplicable;
+                let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
+
+                args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
+
+                let sugg = args.join(", ");
+
+                span_lint_and_sugg(
+                    cx,
+                    EXPECT_FUN_CALL,
+                    span_replace_word,
+                    &format!("use of `{}` followed by a function call", name),
+                    "try this",
+                    format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
+                    applicability,
+                );
+
+                return;
             }
         }
-
-        if name != "expect" {
-            return;
-        }
-
-        let self_type = cx.tables.expr_ty(self_expr);
-        let known_types = &[&paths::OPTION, &paths::RESULT];
-
-        // if not a known type, return early
-        if known_types.iter().all(|&k| !match_type(cx, self_type, k)) {
-            return;
-        }
-
-        if !is_call(&arg.node) {
-            return;
-        }
-
-        let closure = if match_type(cx, self_type, &paths::OPTION) {
-            "||"
-        } else {
-            "|_|"
-        };
-        let span_replace_word = method_span.with_hi(span.hi());
-
-        if let Some((fmt_spec, fmt_args)) = extract_format_args(arg) {
-            let mut applicability = Applicability::MachineApplicable;
-            let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
-
-            args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
-
-            let sugg = args.join(", ");
-
-            span_lint_and_sugg(
-                cx,
-                EXPECT_FUN_CALL,
-                span_replace_word,
-                &format!("use of `{}` followed by a function call", name),
-                "try this",
-                format!("unwrap_or_else({} panic!({}))", closure, sugg),
-                applicability,
-            );
-
-            return;
-        }
-
-        let mut applicability = Applicability::MachineApplicable;
-        let sugg: Cow<'_, _> = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
-
-        span_lint_and_sugg(
-            cx,
-            EXPECT_FUN_CALL,
-            span_replace_word,
-            &format!("use of `{}` followed by a function call", name),
-            "try this",
-            format!("unwrap_or_else({} {{ let msg = {}; panic!(msg) }}))", closure, sugg),
-            applicability,
-        );
     }
 
-    if args.len() == 2 {
-        match args[1].node {
-            hir::ExprKind::Lit(_) => {},
-            _ => check_general_case(cx, name, method_span, &args[0], &args[1], expr.span),
+    // If root_arg is `&'static str` or `String` we can use it directly in the `panic!` call otherwise
+    // we must use `to_string` to convert it.
+    let mut arg_root_snippet: Cow<'_, _> = snippet_with_applicability(cx, arg_root.span, "..", &mut applicability);
+    let arg_root_ty = cx.tables.expr_ty(arg_root);
+    let mut requires_conv = !match_type(cx, arg_root_ty, &paths::STRING);
+    if let ty::Ref(ty::ReStatic, ty, ..) = arg_root_ty.sty {
+        if ty.sty == ty::Str {
+            requires_conv = false;
         }
+    };
+
+    if requires_conv {
+        arg_root_snippet.to_mut().push_str(".to_string()");
     }
+
+    span_lint_and_sugg(
+        cx,
+        EXPECT_FUN_CALL,
+        span_replace_word,
+        &format!("use of `{}` followed by a function call", name),
+        "try this",
+        format!("unwrap_or_else({} {{ panic!({}) }})", closure_args, arg_root_snippet),
+        applicability,
+    );
 }
 
 /// Checks for the `CLONE_ON_COPY` lint.
