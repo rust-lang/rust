@@ -1,6 +1,10 @@
 
 -include ../tools.mk
 
+# ignore windows due to libLLVM being present in PATH and the PATH and library path being the same
+# (so fixing it is harder). See #57765 for context
+ifndef IS_WINDOWS
+
 # This test makes sure that the object files we generate are actually
 # LLVM bitcode files (as used by linker LTO plugins) when compiling with
 # -Z cross-lang-lto.
@@ -45,3 +49,9 @@ rdylib: lib.rs
 exe: lib.rs
 	$(BUILD_EXE) -o $(TMPDIR)/exe.o
 	$(call ASSERT_IS_BITCODE_OBJ, $(TMPDIR)/exe.o)
+
+else
+
+all:
+
+endif
