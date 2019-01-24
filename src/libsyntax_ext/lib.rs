@@ -11,7 +11,6 @@
 #![feature(decl_macro)]
 #![feature(nll)]
 #![feature(str_escape)]
-#![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
@@ -58,8 +57,7 @@ use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
 pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
-                         user_exts: Vec<NamedSyntaxExtension>,
-                         enable_quotes: bool) {
+                         user_exts: Vec<NamedSyntaxExtension>) {
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
@@ -79,24 +77,6 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                         edition: hygiene::default_edition(),
                     });
         )* }
-    }
-
-    if enable_quotes {
-        use syntax::ext::quote::*;
-        register! {
-            quote_tokens: expand_quote_tokens,
-            quote_expr: expand_quote_expr,
-            quote_ty: expand_quote_ty,
-            quote_item: expand_quote_item,
-            quote_pat: expand_quote_pat,
-            quote_arm: expand_quote_arm,
-            quote_stmt: expand_quote_stmt,
-            quote_attr: expand_quote_attr,
-            quote_arg: expand_quote_arg,
-            quote_block: expand_quote_block,
-            quote_meta_item: expand_quote_meta_item,
-            quote_path: expand_quote_path,
-        }
     }
 
     use syntax::ext::source_util::*;

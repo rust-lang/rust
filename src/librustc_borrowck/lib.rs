@@ -5,7 +5,6 @@
 #![allow(non_camel_case_types)]
 
 #![feature(nll)]
-#![feature(quote)]
 
 #![recursion_limit="256"]
 

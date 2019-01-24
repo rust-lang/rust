@@ -11,7 +11,6 @@
 #![feature(custom_attribute)]
 #![feature(nll)]
 #![allow(unused_attributes)]
-#![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]

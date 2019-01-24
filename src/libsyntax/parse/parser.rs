@@ -1286,9 +1286,6 @@ impl<'a> Parser<'a> {
     crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
-    crate fn abort_if_errors(&self) {
-        self.sess.span_diagnostic.abort_if_errors();
-    }
 
     fn cancel(&self, err: &mut DiagnosticBuilder) {
         self.sess.span_diagnostic.cancel(err)

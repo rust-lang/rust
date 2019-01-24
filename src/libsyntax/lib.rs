@@ -174,7 +174,6 @@ pub mod ext {
     pub mod derive;
     pub mod expand;
     pub mod placeholders;
-    pub mod quote;
     pub mod source_util;
 
     pub mod tt {

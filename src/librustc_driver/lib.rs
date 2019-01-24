@@ -11,7 +11,6 @@
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
