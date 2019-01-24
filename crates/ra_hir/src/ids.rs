@@ -11,6 +11,7 @@ use crate::{
 pub struct HirInterner {
     defs: LocationIntener<DefLoc, DefId>,
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
+    fns: LocationIntener<FunctionLoc, FunctionId>,
 }
 
 impl HirInterner {
@@ -125,6 +126,28 @@ impl MacroCallLoc {
     #[allow(unused)]
     pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> MacroCallId {
         db.as_ref().macros.loc2id(&self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FunctionId(RawId);
+impl_arena_id!(FunctionId);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FunctionLoc {
+    pub(crate) module: Module,
+    pub(crate) source_item_id: SourceItemId,
+}
+
+impl FunctionId {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> FunctionLoc {
+        db.as_ref().fns.id2loc(self)
+    }
+}
+
+impl FunctionLoc {
+    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> FunctionId {
+        db.as_ref().fns.loc2id(&self)
     }
 }
 
