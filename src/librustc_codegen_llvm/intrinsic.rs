@@ -1167,6 +1167,52 @@ fn generic_simd_intrinsic(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
+    if name == "simd_bitmask" {
+        // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
+        // vector mask and returns an unsigned integer containing the most
+        // significant bit (MSB) of each lane.
+        use rustc_target::abi::HasDataLayout;
+
+        // If the vector has less than 8 lanes, an u8 is returned with zeroed
+        // trailing bits.
+        let expected_int_bits = in_len.max(8);
+        match ret_ty.sty {
+           ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
+            _ => return_error!(
+                "bitmask `{}`, expected `u{}`",
+                ret_ty, expected_int_bits
+            ),
+        }
+
+        // Integer vector <i{in_bitwidth} x in_len>:
+        let (i_xn, in_elem_bitwidth) = match in_elem.sty {
+            ty::Int(i) => (
+                args[0].immediate(),
+                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _)
+            ),
+            ty::Uint(i) => (
+                args[0].immediate(),
+                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _)
+            ),
+            _ => return_error!(
+                "vector argument `{}`'s element type `{}`, expected integer element type",
+                in_ty, in_elem
+            ),
+        };
+
+        // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
+        let shift_indices = vec![
+            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _); in_len
+        ];
+        let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
+        // Truncate vector to an <i1 x N>
+        let i1xn = bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len as _));
+        // Bitcast <i1 x N> to iN:
+        let i_ = bx.bitcast(i1xn, bx.type_ix(in_len as _));
+        // Zero-extend iN to the bitmask type:
+        return Ok(bx.zext(i_, bx.type_ix(expected_int_bits as _)));
+    }
+
     fn simd_simple_float_intrinsic(
         name: &str,
         in_elem: &::rustc::ty::TyS,
