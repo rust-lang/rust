@@ -13,8 +13,9 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, SourceItemId,
-    DefKind, DefLoc, AsName, Module,
+    HirDatabase, Function, SourceItemId, ModuleDef,
+    AsName, Module,
+    ids::LocationCtx,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -84,9 +85,13 @@ pub fn module_from_child_node(
 
 fn module_from_source(db: &impl HirDatabase, source: SourceItemId) -> Option<Module> {
     let source_root_id = db.file_source_root(source.file_id.as_original_file());
-    let module_tree = db.module_tree(source_root_id);
-    let module_id = module_tree.find_module_by_source(source)?;
-    Some(Module::from_module_id(db, source_root_id, module_id))
+    db.source_root_crates(source_root_id)
+        .iter()
+        .find_map(|&krate| {
+            let module_tree = db.module_tree(krate);
+            let module_id = module_tree.find_module_by_source(source)?;
+            Some(Module { krate, module_id })
+        })
 }
 
 pub fn function_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Function> {
@@ -101,30 +106,21 @@ pub fn function_from_source(
     fn_def: &ast::FnDef,
 ) -> Option<Function> {
     let module = module_from_child_node(db, file_id, fn_def.syntax())?;
-    let res = function_from_module(db, &module, fn_def);
+    let res = function_from_module(db, module, fn_def);
     Some(res)
 }
 
 pub fn function_from_module(
     db: &impl HirDatabase,
-    module: &Module,
+    module: Module,
     fn_def: &ast::FnDef,
 ) -> Function {
-    let loc = module.def_id.loc(db);
-    let file_id = loc.source_item_id.file_id;
-    let file_items = db.file_items(file_id);
-    let item_id = file_items.id_of(file_id, fn_def.syntax());
-    let source_item_id = SourceItemId {
-        file_id,
-        item_id: Some(item_id),
-    };
-    let def_loc = DefLoc {
-        kind: DefKind::Function,
-        source_root_id: loc.source_root_id,
-        module_id: loc.module_id,
-        source_item_id,
-    };
-    Function::new(def_loc.id(db))
+    let (file_id, _) = module.definition_source(db);
+    let file_id = file_id.into();
+    let ctx = LocationCtx::new(db, module, file_id);
+    Function {
+        id: ctx.to_def(fn_def),
+    }
 }
 
 pub fn function_from_child_node(
@@ -141,15 +137,18 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
         Some(it) => it,
         None => return Vec::new(),
     };
-    let loc = module.def_id.loc(db);
-    let items = db.lower_module_module(loc.source_root_id, loc.module_id);
+    let items = db.lower_module_module(module);
     let mut res = Vec::new();
 
     for macro_call_id in items
         .declarations
         .iter()
-        .filter_map(|(_, it)| it.take_types())
-        .filter_map(|it| it.loc(db).source_item_id.file_id.as_macro_call_id())
+        .filter_map(|(_, it)| it.clone().take_types())
+        .filter_map(|it| match it {
+            ModuleDef::Trait(it) => Some(it),
+            _ => None,
+        })
+        .filter_map(|it| it.source(db).0.as_macro_call_id())
     {
         if let Some(exp) = db.expand_macro_invocation(macro_call_id) {
             let loc = macro_call_id.loc(db);

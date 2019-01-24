@@ -1,4 +1,4 @@
-use hir::{Ty, Def};
+use hir::{Ty, AdtDef};
 
 use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
 use crate::completion::completion_item::CompletionKind;
@@ -28,8 +28,8 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             Ty::Adt {
                 def_id, ref substs, ..
             } => {
-                match def_id.resolve(ctx.db) {
-                    Def::Struct(s) => {
+                match def_id {
+                    AdtDef::Struct(s) => {
                         for field in s.fields(ctx.db) {
                             CompletionItem::new(
                                 CompletionKind::Reference,
@@ -41,8 +41,9 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                             .add_to(acc);
                         }
                     }
+
                     // TODO unions
-                    _ => {}
+                    AdtDef::Enum(_) => (),
                 }
             }
             Ty::Tuple(fields) => {

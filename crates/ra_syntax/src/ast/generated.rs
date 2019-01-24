@@ -3229,6 +3229,7 @@ impl ast::VisibilityOwner for TraitDef {}
 impl ast::NameOwner for TraitDef {}
 impl ast::AttrsOwner for TraitDef {}
 impl ast::DocCommentsOwner for TraitDef {}
+impl ast::TypeParamsOwner for TraitDef {}
 impl TraitDef {}
 
 // TrueKw

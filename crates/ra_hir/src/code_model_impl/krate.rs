@@ -1,7 +1,7 @@
 use ra_db::CrateId;
 
 use crate::{
-    HirFileId, Crate, CrateDependency, AsName, DefLoc, DefKind, Module, SourceItemId,
+    Crate, CrateDependency, AsName, Module,
     db::HirDatabase,
 };
 
@@ -21,27 +21,13 @@ impl Crate {
             .collect()
     }
     pub(crate) fn root_module_impl(&self, db: &impl HirDatabase) -> Option<Module> {
-        let crate_graph = db.crate_graph();
-        let file_id = crate_graph.crate_root(self.crate_id);
-        let source_root_id = db.file_source_root(file_id);
-        let file_id = HirFileId::from(file_id);
-        let module_tree = db.module_tree(source_root_id);
-        // FIXME: teach module tree about crate roots instead of guessing
-        let source = SourceItemId {
-            file_id,
-            item_id: None,
-        };
-        let module_id = module_tree.find_module_by_source(source)?;
+        let module_tree = db.module_tree(self.crate_id);
+        let module_id = module_tree.modules().next()?;
 
-        let def_loc = DefLoc {
-            kind: DefKind::Module,
-            source_root_id,
+        let module = Module {
+            krate: self.crate_id,
             module_id,
-            source_item_id: module_id.source(&module_tree),
         };
-        let def_id = def_loc.id(db);
-
-        let module = Module::new(def_id);
         Some(module)
     }
 }

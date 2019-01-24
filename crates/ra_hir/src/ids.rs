@@ -1,22 +1,41 @@
-use ra_db::{SourceRootId, LocationIntener, FileId};
+use std::{
+    marker::PhantomData,
+    hash::{Hash, Hasher},
+};
+
+use ra_db::{LocationIntener, FileId};
 use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
-use ra_arena::{Arena, RawId, impl_arena_id};
+use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
-    Module, Trait, Type, Static, Const,
-    module_tree::ModuleId,
+    HirDatabase,
+    Module,
 };
 
 #[derive(Debug, Default)]
 pub struct HirInterner {
-    defs: LocationIntener<DefLoc, DefId>,
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
+    fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
+    structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
+    enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
+    enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
+    consts: LocationIntener<ItemLoc<ast::ConstDef>, ConstId>,
+    statics: LocationIntener<ItemLoc<ast::StaticDef>, StaticId>,
+    traits: LocationIntener<ItemLoc<ast::TraitDef>, TraitId>,
+    types: LocationIntener<ItemLoc<ast::TypeDef>, TypeId>,
 }
 
 impl HirInterner {
     pub fn len(&self) -> usize {
-        self.defs.len() + self.macros.len()
+        self.macros.len()
+            + self.fns.len()
+            + self.structs.len()
+            + self.enums.len()
+            + self.enum_variants.len()
+            + self.consts.len()
+            + self.statics.len()
+            + self.traits.len()
+            + self.types.len()
     }
 }
 
@@ -110,10 +129,9 @@ impl From<MacroCallId> for HirFileId {
 pub struct MacroCallId(RawId);
 impl_arena_id!(MacroCallId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
-    pub(crate) source_root_id: SourceRootId,
-    pub(crate) module_id: ModuleId,
+    pub(crate) module: Module,
     pub(crate) source_item_id: SourceItemId,
 }
 
@@ -130,117 +148,161 @@ impl MacroCallLoc {
     }
 }
 
-/// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
-/// in a specific module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DefId(RawId);
-impl_arena_id!(DefId);
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DefLoc {
-    pub(crate) kind: DefKind,
-    pub(crate) source_root_id: SourceRootId,
-    pub(crate) module_id: ModuleId,
-    pub(crate) source_item_id: SourceItemId,
+#[derive(Debug)]
+pub struct ItemLoc<N: AstNode> {
+    pub(crate) module: Module,
+    raw: SourceItemId,
+    _ty: PhantomData<N>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum DefKind {
-    Module,
-    Function,
-    Struct,
-    Enum,
-    EnumVariant,
-    Const,
-    Static,
-    Trait,
-    Type,
-    Item,
-
-    /// The constructor of a struct. E.g. if we have `struct Foo(usize)`, the
-    /// name `Foo` needs to resolve to different types depending on whether we
-    /// are in the types or values namespace: As a type, `Foo` of course refers
-    /// to the struct `Foo`; as a value, `Foo` is a callable type with signature
-    /// `(usize) -> Foo`. The cleanest approach to handle this seems to be to
-    /// have different defs in the two namespaces.
-    ///
-    /// rustc does the same; note that it even creates a struct constructor if
-    /// the struct isn't a tuple struct (see `CtorKind::Fictive` in rustc).
-    StructCtor,
-}
-
-impl DefId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> DefLoc {
-        db.as_ref().defs.id2loc(self)
+impl<N: AstNode> PartialEq for ItemLoc<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.module == other.module && self.raw == other.raw
     }
+}
+impl<N: AstNode> Eq for ItemLoc<N> {}
+impl<N: AstNode> Hash for ItemLoc<N> {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.module.hash(hasher);
+        self.raw.hash(hasher);
+    }
+}
 
-    pub fn resolve(self, db: &impl HirDatabase) -> Def {
-        let loc = self.loc(db);
-        match loc.kind {
-            DefKind::Module => {
-                let module = Module::from_module_id(db, loc.source_root_id, loc.module_id);
-                Def::Module(module)
-            }
-            DefKind::Function => {
-                let function = Function::new(self);
-                Def::Function(function)
-            }
-            DefKind::Struct => {
-                let struct_def = Struct::new(self);
-                Def::Struct(struct_def)
-            }
-            DefKind::Enum => Def::Enum(Enum::new(self)),
-            DefKind::EnumVariant => Def::EnumVariant(EnumVariant::new(self)),
-            DefKind::Const => {
-                let def = Const::new(self);
-                Def::Const(def)
-            }
-            DefKind::Static => {
-                let def = Static::new(self);
-                Def::Static(def)
-            }
-            DefKind::Trait => {
-                let def = Trait::new(self);
-                Def::Trait(def)
-            }
-            DefKind::Type => {
-                let def = Type::new(self);
-                Def::Type(def)
-            }
-
-            DefKind::StructCtor => Def::Item,
-            DefKind::Item => Def::Item,
+impl<N: AstNode> Clone for ItemLoc<N> {
+    fn clone(&self) -> ItemLoc<N> {
+        ItemLoc {
+            module: self.module,
+            raw: self.raw,
+            _ty: PhantomData,
         }
     }
+}
 
-    pub(crate) fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<SyntaxNode>) {
-        let loc = self.loc(db);
-        let syntax = db.file_item(loc.source_item_id);
-        (loc.source_item_id.file_id, syntax)
+#[derive(Clone, Copy)]
+pub(crate) struct LocationCtx<DB> {
+    db: DB,
+    module: Module,
+    file_id: HirFileId,
+}
+
+impl<'a, DB: HirDatabase> LocationCtx<&'a DB> {
+    pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
+        LocationCtx {
+            db,
+            module,
+            file_id,
+        }
     }
-
-    /// For a module, returns that module; for any other def, returns the containing module.
-    pub fn module(self, db: &impl HirDatabase) -> Module {
-        let loc = self.loc(db);
-        Module::from_module_id(db, loc.source_root_id, loc.module_id)
-    }
-
-    /// Returns the containing crate.
-    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
-    }
-
-    /// Returns the containing impl block, if this is an impl item.
-    pub fn impl_block(self, db: &impl HirDatabase) -> Option<ImplBlock> {
-        let loc = self.loc(db);
-        let module_impls = db.impls_in_module(loc.source_root_id, loc.module_id);
-        ImplBlock::containing(module_impls, self)
+    pub(crate) fn to_def<N, DEF>(self, ast: &N) -> DEF
+    where
+        N: AstNode,
+        DEF: AstItemDef<N>,
+    {
+        DEF::from_ast(self, ast)
     }
 }
 
-impl DefLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> DefId {
-        db.as_ref().defs.loc2id(&self)
+pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
+    fn from_ast(ctx: LocationCtx<&impl HirDatabase>, ast: &N) -> Self {
+        let items = ctx.db.file_items(ctx.file_id);
+        let raw = SourceItemId {
+            file_id: ctx.file_id,
+            item_id: Some(items.id_of(ctx.file_id, ast.syntax())),
+        };
+        let loc = ItemLoc {
+            module: ctx.module,
+            raw,
+            _ty: PhantomData,
+        };
+
+        Self::interner(ctx.db.as_ref()).loc2id(&loc)
+    }
+    fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<N>) {
+        let int = Self::interner(db.as_ref());
+        let loc = int.id2loc(self);
+        let syntax = db.file_item(loc.raw);
+        let ast = N::cast(&syntax)
+            .unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw))
+            .to_owned();
+        (loc.raw.file_id, ast)
+    }
+    fn module(self, db: &impl HirDatabase) -> Module {
+        let int = Self::interner(db.as_ref());
+        let loc = int.id2loc(self);
+        loc.module
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FunctionId(RawId);
+impl_arena_id!(FunctionId);
+impl AstItemDef<ast::FnDef> for FunctionId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::FnDef>, Self> {
+        &interner.fns
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StructId(RawId);
+impl_arena_id!(StructId);
+impl AstItemDef<ast::StructDef> for StructId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::StructDef>, Self> {
+        &interner.structs
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumId(RawId);
+impl_arena_id!(EnumId);
+impl AstItemDef<ast::EnumDef> for EnumId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::EnumDef>, Self> {
+        &interner.enums
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumVariantId(RawId);
+impl_arena_id!(EnumVariantId);
+impl AstItemDef<ast::EnumVariant> for EnumVariantId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::EnumVariant>, Self> {
+        &interner.enum_variants
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ConstId(RawId);
+impl_arena_id!(ConstId);
+impl AstItemDef<ast::ConstDef> for ConstId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::ConstDef>, Self> {
+        &interner.consts
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StaticId(RawId);
+impl_arena_id!(StaticId);
+impl AstItemDef<ast::StaticDef> for StaticId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::StaticDef>, Self> {
+        &interner.statics
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TraitId(RawId);
+impl_arena_id!(TraitId);
+impl AstItemDef<ast::TraitDef> for TraitId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TraitDef>, Self> {
+        &interner.traits
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeId(RawId);
+impl_arena_id!(TypeId);
+impl AstItemDef<ast::TypeDef> for TypeId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TypeDef>, Self> {
+        &interner.types
     }
 }
 

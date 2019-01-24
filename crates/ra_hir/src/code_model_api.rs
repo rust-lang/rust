@@ -5,22 +5,23 @@ use ra_db::{CrateId, FileId};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
-    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
+    Name, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
     type_ref::TypeRef,
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
     expr::BodySyntaxMapping,
-    ty::InferenceResult,
+    ty::{InferenceResult, VariantDef},
     adt::VariantData,
     generics::GenericParams,
-    code_model_impl::def_id_to_ast,
-    docs::{Documentation, Docs, docs_from_ast}
+    docs::{Documentation, Docs, docs_from_ast},
+    module_tree::ModuleId,
+    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
 /// root module.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Crate {
     pub(crate) crate_id: CrateId,
 }
@@ -45,22 +46,40 @@ impl Crate {
 
 #[derive(Debug)]
 pub enum Def {
+    Item,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Module {
+    pub(crate) krate: CrateId,
+    pub(crate) module_id: ModuleId,
+}
+
+/// The defs which can be visible in the module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModuleDef {
     Module(Module),
+    Function(Function),
     Struct(Struct),
     Enum(Enum),
+    // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
-    Function(Function),
     Const(Const),
     Static(Static),
     Trait(Trait),
     Type(Type),
-    Item,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Module {
-    pub(crate) def_id: DefId,
-}
+impl_froms!(
+    ModuleDef: Module,
+    Function,
+    Struct,
+    Enum,
+    EnumVariant,
+    Const,
+    Static,
+    Trait,
+    Type
+);
 
 pub enum ModuleSource {
     SourceFile(TreeArc<ast::SourceFile>),
@@ -149,7 +168,7 @@ impl Module {
         self.scope_impl(db)
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<DefId> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
         self.resolve_path_impl(db, path)
     }
 
@@ -160,7 +179,7 @@ impl Module {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructField {
-    parent: DefId,
+    parent: VariantDef,
     name: Name,
 }
 
@@ -174,38 +193,38 @@ impl StructField {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Struct {
-    pub(crate) def_id: DefId,
+    pub(crate) id: StructId,
 }
 
 impl Struct {
-    pub fn def_id(&self) -> DefId {
-        self.def_id
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+        self.id.source(db)
+    }
+
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.module(db)
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.struct_data(self.def_id).name.clone()
+        db.struct_data(*self).name.clone()
     }
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
-        db.struct_data(self.def_id)
+        db.struct_data(*self)
             .variant_data
             .fields()
             .iter()
             .map(|it| StructField {
-                parent: self.def_id,
+                parent: (*self).into(),
                 name: it.name.clone(),
             })
             .collect()
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
-        def_id_to_ast(db, self.def_id)
-    }
-
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params((*self).into())
     }
 }
 
@@ -215,34 +234,30 @@ impl Docs for Struct {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Enum {
-    pub(crate) def_id: DefId,
+    pub(crate) id: EnumId,
 }
 
 impl Enum {
-    pub(crate) fn new(def_id: DefId) -> Self {
-        Enum { def_id }
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
+        self.id.source(db)
     }
 
-    pub fn def_id(&self) -> DefId {
-        self.def_id
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.module(db)
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.enum_data(self.def_id).name.clone()
+        db.enum_data(*self).name.clone()
     }
 
     pub fn variants(&self, db: &impl HirDatabase) -> Vec<(Name, EnumVariant)> {
-        db.enum_data(self.def_id).variants.clone()
-    }
-
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
-        def_id_to_ast(db, self.def_id)
+        db.enum_data(*self).variants.clone()
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params((*self).into())
     }
 }
 
@@ -252,30 +267,28 @@ impl Docs for Enum {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
-    pub(crate) def_id: DefId,
+    pub(crate) id: EnumVariantId,
 }
 
 impl EnumVariant {
-    pub(crate) fn new(def_id: DefId) -> Self {
-        EnumVariant { def_id }
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+        self.id.source(db)
     }
-
-    pub fn def_id(&self) -> DefId {
-        self.def_id
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.module(db)
     }
-
     pub fn parent_enum(&self, db: &impl HirDatabase) -> Enum {
-        db.enum_variant_data(self.def_id).parent_enum.clone()
+        db.enum_variant_data(*self).parent_enum.clone()
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.enum_variant_data(self.def_id).name.clone()
+        db.enum_variant_data(*self).name.clone()
     }
 
     pub fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
-        db.enum_variant_data(self.def_id).variant_data.clone()
+        db.enum_variant_data(*self).variant_data.clone()
     }
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -283,14 +296,10 @@ impl EnumVariant {
             .fields()
             .iter()
             .map(|it| StructField {
-                parent: self.def_id,
+                parent: (*self).into(),
                 name: it.name.clone(),
             })
             .collect()
-    }
-
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
-        def_id_to_ast(db, self.def_id)
     }
 }
 
@@ -300,9 +309,9 @@ impl Docs for EnumVariant {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
-    pub(crate) def_id: DefId,
+    pub(crate) id: FunctionId,
 }
 
 pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
@@ -339,21 +348,21 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn def_id(&self) -> DefId {
-        self.def_id
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
+        self.id.source(db)
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
-        def_id_to_ast(db, self.def_id)
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.module(db)
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
-        db.body_syntax_mapping(self.def_id)
+        db.body_syntax_mapping(*self)
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
-        let scopes = db.fn_scopes(self.def_id);
-        let syntax_mapping = db.body_syntax_mapping(self.def_id);
+        let scopes = db.fn_scopes(*self);
+        let syntax_mapping = db.body_syntax_mapping(*self);
         ScopesWithSyntaxMapping {
             scopes,
             syntax_mapping,
@@ -361,15 +370,15 @@ impl Function {
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
-        db.fn_signature(self.def_id)
+        db.fn_signature(*self)
     }
 
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.def_id)
+        db.infer(*self)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params((*self).into())
     }
 }
 
@@ -379,18 +388,14 @@ impl Docs for Function {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Const {
-    pub(crate) def_id: DefId,
+    pub(crate) id: ConstId,
 }
 
 impl Const {
-    pub(crate) fn new(def_id: DefId) -> Const {
-        Const { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 }
 
@@ -400,18 +405,14 @@ impl Docs for Const {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Static {
-    pub(crate) def_id: DefId,
+    pub(crate) id: StaticId,
 }
 
 impl Static {
-    pub(crate) fn new(def_id: DefId) -> Static {
-        Static { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 }
 
@@ -421,22 +422,18 @@ impl Docs for Static {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Trait {
-    pub(crate) def_id: DefId,
+    pub(crate) id: TraitId,
 }
 
 impl Trait {
-    pub(crate) fn new(def_id: DefId) -> Trait {
-        Trait { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params((*self).into())
     }
 }
 
@@ -446,22 +443,18 @@ impl Docs for Trait {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Type {
-    pub(crate) def_id: DefId,
+    pub(crate) id: TypeId,
 }
 
 impl Type {
-    pub(crate) fn new(def_id: DefId) -> Type {
-        Type { def_id }
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params((*self).into())
     }
 }
 

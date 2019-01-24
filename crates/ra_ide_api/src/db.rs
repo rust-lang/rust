@@ -72,6 +72,7 @@ salsa::database_storage! {
             fn file_relative_path() for ra_db::FileRelativePathQuery;
             fn file_source_root() for ra_db::FileSourceRootQuery;
             fn source_root() for ra_db::SourceRootQuery;
+            fn source_root_crates() for ra_db::SourceRootCratesQuery;
             fn local_roots() for ra_db::LocalRootsQuery;
             fn library_roots() for ra_db::LibraryRootsQuery;
             fn crate_graph() for ra_db::CrateGraphQuery;

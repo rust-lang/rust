@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:45:00.975229300+00:00"
-creator: insta@0.4.0
+created: "2019-01-24T08:39:53.759318522+00:00"
+creator: insta@0.5.2
 expression: "&source_change"
-source: "crates\\ra_ide_api\\src\\rename.rs"
+source: crates/ra_ide_api/src/rename.rs
 ---
 Some(
     SourceChange {
@@ -10,7 +10,7 @@ Some(
         source_file_edits: [
             SourceFileEdit {
                 file_id: FileId(
-                    1
+                    2
                 ),
                 edit: TextEdit {
                     atoms: [
@@ -25,7 +25,7 @@ Some(
         file_system_edits: [
             MoveFile {
                 src: FileId(
-                    2
+                    3
                 ),
                 dst_source_root: SourceRootId(
                     0

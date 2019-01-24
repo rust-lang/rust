@@ -63,13 +63,11 @@ pub(crate) fn reference_definition(
             let infer_result = function.infer(db);
             let syntax_mapping = function.body_syntax_mapping(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
-            if let Some(def_id) = syntax_mapping
+            if let Some(func) = syntax_mapping
                 .node_expr(expr)
                 .and_then(|it| infer_result.method_resolution(it))
             {
-                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)) {
-                    return Exact(target);
-                }
+                return Exact(NavigationTarget::from_function(db, func));
             };
         }
     }
@@ -84,7 +82,7 @@ pub(crate) fn reference_definition(
         {
             let resolved = module.resolve_path(db, &path);
             if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
-                if let Some(target) = NavigationTarget::from_def(db, def_id.resolve(db)) {
+                if let Some(target) = NavigationTarget::from_def(db, def_id) {
                     return Exact(target);
                 }
             }

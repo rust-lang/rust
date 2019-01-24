@@ -5,6 +5,18 @@
 //! to a particular crate instance. That is, it has cfg flags and features
 //! applied. So, the relation between syntax and HIR is many-to-one.
 
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident), *) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+
 pub mod db;
 #[cfg(test)]
 mod mock;
@@ -34,25 +46,26 @@ mod marks;
 use crate::{
     db::HirDatabase,
     name::{AsName, KnownName},
-    ids::{DefKind, SourceItemId, SourceFileItems},
+    ids::{SourceItemId, SourceFileItems},
 };
 
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc, HirInterner},
+    ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
     macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{ItemMap, PerNs, Namespace, Resolution},
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},
     code_model_impl::function::{FnScopes, ScopesWithSyntaxMapping},
-    docs::{Docs, Documentation}
+    docs::{Docs, Documentation},
+    adt::AdtDef,
 };
 
 pub use self::code_model_api::{
     Crate, CrateDependency,
     Def,
-    Module, ModuleSource, Problem,
+    Module, ModuleDef, ModuleSource, Problem,
     Struct, Enum, EnumVariant,
     Function, FnSignature, ScopeEntryWithSyntax,
     StructField,

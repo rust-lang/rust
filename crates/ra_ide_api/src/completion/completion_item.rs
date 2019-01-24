@@ -1,12 +1,12 @@
-use hir::{Docs, Documentation, PerNs};
-
-use crate::completion::completion_context::CompletionContext;
+use hir::{Docs, Documentation};
 use ra_syntax::{
     ast::{self, AstNode},
     TextRange,
 };
 use ra_text_edit::TextEdit;
 use test_utils::tested_by;
+
+use crate::completion::completion_context::CompletionContext;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -209,41 +209,24 @@ impl Builder {
         ctx: &CompletionContext,
         resolution: &hir::Resolution,
     ) -> Builder {
-        let resolved = resolution.def_id.map(|d| d.resolve(ctx.db));
-        let (kind, docs) = match resolved {
-            PerNs {
-                types: Some(hir::Def::Module(..)),
-                ..
-            } => (CompletionItemKind::Module, None),
-            PerNs {
-                types: Some(hir::Def::Struct(s)),
-                ..
-            } => (CompletionItemKind::Struct, s.docs(ctx.db)),
-            PerNs {
-                types: Some(hir::Def::Enum(e)),
-                ..
-            } => (CompletionItemKind::Enum, e.docs(ctx.db)),
-            PerNs {
-                types: Some(hir::Def::Trait(t)),
-                ..
-            } => (CompletionItemKind::Trait, t.docs(ctx.db)),
-            PerNs {
-                types: Some(hir::Def::Type(t)),
-                ..
-            } => (CompletionItemKind::TypeAlias, t.docs(ctx.db)),
-            PerNs {
-                values: Some(hir::Def::Const(c)),
-                ..
-            } => (CompletionItemKind::Const, c.docs(ctx.db)),
-            PerNs {
-                values: Some(hir::Def::Static(s)),
-                ..
-            } => (CompletionItemKind::Static, s.docs(ctx.db)),
-            PerNs {
-                values: Some(hir::Def::Function(function)),
-                ..
-            } => return self.from_function(ctx, function),
-            _ => return self,
+        let def = resolution
+            .def_id
+            .take_types()
+            .or(resolution.def_id.take_values());
+        let def = match def {
+            None => return self,
+            Some(it) => it,
+        };
+        let (kind, docs) = match def {
+            hir::ModuleDef::Module(_) => (CompletionItemKind::Module, None),
+            hir::ModuleDef::Function(func) => return self.from_function(ctx, func),
+            hir::ModuleDef::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+            hir::ModuleDef::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+            hir::ModuleDef::EnumVariant(it) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
+            hir::ModuleDef::Const(it) => (CompletionItemKind::Const, it.docs(ctx.db)),
+            hir::ModuleDef::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
+            hir::ModuleDef::Trait(it) => (CompletionItemKind::Trait, it.docs(ctx.db)),
+            hir::ModuleDef::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
         };
         self.kind = Some(kind);
         self.documentation = docs;

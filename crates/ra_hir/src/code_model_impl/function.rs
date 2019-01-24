@@ -2,41 +2,32 @@ mod scope;
 
 use std::sync::Arc;
 
-use ra_syntax::{TreeArc, ast::{self, NameOwner}};
+use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    DefId, HirDatabase, Name, AsName, Function, FnSignature, Module,
+    HirDatabase, Name, AsName, Function, FnSignature,
     type_ref::{TypeRef, Mutability},
     expr::Body,
     impl_block::ImplBlock,
-    code_model_impl::def_id_to_ast,
 };
 
 pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 
 impl Function {
-    pub(crate) fn new(def_id: DefId) -> Function {
-        Function { def_id }
-    }
-
     pub(crate) fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(self.def_id)
-    }
-
-    pub(crate) fn module(&self, db: &impl HirDatabase) -> Module {
-        self.def_id.module(db)
+        db.body_hir(*self)
     }
 
     /// The containing impl block, if this is a method.
     pub(crate) fn impl_block(&self, db: &impl HirDatabase) -> Option<ImplBlock> {
-        self.def_id.impl_block(db)
+        let module_impls = db.impls_in_module(self.module(db));
+        ImplBlock::containing(module_impls, (*self).into())
     }
 }
 
 impl FnSignature {
-    pub(crate) fn fn_signature_query(db: &impl HirDatabase, def_id: DefId) -> Arc<FnSignature> {
-        // FIXME: we're using def_id_to_ast here to avoid returning Cancelable... this is a bit hacky
-        let node: TreeArc<ast::FnDef> = def_id_to_ast(db, def_id).1;
+    pub(crate) fn fn_signature_query(db: &impl HirDatabase, func: Function) -> Arc<FnSignature> {
+        let (_, node) = func.source(db);
         let name = node
             .name()
             .map(|n| n.as_name())

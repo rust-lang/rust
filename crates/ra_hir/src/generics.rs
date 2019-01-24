@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use ra_syntax::ast::{TypeParamList, AstNode, NameOwner};
+use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
-use crate::{db::HirDatabase, DefId, Name, AsName};
+use crate::{db::HirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -22,24 +22,51 @@ pub struct GenericParams {
     pub(crate) params: Vec<GenericParam>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum GenericDef {
+    Function(Function),
+    Struct(Struct),
+    Enum(Enum),
+    Trait(Trait),
+    Type(Type),
+}
+impl_froms!(GenericDef: Function, Struct, Enum, Trait, Type);
+
 impl GenericParams {
-    pub(crate) fn generic_params_query(db: &impl HirDatabase, def_id: DefId) -> Arc<GenericParams> {
-        let (_file_id, node) = def_id.source(db);
+    pub(crate) fn generic_params_query(
+        db: &impl HirDatabase,
+        def: GenericDef,
+    ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();
-        if let Some(type_param_list) = node.children().find_map(TypeParamList::cast) {
-            for (idx, type_param) in type_param_list.type_params().enumerate() {
-                let name = type_param
-                    .name()
-                    .map(AsName::as_name)
-                    .unwrap_or_else(Name::missing);
-                let param = GenericParam {
-                    idx: idx as u32,
-                    name,
-                };
-                generics.params.push(param);
-            }
+        match def {
+            GenericDef::Function(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Struct(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Enum(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Trait(it) => generics.fill(&*it.source(db).1),
+            GenericDef::Type(it) => generics.fill(&*it.source(db).1),
         }
+
         Arc::new(generics)
+    }
+
+    fn fill(&mut self, node: &impl TypeParamsOwner) {
+        if let Some(params) = node.type_param_list() {
+            self.fill_params(params)
+        }
+    }
+
+    fn fill_params(&mut self, params: &ast::TypeParamList) {
+        for (idx, type_param) in params.type_params().enumerate() {
+            let name = type_param
+                .name()
+                .map(AsName::as_name)
+                .unwrap_or_else(Name::missing);
+            let param = GenericParam {
+                idx: idx as u32,
+                name,
+            };
+            self.params.push(param);
+        }
     }
 
     pub(crate) fn find_by_name(&self, name: &Name) -> Option<&GenericParam> {
