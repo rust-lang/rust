@@ -143,11 +143,11 @@ impl Module {
                         .find(|(n, _variant)| n == &segment.name);
 
                     match matching_variant {
-                        Some((_n, variant)) => PerNs::both(variant.def_id().into(), (*e).into()),
+                        Some((_n, variant)) => PerNs::both(variant.into(), (*e).into()),
                         None => PerNs::none(),
                     }
                 }
-                ModuleDef::Function(_) | ModuleDef::Struct(_) => {
+                ModuleDef::Function(_) | ModuleDef::Struct(_) | ModuleDef::EnumVariant(_) => {
                     // could be an inherent method call in UFCS form
                     // (`Struct::method`), or some other kind of associated
                     // item... Which we currently don't handle (TODO)

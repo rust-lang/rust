@@ -5,7 +5,7 @@ use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def, EnumVariant, Crate,
+    HirDatabase, Def, Crate,
     Module, Trait, Type, Static, Const,
 };
 
@@ -16,6 +16,7 @@ pub struct HirInterner {
     pub(crate) fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
     pub(crate) structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
     pub(crate) enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
+    pub(crate) enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
 }
 
 impl HirInterner {
@@ -208,6 +209,16 @@ impl EnumId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumVariantId(RawId);
+impl_arena_id!(EnumVariantId);
+
+impl EnumVariantId {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::EnumVariant> {
+        db.as_ref().enum_variants.id2loc(self)
+    }
+}
+
 /// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
 /// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -223,7 +234,6 @@ pub struct DefLoc {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
-    EnumVariant,
     Const,
     Static,
     Trait,
@@ -249,7 +259,6 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::EnumVariant => Def::EnumVariant(EnumVariant::new(self)),
             DefKind::Const => {
                 let def = Const::new(self);
                 Def::Const(def)

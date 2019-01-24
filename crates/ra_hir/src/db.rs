@@ -4,11 +4,11 @@ use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
 use ra_db::{SyntaxDatabase, CrateId, salsa};
 
 use crate::{
-    DefId, MacroCallId, Name, HirFileId,
+    MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
     Function, FnSignature, FnScopes,
-    Struct, Enum,
+    Struct, Enum, EnumVariant,
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
@@ -36,7 +36,7 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn enum_data(&self, e: Enum) -> Arc<EnumData>;
 
     #[salsa::invoke(crate::adt::EnumVariantData::enum_variant_data_query)]
-    fn enum_variant_data(&self, def_id: DefId) -> Arc<EnumVariantData>;
+    fn enum_variant_data(&self, var: EnumVariant) -> Arc<EnumVariantData>;
 
     #[salsa::invoke(crate::ty::infer)]
     fn infer(&self, func: Function) -> Arc<InferenceResult>;

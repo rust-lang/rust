@@ -16,7 +16,7 @@ use crate::{
     code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::{FunctionId, StructId, EnumId},
+    ids::{FunctionId, StructId, EnumId, EnumVariantId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -68,9 +68,11 @@ pub enum ModuleDef {
     Function(Function),
     Struct(Struct),
     Enum(Enum),
+    // Can't be directly declared, but can be imported.
+    EnumVariant(EnumVariant),
     Def(DefId),
 }
-impl_froms!(ModuleDef: Module, Function, Struct, Enum);
+impl_froms!(ModuleDef: Module, Function, Struct, Enum, EnumVariant);
 
 impl From<DefId> for ModuleDef {
     fn from(it: DefId) -> ModuleDef {
@@ -264,30 +266,25 @@ impl Docs for Enum {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
-    pub(crate) def_id: DefId,
+    pub(crate) id: EnumVariantId,
 }
 
 impl EnumVariant {
-    pub(crate) fn new(def_id: DefId) -> Self {
-        EnumVariant { def_id }
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.loc(db).module
     }
-
-    pub fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
     pub fn parent_enum(&self, db: &impl HirDatabase) -> Enum {
-        db.enum_variant_data(self.def_id).parent_enum.clone()
+        db.enum_variant_data(*self).parent_enum.clone()
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.enum_variant_data(self.def_id).name.clone()
+        db.enum_variant_data(*self).name.clone()
     }
 
     pub fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
-        db.enum_variant_data(self.def_id).variant_data.clone()
+        db.enum_variant_data(*self).variant_data.clone()
     }
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -295,14 +292,14 @@ impl EnumVariant {
             .fields()
             .iter()
             .map(|it| StructField {
-                parent: self.def_id.into(),
+                parent: (*self).into(),
                 name: it.name.clone(),
             })
             .collect()
     }
 
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.loc(db).source(db)
     }
 }
 
