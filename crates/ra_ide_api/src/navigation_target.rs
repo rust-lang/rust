@@ -128,13 +128,16 @@ impl NavigationTarget {
                     &*node,
                 ));
             }
+            hir::ModuleDef::EnumVariant(var) => {
+                let (file_id, node) = var.source(db);
+                return Some(NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                ));
+            }
         };
 
         let res = match def {
-            Def::EnumVariant(ev) => {
-                let (file_id, node) = ev.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
-            }
             Def::Trait(f) => {
                 let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)

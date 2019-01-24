@@ -40,7 +40,10 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     .add_to(acc)
                 });
         }
-        hir::ModuleDef::Function(_) | hir::ModuleDef::Struct(_) | hir::ModuleDef::Def(_) => return,
+        hir::ModuleDef::Function(_)
+        | hir::ModuleDef::Struct(_)
+        | hir::ModuleDef::Def(_)
+        | hir::ModuleDef::EnumVariant(_) => return,
     };
 }
 
