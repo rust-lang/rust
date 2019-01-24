@@ -107,6 +107,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     add_pre_expansion_builtin!(sess,
         KeywordIdents,
+        UnusedDocComment,
     );
 
     add_early_builtin!(sess,
@@ -114,7 +115,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnusedImportBraces,
                        UnsafeCode,
                        AnonymousParameters,
-                       UnusedDocComment,
                        EllipsisInclusiveRangePatterns,
                        NonCamelCaseTypes,
                        );
