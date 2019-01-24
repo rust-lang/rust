@@ -2,10 +2,11 @@ mod builder;
 pub mod syntax_error;
 mod syntax_text;
 
+use std::{fmt, borrow::Borrow};
+
 use self::syntax_text::SyntaxText;
 use crate::{SmolStr, SyntaxKind, TextRange};
 use rowan::{Types, TransparentNewType};
-use std::fmt;
 
 pub(crate) use self::builder::GreenBuilder;
 pub use self::syntax_error::{SyntaxError, SyntaxErrorKind, Location};
@@ -24,6 +25,12 @@ pub type GreenNode = rowan::GreenNode<RaTypes>;
 pub struct TreeArc<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>>(
     pub(crate) rowan::TreeArc<RaTypes, T>,
 );
+
+impl<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>> Borrow<T> for TreeArc<T> {
+    fn borrow(&self) -> &T {
+        &*self
+    }
+}
 
 impl<T> TreeArc<T>
 where
@@ -124,6 +131,14 @@ impl SyntaxNode {
     }
 }
 
+impl ToOwned for SyntaxNode {
+    type Owned = TreeArc<SyntaxNode>;
+    fn to_owned(&self) -> TreeArc<SyntaxNode> {
+        let ptr = TreeArc(self.0.to_owned());
+        TreeArc::cast(ptr)
+    }
+}
+
 impl SyntaxNode {
     pub(crate) fn root_data(&self) -> &Vec<SyntaxError> {
         self.0.root_data()
@@ -131,11 +146,6 @@ impl SyntaxNode {
 
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_self(replacement)
-    }
-
-    pub fn to_owned(&self) -> TreeArc<SyntaxNode> {
-        let ptr = TreeArc(self.0.to_owned());
-        TreeArc::cast(ptr)
     }
 
     pub fn kind(&self) -> SyntaxKind {
