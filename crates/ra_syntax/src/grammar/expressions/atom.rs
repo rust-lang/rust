@@ -1,5 +1,4 @@
 use super::*;
-use crate::grammar::paths::PATH_FIRST;
 
 // test expr_literals
 // fn foo() {
@@ -37,7 +36,7 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 }
 
 // E.g. for after the break in `if break {}`, this should not match
-pub(super) const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(PATH_FIRST).union(token_set![
+pub(super) const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(paths::PATH_FIRST).union(token_set![
     L_PAREN,
     L_CURLY,
     L_BRACK,
