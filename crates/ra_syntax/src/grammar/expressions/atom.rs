@@ -40,6 +40,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(token_set![
     L_PAREN,
     L_CURLY,
     L_BRACK,
+    L_ANGLE, // Universal function call syntax
     PIPE,
     MOVE_KW,
     IF_KW,
