@@ -2,6 +2,7 @@ use ra_syntax::ast;
 
 use crate::HirDatabase;
 
+/// Holds documentation
 #[derive(Debug, Clone)]
 pub struct Documentation(String);
 
