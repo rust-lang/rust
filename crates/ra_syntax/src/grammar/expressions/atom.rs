@@ -36,21 +36,22 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 }
 
 // E.g. for after the break in `if break {}`, this should not match
-pub(super) const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(paths::PATH_FIRST).union(token_set![
-    L_PAREN,
-    L_CURLY,
-    L_BRACK,
-    PIPE,
-    MOVE_KW,
-    IF_KW,
-    WHILE_KW,
-    MATCH_KW,
-    UNSAFE_KW,
-    RETURN_KW,
-    BREAK_KW,
-    CONTINUE_KW,
-    LIFETIME,
-]);
+pub(super) const ATOM_EXPR_FIRST: TokenSet =
+    LITERAL_FIRST.union(paths::PATH_FIRST).union(token_set![
+        L_PAREN,
+        L_CURLY,
+        L_BRACK,
+        PIPE,
+        MOVE_KW,
+        IF_KW,
+        WHILE_KW,
+        MATCH_KW,
+        UNSAFE_KW,
+        RETURN_KW,
+        BREAK_KW,
+        CONTINUE_KW,
+        LIFETIME,
+    ]);
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
