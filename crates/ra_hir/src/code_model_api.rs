@@ -5,7 +5,7 @@ use ra_db::{CrateId, FileId};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
-    Name, DefId, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
+    Name, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
     type_ref::TypeRef,
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
@@ -62,13 +62,12 @@ pub enum ModuleDef {
     Function(Function),
     Struct(Struct),
     Enum(Enum),
+    // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
     Const(Const),
     Static(Static),
     Trait(Trait),
     Type(Type),
-    // Can't be directly declared, but can be imported.
-    Def(DefId),
 }
 impl_froms!(
     ModuleDef: Module,
@@ -81,12 +80,6 @@ impl_froms!(
     Trait,
     Type
 );
-
-impl From<DefId> for ModuleDef {
-    fn from(it: DefId) -> ModuleDef {
-        ModuleDef::Def(it)
-    }
-}
 
 pub enum ModuleSource {
     SourceFile(TreeArc<ast::SourceFile>),

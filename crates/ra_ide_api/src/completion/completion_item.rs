@@ -227,7 +227,6 @@ impl Builder {
             hir::ModuleDef::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
             hir::ModuleDef::Trait(it) => (CompletionItemKind::Trait, it.docs(ctx.db)),
             hir::ModuleDef::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            hir::ModuleDef::Def(_) => return self,
         };
         self.kind = Some(kind);
         self.documentation = docs;

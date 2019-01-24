@@ -695,7 +695,6 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::EnumVariant(v) => v.into(),
             ModuleDef::Const(_)
             | ModuleDef::Static(_)
-            | ModuleDef::Def(_)
             | ModuleDef::Module(_)
             | ModuleDef::Trait(_)
             | ModuleDef::Type(_) => return None,

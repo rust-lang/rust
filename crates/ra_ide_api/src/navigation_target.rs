@@ -107,7 +107,6 @@ impl NavigationTarget {
         module_def: hir::ModuleDef,
     ) -> Option<NavigationTarget> {
         match module_def {
-            hir::ModuleDef::Def(_) => return None,
             hir::ModuleDef::Module(module) => Some(NavigationTarget::from_module(db, module)),
             hir::ModuleDef::Function(func) => Some(NavigationTarget::from_function(db, func)),
             hir::ModuleDef::Struct(s) => {
