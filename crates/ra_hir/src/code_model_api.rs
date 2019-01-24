@@ -16,7 +16,7 @@ use crate::{
     code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::{FunctionId, StructId, EnumId, EnumVariantId},
+    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -197,8 +197,12 @@ pub struct Struct {
 }
 
 impl Struct {
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+        self.id.source(db)
+    }
+
     pub fn module(&self, db: &impl HirDatabase) -> Module {
-        self.id.loc(db).module
+        self.id.module(db)
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
@@ -215,10 +219,6 @@ impl Struct {
                 name: it.name.clone(),
             })
             .collect()
-    }
-
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
-        self.id.loc(db).source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
@@ -238,8 +238,12 @@ pub struct Enum {
 }
 
 impl Enum {
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
+        self.id.source(db)
+    }
+
     pub fn module(&self, db: &impl HirDatabase) -> Module {
-        self.id.loc(db).module
+        self.id.module(db)
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
@@ -248,10 +252,6 @@ impl Enum {
 
     pub fn variants(&self, db: &impl HirDatabase) -> Vec<(Name, EnumVariant)> {
         db.enum_data(*self).variants.clone()
-    }
-
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
-        self.id.loc(db).source(db)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
@@ -271,8 +271,11 @@ pub struct EnumVariant {
 }
 
 impl EnumVariant {
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+        self.id.source(db)
+    }
     pub fn module(&self, db: &impl HirDatabase) -> Module {
-        self.id.loc(db).module
+        self.id.module(db)
     }
     pub fn parent_enum(&self, db: &impl HirDatabase) -> Enum {
         db.enum_variant_data(*self).parent_enum.clone()
@@ -295,10 +298,6 @@ impl EnumVariant {
                 name: it.name.clone(),
             })
             .collect()
-    }
-
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
-        self.id.loc(db).source(db)
     }
 }
 
@@ -348,7 +347,11 @@ impl FnSignature {
 
 impl Function {
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
-        self.id.loc(db).source(db)
+        self.id.source(db)
+    }
+
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.module(db)
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {

@@ -1,8 +1,11 @@
-use std::marker::PhantomData;
+use std::{
+    marker::PhantomData,
+    hash::Hash,
+};
 
 use ra_db::{LocationIntener, FileId};
 use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
-use ra_arena::{Arena, RawId, impl_arena_id};
+use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
     HirDatabase, Def,
@@ -179,43 +182,53 @@ impl<N: AstNode> Clone for ItemLoc<N> {
     }
 }
 
+pub(crate) trait AstItemDef<N: AstNode + Eq + Hash>: ArenaId + Clone {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
+    fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<N>) {
+        let int = Self::interner(db.as_ref());
+        let loc = int.id2loc(self);
+        loc.source(db)
+    }
+    fn module(self, db: &impl HirDatabase) -> Module {
+        let int = Self::interner(db.as_ref());
+        let loc = int.id2loc(self);
+        loc.module
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(RawId);
 impl_arena_id!(FunctionId);
-
-impl FunctionId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::FnDef> {
-        db.as_ref().fns.id2loc(self)
+impl AstItemDef<ast::FnDef> for FunctionId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::FnDef>, Self> {
+        &interner.fns
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(RawId);
 impl_arena_id!(StructId);
-
-impl StructId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::StructDef> {
-        db.as_ref().structs.id2loc(self)
+impl AstItemDef<ast::StructDef> for StructId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::StructDef>, Self> {
+        &interner.structs
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(RawId);
 impl_arena_id!(EnumId);
-
-impl EnumId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::EnumDef> {
-        db.as_ref().enums.id2loc(self)
+impl AstItemDef<ast::EnumDef> for EnumId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::EnumDef>, Self> {
+        &interner.enums
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantId(RawId);
 impl_arena_id!(EnumVariantId);
-
-impl EnumVariantId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> ItemLoc<ast::EnumVariant> {
-        db.as_ref().enum_variants.id2loc(self)
+impl AstItemDef<ast::EnumVariant> for EnumVariantId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::EnumVariant>, Self> {
+        &interner.enum_variants
     }
 }
 

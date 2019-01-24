@@ -30,10 +30,6 @@ impl Function {
         db.body_hir(*self)
     }
 
-    pub(crate) fn module(&self, db: &impl HirDatabase) -> Module {
-        self.id.loc(db).module
-    }
-
     /// The containing impl block, if this is a method.
     pub(crate) fn impl_block(&self, db: &impl HirDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
