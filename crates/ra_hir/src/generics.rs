@@ -29,24 +29,7 @@ pub enum GenericDef {
     Enum(Enum),
     Def(DefId),
 }
-
-impl From<Function> for GenericDef {
-    fn from(func: Function) -> GenericDef {
-        GenericDef::Function(func)
-    }
-}
-
-impl From<Struct> for GenericDef {
-    fn from(s: Struct) -> GenericDef {
-        GenericDef::Struct(s)
-    }
-}
-
-impl From<Enum> for GenericDef {
-    fn from(e: Enum) -> GenericDef {
-        GenericDef::Enum(e)
-    }
-}
+impl_froms!(GenericDef: Function, Struct, Enum);
 
 impl From<DefId> for GenericDef {
     fn from(def_id: DefId) -> GenericDef {

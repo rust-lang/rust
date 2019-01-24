@@ -70,30 +70,7 @@ pub enum ModuleDef {
     Enum(Enum),
     Def(DefId),
 }
-//FIXME: change to from
-impl From<Module> for ModuleDef {
-    fn from(it: Module) -> ModuleDef {
-        ModuleDef::Module(it)
-    }
-}
-
-impl From<Function> for ModuleDef {
-    fn from(it: Function) -> ModuleDef {
-        ModuleDef::Function(it)
-    }
-}
-
-impl From<Struct> for ModuleDef {
-    fn from(it: Struct) -> ModuleDef {
-        ModuleDef::Struct(it)
-    }
-}
-
-impl From<Enum> for ModuleDef {
-    fn from(it: Enum) -> ModuleDef {
-        ModuleDef::Enum(it)
-    }
-}
+impl_froms!(ModuleDef: Module, Function, Struct, Enum);
 
 impl From<DefId> for ModuleDef {
     fn from(it: DefId) -> ModuleDef {

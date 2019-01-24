@@ -168,18 +168,7 @@ pub enum AdtDef {
     Struct(Struct),
     Enum(Enum),
 }
-
-impl From<Struct> for AdtDef {
-    fn from(s: Struct) -> AdtDef {
-        AdtDef::Struct(s)
-    }
-}
-
-impl From<Enum> for AdtDef {
-    fn from(e: Enum) -> AdtDef {
-        AdtDef::Enum(e)
-    }
-}
+impl_froms!(AdtDef: Struct, Enum);
 
 impl AdtDef {
     fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
@@ -701,24 +690,7 @@ pub enum TypableDef {
     Enum(Enum),
     Def(DefId),
 }
-
-impl From<Function> for TypableDef {
-    fn from(func: Function) -> TypableDef {
-        TypableDef::Function(func)
-    }
-}
-
-impl From<Struct> for TypableDef {
-    fn from(s: Struct) -> TypableDef {
-        TypableDef::Struct(s)
-    }
-}
-
-impl From<Enum> for TypableDef {
-    fn from(e: Enum) -> TypableDef {
-        TypableDef::Enum(e)
-    }
-}
+impl_froms!(TypableDef: Function, Struct, Enum);
 
 impl From<DefId> for TypableDef {
     fn from(func: DefId) -> TypableDef {
@@ -763,12 +735,7 @@ pub enum VariantDef {
     Struct(Struct),
     Def(DefId), // EnumVariant
 }
-
-impl From<Struct> for VariantDef {
-    fn from(struct_: Struct) -> VariantDef {
-        VariantDef::Struct(struct_)
-    }
-}
+impl_froms!(VariantDef: Struct);
 
 impl From<DefId> for VariantDef {
     fn from(def_id: DefId) -> VariantDef {

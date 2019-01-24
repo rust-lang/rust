@@ -5,6 +5,18 @@
 //! to a particular crate instance. That is, it has cfg flags and features
 //! applied. So, the relation between syntax and HIR is many-to-one.
 
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident), *) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+
 pub mod db;
 #[cfg(test)]
 mod mock;
