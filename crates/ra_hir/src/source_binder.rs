@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, SourceItemId, ModuleDef,
-    DefKind, DefLoc, AsName, Module,
+    AsName, Module,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -105,29 +105,18 @@ pub fn function_from_source(
     fn_def: &ast::FnDef,
 ) -> Option<Function> {
     let module = module_from_child_node(db, file_id, fn_def.syntax())?;
-    let res = function_from_module(db, &module, fn_def);
+    let res = function_from_module(db, module, fn_def);
     Some(res)
 }
 
 pub fn function_from_module(
     db: &impl HirDatabase,
-    module: &Module,
+    module: Module,
     fn_def: &ast::FnDef,
 ) -> Function {
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
-    let file_items = db.file_items(file_id);
-    let item_id = file_items.id_of(file_id, fn_def.syntax());
-    let source_item_id = SourceItemId {
-        file_id,
-        item_id: Some(item_id),
-    };
-    let def_loc = DefLoc {
-        module: module.clone(),
-        kind: DefKind::Function,
-        source_item_id,
-    };
-    Function::new(def_loc.id(db))
+    Function::from_ast(db, module, file_id, fn_def)
 }
 
 pub fn function_from_child_node(

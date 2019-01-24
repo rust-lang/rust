@@ -6,7 +6,7 @@ use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
-    Function, HirFileId, HirInterner,
+    Function, HirFileId,
     db::HirDatabase,
     type_ref::TypeRef,
 };
@@ -22,9 +22,9 @@ pub struct ImplBlock {
 impl ImplBlock {
     pub(crate) fn containing(
         module_impl_blocks: Arc<ModuleImplBlocks>,
-        def_id: DefId,
+        item: ImplItem,
     ) -> Option<ImplBlock> {
-        let impl_id = *module_impl_blocks.impls_by_def.get(&def_id)?;
+        let impl_id = *module_impl_blocks.impls_by_def.get(&item)?;
         Some(ImplBlock {
             module_impl_blocks,
             impl_id,
@@ -64,7 +64,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn from_ast(
-        db: &impl AsRef<HirInterner>,
+        db: &impl HirDatabase,
         file_id: HirFileId,
         file_items: &SourceFileItems,
         module: Module,
@@ -93,7 +93,9 @@ impl ImplData {
                     };
                     let def_id = def_loc.id(db);
                     match item_node.kind() {
-                        ast::ImplItemKind::FnDef(..) => ImplItem::Method(Function::new(def_id)),
+                        ast::ImplItemKind::FnDef(it) => {
+                            ImplItem::Method(Function::from_ast(db, module, file_id, it))
+                        }
                         ast::ImplItemKind::ConstDef(..) => ImplItem::Const(def_id),
                         ast::ImplItemKind::TypeDef(..) => ImplItem::Type(def_id),
                     }
@@ -122,7 +124,8 @@ impl ImplData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+//TODO: rename to ImplDef?
 pub enum ImplItem {
     Method(Function),
     // these don't have their own types yet
@@ -131,13 +134,9 @@ pub enum ImplItem {
     // Existential
 }
 
-impl ImplItem {
-    pub fn def_id(&self) -> DefId {
-        match self {
-            ImplItem::Method(f) => f.def_id(),
-            ImplItem::Const(def_id) => *def_id,
-            ImplItem::Type(def_id) => *def_id,
-        }
+impl From<Function> for ImplItem {
+    fn from(func: Function) -> ImplItem {
+        ImplItem::Method(func)
     }
 }
 
@@ -153,7 +152,7 @@ impl_arena_id!(ImplId);
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleImplBlocks {
     pub(crate) impls: Arena<ImplId, ImplData>,
-    impls_by_def: FxHashMap<DefId, ImplId>,
+    impls_by_def: FxHashMap<ImplItem, ImplId>,
 }
 
 impl ModuleImplBlocks {
@@ -181,8 +180,8 @@ impl ModuleImplBlocks {
             let impl_block =
                 ImplData::from_ast(db, file_id, &source_file_items, module, impl_block_ast);
             let id = self.impls.alloc(impl_block);
-            for impl_item in &self.impls[id].items {
-                self.impls_by_def.insert(impl_item.def_id(), id);
+            for &impl_item in &self.impls[id].items {
+                self.impls_by_def.insert(impl_item, id);
             }
         }
     }

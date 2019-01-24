@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     SourceItemId, Path, ModuleSource, HirDatabase, Name, SourceFileItems,
-    HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc,
+    HirFileId, MacroCallLoc, AsName, PerNs, DefKind, DefLoc, Function,
     ModuleDef, Module,
 };
 
@@ -149,7 +149,14 @@ impl LoweredModule {
         let name = match item.kind() {
             ast::ModuleItemKind::StructDef(it) => it.name(),
             ast::ModuleItemKind::EnumDef(it) => it.name(),
-            ast::ModuleItemKind::FnDef(it) => it.name(),
+            ast::ModuleItemKind::FnDef(it) => {
+                if let Some(name) = it.name() {
+                    let func = Function::from_ast(db, module, file_id, it);
+                    self.declarations
+                        .insert(name.as_name(), PerNs::values(func.into()));
+                }
+                return;
+            }
             ast::ModuleItemKind::TraitDef(it) => it.name(),
             ast::ModuleItemKind::TypeDef(it) => it.name(),
             ast::ModuleItemKind::ImplBlock(_) => {
@@ -218,7 +225,7 @@ fn assign_def_id(
 impl DefKind {
     fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
         match kind {
-            SyntaxKind::FN_DEF => PerNs::values(DefKind::Function),
+            SyntaxKind::FN_DEF => unreachable!(),
             SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
             SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
             SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Trait),

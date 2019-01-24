@@ -16,6 +16,7 @@ use crate::{
     code_model_impl::def_id_to_ast,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
+    ids::FunctionId,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -49,7 +50,6 @@ pub enum Def {
     Struct(Struct),
     Enum(Enum),
     EnumVariant(EnumVariant),
-    Function(Function),
     Const(Const),
     Static(Static),
     Trait(Trait),
@@ -67,12 +67,19 @@ pub struct Module {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModuleDef {
     Module(Module),
+    Function(Function),
     Def(DefId),
 }
 
 impl Into<ModuleDef> for Module {
     fn into(self) -> ModuleDef {
         ModuleDef::Module(self)
+    }
+}
+
+impl Into<ModuleDef> for Function {
+    fn into(self) -> ModuleDef {
+        ModuleDef::Function(self)
     }
 }
 
@@ -225,7 +232,7 @@ impl Struct {
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params(self.def_id.into())
     }
 }
 
@@ -262,7 +269,7 @@ impl Enum {
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params(self.def_id.into())
     }
 }
 
@@ -320,9 +327,9 @@ impl Docs for EnumVariant {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
-    pub(crate) def_id: DefId,
+    pub(crate) id: FunctionId,
 }
 
 pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
@@ -359,21 +366,17 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
-        def_id_to_ast(db, self.def_id)
+        self.id.loc(db).source(db)
     }
 
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
-        db.body_syntax_mapping(self.def_id)
+        db.body_syntax_mapping(*self)
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
-        let scopes = db.fn_scopes(self.def_id);
-        let syntax_mapping = db.body_syntax_mapping(self.def_id);
+        let scopes = db.fn_scopes(*self);
+        let syntax_mapping = db.body_syntax_mapping(*self);
         ScopesWithSyntaxMapping {
             scopes,
             syntax_mapping,
@@ -381,15 +384,15 @@ impl Function {
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
-        db.fn_signature(self.def_id)
+        db.fn_signature(*self)
     }
 
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.def_id)
+        db.infer(*self)
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params((*self).into())
     }
 }
 
@@ -456,7 +459,7 @@ impl Trait {
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params(self.def_id.into())
     }
 }
 
@@ -481,7 +484,7 @@ impl Type {
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.def_id)
+        db.generic_params(self.def_id.into())
     }
 }
 

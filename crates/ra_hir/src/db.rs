@@ -7,14 +7,14 @@ use crate::{
     DefId, MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
-    FnSignature, FnScopes,
+    Function, FnSignature, FnScopes,
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
-    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks},
+    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef},
     adt::{StructData, EnumData, EnumVariantData},
     impl_block::ModuleImplBlocks,
-    generics::GenericParams,
+    generics::{GenericParams, GenericDef},
 };
 
 #[salsa::query_group]
@@ -26,7 +26,7 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;
 
     #[salsa::invoke(query_definitions::fn_scopes)]
-    fn fn_scopes(&self, def_id: DefId) -> Arc<FnScopes>;
+    fn fn_scopes(&self, func: Function) -> Arc<FnScopes>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, def_id: DefId) -> Arc<StructData>;
@@ -38,10 +38,10 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn enum_variant_data(&self, def_id: DefId) -> Arc<EnumVariantData>;
 
     #[salsa::invoke(crate::ty::infer)]
-    fn infer(&self, def_id: DefId) -> Arc<InferenceResult>;
+    fn infer(&self, func: Function) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::ty::type_for_def)]
-    fn type_for_def(&self, def_id: DefId) -> Ty;
+    fn type_for_def(&self, def: TypableDef) -> Ty;
 
     #[salsa::invoke(crate::ty::type_for_field)]
     fn type_for_field(&self, def_id: DefId, field: Name) -> Option<Ty>;
@@ -77,14 +77,14 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
 
     #[salsa::invoke(crate::expr::body_hir)]
-    fn body_hir(&self, def_id: DefId) -> Arc<crate::expr::Body>;
+    fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
 
     #[salsa::invoke(crate::expr::body_syntax_mapping)]
-    fn body_syntax_mapping(&self, def_id: DefId) -> Arc<crate::expr::BodySyntaxMapping>;
+    fn body_syntax_mapping(&self, func: Function) -> Arc<crate::expr::BodySyntaxMapping>;
 
     #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
-    fn generic_params(&self, def_id: DefId) -> Arc<GenericParams>;
+    fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
 
     #[salsa::invoke(crate::FnSignature::fn_signature_query)]
-    fn fn_signature(&self, def_id: DefId) -> Arc<FnSignature>;
+    fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
 }

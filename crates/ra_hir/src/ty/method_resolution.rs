@@ -118,11 +118,11 @@ impl Ty {
     // TODO: cache this as a query?
     // - if so, what signature? (TyFingerprint, Name)?
     // - or maybe cache all names and def_ids of methods per fingerprint?
-    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<DefId> {
+    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<Function> {
         self.iterate_methods(db, |f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
-                Some(f.def_id())
+                Some(f)
             } else {
                 None
             }

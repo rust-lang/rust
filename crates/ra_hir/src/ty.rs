@@ -382,7 +382,8 @@ impl Ty {
 
         // Resolve in module (in type namespace)
         let resolved = match module.resolve_path(db, path).take_types() {
-            Some(ModuleDef::Def(r)) => r,
+            Some(ModuleDef::Def(r)) => r.into(),
+            Some(ModuleDef::Function(f)) => f.into(),
             None | Some(ModuleDef::Module(_)) => return Ty::Unknown,
         };
         let ty = db.type_for_def(resolved);
@@ -399,36 +400,38 @@ impl Ty {
         impl_block: Option<&ImplBlock>,
         outer_generics: &GenericParams,
         path: &Path,
-        resolved: DefId,
+        resolved: TypableDef,
     ) -> Substs {
         let mut substs = Vec::new();
-        let def = resolved.resolve(db);
         let last = path
             .segments
             .last()
             .expect("path should have at least one segment");
-        let (def_generics, segment) = match def {
-            Def::Struct(s) => (s.generic_params(db), last),
-            Def::Enum(e) => (e.generic_params(db), last),
-            Def::Function(f) => (f.generic_params(db), last),
-            Def::Trait(t) => (t.generic_params(db), last),
-            Def::EnumVariant(ev) => {
-                // the generic args for an enum variant may be either specified
-                // on the segment referring to the enum, or on the segment
-                // referring to the variant. So `Option::<T>::None` and
-                // `Option::None::<T>` are both allowed (though the former is
-                // preferred). See also `def_ids_for_path_segments` in rustc.
-                let len = path.segments.len();
-                let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some() {
-                    // Option::<T>::None
-                    &path.segments[len - 2]
-                } else {
-                    // Option::None::<T>
-                    last
-                };
-                (ev.parent_enum(db).generic_params(db), segment)
-            }
-            _ => return Substs::empty(),
+        let (def_generics, segment) = match resolved {
+            TypableDef::Function(func) => (func.generic_params(db), last),
+            TypableDef::Def(def_id) => match def_id.resolve(db) {
+                Def::Struct(s) => (s.generic_params(db), last),
+                Def::Enum(e) => (e.generic_params(db), last),
+                Def::Trait(t) => (t.generic_params(db), last),
+                Def::EnumVariant(ev) => {
+                    // the generic args for an enum variant may be either specified
+                    // on the segment referring to the enum, or on the segment
+                    // referring to the variant. So `Option::<T>::None` and
+                    // `Option::None::<T>` are both allowed (though the former is
+                    // preferred). See also `def_ids_for_path_segments` in rustc.
+                    let len = path.segments.len();
+                    let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some()
+                    {
+                        // Option::<T>::None
+                        &path.segments[len - 2]
+                    } else {
+                        // Option::None::<T>
+                        last
+                    };
+                    (ev.parent_enum(db).generic_params(db), segment)
+                }
+                _ => return Substs::empty(),
+            },
         };
         // substs_from_path
         if let Some(generic_args) = &segment.args_and_bindings {
@@ -660,21 +663,40 @@ pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> T
     type_for_enum(db, enum_parent)
 }
 
-pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Ty {
-    let def = def_id.resolve(db);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum TypableDef {
+    Function(Function),
+    Def(DefId),
+}
+
+impl From<Function> for TypableDef {
+    fn from(func: Function) -> TypableDef {
+        TypableDef::Function(func)
+    }
+}
+
+impl From<DefId> for TypableDef {
+    fn from(func: DefId) -> TypableDef {
+        TypableDef::Def(func)
+    }
+}
+
+pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
     match def {
-        Def::Function(f) => type_for_fn(db, f),
-        Def::Struct(s) => type_for_struct(db, s),
-        Def::Enum(e) => type_for_enum(db, e),
-        Def::EnumVariant(ev) => type_for_enum_variant(db, ev),
-        _ => {
-            log::debug!(
-                "trying to get type for item of unknown type {:?} {:?}",
-                def_id,
-                def
-            );
-            Ty::Unknown
-        }
+        TypableDef::Function(f) => type_for_fn(db, f),
+        TypableDef::Def(def_id) => match def_id.resolve(db) {
+            Def::Struct(s) => type_for_struct(db, s),
+            Def::Enum(e) => type_for_enum(db, e),
+            Def::EnumVariant(ev) => type_for_enum_variant(db, ev),
+            _ => {
+                log::debug!(
+                    "trying to get type for item of unknown type {:?} {:?}",
+                    def_id,
+                    def
+                );
+                Ty::Unknown
+            }
+        },
     }
 }
 
@@ -694,28 +716,23 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
         ),
     };
     let module = def_id.module(db);
-    let impl_block = def_id.impl_block(db);
+    // We can't have an impl block ere, right?
+    // let impl_block = def_id.impl_block(db);
     let type_ref = variant_data.get_field_type_ref(&field)?;
-    Some(Ty::from_hir(
-        db,
-        &module,
-        impl_block.as_ref(),
-        &generics,
-        &type_ref,
-    ))
+    Some(Ty::from_hir(db, &module, None, &generics, &type_ref))
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
     /// For each method call expr, record the function it resolved to.
-    method_resolutions: FxHashMap<ExprId, DefId>,
+    method_resolutions: FxHashMap<ExprId, Function>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
 }
 
 impl InferenceResult {
-    pub fn method_resolution(&self, expr: ExprId) -> Option<DefId> {
+    pub fn method_resolution(&self, expr: ExprId) -> Option<Function> {
         self.method_resolutions.get(&expr).map(|it| *it)
     }
 }
@@ -745,7 +762,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     module: Module,
     impl_block: Option<ImplBlock>,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
-    method_resolutions: FxHashMap<ExprId, DefId>,
+    method_resolutions: FxHashMap<ExprId, Function>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
@@ -871,8 +888,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.type_of_expr.insert(expr, ty);
     }
 
-    fn write_method_resolution(&mut self, expr: ExprId, def_id: DefId) {
-        self.method_resolutions.insert(expr, def_id);
+    fn write_method_resolution(&mut self, expr: ExprId, func: Function) {
+        self.method_resolutions.insert(expr, func);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
@@ -1060,7 +1077,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         // resolve in module
         let resolved = match self.module.resolve_path(self.db, &path).take_values()? {
-            ModuleDef::Def(it) => it,
+            ModuleDef::Def(it) => it.into(),
+            ModuleDef::Function(func) => func.into(),
             ModuleDef::Module(_) => return None,
         };
         let ty = self.db.type_for_def(resolved);
@@ -1073,8 +1091,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some(path) => path,
             None => return (Ty::Unknown, None),
         };
-        let def_id = match self.module.resolve_path(self.db, &path).take_types() {
-            Some(ModuleDef::Def(def_id)) => def_id,
+        let def = match self.module.resolve_path(self.db, &path).take_types() {
+            Some(ModuleDef::Def(def_id)) => def_id.into(),
+            Some(ModuleDef::Function(func)) => func.into(),
             _ => return (Ty::Unknown, None),
         };
         // TODO remove the duplication between here and `Ty::from_path`?
@@ -1086,20 +1105,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             self.impl_block.as_ref(),
             &generics,
             path,
-            def_id,
+            def,
         );
-        match def_id.resolve(self.db) {
-            Def::Struct(s) => {
-                let ty = type_for_struct(self.db, s);
-                let ty = self.insert_type_vars(ty.apply_substs(substs));
-                (ty, Some(def_id))
-            }
-            Def::EnumVariant(ev) => {
-                let ty = type_for_enum_variant(self.db, ev);
-                let ty = self.insert_type_vars(ty.apply_substs(substs));
-                (ty, Some(def_id))
-            }
-            _ => (Ty::Unknown, None),
+        match def {
+            TypableDef::Def(def_id) => match def_id.resolve(self.db) {
+                Def::Struct(s) => {
+                    let ty = type_for_struct(self.db, s);
+                    let ty = self.insert_type_vars(ty.apply_substs(substs));
+                    (ty, Some(def_id))
+                }
+                Def::EnumVariant(ev) => {
+                    let ty = type_for_enum_variant(self.db, ev);
+                    let ty = self.insert_type_vars(ty.apply_substs(substs));
+                    (ty, Some(def_id))
+                }
+                _ => (Ty::Unknown, None),
+            },
+            TypableDef::Function(_) => (Ty::Unknown, None),
         }
     }
 
@@ -1216,7 +1238,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .resolve_path(self.db, &path)
                 .take_values()
                 .and_then(|module_def| match module_def {
-                    ModuleDef::Def(it) => Some(it),
+                    ModuleDef::Def(it) => Some(it.into()),
+                    ModuleDef::Function(func) => Some(func.into()),
                     ModuleDef::Module(_) => None,
                 })
                 .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved)),
@@ -1339,9 +1362,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
                 let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
                 let method_ty = match resolved {
-                    Some(def_id) => {
-                        self.write_method_resolution(expr, def_id);
-                        self.db.type_for_def(def_id)
+                    Some(func) => {
+                        self.write_method_resolution(expr, func);
+                        self.db.type_for_def(func.into())
                     }
                     None => Ty::Unknown,
                 };
@@ -1610,16 +1633,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 }
 
-pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Arc<InferenceResult> {
+pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
     db.check_canceled();
-    let function = Function::new(def_id); // TODO: consts also need inference
-    let body = function.body(db);
-    let scopes = db.fn_scopes(def_id);
-    let module = function.module(db);
-    let impl_block = function.impl_block(db);
+    let body = func.body(db);
+    let scopes = db.fn_scopes(func);
+    let module = func.module(db);
+    let impl_block = func.impl_block(db);
     let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);
 
-    let signature = function.signature(db);
+    let signature = func.signature(db);
     ctx.collect_fn_signature(&signature);
 
     ctx.infer_body();

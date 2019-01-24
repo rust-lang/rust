@@ -1,9 +1,11 @@
+use std::marker::PhantomData;
+
 use ra_db::{LocationIntener, FileId};
 use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def, Function, Struct, Enum, EnumVariant, ImplBlock, Crate,
+    HirDatabase, Def, Struct, Enum, EnumVariant, Crate,
     Module, Trait, Type, Static, Const,
 };
 
@@ -129,15 +131,56 @@ impl MacroCallLoc {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct ItemLoc<N: AstNode> {
+    pub(crate) module: Module,
+    raw: SourceItemId,
+    _ty: PhantomData<N>,
+}
+
+impl<N: AstNode> ItemLoc<N> {
+    pub(crate) fn from_ast(
+        db: &impl HirDatabase,
+        module: Module,
+        file_id: HirFileId,
+        ast: &N,
+    ) -> ItemLoc<N> {
+        let items = db.file_items(file_id);
+        let raw = SourceItemId {
+            file_id,
+            item_id: Some(items.id_of(file_id, ast.syntax())),
+        };
+        ItemLoc {
+            module,
+            raw,
+            _ty: PhantomData,
+        }
+    }
+
+    pub(crate) fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<N>) {
+        let syntax = db.file_item(self.raw);
+        let ast = N::cast(&syntax)
+            .unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", self.raw))
+            .to_owned();
+        (self.raw.file_id, ast)
+    }
+}
+
+impl<N: AstNode> Clone for ItemLoc<N> {
+    fn clone(&self) -> ItemLoc<N> {
+        ItemLoc {
+            module: self.module,
+            raw: self.raw,
+            _ty: PhantomData,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(RawId);
 impl_arena_id!(FunctionId);
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct FunctionLoc {
-    pub(crate) module: Module,
-    pub(crate) source_item_id: SourceItemId,
-}
+pub(crate) type FunctionLoc = ItemLoc<ast::FnDef>;
 
 impl FunctionId {
     pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> FunctionLoc {
@@ -196,10 +239,7 @@ impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Def {
         let loc = self.loc(db);
         match loc.kind {
-            DefKind::Function => {
-                let function = Function::new(self);
-                Def::Function(function)
-            }
+            DefKind::Function => unreachable!(),
             DefKind::Struct => {
                 let struct_def = Struct::new(self);
                 Def::Struct(struct_def)
@@ -242,12 +282,6 @@ impl DefId {
     /// Returns the containing crate.
     pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
         self.module(db).krate(db)
-    }
-
-    /// Returns the containing impl block, if this is an impl item.
-    pub fn impl_block(self, db: &impl HirDatabase) -> Option<ImplBlock> {
-        let module_impls = db.impls_in_module(self.loc(db).module);
-        ImplBlock::containing(module_impls, self)
     }
 }
 

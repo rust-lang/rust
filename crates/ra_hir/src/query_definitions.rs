@@ -10,14 +10,14 @@ use ra_syntax::{
 use ra_db::{CrateId};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefId, HirFileId,
-    FnScopes, Module,
+    SourceFileItems, SourceItemId, HirFileId,
+    Function, FnScopes, Module,
     db::HirDatabase,
     nameres::{ItemMap, Resolver},
 };
 
-pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Arc<FnScopes> {
-    let body = db.body_hir(def_id);
+pub(super) fn fn_scopes(db: &impl HirDatabase, func: Function) -> Arc<FnScopes> {
+    let body = db.body_hir(func);
     let res = FnScopes::new(body);
     Arc::new(res)
 }

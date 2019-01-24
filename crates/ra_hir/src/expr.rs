@@ -9,7 +9,11 @@ use ra_syntax::{
     ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor}
 };
 
-use crate::{Path, type_ref::{Mutability, TypeRef}, Name, HirDatabase, DefId, Def, name::AsName};
+use crate::{
+    Path, Name, HirDatabase, Function,
+    name::AsName,
+    type_ref::{Mutability, TypeRef},
+};
 use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -435,8 +439,8 @@ impl Pat {
 
 // Queries
 
-pub(crate) fn body_hir(db: &impl HirDatabase, def_id: DefId) -> Arc<Body> {
-    Arc::clone(&body_syntax_mapping(db, def_id).body)
+pub(crate) fn body_hir(db: &impl HirDatabase, func: Function) -> Arc<Body> {
+    Arc::clone(&body_syntax_mapping(db, func).body)
 }
 
 struct ExprCollector {
@@ -955,14 +959,8 @@ pub(crate) fn collect_fn_body_syntax(node: &ast::FnDef) -> BodySyntaxMapping {
     collector.into_body_syntax_mapping(params, body)
 }
 
-pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, def_id: DefId) -> Arc<BodySyntaxMapping> {
-    let def = def_id.resolve(db);
-
-    let body_syntax_mapping = match def {
-        Def::Function(f) => collect_fn_body_syntax(&f.source(db).1),
-        // TODO: consts, etc.
-        _ => panic!("Trying to get body for item type without body"),
-    };
-
+pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, func: Function) -> Arc<BodySyntaxMapping> {
+    let (_, fn_def) = func.source(db);
+    let body_syntax_mapping = collect_fn_body_syntax(&fn_def);
     Arc::new(body_syntax_mapping)
 }
