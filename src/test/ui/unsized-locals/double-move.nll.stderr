@@ -1,12 +1,12 @@
 error[E0382]: use of moved value: `y`
   --> $DIR/double-move.rs:20:22
    |
+LL |         let y = *x;
+   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         drop_unsized(y);
    |                      - value moved here
 LL |         drop_unsized(y); //~ERROR use of moved value
    |                      ^ value used here after move
-   |
-   = note: move occurs because `y` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x`
   --> $DIR/double-move.rs:26:22
@@ -21,22 +21,22 @@ LL |         drop_unsized(x); //~ERROR use of moved value
 error[E0382]: use of moved value: `*x`
   --> $DIR/double-move.rs:32:18
    |
+LL |         let x = "hello".to_owned().into_boxed_str();
+   |             - move occurs because `x` has type `std::boxed::Box<str>`, which does not implement the `Copy` trait
 LL |         drop_unsized(x);
    |                      - value moved here
 LL |         let _y = *x; //~ERROR use of moved value
    |                  ^^ value used here after move
-   |
-   = note: move occurs because `x` has type `std::boxed::Box<str>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `y`
   --> $DIR/double-move.rs:39:9
    |
+LL |         let y = *x;
+   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         y.foo();
    |         - value moved here
 LL |         y.foo(); //~ERROR use of moved value
    |         ^ value used here after move
-   |
-   = note: move occurs because `y` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `*x`
   --> $DIR/double-move.rs:45:9

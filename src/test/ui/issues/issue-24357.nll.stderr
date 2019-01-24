@@ -1,6 +1,8 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/issue-24357.rs:6:12
    |
+LL |    let x = NoCopy;
+   |        - move occurs because `x` has type `NoCopy`, which does not implement the `Copy` trait
 LL |    let f = move || { let y = x; };
    |            -------           - variable moved due to use in closure
    |            |
@@ -8,8 +10,6 @@ LL |    let f = move || { let y = x; };
 LL |    //~^ NOTE value moved (into closure) here
 LL |    let z = x;
    |            ^ value used here after move
-   |
-   = note: move occurs because `x` has type `NoCopy`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 
