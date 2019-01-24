@@ -5,7 +5,7 @@ use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
-    DefId, DefLoc, DefKind, SourceItemId, SourceFileItems,
+    Const, Type,
     Function, HirFileId,
     db::HirDatabase,
     type_ref::TypeRef,
@@ -67,7 +67,6 @@ impl ImplData {
     pub(crate) fn from_ast(
         db: &impl HirDatabase,
         file_id: HirFileId,
-        file_items: &SourceFileItems,
         module: Module,
         node: &ast::ImplBlock,
     ) -> Self {
@@ -77,30 +76,14 @@ impl ImplData {
         let items = if let Some(item_list) = node.item_list() {
             item_list
                 .impl_items()
-                .map(|item_node| {
-                    let kind = match item_node.kind() {
-                        ast::ImplItemKind::FnDef(it) => {
-                            return ImplItem::Method(Function { id: ctx.to_def(it) });
-                        }
-                        ast::ImplItemKind::ConstDef(..) => DefKind::Item,
-                        ast::ImplItemKind::TypeDef(..) => DefKind::Item,
-                    };
-                    let item_id = file_items.id_of_unchecked(item_node.syntax());
-                    let source_item_id = SourceItemId {
-                        file_id,
-                        item_id: Some(item_id),
-                    };
-                    let def_loc = DefLoc {
-                        module,
-                        kind,
-                        source_item_id,
-                    };
-                    let def_id = def_loc.id(db);
-                    match item_node.kind() {
-                        ast::ImplItemKind::FnDef(_) => unreachable!(),
-                        ast::ImplItemKind::ConstDef(..) => ImplItem::Const(def_id),
-                        ast::ImplItemKind::TypeDef(..) => ImplItem::Type(def_id),
+                .map(|item_node| match item_node.kind() {
+                    ast::ImplItemKind::FnDef(it) => {
+                        ImplItem::Method(Function { id: ctx.to_def(it) })
                     }
+                    ast::ImplItemKind::ConstDef(it) => {
+                        ImplItem::Const(Const { id: ctx.to_def(it) })
+                    }
+                    ast::ImplItemKind::TypeDef(it) => ImplItem::Type(Type { id: ctx.to_def(it) }),
                 })
                 .collect()
         } else {
@@ -130,11 +113,11 @@ impl ImplData {
 //TODO: rename to ImplDef?
 pub enum ImplItem {
     Method(Function),
-    // these don't have their own types yet
-    Const(DefId),
-    Type(DefId),
+    Const(Const),
+    Type(Type),
     // Existential
 }
+impl_froms!(ImplItem: Const, Type);
 
 impl From<Function> for ImplItem {
     fn from(func: Function) -> ImplItem {
@@ -176,11 +159,8 @@ impl ModuleImplBlocks {
                 .syntax(),
         };
 
-        let source_file_items = db.file_items(file_id);
-
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
-            let impl_block =
-                ImplData::from_ast(db, file_id, &source_file_items, module, impl_block_ast);
+            let impl_block = ImplData::from_ast(db, file_id, module, impl_block_ast);
             let id = self.impls.alloc(impl_block);
             for &impl_item in &self.impls[id].items {
                 self.impls_by_def.insert(impl_item, id);
