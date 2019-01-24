@@ -4515,7 +4515,7 @@ macro_rules! rev {
     )*}
 }
 
-/// intra-sign conversions
+// intra-sign conversions
 try_from_upper_bounded!(u16, u8);
 try_from_upper_bounded!(u32, u16, u8);
 try_from_upper_bounded!(u64, u32, u16, u8);

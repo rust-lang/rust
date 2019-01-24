@@ -1082,46 +1082,46 @@ impl<'a, 'gcx, 'tcx> ParamConst {
     }
 }
 
-/// A [De Bruijn index][dbi] is a standard means of representing
-/// regions (and perhaps later types) in a higher-ranked setting. In
-/// particular, imagine a type like this:
-///
-///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
-///     ^          ^            |        |         |
-///     |          |            |        |         |
-///     |          +------------+ 0      |         |
-///     |                                |         |
-///     +--------------------------------+ 1       |
-///     |                                          |
-///     +------------------------------------------+ 0
-///
-/// In this type, there are two binders (the outer fn and the inner
-/// fn). We need to be able to determine, for any given region, which
-/// fn type it is bound by, the inner or the outer one. There are
-/// various ways you can do this, but a De Bruijn index is one of the
-/// more convenient and has some nice properties. The basic idea is to
-/// count the number of binders, inside out. Some examples should help
-/// clarify what I mean.
-///
-/// Let's start with the reference type `&'b isize` that is the first
-/// argument to the inner function. This region `'b` is assigned a De
-/// Bruijn index of 0, meaning "the innermost binder" (in this case, a
-/// fn). The region `'a` that appears in the second argument type (`&'a
-/// isize`) would then be assigned a De Bruijn index of 1, meaning "the
-/// second-innermost binder". (These indices are written on the arrays
-/// in the diagram).
-///
-/// What is interesting is that De Bruijn index attached to a particular
-/// variable will vary depending on where it appears. For example,
-/// the final type `&'a char` also refers to the region `'a` declared on
-/// the outermost fn. But this time, this reference is not nested within
-/// any other binders (i.e., it is not an argument to the inner fn, but
-/// rather the outer one). Therefore, in this case, it is assigned a
-/// De Bruijn index of 0, because the innermost binder in that location
-/// is the outer fn.
-///
-/// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
 newtype_index! {
+    /// A [De Bruijn index][dbi] is a standard means of representing
+    /// regions (and perhaps later types) in a higher-ranked setting. In
+    /// particular, imagine a type like this:
+    ///
+    ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
+    ///     ^          ^            |        |         |
+    ///     |          |            |        |         |
+    ///     |          +------------+ 0      |         |
+    ///     |                                |         |
+    ///     +--------------------------------+ 1       |
+    ///     |                                          |
+    ///     +------------------------------------------+ 0
+    ///
+    /// In this type, there are two binders (the outer fn and the inner
+    /// fn). We need to be able to determine, for any given region, which
+    /// fn type it is bound by, the inner or the outer one. There are
+    /// various ways you can do this, but a De Bruijn index is one of the
+    /// more convenient and has some nice properties. The basic idea is to
+    /// count the number of binders, inside out. Some examples should help
+    /// clarify what I mean.
+    ///
+    /// Let's start with the reference type `&'b isize` that is the first
+    /// argument to the inner function. This region `'b` is assigned a De
+    /// Bruijn index of 0, meaning "the innermost binder" (in this case, a
+    /// fn). The region `'a` that appears in the second argument type (`&'a
+    /// isize`) would then be assigned a De Bruijn index of 1, meaning "the
+    /// second-innermost binder". (These indices are written on the arrays
+    /// in the diagram).
+    ///
+    /// What is interesting is that De Bruijn index attached to a particular
+    /// variable will vary depending on where it appears. For example,
+    /// the final type `&'a char` also refers to the region `'a` declared on
+    /// the outermost fn. But this time, this reference is not nested within
+    /// any other binders (i.e., it is not an argument to the inner fn, but
+    /// rather the outer one). Therefore, in this case, it is assigned a
+    /// De Bruijn index of 0, because the innermost binder in that location
+    /// is the outer fn.
+    ///
+    /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
