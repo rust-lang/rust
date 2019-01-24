@@ -46,13 +46,14 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                 }
             }
             Ty::Tuple(fields) => {
-                for (i, _ty) in fields.iter().enumerate() {
+                for (i, ty) in fields.iter().enumerate() {
                     CompletionItem::new(
                         CompletionKind::Reference,
                         ctx.source_range(),
                         i.to_string(),
                     )
                     .kind(CompletionItemKind::Field)
+                    .detail(ty.to_string())
                     .add_to(acc);
                 }
             }
@@ -170,6 +171,19 @@ mod tests {
             }
             fn foo(a: A) {
                a.<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn test_tuple_field_completion() {
+        check_ref_completion(
+            "tuple_field_completion",
+            r"
+            fn foo() {
+               let b = (0, 3.14);
+               b.<|>
             }
             ",
         );
