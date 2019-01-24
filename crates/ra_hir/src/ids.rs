@@ -15,6 +15,7 @@ pub struct HirInterner {
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
     fns: LocationIntener<FunctionLoc, FunctionId>,
     structs: LocationIntener<StructLoc, StructId>,
+    enums: LocationIntener<EnumLoc, EnumId>,
 }
 
 impl HirInterner {
@@ -210,6 +211,24 @@ impl StructId {
 impl StructLoc {
     pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> StructId {
         db.as_ref().structs.loc2id(&self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumId(RawId);
+impl_arena_id!(EnumId);
+
+pub(crate) type EnumLoc = ItemLoc<ast::EnumDef>;
+
+impl EnumId {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> EnumLoc {
+        db.as_ref().enums.id2loc(self)
+    }
+}
+
+impl EnumLoc {
+    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> EnumId {
+        db.as_ref().enums.loc2id(&self)
     }
 }
 
