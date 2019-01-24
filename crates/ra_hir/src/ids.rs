@@ -14,6 +14,7 @@ pub struct HirInterner {
     defs: LocationIntener<DefLoc, DefId>,
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
     fns: LocationIntener<FunctionLoc, FunctionId>,
+    structs: LocationIntener<StructLoc, StructId>,
 }
 
 impl HirInterner {
@@ -191,6 +192,24 @@ impl FunctionId {
 impl FunctionLoc {
     pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> FunctionId {
         db.as_ref().fns.loc2id(&self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StructId(RawId);
+impl_arena_id!(StructId);
+
+pub(crate) type StructLoc = ItemLoc<ast::StructDef>;
+
+impl StructId {
+    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> StructLoc {
+        db.as_ref().structs.id2loc(self)
+    }
+}
+
+impl StructLoc {
+    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> StructId {
+        db.as_ref().structs.loc2id(&self)
     }
 }
 
