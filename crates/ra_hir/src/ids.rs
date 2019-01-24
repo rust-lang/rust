@@ -1,6 +1,6 @@
 use std::{
     marker::PhantomData,
-    hash::Hash,
+    hash::{Hash, Hasher},
 };
 
 use ra_db::{LocationIntener, FileId};
@@ -139,11 +139,24 @@ impl MacroCallLoc {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct ItemLoc<N: AstNode> {
     pub(crate) module: Module,
     raw: SourceItemId,
     _ty: PhantomData<N>,
+}
+
+impl<N: AstNode> PartialEq for ItemLoc<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.module == other.module && self.raw == other.raw
+    }
+}
+impl<N: AstNode> Eq for ItemLoc<N> {}
+impl<N: AstNode> Hash for ItemLoc<N> {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.module.hash(hasher);
+        self.raw.hash(hasher);
+    }
 }
 
 impl<N: AstNode> Clone for ItemLoc<N> {
@@ -173,14 +186,14 @@ impl<'a, DB: HirDatabase> LocationCtx<&'a DB> {
     }
     pub(crate) fn to_def<N, DEF>(self, ast: &N) -> DEF
     where
-        N: AstNode + Eq + Hash,
+        N: AstNode,
         DEF: AstItemDef<N>,
     {
         DEF::from_ast(self, ast)
     }
 }
 
-pub(crate) trait AstItemDef<N: AstNode + Eq + Hash>: ArenaId + Clone {
+pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl HirDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
