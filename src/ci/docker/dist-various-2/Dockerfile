@@ -70,6 +70,7 @@ ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
+ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 
 ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
 
