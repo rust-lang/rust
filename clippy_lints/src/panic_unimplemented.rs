@@ -4,8 +4,8 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::LitKind;
-use syntax::ext::quote::rt::Span;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 /// **What it does:** Checks for missing parameters in `panic!`.
 ///
