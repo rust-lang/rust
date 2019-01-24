@@ -885,7 +885,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
             let val = const_field(
-                self.tcx, self.param_env, instance,
+                self.tcx, self.param_env,
                 variant_opt, field, cv,
             ).expect("field access failed");
             self.const_to_pat(instance, val, id, span)
@@ -928,7 +928,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             },
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
                 let variant_index = const_variant_index(
-                    self.tcx, self.param_env, instance, cv
+                    self.tcx, self.param_env, cv
                 ).expect("const_variant_index failed");
                 let subpatterns = adt_subpatterns(
                     adt_def.variants[variant_index].fields.len(),

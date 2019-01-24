@@ -427,13 +427,24 @@ pub enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
-    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
+    fn variant_index_for_adt<'a>(
+        &self,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
+        adt: &'tcx ty::AdtDef,
+    ) -> VariantIdx {
         match self {
             &Variant(vid) => adt.variant_index_with_id(vid),
             &Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
+            &ConstantValue(c) => {
+                ::const_eval::const_variant_index(
+                    cx.tcx,
+                    cx.param_env,
+                    c,
+                ).unwrap()
+            },
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
         }
     }
@@ -567,7 +578,7 @@ impl<'tcx> Witness<'tcx> {
                             PatternKind::Variant {
                                 adt_def: adt,
                                 substs,
-                                variant_index: ctor.variant_index_for_adt(adt),
+                                variant_index: ctor.variant_index_for_adt(cx, adt),
                                 subpatterns: pats
                             }
                         } else {
@@ -1329,7 +1340,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
+fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> u64 {
     debug!("constructor_arity({:#?}, {:?})", ctor, ty);
     match ty.sty {
         ty::Tuple(ref fs) => fs.len() as u64,
@@ -1340,7 +1351,7 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
         },
         ty::Ref(..) => 1,
         ty::Adt(adt, _) => {
-            adt.variants[ctor.variant_index_for_adt(adt)].fields.len() as u64
+            adt.variants[ctor.variant_index_for_adt(cx, adt)].fields.len() as u64
         }
         _ => 0
     }
@@ -1351,7 +1362,7 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
 ///
 /// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
 fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
-                                             ctor: &Constructor,
+                                             ctor: &Constructor<'tcx>,
                                              ty: Ty<'tcx>) -> Vec<Ty<'tcx>>
 {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
@@ -1368,7 +1379,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
                 // Use T as the sub pattern type of Box<T>.
                 vec![substs.type_at(0)]
             } else {
-                adt.variants[ctor.variant_index_for_adt(adt)].fields.iter().map(|field| {
+                adt.variants[ctor.variant_index_for_adt(cx, adt)].fields.iter().map(|field| {
                     let is_visible = adt.is_enum()
                         || field.vis.is_accessible_from(cx.module, cx.tcx);
                     if is_visible {

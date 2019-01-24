@@ -431,8 +431,12 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     let parent_scope = resolver.dummy_parent_scope();
     if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
                                                          &parent_scope, false, false) {
-        if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
-            return Some(def);
+        if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+            // skip proc-macro stubs, they'll cause `get_macro` to crash
+        } else {
+            if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
+                return Some(def);
+            }
         }
     }
     if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {

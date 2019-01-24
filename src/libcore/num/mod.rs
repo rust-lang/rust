@@ -847,13 +847,12 @@ overflow occurred.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "assert_eq!(8", stringify!($SelfT), ".checked_pow(2), Some(64));
 assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);",
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
@@ -966,7 +965,6 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);
@@ -974,7 +972,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
@@ -1297,13 +1295,12 @@ wrapping around at the boundary of the type.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(4), 81);
 assert_eq!(3i8.wrapping_pow(5), -13);
 assert_eq!(3i8.wrapping_pow(6), -39);",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
@@ -1669,12 +1666,11 @@ whether an overflow happened.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(4), (81, false));
 assert_eq!(3i8.overflowing_pow(5), (-13, true));",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
@@ -2789,11 +2785,10 @@ overflow occurred.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".checked_pow(5), Some(32));
 assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
@@ -2893,14 +2888,13 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(4", stringify!($SelfT), ".saturating_pow(3), 64);
 assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT), "::MAX);",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
@@ -3178,11 +3172,10 @@ wrapping around at the boundary of the type.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(5), 243);
 assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
@@ -3497,11 +3490,10 @@ whether an overflow happened.
 Basic usage:
 
 ```
-#![feature(no_panic_pow)]
 ", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(5), (243, false));
 assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
 ```"),
-            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[inline]
             pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;

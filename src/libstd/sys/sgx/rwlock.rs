@@ -1,3 +1,4 @@
+use alloc::{self, Layout};
 use num::NonZeroUsize;
 use slice;
 use str;
@@ -147,6 +148,7 @@ impl RWLock {
         self.__write_unlock(rguard, wguard);
     }
 
+    // only used by __rust_rwlock_unlock below
     #[inline]
     unsafe fn unlock(&self) {
         let rguard = self.readers.lock();
@@ -164,6 +166,7 @@ impl RWLock {
 
 const EINVAL: i32 = 22;
 
+// used by libunwind port
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -190,6 +193,8 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     return 0;
 }
 
+// the following functions are also used by the libunwind port. They're
+// included here to make sure parallel codegen and LTO don't mess things up.
 #[no_mangle]
 pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
     if s < 0 {
@@ -204,6 +209,16 @@ pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
 #[no_mangle]
 pub unsafe extern "C" fn __rust_abort() {
     ::sys::abort_internal();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
+    alloc::alloc(Layout::from_size_align_unchecked(size, align))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
+    alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align))
 }
 
 #[cfg(test)]

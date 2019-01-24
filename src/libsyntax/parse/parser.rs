@@ -2319,8 +2319,24 @@ impl<'a> Parser<'a> {
         let lo = self.span;
 
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
-        let (fieldname, expr, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
+        let (fieldname, expr, is_shorthand) = if self.look_ahead(1, |t| {
+            t == &token::Colon || t == &token::Eq
+        }) {
             let fieldname = self.parse_field_name()?;
+
+            // Check for an equals token. This means the source incorrectly attempts to
+            // initialize a field with an eq rather than a colon.
+            if self.token == token::Eq {
+                self.diagnostic()
+                    .struct_span_err(self.span, "expected `:`, found `=`")
+                    .span_suggestion_with_applicability(
+                        fieldname.span.shrink_to_hi().to(self.span),
+                        "replace equals symbol with a colon",
+                        ":".to_string(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            }
             self.bump(); // `:`
             (fieldname, self.parse_expr()?, false)
         } else {

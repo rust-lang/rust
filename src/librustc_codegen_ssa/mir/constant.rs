@@ -59,7 +59,6 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let field = const_field(
                         bx.tcx(),
                         ty::ParamEnv::reveal_all(),
-                        self.instance,
                         None,
                         mir::Field::new(field as usize),
                         c,

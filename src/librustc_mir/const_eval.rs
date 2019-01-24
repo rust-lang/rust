@@ -10,11 +10,10 @@ use rustc::hir::{self, def_id::DefId};
 use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
+use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
-use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::ErrorReported;
 
@@ -35,56 +34,6 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-/// Warning: do not use this function if you expect to start interpreting the given `Mir`.
-/// The `EvalContext` is only meant to be used to query values from constants and statics.
-///
-/// This function is used during const propagation. We cannot use `mk_eval_cx`, because copy
-/// propagation happens *during* the computation of the MIR of the current function. So if we
-/// tried to call the `optimized_mir` query, we'd get a cycle error because we are (transitively)
-/// inside the `optimized_mir` query of the `Instance` given.
-///
-/// Since we are looking at the MIR of the function in an abstract manner, we don't have a
-/// `ParamEnv` available to us. This function creates a `ParamEnv` for the given instance.
-pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
-    mir: &'mir mir::Mir<'tcx>,
-    span: Span,
-) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
-    debug!("mk_borrowck_eval_cx: {:?}", instance);
-    let param_env = tcx.param_env(instance.def_id());
-    mk_eval_cx_inner(tcx, instance, mir, span, param_env)
-}
-
-/// This is just a helper function to reduce code duplication between `mk_borrowck_eval_cx` and
-/// `mk_eval_cx`. Do not call this function directly.
-fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
-    mir: &'mir mir::Mir<'tcx>,
-    span: Span,
-    param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    // Insert a stack frame so any queries have the correct substs.
-    // We also avoid all the extra work performed by push_stack_frame,
-    // like initializing local variables
-    ecx.stack.push(interpret::Frame {
-        block: mir::START_BLOCK,
-        locals: IndexVec::new(),
-        local_layouts: IndexVec::new(),
-        instance,
-        span,
-        mir,
-        return_place: None,
-        return_to_block: StackPopCleanup::Goto(None), // never pop
-        stmt: 0,
-        extra: (),
-    });
-    Ok(ecx)
-}
-
-/// Warning: do not use this function if you expect to start interpreting the given `Mir`.
 /// The `EvalContext` is only meant to be used to do field and index projections into constants for
 /// `simd_shuffle` and const patterns in match arms.
 ///
@@ -92,15 +41,13 @@ fn mk_eval_cx_inner<'a, 'mir, 'tcx>(
 /// that inform us about the generic bounds of the constant. E.g. using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-fn mk_eval_cx<'a, 'tcx>(
+pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
+    span: Span,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'tcx, 'tcx>> {
-    debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
-    let span = tcx.def_span(instance.def_id());
-    let mir = tcx.optimized_mir(instance.def.def_id());
-    mk_eval_cx_inner(tcx, instance, mir, span, param_env)
+) -> CompileTimeEvalContext<'a, 'mir, 'tcx> {
+    debug!("mk_eval_cx: {:?}", param_env);
+    EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
 }
 
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
@@ -109,7 +56,8 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
-    let mut ecx = mk_borrowck_eval_cx(tcx, cid.instance, mir, DUMMY_SP).unwrap();
+    let span = tcx.def_span(cid.instance.def_id());
+    let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
@@ -530,13 +478,12 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    instance: ty::Instance<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    trace!("const_field: {:?}, {:?}, {:?}", instance, field, value);
-    let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
+    trace!("const_field: {:?}, {:?}", field, value);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
         // get the operand again
         let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
@@ -561,11 +508,10 @@ pub fn const_field<'a, 'tcx>(
 pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    instance: ty::Instance<'tcx>,
     val: ty::Const<'tcx>,
 ) -> EvalResult<'tcx, VariantIdx> {
-    trace!("const_variant_index: {:?}, {:?}", instance, val);
-    let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
+    trace!("const_variant_index: {:?}", val);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
@@ -585,7 +531,7 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
+    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
         let op = ecx.raw_const_to_mplace(constant)?.into();
         // FIXME: Once the visitor infrastructure landed, change validation to
