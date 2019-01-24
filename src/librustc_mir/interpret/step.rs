@@ -248,7 +248,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let ty = self.monomorphize(ty, self.substs());
+                let ty = self.monomorphize(ty)?;
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
@@ -260,7 +260,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Cast(kind, ref operand, cast_ty) => {
-                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest.layout.ty);
+                debug_assert_eq!(self.monomorphize(cast_ty)?, dest.layout.ty);
                 let src = self.eval_operand(operand, None)?;
                 self.cast(src, kind, dest)?;
             }
