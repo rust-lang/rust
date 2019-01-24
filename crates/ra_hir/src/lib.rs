@@ -52,7 +52,7 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    ids::{HirFileId, DefId, DefLoc, MacroCallId, MacroCallLoc, HirInterner},
+    ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
     macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{ItemMap, PerNs, Namespace, Resolution},
     ty::{Ty, AdtDef},

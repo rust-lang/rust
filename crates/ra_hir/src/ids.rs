@@ -8,13 +8,12 @@ use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
-    HirDatabase, Def,
+    HirDatabase,
     Module,
 };
 
 #[derive(Debug, Default)]
 pub struct HirInterner {
-    defs: LocationIntener<DefLoc, DefId>,
     macros: LocationIntener<MacroCallLoc, MacroCallId>,
     fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
     structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
@@ -28,7 +27,15 @@ pub struct HirInterner {
 
 impl HirInterner {
     pub fn len(&self) -> usize {
-        self.defs.len() + self.macros.len()
+        self.macros.len()
+            + self.fns.len()
+            + self.structs.len()
+            + self.enums.len()
+            + self.enum_variants.len()
+            + self.consts.len()
+            + self.statics.len()
+            + self.traits.len()
+            + self.types.len()
     }
 }
 
@@ -296,33 +303,6 @@ impl_arena_id!(TypeId);
 impl AstItemDef<ast::TypeDef> for TypeId {
     fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TypeDef>, Self> {
         &interner.types
-    }
-}
-
-/// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
-/// in a specific module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DefId(RawId);
-impl_arena_id!(DefId);
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DefLoc {
-    pub(crate) kind: DefKind,
-    pub(crate) module: Module,
-    pub(crate) source_item_id: SourceItemId,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum DefKind {}
-
-impl DefId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> DefLoc {
-        db.as_ref().defs.id2loc(self)
-    }
-
-    pub fn resolve(self, db: &impl HirDatabase) -> Def {
-        let loc = self.loc(db);
-        match loc.kind {}
     }
 }
 
