@@ -939,7 +939,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
-                if for_search_index && line.starts_with("var r_") {
+                if for_search_index && line.starts_with("var R") {
                     variables.push(line.clone());
                     // We need to check if the crate name has been put into a variable as well.
                     let tokens = js::simple_minify(&line).apply(js::clean_tokens);
@@ -1299,8 +1299,9 @@ fn write_minify_replacer<W: Write>(
                               })
                               .apply(|f| {
                                   // We add a backline after the newly created variables.
-                                  minifier::js::aggregate_strings_with_separation(
+                                  minifier::js::aggregate_strings_into_array_with_separation(
                                       f,
+                                      "R",
                                       Token::Char(ReservedChar::Backline),
                                   )
                               })
