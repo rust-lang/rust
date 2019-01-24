@@ -39,6 +39,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
@@ -90,6 +91,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
@@ -135,6 +137,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
@@ -180,6 +183,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
@@ -229,6 +233,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
@@ -274,6 +279,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
@@ -319,6 +325,7 @@ types! {
     /// # extern crate std as real_std;
     /// # #[cfg(not(dox))]
     /// # extern crate core_arch as std;
+    /// # #[cfg(not(dox))]
     /// # #[macro_use(is_x86_feature_detected)]
     /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
