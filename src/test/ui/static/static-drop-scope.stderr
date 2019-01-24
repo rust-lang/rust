@@ -54,7 +54,19 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL |     (x, ()).1
    |     ^^^^^^^ constant functions cannot evaluate destructors
 
-error: aborting due to 8 previous errors
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/static-drop-scope.rs:31:34
+   |
+LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
+   |                                  ^^^^^^^^^^^^^^^^^^^ constants cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/static-drop-scope.rs:36:43
+   |
+LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
+   |                                           ^^^^^^^^^^^ constants cannot evaluate destructors
+
+error: aborting due to 10 previous errors
 
 Some errors occurred: E0493, E0597.
 For more information about an error, try `rustc --explain E0493`.
