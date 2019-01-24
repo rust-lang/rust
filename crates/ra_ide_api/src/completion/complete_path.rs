@@ -26,26 +26,21 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 .add_to(acc);
             }
         }
-
-        hir::ModuleDef::Def(def_id) => match def_id.resolve(ctx.db) {
-            hir::Def::Enum(e) => {
-                e.variants(ctx.db)
-                    .into_iter()
-                    .for_each(|(variant_name, variant)| {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            variant_name.to_string(),
-                        )
-                        .kind(CompletionItemKind::EnumVariant)
-                        .set_documentation(variant.docs(ctx.db))
-                        .add_to(acc)
-                    });
-            }
-            _ => return,
-        },
-
-        hir::ModuleDef::Function(_) => return,
+        hir::ModuleDef::Enum(e) => {
+            e.variants(ctx.db)
+                .into_iter()
+                .for_each(|(variant_name, variant)| {
+                    CompletionItem::new(
+                        CompletionKind::Reference,
+                        ctx.source_range(),
+                        variant_name.to_string(),
+                    )
+                    .kind(CompletionItemKind::EnumVariant)
+                    .set_documentation(variant.docs(ctx.db))
+                    .add_to(acc)
+                });
+        }
+        hir::ModuleDef::Function(_) | hir::ModuleDef::Struct(_) | hir::ModuleDef::Def(_) => return,
     };
 }
 
