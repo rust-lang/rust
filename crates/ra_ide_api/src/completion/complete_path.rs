@@ -44,6 +44,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             }
             _ => return,
         },
+
+        hir::ModuleDef::Function(_) => return,
     };
 }
 

@@ -96,6 +96,11 @@ impl NavigationTarget {
         NavigationTarget::from_module(db, module)
     }
 
+    pub(crate) fn from_function(db: &RootDatabase, func: hir::Function) -> NavigationTarget {
+        let (file_id, fn_def) = func.source(db);
+        NavigationTarget::from_named(file_id.original_file(db), &*fn_def)
+    }
+
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
     pub(crate) fn from_def(
         db: &RootDatabase,
@@ -105,6 +110,9 @@ impl NavigationTarget {
             hir::ModuleDef::Def(def_id) => def_id.resolve(db),
             hir::ModuleDef::Module(module) => {
                 return Some(NavigationTarget::from_module(db, module));
+            }
+            hir::ModuleDef::Function(func) => {
+                return Some(NavigationTarget::from_function(db, func));
             }
         };
 
@@ -119,10 +127,6 @@ impl NavigationTarget {
             }
             Def::EnumVariant(ev) => {
                 let (file_id, node) = ev.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
-            }
-            Def::Function(f) => {
-                let (file_id, node) = f.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
             Def::Trait(f) => {

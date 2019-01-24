@@ -219,6 +219,7 @@ impl Builder {
         };
         let (kind, docs) = match def {
             hir::ModuleDef::Module(_) => (CompletionItemKind::Module, None),
+            hir::ModuleDef::Function(func) => return self.from_function(ctx, func),
             hir::ModuleDef::Def(def_id) => match def_id.resolve(ctx.db) {
                 hir::Def::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
                 hir::Def::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
@@ -226,7 +227,6 @@ impl Builder {
                 hir::Def::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
                 hir::Def::Const(it) => (CompletionItemKind::Const, it.docs(ctx.db)),
                 hir::Def::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
-                hir::Def::Function(function) => return self.from_function(ctx, function),
                 _ => return self,
             },
         };
