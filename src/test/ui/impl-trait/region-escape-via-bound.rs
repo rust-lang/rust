@@ -1,5 +1,7 @@
-// Test that we do not allow the region `'x` to escape in the impl
-// trait **even though** `'y` escapes, which outlives `'x`.
+// run-pass
+//
+// Test that we allow the region `'x` to escape in the impl
+// because 'y` escapes, which outlives `'x`.
 //
 // See https://github.com/rust-lang/rust/issues/46541 for more details.
 
@@ -14,7 +16,8 @@ trait Trait<'a> { }
 impl Trait<'b> for Cell<&'a u32> { }
 
 fn foo(x: Cell<&'x u32>) -> impl Trait<'y>
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds [E0700]
+    // ^ hidden type for `impl Trait` captures lifetime that does not appear in bounds
+    // because it outlives the lifetime that *does* appear in the bounds, `'y`
 where 'x: 'y
 {
     x

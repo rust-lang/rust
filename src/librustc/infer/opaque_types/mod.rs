@@ -449,13 +449,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
         let definition_ty =
-            instantiated_ty.fold_with(&mut ReverseMapper::new(
-                self.tcx,
-                self.is_tainted_by_errors(),
-                def_id,
-                map,
-                instantiated_ty,
-            ));
+            instantiated_ty.fold_with(&mut ReverseMapper { tcx: self.tcx, map });
+
         debug!(
             "infer_opaque_definition_from_instantiation: definition_ty={:?}",
             definition_ty
@@ -472,49 +467,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 struct ReverseMapper<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-
-    /// If errors have already been reported in this fn, we suppress
-    /// our own errors because they are sometimes derivative.
-    tainted_by_errors: bool,
-
-    opaque_type_def_id: DefId,
     map: FxHashMap<Kind<'tcx>, Kind<'gcx>>,
-    map_missing_regions_to_empty: bool,
-
-    /// initially `Some`, set to `None` once error has been reported
-    hidden_ty: Option<Ty<'tcx>>,
-}
-
-impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
-    fn new(
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        tainted_by_errors: bool,
-        opaque_type_def_id: DefId,
-        map: FxHashMap<Kind<'tcx>, Kind<'gcx>>,
-        hidden_ty: Ty<'tcx>,
-    ) -> Self {
-        Self {
-            tcx,
-            tainted_by_errors,
-            opaque_type_def_id,
-            map,
-            map_missing_regions_to_empty: false,
-            hidden_ty: Some(hidden_ty),
-        }
-    }
-
-    fn fold_kind_mapping_missing_regions_to_empty(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
-        self.map_missing_regions_to_empty = true;
-        let kind = kind.fold_with(self);
-        self.map_missing_regions_to_empty = false;
-        kind
-    }
-
-    fn fold_kind_normally(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
-        kind.fold_with(self)
-    }
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> {
@@ -542,89 +495,33 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
             Some(UnpackedKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None => {
-                if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
-                    if let Some(hidden_ty) = self.hidden_ty.take() {
-                        let span = self.tcx.def_span(self.opaque_type_def_id);
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            span,
-                            E0700,
-                            "hidden type for `impl Trait` captures lifetime that \
-                             does not appear in bounds",
-                        );
-
-                        // Assuming regionck succeeded, then we must
-                        // be capturing *some* region from the fn
-                        // header, and hence it must be free, so it's
-                        // ok to invoke this fn (which doesn't accept
-                        // all regions, and would ICE if an
-                        // inappropriate region is given). We check
-                        // `is_tainted_by_errors` by errors above, so
-                        // we don't get in here unless regionck
-                        // succeeded. (Note also that if regionck
-                        // failed, then the regions we are attempting
-                        // to map here may well be giving errors
-                        // *because* the constraints were not
-                        // satisfiable.)
-                        self.tcx.note_and_explain_free_region(
-                            &mut err,
-                            &format!("hidden type `{}` captures ", hidden_ty),
-                            r,
-                            ""
-                        );
-
-                        err.emit();
-                    }
-                }
+                // No mapping was found. This means that it is either a
+                // disallowed lifetime, which will be caught by regionck,
+                // a region in a non-upvar closure generic, which is
+                // explicitly allowed (see below for more on this),
+                // or a lifetime that does not explicitly appear in
+                // `impl Trait` bounds but which outlives the lifetimes
+                // or types which *do* appear in the `impl Trait` bounds.
+                //
+                // These lifetimes are explicitly allowed to prevent
+                // the user from having to add dummy references to the
+                // unnamed lifetimes in their `impl Trait` bounds
+                // (e.g. `+ DummyTraitWithALifetimeArg<'a>`). Adding
+                // the lifetimes via `+` doesn't work because the type
+                // doesn't outlive those lifetimes, it just contains them.
+                //
+                // On closures: there is a somewhat subtle (read: hacky)
+                // consideration. The problem is that our closure types
+                // currently include all hte lifetime parameters declared
+                // on the enclosing function, even if they are unused by
+                // the closure itself. We can't readily filter them out,
+                // so we replace them with `empty`. This can't really make
+                // a diference to the rest of hte compiler; those regions
+                // are ignored for the outlives relation, and hence don't
+                // affect trait selection or auto traits, and they are
+                // erased during trans.
                 self.tcx.types.re_empty
             },
-        }
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.sty {
-            ty::Closure(def_id, substs) => {
-                // I am a horrible monster and I pray for death. When
-                // we encounter a closure here, it is always a closure
-                // from within the function that we are currently
-                // type-checking -- one that is now being encapsulated
-                // in an existential abstract type. Ideally, we would
-                // go through the types/lifetimes that it references
-                // and treat them just like we would any other type,
-                // which means we would error out if we find any
-                // reference to a type/region that is not in the
-                // "reverse map".
-                //
-                // **However,** in the case of closures, there is a
-                // somewhat subtle (read: hacky) consideration. The
-                // problem is that our closure types currently include
-                // all the lifetime parameters declared on the
-                // enclosing function, even if they are unused by the
-                // closure itself. We can't readily filter them out,
-                // so here we replace those values with `'empty`. This
-                // can't really make a difference to the rest of the
-                // compiler; those regions are ignored for the
-                // outlives relation, and hence don't affect trait
-                // selection or auto traits, and they are erased
-                // during codegen.
-
-                let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
-                    |(index, &kind)| {
-                        if index < generics.parent_count {
-                            // Accommodate missing regions in the parent kinds...
-                            self.fold_kind_mapping_missing_regions_to_empty(kind)
-                        } else {
-                            // ...but not elsewhere.
-                            self.fold_kind_normally(kind)
-                        }
-                    },
-                ));
-
-                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
-            }
-
-            _ => ty.super_fold_with(self),
         }
     }
 }
