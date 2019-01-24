@@ -1,0 +1,49 @@
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:16:26
+   |
+LL | struct A<T, M: One<A=(), T>> { //~ ERROR type parameters must be declared
+   |                          ^ must be declared prior to associated type bindings
+help: move the type parameter prior to the first associated type binding
+   |
+LL | struct A<T, M: One<T, A=()>> { //~ ERROR type parameters must be declared
+   |                    ^^    --
+
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:21:46
+   |
+LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> { //~ ERROR type parameters must be declared
+   |                                              ^  ^  ^ must be declared prior to associated type bindings
+   |                                              |  |
+   |                                              |  must be declared prior to associated type bindings
+   |                                              must be declared prior to associated type bindings
+help: move the type parameters prior to the first associated type binding
+   |
+LL | struct B<T, U, V, M: Three<T, U, V, A=(), B=(), C=()>> { //~ ERROR type parameters must be declared
+   |                            ^^ ^^ ^^                --
+
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:28:49
+   |
+LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> { //~ ERROR type parameters must be declared
+   |                                                 ^  ^ must be declared prior to associated type bindings
+   |                                                 |
+   |                                                 must be declared prior to associated type bindings
+help: move the type parameters prior to the first associated type binding
+   |
+LL | struct C<T, U, V, M: Three<T, U, V, A=(), B=(), C=()>> { //~ ERROR type parameters must be declared
+   |                               ^^ ^^                --
+
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:35:43
+   |
+LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> { //~ ERROR type parameters must be declared
+   |                                           ^        ^ must be declared prior to associated type bindings
+   |                                           |
+   |                                           must be declared prior to associated type bindings
+help: move the type parameters prior to the first associated type binding
+   |
+LL | struct D<T, U, V, M: Three<T, U, V, A=(), B=(), C=()>> { //~ ERROR type parameters must be declared
+   |                               ^^ ^^          --    --
+
+error: aborting due to 4 previous errors
+
