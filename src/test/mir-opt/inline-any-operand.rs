@@ -6,14 +6,14 @@ fn main() {
     println!("{}", bar());
 }
 
-#[inline(always)]
-fn foo(x: i32, y: i32) -> bool {
-    x == y
-}
-
 fn bar() -> bool {
     let f = foo;
     f(1, -1)
+}
+
+#[inline(always)]
+fn foo(x: i32, y: i32) -> bool {
+    x == y
 }
 
 // END RUST SOURCE

@@ -98,22 +98,34 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 }
 
-                let callee_mir = match self.tcx.try_optimized_mir(callsite.location.span,
-                                                                  callsite.callee) {
-                    Ok(callee_mir) if self.consider_optimizing(callsite, callee_mir) => {
-                        self.tcx.subst_and_normalize_erasing_regions(
-                            &callsite.substs,
-                            param_env,
-                            callee_mir,
-                        )
-                    }
-                    Ok(_) => continue,
+                let self_node_id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
+                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee);
 
-                    Err(mut bug) => {
-                        // FIXME(#43542) shouldn't have to cancel an error
-                        bug.cancel();
-                        continue
+                let callee_mir = if let Some(callee_node_id) = callee_node_id {
+                    // Avoid a cycle here by only using `optimized_mir` only if we have
+                    // a lower node id than the callee. This ensures that the callee will
+                    // not inline us. This trick only works without incremental compilation.
+                    // So don't do it if that is enabled.
+                    if !self.tcx.dep_graph.is_fully_enabled()
+                        && self_node_id.as_u32() < callee_node_id.as_u32() {
+                        self.tcx.optimized_mir(callsite.callee)
+                    } else {
+                        continue;
                     }
+                } else {
+                    // This cannot result in a cycle since the callee MIR is from another crate
+                    // and is already optimized.
+                    self.tcx.optimized_mir(callsite.callee)
+                };
+
+                let callee_mir = if self.consider_optimizing(callsite, callee_mir) {
+                    self.tcx.subst_and_normalize_erasing_regions(
+                        &callsite.substs,
+                        param_env,
+                        callee_mir,
+                    )
+                } else {
+                    continue;
                 };
 
                 let start = caller_mir.basic_blocks().len();

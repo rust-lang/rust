@@ -73,30 +73,12 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     /// Awaits for the query job to complete.
-    ///
-    /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
-    /// query that means that there is a query cycle, thus this always running a cycle error.
-    #[cfg(not(parallel_compiler))]
-    #[inline(never)]
-    #[cold]
-    pub(super) fn cycle_error<'lcx, 'a, D: QueryDescription<'tcx>>(
-        &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
-        span: Span,
-    ) -> TryGetJob<'a, 'tcx, D> {
-        TryGetJob::JobCompleted(Err(Box::new(self.find_cycle_in_stack(tcx, span))))
-    }
-
-    /// Awaits for the query job to complete.
-    ///
-    /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
-    /// query that means that there is a query cycle, thus this always running a cycle error.
     #[cfg(parallel_compiler)]
     pub(super) fn r#await<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
-    ) -> Result<(), Box<CycleError<'tcx>>> {
+    ) -> Result<(), CycleError<'tcx>> {
         tls::with_related_context(tcx, move |icx| {
             let mut waiter = Lrc::new(QueryWaiter {
                 query: icx.query.clone(),
@@ -111,13 +93,13 @@ impl<'tcx> QueryJob<'tcx> {
             let mut cycle = waiter.cycle.lock();
             match cycle.take() {
                 None => Ok(()),
-                Some(cycle) => Err(Box::new(cycle))
+                Some(cycle) => Err(cycle)
             }
         })
     }
 
     #[cfg(not(parallel_compiler))]
-    fn find_cycle_in_stack<'lcx>(
+    pub(super) fn find_cycle_in_stack<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
