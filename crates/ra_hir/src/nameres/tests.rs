@@ -216,6 +216,27 @@ fn item_map_using_self() {
 }
 
 #[test]
+fn item_map_enum_importing() {
+    covers!(item_map_enum_importing);
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        enum E { V }
+        use self::E::V;
+        <|>
+        ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+        E: t
+        V: t v
+        ",
+    );
+}
+
+#[test]
 fn item_map_across_crates() {
     let (mut db, sr) = MockDatabase::with_files(
         "
