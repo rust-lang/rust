@@ -938,6 +938,13 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                       is just used for rustc unit tests \
                                       and will never be stable",
                                      cfg_fn!(rustc_attrs))),
+    ("rustc_layout", Normal, template!(List: "field1, field2, ..."),
+     Gated(Stability::Unstable,
+           "rustc_attrs",
+           "the `#[rustc_layout]` attribute \
+            is just used for rustc unit tests \
+            and will never be stable",
+           cfg_fn!(rustc_attrs))),
     ("rustc_regions", Normal, template!(Word), Gated(Stability::Unstable,
                                     "rustc_attrs",
                                     "the `#[rustc_regions]` attribute \
