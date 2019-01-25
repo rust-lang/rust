@@ -11,7 +11,7 @@ use crate::{
     db::HirDatabase,
     expr::BodySyntaxMapping,
     ty::{InferenceResult, VariantDef},
-    adt::{VariantData, EnumVariantId},
+    adt::{EnumVariantId, StructFieldId},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
@@ -177,19 +177,25 @@ impl Module {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructField {
     parent: VariantDef,
-    name: Name,
+    pub(crate) id: StructFieldId,
 }
 
 impl StructField {
-    pub fn name(&self) -> &Name {
-        &self.name
+    pub fn name(&self, db: &impl HirDatabase) -> Name {
+        self.parent.variant_data(db).fields().unwrap()[self.id]
+            .name
+            .clone()
     }
 
-    pub fn ty(&self, db: &impl HirDatabase) -> Option<Ty> {
-        db.type_for_field(self.parent, self.name.clone())
+    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
+        db.type_for_field(*self)
+    }
+
+    pub fn parent_def(&self, _db: &impl HirDatabase) -> VariantDef {
+        self.parent
     }
 }
 
@@ -215,12 +221,26 @@ impl Struct {
         db.struct_data(*self)
             .variant_data
             .fields()
-            .iter()
-            .map(|it| StructField {
+            .into_iter()
+            .flat_map(|it| it.iter())
+            .map(|(id, _)| StructField {
                 parent: (*self).into(),
-                name: it.name.clone(),
+                id,
             })
             .collect()
+    }
+
+    pub fn field(&self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        db.struct_data(*self)
+            .variant_data
+            .fields()
+            .into_iter()
+            .flat_map(|it| it.iter())
+            .find(|(_id, data)| data.name == *name)
+            .map(|(id, _)| StructField {
+                parent: (*self).into(),
+                id,
+            })
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
@@ -300,21 +320,28 @@ impl EnumVariant {
         db.enum_data(self.parent).variants[self.id].name.clone()
     }
 
-    pub fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
-        db.enum_data(self.parent).variants[self.id]
-            .variant_data
-            .clone()
-    }
-
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
         self.variant_data(db)
             .fields()
-            .iter()
-            .map(|it| StructField {
+            .into_iter()
+            .flat_map(|it| it.iter())
+            .map(|(id, _)| StructField {
                 parent: (*self).into(),
-                name: it.name.clone(),
+                id,
             })
             .collect()
+    }
+
+    pub fn field(&self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        self.variant_data(db)
+            .fields()
+            .into_iter()
+            .flat_map(|it| it.iter())
+            .find(|(_id, data)| data.name == *name)
+            .map(|(id, _)| StructField {
+                parent: (*self).into(),
+                id,
+            })
     }
 }
 

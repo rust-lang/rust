@@ -38,6 +38,7 @@ use crate::{
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
     generics::GenericParams,
     path::GenericArg,
+    adt::VariantData,
 };
 
 /// The ID of a type variable.
@@ -702,19 +703,30 @@ pub enum VariantDef {
 }
 impl_froms!(VariantDef: Struct, EnumVariant);
 
-pub(super) fn type_for_field(db: &impl HirDatabase, def: VariantDef, field: Name) -> Option<Ty> {
-    let (variant_data, generics, module) = match def {
-        VariantDef::Struct(s) => (s.variant_data(db), s.generic_params(db), s.module(db)),
-        VariantDef::EnumVariant(var) => (
-            var.variant_data(db),
-            var.parent_enum(db).generic_params(db),
-            var.module(db),
-        ),
+impl VariantDef {
+    pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        match self {
+            VariantDef::Struct(it) => it.field(db, name),
+            VariantDef::EnumVariant(it) => it.field(db, name),
+        }
+    }
+    pub(crate) fn variant_data(self, db: &impl HirDatabase) -> Arc<VariantData> {
+        match self {
+            VariantDef::Struct(it) => it.variant_data(db),
+            VariantDef::EnumVariant(it) => it.variant_data(db),
+        }
+    }
+}
+
+pub(super) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
+    let parent_def = field.parent_def(db);
+    let (generics, module) = match parent_def {
+        VariantDef::Struct(it) => (it.generic_params(db), it.module(db)),
+        VariantDef::EnumVariant(it) => (it.parent_enum(db).generic_params(db), it.module(db)),
     };
-    // We can't have an impl block ere, right?
-    // let impl_block = def_id.impl_block(db);
-    let type_ref = variant_data.get_field_type_ref(&field)?;
-    Some(Ty::from_hir(db, &module, None, &generics, &type_ref))
+    let var_data = parent_def.variant_data(db);
+    let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
+    Ty::from_hir(db, &module, None, &generics, type_ref)
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
@@ -1122,39 +1134,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
-    fn resolve_fields(&mut self, path: Option<&Path>) -> Option<(Ty, Vec<StructField>)> {
-        let (ty, def) = self.resolve_variant(path);
-        match def? {
-            VariantDef::Struct(s) => {
-                let fields = s.fields(self.db);
-                Some((ty, fields))
-            }
-            VariantDef::EnumVariant(var) => {
-                let fields = var.fields(self.db);
-                Some((ty, fields))
-            }
-        }
-    }
-
     fn infer_tuple_struct_pat(
         &mut self,
         path: Option<&Path>,
         subpats: &[PatId],
         expected: &Ty,
     ) -> Ty {
-        let (ty, fields) = self
-            .resolve_fields(path)
-            .unwrap_or((Ty::Unknown, Vec::new()));
+        let (ty, def) = self.resolve_variant(path);
 
         self.unify(&ty, expected);
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
         for (i, &subpat) in subpats.iter().enumerate() {
-            let expected_ty = fields
-                .get(i)
-                .and_then(|field| field.ty(self.db))
-                .unwrap_or(Ty::Unknown)
+            let expected_ty = def
+                .and_then(|d| d.field(self.db, &Name::tuple_field_name(i)))
+                .map_or(Ty::Unknown, |field| field.ty(self.db))
                 .subst(&substs);
             self.infer_pat(subpat, &expected_ty);
         }
@@ -1163,19 +1158,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_struct_pat(&mut self, path: Option<&Path>, subpats: &[FieldPat], expected: &Ty) -> Ty {
-        let (ty, fields) = self
-            .resolve_fields(path)
-            .unwrap_or((Ty::Unknown, Vec::new()));
+        let (ty, def) = self.resolve_variant(path);
 
         self.unify(&ty, expected);
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
         for subpat in subpats {
-            let matching_field = fields.iter().find(|field| field.name() == &subpat.name);
+            let matching_field = def.and_then(|it| it.field(self.db, &subpat.name));
             let expected_ty = matching_field
-                .and_then(|field| field.ty(self.db))
-                .unwrap_or(Ty::Unknown)
+                .map_or(Ty::Unknown, |field| field.ty(self.db))
                 .subst(&substs);
             self.infer_pat(subpat.pat, &expected_ty);
         }
@@ -1420,14 +1412,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 for field in fields {
-                    let field_ty = if let Some(def_id) = def_id {
-                        self.db
-                            .type_for_field(def_id.into(), field.name.clone())
-                            .unwrap_or(Ty::Unknown)
-                            .subst(&substs)
-                    } else {
-                        Ty::Unknown
-                    };
+                    let field_ty = def_id
+                        .and_then(|it| it.field(self.db, &field.name))
+                        .map_or(Ty::Unknown, |field| field.ty(self.db))
+                        .subst(&substs);
                     self.infer_expr(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
@@ -1440,7 +1428,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = receiver_ty
                     .autoderef(self.db)
                     .find_map(|derefed_ty| match derefed_ty {
-                        // this is more complicated than necessary because type_for_field is cancelable
                         Ty::Tuple(fields) => {
                             let i = name.to_string().parse::<usize>().ok();
                             i.and_then(|i| fields.get(i).cloned())
@@ -1449,10 +1436,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             def_id: AdtDef::Struct(s),
                             ref substs,
                             ..
-                        } => self
-                            .db
-                            .type_for_field(s.into(), name.clone())
-                            .map(|ty| ty.subst(substs)),
+                        } => s
+                            .field(self.db, name)
+                            .map(|field| field.ty(self.db).subst(substs)),
                         _ => None,
                     })
                     .unwrap_or(Ty::Unknown);
