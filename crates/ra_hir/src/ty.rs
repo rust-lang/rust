@@ -790,7 +790,10 @@ fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match rhs_ty {
-            Ty::Int(..) | Ty::Float(..) => rhs_ty,
+            Ty::Int(..)
+            | Ty::Float(..)
+            | Ty::Infer(InferTy::IntVar(..))
+            | Ty::Infer(InferTy::FloatVar(..)) => rhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::RangeRightOpen | BinaryOp::RangeRightClosed => Ty::Unknown,
