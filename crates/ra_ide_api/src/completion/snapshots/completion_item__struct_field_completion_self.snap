@@ -1,5 +1,5 @@
 ---
-created: "2019-01-23T13:19:23.501297515+00:00"
+created: "2019-01-25T19:27:09.519688600+00:00"
 creator: insta@0.5.2
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
@@ -14,11 +14,15 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
         detail: Some(
             "(u32,)"
         ),
-        documentation: None,
+        documentation: Some(
+            Documentation(
+                "This is the_field"
+            )
+        ),
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [121; 121),
+        source_range: [187; 187),
         text_edit: None
     },
     CompletionItem {
@@ -36,7 +40,7 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
             "foo()$0"
         ),
         insert_text_format: Snippet,
-        source_range: [121; 121),
+        source_range: [187; 187),
         text_edit: None
     }
 ]

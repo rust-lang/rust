@@ -268,7 +268,7 @@ Grammar(
             ]
         ),
         "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
-        "NamedFieldDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner"], options: ["TypeRef"] ),
+        "NamedFieldDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner"], options: ["TypeRef"] ),
         "PosFieldList": (collections: [["fields", "PosField"]]),
         "PosField": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
