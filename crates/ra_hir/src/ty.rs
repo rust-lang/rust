@@ -185,7 +185,7 @@ pub enum Ty {
 
     /// Structures, enumerations and unions.
     Adt {
-        /// The DefId of the struct/enum.
+        /// The definition of the struct/enum.
         def_id: AdtDef,
         /// The name, for displaying.
         name: Name,
@@ -219,7 +219,14 @@ pub enum Ty {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(Function, Substs),
+    FnDef {
+        // Function definition
+        def: Function,
+        /// For display
+        name: Name,
+        /// Substitutions for the generic parameters of the type
+        substs: Substs
+    },
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -497,7 +504,7 @@ impl Ty {
                 }
                 sig_mut.output.walk_mut(f);
             }
-            Ty::FnDef(_, substs) | Ty::Adt { substs, .. } => {
+            Ty::FnDef { substs, .. } | Ty::Adt { substs, .. } => {
                 // Without an Arc::make_mut_slice, we can't avoid the clone here:
                 let mut v: Vec<_> = substs.0.iter().cloned().collect();
                 for t in &mut v {
@@ -536,7 +543,11 @@ impl Ty {
                 name,
                 substs,
             },
-            Ty::FnDef(func, _) => Ty::FnDef(func, substs),
+            Ty::FnDef { def, name, .. } => Ty::FnDef {
+                def,
+                name,
+                substs,
+            },
             _ => self,
         }
     }
@@ -592,13 +603,25 @@ impl fmt::Display for Ty {
                         .to_fmt(f)
                 }
             }
-            Ty::FnDef(_func, _substs) => write!(f, "FNDEF-IMPLEMENT-ME"),
             Ty::FnPtr(sig) => {
                 join(sig.input.iter())
                     .surround_with("fn(", ")")
                     .separator(", ")
                     .to_fmt(f)?;
                 write!(f, " -> {}", sig.output)
+            }
+            Ty::FnDef { name, substs, .. } => {
+                // don't have access to the param types here :-(
+                // we could store them in the def, but not sure if it
+                // is worth it
+                write!(f, "fn {}", name)?;
+                if substs.0.len() > 0 {
+                    join(substs.0.iter())
+                        .surround_with("<", ">")
+                        .separator(", ")
+                        .to_fmt(f)?;
+                }
+                Ok(())
             }
             Ty::Adt { name, substs, .. } => {
                 write!(f, "{}", name)?;
@@ -624,7 +647,12 @@ impl fmt::Display for Ty {
 fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
     let generics = f.generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef(f.into(), substs)
+    let name = f.name(db);
+    Ty::FnDef {
+        def: f.into(),
+        name,
+        substs
+    }
 }
 
 fn get_func_sig(db: &impl HirDatabase, f: Function) -> FnSig {
@@ -1355,16 +1383,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             Expr::Call { callee, args } => {
+                // TODO: we should use turbofish hints like this:
+                // f::<u32>(x)
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 // FIXME: so manu unnecessary clones
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
-                    Ty::FnDef(func, substs) => {
-                        let fn_sig = func.signature(self.db);
+                    Ty::FnDef { def, substs, .. } => {
+                        let fn_sig = def.signature(self.db);
                         // TODO: get input and return types from the fn_sig.
                         // it contains typerefs which we can make into proper tys
 
-                        let sig = get_func_sig(self.db, *func);
+                        let sig = get_func_sig(self.db, *def);
                         (
                             sig.input
                                 .iter()
@@ -1405,16 +1435,41 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
                         if sig.input.len() > 0 {
-                            (&sig.input[0], &sig.input[1..], sig.output.clone())
+                            (sig.input[0].clone(), sig.input[1..].iter().cloned().collect(), sig.output.clone())
                         } else {
-                            (&Ty::Unknown, &[][..], sig.output.clone())
+                            (Ty::Unknown, Vec::new(), sig.output.clone())
                         }
                     }
-                    _ => (&Ty::Unknown, &[][..], Ty::Unknown),
+                    Ty::FnDef { def, substs, .. } => {
+                        // TODO: fix deduplication with Expr::Call block above
+                        // TODO: fix the ridiculous number of clones
+                        let fn_sig = def.signature(self.db);
+                        // TODO: get input and return types from the fn_sig.
+                        // it contains typerefs which we can make into proper tys
+
+                        // check that len > 0
+                        let sig = get_func_sig(self.db, *def);
+                        if sig.input.len() > 0 {
+                            (
+                                sig.input[0].clone().subst(&substs),
+                                sig.input[1..]
+                                    .iter()
+                                    .map(|ty| ty.clone().subst(&substs))
+                                    .collect(),
+                                sig.output.clone().subst(&substs),
+                            )
+                        } else {
+                            (Ty::Unknown, Vec::new(), sig.output.clone())
+                        }
+                    }
+                    _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
                 };
                 // TODO we would have to apply the autoderef/autoref steps here
                 // to get the correct receiver type to unify...
-                self.unify(expected_receiver_ty, &receiver_ty);
+                // 
+                // TODO: zip param_tys.chain(iter::repeat(Ty::Unknown)) above then its not so bad
+                // that we clone
+                self.unify(&expected_receiver_ty, &receiver_ty);
                 for (i, arg) in args.iter().enumerate() {
                     self.infer_expr(
                         *arg,

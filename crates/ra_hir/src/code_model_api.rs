@@ -424,6 +424,10 @@ impl Function {
         self.id.module(db)
     }
 
+    pub fn name(&self, db: &impl HirDatabase) -> Name {
+        self.signature(db).name.clone()
+    }
+
     pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
         db.body_syntax_mapping(*self)
     }
