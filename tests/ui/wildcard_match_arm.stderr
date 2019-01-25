@@ -1,0 +1,15 @@
+error: wildcard match will miss any future added variants.
+  --> $DIR/wildcard_match_arm.rs:26:3
+   |
+LL |         _ => eprintln!("Not red"),
+   |         ^
+   |
+note: lint level defined here
+  --> $DIR/wildcard_match_arm.rs:1:9
+   |
+LL | #![deny(clippy::wildcard_match_arm)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: to resolve, match each variant explicitly
+
+error: aborting due to previous error
+
