@@ -732,8 +732,10 @@ pub(super) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
-    /// For each method call expr, record the function it resolved to.
+    /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, Function>,
+    /// For each field access expr, records the field it resolves to.
+    field_resolutions: FxHashMap<ExprId, StructField>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
 }
@@ -770,6 +772,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     impl_block: Option<ImplBlock>,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
     method_resolutions: FxHashMap<ExprId, Function>,
+    field_resolutions: FxHashMap<ExprId, StructField>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
@@ -861,6 +864,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     ) -> Self {
         InferenceContext {
             method_resolutions: FxHashMap::default(),
+            field_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
@@ -886,6 +890,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
         InferenceResult {
             method_resolutions: mem::replace(&mut self.method_resolutions, Default::default()),
+            field_resolutions: mem::replace(&mut self.field_resolutions, Default::default()),
             type_of_expr: expr_types,
             type_of_pat: pat_types,
         }
@@ -897,6 +902,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn write_method_resolution(&mut self, expr: ExprId, func: Function) {
         self.method_resolutions.insert(expr, func);
+    }
+
+    fn write_field_resolution(&mut self, expr: ExprId, field: StructField) {
+        self.field_resolutions.insert(expr, field);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
@@ -1251,9 +1260,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    fn infer_expr(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
+    fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        let ty = match &body[expr] {
+        let ty = match &body[tgt_expr] {
             Expr::Missing => Ty::Unknown,
             Expr::If {
                 condition,
@@ -1344,7 +1353,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
                 let method_ty = match resolved {
                     Some(func) => {
-                        self.write_method_resolution(expr, func);
+                        self.write_method_resolution(tgt_expr, func);
                         self.db.type_for_def(func.into())
                     }
                     None => Ty::Unknown,
@@ -1389,7 +1398,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 expected.ty
             }
-            Expr::Path(p) => self.infer_path_expr(expr, p).unwrap_or(Ty::Unknown),
+            Expr::Path(p) => self.infer_path_expr(tgt_expr, p).unwrap_or(Ty::Unknown),
             Expr::Continue => Ty::Never,
             Expr::Break { expr } => {
                 if let Some(expr) = expr {
@@ -1436,9 +1445,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             def_id: AdtDef::Struct(s),
                             ref substs,
                             ..
-                        } => s
-                            .field(self.db, name)
-                            .map(|field| field.ty(self.db).subst(substs)),
+                        } => s.field(self.db, name).map(|field| {
+                            self.write_field_resolution(tgt_expr, field);
+                            field.ty(self.db).subst(substs)
+                        }),
                         _ => None,
                     })
                     .unwrap_or(Ty::Unknown);
@@ -1545,7 +1555,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty = self.insert_type_vars_shallow(ty);
         self.unify(&ty, &expected.ty);
         let ty = self.resolve_ty_as_possible(ty);
-        self.write_expr_ty(expr, ty.clone());
+        self.write_expr_ty(tgt_expr, ty.clone());
         ty
     }
 
