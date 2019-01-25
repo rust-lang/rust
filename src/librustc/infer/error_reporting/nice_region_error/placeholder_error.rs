@@ -270,6 +270,21 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             self_ty_has_vid
         );
 
+        // The weird thing here with the `maybe_highlighting_region` calls and the
+        // the match inside is meant to be like this:
+        //
+        // - The match checks whether the given things (placeholders, etc) appear
+        //   in the types are about to print
+        // - Meanwhile, the `maybe_highlighting_region` calls set up
+        //   highlights so that, if they do appear, we will replace
+        //   them `'0` and whatever.  (This replacement takes place
+        //   inside the closure given to `maybe_highlighting_region`.)
+        //
+        // There is some duplication between the calls -- i.e., the
+        // `maybe_highlighting_region` checks if (e.g.) `has_sub` is
+        // None, an then we check again inside the closure, but this
+        // setup sort of minimized the number of calls and so form.
+
         RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
             RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
                 match (has_sub, has_sup) {
