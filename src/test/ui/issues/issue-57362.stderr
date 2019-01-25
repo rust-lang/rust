@@ -1,0 +1,20 @@
+error: implementation of `Trait` is not general enough
+  --> $DIR/issue-57362.rs:20:7
+   |
+LL |     a.f(); //~ ERROR not general enough
+   |       ^
+   |
+   = note: `Trait` would have to be implemented for the type `fn(&u8)`
+   = note: but `Trait` is actually implemented for the type `for<'r> fn(&'r u8)`
+
+error: implementation of `X` is not general enough
+  --> $DIR/issue-57362.rs:38:13
+   |
+LL |     let x = <fn (&())>::make_g(); //~ ERROR not general enough
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `X` would have to be implemented for the type `for<'r> fn(&'r ())`
+   = note: but `X` is actually implemented for the type `fn(&'0 ())`, for the specific lifetime `'0`
+
+error: aborting due to 2 previous errors
+
