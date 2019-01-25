@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_db::{CrateGraph, SourceRootId, salsa::Database};
+use ra_db::{CrateGraph, SourceRootId, FilesDatabase};
 use relative_path::RelativePath;
 use test_utils::{assert_eq_text, covers};
 
@@ -257,7 +257,7 @@ fn item_map_across_crates() {
         .add_dep(main_crate, "test_crate".into(), lib_crate)
         .unwrap();
 
-    db.set_crate_graph(crate_graph);
+    db.set_crate_graph(Arc::new(crate_graph));
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -309,7 +309,7 @@ fn import_across_source_roots() {
         .add_dep(main_crate, "test_crate".into(), lib_crate)
         .unwrap();
 
-    db.set_crate_graph(crate_graph);
+    db.set_crate_graph(Arc::new(crate_graph));
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -351,7 +351,7 @@ fn reexport_across_crates() {
         .add_dep(main_crate, "test_crate".into(), lib_crate)
         .unwrap();
 
-    db.set_crate_graph(crate_graph);
+    db.set_crate_graph(Arc::new(crate_graph));
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -377,8 +377,7 @@ fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
         });
         assert!(format!("{:?}", events).contains("item_map"))
     }
-    db.query_mut(ra_db::FileTextQuery)
-        .set(pos.file_id, Arc::new(file_change.to_string()));
+    db.set_file_text(pos.file_id, Arc::new(file_change.to_string()));
 
     {
         let events = db.log_executed(|| {

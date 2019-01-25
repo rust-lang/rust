@@ -2,8 +2,7 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId,
-    salsa::{self, Database},
+    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, FilesDatabase,
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -12,6 +11,7 @@ use crate::{db, HirInterner};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
+#[salsa::database(ra_db::FilesDatabase, ra_db::SyntaxDatabase, db::HirDatabase)]
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
@@ -33,8 +33,7 @@ impl MockDatabase {
         let mut db = MockDatabase::default();
         let mut source_root = SourceRoot::default();
         let file_id = db.add_file(WORKSPACE, &mut source_root, "/main.rs", text);
-        db.query_mut(ra_db::SourceRootQuery)
-            .set(WORKSPACE, Arc::new(source_root.clone()));
+        db.set_source_root(WORKSPACE, Arc::new(source_root.clone()));
         (db, source_root, file_id)
     }
 
@@ -42,11 +41,6 @@ impl MockDatabase {
         let (db, _, position) = MockDatabase::from_fixture(fixture);
         let position = position.expect("expected a marker ( <|> )");
         (db, position)
-    }
-
-    pub(crate) fn set_crate_graph(&mut self, crate_graph: CrateGraph) {
-        self.query_mut(ra_db::CrateGraphQuery)
-            .set((), Arc::new(crate_graph));
     }
 
     fn from_fixture(fixture: &str) -> (MockDatabase, SourceRoot, Option<FilePosition>) {
@@ -80,8 +74,7 @@ impl MockDatabase {
                 self.add_file(source_root_id, &mut source_root, &entry.meta, &entry.text);
             }
         }
-        self.query_mut(ra_db::SourceRootQuery)
-            .set(source_root_id, Arc::new(source_root.clone()));
+        self.set_source_root(source_root_id, Arc::new(source_root.clone()));
         (source_root, position)
     }
 
@@ -99,17 +92,15 @@ impl MockDatabase {
         let file_id = FileId(self.file_counter);
         self.file_counter += 1;
         let text = Arc::new(text.to_string());
-        self.query_mut(ra_db::FileTextQuery).set(file_id, text);
-        self.query_mut(ra_db::FileRelativePathQuery)
-            .set(file_id, path.clone());
-        self.query_mut(ra_db::FileSourceRootQuery)
-            .set(file_id, source_root_id);
+        self.set_file_text(file_id, text);
+        self.set_file_relative_path(file_id, path.clone());
+        self.set_file_source_root(file_id, source_root_id);
         source_root.files.insert(path, file_id);
 
         if is_crate_root {
             let mut crate_graph = CrateGraph::default();
             crate_graph.add_crate_root(file_id);
-            self.set_crate_graph(crate_graph);
+            self.set_crate_graph(Arc::new(crate_graph));
         }
         file_id
     }
@@ -148,12 +139,9 @@ impl Default for MockDatabase {
             interner: Default::default(),
             file_counter: 0,
         };
-        db.query_mut(ra_db::CrateGraphQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LocalRootsQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LibraryRootsQuery)
-            .set((), Default::default());
+        db.set_crate_graph(Default::default());
+        db.set_local_roots(Default::default());
+        db.set_library_roots(Default::default());
         db
     }
 }
@@ -181,8 +169,7 @@ impl MockDatabase {
     pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<MockDatabase>> {
         *self.events.lock() = Some(Vec::new());
         f();
-        let events = self.events.lock().take().unwrap();
-        events
+        self.events.lock().take().unwrap()
     }
 
     pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
@@ -192,51 +179,11 @@ impl MockDatabase {
             .filter_map(|e| match e.kind {
                 // This pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
-                salsa::EventKind::WillExecute { descriptor } => Some(format!("{:?}", descriptor)),
+                salsa::EventKind::WillExecute { database_key } => {
+                    Some(format!("{:?}", database_key))
+                }
                 _ => None,
             })
             .collect()
-    }
-}
-
-salsa::database_storage! {
-    pub(crate) struct MockDatabaseStorage for MockDatabase {
-        impl ra_db::FilesDatabase {
-            fn file_text() for ra_db::FileTextQuery;
-            fn file_relative_path() for ra_db::FileRelativePathQuery;
-            fn file_source_root() for ra_db::FileSourceRootQuery;
-            fn source_root() for ra_db::SourceRootQuery;
-            fn source_root_crates() for ra_db::SourceRootCratesQuery;
-            fn local_roots() for ra_db::LocalRootsQuery;
-            fn library_roots() for ra_db::LibraryRootsQuery;
-            fn crate_graph() for ra_db::CrateGraphQuery;
-        }
-        impl ra_db::SyntaxDatabase {
-            fn source_file() for ra_db::SourceFileQuery;
-        }
-        impl db::HirDatabase {
-            fn hir_source_file() for db::HirSourceFileQuery;
-            fn expand_macro_invocation() for db::ExpandMacroInvocationQuery;
-            fn module_tree() for db::ModuleTreeQuery;
-            fn fn_scopes() for db::FnScopesQuery;
-            fn file_items() for db::FileItemsQuery;
-            fn file_item() for db::FileItemQuery;
-            fn lower_module() for db::LowerModuleQuery;
-            fn lower_module_module() for db::LowerModuleModuleQuery;
-            fn lower_module_source_map() for db::LowerModuleSourceMapQuery;
-            fn item_map() for db::ItemMapQuery;
-            fn submodules() for db::SubmodulesQuery;
-            fn infer() for db::InferQuery;
-            fn type_for_def() for db::TypeForDefQuery;
-            fn type_for_field() for db::TypeForFieldQuery;
-            fn struct_data() for db::StructDataQuery;
-            fn enum_data() for db::EnumDataQuery;
-            fn impls_in_module() for db::ImplsInModuleQuery;
-            fn impls_in_crate() for db::ImplsInCrateQuery;
-            fn body_hir() for db::BodyHirQuery;
-            fn body_syntax_mapping() for db::BodySyntaxMappingQuery;
-            fn fn_signature() for db::FnSignatureQuery;
-            fn generic_params() for db::GenericParamsQuery;
-        }
     }
 }
