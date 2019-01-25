@@ -29,8 +29,7 @@ use crate::{
     HirDatabase, Crate,
     Name,
     module_tree::{ModuleId, ModuleTree},
-//FIXME: deglobify
-    nameres::lower::*,
+    nameres::lower::{ImportId, LoweredModule, ImportData},
 };
 
 /// `ItemMap` is the result of name resolution. It contains, for each
