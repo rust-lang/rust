@@ -2,8 +2,7 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId,
-    salsa::{self, Database},
+    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, FilesDatabase,
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -34,8 +33,7 @@ impl MockDatabase {
         let mut db = MockDatabase::default();
         let mut source_root = SourceRoot::default();
         let file_id = db.add_file(WORKSPACE, &mut source_root, "/main.rs", text);
-        db.query_mut(ra_db::SourceRootQuery)
-            .set(WORKSPACE, Arc::new(source_root.clone()));
+        db.set_source_root(WORKSPACE, Arc::new(source_root.clone()));
         (db, source_root, file_id)
     }
 
@@ -43,11 +41,6 @@ impl MockDatabase {
         let (db, _, position) = MockDatabase::from_fixture(fixture);
         let position = position.expect("expected a marker ( <|> )");
         (db, position)
-    }
-
-    pub(crate) fn set_crate_graph(&mut self, crate_graph: CrateGraph) {
-        self.query_mut(ra_db::CrateGraphQuery)
-            .set((), Arc::new(crate_graph));
     }
 
     fn from_fixture(fixture: &str) -> (MockDatabase, SourceRoot, Option<FilePosition>) {
@@ -81,8 +74,7 @@ impl MockDatabase {
                 self.add_file(source_root_id, &mut source_root, &entry.meta, &entry.text);
             }
         }
-        self.query_mut(ra_db::SourceRootQuery)
-            .set(source_root_id, Arc::new(source_root.clone()));
+        self.set_source_root(source_root_id, Arc::new(source_root.clone()));
         (source_root, position)
     }
 
@@ -100,17 +92,15 @@ impl MockDatabase {
         let file_id = FileId(self.file_counter);
         self.file_counter += 1;
         let text = Arc::new(text.to_string());
-        self.query_mut(ra_db::FileTextQuery).set(file_id, text);
-        self.query_mut(ra_db::FileRelativePathQuery)
-            .set(file_id, path.clone());
-        self.query_mut(ra_db::FileSourceRootQuery)
-            .set(file_id, source_root_id);
+        self.set_file_text(file_id, text);
+        self.set_file_relative_path(file_id, path.clone());
+        self.set_file_source_root(file_id, source_root_id);
         source_root.files.insert(path, file_id);
 
         if is_crate_root {
             let mut crate_graph = CrateGraph::default();
             crate_graph.add_crate_root(file_id);
-            self.set_crate_graph(crate_graph);
+            self.set_crate_graph(Arc::new(crate_graph));
         }
         file_id
     }
@@ -149,12 +139,9 @@ impl Default for MockDatabase {
             interner: Default::default(),
             file_counter: 0,
         };
-        db.query_mut(ra_db::CrateGraphQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LocalRootsQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LibraryRootsQuery)
-            .set((), Default::default());
+        db.set_crate_graph(Default::default());
+        db.set_local_roots(Default::default());
+        db.set_library_roots(Default::default());
         db
     }
 }
