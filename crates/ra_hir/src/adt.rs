@@ -11,7 +11,7 @@ use ra_syntax::{
 
 use crate::{
     Name, AsName, Struct, Enum, EnumVariant, Crate,
-    HirDatabase, HirFileId,
+    HirDatabase, HirFileId, StructField, FieldSource,
     type_ref::TypeRef,
 };
 
@@ -150,7 +150,7 @@ impl VariantData {
 impl VariantData {
     fn new(flavor: StructFlavor) -> Self {
         let inner = match flavor {
-            StructFlavor::Tuple(fl) => {
+            ast::StructFlavor::Tuple(fl) => {
                 let fields = fl
                     .fields()
                     .enumerate()
@@ -161,7 +161,7 @@ impl VariantData {
                     .collect();
                 VariantDataInner::Tuple(fields)
             }
-            StructFlavor::Named(fl) => {
+            ast::StructFlavor::Named(fl) => {
                 let fields = fl
                     .fields()
                     .map(|fd| StructFieldData {
@@ -171,8 +171,70 @@ impl VariantData {
                     .collect();
                 VariantDataInner::Struct(fields)
             }
-            StructFlavor::Unit => VariantDataInner::Unit,
+            ast::StructFlavor::Unit => VariantDataInner::Unit,
         };
         VariantData(inner)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum VariantDef {
+    Struct(Struct),
+    EnumVariant(EnumVariant),
+}
+impl_froms!(VariantDef: Struct, EnumVariant);
+
+impl VariantDef {
+    pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        match self {
+            VariantDef::Struct(it) => it.field(db, name),
+            VariantDef::EnumVariant(it) => it.field(db, name),
+        }
+    }
+    pub(crate) fn variant_data(self, db: &impl HirDatabase) -> Arc<VariantData> {
+        match self {
+            VariantDef::Struct(it) => it.variant_data(db),
+            VariantDef::EnumVariant(it) => it.variant_data(db),
+        }
+    }
+}
+
+impl StructField {
+    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, FieldSource) {
+        let var_data = self.parent.variant_data(db);
+        let fields = var_data.fields().unwrap();
+        let ss;
+        let es;
+        let (file_id, struct_flavor) = match self.parent {
+            VariantDef::Struct(s) => {
+                let (file_id, source) = s.source(db);
+                ss = source;
+                (file_id, ss.flavor())
+            }
+            VariantDef::EnumVariant(e) => {
+                let (file_id, source) = e.source(db);
+                es = source;
+                (file_id, es.flavor())
+            }
+        };
+
+        let field_sources = match struct_flavor {
+            ast::StructFlavor::Tuple(fl) => fl
+                .fields()
+                .map(|it| FieldSource::Pos(it.to_owned()))
+                .collect(),
+            ast::StructFlavor::Named(fl) => fl
+                .fields()
+                .map(|it| FieldSource::Named(it.to_owned()))
+                .collect(),
+            ast::StructFlavor::Unit => Vec::new(),
+        };
+        let field = field_sources
+            .into_iter()
+            .zip(fields.iter())
+            .find(|(_syntax, (id, _))| *id == self.id)
+            .unwrap()
+            .0;
+        (file_id, field)
     }
 }

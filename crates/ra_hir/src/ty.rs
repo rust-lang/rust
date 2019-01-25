@@ -38,7 +38,7 @@ use crate::{
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
     generics::GenericParams,
     path::GenericArg,
-    adt::VariantData,
+    adt::VariantDef,
 };
 
 /// The ID of a type variable.
@@ -696,28 +696,6 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum VariantDef {
-    Struct(Struct),
-    EnumVariant(EnumVariant),
-}
-impl_froms!(VariantDef: Struct, EnumVariant);
-
-impl VariantDef {
-    pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        match self {
-            VariantDef::Struct(it) => it.field(db, name),
-            VariantDef::EnumVariant(it) => it.field(db, name),
-        }
-    }
-    pub(crate) fn variant_data(self, db: &impl HirDatabase) -> Arc<VariantData> {
-        match self {
-            VariantDef::Struct(it) => it.variant_data(db),
-            VariantDef::EnumVariant(it) => it.variant_data(db),
-        }
-    }
-}
-
 pub(super) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let parent_def = field.parent_def(db);
     let (generics, module) = match parent_def {
@@ -743,6 +721,9 @@ pub struct InferenceResult {
 impl InferenceResult {
     pub fn method_resolution(&self, expr: ExprId) -> Option<Function> {
         self.method_resolutions.get(&expr).map(|it| *it)
+    }
+    pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
+        self.field_resolutions.get(&expr).map(|it| *it)
     }
 }
 

@@ -68,7 +68,7 @@ pub use self::code_model_api::{
     Module, ModuleDef, ModuleSource, Problem,
     Struct, Enum, EnumVariant,
     Function, FnSignature, ScopeEntryWithSyntax,
-    StructField,
+    StructField, FieldSource,
     Static, Const,
     Trait, Type,
 };

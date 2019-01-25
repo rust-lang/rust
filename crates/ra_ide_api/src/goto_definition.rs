@@ -3,6 +3,7 @@ use ra_syntax::{
     AstNode, ast,
     algo::find_node_at_offset,
 };
+use test_utils::tested_by;
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
@@ -60,6 +61,7 @@ pub(crate) fn reference_definition(
             .parent()
             .and_then(ast::MethodCallExpr::cast)
         {
+            tested_by!(goto_definition_works_for_methods);
             let infer_result = function.infer(db);
             let syntax_mapping = function.body_syntax_mapping(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
@@ -68,6 +70,19 @@ pub(crate) fn reference_definition(
                 .and_then(|it| infer_result.method_resolution(it))
             {
                 return Exact(NavigationTarget::from_function(db, func));
+            };
+        }
+        // It could also be a field access
+        if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
+            tested_by!(goto_definition_works_for_fields);
+            let infer_result = function.infer(db);
+            let syntax_mapping = function.body_syntax_mapping(db);
+            let expr = ast::Expr::cast(field_expr.syntax()).unwrap();
+            if let Some(field) = syntax_mapping
+                .node_expr(expr)
+                .and_then(|it| infer_result.field_resolution(it))
+            {
+                return Exact(NavigationTarget::from_field(db, field));
             };
         }
     }
@@ -117,6 +132,8 @@ fn name_definition(
 
 #[cfg(test)]
 mod tests {
+    use test_utils::covers;
+
     use crate::mock_analysis::analysis_and_position;
 
     fn check_goto(fixuture: &str, expected: &str) {
@@ -183,6 +200,7 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_methods() {
+        covers!(goto_definition_works_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -197,15 +215,23 @@ mod tests {
             ",
             "frobnicate FN_DEF FileId(1) [27; 52) [30; 40)",
         );
+    }
 
+    #[test]
+    fn goto_definition_works_for_fields() {
+        covers!(goto_definition_works_for_fields);
         check_goto(
             "
             //- /lib.rs
-            mod <|>foo;
-            //- /foo/mod.rs
-            // empty
+            struct Foo {
+                spam: u32,
+            }
+
+            fn bar(foo: &Foo) {
+                foo.spam<|>;
+            }
             ",
-            "foo SOURCE_FILE FileId(2) [0; 10)",
+            "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
         );
     }
 }

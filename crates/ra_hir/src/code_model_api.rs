@@ -10,8 +10,8 @@ use crate::{
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
     expr::BodySyntaxMapping,
-    ty::{InferenceResult, VariantDef},
-    adt::{EnumVariantId, StructFieldId},
+    ty::InferenceResult,
+    adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
@@ -179,8 +179,14 @@ impl Module {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructField {
-    parent: VariantDef,
+    pub(crate) parent: VariantDef,
     pub(crate) id: StructFieldId,
+}
+
+#[derive(Debug)]
+pub enum FieldSource {
+    Named(TreeArc<ast::NamedFieldDef>),
+    Pos(TreeArc<ast::PosField>),
 }
 
 impl StructField {
@@ -188,6 +194,10 @@ impl StructField {
         self.parent.variant_data(db).fields().unwrap()[self.id]
             .name
             .clone()
+    }
+
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, FieldSource) {
+        self.source_impl(db)
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
