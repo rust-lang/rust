@@ -378,7 +378,12 @@ fn run_rustfmt(
 }
 
 fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Metadata, io::Error> {
-    match cargo_metadata::metadata(manifest_path) {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.no_deps();
+    if let Some(manifest_path) = manifest_path {
+        cmd.manifest_path(manifest_path);
+    }
+    match cmd.exec() {
         Ok(metadata) => Ok(metadata),
         Err(error) => Err(io::Error::new(io::ErrorKind::Other, error.to_string())),
     }
