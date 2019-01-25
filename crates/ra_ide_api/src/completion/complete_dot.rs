@@ -34,10 +34,10 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                             CompletionItem::new(
                                 CompletionKind::Reference,
                                 ctx.source_range(),
-                                field.name().to_string(),
+                                field.name(ctx.db).to_string(),
                             )
                             .kind(CompletionItemKind::Field)
-                            .set_detail(field.ty(ctx.db).map(|ty| ty.subst(substs).to_string()))
+                            .detail(field.ty(ctx.db).subst(substs).to_string())
                             .add_to(acc);
                         }
                     }

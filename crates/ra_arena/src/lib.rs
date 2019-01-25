@@ -4,6 +4,7 @@ use std::{
     fmt,
     marker::PhantomData,
     ops::{Index, IndexMut},
+    iter::FromIterator,
 };
 
 pub mod map;
@@ -107,5 +108,17 @@ impl<ID: ArenaId, T> IndexMut<ID> for Arena<ID, T> {
     fn index_mut(&mut self, idx: ID) -> &mut T {
         let idx = idx.into_raw().0 as usize;
         &mut self.data[idx]
+    }
+}
+
+impl<ID: ArenaId, T> FromIterator<T> for Arena<ID, T> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Arena {
+            data: Vec::from_iter(iter),
+            _ty: PhantomData,
+        }
     }
 }

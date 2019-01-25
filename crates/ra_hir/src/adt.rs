@@ -79,11 +79,12 @@ impl EnumVariant {
             .to_owned();
         (file_id, var)
     }
+    pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
+        db.enum_data(self.parent).variants[self.id]
+            .variant_data
+            .clone()
+    }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct EnumVariantId(RawId);
-impl_arena_id!(EnumVariantId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
@@ -94,27 +95,30 @@ pub struct EnumData {
 impl EnumData {
     pub(crate) fn enum_data_query(db: &impl HirDatabase, e: Enum) -> Arc<EnumData> {
         let (_file_id, enum_def) = e.source(db);
-        let mut res = EnumData {
-            name: enum_def.name().map(|n| n.as_name()),
-            variants: Arena::default(),
-        };
-        for var in variants(&*enum_def) {
-            let data = EnumVariantData {
+        let name = enum_def.name().map(|n| n.as_name());
+        let variants = variants(&*enum_def)
+            .map(|var| EnumVariantData {
                 name: var.name().map(|it| it.as_name()),
                 variant_data: Arc::new(VariantData::new(var.flavor())),
-            };
-            res.variants.alloc(data);
-        }
-
-        Arc::new(res)
+            })
+            .collect();
+        Arc::new(EnumData { name, variants })
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct EnumVariantId(RawId);
+impl_arena_id!(EnumVariantId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariantData {
     pub(crate) name: Option<Name>,
     pub(crate) variant_data: Arc<VariantData>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct StructFieldId(RawId);
+impl_arena_id!(StructFieldId);
 
 /// A single field of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,45 +129,27 @@ pub struct StructFieldData {
 
 /// Fields of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VariantData {
-    Struct(Vec<StructFieldData>),
-    Tuple(Vec<StructFieldData>),
+pub struct VariantData(VariantDataInner);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum VariantDataInner {
+    Struct(Arena<StructFieldId, StructFieldData>),
+    Tuple(Arena<StructFieldId, StructFieldData>),
     Unit,
 }
 
 impl VariantData {
-    pub fn fields(&self) -> &[StructFieldData] {
-        match self {
-            VariantData::Struct(fields) | VariantData::Tuple(fields) => fields,
-            _ => &[],
-        }
-    }
-
-    pub fn is_struct(&self) -> bool {
-        match self {
-            VariantData::Struct(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_tuple(&self) -> bool {
-        match self {
-            VariantData::Tuple(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_unit(&self) -> bool {
-        match self {
-            VariantData::Unit => true,
-            _ => false,
+    pub(crate) fn fields(&self) -> Option<&Arena<StructFieldId, StructFieldData>> {
+        match &self.0 {
+            VariantDataInner::Struct(fields) | VariantDataInner::Tuple(fields) => Some(fields),
+            _ => None,
         }
     }
 }
 
 impl VariantData {
     fn new(flavor: StructFlavor) -> Self {
-        match flavor {
+        let inner = match flavor {
             StructFlavor::Tuple(fl) => {
                 let fields = fl
                     .fields()
@@ -173,7 +159,7 @@ impl VariantData {
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
                     .collect();
-                VariantData::Tuple(fields)
+                VariantDataInner::Tuple(fields)
             }
             StructFlavor::Named(fl) => {
                 let fields = fl
@@ -183,16 +169,17 @@ impl VariantData {
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
                     .collect();
-                VariantData::Struct(fields)
+                VariantDataInner::Struct(fields)
             }
-            StructFlavor::Unit => VariantData::Unit,
-        }
+            StructFlavor::Unit => VariantDataInner::Unit,
+        };
+        VariantData(inner)
     }
 
-    pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
-        self.fields()
-            .iter()
-            .find(|f| f.name == *field_name)
-            .map(|f| &f.type_ref)
-    }
+    // pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
+    //     self.fields()
+    //         .iter()
+    //         .find(|f| f.name == *field_name)
+    //         .map(|f| &f.type_ref)
+    // }
 }
