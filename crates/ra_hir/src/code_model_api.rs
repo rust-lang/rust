@@ -177,6 +177,13 @@ impl Module {
     }
 }
 
+impl Docs for Module {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        self.declaration_source(db)
+            .and_then(|it| docs_from_ast(&*it.1))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructField {
     pub(crate) parent: VariantDef,
