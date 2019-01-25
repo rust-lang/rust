@@ -991,6 +991,9 @@ impl<'a> Builder<'a> {
 
         if self.config.incremental {
             cargo.env("CARGO_INCREMENTAL", "1");
+        } else {
+            // Don't rely on any default setting for incr. comp. in Cargo
+            cargo.env("CARGO_INCREMENTAL", "0");
         }
 
         if let Some(ref on_fail) = self.config.on_fail {
