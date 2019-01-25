@@ -388,6 +388,7 @@ pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnSignature {
     pub(crate) name: Name,
+    pub(crate) type_params: Arc<GenericParams>,
     pub(crate) args: Vec<TypeRef>,
     pub(crate) ret_type: TypeRef,
     /// True if the first param is `self`. This is relevant to decide whether this
@@ -412,6 +413,10 @@ impl FnSignature {
     /// can be called as a method.
     pub fn has_self_param(&self) -> bool {
         self.has_self_param
+    }
+
+    pub fn generics(&self) -> &GenericParams {
+        &self.type_params
     }
 }
 

@@ -1,16 +1,16 @@
 ---
-created: "2019-01-22T14:44:59.975899500+00:00"
-creator: insta@0.4.0
+created: "2019-01-25T23:18:54.985011010+00:00"
+creator: insta@0.5.2
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
+source: crates/ra_hir/src/ty/tests.rs
 ---
 [15; 20) '{ 1 }': u32
 [17; 18) '1': u32
 [48; 53) '{ 1 }': u32
 [50; 51) '1': u32
 [67; 91) '{     ...c(); }': ()
-[73; 74) 'a': fn() -> u32
+[73; 74) 'a': fn a
 [73; 76) 'a()': u32
-[82; 86) 'b::c': fn() -> u32
+[82; 86) 'b::c': fn c
 [82; 88) 'b::c()': u32
 

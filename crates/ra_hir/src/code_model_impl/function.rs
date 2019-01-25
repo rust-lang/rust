@@ -58,6 +58,7 @@ impl FnSignature {
                 args.push(type_ref);
             }
         }
+        let type_params = db.generic_params(func.into());
         let ret_type = if let Some(type_ref) = node.ret_type().and_then(|rt| rt.type_ref()) {
             TypeRef::from_ast(type_ref)
         } else {
@@ -66,6 +67,7 @@ impl FnSignature {
 
         let sig = FnSignature {
             name,
+            type_params,
             args,
             ret_type,
             has_self_param,

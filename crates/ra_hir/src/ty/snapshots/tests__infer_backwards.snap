@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:44:59.880187500+00:00"
-creator: insta@0.4.0
+created: "2019-01-25T23:18:54.943309491+00:00"
+creator: insta@0.5.2
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
+source: crates/ra_hir/src/ty/tests.rs
 ---
 [14; 15) 'x': u32
 [22; 24) '{}': ()
@@ -10,7 +10,7 @@ source: "crates\\ra_hir\\src\\ty\\tests.rs"
 [88; 89) 'a': u32
 [92; 108) 'unknow...nction': [unknown]
 [92; 110) 'unknow...tion()': u32
-[116; 125) 'takes_u32': fn(u32) -> ()
+[116; 125) 'takes_u32': fn takes_u32
 [116; 128) 'takes_u32(a)': ()
 [126; 127) 'a': u32
 [138; 139) 'b': i32

@@ -20,6 +20,7 @@ mod tests;
 pub(crate) mod method_resolution;
 
 use std::borrow::Cow;
+use std::iter::repeat;
 use std::ops::Index;
 use std::sync::Arc;
 use std::{fmt, mem};
@@ -225,7 +226,7 @@ pub enum Ty {
         /// For display
         name: Name,
         /// Substitutions for the generic parameters of the type
-        substs: Substs
+        substs: Substs,
     },
 
     /// A pointer to a function.  Written as `fn() -> i32`.
@@ -543,11 +544,7 @@ impl Ty {
                 name,
                 substs,
             },
-            Ty::FnDef { def, name, .. } => Ty::FnDef {
-                def,
-                name,
-                substs,
-            },
+            Ty::FnDef { def, name, .. } => Ty::FnDef { def, name, substs },
             _ => self,
         }
     }
@@ -651,28 +648,8 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
     Ty::FnDef {
         def: f.into(),
         name,
-        substs
+        substs,
     }
-}
-
-fn get_func_sig(db: &impl HirDatabase, f: Function) -> FnSig {
-    let signature = f.signature(db);
-    let module = f.module(db);
-    let impl_block = f.impl_block(db);
-    let generics = f.generic_params(db);
-    let input = signature
-        .args()
-        .iter()
-        .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), &generics, tr))
-        .collect::<Vec<_>>();
-    let output = Ty::from_hir(
-        db,
-        &module,
-        impl_block.as_ref(),
-        &generics,
-        signature.ret_type(),
-    );
-    FnSig { input, output }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
@@ -946,9 +923,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.type_of_pat.insert(pat, ty);
     }
 
-    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        // TODO provide generics of function
-        let generics = GenericParams::default();
+    fn make_ty(&mut self, type_ref: &TypeRef, generics: &GenericParams) -> Ty {
         let ty = Ty::from_hir(
             self.db,
             &self.module,
@@ -1249,9 +1224,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::Tuple(ref tuple_args) => &**tuple_args,
                     _ => &[],
                 };
-                let expectations_iter = expectations
-                    .into_iter()
-                    .chain(std::iter::repeat(&Ty::Unknown));
+                let expectations_iter = expectations.into_iter().chain(repeat(&Ty::Unknown));
 
                 let inner_tys = args
                     .iter()
@@ -1370,7 +1343,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
                     let expected = if let Some(type_ref) = arg_type {
-                        let ty = self.make_ty(type_ref);
+                        let ty = self.make_ty(type_ref, &GenericParams::default());
                         ty
                     } else {
                         Ty::Unknown
@@ -1386,22 +1359,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // TODO: we should use turbofish hints like this:
                 // f::<u32>(x)
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                // FIXME: so manu unnecessary clones
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
                     Ty::FnDef { def, substs, .. } => {
                         let fn_sig = def.signature(self.db);
-                        // TODO: get input and return types from the fn_sig.
-                        // it contains typerefs which we can make into proper tys
-
-                        let sig = get_func_sig(self.db, *def);
-                        (
-                            sig.input
-                                .iter()
-                                .map(|ty| ty.clone().subst(&substs))
-                                .collect(),
-                            sig.output.clone().subst(&substs),
-                        )
+                        let ret_ty = self
+                            .make_ty(fn_sig.ret_type(), fn_sig.generics())
+                            .subst(&substs);
+                        let param_tys = fn_sig
+                            .args()
+                            .iter()
+                            .map(|type_ref| {
+                                self.make_ty(type_ref, fn_sig.generics()).subst(&substs)
+                            })
+                            .collect();
+                        (param_tys, ret_ty)
                     }
                     _ => {
                         // not callable
@@ -1409,11 +1381,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         (Vec::new(), Ty::Unknown)
                     }
                 };
-                for (i, arg) in args.iter().enumerate() {
-                    self.infer_expr(
-                        *arg,
-                        &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
-                    );
+                let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
+                for (arg, param) in args.iter().zip(param_iter) {
+                    self.infer_expr(*arg, &Expectation::has_type(param));
                 }
                 ret_ty
             }
@@ -1435,46 +1405,39 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
                         if sig.input.len() > 0 {
-                            (sig.input[0].clone(), sig.input[1..].iter().cloned().collect(), sig.output.clone())
+                            (
+                                sig.input[0].clone(),
+                                sig.input[1..].iter().cloned().collect(),
+                                sig.output.clone(),
+                            )
                         } else {
                             (Ty::Unknown, Vec::new(), sig.output.clone())
                         }
                     }
                     Ty::FnDef { def, substs, .. } => {
-                        // TODO: fix deduplication with Expr::Call block above
-                        // TODO: fix the ridiculous number of clones
                         let fn_sig = def.signature(self.db);
-                        // TODO: get input and return types from the fn_sig.
-                        // it contains typerefs which we can make into proper tys
+                        let ret_ty = self
+                            .make_ty(fn_sig.ret_type(), fn_sig.generics())
+                            .subst(&substs);
 
-                        // check that len > 0
-                        let sig = get_func_sig(self.db, *def);
-                        if sig.input.len() > 0 {
-                            (
-                                sig.input[0].clone().subst(&substs),
-                                sig.input[1..]
-                                    .iter()
-                                    .map(|ty| ty.clone().subst(&substs))
-                                    .collect(),
-                                sig.output.clone().subst(&substs),
-                            )
+                        if fn_sig.args().len() > 0 {
+                            let mut arg_iter = fn_sig.args().iter().map(|type_ref| {
+                                self.make_ty(type_ref, fn_sig.generics()).subst(&substs)
+                            });
+                            let receiver_ty = arg_iter.next().unwrap();
+                            (receiver_ty, arg_iter.collect(), ret_ty)
                         } else {
-                            (Ty::Unknown, Vec::new(), sig.output.clone())
+                            (Ty::Unknown, Vec::new(), ret_ty)
                         }
                     }
                     _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
                 };
                 // TODO we would have to apply the autoderef/autoref steps here
                 // to get the correct receiver type to unify...
-                // 
-                // TODO: zip param_tys.chain(iter::repeat(Ty::Unknown)) above then its not so bad
-                // that we clone
                 self.unify(&expected_receiver_ty, &receiver_ty);
-                for (i, arg) in args.iter().enumerate() {
-                    self.infer_expr(
-                        *arg,
-                        &Expectation::has_type(param_tys.get(i).cloned().unwrap_or(Ty::Unknown)),
-                    );
+                let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
+                for (arg, param) in args.iter().zip(param_iter) {
+                    self.infer_expr(*arg, &Expectation::has_type(param));
                 }
                 ret_ty
             }
@@ -1558,7 +1521,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr(*expr, &Expectation::none());
-                let cast_ty = self.make_ty(type_ref);
+                let cast_ty = self.make_ty(type_ref, &GenericParams::default());
                 // TODO check the cast...
                 cast_ty
             }
@@ -1672,7 +1635,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 } => {
                     let decl_ty = type_ref
                         .as_ref()
-                        .map(|tr| self.make_ty(tr))
+                        .map(|tr| self.make_ty(tr, &GenericParams::default()))
                         .unwrap_or(Ty::Unknown);
                     let decl_ty = self.insert_type_vars(decl_ty);
                     let ty = if let Some(expr) = initializer {
@@ -1699,12 +1662,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn_signature(&mut self, signature: &FnSignature) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
+        let generics = signature.generics();
         for (type_ref, pat) in signature.args().iter().zip(body.params()) {
-            let ty = self.make_ty(type_ref);
+            let ty = self.make_ty(type_ref, generics);
 
             self.infer_pat(*pat, &ty);
         }
-        self.return_ty = self.make_ty(signature.ret_type());
+        self.return_ty = self.make_ty(signature.ret_type(), generics);
     }
 
     fn infer_body(&mut self) {
