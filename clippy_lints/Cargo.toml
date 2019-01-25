@@ -18,7 +18,7 @@ edition = "2018"
 
 [dependencies]
 cargo_metadata = "0.6.2"
-itertools = "0.7"
+itertools = "0.8"
 lazy_static = "1.0.2"
 matches = "0.1.7"
 quine-mc_cluskey = "0.2.2"

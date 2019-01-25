@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 clap = "~2.32"
-itertools = "0.7"
+itertools = "0.8"
 regex = "1"
 lazy_static = "1.0"
 walkdir = "2"
