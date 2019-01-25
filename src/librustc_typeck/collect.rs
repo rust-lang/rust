@@ -1346,7 +1346,16 @@ fn find_existential_constraints<'a, 'tcx>(
                 // FIXME(oli-obk): trace the actual span from inference to improve errors
                 let span = self.tcx.def_span(def_id);
                 if let Some((prev_span, prev_ty)) = self.found {
-                    if ty != prev_ty {
+                    let mut ty = ty.walk().fuse();
+                    let mut prev_ty = prev_ty.walk().fuse();
+                    let iter_eq = (&mut ty).zip(&mut prev_ty).all(|(t, p)| match (&t.sty, &p.sty) {
+                        // type parameters are equal to any other type parameter for the purpose of
+                        // concrete type equality, as it is possible to obtain the same type just
+                        // by passing matching parameters to a function.
+                        (ty::Param(_), ty::Param(_)) => true,
+                        _ => t == p,
+                    });
+                    if !iter_eq || ty.next().is_some() || prev_ty.next().is_some() {
                         // found different concrete types for the existential type
                         let mut err = self.tcx.sess.struct_span_err(
                             span,

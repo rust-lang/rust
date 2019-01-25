@@ -1,15 +1,17 @@
 // compile-pass
 #![feature(existential_type)]
 
+use std::fmt::Debug;
+
 fn main() {}
 
 // test that unused generic parameters are ok
-existential type Two<T, U>: 'static;
+existential type Two<T, U>: Debug;
 
-fn one<T: 'static>(t: T) -> Two<T, T> {
+fn one<T: Debug>(t: T) -> Two<T, T> {
     t
 }
 
-fn two<T: 'static, U: 'static>(t: T, _: U) -> Two<T, U> {
+fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
     t
 }
