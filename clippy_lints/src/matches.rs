@@ -464,17 +464,14 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
 }
 
 fn check_wild_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
-    let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
-    if match_type(cx, ex_ty, &paths::RESULT) {
-        for arm in arms {
-            if is_wild(&arm.pats[0]) {
-                span_note_and_lint(cx,
-                    WILDCARD_MATCH_ARM,
-                    arm.pats[0].span,
-                    "wildcard match will miss any future added variants.",
-                    arm.pats[0].span,
-                    "to resolve, match each variant explicitly");
-            }
+    for arm in arms {
+        if is_wild(&arm.pats[0]) {
+            span_note_and_lint(cx,
+                WILDCARD_MATCH_ARM,
+                arm.pats[0].span,
+                "wildcard match will miss any future added variants.",
+                arm.pats[0].span,
+                "to resolve, match each variant explicitly");
         }
     }
 }
