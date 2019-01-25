@@ -49,6 +49,9 @@ export function activate(context: vscode.ExtensionContext) {
         'ra-lsp.analyzerStatus',
         commands.analyzerStatus.makeCommand(context)
     );
+    registerCommand('ra-lsp.collectGarbage', () =>
+        Server.client.sendRequest<null>('ra/collectGarbage', null)
+    );
     registerCommand('ra-lsp.syntaxTree', commands.syntaxTree.handle);
     registerCommand('ra-lsp.extendSelection', commands.extendSelection.handle);
     registerCommand('ra-lsp.matchingBrace', commands.matchingBrace.handle);

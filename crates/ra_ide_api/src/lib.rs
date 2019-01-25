@@ -285,6 +285,10 @@ impl AnalysisHost {
     pub fn apply_change(&mut self, change: AnalysisChange) {
         self.db.apply_change(change)
     }
+
+    pub fn collect_garbage(&mut self) {
+        self.db.collect_garbage();
+    }
 }
 
 /// Analysis is a snapshot of a world state at a moment in time. It is the main
