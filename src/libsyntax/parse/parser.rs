@@ -5543,22 +5543,31 @@ impl<'a> Parser<'a> {
     fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
         let mut args = Vec::new();
         let mut bindings = Vec::new();
+
         let mut seen_type = false;
         let mut seen_binding = false;
-        let mut first_type_or_binding_span: Option<Span> = None;
-        let mut bad_lifetime_pos = vec![];
+
         let mut last_comma_span = None;
-        let mut suggestions = vec![];
+        let mut first_type_or_binding_span: Option<Span> = None;
+        let mut first_binding_span: Option<Span> = None;
+
+        let mut bad_lifetime_pos = vec![];
+        let mut bad_type_pos = vec![];
+
+        let mut lifetime_suggestions = vec![];
+        let mut type_suggestions = vec![];
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
+
                 if seen_type || seen_binding {
                     let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
                     bad_lifetime_pos.push(self.prev_span);
+
                     if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
-                        suggestions.push((remove_sp, String::new()));
-                        suggestions.push((
+                        lifetime_suggestions.push((remove_sp, String::new()));
+                        lifetime_suggestions.push((
                             first_type_or_binding_span.unwrap().shrink_to_lo(),
                             format!("{}, ", snippet)));
                     }
@@ -5576,24 +5585,29 @@ impl<'a> Parser<'a> {
                     ty,
                     span,
                 });
+
                 seen_binding = true;
                 if first_type_or_binding_span.is_none() {
                     first_type_or_binding_span = Some(span);
+                }
+                if first_binding_span.is_none() {
+                    first_binding_span = Some(span);
                 }
             } else if self.check_type() {
                 // Parse type argument.
                 let ty_param = self.parse_ty()?;
                 if seen_binding {
-                    self.struct_span_err(
-                        ty_param.span,
-                        "type parameters must be declared prior to associated type bindings"
-                    )
-                        .span_label(
-                            ty_param.span,
-                            "must be declared prior to associated type bindings",
-                        )
-                        .emit();
+                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
+                    bad_type_pos.push(self.prev_span);
+
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
+                        type_suggestions.push((remove_sp, String::new()));
+                        type_suggestions.push((
+                            first_binding_span.unwrap().shrink_to_lo(),
+                            format!("{}, ", snippet)));
+                    }
                 }
+
                 if first_type_or_binding_span.is_none() {
                     first_type_or_binding_span = Some(ty_param.span);
                 }
@@ -5609,27 +5623,93 @@ impl<'a> Parser<'a> {
                 last_comma_span = Some(self.prev_span);
             }
         }
-        if !bad_lifetime_pos.is_empty() {
-            let mut err = self.struct_span_err(
+
+        self.maybe_report_incorrect_generic_argument_order(
+            bad_lifetime_pos, bad_type_pos, lifetime_suggestions, type_suggestions
+        );
+
+        Ok((args, bindings))
+    }
+
+    /// Maybe report an error about incorrect generic argument order - "lifetime parameters
+    /// must be declared before type parameters", "type parameters must be declared before
+    /// associated type bindings" or both.
+    fn maybe_report_incorrect_generic_argument_order(
+        &self,
+        bad_lifetime_pos: Vec<Span>,
+        bad_type_pos: Vec<Span>,
+        lifetime_suggestions: Vec<(Span, String)>,
+        type_suggestions: Vec<(Span, String)>,
+    ) {
+        let mut err = if !bad_lifetime_pos.is_empty() && !bad_type_pos.is_empty() {
+            let mut positions = bad_lifetime_pos.clone();
+            positions.extend_from_slice(&bad_type_pos);
+
+            self.struct_span_err(
+                positions,
+                "generic arguments must declare lifetimes, types and associated type bindings in \
+                 that order",
+            )
+        } else if !bad_lifetime_pos.is_empty() {
+            self.struct_span_err(
                 bad_lifetime_pos.clone(),
                 "lifetime parameters must be declared prior to type parameters"
-            );
+            )
+        } else if !bad_type_pos.is_empty() {
+            self.struct_span_err(
+                bad_type_pos.clone(),
+                "type parameters must be declared prior to associated type bindings"
+            )
+        } else {
+            return;
+        };
+
+        if !bad_lifetime_pos.is_empty() {
             for sp in &bad_lifetime_pos {
                 err.span_label(*sp, "must be declared prior to type parameters");
             }
-            if !suggestions.is_empty() {
-                err.multipart_suggestion_with_applicability(
-                    &format!(
-                        "move the lifetime parameter{} prior to the first type parameter",
-                        if bad_lifetime_pos.len() > 1 { "s" } else { "" },
-                    ),
-                    suggestions,
-                    Applicability::MachineApplicable,
-                );
-            }
-            err.emit();
         }
-        Ok((args, bindings))
+
+        if !bad_type_pos.is_empty() {
+            for sp in &bad_type_pos {
+                err.span_label(*sp, "must be declared prior to associated type bindings");
+            }
+        }
+
+        if !lifetime_suggestions.is_empty() && !type_suggestions.is_empty() {
+            let mut suggestions = lifetime_suggestions;
+            suggestions.extend_from_slice(&type_suggestions);
+
+            let plural = bad_lifetime_pos.len() + bad_type_pos.len() > 1;
+            err.multipart_suggestion_with_applicability(
+                &format!(
+                    "move the parameter{}",
+                    if plural { "s" } else { "" },
+                ),
+                suggestions,
+                Applicability::MachineApplicable,
+            );
+        } else if !lifetime_suggestions.is_empty() {
+            err.multipart_suggestion_with_applicability(
+                &format!(
+                    "move the lifetime parameter{} prior to the first type parameter",
+                    if bad_lifetime_pos.len() > 1 { "s" } else { "" },
+                ),
+                lifetime_suggestions,
+                Applicability::MachineApplicable,
+            );
+        } else if !type_suggestions.is_empty() {
+            err.multipart_suggestion_with_applicability(
+                &format!(
+                    "move the type parameter{} prior to the first associated type binding",
+                    if bad_type_pos.len() > 1 { "s" } else { "" },
+                ),
+                type_suggestions,
+                Applicability::MachineApplicable,
+            );
+        }
+
+        err.emit();
     }
 
     /// Parses an optional `where` clause and places it in `generics`.

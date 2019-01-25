@@ -22,7 +22,7 @@ use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_mir as mir;
-use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion};
+use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion, layout_test};
 use rustc_plugin as plugin;
 use rustc_plugin::registry::Registry;
 use rustc_privacy;
@@ -1287,6 +1287,9 @@ where
                     mir::transform::check_unsafety::check_unsafety(tcx, def_id)
                 }
             });
+
+            time(sess, "layout testing", || layout_test::test_layout(tcx));
+
             // Avoid overwhelming user with errors if type checking failed.
             // I'm not sure how helpful this is, to be honest, but it avoids
             // a

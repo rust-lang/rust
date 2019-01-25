@@ -2937,16 +2937,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given the DefId of an item, returns its MIR, borrowed immutably.
-    /// Returns None if there is no MIR for the DefId
-    pub fn maybe_optimized_mir(self, did: DefId) -> Option<&'gcx Mir<'gcx>> {
-        if self.is_mir_available(did) {
-            Some(self.optimized_mir(did))
-        } else {
-            None
-        }
-    }
-
     /// Get the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Attributes<'gcx> {
         if let Some(id) = self.hir().as_local_node_id(did) {

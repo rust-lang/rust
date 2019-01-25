@@ -28,4 +28,12 @@ const fn const_drop2<T>(x: T) {
     //~^ ERROR destructors cannot be evaluated at compile-time
 }
 
+const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
+//~^ ERROR destructors cannot be evaluated at compile-time
+
+const HELPER: Option<WithDtor> = Some(WithDtor);
+
+const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
+//~^ ERROR destructors cannot be evaluated at compile-time
+
 fn main () {}

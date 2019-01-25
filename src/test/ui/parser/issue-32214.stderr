@@ -3,6 +3,10 @@ error: type parameters must be declared prior to associated type bindings
    |
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
    |                                  ^ must be declared prior to associated type bindings
+help: move the type parameter prior to the first associated type binding
+   |
+LL | pub fn test<W, I: Trait<W, Item=()> >() {}
+   |                         ^^       --
 
 error: aborting due to previous error
 

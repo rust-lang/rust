@@ -21,6 +21,8 @@ use syntax::source_map;
 
 use rustc::hir;
 
+use rustc::mir::interpret::{sign_extend, truncate};
+
 declare_lint! {
     UNUSED_COMPARISONS,
     Warn,
@@ -368,14 +370,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             let (t, actually) = match ty {
                 ty::Int(t) => {
                     let ity = attr::IntType::SignedInt(t);
-                    let bits = layout::Integer::from_attr(&cx.tcx, ity).size().bits();
-                    let actually = (val << (128 - bits)) as i128 >> (128 - bits);
+                    let size = layout::Integer::from_attr(&cx.tcx, ity).size();
+                    let actually = sign_extend(val, size) as i128;
                     (format!("{:?}", t), actually.to_string())
                 }
                 ty::Uint(t) => {
                     let ity = attr::IntType::UnsignedInt(t);
-                    let bits = layout::Integer::from_attr(&cx.tcx, ity).size().bits();
-                    let actually = (val << (128 - bits)) >> (128 - bits);
+                    let size = layout::Integer::from_attr(&cx.tcx, ity).size();
+                    let actually = truncate(val, size);
                     (format!("{:?}", t), actually.to_string())
                 }
                 _ => bug!(),

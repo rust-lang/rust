@@ -99,7 +99,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>, flavor: Fla
             };
 
             // At this point we know this must be a primitive of sorts.
-            let unit = arg.layout.homogeneous_aggregate(cx).unwrap();
+            let unit = arg.layout.homogeneous_aggregate(cx).unit().unwrap();
             assert_eq!(unit.size, arg.layout.size);
             if unit.kind == RegKind::Float {
                 continue;

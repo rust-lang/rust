@@ -273,11 +273,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
         trace!("load mir {:?}", instance);
         match instance {
-            ty::InstanceDef::Item(def_id) => {
-                self.tcx.maybe_optimized_mir(def_id).ok_or_else(||
-                    EvalErrorKind::NoMirFor(self.tcx.item_path_str(def_id)).into()
-                )
-            }
+            ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
+                Ok(self.tcx.optimized_mir(did))
+            } else {
+                err!(NoMirFor(self.tcx.item_path_str(def_id)))
+            },
             _ => Ok(self.tcx.instance_mir(instance)),
         }
     }
